@@ -1,0 +1,5 @@
+# Private spreadsheet exports — real personal packing data, not for the public repo
+examples/
+
+# macOS
+.DS_Store
