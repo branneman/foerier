@@ -60,7 +60,7 @@ Acceptance criteria:
   Helinox chairs), instead of duplicate entries. (Distinct from how many we
   _bring_ on a trip — story 7.)
 - **Removing an item is a soft-delete:** past trips that referenced it keep
-  their history intact. (Managing retired gear as its own view is story 18.)
+  their history intact. (Managing retired gear as its own view is story 19.)
 
 ### 3. Find an item
 
@@ -118,7 +118,7 @@ Acceptance criteria:
   without it entering the inventory.
 - Deciding not to bring something means **removing it from the trip** — there
   is no "not coming" state (story 9). Its absence is recoverable by filtering
-  (story 11), and promoting a trip-only item to the inventory is story 20.
+  (story 12), and promoting a trip-only item to the inventory is story 21.
 
 ### 7. Quantify an item: single, per-person, or counted
 
@@ -169,7 +169,7 @@ Acceptance criteria:
   trip (story 6).
 - I can see at a glance everything that still needs handling.
 - In the MVP the status set is **fixed**; making it editable per trip is
-  story 19. The fixed defaults must be able to migrate to that editable model
+  story 20. The fixed defaults must be able to migrate to that editable model
   without a rewrite — see [Open questions](#open-questions).
 
 ### 10. Move containers through the pack-out journey
@@ -190,9 +190,28 @@ Acceptance criteria:
   container can still hold nested containers (story 1).
 - I can see where each of the trip's containers currently stands.
 - Like item statuses, the stages are **fixed** in the MVP and made editable per
-  trip in story 19; the same migration requirement applies.
+  trip in story 20; the same migration requirement applies.
 
-### 11. Tag inventory and slice lists from many angles
+### 11. Unpack and close a trip
+
+As a quartermaster, when a trip ends, I want to walk the gear back home in a
+deliberate unpack pass that reverses the journey, so that the inventory returns
+to being the accurate year-round truth instead of drifting after every trip.
+
+Acceptance criteria:
+
+- Closing a trip happens through an **explicit unpack pass** — a real step I
+  work through, not an automatic wipe.
+- During unpack each item returns to its home location; anything that now lives
+  somewhere new I can re-home on the spot (the stuff sack came back into a
+  different box; the clothing went back to the wardrobe).
+- Once the trip is closed, its packed arrangement and container journeys are
+  cleared, but the trip is kept as history (story 13).
+- Richer unpack observations ride on Later features and are out of the minimal
+  pass: flagging that an item needs upkeep (story 17), or that a counted
+  consumable ran down (story 7).
+
+### 12. Tag inventory and slice lists from many angles
 
 As a quartermaster, during inventory management, trip planning, and packing, I
 want to tag inventory items and then filter, sort, and group any list from many
@@ -210,7 +229,7 @@ Acceptance criteria:
 - Criteria can combine ("her gear that is not yet packed").
 - What I see reflects the narrowing immediately and can be undone.
 
-### 12. Trip history and templates
+### 13. Trip history and templates
 
 As a quartermaster, during trip planning, I want past trips kept — protected
 against casual deletion — and to start a new trip from a past one, so that
@@ -225,7 +244,7 @@ Acceptance criteria:
 - A new trip started from a past one takes over its gear list, bring-counts,
   and pre-trip tasks; packing progress and container journeys start fresh.
 
-### 13. Pre-trip tasks
+### 14. Pre-trip tasks
 
 _(Deliberately the last MVP story; first to move to Later if the MVP grows too
 heavy.)_
@@ -247,7 +266,7 @@ Acceptance criteria:
 Roughly in the order we expect to want them. The rich weight analysis is
 deliberately last.
 
-### 14. Simple weight totals
+### 15. Simple weight totals
 
 As a quartermaster, during trip planning, I want to optionally record weight in
 grams — for items _and_ for containers themselves — and see the total per
@@ -260,36 +279,37 @@ Acceptance criteria:
   as gaps in a total, not silently counted as zero.
 - A container's total is its contents plus its own (empty) weight.
 
-### 15. Post-trip learnings
+### 16. Post-trip learnings
 
 As a quartermaster, after a trip, I want to record what we learned ("10 kg pack
 plus 20 km a day is too much"; "if rain is likely: bring the tarp and a chair")
 attached to that trip, so that the lesson resurfaces when I start a similar
 trip from it.
 
-### 16. Maintenance
+### 17. Maintenance
 
 As a quartermaster, during inventory management, I want to know which items need
 what upkeep and when — re-waterproof the shell jacket, wax the skis, backflush
 the water filter — and mark upkeep as done, so that maintenance stops being
 invisible and forgotten instead of surfacing as a surprise while packing. This
-is a visible _state of the depot_, not a notification or to-do engine.
+is a visible _state of the depot_, not a notification or to-do engine. The
+natural moment to notice upkeep is the unpack pass (story 11).
 
-### 17. Wishlist / acquisition planning
+### 18. Wishlist / acquisition planning
 
 As a quartermaster, during inventory management, I want a want-list of gear I
 might acquire — whether it **replaces** an owned item or is a **brand-new type**
 we don't own yet — so that purchases are deliberate and the depot doesn't drift
 or accumulate doubles. (Lower priority than maintenance.)
 
-### 18. Retirement
+### 19. Retirement
 
 As a quartermaster, during inventory management, I want to manage retired gear
 as its own view — see it, and bring it back if needed — building on the
 soft-delete that already protects history in the MVP (story 2), so that the
 active depot reflects today while the past stays true.
 
-### 19. Configurable per-trip statuses
+### 20. Configurable per-trip statuses
 
 As a quartermaster, during trip planning, I want to add, rename, and remove the
 packing statuses (story 9) and container journey stages (story 10) **per trip**
@@ -297,14 +317,14 @@ packing statuses (story 9) and container journey stages (story 10) **per trip**
 state machine fits the trip instead of the trip bending to fixed states. This
 must evolve from the MVP's fixed defaults without a data migration rewrite.
 
-### 20. Promote a trip-only item into inventory
+### 21. Promote a trip-only item into inventory
 
 As a quartermaster, during or after a trip, I want to promote a trip-only item
 into the permanent inventory and have past occurrences of that same item link
 back to the new inventory entry, so that a thing that earned its place stops
 being re-typed every trip. (In the MVP this is done by hand — story 2 + story 6.)
 
-### 21. Conditional load-outs
+### 22. Conditional load-outs
 
 As a quartermaster, during trip planning, I want to mark parts of a trip list
 as conditional on circumstances ("only if heavy rain is expected: tarp, pegs,
@@ -312,14 +332,14 @@ poles") and settle the condition close to departure, so that one planned trip
 covers its weather variants. Judging the conditions themselves stays where it
 belongs: weather apps and local knowledge.
 
-### 22. Carry assignment
+### 23. Carry assignment
 
 As a quartermaster, during trip planning for load-carrying trips, I want to
 assign who carries what, so that when our kid can't carry all their own gear
 on a hüttentour, its distribution over our packs is decided ahead instead of at
 the trailhead.
 
-### 23. Rich weight analysis
+### 24. Rich weight analysis
 
 As a quartermaster, during planning of weight-critical trips, I want the full
 weight discipline our ultralight sheet does by hand — base weight excluding
@@ -335,7 +355,7 @@ cutting weight is analysis, not archaeology.
   our tool, and a loan administration isn't worth it at our scale.
 - **Weather data or forecasts.** Judging conditions happens in weather apps and
   with local mountain knowledge; foerier only carries the _consequences_
-  (story 21).
+  (story 22).
 - **Route planning.** Different problem, well served elsewhere.
 - **Campsite/hut booking.** Same.
 - **Friend-facing features.** No accounts, sharing, or workflows for people
@@ -352,13 +372,13 @@ stories above.)
 1. **Exact MVP status labels.** Story 9 proposes items `not packed → staged →
    packed` and story 10 proposes containers `home → staging → car → packed`.
    Are those the right defaults? And is "pack on departure day" (from the ski
-   sheet) a status, or really a pre-trip task (story 13)?
+   sheet) a status, or really a pre-trip task (story 14)?
 2. **Migration path to editable statuses.** The MVP's fixed statuses (stories 9,
-   10) must grow into per-trip CRUD (story 19) without a rewrite. This is a
+   10) must grow into per-trip CRUD (story 20) without a rewrite. This is a
    forward-compatibility constraint to honor whenever the data model is
    designed — flagged here so it isn't forgotten.
 3. **Conditional items vs. custom statuses.** Once statuses are editable
-   (story 19), is a conditional/"maybe" item (story 21) just a user-defined
+   (story 20), is a conditional/"maybe" item (story 22) just a user-defined
    status, or a distinct mechanism?
 4. **Tag shape.** Flat tags only, or is any grouping/hierarchy wanted (e.g. a
    `food` family, or tag namespaces)? Flat is assumed until proven insufficient.
