@@ -118,7 +118,7 @@ Acceptance criteria:
   without it entering the inventory.
 - Deciding not to bring something means **removing it from the trip** — there
   is no "not coming" state (story 9). Its absence is recoverable by filtering
-  (story 12), and promoting a trip-only item to the inventory is story 21.
+  (story 13), and promoting a trip-only item to the inventory is story 21.
 
 ### 7. Quantify an item: single, per-person, or counted
 
@@ -210,13 +210,38 @@ Acceptance criteria:
 - During unpack each item returns to its home location; anything that now lives
   somewhere new I can re-home on the spot (the stuff sack came back into a
   different box; the clothing went back to the wardrobe).
+- I review the trip's **notes** (story 12) as part of the pass — keeping the
+  useful ones as reference and discarding the rest.
 - Once the trip is closed, its packed arrangement and container journeys are
-  cleared, but the trip is kept as history (story 13).
-- Richer unpack observations ride on Later features and are out of the minimal
-  pass: flagging that an item needs upkeep (story 17), or that a counted
-  consumable ran down (story 7).
+  cleared, but the trip is kept as history (story 14).
+- Richer outcomes ride on Later features: promoting a note into a maintenance
+  need (story 17), the wishlist (story 18), or a retirement (story 19); or
+  dropping a counted consumable that ran down (story 7).
 
-### 12. Tag inventory and slice lists from many angles
+### 12. Trip notes
+
+As a quartermaster, during and after a trip, I want to jot low-friction notes —
+observations, reminders, half-formed ideas — against the trip, so that what I
+notice in the moment is captured before I forget it, without breaking stride.
+
+Acceptance criteria:
+
+- Adding a note is low-friction free text; I can do it **mid-trip or after**
+  ("ran low on gas", "the chair was useless", "warmer gloves next time").
+- A note can optionally be **about a specific item** on the trip (this stove),
+  or stand alone (the weather, the route).
+- Notes persist with the trip and **resurface when I start a new trip from it**
+  (story 14), so reference notes ("bring more gas"; "10 kg pack plus 20 km a day
+  was too much") inform the next similar trip.
+- At unpack (story 11) I review the trip's notes and either **keep** them as
+  reference or **discard** them.
+- **Later**, a note can be **promoted** into a durable inventory action — onto
+  the wishlist (story 18), into a retirement (story 19), or as a maintenance
+  need (story 17) — turning a fleeting observation into a tracked outcome. The
+  trip is the low-friction inbox; the inventory is the curated destination. In
+  the MVP notes are captured and kept; promotion arrives with those features.
+
+### 13. Tag inventory and slice lists from many angles
 
 As a quartermaster, during inventory management, trip planning, and packing, I
 want to tag inventory items and then filter, sort, and group any list from many
@@ -235,7 +260,7 @@ Acceptance criteria:
 - Criteria can combine ("her gear that is not yet packed").
 - What I see reflects the narrowing immediately and can be undone.
 
-### 13. Trip history and templates
+### 14. Trip history and templates
 
 As a quartermaster, during trip planning, I want past trips kept — protected
 against casual deletion — and to start a new trip from a past one, so that
@@ -248,9 +273,10 @@ Acceptance criteria:
 - Deleting a trip requires a deliberate, confirmed act; it is discouraged, not
   routine.
 - A new trip started from a past one takes over its gear list, bring-counts,
-  and pre-trip tasks; packing progress and container journeys start fresh.
+  pre-trip tasks, and kept reference notes (story 12); packing progress and
+  container journeys start fresh.
 
-### 14. Pre-trip tasks
+### 15. Pre-trip tasks
 
 _(Deliberately the last MVP story; first to move to Later if the MVP grows too
 heavy.)_
@@ -272,7 +298,7 @@ Acceptance criteria:
 Roughly in the order we expect to want them. The rich weight analysis is
 deliberately last.
 
-### 15. Simple weight totals
+### 16. Simple weight totals
 
 As a quartermaster, during trip planning, I want to optionally record weight in
 grams — for items _and_ for containers themselves — and see the total per
@@ -285,13 +311,6 @@ Acceptance criteria:
   as gaps in a total, not silently counted as zero.
 - A container's total is its contents plus its own (empty) weight.
 
-### 16. Post-trip learnings
-
-As a quartermaster, after a trip, I want to record what we learned ("10 kg pack
-plus 20 km a day is too much"; "if rain is likely: bring the tarp and a chair")
-attached to that trip, so that the lesson resurfaces when I start a similar
-trip from it.
-
 ### 17. Maintenance
 
 As a quartermaster, during inventory management, I want to know which items need
@@ -299,21 +318,34 @@ what upkeep and when — re-waterproof the shell jacket, wax the skis, backflush
 the water filter — and mark upkeep as done, so that maintenance stops being
 invisible and forgotten instead of surfacing as a surprise while packing. This
 is a visible _state of the depot_, not a notification or to-do engine. The
-natural moment to notice upkeep is the unpack pass (story 11).
+natural moment to notice upkeep is the unpack pass (story 11), where a trip note
+(story 12) can be promoted straight into a maintenance need.
 
 ### 18. Wishlist / acquisition planning
 
-As a quartermaster, during inventory management, I want a want-list of gear I
-might acquire — whether it **replaces** an owned item or is a **brand-new type**
-we don't own yet — so that purchases are deliberate and the depot doesn't drift
-or accumulate doubles. (Lower priority than maintenance.)
+As a quartermaster, during inventory management — and by promoting trip notes
+(story 12) — I want a single want-list of gear we might acquire, whether it
+**replaces** an owned item or is a **brand-new type** we don't own yet, so that
+purchases are deliberate and the depot doesn't drift or accumulate doubles.
+
+Acceptance criteria:
+
+- The want-list is one durable, inventory-level list; there is no separate
+  per-trip wishlist.
+- Entries range in maturity from a raw thought ("lighter stove?") to a named
+  product ("BRS-3000T"), optionally marked as replacing a specific owned item.
+- I can add to it directly at any time, or by **promoting a trip note**
+  (story 12): the trip is a low-friction inbox, the want-list the curated
+  destination. (Lower priority than maintenance.)
 
 ### 19. Retirement
 
 As a quartermaster, during inventory management, I want to manage retired gear
 as its own view — see it, and bring it back if needed — building on the
 soft-delete that already protects history in the MVP (story 2), so that the
-active depot reflects today while the past stays true.
+active depot reflects today while the past stays true. A retirement can also be
+raised by promoting a trip note (story 12) — "the old stove finally died",
+noticed at unpack, becomes a retirement.
 
 ### 20. Configurable per-trip statuses
 
@@ -373,8 +405,7 @@ Acceptance criteria:
     recorded (story 25).
   - **Excluded:** packing status; the container journey and where things are
     packed; home and storage locations (of items and of containers); participant
-    names and ownership; pre-trip tasks; post-trip learnings; and any free-text
-    notes.
+    names and ownership; pre-trip tasks; trip notes; and any other free-text.
 
 ### 25. Rich weight analysis
 
