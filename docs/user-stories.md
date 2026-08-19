@@ -222,7 +222,8 @@ any trip.
 Acceptance criteria:
 
 - I can give an inventory item any number of **tags** (`food`, `bushcraft`,
-  `kitchen`). Trip-only items are not tagged.
+  `kitchen`). Tags are flat — no hierarchy or nesting. Trip-only items are not
+  tagged.
 - I can narrow, sort, and group lists by at least: tag, person, ownership
   (personal/shared), item kind (story 7), packing status, container, and
   trip membership (e.g. "items not in any trip").
@@ -313,9 +314,10 @@ active depot reflects today while the past stays true.
 
 As a quartermaster, during trip planning, I want to add, rename, and remove the
 packing statuses (story 9) and container journey stages (story 10) **per trip**
-— extra states for a big expedition, just the basics for a weekend — so that the
-state machine fits the trip instead of the trip bending to fixed states. This
-must evolve from the MVP's fixed defaults without a data migration rewrite.
+— extra states for a big expedition (a ski trip's real "pack on departure day",
+or "staged near the bag"), just the basics for a weekend — so that the state
+machine fits the trip instead of the trip bending to fixed states. This must
+evolve from the MVP's fixed defaults without a data migration rewrite.
 
 ### 21. Promote a trip-only item into inventory
 
@@ -369,16 +371,10 @@ Unresolved points from the brainstorm — to settle before or during design, not
 now. (Most of the original questions are now resolved and folded into the
 stories above.)
 
-1. **Exact MVP status labels.** Story 9 proposes items `not packed → staged →
-   packed` and story 10 proposes containers `home → staging → car → packed`.
-   Are those the right defaults? And is "pack on departure day" (from the ski
-   sheet) a status, or really a pre-trip task (story 14)?
-2. **Migration path to editable statuses.** The MVP's fixed statuses (stories 9,
+1. **Migration path to editable statuses.** The MVP's fixed statuses (stories 9,
    10) must grow into per-trip CRUD (story 20) without a rewrite. This is a
    forward-compatibility constraint to honor whenever the data model is
    designed — flagged here so it isn't forgotten.
-3. **Conditional items vs. custom statuses.** Once statuses are editable
+2. **Conditional items vs. custom statuses.** Once statuses are editable
    (story 20), is a conditional/"maybe" item (story 22) just a user-defined
    status, or a distinct mechanism?
-4. **Tag shape.** Flat tags only, or is any grouping/hierarchy wanted (e.g. a
-   `food` family, or tag namespaces)? Flat is assumed until proven insufficient.
