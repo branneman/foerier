@@ -346,7 +346,37 @@ assign who carries what, so that when our kid can't carry all their own gear
 on a hüttentour, its distribution over our packs is decided ahead instead of at
 the trailhead.
 
-### 24. Rich weight analysis
+### 24. Share a trip as a read-only public link
+
+As a quartermaster, during or after trip planning, I want to publish a trip's
+gear list as a read-only link I can send to outsiders — showing only a safe,
+limited subset — so that I can share a packing list the way I used to share a
+copied, generically-named Google Doc, without exposing our household, our home,
+or the fact that we are away.
+
+Acceptance criteria:
+
+- A trip is **private by default**; it becomes viewable to outsiders only
+  through an explicit action that generates a **unique, unguessable link**. That
+  link gives a no-login, read-only view; there is no public listing or search.
+- The link is **revocable**: removing it makes the URL dead, and regenerating
+  produces a fresh id. The link is treated as **effectively public** — anyone it
+  reaches can view it, and it may be forwarded or indexed, so the shared subset
+  must be safe under that assumption.
+- I set a **separate public title** for the share (e.g. "Ski trip packing
+  list"), defaulting to a generic label — never the trip's real name, and
+  **never a date**.
+- The share includes only a safe subset:
+  - **Included:** item names; quantities (counted bring-counts; per-person items
+    shown generically as one-per-person, without participant names); grouping by
+    tag; grouping by container (container name only); and item weight if
+    recorded (story 25).
+  - **Excluded:** packing status; the container journey and where things are
+    packed; home and storage locations (of items and of containers); participant
+    names and ownership; pre-trip tasks; post-trip learnings; and any free-text
+    notes.
+
+### 25. Rich weight analysis
 
 As a quartermaster, during planning of weight-critical trips, I want the full
 weight discipline our ultralight sheet does by hand — base weight excluding
@@ -365,8 +395,10 @@ cutting weight is analysis, not archaeology.
   (story 22).
 - **Route planning.** Different problem, well served elsewhere.
 - **Campsite/hut booking.** Same.
-- **Friend-facing features.** No accounts, sharing, or workflows for people
-  outside the household.
+- **Friend-facing accounts or collaboration.** No accounts, editing, or
+  interactive workflows for people outside the household. The one deliberate
+  exception is the read-only public share link (story 24): outsiders can _view_
+  a limited list, never log in, comment, or change anything.
 
 ---
 
