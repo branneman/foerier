@@ -149,7 +149,12 @@ one missing headlamp is obvious — and obvious _whose_ it is.
 
 Acceptance criteria:
 
-- Adding a per-person item to a trip yields one piece per participant.
+- Adding a per-person item to a trip yields one piece per participant as a
+  **starting default**, not a fixed rule.
+- Each participant's piece can be removed individually, so a per-person item can
+  be brought by some participants and not others (only one of us needs a
+  headlamp; the kid doesn't carry their own yet). Removing a piece _is_ "that
+  person isn't bringing one", consistent with story 6.
 - While packing I can see, per person, whether their piece is packed
   ("headlamp — me: packed; partner: not yet").
 
@@ -378,3 +383,11 @@ stories above.)
 2. **Conditional items vs. custom statuses.** Once statuses are editable
    (story 20), is a conditional/"maybe" item (story 22) just a user-defined
    status, or a distinct mechanism?
+3. **Extra/spare pieces of a per-person item.** A per-person item yields exactly
+   one piece per participant (stories 7, 8) and cannot also be counted. So a
+   backup of a per-person item — e.g. a solo trip carrying a second headlamp
+   loaned from a partner who isn't coming — has no clean expression. The MVP
+   escape hatch is a trip-only "spare" item (story 6), at the cost of it not
+   linking to the real inventory unit. If this ever proves real, the likely home
+   is a trip-scoped "spare/extra" notion on per-person items, not a change to the
+   three kinds. Niche and possibly hypothetical — parked, not built.
