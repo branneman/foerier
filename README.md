@@ -18,7 +18,7 @@ weekends. A few realities make this hard to manage in spreadsheets:
   depot.
 - **We don't always take all the people.** A solo trip takes one person's gear
   plus a slice of the shared pool; gear of whoever stays home is irrelevant.
-- **Conditions change the load-out.** Expected weather decides whether the
+- **Conditions change what we bring.** Expected weather decides whether the
   tarp, the extra chair, or the warmer bag comes along.
 - **Everything lives somewhere and gets packed into something.** Gear has a
   home — a shelf in the attic, a stuff sack inside a bigger bag — and on a trip
@@ -44,19 +44,23 @@ trip templates** — and that combination is the whole point here.
 
 ## Core concepts
 
-In prose, deliberately — these are ideas, not a schema. The data model is
-intentionally not designed yet.
+A quick tour in prose. The precise, single-meaning terms are the project's
+[ubiquitous language](docs/ubiquitous-language.md), and the structure behind them
+— aggregates, invariants, the two worlds of home and trip — is the
+[domain model](docs/domain-model.md).
 
-- **Gear** — the items we own. Each has a home location; some of it is one
-  person's (boots, sleeping bag), the rest is the shared pool (tent, stove).
-- **People** — the household. Trips take a subset of us; some gear is per
-  person, and packing tracks whose piece is whose.
-- **Containers and places** — fixed storage spots and movable containers, which
-  can hold other containers (a stuff sack inside the duffel in the attic).
-  During a trip, gear leaves its home and travels inside a specific container.
-- **Trips** — a named undertaking with participants, a gear selection drawn
-  from the depot, quantities, packing progress, and pre-trip tasks. Past trips
-  are kept and serve as templates for the next similar one.
+- **Gear** — anything we own, whether a plain item or a container. Each piece has
+  a home; some of it is one person's (boots, sleeping bag), the rest is the
+  shared pool (tent, stove).
+- **People** — the household. Trips take a subset of us; some gear is per person,
+  and packing tracks whose piece is whose.
+- **Containers and places** — a place is a fixed storage spot; a container is
+  gear that can hold other gear, nested to any depth (a stuff sack inside the
+  duffel in the attic). During a trip, gear leaves its home and travels inside a
+  specific container — a second, independent world from where it lives at home.
+- **Trips** — a named undertaking with participants, a gear list drawn from the
+  depot, quantities, packing progress, and pre-trip tasks. Past trips are kept
+  and serve as templates for the next similar one.
 
 Requirements live in [docs/user-stories.md](docs/user-stories.md).
 
@@ -73,6 +77,9 @@ Requirements live in [docs/user-stories.md](docs/user-stories.md).
 
 ## Status
 
-Pre-code. The repo contains requirements (user stories) and example exports of
-the spreadsheets it will replace. No tech stack chosen, no data model designed
-— both deliberate, in that order.
+Pre-code. The repo contains requirements (user stories), a DDD domain design
+(the [ubiquitous language](docs/ubiquitous-language.md) and
+[domain model](docs/domain-model.md)), and example exports of the spreadsheets it
+will replace. The domain is now modelled, conceptually and independent of
+storage; a persistence schema and a tech stack are both still deliberately
+unchosen, in that order.
