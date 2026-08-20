@@ -1,0 +1,225 @@
+# foerier — Testing
+
+How this project is tested. Adapted from
+[branneman/health's testing manifesto](https://github.com/branneman/health/blob/main/docs/testing-manifesto.md)
+and its browser-only descendant in `bloomwatch`, for an **offline-first React PWA
+with an operation-log sync engine** talking to a thin **Hono + Postgres** server.
+
+This is the permanent reference — unlike a per-story design spec, which is
+retired once implemented, this file stays up to date as the testing approach
+evolves.
+
+## Philosophy
+
+Testing is about confidence, not coverage numbers. Catch regressions as cheaply
+as possible — push risk mitigation as low in the pyramid as possible. A test
+belongs at the lowest tier whose tools can catch the failure; don't reach for a
+higher tier just because it's easier to write.
+
+**Tests must test real behaviour.** A test that can't be wrong — asserting a
+function exists, exercising a stub that always returns the expected value —
+provides no confidence and is noise. Dependencies that cross a boundary (the
+clock, `crypto`, storage, `fetch`) are replaced with **real, minimal fake
+implementations of the interface — not mocking-framework mocks**.
+
+**Each tier has a charter.** A test belongs at the lowest tier whose tools can
+catch its failure. The **bold** tiers below are where *foerier's* real risk lives:
+the purity of the merge logic and the convergence of divergent replicas.
+
+## The pyramid
+
+```
+[T5] E2E smoke          ← Playwright, real app.foerier.app, one golden path (+ an offline leg)
+[T4] Contract / API     ← real deployed server, verifies the box (migrations, Caddy, WebAuthn origin)
+[T2s] Server integration ← real Hono + local Postgres (foerier_test), endpoints + household isolation
+[T3] Component          ← React Testing Library, core-flow screens (F1–F5)
+[T2] CONVERGENCE / MERGE ← ≥2 divergent op-logs → exchange → identical state (property-based)
+[T1] UNIT               ← op-log fold, LWW + smart rules, HLC, selectors, domain invariants
+[T0] Static analysis    ← tsc, ESLint(+react-hooks), Prettier, Husky full-project pre-commit
+```
+
+---
+
+## Tier 0 — Static analysis
+
+**Charter:** catch syntax, type, and style errors before any behavioural test —
+the cheapest tier, and a different class of issue than behaviour covers.
+
+- `tsc --noEmit` across every workspace (`app` · `landing` · `api` · `shared` ·
+  `ui`).
+- ESLint (`typescript-eslint` + `eslint-plugin-react-hooks`) — correctness rules
+  (unused vars, hook-dependency bugs, unreachable code).
+- Prettier for formatting only; `eslint-config-prettier` keeps the two from
+  fighting.
+
+**Runs on the whole monorepo, not just changed files** — in the pre-commit hook
+and in CI. Deliberate: LLM-authored changes tend to leave unrelated files
+unformatted or untouched, and a staged-files-only check would miss that.
+
+**Pre-commit hook (Husky)** runs `typecheck`, `lint`, and `format:check`
+full-repo before a commit is allowed — the same commands as CI, no separate fast
+path. Installed automatically via `package.json`'s `"prepare": "husky"`.
+
+## Tier 1 — Unit tests
+
+**Charter:** pure logic, no I/O, no DOM. The majority of tests, and the first
+thing written for any new logic. Nearly all of it lives in `shared/`.
+
+Covers the crown jewels:
+
+- **the op-log fold** — applying an op to state, snapshotting, tail-replay;
+- **conflict resolution** — per-field last-writer-wins, and the smart-rule
+  overrides (delete/retire-wins, packing-status furthest-stage-wins);
+- **Hybrid Logical Clock** — monotonicity, merge on receive, tiebreak ordering,
+  behaviour under skewed device clocks;
+- **selectors** — Whereabouts (home vs. trip residence), the emergent containment
+  tree, filtered/grouped/sorted slices (story 13);
+- **domain invariants** — acyclic containment, single-residence, Kind exclusivity
+  (never Counted *and* Per-person), at-most-one Piece per Participant, soft-delete
+  preserving history.
+
+**Tooling:** Vitest, co-located as `*.test.ts` next to the unit under test.
+Boundaries (clock, `crypto.randomUUID`/UUIDv7, storage) are injected as real
+in-memory fakes — the `health` `RateLimiterTest` gold standard (injected
+`Clock.fixed()`, a real fake store), applied here to a fake clock and a fake
+op-store.
+
+## Tier 2 — Convergence / merge tests
+
+**Charter — foerier's signature tier, and the one unique to offline-first.** The
+analog of "server integration", except the integration that matters is
+**client ↔ client convergence**, not client ↔ server.
+
+Spin up ≥2 in-memory replicas sharing the real `shared/` reducer. Let them
+diverge offline, exchange ops through a **fake transport**, and assert they
+**converge to byte-identical state regardless of op arrival order** — expressed
+**property-based** (generate random interleavings of a random op set; the
+invariant is order-independent convergence). Specific scenarios pin the smart
+rules: a delete racing an edit resolves to deleted; concurrent packing-status
+changes resolve to the furthest stage; a field with no override (e.g. two
+`bring-count` edits) resolves by plain per-field LWW. Also covers the outbox:
+retry/backoff, idempotent re-send of the
+same UUIDv7 op, and pull-cursor advancement.
+
+**Tooling:** Vitest in Node, real reducer + fake transport + fake clock/store. No
+real network, no real DB — this tier proves the *algebra*, not the wiring.
+
+## Tier 2s — Server integration tests
+
+**Charter:** the real Hono application wired to a real local Postgres, exercised
+over HTTP. Proves routing, auth middleware, SQL, and tenant scoping are correct.
+
+The app runs against a local `foerier_test` database; Kysely migrations bring it
+up. Tests seed their own data and assert on real HTTP responses. Coverage:
+
+- **invite issuance** and single-use/expiry enforcement;
+- **WebAuthn register/login** against a test authenticator;
+- **`sync/push`** — sequence assignment, idempotent re-push, ordering;
+- **`sync/pull`** — cursor correctness, since-semantics;
+- **multi-household isolation** — the `health` `MultiUserIsolationTest` analog and
+  *the* test that protects the sell-later tenancy: household A can never read or
+  write household B's ops.
+
+**Isolation model (from `health`):** each test class owns a fixed
+`household_id`/user UUID no other class uses; mutable rows are deleted in setup;
+no transaction rollback — tests delete their own rows. Maintain a **UUID
+registry** below so a persistent `foerier_test` DB never collides across classes.
+
+| # | household UUID suffix | Test class |
+| --- | --- | --- |
+| _(claim the next free slot when adding a server-integration class)_ | | |
+
+## Tier 3 — Component tests
+
+**Charter:** React components in isolation — the core-flow screens (F1 Add Gear,
+F2 Find, F3 New Trip, F4 Pack-out, F5 Unpack & Close) rendered in jsdom, primary
+interactions exercised with a fake store injected as the source. Behaviour-focused
+(what the user sees and can do), not pixel/screenshot tests.
+
+**Tooling:** Vitest + React Testing Library, co-located `*.test.tsx`. Shared `ui/`
+components get their own component tests; `app/` screens are tested with a fake
+Zustand store seeded via factories.
+
+## Tier 4 — Contract / API tests
+
+**Charter:** the real deployed server on the CX33, called over HTTP with a
+dedicated test household. Where Tier 2s proves the code is correct in isolation,
+this proves the **deployment** is correct — problems a local DB cannot surface:
+
+- a Kysely migration that ran locally but failed on the box;
+- Caddy dropping or rewriting the `Authorization` header;
+- the **WebAuthn RP origin/config wrong in production** (only the real
+  `app.foerier.app`/`api.foerier.app` origins surface this);
+- CORS misconfigured for the `app.` → `api.` cross-origin.
+
+**Trigger:** on every push to `main`, after the image builds and Watchtower
+deploys — the CI job polls `GET /version` until the deployed SHA matches the
+pushed commit, then runs the suite. Dedicated test household; each writing test
+cleans up in teardown.
+
+## Tier 5 — E2E smoke tests
+
+**Charter:** the real deployed site in a real browser, exercising exactly one core
+journey. Deliberately small — edge cases belong in lower tiers.
+
+**Golden path:** login → add gear → find it → build a trip → pack an item → close
+the trip.
+
+Two PWA-specific twists this project must cover:
+
+- **Passkeys via Playwright's virtual authenticator** (CDP `WebAuthn` domain) —
+  register/login a credential without real biometrics.
+- **An offline leg** — `context.setOffline(true)`, make edits, go back online, and
+  assert the outbox flushes and state converges. Offline-first *is* the product,
+  so the smoke test must prove it.
+
+**Tooling:** Playwright, `test/e2e/`. Target via `PLAYWRIGHT_BASE_URL` (local dev
+server by default; CI's post-deploy job points it at `app.foerier.app`).
+**Trigger:** automatically after every deploy to `main`.
+
+## Test data strategy
+
+Three contexts, three strategies — never shared across contexts.
+
+- **Tiers 1–3:** hand-built factory functions with defaults + overrides, in
+  `shared/testUtils/factories.ts` (e.g. `aGear({ kind: 'per-person' })`,
+  `aTrip({ participants: [...] })`). Grows one function at a time — no speculative
+  fixture library. Tests read as `aGear({ kind: 'counted' })`: exactly the field
+  under test, nothing else.
+- **Tier 2s:** each class seeds its own rows under its registered `household_id`
+  and cleans mutable rows in setup; delete-by-both-UUID-and-natural-key to survive
+  a persistent `foerier_test` DB (the `health` `init`-block pattern).
+- **Tiers 4 & 5:** dedicated production **test households** with SQL seed files
+  (`local-db-seed/test-api-household-seed.sql`,
+  `local-db-seed/test-e2e-household-seed.sql`), checked in, using clearly
+  synthetic data. A seeded/virtual passkey credential per test household; secrets
+  via env/CI, never committed.
+
+## Backward-compatibility testing
+
+Because installed PWAs run older app versions with **offline-queued ops** (see the
+[architecture spec](architecture-design.md) §7), the
+op-format must stay tolerant. A dedicated Tier 2 group replays **op fixtures
+captured from a previous app version** through the current reducer and asserts they
+still fold correctly — the guard that keeps expand-contract honest as vertical
+slices ship.
+
+## CI triggers summary
+
+| Tier | When it runs |
+| --- | --- |
+| 0 (static analysis) | Every commit (pre-commit hook) and every push (CI) |
+| 1–3 (unit / convergence / component) | Every push to `main` |
+| 2s (server integration) | Every push to `main` (local `foerier_test` in CI) |
+| 4 (contract / API) | After every deploy to `main` (polls `/version` for the SHA) |
+| 5 (E2E smoke) | After every deploy to `main` |
+
+## Running everything locally
+
+```
+npm run typecheck && npm run lint && npm run format:check   # Tier 0
+npm test              # Tiers 1–3 + convergence
+npm run test:server   # Tier 2s (needs a local foerier_test Postgres)
+npm run test:contract # Tier 4 (needs the deployed server + test-household creds)
+npm run test:e2e      # Tier 5 (Playwright; virtual authenticator)
+```

@@ -77,9 +77,12 @@ Requirements live in [docs/user-stories.md](docs/user-stories.md).
 
 ## Status
 
-Pre-code. The repo contains requirements (user stories), a DDD domain design
-(the [ubiquitous language](docs/ubiquitous-language.md) and
-[domain model](docs/domain-model.md)), and example exports of the spreadsheets it
-will replace. The domain is now modelled, conceptually and independent of
-storage; a persistence schema and a tech stack are both still deliberately
-unchosen, in that order.
+Pre-code, architecture decided. The repo contains requirements (user stories), a
+DDD domain design (the [ubiquitous language](docs/ubiquitous-language.md) and
+[domain model](docs/domain-model.md)), an approved
+[architecture & delivery design](docs/architecture-design.md), and example
+exports of the spreadsheets it will replace. The domain is modelled conceptually,
+independent of storage; the persistence approach (a per-aggregate operation log
+synced to Postgres) and the tech stack (an offline-first React PWA over a small
+Hono + Postgres server) are now chosen — the technical detail lives in the
+[architecture design](docs/architecture-design.md).

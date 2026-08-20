@@ -13,20 +13,25 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-Pre-code. The repo holds requirements plus a DDD domain design: a
-[ubiquitous language](docs/ubiquitous-language.md) (the glossary) and a
-conceptual, persistence-ignorant [domain model](docs/domain-model.md)
-(aggregates, invariants, the two worlds of home and trip). Two decisions remain
-**deliberately open, in this order**:
+Pre-code, architecture decided. The repo holds requirements plus a DDD domain
+design — a [ubiquitous language](docs/ubiquitous-language.md) (the glossary) and
+a conceptual, persistence-ignorant [domain model](docs/domain-model.md)
+(aggregates, invariants, the two worlds of home and trip) — and now an approved
+[architecture & delivery design](docs/architecture-design.md)
+that settles the two formerly-open decisions:
 
-1. **Persistence / storage schema** — not designed. The domain model says
-   nothing about how state is stored.
-2. **Tech stack** — not chosen.
+1. **Persistence** — a per-aggregate **operation log** in Postgres; state is a
+   fold of ops; per-field last-writer-wins by Hybrid Logical Clock.
+2. **Tech stack** — offline-first React PWA (Vite + TypeScript) with an
+   in-memory op-log store; **Hono + Kysely + Postgres** server; WebAuthn/passkey
+   auth; one monorepo on the existing Hetzner box. See the spec for the full
+   picture and [`docs/testing.md`](docs/testing.md) for the test strategy.
 
-Do not introduce either without an explicit decision from the maintainer, and do
-not smuggle a storage schema or framework choice into docs, examples, or prose.
-The conceptual domain model _is_ decided — it is the agreed vocabulary and
-structure; extend it deliberately and keep it persistence-ignorant.
+**The conceptual domain docs stay persistence-ignorant.** The schema and stack
+live in the architecture spec, and only there — do not smuggle tables, fields,
+or framework choices into the [model](docs/domain-model.md),
+[language](docs/ubiquitous-language.md), [stories](docs/user-stories.md), or
+`examples/`. Extend the domain model deliberately and keep it conceptual.
 
 ## Design docs
 
@@ -35,10 +40,38 @@ structure; extend it deliberately and keep it persistence-ignorant.
   stories.
 - [`docs/domain-model.md`](docs/domain-model.md) — the structure: aggregates,
   relationships, invariants, domain operations. Conceptual only.
+- [`docs/architecture-design.md`](docs/architecture-design.md)
+  — the persistence, stack, sync, auth, hosting, and delivery design. Where all
+  the technical choices live.
+- [`docs/testing.md`](docs/testing.md) — the permanent testing strategy (the
+  seven-tier pyramid; the convergence tier is the signature).
 
 Keep the design docs — stories, language, model — mutually consistent. A new or
 changed concept updates the language and the model together, and the stories
 adopt the term.
+
+## Delivery model
+
+Build in **vertical slices via XP-style continuous delivery.** Each story ships
+end-to-end (server + app) as an independently valuable increment; stories are
+ordered so every release gives the user something immediately usable, however
+thin. No waterfall gate. A slice is naturally new op type(s) + reducer +
+selector + endpoint + UI, and lands in **one atomic commit** (it is one
+monorepo).
+
+This coexists with offline-first only under one **non-negotiable discipline:**
+installed PWA clients run older app versions in the wild and may hold ops queued
+offline against a previous version. So **never make a breaking lockstep change.**
+
+- **Expand-contract migrations** — add the new shape, deploy readers tolerant of
+  both, backfill, drop the old only much later.
+- **Tolerant-reader, additive ops** — new fields optional; unknown fields and op
+  types ignored, never rejected.
+
+Versioning follows suit: deployables are versioned by **commit SHA** (not
+semver); the API contract carries **one major in the path** (`/api/v1`), bumped
+only on a genuine break; semver is reserved for the contract, not sprayed across
+artifacts with no external consumer.
 
 ## Working conventions
 
@@ -54,6 +87,10 @@ adopt the term.
 - **English** for all repository content.
 - **Scope tags matter.** Stories are tagged MVP / Later / Out of scope. Respect
   the boundary; don't quietly promote Later work into MVP.
+- **Doc paths: no `spec`/`specs` directory, and no date prefixes on durable,
+  generic docs.** A durable design doc lives flat in `docs/`, named for what it
+  is — `docs/architecture-design.md`, not `docs/specs/2026-08-20-architecture-design.md`.
+  (Same rule as the sibling repos.)
 
 ## Requirements process
 
