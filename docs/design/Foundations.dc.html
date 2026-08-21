@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#151A15} a{color:#E2A65B} a:hover{color:#E8E5D5}</style>
+</helmet>
+<div style="width:980px; padding:32px; background:#151A15; color:#E8E5D5; font-family:'Spline Sans',sans-serif">
+  <div style="display:flex; align-items:center; gap:10px">
+    <svg width="46" height="36" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+    <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:34px; position:relative; top:3px">foerier</span>
+    <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.18em; color:#151A15; background:#93BC9F; padding:3px 8px; border-radius:3px; margin-left:8px">FOUNDATIONS V1</span>
+  </div>
+  <div style="font-size:13.5px; color:#97A08C; margin-top:8px; max-width:660px">Direction C · dark default · lowercase wordmark · S2 soft-taper mark · strict-ledger copy. Everything below is token-level truth for components and screens.</div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">01 — PRINCIPLES</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-weight:600; font-size:14px">Readable at arm's length</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:4px; line-height:1.5">Packing happens standing, one-handed, in bad light. Primary state must read without bringing the phone to your face. Big targets, high contrast, bottom-reachable actions.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-weight:600; font-size:14px">Never color alone</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:4px; line-height:1.5">Every state = shape + fill-level + label. Empty ○ → half ◪ → full ■. Works colorblind, works in sunlight, works on a bad screen.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-weight:600; font-size:14px">Two worlds, never conflated</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:4px; line-height:1.5">Home and Trip are separate columns of reality. Home rows carry ⌂ + neutral chips; trip rows carry the pennant + ink chips. Same gear, two whereabouts, both visible.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-weight:600; font-size:14px">The ledger is the truth</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:4px; line-height:1.5">Terse, factual, numeric. Counts are load-bearing UI, set in mono with tabular figures. No cheerleading, no exclamation marks.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-weight:600; font-size:14px">Depth without drowning</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:4px; line-height:1.5">Containment is a path, not a maze: ATTIC ▸ SHELF ▸ CRATE B. One level on screen at a time; moving a container moves its contents in one action.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-weight:600; font-size:14px">Offline is normal</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:4px; line-height:1.5">No signal is not an error. Search, edit and pack fully on-device; sync state is one quiet line of metadata, never a blocking dialog.</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">02 — LOGO</div>
+  <div style="display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:16px; justify-content:center">
+      <div style="display:flex; align-items:center; gap:9px">
+        <svg width="42" height="34" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; position:relative; top:2px">foerier</span>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#97A08C; letter-spacing:.08em; line-height:1.7">MARK: SOFT-TAPER DUFFEL, 2 SEAMS, AMBER HANDLE<br>CLEARSPACE: HANDLE HEIGHT ON ALL SIDES<br>WORDMARK: BRICOLAGE GROTESQUE 700, LOWERCASE, GAP 0.35×CAP</div>
+    </div>
+    <div style="background:#F0EBDD; border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:16px; justify-content:center">
+      <div style="display:flex; align-items:center; gap:9px">
+        <svg width="42" height="34" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#232820" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#232820" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#232820" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#B4741F" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; color:#232820; position:relative; top:2px">foerier</span>
+      </div>
+      <div style="display:flex; gap:14px; align-items:center">
+        <svg width="34" height="27" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#232820" stroke-width="1.9"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#232820" stroke-width="1.4"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#232820" stroke-width="1.4"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#B4741F" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <svg width="20" height="16" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#232820" stroke-width="2.4"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#B4741F" stroke-width="2.4" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em">SEAMS DROP ≤20PX</span>
+      </div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:20px; display:flex; gap:14px; align-items:center; justify-content:center">
+      <div style="text-align:center">
+        <div style="width:64px; height:64px; border-radius:16px; background:#35523F; display:flex; align-items:center; justify-content:center"><svg width="44" height="34" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#F0EBDD" stroke-width="1.8"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#F0EBDD" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#F0EBDD" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.8" stroke-linecap="round"></path></svg></div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#97A08C; margin-top:5px">APP 64</div>
+      </div>
+      <div style="text-align:center">
+        <div style="width:32px; height:32px; border-radius:9px; background:#35523F; display:flex; align-items:center; justify-content:center"><svg width="24" height="18" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#F0EBDD" stroke-width="2.2"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="2.2" stroke-linecap="round"></path></svg></div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#97A08C; margin-top:5px">32</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">03 — TYPE</div>
+  <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:6px 18px">
+    <div style="display:grid; grid-template-columns:210px 1fr 190px; gap:0 16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #333C33">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.1em; color:#97A08C">DISPLAY · 28/34 · BRICOLAGE 700</div>
+      <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:1.2">Camping Alps 2026</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em">SCREEN TITLES · 34 ON DESKTOP</div>
+    </div>
+    <div style="display:grid; grid-template-columns:210px 1fr 190px; gap:0 16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #333C33">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.1em; color:#97A08C">TITLE · 22/28 · BRICOLAGE 700</div>
+      <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:1.27">Pack-out, day 2</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em">SECTION &amp; SHEET TITLES</div>
+    </div>
+    <div style="display:grid; grid-template-columns:210px 1fr 190px; gap:0 16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #333C33">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.1em; color:#97A08C">HEADING · 17/24 · SANS 600</div>
+      <div style="font-weight:600; font-size:17px; line-height:1.4">Sleeping bag, winter</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em">ITEM NAMES, CARD TITLES</div>
+    </div>
+    <div style="display:grid; grid-template-columns:210px 1fr 190px; gap:0 16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #333C33">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.1em; color:#97A08C">BODY · 15/22 · SANS 400</div>
+      <div style="font-size:15px; line-height:1.47">Move the duffel to the car — everything inside rides along.</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em">DEFAULT UI TEXT</div>
+    </div>
+    <div style="display:grid; grid-template-columns:210px 1fr 190px; gap:0 16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #333C33">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.1em; color:#97A08C">SECONDARY · 13/18 · SANS 400</div>
+      <div style="font-size:13px; color:#97A08C; line-height:1.38">Last edited on this device. Sync pending.</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em">META, HELP, TIMESTAMPS</div>
+    </div>
+    <div style="display:grid; grid-template-columns:210px 1fr 190px; gap:0 16px; align-items:baseline; padding:13px 0; border-bottom:1px solid #333C33">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.1em; color:#97A08C">DATA · 13/18 · MONO 500</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:13px; letter-spacing:.01em">ATTIC ▸ SHELF L-TOP ▸ CRATE B · ×2 · 2026-08-20</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em">PATHS, COUNTS, IDS — TABULAR</div>
+    </div>
+    <div style="display:grid; grid-template-columns:210px 1fr 190px; gap:0 16px; align-items:baseline; padding:13px 0">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.1em; color:#97A08C">LABEL · 11/14 · MONO 600 CAPS</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.08em">PACKED · SHARED · PER-PERSON · 12 INSIDE</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em">CHIPS, COLUMN HEADS, STATUS</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">04 — COLOR TOKENS</div>
+  <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:6px 18px">
+    <div style="display:grid; grid-template-columns:170px 1fr 1fr 1.3fr; gap:0 14px; padding:10px 0 8px; border-bottom:1px solid #333C33; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">
+      <div>TOKEN</div><div>DARK (DEFAULT)</div><div>LIGHT</div><div>USE</div>
+    </div>
+    <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="9">
+      <div style="display:grid; grid-template-columns:170px 1fr 1fr 1.3fr; gap:0 14px; align-items:center; padding:9px 0; border-bottom:1px solid #2A3129">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:500; color:#E8E5D5">{{ t.name }}</div>
+        <div style="display:flex; align-items:center; gap:8px"><span style="width:26px; height:18px; border-radius:4px; border:1px solid #333C33; background:{{ t.dark }}"></span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">{{ t.dark }}</span></div>
+        <div style="display:flex; align-items:center; gap:8px"><span style="width:26px; height:18px; border-radius:4px; border:1px solid #333C33; background:{{ t.light }}"></span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">{{ t.light }}</span></div>
+        <div style="font-size:11.5px; color:#97A08C">{{ t.use }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">05 — STATUS GRAMMAR</div>
+  <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.1em; width:110px">PACKING STATUS</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1.5px solid #97A08C; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#97A08C"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg>NOT PACKED</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1.5px solid #D3A344; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#D3A344"><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,0.9 11.1,6 6,11.1 0.9,6" fill="none" stroke="#D3A344" stroke-width="1.4"></polygon><path d="M6,0.9 L0.9,6 L6,11.1 Z" fill="#D3A344"></path></svg>STAGED</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1.5px solid #7BB389; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#7BB389"><svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#7BB389"></rect><path d="M3.4,6.3 L5.3,8.1 L8.7,4.1" stroke="#151A15" stroke-width="1.7" fill="none" stroke-linecap="round"></path></svg>PACKED</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.1em; width:110px">JOURNEY</span>
+        <span style="padding:4px 9px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.06em">⌂ HOME ✓</span>
+        <span style="padding:4px 9px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.06em">STAGING ✓</span>
+        <span style="padding:4px 9px; border-radius:99px; background:#E8E5D5; color:#151A15; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em">CAR ●</span>
+        <span style="padding:4px 9px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.06em">PACKED</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.1em; width:110px">PER-PERSON</span>
+        <span style="width:26px; height:26px; border-radius:50%; background:#7BB389; color:#151A15; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">M</span>
+        <span style="width:26px; height:26px; border-radius:50%; border:1.5px solid #D3A344; background:linear-gradient(90deg, #443A19 50%, #1F2620 50%); color:#D3A344; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">E</span>
+        <span style="width:26px; height:26px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">K</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">1/3 · FILL = STATUS, INITIAL = PERSON</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.1em; width:110px">DISAGREEMENT</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; color:#D3A344; letter-spacing:.05em">▲ IN CAR · 3 INSIDE NOT PACKED</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.1em; width:110px">ATTENTION</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1.5px solid #D98263; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#D98263"><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#D98263" stroke-width="1.5" stroke-linejoin="round"></polygon></svg>MISSING</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1.5px solid #6A7161; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#6A7161; text-decoration:line-through">RETIRED</span>
+      </div>
+    </div>
+    <div style="background:#F0EBDD; border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1.5px solid #6A7161; border-radius:99px; background:#F9F6EC; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#6A7161"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#6A7161" stroke-width="1.6"></circle></svg>NOT PACKED</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1.5px solid #8A6717; border-radius:99px; background:#F9F6EC; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#8A6717"><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,0.9 11.1,6 6,11.1 0.9,6" fill="none" stroke="#8A6717" stroke-width="1.4"></polygon><path d="M6,0.9 L0.9,6 L6,11.1 Z" fill="#8A6717"></path></svg>STAGED</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1.5px solid #40724B; border-radius:99px; background:#F9F6EC; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#40724B"><svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#40724B"></rect><path d="M3.4,6.3 L5.3,8.1 L8.7,4.1" stroke="#F9F6EC" stroke-width="1.7" fill="none" stroke-linecap="round"></path></svg>PACKED</span>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center">
+        <span style="width:26px; height:26px; border-radius:50%; background:#40724B; color:#F9F6EC; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">M</span>
+        <span style="width:26px; height:26px; border-radius:50%; border:1.5px solid #8A6717; background:linear-gradient(90deg, #EBDCB0 50%, #F9F6EC 50%); color:#8A6717; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">E</span>
+        <span style="width:26px; height:26px; border-radius:50%; border:1.5px solid #BBB6A2; color:#6A7161; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">K</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-left:4px">LIGHT-THEME CHECK</span>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#8A6717; letter-spacing:.05em">▲ IN CAR · 3 INSIDE NOT PACKED</div>
+      <div style="font-size:11.5px; color:#6A7161; line-height:1.55">Same grammar, light values. All chip strokes ≥1.5px; all pairs ≥4.5:1 on their surface.</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">05B — ONE SHAPE OR FOUR? (OPEN)</div>
+  <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:8px 18px 14px">
+    <div style="display:grid; grid-template-columns:215px 1.1fr .9fr .9fr .9fr; gap:0 12px; padding:9px 0 7px; border-bottom:1px solid #333C33; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">
+      <div>SYSTEM</div><div>20 PX</div><div>10 PX</div><div>INK ONLY</div><div>SQUINT</div>
+    </div>
+    <div style="display:grid; grid-template-columns:215px 1.1fr .9fr .9fr .9fr; gap:0 12px; align-items:center; padding:11px 0; border-bottom:1px solid #2A3129">
+      <div><div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; font-weight:600; color:#E8E5D5">A — FOUR SHAPES</div><div style="font-size:10.5px; color:#97A08C; margin-top:2px; line-height:1.45">Silhouette + fill. Wins ink-only and squint; busiest in dense lists.</div></div>
+      <div style="display:flex; gap:8px; align-items:center"><svg width="20" height="20" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="20" height="20" viewBox="0 0 12 12"><polygon points="6,0.9 11.1,6 6,11.1 0.9,6" fill="none" stroke="#D3A344" stroke-width="1.4"></polygon><path d="M6,0.9 L0.9,6 L6,11.1 Z" fill="#D3A344"></path></svg><svg width="20" height="20" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#7BB389"></rect><path d="M3.4,6.3 L5.3,8.1 L8.7,4.1" stroke="#1F2620" stroke-width="1.7" fill="none" stroke-linecap="round"></path></svg><svg width="20" height="20" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#D98263" stroke-width="1.5" stroke-linejoin="round"></polygon></svg></div>
+      <div style="display:flex; gap:5px; align-items:center"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,0.9 11.1,6 6,11.1 0.9,6" fill="none" stroke="#D3A344" stroke-width="1.4"></polygon><path d="M6,0.9 L0.9,6 L6,11.1 Z" fill="#D3A344"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#7BB389"></rect><path d="M3.4,6.3 L5.3,8.1 L8.7,4.1" stroke="#1F2620" stroke-width="1.7" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#D98263" stroke-width="1.5" stroke-linejoin="round"></polygon></svg></div>
+      <div style="display:flex; gap:5px; align-items:center"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#E8E5D5" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,0.9 11.1,6 6,11.1 0.9,6" fill="none" stroke="#E8E5D5" stroke-width="1.4"></polygon><path d="M6,0.9 L0.9,6 L6,11.1 Z" fill="#E8E5D5"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#E8E5D5"></rect><path d="M3.4,6.3 L5.3,8.1 L8.7,4.1" stroke="#1F2620" stroke-width="1.7" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#E8E5D5" stroke-width="1.5" stroke-linejoin="round"></polygon></svg></div>
+      <div style="display:flex; gap:5px; align-items:center; filter:blur(1.2px)"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,0.9 11.1,6 6,11.1 0.9,6" fill="none" stroke="#D3A344" stroke-width="1.4"></polygon><path d="M6,0.9 L0.9,6 L6,11.1 Z" fill="#D3A344"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#7BB389"></rect><path d="M3.4,6.3 L5.3,8.1 L8.7,4.1" stroke="#1F2620" stroke-width="1.7" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#D98263" stroke-width="1.5" stroke-linejoin="round"></polygon></svg></div>
+    </div>
+    <div style="display:grid; grid-template-columns:215px 1.1fr .9fr .9fr .9fr; gap:0 12px; align-items:center; padding:11px 0; border-bottom:1px solid #2A3129">
+      <div><div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; font-weight:600; color:#E8E5D5">B — ONE SHAPE, 4 STATES</div><div style="font-size:10.5px; color:#97A08C; margin-top:2px; line-height:1.45">Circle, fill = state. Calmest; half vs full merge under squint; warning loses its class.</div></div>
+      <div style="display:flex; gap:8px; align-items:center"><svg width="20" height="20" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="20" height="20" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#D3A344"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#D3A344" stroke-width="1.6"></circle></svg><svg width="20" height="20" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg><svg width="20" height="20" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.6" fill="none" stroke="#D98263" stroke-width="1.5"></circle><line x1="6" y1="3.4" x2="6" y2="6.7" stroke="#D98263" stroke-width="1.6" stroke-linecap="round"></line><circle cx="6" cy="8.8" r="0.9" fill="#D98263"></circle></svg></div>
+      <div style="display:flex; gap:5px; align-items:center"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#D3A344"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#D3A344" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.6" fill="none" stroke="#D98263" stroke-width="1.5"></circle><line x1="6" y1="3.4" x2="6" y2="6.7" stroke="#D98263" stroke-width="1.6" stroke-linecap="round"></line><circle cx="6" cy="8.8" r="0.9" fill="#D98263"></circle></svg></div>
+      <div style="display:flex; gap:5px; align-items:center"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#E8E5D5" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#E8E5D5"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#E8E5D5" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#E8E5D5"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.6" fill="none" stroke="#E8E5D5" stroke-width="1.5"></circle><line x1="6" y1="3.4" x2="6" y2="6.7" stroke="#E8E5D5" stroke-width="1.6" stroke-linecap="round"></line><circle cx="6" cy="8.8" r="0.9" fill="#E8E5D5"></circle></svg></div>
+      <div style="display:flex; gap:5px; align-items:center; filter:blur(1.2px)"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#D3A344"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#D3A344" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.6" fill="none" stroke="#D98263" stroke-width="1.5"></circle><line x1="6" y1="3.4" x2="6" y2="6.7" stroke="#D98263" stroke-width="1.6" stroke-linecap="round"></line><circle cx="6" cy="8.8" r="0.9" fill="#D98263"></circle></svg></div>
+    </div>
+    <div style="display:grid; grid-template-columns:215px 1.1fr .9fr .9fr .9fr; gap:0 12px; align-items:center; padding:11px 0">
+      <div><div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; font-weight:600; color:#93BC9F">C — HYBRID (PROPOSED)</div><div style="font-size:10.5px; color:#97A08C; margin-top:2px; line-height:1.45">Circle fill = progress; triangle stays a separate alarm class. Calm rows, distinct warnings.</div></div>
+      <div style="display:flex; gap:8px; align-items:center"><svg width="20" height="20" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="20" height="20" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#D3A344"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#D3A344" stroke-width="1.6"></circle></svg><svg width="20" height="20" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg><svg width="20" height="20" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#D98263" stroke-width="1.5" stroke-linejoin="round"></polygon></svg></div>
+      <div style="display:flex; gap:5px; align-items:center"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#D3A344"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#D3A344" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#D98263" stroke-width="1.5" stroke-linejoin="round"></polygon></svg></div>
+      <div style="display:flex; gap:5px; align-items:center"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#E8E5D5" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#E8E5D5"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#E8E5D5" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#E8E5D5"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#E8E5D5" stroke-width="1.5" stroke-linejoin="round"></polygon></svg></div>
+      <div style="display:flex; gap:5px; align-items:center; filter:blur(1.2px)"><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#D3A344"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#D3A344" stroke-width="1.6"></circle></svg><svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg><svg width="10" height="10" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#D98263" stroke-width="1.5" stroke-linejoin="round"></polygon></svg></div>
+    </div>
+    <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; line-height:1.7; border-top:1px solid #333C33; padding-top:10px">FILL-LEVEL CARRIES PROGRESS IN ALL THREE — EMPTY → HALF → FULL. A ADDS SILHOUETTE AS A SECOND REDUNDANT CHANNEL; B REMOVES IT ENTIRELY; C KEEPS IT ONLY WHERE STAKES ARE HIGH (WARNINGS). LABEL TEXT IS ALWAYS PRESENT REGARDLESS.</div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">06 — SPACE, SHAPE, TOUCH</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#93BC9F">GRID</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:5px; line-height:1.6">Base 4px. Steps 4·8·12·16·20·24·32. Gutter 16 phone, 24 tablet. Content max-width 1120px, centered — ultrawide is a centered tablet-landscape view.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#93BC9F">SHAPE</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:5px; line-height:1.6">Chips 999 · controls 8 · cards 12 · sheets 16 top. Rules 1px, chip strokes 1.5px. Dark theme elevates by lighter surface, light theme by rule + faint shadow.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#93BC9F">TOUCH</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:5px; line-height:1.6">Targets ≥48px, list rows ≥56px. Primary actions in thumb zone (bottom). Status cycling = tap on the chip itself, no menus. Focus ring 2px amber for desktop keyboard use.</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">06B — MEASURED</div>
+  <div style="display:grid; grid-template-columns:1.1fr 1fr; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#93BC9F">LIST ROW ANATOMY — BANDS = WHITESPACE</div>
+      <div style="position:relative; background:#151A15; border:1px solid #333C33; border-radius:12px; overflow:hidden; margin-top:12px">
+        <div style="position:absolute; left:0; top:0; bottom:0; width:16px; background:rgba(226,166,91,.10); border-right:1px dashed rgba(226,166,91,.45)"></div>
+        <div style="position:absolute; right:0; top:0; bottom:0; width:16px; background:rgba(226,166,91,.10); border-left:1px dashed rgba(226,166,91,.45)"></div>
+        <div style="height:12px; background:rgba(226,166,91,.10); border-bottom:1px dashed rgba(226,166,91,.45); position:relative"><span style="position:absolute; right:22px; top:0; font-family:'Spline Sans Mono',monospace; font-size:8px; color:#E2A65B">12</span></div>
+        <div style="padding:0 24px; display:flex; justify-content:space-between; align-items:center; gap:12px">
+          <span style="font-weight:600; font-size:17px; line-height:24px">Sleeping bag, winter</span>
+          <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border:1.5px solid #7BB389; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em; color:#7BB389; flex-shrink:0"><svg width="10" height="10" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#7BB389"></rect><path d="M3.4,6.3 L5.3,8.1 L8.7,4.1" stroke="#1F2620" stroke-width="1.7" fill="none" stroke-linecap="round"></path></svg>PACKED</span>
+        </div>
+        <div style="height:4px; background:rgba(226,166,91,.10); border-top:1px dashed rgba(226,166,91,.35); border-bottom:1px dashed rgba(226,166,91,.35)"></div>
+        <div style="padding:0 24px; font-family:'Spline Sans Mono',monospace; font-size:13px; line-height:18px; color:#97A08C">ATTIC ▸ SHELF L-TOP ▸ CRATE B · ×2</div>
+        <div style="height:12px; background:rgba(226,166,91,.10); border-top:1px dashed rgba(226,166,91,.45); position:relative"><span style="position:absolute; right:22px; bottom:0; font-family:'Spline Sans Mono',monospace; font-size:8px; color:#E2A65B">12</span></div>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:10px; line-height:1.7">SIDES 16 · V-PAD 12 · TITLE→META 4 · TWO-LINE ROW = 70PX, ONE-LINE = 56 MIN · WHOLE ROW = TAP TARGET</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#93BC9F">STACK RHYTHM — GAP ≈ 0.5–0.75 × NEXT LINE-HEIGHT, SNAPPED TO 4</div>
+      <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; padding:14px 18px; margin-top:12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Depot</div>
+        <div style="height:20px; background:rgba(226,166,91,.10); border-top:1px dashed rgba(226,166,91,.4); border-bottom:1px dashed rgba(226,166,91,.4); display:flex; align-items:center; justify-content:flex-end; padding-right:6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#E2A65B">20 → TITLE (LH 28)</span></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Shelter</div>
+        <div style="height:12px; background:rgba(226,166,91,.10); border-top:1px dashed rgba(226,166,91,.4); border-bottom:1px dashed rgba(226,166,91,.4); display:flex; align-items:center; justify-content:flex-end; padding-right:6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#E2A65B">12 → HEADING (LH 24)</span></div>
+        <div style="font-weight:600; font-size:17px; line-height:24px">Sleeping bag, winter</div>
+        <div style="height:8px; background:rgba(226,166,91,.10); border-top:1px dashed rgba(226,166,91,.4); border-bottom:1px dashed rgba(226,166,91,.4); display:flex; align-items:center; justify-content:flex-end; padding-right:6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#E2A65B">8 → BODY (LH 22)</span></div>
+        <div style="font-size:15px; line-height:22px">Down, −9°C comfort. Shared between trips.</div>
+        <div style="height:4px; background:rgba(226,166,91,.10); border-top:1px dashed rgba(226,166,91,.35); border-bottom:1px dashed rgba(226,166,91,.35)"></div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:13px; line-height:18px; color:#97A08C">×2 · SHARED · 1.9 KG</div>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:10px; line-height:1.7">TIGHT PAIRS (TEXT + ITS META) = 4 · INSIDE CARDS 8–12 · BETWEEN CARDS 8 · BETWEEN SECTIONS 24–32 · ALL ON THE 4PX GRID</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 10px">07 — VOICE: STRICT LEDGER</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#7BB389">WRITE</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#E8E5D5; margin-top:8px; line-height:2">3 left.<br>Packed · 14:32.<br>Offline. Saved on device.<br>Retired 2024. Kept in ledger.<br>No matches. 2 filters active.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#D98263">NEVER</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#6A7161; margin-top:8px; line-height:2; text-decoration:line-through">Almost there!<br>Great job, all packed 🎉<br>Oops, you're offline…<br>Say goodbye to this item?<br>Nothing here yet — add some gear!</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1044,&quot;height&quot;:2440}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { tokens: [
+      { name: "bg/base", dark: "#151A15", light: "#F0EBDD", use: "App background" },
+      { name: "bg/surface", dark: "#1F2620", light: "#F9F6EC", use: "Cards, rows, sheets" },
+      { name: "bg/raised", dark: "#28312A", light: "#FFFFFF", use: "Hovered/active row, popover" },
+      { name: "ink/primary", dark: "#E8E5D5", light: "#232820", use: "Text, icons" },
+      { name: "ink/muted", dark: "#97A08C", light: "#6A7161", use: "Meta, secondary" },
+      { name: "rule", dark: "#333C33", light: "#D8D2BE", use: "Borders, dividers" },
+      { name: "accent", dark: "#93BC9F", light: "#35523F", use: "Primary actions, selection, links" },
+      { name: "brand/amber", dark: "#E2A65B", light: "#B4741F", use: "Logo handle, focus ring, trip pennant" },
+      { name: "status/not-packed", dark: "#97A08C", light: "#6A7161", use: "○ empty circle + label" },
+      { name: "status/staged", dark: "#D3A344", light: "#8A6717", use: "◪ half diamond + label" },
+      { name: "status/packed", dark: "#7BB389", light: "#40724B", use: "■ filled square + check" },
+      { name: "status/attention", dark: "#D98263", light: "#A84B2F", use: "△ missing, destructive" }
+    ]};
+  }
+}
+</script>
+</body>
+</html>
