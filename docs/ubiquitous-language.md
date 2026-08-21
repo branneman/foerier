@@ -29,10 +29,49 @@ aggregate, what references what, which invariants hold — lives in
 
 - **Person** — a member of the household who may join trips. People are recorded
   so gear can be attributed and trips can be staffed. A person is not
-  necessarily a quartermaster (e.g. a child joins trips but manages nothing).
+  necessarily a quartermaster (e.g. a child joins trips but manages nothing),
+  and most people have no **login** (below).
 
 - **Participant** — a person taking part in one specific trip. "Person" is the
   household-level identity; "participant" is that person's role on a given trip.
+
+---
+
+## Access
+
+Who may open the app, and on what. The mechanism behind these terms — passkeys,
+tokens, endpoints, headers — lives in [auth-design.md](auth-design.md); the
+words themselves belong here because the [user stories](user-stories.md) use
+them.
+
+- **Household** — the people, depot, and trips that belong together: everything
+  one family's quartermasters share, and nothing anyone else can reach. Every
+  record belongs to exactly one household, and nothing is ever exchanged across
+  that boundary.
+
+- **Login** — a person's ability to sign in. A login belongs to exactly one
+  person in exactly one household; a person has at most one login, and most
+  people have none. Holding a login is what makes a person a **quartermaster**.
+
+- **Passkey** — a credential held by a device or a password manager that proves
+  a login, without a password. A login may hold several passkeys — one per
+  device or manager — or none at all.
+
+- **Device** — one signed-in browser installation. Each device holds its own
+  proof of a login, is listed under that login, and can be signed out
+  individually, from itself or from another device.
+
+- **Invite** — a single-use, short-lived link that grants access. Two purposes,
+  one mechanism: a **join invite** creates a login for a named person, and a
+  **device link** signs an existing login in on another device. An invite always
+  names the person it is for before it is sent — the only exception being a brand
+  new household's first invite, where that person is recorded as they join — and
+  is delivered out of band (however the household already talks to each other).
+
+- **Maintainer** _(not a user role)_ — whoever operates the server and database.
+  The maintainer creates a household and its first join invite; every invite
+  after that is issued inside the app by a quartermaster. There is no
+  administrator role in the product, and no open registration.
 
 ---
 

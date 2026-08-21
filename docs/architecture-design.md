@@ -22,7 +22,7 @@ stack live here, and only here.
 | Client store | Op-log folded into a normalised **in-memory** store; IndexedDB for the log + snapshot |
 | Client stack | Vite + React + TypeScript, **wouter** router, `vite-plugin-pwa`, build-time CSS |
 | Server | **Hono** + **Kysely** + Postgres 17 |
-| Auth | **WebAuthn/passkeys**; admin-issued one-time **invite links**; long-lived bearer token |
+| Auth | **WebAuthn/passkeys**, no passwords; single-use **invite links** issued in-app; long-lived per-device bearer token ([detail](auth-design.md)) |
 | Tenancy | Everything scoped by `household_id` — the boundary foerier is sold along |
 | Repo | One **monorepo** (`app` · `landing` · `api` · `shared` · `ui`); landing also here |
 | Versioning | SHA for deployables; **one API major in the path**; semver reserved for the contract |
@@ -188,10 +188,10 @@ household's members are trusted with their own household's data. Server-side
 validation is a named **deferred** option (§10), reached for only if untrusted
 multi-tenant use makes it worth the weight.
 
-**Endpoints (under `/api/v1`).** `POST /invite` (admin), `POST /register` and
-`POST /login` (WebAuthn), `POST /sync/push`, `GET /sync/pull`, `GET /version`
-(returns the deployed commit SHA, matching the sibling `health` project's
-convention).
+**Endpoints (under `/api/v1`).** `POST /sync/push`, `GET /sync/pull`, and
+`GET /version` (returns the deployed commit SHA, matching the sibling `health`
+project's convention), plus the `/auth/*` surface enumerated in
+[`auth-design.md` §9.1](auth-design.md).
 
 **Migrations — Kysely.** Migration files are type-checked TypeScript exporting
 `up`/`down` against Kysely's schema builder; a `Migrator` runs pending files in
@@ -208,22 +208,35 @@ multi-household integration test (see [testing.md](testing.md)).
 
 ## 6. Auth
 
-**WebAuthn / passkeys.** Phishing-resistant, no passwords stored, slick phone
-biometrics, no third party. **Relying Party ID = `foerier.app`** (the parent
-registrable domain), so passkeys are valid across `app.` / `api.` and any future
-subdomain; pinned now because the RP ID is baked into every credential and
-painful to change later.
+Summarised here; the full design — flows, endpoints, tables, headers, threat
+model — lives in [`docs/auth-design.md`](auth-design.md).
 
-**Enrolment — admin-issued one-time invite links.** There is **no open
-registration endpoint.** The administrator generates a signed, expiring,
-single-use invite that **pre-binds the new member's `household_id`**; registration
-only proceeds with a valid invite. This removes the bot/abuse surface entirely
-rather than mitigating it, and needs no approval backlog or cleanup job — the
-invite *is* the approval, issued up front. Accounts are hand-provisioned for now;
-self-service registration and payment are explicitly out of scope for the MVP.
+**WebAuthn / passkeys, no passwords.** Phishing-resistant, nothing to breach, no
+third party. **Relying Party ID = `foerier.app`** (the parent registrable
+domain), so passkeys are valid across `app.` / `api.` and any future subdomain;
+pinned now because the RP ID is baked into every credential and painful to change
+later. Credentials are discoverable, so sign-in needs no username — and the
+"biometrics" of the phone case is really just WebAuthn *user verification*, which
+a desktop password manager satisfies equally well.
 
-**Offline.** Login yields a long-lived bearer token cached on-device, so sync
-never blocks on re-auth in the field.
+**Enrolment — invite-only, issued in-app.** There is **no open registration
+endpoint** and no public sign-up. An invite is a single-use, short-lived link
+that pre-binds both the `household_id` and the **Person** the new Login belongs
+to. The **maintainer** (whoever has server access — not a role in the product)
+creates a household and its *first* invite with a small script; every invite
+after that is issued by a Quartermaster from inside the app. This removes the
+bot/abuse surface rather than mitigating it, and keeps account management out of
+the maintainer's inbox.
+
+**Every device stays supported.** A device whose OS offers no credential store
+cannot hold a passkey; the same invite mechanism, in *device-link* form, signs
+such a device in with a token and no credential, at no loss of function. Social
+re-invite by another Quartermaster is also the recovery path, which is why
+foerier needs no email subsystem.
+
+**Offline.** Sign-in yields a long-lived, per-device bearer token cached on-device
+(sliding one-year expiry, revocable per device), so sync never blocks on re-auth
+in the field, and a `401` never costs the user queued offline work.
 
 ## 7. Repository, versioning, and delivery
 

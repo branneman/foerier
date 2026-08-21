@@ -43,6 +43,16 @@ or framework choices into the [model](docs/domain-model.md),
 - [`docs/architecture-design.md`](docs/architecture-design.md)
   — the persistence, stack, sync, auth, hosting, and delivery design. Where all
   the technical choices live.
+- [`docs/frontend-design.md`](docs/frontend-design.md) — one level below the
+  architecture: scaling, responsive system, CSS architecture, `ui/` package,
+  resilience.
+- [`docs/auth-design.md`](docs/auth-design.md) — one level below the
+  architecture: enrolment, sign-in, sessions, devices, and the whole HTTP
+  security surface (headers, CORS, CSP, endpoints, tables). Supersedes the
+  architecture spec's §6 summary.
+- [`docs/design/`](docs/design/) — the Claude Design boards (`*.dc.html`): visual
+  foundations, flows, components, screens. Design intent; `frontend-design.md` is
+  how it gets built.
 - [`docs/testing.md`](docs/testing.md) — the permanent testing strategy (the
   seven-tier pyramid; the convergence tier is the signature).
 
@@ -87,6 +97,14 @@ artifacts with no external consumer.
 - **English** for all repository content.
 - **Scope tags matter.** Stories are tagged MVP / Later / Out of scope. Respect
   the boundary; don't quietly promote Later work into MVP.
+- **Never renumber user stories.** A story's number is a **stable identifier**,
+  assigned once, never reused and never reshuffled — renumbering would break
+  every cross-reference in the docs and in git history, forever, each time a
+  story is added. A new story takes the **next unused number** and is placed
+  where it belongs by topic and scope: story 26 may sit inside MVP between
+  stories 2 and 3. The backlog's numbers are not a sequence and the document's
+  order is the reading order. Deleting a story retires its number rather than
+  freeing it.
 - **Doc paths: no `spec`/`specs` directory, and no date prefixes on durable,
   generic docs.** A durable design doc lives flat in `docs/`, named for what it
   is — `docs/architecture-design.md`, not `docs/specs/2026-08-20-architecture-design.md`.

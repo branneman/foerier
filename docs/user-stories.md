@@ -18,11 +18,146 @@ story touches something unresolved, it points to the
 [Open questions](#open-questions). Sections tag scope: **MVP**, **Later**,
 **Out of scope**.
 
+**Numbers are names, not an order.** A story's number is a stable identifier
+assigned once and never reused or reshuffled. A new story takes the next unused
+number and is placed where it belongs by topic and scope — so the backlog reads
+`26, 27, …, 31, 1, 2, 3, …` where the auth slice comes first. Reading order is
+the document's order; the numbers only have to stay unique, so that every
+reference to "story 9" keeps pointing at the same story forever.
+
 ---
 
 ## MVP
 
 The smallest product that lets us retire the spreadsheets for one real Trip.
+
+### 26. Sign in to my Household
+
+As a Quartermaster, whenever I open foerier, I want to sign in without a
+password — and then stay signed in on that Device — so that reaching our Gear is
+one tap and never a hurdle in a cold garage or a hut with no signal.
+
+Acceptance criteria:
+
+- Signing in on a Device that holds a Passkey takes one deliberate action and no
+  typed name or password. Whether the Passkey lives in the device itself or in
+  my password manager makes no difference to me.
+- Once signed in, that Device stays signed in indefinitely; ordinary use — days
+  offline included — never asks me to sign in again.
+- Being offline never blocks anything I do with my Household's records; only
+  syncing waits for a connection.
+- If my Device's access is ever withdrawn (story 30), the app says so plainly and
+  asks me to sign in again. **Nothing I recorded is lost:** work done offline and
+  not yet synced survives, and is synced once I am back in.
+- Nothing about my Household is readable on a signed-out Device.
+
+### 27. Join a Household from an Invite
+
+As a Person invited into a Household, during setup, I want to turn a link
+someone sent me into my own Login, so that I can start keeping the Depot without
+anyone handing round a shared account.
+
+Acceptance criteria:
+
+- An Invite is a link I open once, on the Device I want to use. It names the
+  Household I am joining and which Person I will be.
+- Redeeming is a deliberate act on my part: merely opening or previewing the link
+  — as a chat app might — must not consume it.
+- Redeeming creates my Login, bound to the Person the Invite names, and signs
+  this Device in. My Login is mine alone; there is no shared household account.
+- An Invite is single-use and expires. A used, expired, or unrecognised Invite
+  says so plainly and tells me to ask for a new one.
+- If this Device cannot hold a Passkey, I can still complete the join and use the
+  app on it (story 29); the app tells me I will need a Household member's help to
+  sign in on any further Device until I add a Passkey somewhere.
+
+### 28. Bring another Person in
+
+As a Quartermaster, during Inventory management, I want to give any Person in
+our Household a Login of their own — issuing the Invite myself, from inside the
+app — so that a second Quartermaster is something we arrange between us, not a
+request to whoever runs the server.
+
+Acceptance criteria:
+
+- I can issue a join Invite for any Person recorded in our Household (story 4),
+  including one I have just recorded, and hand the link over however we normally
+  talk to each other.
+- A Person may hold at most one Login. People who need no access — our kid —
+  simply never get one, and remain full Participants on Trips.
+- Every Quartermaster has the same powers, mine included: there is no owner, no
+  administrator, and no hierarchy between us.
+- I can see which People hold a Login, and revoke one — after which that
+  Person's Devices lose access at their next contact with the server, while
+  everything they recorded stays.
+- Only the very first Login of a brand-new Household is arranged out of band, by
+  whoever runs the server. There is no public sign-up.
+
+### 29. Sign in on another Device
+
+As a Quartermaster, when I pick up a second Device — a laptop, a spare phone, a
+replacement after losing mine — I want to sign it in without re-creating my
+identity, so that all my Devices are the same me and no Device is a
+second-class one.
+
+Acceptance criteria:
+
+- From a Device I am already signed in on, I can produce a Device link for
+  myself and open it on the new Device to sign that one in.
+- The new Device offers to remember me with its own Passkey, so that the next
+  sign-in there is local and immediate.
+- **A Device that cannot hold a Passkey at all is still fully supported.** Older
+  phones, browsers, and locked-down machines exist; on those, the Device link
+  signs me in and the Device then stays signed in like any other (story 26).
+  Nothing about the app is degraded there.
+- If I have lost access to all of my own Devices, another Quartermaster in the
+  Household can issue me a Device link, and I am back — no reset mail, no
+  support request. In a Household with no other Login, this is the one case that
+  needs whoever runs the server.
+- Device links are single-use and short-lived, and consumed only by a deliberate
+  act, as with any Invite (story 27).
+
+### 30. See and manage my Devices
+
+As a Quartermaster, whenever a Device is lost, sold, borrowed, or simply retired,
+I want to see everything currently signed in as me and cut any of it off, so that
+a phone left in a hut cannot keep showing our Gear — or the fact that we are
+away.
+
+Acceptance criteria:
+
+- I can see every Device signed in as me: what it is, roughly, and when it last
+  reached the server.
+- I can sign out any Device from any other, without touching the lost one. The
+  cut-off Device loses access at its next contact with the server and shows
+  nothing of our Household afterwards.
+- I can sign out the Device I am holding, which also clears our Household's
+  records from it. If it still holds work that has not reached the server, the
+  app warns me before anything is cleared.
+- Signing in as a different Household on a Device clears whatever the previous
+  Household left on it first.
+- Losing a Device is never data loss: everything it synced is already ours, and
+  cutting it off costs me nothing but that Device.
+
+### 31. Our Household's records stay ours
+
+As a Quartermaster, at all times, I want certainty that nobody outside our
+Household can read or change our records, so that a tool which quietly documents
+what we own and when our house is empty is safe to keep using.
+
+Acceptance criteria:
+
+- Every record belongs to exactly one Household; nothing is ever visible or
+  reachable across that boundary, by any route.
+- There is no public sign-up and no way in without an Invite issued for a
+  specific Person (stories 27, 28).
+- A stolen sign-in link is bounded: Invites are single-use and short-lived, and
+  once used cannot be used again.
+- Signing in cannot be phished: proving who I am is bound to the real foerier
+  site, so a look-alike page gets nothing usable.
+- The only deliberate exception is the read-only public Trip share (story 24,
+  Later), which exposes a narrow, explicitly safe subset and never our Household,
+  our Home, or our dates.
 
 ### 1. Record Places and Containers
 
