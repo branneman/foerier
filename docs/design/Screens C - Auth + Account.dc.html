@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0F130F} a{color:#E2A65B} a:hover{color:#E8E5D5}</style>
+</helmet>
+<div style="width:1200px; padding:32px; background:#0F130F; color:#E8E5D5; font-family:'Spline Sans',sans-serif">
+  <div style="display:flex; align-items:center; gap:10px">
+    <svg width="38" height="30" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+    <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; position:relative; top:2px">foerier</span>
+    <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.18em; color:#151A15; background:#93BC9F; padding:3px 8px; border-radius:3px; margin-left:8px">SCREENS C — AUTH + ACCOUNT</span>
+  </div>
+  <div style="font-size:13.5px; color:#97A08C; margin-top:8px; max-width:720px">Passkeys only, invites out of band, auth on exactly two surfaces: the signed-out shell and the Account tab. Frames reuse the Screens A/B shells; new atoms live on the component sheet §09. Sample household: Veldkamp — Mark · Els · Kees (child, joins trips, never signs in).</div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:28px 0 12px">00 — GROUND RULES (VISIBLE IN EVERY FRAME BELOW)</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px"><div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em">NO PASSWORDS</div><div style="font-size:11.5px; color:#97A08C; margin-top:4px; line-height:1.5">No password field, no “forgot password”, no email. foerier sends no mail.</div></div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px"><div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em">NO USERNAMES</div><div style="font-size:11.5px; color:#97A08C; margin-top:4px; line-height:1.5">Sign-in is one button. The passkey already knows who you are.</div></div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px"><div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em">FALLBACK IS FIRST-CLASS</div><div style="font-size:11.5px; color:#97A08C; margin-top:4px; line-height:1.5">A device without a passkey is an equal. No warning colors, no “degraded” copy.</div></div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px"><div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em">QUARTERMASTERS ARE EQUAL</div><div style="font-size:11.5px; color:#97A08C; margin-top:4px; line-height:1.5">No owner, no admin, no crowns, no ordering by privilege. Anywhere.</div></div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px"><div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em">OFFLINE WORK SURVIVES AUTH</div><div style="font-size:11.5px; color:#97A08C; margin-top:4px; line-height:1.5">Every screen where a session ends states that on-device work is kept.</div></div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px"><div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em">INVITES: SINGLE-USE, EXPIRING</div><div style="font-size:11.5px; color:#97A08C; margin-top:4px; line-height:1.5">Always stated, with the remaining time: 6 d for a join invite, 58 min for a device link.</div></div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px"><div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em">OPENING A LINK DOES NOTHING</div><div style="font-size:11.5px; color:#97A08C; margin-top:4px; line-height:1.5">The confirm button is the action. The join screen says so in plain words.</div></div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px"><div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em">TWO SURFACES ONLY</div><div style="font-size:11.5px; color:#97A08C; margin-top:4px; line-height:1.5">Signed-out shell + Account. Never a re-auth prompt or banner inside Depot, Trips, Find.</div></div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">01 — SIGN IN · COMPACT 393 · FOUR STATES</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Sign in — idle" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="height:44px"></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:0 32px">
+        <svg width="72" height="57" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:32px">foerier</span>
+        <div style="font-size:13px; color:#97A08C; text-align:center">The household&#8217;s gear ledger.</div>
+      </div>
+      <div style="padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <button style="height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Sign in</button>
+        <button style="height:48px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer">No passkey on this device?</button>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#6A7161; text-align:center; letter-spacing:.02em">Sign-in is a passkey. No passwords, no email.</div>
+      </div>
+    </div>
+
+    <div data-screen-label="Sign in — passkey ceremony" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column; position:relative">
+      <div style="height:44px"></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:0 32px">
+        <svg width="72" height="57" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:32px">foerier</span>
+        <div style="font-size:13px; color:#97A08C; text-align:center">The household&#8217;s gear ledger.</div>
+      </div>
+      <div style="padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <button style="height:48px; background:#28312A; color:#5E6857; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600">Sign in</button>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <span style="position:absolute; right:14px; bottom:262px; font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#E2A65B; border:1px dashed rgba(226,166,91,.5); border-radius:3px; padding:3px 7px; background:rgba(15,19,15,.6)">OS SHEET — NOT DRAWN BY US</span>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#232527; border-radius:20px 20px 0 0; padding:10px 20px 22px; font-family:-apple-system,'Segoe UI',Roboto,sans-serif">
+        <div style="width:36px; height:4px; border-radius:2px; background:#5F6368; margin:0 auto 16px"></div>
+        <div style="display:flex; align-items:center; gap:12px">
+          <svg width="26" height="26" viewBox="0 0 24 24"><circle cx="9" cy="12" r="4" fill="none" stroke="#8AB4F8" stroke-width="1.8"></circle><line x1="13" y1="12" x2="21" y2="12" stroke="#8AB4F8" stroke-width="1.8" stroke-linecap="round"></line><line x1="18" y1="12" x2="18" y2="15.5" stroke="#8AB4F8" stroke-width="1.8" stroke-linecap="round"></line></svg>
+          <div>
+            <div style="font-size:15px; font-weight:600; color:#E8EAED">Use your passkey?</div>
+            <div style="font-size:12px; color:#9AA0A6; margin-top:2px">foerier.veldkamp.net</div>
+          </div>
+        </div>
+        <div style="background:#2D2F31; border-radius:12px; padding:10px 14px; margin-top:14px; display:flex; align-items:center; gap:10px">
+          <span style="width:28px; height:28px; border-radius:50%; background:#3C4043; color:#E8EAED; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:600">M</span>
+          <div><div style="font-size:13px; color:#E8EAED">Mark</div><div style="font-size:11px; color:#9AA0A6">Created March 2, 2026</div></div>
+        </div>
+        <button style="width:100%; height:44px; margin-top:14px; background:#8AB4F8; color:#202124; border:none; border-radius:99px; font-size:14px; font-weight:600">Continue</button>
+        <div style="text-align:center; margin-top:12px; font-size:13px; font-weight:600; color:#8AB4F8">Cancel</div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">One 48px button, thumb zone, no fields — the passkey is discoverable (resident key), so the ceremony needs no username. While the OS sheet is up we dim the shell and disable the button; no spinner theatre — the OS owns the moment and we defer to it visually. The browser&#8217;s cross-device QR flow happens inside that same sheet; we draw nothing for it. The fallback link is always present and phrased as a question, not a warning.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">WHY THE SHELL IS SPARSE</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The shell loads offline from the service worker even when signed out, so it must render with zero data: mark, wordmark, one ledger line, one action. The mono footer line states the no-password rule as a fact — the only place it is written out.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; margin-top:24px">
+    <div data-screen-label="Sign in — failed" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="height:44px"></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:0 32px">
+        <svg width="72" height="57" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:32px">foerier</span>
+        <div style="font-size:13px; color:#97A08C; text-align:center">The household&#8217;s gear ledger.</div>
+      </div>
+      <div style="padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#D98263; text-align:center">&#9650; Sign-in did not complete. Nothing changed.</div>
+        <div style="font-size:13px; color:#97A08C; text-align:center; margin-bottom:2px">Try again, or ask a household member for a device link.</div>
+        <button style="height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Sign in</button>
+        <button style="height:48px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer">No passkey on this device?</button>
+      </div>
+    </div>
+
+    <div data-screen-label="Sign in — offline" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; justify-content:flex-end; padding:14px 16px; height:44px; box-sizing:border-box">
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#E2A65B"></span>OFFLINE</span>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:0 32px">
+        <svg width="72" height="57" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:32px">foerier</span>
+        <div style="font-size:13px; color:#97A08C; text-align:center">The household&#8217;s gear ledger.</div>
+      </div>
+      <div style="padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; text-align:center">Offline. Sign-in needs a connection.</div>
+        <button style="height:48px; background:#28312A; color:#5E6857; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:not-allowed">Sign in</button>
+        <button style="height:48px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer">No passkey on this device?</button>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#6A7161; text-align:center; letter-spacing:.02em">Sign-in is a passkey. No passwords, no email.</div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">FAILURE AND OFFLINE ARE FACTS</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">A cancelled or timed-out ceremony is stated once in attention color with the &#9650; class — &#8220;nothing changed&#8221; is the load-bearing phrase — and the button returns to idle. Offline is not an error: the shell renders, the fact is stated in muted mono, the button waits disabled. The explainer stays available in both states; it needs no network.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">STATES COVERED</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Idle &#183; ceremony up (shell dimmed, OS sheet foreign by design) &#183; failed (terse, retry) &#183; offline (disabled with reason). The session-lost variant of this screen is frame 11.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">02 — SIGN IN · DESKTOP &#8805;1024</div>
+  <div data-screen-label="Sign in desktop" style="width:1024px; height:560px; background:#151A15; border:1px solid #333C33; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; position:relative">
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px">
+      <svg width="84" height="66" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+      <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:34px">foerier</span>
+      <div style="font-size:13px; color:#97A08C">The household&#8217;s gear ledger.</div>
+      <div style="width:340px; display:flex; flex-direction:column; gap:10px; margin-top:8px">
+        <button style="height:48px; background:#93BC9F; color:#151A15; border:1.5px solid #E2A65B; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 0 0 2px rgba(226,166,91,.3)">Sign in</button>
+        <button style="height:44px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer">No passkey on this device?</button>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#6A7161; letter-spacing:.02em">Sign-in is a passkey. No passwords, no email.</div>
+    </div>
+    <div style="position:absolute; right:16px; bottom:12px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#5E6857; letter-spacing:.06em">BUILD 7C39F2A</div>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:12px; width:1024px">
+    <div style="flex:1; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Signed out there is no sidebar and no nav — a centred 340px column on bg/base, same content as 393. Shown with the keyboard focus ring (2px amber) on the primary: Enter signs in. The build SHA sits bottom-right, faint mono — the only chrome.</div>
+    </div>
+    <div style="flex:1; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">MODES BETWEEN 393 AND 1024</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The signed-out shell does not change structure across Roomy or Split — the column is already capped at 340 and centred, so no extra frames are needed. The five-mode ladder applies to signed-in surfaces only.</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">03 — JOIN A HOUSEHOLD · COMPACT 393</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Join — confirm" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px">
+        <svg width="28" height="22" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.1em; color:#97A08C; border:1px solid #47523F; border-radius:3px; padding:3px 7px">JOIN INVITE</span>
+      </div>
+      <div style="padding:12px 20px 0">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Join Veldkamp?</div>
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:16px; padding:4px 16px">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:11px 0; border-bottom:1px solid #2A3129"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">HOUSEHOLD</span><span style="font-weight:600; font-size:16px">Veldkamp</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:11px 0; border-bottom:1px solid #2A3129"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">YOU JOIN AS</span><span style="font-weight:600; font-size:16px">Els</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:11px 0"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">INVITED BY</span><span style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C">MARK &#183; 2026-08-21</span></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px">
+          <span style="display:inline-flex; align-items:center; padding:6px 12px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#97A08C">EXPIRES IN 6 d</span>
+          <span style="display:inline-flex; align-items:center; padding:6px 12px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#97A08C">SINGLE USE</span>
+        </div>
+      </div>
+      <div style="margin-top:auto; padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; text-align:center">Opening this link changed nothing yet.</div>
+        <button style="height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Join as Els</button>
+        <div style="font-size:13px; color:#6A7161; text-align:center">Not Els? Ask Mark for a new link.</div>
+      </div>
+    </div>
+
+    <div data-screen-label="Join — name yourself" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px">
+        <svg width="28" height="22" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.1em; color:#97A08C; border:1px solid #47523F; border-radius:3px; padding:3px 7px">FIRST LOGIN</span>
+      </div>
+      <div style="padding:12px 20px 0">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Name yourself</div>
+        <div style="font-size:14px; color:#97A08C; line-height:1.5; margin-top:8px">This link starts a new household. Its first login is yours.</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161; margin-top:24px">YOUR NAME</div>
+        <div style="height:48px; margin-top:8px; background:#0F130F; border:1px solid #E2A65B; border-radius:8px; padding:0 14px; display:flex; align-items:center; box-shadow:0 0 0 2px rgba(226,166,91,.3)"><span style="font-size:15px; color:#E8E5D5">Mark</span><span style="width:1.5px; height:20px; background:#E2A65B; margin-left:2px"></span></div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#6A7161; margin-top:12px; letter-spacing:.02em">Household and depot start empty.</div>
+      </div>
+      <div style="margin-top:auto; padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <button style="height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Continue</button>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#6A7161; text-align:center; letter-spacing:.02em">Next: a passkey, or continue without one.</div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Identity is pre-decided by the invite — the confirm screen shows it as ledger rows (household, person, who issued it) and asks exactly one question. &#8220;Opening this link changed nothing yet&#8221; makes rule 7 explicit right above the one button that does act. The name field appears only on a brand-new household&#8217;s first login, where the Person does not exist yet.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">AFTER THE BUTTON</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Confirm &#8594; the OS passkey-creation sheet (same foreign surface as sign-in) &#8594; success. If the device cannot create a passkey, the flow forks to frame 04 — same destination, no penalty.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; margin-top:24px">
+    <div data-screen-label="Join — success" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; justify-content:flex-end; padding:14px 16px">
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCING</span>
+      </div>
+      <div style="padding:8px 20px 0">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Signed in.</div>
+        <div style="font-size:16px; font-weight:600; margin-top:8px">Els &#183; Veldkamp</div>
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:20px; padding:14px 16px">
+          <div style="display:flex; justify-content:space-between; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">FIRST SYNC</span><span>96 OF 128 GEAR</span></div>
+          <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:8px"><div style="width:75%; height:100%; background:#7BB389"></div></div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; margin-top:8px; letter-spacing:.02em">3 trips &#183; 2 people &#183; works offline from here on.</div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:16px">Passkey saved on this device.</div>
+      </div>
+      <div style="margin-top:auto; padding:0 20px 24px">
+        <button style="width:100%; height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Open the depot</button>
+      </div>
+    </div>
+
+    <div data-screen-label="Join — dead end" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px">
+        <svg width="28" height="22" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.1em; color:#97A08C; border:1px solid #47523F; border-radius:3px; padding:3px 7px">JOIN INVITE</span>
+      </div>
+      <div style="padding:12px 20px 0">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Invite not valid.</div>
+        <div style="font-size:15px; line-height:22px; margin-top:12px">This invite expired 2026-08-18. Invites last 7 days.</div>
+        <div style="font-size:13px; color:#97A08C; line-height:1.5; margin-top:12px">Ask a household member for a new one. Nothing was used up by opening this.</div>
+      </div>
+      <div style="margin-top:auto; padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <button style="height:48px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Open sign-in</button>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#6A7161; text-align:center; letter-spacing:.02em">Already a member? Your login still works.</div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DEAD END — ONE SCREEN, SWAPPED LINE</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Title and layout are constant; only the fact line swaps:</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; line-height:1.9; margin-top:10px; color:#E8E5D5">
+          <div style="display:flex; gap:10px"><span style="color:#6A7161; width:64px; flex-shrink:0">EXPIRED</span><span>This invite expired 2026-08-18. Invites last 7 days.</span></div>
+          <div style="display:flex; gap:10px"><span style="color:#6A7161; width:64px; flex-shrink:0">USED</span><span>This invite was used 2026-08-19 14:32. Invites are single-use.</span></div>
+          <div style="display:flex; gap:10px"><span style="color:#6A7161; width:64px; flex-shrink:0">UNKNOWN</span><span>This server does not know this link.</span></div>
+        </div>
+        <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">No attention color — nothing is wrong with the user&#8217;s world, the link is simply done. &#8220;Nothing was used up by opening this&#8221; heads off the fear that they burned the invite.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">SUCCESS = FIRST SYNC</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The success screen is a receipt, not a celebration: who you are, where you landed, and the first sync progressing with real counts. The depot opens without waiting for sync to finish.</div>
+      </div>
+    </div>
+  </div>
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">04 — CONTINUE WITHOUT A PASSKEY · COMPACT 393</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Continue without a passkey" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px">
+        <svg width="28" height="22" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.1em; color:#97A08C; border:1px solid #47523F; border-radius:3px; padding:3px 7px">JOIN INVITE</span>
+      </div>
+      <div style="padding:12px 20px 0">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Continue without a passkey</div>
+        <div style="font-size:15px; line-height:22px; margin-top:12px">This device cannot make one. It stays signed in anyway — nothing is limited.</div>
+        <div style="font-size:15px; line-height:22px; margin-top:12px">A passkey added later, on any device that supports one, makes future sign-ins self-service.</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:16px">You stay signed in until you sign out.</div>
+      </div>
+      <div style="margin-top:auto; padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <button style="height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Continue as Els</button>
+      </div>
+    </div>
+
+    <div style="width:393px; display:flex; flex-direction:column; gap:12px; flex-shrink:0">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#6A7161">EXCERPT — ACCOUNT &#9656; PASSKEYS, THE STANDING NUDGE</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; margin-top:10px; padding:14px 16px">
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">PASSKEYS</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:10px">None on this login.</div>
+          <div style="font-size:13px; color:#97A08C; margin-top:4px; line-height:1.5">Until one exists, a new device signs in with a device link.</div>
+          <button style="width:100%; height:48px; margin-top:12px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Add a passkey on this device</button>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:10px; line-height:1.7">THE NUDGE IS A STANDING SECTION STATE, NEVER A TOAST OR BADGE. THE ADD BUTTON RENDERS ONLY WHERE THE DEVICE SUPPORTS PASSKEYS.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Same accent primary, same weight, same voice as every other confirm — rule 3 is enforced typographically: no amber, no &#9650;, no &#8220;instead&#8221; or &#8220;however&#8221;. Two body lines state the whole deal; the mono line is the session fact. The nudge lives in Account as a quiet section state, so the path to adding a passkey later is standing, not a one-shot prompt.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">05 — ACCOUNT · COMPACT 393</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Account phone" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; DEPOT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</span>
+      </div>
+      <div style="padding:0 16px 16px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Account</div>
+        <div style="display:flex; align-items:center; gap:12px; margin-top:14px">
+          <span style="width:40px; height:40px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:15px; font-weight:600">M</span>
+          <div>
+            <div style="font-weight:600; font-size:17px; line-height:24px">Mark</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">VELDKAMP HOUSEHOLD</div>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid #333C33; padding:12px 16px 4px">
+        <div style="display:flex; justify-content:space-between; align-items:baseline"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">PASSKEYS</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">2</span></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #2A3129; min-height:32px">
+          <div>
+            <div style="font-weight:600; font-size:16px; line-height:22px">Pixel 9</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">ADDED 2026-03-02 &#183; LAST USED TODAY</div>
+          </div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; flex-shrink:0; cursor:pointer">REMOVE</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #2A3129; min-height:32px">
+          <div>
+            <div style="font-weight:600; font-size:16px; line-height:22px">YubiKey, desk drawer</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">ADDED 2026-03-02 &#183; LAST USED 2026-07-14</div>
+          </div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; flex-shrink:0; cursor:pointer">REMOVE</span>
+        </div>
+        <button style="width:100%; height:48px; margin:12px 0; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Add a passkey on this device</button>
+      </div>
+      <div style="border-top:1px solid #333C33; padding:12px 16px 4px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">DEVICES</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:10px">3 devices signed in.</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #2A3129; min-height:32px; cursor:pointer">
+          <div>
+            <div style="font-weight:600; font-size:16px; line-height:22px">All devices</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">THIS ONE: FIREFOX ON ANDROID</div>
+          </div>
+          <span style="color:#5E6857; font-size:20px">&#8250;</span>
+        </div>
+        <button style="width:100%; height:48px; margin:12px 0; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Sign in on another device</button>
+      </div>
+      <div style="border-top:1px solid #333C33; padding:12px 16px 4px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">PEOPLE &amp; LOGINS</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; min-height:32px; cursor:pointer">
+          <div>
+            <div style="font-weight:600; font-size:16px; line-height:22px">People &amp; logins</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">2 OF 3 PEOPLE HOLD A LOGIN</div>
+          </div>
+          <span style="color:#5E6857; font-size:20px">&#8250;</span>
+        </div>
+      </div>
+      <div style="border-top:1px solid #333C33; background:#1F2620; padding:4px 16px; display:flex; justify-content:space-between; align-items:center; min-height:56px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#D98263; cursor:pointer">SIGN OUT</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#5E6857; letter-spacing:.04em">BUILD 7C39F2A &#183; 2026-08-21</span>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The fourth destination, reached from the avatar — not a tab, so the 3-tab bar is untouched and the screen is pushed with &#8249; DEPOT. Section order is frequency order: who am I &#8594; passkeys &#8594; devices &#8594; people. Passkey rows carry the coarse label the OS reported plus added/last-used mono — enough to spot a stale one. REMOVE and SIGN OUT follow the RETIRE rule: attention text, never a filled red button. The build SHA rides in the footer, faint mono.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">WHAT IS NOT HERE</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">No profile photo, no email, no notification settings, no security score, no &#8220;sessions&#8221; jargon. A device link is issued from DEVICES (&#8220;Sign in on another device&#8221;) because that is the job it does — not from an abstract security page.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">06 — ACCOUNT · DESKTOP &#8805;1024</div>
+  <div data-screen-label="Account desktop" style="width:1024px; background:#151A15; border:1px solid #333C33; border-radius:16px; overflow:hidden; display:grid; grid-template-columns:216px 1fr">
+    <div style="border-right:1px solid #333C33; padding:18px 14px; display:flex; flex-direction:column; gap:4px">
+      <div style="display:flex; align-items:center; gap:8px; padding:0 8px 14px">
+        <svg width="26" height="21" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:18px; position:relative; top:1px">foerier</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px" style-hover="background:#1F2620"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">DEPOT</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">128</span></div>
+      <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px" style-hover="background:#1F2620"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">TRIPS</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">3</span></div>
+      <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px" style-hover="background:#1F2620"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">FIND</span><span></span></div>
+      <div style="margin-top:auto">
+        <div style="display:flex; align-items:center; gap:8px; padding:9px 10px; background:#28312A; border-radius:8px">
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em; color:#93BC9F">ACCOUNT</span>
+        </div>
+        <div style="padding:12px 10px 0; display:flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.06em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</div>
+      </div>
+    </div>
+    <div style="padding:18px 22px; min-width:0">
+      <div style="display:flex; align-items:center; justify-content:space-between">
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:26px">Account</span>
+        <div style="display:flex; align-items:center; gap:12px">
+          <span style="font-weight:600; font-size:14px">Mark</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">VELDKAMP HOUSEHOLD</span>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px">
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:6px 16px 12px">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:10px 0 2px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">PASSKEYS</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">2</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #2A3129">
+            <div>
+              <div style="font-weight:600; font-size:14px">Pixel 9</div>
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:2px">ADDED 2026-03-02 &#183; LAST USED TODAY</div>
+            </div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">REMOVE</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0">
+            <div>
+              <div style="font-weight:600; font-size:14px">YubiKey, desk drawer</div>
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:2px">ADDED 2026-03-02 &#183; LAST USED 2026-07-14</div>
+            </div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">REMOVE</span>
+          </div>
+          <button style="width:100%; height:40px; margin-top:8px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Add a passkey on this device</button>
+        </div>
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:6px 16px 12px">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:10px 0 2px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">DEVICES</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">3 SIGNED IN</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #2A3129">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px"><span style="font-weight:600; font-size:14px">Firefox on Android</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 5px">THIS DEVICE</span></div>
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:2px">SIGNED IN 2026-03-02</div>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #2A3129">
+            <div>
+              <div style="font-weight:600; font-size:14px">Edge on Windows</div>
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:2px">LAST SEEN 2026-08-19 14:32</div>
+            </div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">SIGN OUT</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0">
+            <div>
+              <div style="font-weight:600; font-size:14px">Safari on iPad</div>
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:2px">LAST SEEN 2026-06-30 09:12</div>
+            </div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">SIGN OUT</span>
+          </div>
+          <button style="width:100%; height:40px; margin-top:8px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Sign in on another device</button>
+        </div>
+        <div style="grid-column:span 2; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:6px 16px 12px">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:10px 0 2px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">PEOPLE &amp; LOGINS</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">2 OF 3 HOLD A LOGIN</span></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px">
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 0">
+              <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">M</span>
+              <div>
+                <div style="display:flex; align-items:center; gap:6px"><span style="font-weight:600; font-size:14px">Mark</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 5px">YOU</span></div>
+                <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:2px">SIGNED IN &#183; 2 DEVICES</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 0">
+              <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">E</span>
+              <div>
+                <div style="font-weight:600; font-size:14px">Els</div>
+                <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:2px">SIGNED IN &#183; 1 DEVICE</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 0">
+              <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">K</span>
+              <div>
+                <div style="font-weight:600; font-size:14px">Kees</div>
+                <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:2px">NO LOGIN &#183; <span style="color:#93BC9F; font-weight:600; cursor:pointer">INVITE &#8250;</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding:0 2px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#D98263; cursor:pointer">SIGN OUT</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#5E6857; letter-spacing:.04em">BUILD 7C39F2A &#183; 2026-08-21</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:12px; width:1024px">
+    <div style="flex:1; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">A pane in the 216px-sidebar shell, never a modal. The sidebar swaps Depot&#8217;s places/slices for the app-level nav; ACCOUNT is the active row pinned bottom, marked by the same avatar circle. Desktop has room, so the phone&#8217;s summary rows unfold: full device list and all three people render inline in cards.</div>
+    </div>
+    <div style="flex:1; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE LOGIN TREATMENT</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">One circle anatomy everywhere: 1.5px border, mono initial. On account surfaces fill never appears (fill belongs to packing); the border alone signals the login — accent #93BC9F holds one, control-border #47523F does not. YOU and THIS DEVICE reuse the TRIP-ONLY badge anatomy in accent sage.</div>
+    </div>
+  </div>
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">07 — DEVICES · COMPACT 393</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Devices" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ACCOUNT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</span>
+      </div>
+      <div style="padding:0 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Devices</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:8px">3 signed in with this login.</div>
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px"><span style="font-weight:600; font-size:16px; line-height:22px">Firefox on Android</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 5px">THIS DEVICE</span></div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">SIGNED IN 2026-03-02 &#183; NO PASSKEY HERE</div>
+          </div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; flex-shrink:0; cursor:pointer">SIGN OUT</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <div>
+            <div style="font-weight:600; font-size:16px; line-height:22px">Edge on Windows</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">LAST SEEN 2026-08-19 14:32</div>
+          </div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; flex-shrink:0; cursor:pointer">SIGN OUT</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <div>
+            <div style="font-weight:600; font-size:16px; line-height:22px">Safari on iPad</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">LAST SEEN 2026-06-30 09:12</div>
+          </div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; flex-shrink:0; cursor:pointer">SIGN OUT</span>
+        </div>
+        <div style="padding:12px 16px 16px; font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; letter-spacing:.05em; line-height:1.7">SIGNING OUT A DEVICE REACHES IT AT ITS NEXT SYNC.</div>
+      </div>
+    </div>
+
+    <div data-screen-label="Devices — sign out remote" style="width:393px; height:560px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ACCOUNT</span>
+      </div>
+      <div style="padding:0 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Devices</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:8px">3 signed in with this login.</div>
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="padding:12px 16px; border-bottom:1px solid #2A3129">
+          <div style="font-weight:600; font-size:16px">Firefox on Android</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">SIGNED IN 2026-03-02</div>
+        </div>
+        <div style="padding:12px 16px">
+          <div style="font-weight:600; font-size:16px">Edge on Windows</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">LAST SEEN 2026-08-19 14:32</div>
+        </div>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 16px"></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Sign out Safari on iPad?</div>
+        <div style="font-size:13px; color:#97A08C; line-height:1.5; margin-top:8px">It loses access at its next sync. Everything already synced stays with the household.</div>
+        <div style="display:flex; gap:8px; margin-top:20px">
+          <button style="flex:1; height:48px; background:transparent; color:#D98263; border:1.5px solid #D98263; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Sign out device</button>
+          <button style="height:48px; padding:0 18px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Coarse labels only (&#8220;Firefox on Android&#8221;) — no IPs, no fingerprinting theatre. LAST SEEN is a mono timestamp, honest about being at-last-sync. SIGN OUT per row follows the RETIRE rule: attention text. The confirm sheet states the two facts that matter — when it takes effect, and that synced work is not lost.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">STATES COVERED</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">This-device chip &#183; a device without a passkey (meta says so, no warning) &#183; remote sign-out confirm &#183; this-device sign-out with unsynced work (next frame).</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; margin-top:24px">
+    <div data-screen-label="Devices — sign out this device" style="width:393px; height:560px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ACCOUNT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#E2A65B"></span>OFFLINE</span>
+      </div>
+      <div style="padding:0 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Devices</div>
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="padding:12px 16px">
+          <div style="display:flex; align-items:center; gap:8px"><span style="font-weight:600; font-size:16px">Firefox on Android</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 5px">THIS DEVICE</span></div>
+        </div>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 16px"></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Sign out this device?</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#D98263; margin-top:10px">&#9650; 4 changes not yet synced. Signing out clears them.</div>
+        <div style="font-size:13px; color:#97A08C; line-height:1.5; margin-top:8px">Local data is removed from this device. Synced work stays with the household.</div>
+        <div style="display:flex; gap:8px; margin-top:20px">
+          <button style="flex:1; height:48px; background:transparent; color:#D98263; border:1.5px solid #D98263; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Sign out and clear</button>
+          <button style="height:48px; padding:0 18px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE ONE PLACE AUTH MAY COST WORK</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Signing out this device is the only auth action that can discard anything, so it is the only one that earns the &#9650; attention class — with the exact count. When nothing is unsynced the &#9650; line is omitted entirely and the body stands alone. Offline + unsynced (shown) is the worst case: Cancel is the escape, and staying signed in costs nothing.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">08 — PEOPLE &amp; LOGINS · COMPACT 393</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="People and logins — one login" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ACCOUNT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</span>
+      </div>
+      <div style="padding:0 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">People &amp; logins</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:8px">1 of 3 people holds a login. 1 invite out.</div>
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">M</span>
+          <div style="flex:1">
+            <div style="display:flex; align-items:center; gap:8px"><span style="font-weight:600; font-size:16px">Mark</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 5px">YOU</span></div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">SIGNED IN &#183; 2 DEVICES</div>
+          </div>
+          <span style="color:#5E6857; font-size:20px">&#8250;</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">E</span>
+          <div style="flex:1">
+            <div style="font-weight:600; font-size:16px">Els</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">INVITE OUT &#183; SINGLE USE</div>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0">
+            <span style="display:inline-flex; align-items:center; padding:4px 10px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em; color:#97A08C">EXPIRES IN 6 d</span>
+            <span style="display:flex; gap:12px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F; cursor:pointer">REOPEN &#8250;</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">REVOKE</span></span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">K</span>
+          <div style="flex:1">
+            <div style="font-weight:600; font-size:16px">Kees</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">NO LOGIN &#183; JOINS TRIPS AS PARTICIPANT</div>
+          </div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F; flex-shrink:0; cursor:pointer">INVITE &#8250;</span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; margin:12px 16px 16px; min-height:48px; border:1px dashed #47523F; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#97A08C; cursor:pointer">+ NEW PERSON</div>
+      </div>
+    </div>
+
+    <div data-screen-label="People and logins — two logins" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ACCOUNT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</span>
+      </div>
+      <div style="padding:0 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">People &amp; logins</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:8px">2 of 3 people hold a login.</div>
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">E</span>
+          <div style="flex:1">
+            <div style="font-weight:600; font-size:16px">Els</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">SIGNED IN &#183; 1 DEVICE &#183; LAST SEEN 2026-08-20 19:04</div>
+          </div>
+          <span style="display:flex; gap:12px; flex-shrink:0"><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F; cursor:pointer">DEVICE LINK &#8250;</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">REVOKE</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">K</span>
+          <div style="flex:1">
+            <div style="font-weight:600; font-size:16px">Kees</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">NO LOGIN &#183; JOINS TRIPS AS PARTICIPANT</div>
+          </div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F; flex-shrink:0; cursor:pointer">INVITE &#8250;</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">M</span>
+          <div style="flex:1">
+            <div style="display:flex; align-items:center; gap:8px"><span style="font-weight:600; font-size:16px">Mark</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 5px">YOU</span></div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">SIGNED IN &#183; 2 DEVICES</div>
+          </div>
+          <span style="color:#5E6857; font-size:20px">&#8250;</span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; margin:12px 16px 16px; min-height:48px; border:1px dashed #47523F; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#97A08C; cursor:pointer">+ NEW PERSON</div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Equality made visible: identical row anatomy for every person, alphabetical order, no owner badge, no crowns. YOU is positional, not privileged — Els sees the same actions on Mark&#8217;s row. Any signed-in member can issue a device link for another&#8217;s login or revoke it; only your own row lacks them (your exit is SIGN OUT). The outstanding-invite row is the collapsed form of the handover screen: expiry chip + REOPEN + REVOKE.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">STATES COVERED</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Left: the empty-ish household — one login, one invite out, one person who never signs in. Right: steady state. A child&#8217;s row is a plain fact (&#8220;joins trips as participant&#8221;), and INVITE stays available — the UI does not police who may hold a login.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">09 — INVITE ISSUED · COMPACT 393 · BOTH PURPOSES</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Invite issued — join" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; PEOPLE &amp; LOGINS</span>
+      </div>
+      <div style="padding:0 16px 16px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Invite for Els</div>
+        <div style="font-size:13px; color:#97A08C; margin-top:6px">Hand it over yourself — foerier sends no mail.</div>
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:14px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px">
+          <div style="background:#F0EBDD; border-radius:8px; padding:10px; width:126px; height:126px">{{ qrJoin }}</div>
+          <div style="width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #333C33; border-radius:8px; padding:10px 12px; font-family:'Spline Sans Mono',monospace; font-size:11.5px; line-height:1.6; color:#E8E5D5; word-break:break-all; user-select:all">https://foerier.veldkamp.net/j/9f3k-q7xw-2mhp</div>
+          <button style="width:100%; height:48px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Copy link</button>
+          <div style="display:flex; gap:8px; align-items:center">
+            <span style="display:inline-flex; align-items:center; padding:4px 10px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em; color:#97A08C">EXPIRES IN 6 d</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; letter-spacing:.06em">SINGLE USE</span>
+          </div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:14px">It creates a login for Els. Nothing else can use it.</div>
+        <div style="display:flex; justify-content:center; align-items:center; min-height:48px; margin-top:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#D98263; cursor:pointer">REVOKE INVITE</span></div>
+      </div>
+    </div>
+
+    <div data-screen-label="Invite issued — device link" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ACCOUNT</span>
+      </div>
+      <div style="padding:0 16px 16px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Sign in on another device</div>
+        <div style="font-size:13px; color:#97A08C; margin-top:6px">Open this on the other device. It signs that device in as you, Mark.</div>
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:14px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px">
+          <div style="background:#F0EBDD; border-radius:8px; padding:10px; width:126px; height:126px">{{ qrDevice }}</div>
+          <div style="width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #333C33; border-radius:8px; padding:10px 12px; font-family:'Spline Sans Mono',monospace; font-size:11.5px; line-height:1.6; color:#E8E5D5; word-break:break-all; user-select:all">https://foerier.veldkamp.net/d/x2c8-11qa-9rrt</div>
+          <button style="width:100%; height:48px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Copy link</button>
+          <div style="display:flex; gap:8px; align-items:center">
+            <span style="display:inline-flex; align-items:center; padding:4px 10px; border:1.5px solid #E2A65B; border-radius:99px; background:rgba(226,166,91,.08); font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em; color:#E2A65B">EXPIRES IN 58 min</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; letter-spacing:.06em">SINGLE USE</span>
+          </div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:14px">The link is the credential. Treat it like a key.</div>
+        <div style="display:flex; justify-content:center; align-items:center; min-height:48px; margin-top:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#D98263; cursor:pointer">REVOKE LINK</span></div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">One handover screen, two purposes; only title, lead line, expiry and the fact line change. QR for phones in the same room, mono selectable link for every other channel. The expiry chip is the live element — muted at days, amber under an hour — and the same chip reappears on the outstanding-invite row in People &amp; logins. REVOKE stays attention text: it kills the link, not any data.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">OUT OF BAND, BY DESIGN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">foerier never transmits the invite — no email, no SMS, no share sheet preselection. The user hands it over in a channel they already trust. &#8220;The link is the credential&#8221; is the entire security model, stated once.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">10 — EXPLAINER SHEET + 11 — SESSION LOST · COMPACT 393</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Explainer sheet" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="height:44px"></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:16px; padding:60px 32px 0">
+        <svg width="72" height="57" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:32px">foerier</span>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 16px"></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">No passkey on this device?</div>
+        <div style="font-size:14px; line-height:21px; margin-top:12px">Ask a signed-in household member for a device link — People &amp; logins &#9656; your name &#9656; Device link. Opened here, it signs this device in. No passkey needed.</div>
+        <div style="font-size:14px; line-height:21px; margin-top:12px; color:#97A08C">If yours is the only login and it is signed in nowhere, ask whoever runs your server to issue a new join invite.</div>
+        <button style="width:100%; height:48px; margin-top:20px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Close</button>
+      </div>
+    </div>
+
+    <div data-screen-label="Session lost" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="height:44px"></div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:0 32px">
+        <svg width="72" height="57" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:32px">foerier</span>
+        <div style="font-size:13px; color:#97A08C; text-align:center">The household&#8217;s gear ledger.</div>
+      </div>
+      <div style="padding:0 20px 24px; display:flex; flex-direction:column; gap:10px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; text-align:center; line-height:1.6">Signed out on this device. 12 changes saved here and not yet synced.</div>
+        <button style="height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Sign in</button>
+        <button style="height:48px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer">No passkey on this device?</button>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">SESSION LOST — THE KEY REASSURANCE</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The sync client discovers the revoked token; the user is never interrupted mid-task. When they next reach the shell, one extra ledger line states both facts — signed out, work kept — in the same muted mono as any sync line. No red, no modal, no &#9650;: nothing is wrong with their data. Signing back in flushes the 12 queued changes automatically.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#6A7161">EXCERPT — THE QUIET HEADER STATE BEFORE IT</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; margin-top:10px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ALPS 2026</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#E2A65B"></span>SIGNED OUT &#183; SAVED ON DEVICE</span>
+        </div>
+        <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">Inside Depot, Trips and Find the only trace is the existing sync line reading SIGNED OUT &#183; SAVED ON DEVICE — rule 8: no banner, no lock, no prompt. Packing continues; the shell above appears only when the user chooses to sign back in.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:7600}}">
+class Component extends DCLogic {
+  qr(seed) {
+    const n = 21, cells = [];
+    let s = seed;
+    const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const f = (r0, c0) => r >= r0 && r < r0 + 7 && c >= c0 && c < c0 + 7;
+      const fp = (dr, dc) => dr === 0 || dr === 6 || dc === 0 || dc === 6 || (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4);
+      let on;
+      if (f(0, 0)) on = fp(r, c);
+      else if (f(0, n - 7)) on = fp(r, c - (n - 7));
+      else if (f(n - 7, 0)) on = fp(r - (n - 7), c);
+      else if (r === 6) on = c % 2 === 0;
+      else if (c === 6) on = r % 2 === 0;
+      else on = rnd() > 0.5;
+      if (on) cells.push(React.createElement('rect', { key: r + '-' + c, x: c * 6, y: r * 6, width: 6, height: 6, fill: '#151A15' }));
+    }
+    return React.createElement('svg', { width: 126, height: 126, viewBox: '0 0 126 126' }, cells);
+  }
+  renderVals() {
+    return { qrJoin: this.qr(7), qrDevice: this.qr(13) };
+  }
+}
+</script>
+</body>
+</html>

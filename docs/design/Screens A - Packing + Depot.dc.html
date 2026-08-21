@@ -18,9 +18,39 @@
     <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; position:relative; top:2px">foerier</span>
     <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.18em; color:#151A15; background:#93BC9F; padding:3px 8px; border-radius:3px; margin-left:8px">SCREENS A — PACKING + DEPOT</span>
   </div>
-  <div style="font-size:13.5px; color:#97A08C; margin-top:8px; max-width:700px">The two screens the app lives or dies on. Packing at phone width (393 — Pixel class), Depot at tablet-landscape/desktop (1024, the ultrawide view is this centered) and phone. Dark default.</div>
+  <div style="font-size:13.5px; color:#97A08C; margin-top:8px; max-width:700px">The two screens the app lives or dies on, framed across the five-mode layout ladder below (per docs/frontend-design.md). Dark default. Shell breakpoints are em-based; component internals adapt via container queries — the same row or card reflows to the width it is handed, independent of the frame.</div>
 
-  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:28px 0 12px">01 — PACKING VIEW · PHONE 393</div>
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:28px 0 12px">00 — LAYOUT MODES · EM-BASED MEDIA QUERIES</div>
+  <div style="display:grid; grid-template-columns:1fr 1.05fr 1.45fr 1.2fr 1.4fr; gap:8px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em">COMPACT</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161">&lt;30EM · &lt;480</span></div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.05em; line-height:1.8; margin-top:6px">BOTTOM TABS · 1 COL<br>GUTTER 12</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#5E6857; letter-spacing:.06em; margin-top:8px">FRAMES 01 · 03</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em">COMFORTABLE</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161">30–40EM · 480–640</span></div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.05em; line-height:1.8; margin-top:6px">BOTTOM TABS · 1 COL<br>GUTTER 16</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#5E6857; letter-spacing:.06em; margin-top:8px">SAME FRAMES, WIDER GUTTER</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em">ROOMY</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161">40–52EM · 640–832</span></div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.05em; line-height:1.8; margin-top:6px">BOTTOM TABS · 1 COL, CAPPED MEASURE<br>GUTTER 20–24 · CARDS 2-UP · CHIPS WRAP</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#E2A65B; letter-spacing:.06em; margin-top:8px">FRAME 04 — NEW</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em">SPLIT</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161">52–64EM · 832–1024</span></div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.05em; line-height:1.8; margin-top:6px">ICON RAIL · LIST + DETAIL<br>THE TWO-PANE UNLOCK</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#E2A65B; letter-spacing:.06em; margin-top:8px">FRAME 05 — NEW</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px 14px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em">DESKTOP</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161">≥64EM · ≥1024</span></div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.05em; line-height:1.8; margin-top:6px">LABELED SIDEBAR 216 · 2–3 PANES<br>CENTRES AT 1120 PAST 75EM (1200)</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#5E6857; letter-spacing:.06em; margin-top:8px">FRAME 02</div>
+    </div>
+  </div>
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em; margin-top:10px; line-height:1.7">SHELL = EM MEDIA QUERIES (TRACKS USER FONT-SIZE AND ZOOM). COMPONENT INTERNALS = @CONTAINER: A ROW, CARD OR FILTER CLUSTER ADAPTS TO THE WIDTH IT IS HANDED (393 COLUMN, ~310 SPLIT PANE, WIDE DESKTOP COLUMN), NOT THE VIEWPORT. NO @CONTAINER SUPPORT → FAIL OPEN TO SINGLE COLUMN.</div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:28px 0 12px">01 — PACKING VIEW · COMPACT/COMFORTABLE 393</div>
   <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
 
     <div data-screen-label="Packing by container" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
@@ -184,7 +214,7 @@
     </div>
   </div>
 
-  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">02 — DEPOT BROWSER · DESKTOP/TABLET 1024</div>
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">02 — DEPOT BROWSER · DESKTOP ≥1024 (≥64EM)</div>
   <div data-screen-label="Depot desktop" style="width:1024px; background:#151A15; border:1px solid #333C33; border-radius:16px; overflow:hidden; display:grid; grid-template-columns:216px 1fr">
     <div style="border-right:1px solid #333C33; padding:18px 14px; display:flex; flex-direction:column; gap:4px">
       <div style="display:flex; align-items:center; gap:8px; padding:0 8px 14px">
@@ -310,7 +340,7 @@
     </div>
   </div>
 
-  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">03 — DEPOT · PHONE 393</div>
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">03 — DEPOT · COMPACT/COMFORTABLE 393</div>
   <div style="display:flex; gap:24px; align-items:flex-start">
     <div data-screen-label="Depot phone" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
       <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 0">
@@ -378,7 +408,7 @@
     <div style="width:330px; display:flex; flex-direction:column; gap:12px">
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DESKTOP ↔ PHONE</div>
-        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Same slice model, different density: desktop gets the sidebar (places, saved slices), 44px rows, 8 columns and keyboard bindings; phone folds columns into a 2-line row — whereabouts stays top-right, always visible. Ultrawide = this 1024 layout centered with margins.</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Same slice model, different density: desktop gets the sidebar (places, saved slices), 44px rows, 8 columns and keyboard bindings; phone folds columns into a 2-line row — whereabouts stays top-right, always visible. Past 75em (1200) this desktop layout centres at max-width 1120.</div>
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DOMAIN RIGOR</div>
@@ -386,8 +416,212 @@
       </div>
     </div>
   </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">04 — ROOMY 540 · 40–52EM (LARGE PHONE / FOLDABLE) — NEW</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Depot roomy" style="width:540px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 20px 0">
+        <svg width="28" height="22" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="width:26px; height:26px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600">M</span>
+      </div>
+      <div style="padding:10px 20px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Depot</div>
+        <input placeholder="Search the depot…" style="height:48px; width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 14px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:15px; outline:none; margin-top:12px" style-focus="border-color:#E2A65B">
+        <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap">
+          <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">TAG: #WINTER ✕</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">KIND: SHELTER ✕</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ PLACE</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ OWNER</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ WHEREABOUTS</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:10px">6 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (2)</span></div>
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:0 20px; height:56px; border-bottom:1px solid #2A3129">
+          <span style="font-weight:600; font-size:16px; white-space:nowrap">Sleeping bag, winter</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">⌂ ATTIC ▸ CRATE B · ×2</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#E2A65B; letter-spacing:.04em">▸ ALPS · CAR</span>
+        </div>
+        <div style="display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:0 20px; height:56px; border-bottom:1px solid #2A3129">
+          <span style="font-weight:600; font-size:16px; white-space:nowrap">Down jacket, E</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">PERSONAL E · SLAAPKAMER ▸ KAST</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em">⌂ HOME</span>
+        </div>
+        <div style="display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:0 20px; height:56px; border-bottom:1px solid #2A3129">
+          <span style="font-weight:600; font-size:16px; white-space:nowrap">Winter boots, M</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">PERSONAL M · HAL ▸ SCHOENENREK</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em">⌂ HOME</span>
+        </div>
+        <div style="display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:0 20px; height:56px">
+          <span style="font-weight:600; font-size:16px; white-space:nowrap">Ski gloves <span style="color:#5E6857; font-size:18px">›</span></span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">PER-PERSON · ATTIC ▸ CRATE D</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em">⌂ HOME</span>
+        </div>
+        <div style="height:64px"></div>
+      </div>
+      <div style="position:absolute; right:20px; bottom:74px; width:56px; height:56px; border-radius:16px; background:#93BC9F; display:flex; align-items:center; justify-content:center; color:#151A15; font-size:26px; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,.4)">+</div>
+      <div style="display:flex; border-top:1px solid #333C33; background:#1F2620">
+        <div style="flex:1; text-align:center; padding:9px 0 12px; border-top:2px solid #93BC9F; margin-top:-1px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="13" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="13" y="13" width="8" height="8" rx="1.5" fill="#93BC9F"></rect></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#93BC9F; margin-top:3px">DEPOT</div>
+        </div>
+        <div style="flex:1; text-align:center; padding:9px 0 12px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><line x1="5.5" y1="3" x2="5.5" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line><polygon points="5.5,4 19,7.5 5.5,11" fill="#97A08C"></polygon></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#97A08C; margin-top:3px">TRIPS</div>
+        </div>
+        <div style="flex:1; text-align:center; padding:9px 0 12px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#97A08C" stroke-width="1.8"></circle><line x1="15.5" y1="15.5" x2="21" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#97A08C; margin-top:3px">FIND</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:540px; display:flex; flex-direction:column; gap:12px">
+      <div data-screen-label="Trips roomy — cards 2-up" style="background:#151A15; border:1px solid #333C33; border-radius:16px; padding:16px 20px 20px">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px">
+          <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px">Trips</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em">EXCERPT — CARDS GO 2-UP AT ROOMY</span>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px">
+          <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px">
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start">
+              <span style="font-weight:600; font-size:16px; color:#E8E5D5">▸ Alps 2026</span>
+              <span style="padding:4px 9px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.06em">PACK-OUT · DAY 2</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:10px">
+              <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">AUG 14 → SEP 02</span>
+              <span style="display:inline-flex; gap:4px; margin-left:auto">
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600">M</span>
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600">E</span>
+                <span style="width:20px; height:20px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600">K</span>
+              </span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C"><span style="color:#E8E5D5">● 48/61</span><span>13 LEFT</span></div>
+            <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:6px"><div style="width:79%; height:100%; background:#7BB389"></div></div>
+            <button style="width:100%; height:44px; margin-top:12px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer">Continue pack-out</button>
+          </div>
+          <div style="border:1px dashed #47523F; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:6px; align-items:flex-start">
+            <div style="font-weight:600; font-size:16px; color:#E8E5D5">Vosges — Oct</div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">DRAFT · 0 GEAR LISTED</div>
+            <span style="margin-top:auto; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em">BUILD LIST ›</span>
+          </div>
+        </div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS AT ROOMY</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">640–832 (40–52em) keeps the phone shell — bottom tabs, one primary column — but stops wasting the sides: gutters 20–24, prose capped to a readable measure, filter chips wrap instead of scrolling, list rows carry owner · path · qty inline on one line, and card content goes 2-up. Same components as 393 — @container picks the layout, not the viewport.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">05 — SPLIT 900 · 52–64EM (LANDSCAPE TABLET / SMALL LAPTOP) — NEW</div>
+  <div data-screen-label="Depot split" style="width:900px; background:#151A15; border:1px solid #333C33; border-radius:16px; overflow:hidden; display:grid; grid-template-columns:56px 308px 1fr">
+    <div style="border-right:1px solid #333C33; display:flex; flex-direction:column; align-items:center; padding:16px 0 14px; gap:8px">
+      <svg width="26" height="21" viewBox="0 0 28 22" style="margin-bottom:8px"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+      <span style="width:40px; height:40px; border-radius:10px; background:#28312A; display:inline-flex; align-items:center; justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="13" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="13" y="13" width="8" height="8" rx="1.5" fill="#93BC9F"></rect></svg></span>
+      <span style="width:40px; height:40px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24"><line x1="5.5" y1="3" x2="5.5" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line><polygon points="5.5,4 19,7.5 5.5,11" fill="#97A08C"></polygon></svg></span>
+      <span style="width:40px; height:40px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#97A08C" stroke-width="1.8"></circle><line x1="15.5" y1="15.5" x2="21" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line></svg></span>
+      <span style="margin-top:auto; width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>
+    </div>
+    <div style="border-right:1px solid #333C33; min-width:0; display:flex; flex-direction:column">
+      <div style="padding:16px 16px 12px">
+        <div style="display:flex; justify-content:space-between; align-items:baseline"><span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px">Depot</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">128</span></div>
+        <input placeholder="Search…  /" style="height:40px; width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 12px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:13.5px; outline:none; margin-top:10px" style-focus="border-color:#E2A65B">
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap">
+          <span style="display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 11px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">TAG: #WINTER ✕</span>
+          <span style="display:inline-flex; align-items:center; height:32px; padding:0 11px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ KIND</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:8px">9 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (1)</span></div>
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="padding:12px 16px; border-bottom:1px solid #2A3129; display:flex; flex-direction:column; gap:3px; background:rgba(147,188,159,.05); box-shadow:inset 2px 0 0 #93BC9F">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+            <span style="font-weight:600; font-size:15px">Sleeping bag, winter</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#E2A65B; letter-spacing:.04em; flex-shrink:0">▸ ALPS · CAR</span>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">⌂ ATTIC ▸ CRATE B · ×2</div>
+        </div>
+        <div style="padding:12px 16px; border-bottom:1px solid #2A3129; display:flex; flex-direction:column; gap:3px" style-hover="background:#1F2620">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+            <span style="font-weight:600; font-size:15px">Down jacket, E</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ HOME</span>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">PERSONAL E · SLAAPKAMER ▸ KAST</div>
+        </div>
+        <div style="padding:12px 16px; border-bottom:1px solid #2A3129; display:flex; flex-direction:column; gap:3px" style-hover="background:#1F2620">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+            <span style="font-weight:600; font-size:15px">Winter boots, M</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ HOME</span>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">PERSONAL M · HAL ▸ SCHOENENREK</div>
+        </div>
+        <div style="padding:12px 16px; display:flex; flex-direction:column; gap:3px" style-hover="background:#1F2620">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+            <span style="font-weight:600; font-size:15px">Ski gloves <span style="color:#5E6857; font-size:17px">›</span></span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ HOME</span>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">PER-PERSON · ATTIC ▸ CRATE D</div>
+        </div>
+      </div>
+      <div style="margin-top:auto; padding:10px 16px; border-top:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em">↑↓ ROW · ENTER OPEN · ESC BACK TO LIST</div>
+    </div>
+    <div style="padding:18px 22px; min-width:0">
+      <div style="display:flex; align-items:center; justify-content:space-between">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161">GEAR DETAIL</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED</span>
+      </div>
+      <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:24px; line-height:30px; margin-top:10px">Sleeping bag, winter</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:4px">ITEM · SHARED · ×2 · 1.9 KG EACH</div>
+      <div style="display:flex; gap:6px; margin-top:10px">
+        <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">#winter</span>
+        <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">#sleep</span>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:14px; padding:2px 14px">
+        <div style="display:grid; grid-template-columns:1fr auto; gap:2px 12px; align-items:center; padding:10px 0; border-bottom:1px solid #333C33">
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.1em; color:#6A7161">⌂ HOME SLOT</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; grid-row:span 2; align-self:center">×1 THERE</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#E8E5D5">ATTIC ▸ SHELF L-TOP ▸ CRATE B</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr auto; gap:2px 12px; align-items:center; padding:10px 0">
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.1em; color:#E2A65B">▸ ON TRIP — ALPS 2026</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#E2A65B; grid-row:span 2; align-self:center">×1 OUT</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#E8E5D5">DUFFEL 90 L · PACKED BY M</div>
+        </div>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161; margin-top:14px">PIECES</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #2A3129">
+        <div>
+          <div style="font-weight:600; font-size:15px">Piece 1</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:1px">BOUGHT 2022 · GOOD</div>
+        </div>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ CRATE B</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0">
+        <div>
+          <div style="font-weight:600; font-size:15px">Piece 2</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:1px">BOUGHT 2022 · GOOD</div>
+        </div>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#E2A65B; letter-spacing:.04em; flex-shrink:0">▸ ALPS · PACKED M</span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:14px">
+        <button style="height:40px; padding:0 18px; background:transparent; border:1px solid #47523F; border-radius:8px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Move</button>
+        <button style="height:40px; padding:0 18px; background:transparent; border:1px solid #47523F; border-radius:8px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Edit</button>
+        <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#D98263; letter-spacing:.05em; cursor:pointer">RETIRE</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:12px; width:900px">
+    <div style="flex:1; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE TWO-PANE UNLOCK</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">832–1024 (52–64em): list + detail arrives here, earlier than 1024. Bottom tabs become a 56px icon rail — labels return with Desktop's 216px sidebar. Selection stays visible while the detail is read; ESC returns focus to the list.</div>
+    </div>
+    <div style="flex:1; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">CONTAINER QUERIES AT WORK</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The list pane is ~310 wide, so its rows render the folded two-line phone layout even though the viewport is 900 — rows respond to the pane they are handed, not the screen. The detail column reuses the gear-detail components at its own width.</div>
+    </div>
+  </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:2170}}"></script>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:3800}}"></script>
 </body>
 </html>

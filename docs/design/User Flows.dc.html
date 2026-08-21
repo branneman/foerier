@@ -26,6 +26,7 @@
     <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:4px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">ACTION</span>
     <span style="border:1px dashed #D3A344; color:#D3A344; border-radius:8px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">? DECISION</span>
     <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#6A7161; letter-spacing:.04em">RESULT / NOTE</span>
+    <span style="border:1px dashed #6A7161; color:#6A7161; border-radius:8px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">OS / BROWSER — EXTERNAL</span>
   </div>
 
   <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:26px 0 10px">01 — NAVIGATION MAP</div>
@@ -72,7 +73,14 @@
 │   └─ <span style="color:#93BC9F">+ NEW TRIP</span>       <span style="color:#6A7161">blank or from template</span>
 ├─ <span style="color:#93BC9F; font-weight:600">FIND</span>             <span style="color:#6A7161">offline index: name · tag · place · container</span>
 │   └─ <span style="color:#E8E5D5">RESULT ▸ GEAR DETAIL</span>
-└─ <span style="color:#E8E5D5; font-weight:600">ACCOUNT</span>          <span style="color:#6A7161">household · people · theme · sync state</span></div>
+└─ <span style="color:#E8E5D5; font-weight:600">ACCOUNT</span>          <span style="color:#6A7161">you · passkeys · sync state · behind the avatar</span>
+    ├─ <span style="color:#E8E5D5">DEVICES</span>          <span style="color:#6A7161">last seen · sign out one · sign out this</span>
+    ├─ <span style="color:#E8E5D5">PEOPLE &amp; LOGINS</span>  <span style="color:#6A7161">invite · outstanding · revoke</span>
+    └─ <span style="color:#E8E5D5">INVITE ISSUED</span>    <span style="color:#6A7161">QR + link · join invite or device link
+</span><span style="color:#93BC9F; font-weight:600">SIGNED OUT</span>           <span style="color:#6A7161">the shell — loads offline, renders with zero data</span>
+├─ <span style="color:#E8E5D5; font-weight:600">SIGN IN</span>          <span style="color:#6A7161">one button ▸ OS passkey sheet</span>
+├─ <span style="color:#E8E5D5">JOIN</span>             <span style="color:#6A7161">confirm invite · name yourself · dead ends</span>
+└─ <span style="color:#E8E5D5">NO PASSKEY?</span>      <span style="color:#6A7161">explainer ▸ device link</span></div>
     </div>
   </div>
 
@@ -203,8 +211,159 @@
       </div>
     </div>
   </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:26px 0 10px">03 — AUTH + ACCOUNT FLOWS</div>
+  <div style="font-size:12.5px; color:#97A08C; margin:-2px 0 10px; max-width:720px">Auth lives on two surfaces: the signed-out shell and Account. The passkey ceremony itself — including the browser&#8217;s own cross-device QR — is an OS/browser surface: dashed gray, we draw nothing for it. Screens in <a href="Screens C - Auth + Account.dc.html" style="color:#E2A65B">Screens C</a>.</div>
+  <div style="display:flex; flex-direction:column; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">A — JOIN A HOUSEHOLD</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.04em">SOMEONE HANDED ME A LINK, OUT OF BAND</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:11px">
+        <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">OPEN INVITE LINK</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Join Veldkamp as Els? <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">NOTHING HAPPENS UNTIL CONFIRMED</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">JOIN AS ELS</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1px dashed #6A7161; color:#6A7161; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em">OS: CREATE PASSKEY</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.04em">■ SIGNED IN · FIRST SYNC RUNS</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#5E6857">↳</span>
+        <span style="border:1px dashed #D3A344; color:#D3A344; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em">? DEVICE CAN&#8217;T MAKE A PASSKEY</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Continue without a passkey <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">FIRST-CLASS, NO PENALTY</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.04em">■ SIGNED IN · STANDING NUDGE IN ACCOUNT ▸ PASSKEYS</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#5E6857">↳</span>
+        <span style="border:1px dashed #D3A344; color:#D3A344; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em">? EXPIRED · USED · UNKNOWN</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Dead end <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">ONE SCREEN, SWAPPED FACT LINE</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#97A08C; letter-spacing:.04em">ASK A HOUSEHOLD MEMBER FOR A NEW ONE</span>
+      </div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">B — SIGN IN (RETURNING)</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.04em">NO USERNAME, NO PASSWORD — ONE BUTTON</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:11px">
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Sign-in shell</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">SIGN IN</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1px dashed #6A7161; color:#6A7161; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em">OS PASSKEY SHEET · INCL. ITS OWN CROSS-DEVICE QR</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.04em">■ SIGNED IN</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#5E6857">↳</span>
+        <span style="border:1px dashed #D3A344; color:#D3A344; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em">? NO PASSKEY ON THIS DEVICE</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Explainer sheet</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#97A08C; letter-spacing:.04em">ASK A MEMBER FOR A DEVICE LINK (FLOW D)</span>
+      </div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">C — INVITE A PERSON INTO THE HOUSEHOLD</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.04em">FOERIER SENDS NO MAIL — HANDOVER IS YOURS</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:11px">
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Account</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">People &amp; logins</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1px dashed #D3A344; color:#D3A344; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em">? PICK OR CREATE A PERSON</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">ISSUE JOIN INVITE</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">QR + link + copy <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">SINGLE USE · EXPIRES IN 6 D</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1px dashed #47523F; color:#97A08C; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; letter-spacing:.04em">HAND OVER OUT OF BAND</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.04em">■ OUTSTANDING ROW: EXPIRY CHIP · REOPEN · REVOKE</span>
+      </div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">D — SIGN IN ON ANOTHER DEVICE</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.04em">ALSO ISSUABLE FOR ANOTHER MEMBER FROM PEOPLE &amp; LOGINS</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:11px">
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Account</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">SIGN IN ON ANOTHER DEVICE</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Device link: QR + copy <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">SINGLE USE · EXPIRES IN 1 H</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1px dashed #47523F; color:#97A08C; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; letter-spacing:.04em">OPEN ON THE OTHER DEVICE</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Confirm <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">SIGNS IN AS THE ISSUING LOGIN</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.04em">■ SIGNED IN · DEVICES: 2</span>
+      </div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">E — MANAGE DEVICES</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.04em">SIGN-OUT REACHES A REMOTE DEVICE AT ITS NEXT SYNC</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:11px">
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Account</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Devices <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">COARSE LABEL + LAST SEEN</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">SIGN OUT (REMOTE)</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Confirm sheet</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.04em">■ SIGNED OUT AT ITS NEXT SYNC</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#5E6857">↳</span>
+        <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">SIGN OUT THIS DEVICE</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1px dashed #D3A344; color:#D3A344; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em">? UNSYNCED WORK EXISTS</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Confirm <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#D98263; font-weight:600">▲ 4 CHANGES NOT YET SYNCED. SIGNING OUT CLEARS THEM.</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#97A08C; letter-spacing:.04em">LOCAL DATA CLEARED → SIGN-IN SCREEN</span>
+      </div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #93BC9F; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.14em; color:#93BC9F">F — SESSION LOST (NEVER DATA LOSS)</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.04em">DISCOVERED BY THE SYNC CLIENT · NEVER INTERRUPTS A TASK</span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; row-gap:10px; align-items:center; margin-top:11px">
+        <span style="border:1px dashed #6A7161; color:#6A7161; border-radius:8px; padding:6px 11px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em">SYNC FINDS TOKEN REVOKED / EXPIRED</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Quiet header line <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">SIGNED OUT · SAVED ON DEVICE — NO BANNER, NO LOCK</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="background:#28312A; border:1px solid #47523F; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600">Sign-in shell <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">12 CHANGES SAVED HERE, NOT YET SYNCED</span></span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="border:1.5px solid #93BC9F; color:#93BC9F; border-radius:99px; padding:5px 10px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">SIGN BACK IN</span>
+        <span style="color:#5E6857; font-family:'Spline Sans Mono',monospace">→</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.04em">■ QUEUED WORK FLUSHES · NOTHING LOST</span>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:10px">THE REASSURANCE LINE IS A FACT, NOT A WARNING — MUTED MONO, NO ▲. THE USER KEEPS PACKING OFFLINE UNTIL THEY CHOOSE TO SIGN BACK IN.</div>
+    </div>
+  </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1144,&quot;height&quot;:1560}}"></script>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1144,&quot;height&quot;:2960}}"></script>
 </body>
 </html>
