@@ -109,10 +109,25 @@ clothing's _home_ is still the wardrobe, untouched. A container's residence _and
 its contents can therefore differ between home and any trip, and between one trip
 and the next.
 
-**Whereabouts** (story 3) reconciles the two on read: if a piece of gear is on a
-trip that is being packed or is underway, its whereabouts is its trip residence;
-otherwise its home. Nothing stores a "current location" — it is always derived
-from the two worlds.
+**Whereabouts** (story 3) reconciles the two on read, always from the most recent
+fact known about the gear. If an entry for it on an **active trip** is still
+unresolved, its whereabouts is its trip residence; if its most recent **unpack
+outcome** was `lost` and nothing later supersedes that, it is **unaccounted for**,
+naming the trip it was last seen on; otherwise its home. An unpack outcome
+supersedes trip residence, so gear marked `back` reads as home from that moment,
+mid-pass, without waiting for the close. Nothing stores a "current location" — it
+is always derived.
+
+For counted and per-person gear the answer is a **quantity split** rather than a
+single location (§6): some units at home, some out, both true at once. The home
+residence is never vacated by a trip, so "×2 in Crate B, ×2 on the Alps trip"
+composes from facts that already exist.
+
+**Only an active trip's packing arrangement has effect.** A draft trip's
+arrangement is not yet real and a closed trip's is no longer real, so neither is
+consulted. This is what lets closing a trip be non-destructive: the arrangement is
+**retained and simply ceases to have effect** (invariant 14), and reopening the
+trip restores it without anything having been recovered or rebuilt.
 
 ---
 
@@ -140,13 +155,16 @@ as a whole without cross-aggregate coordination.
 
 The Trip root holds, as its **internal** entities and value objects:
 
+- **Phase** — where the trip stands in its own life (§5.1), and optional **dates**
+  (a start and an end) that identify and order it without driving anything.
 - **Participants** — references to depot people who join this trip.
 - **Gear list** — its **entries**. Each entry either references a piece of depot
   gear _by identity_, or _is_ a trip-only piece of gear held inside the trip.
-  Each entry carries its trip state: packing status, trip residence, and — for a
-  counted entry — its bring-count.
+  Each entry carries its trip state: packing status, trip residence, its **unpack
+  outcome** once recorded, and — for a counted entry — its bring-count and, if
+  resolved as `consumed`, its **consumed-count**.
 - **Pieces** — for each per-person entry, the individual per-participant copies,
-  each with its own packing status and trip residence.
+  each with its own packing status, trip residence, and unpack outcome.
 - **Trip containers** — the containers this trip packs into. A trip container
   likewise either references a depot container by identity or is a trip-only one;
   it carries a **journey stage** and a trip residence. (A container brought on a
@@ -161,6 +179,60 @@ Their details are single-sourced in Inventory. The trip stores only what is true
 _about them on this trip_. Correcting a piece of gear in the depot is reflected
 in every trip that references it (story 6); adding or removing entries never
 touches the depot.
+
+### 5.1 Trip lifecycle
+
+A trip's **phase** — `draft` → `pack-out` → `on trip` → `unpack` → `closed`
+(story 32) — is a value a quartermaster sets, not a machine that advances itself.
+Three properties define it:
+
+- **It describes; it does not lock.** Every editing capability stays available in
+  every phase. You add a forgotten entry mid-pack-out, re-home during the trip,
+  mark something packed while unpacking. A phase that forbade editing would force
+  the administration to lie about what is happening — the same failure §7 avoids
+  by letting residence and status disagree.
+- **It moves in both directions.** Marking a trip `on trip` and then finding the
+  duffel still in the hall means going back to `pack-out`; that must be
+  expressible. Only two transitions are special: entering `closed` is **gated**
+  (invariant 18), and leaving it — **reopening** — is a **deliberate, confirmed
+  act** (invariant 19), being the one backward move that makes settled history
+  live again.
+- **Only `pack-out`, `on trip`, and `unpack` are _active_.** Active-ness is what
+  gives a trip's packing arrangement effect (§4) and what makes its unresolved
+  entries hold **claims** (§5.2). Draft and closed trips are inert — which is why
+  drafts may overlap freely, and why closing needs to destroy nothing.
+
+Dates never drive the phase. A trip does not become `on trip` because its start
+date arrived; it becomes `on trip` because a quartermaster says the household
+left.
+
+### 5.2 Claims on depot supply
+
+The depot has a finite supply, and active trips draw against it. A **claim** is
+held by an **unresolved** entry on an active trip; recording an unpack outcome
+releases it, so gear flows back into free supply across the unpack pass rather
+than all at once at the close.
+
+The supply rule reads once per kind (§6):
+
+- **Single** — supply is one, so at most one active trip may claim it.
+- **Counted** — bring-counts across active trips may not sum past the owned-count.
+- **Per-person** — supply is one per person, so a given participant's piece of
+  that gear may be claimed by at most one active trip. Two active trips may
+  legitimately claim the same per-person gear for _different_ people.
+
+Exceeding supply is an **over-claim**, and it is never legitimate: two trips
+cannot both have the one tent, because reality cannot be in that state. Unlike the
+residence-versus-status disagreement of §7 — which is durable and honest — an
+over-claim is always transient and must be resolved.
+
+**It is guarded, not prevented.** Quartermasters work offline, so a cross-trip
+uniqueness rule cannot be enforced at the moment of writing without coordination
+the offline-first design forbids. The model therefore guards at the three moments
+an over-claim is visible — adding gear to an active trip, activating a draft, and
+reopening a closed trip — and treats one that arrives through sync as a conflict
+to **surface and have a quartermaster resolve**, never as grounds to discard a
+write.
 
 ---
 
@@ -183,6 +255,50 @@ It governs how the gear behaves once it becomes an entry on a trip:
 There is **no "not coming" state** anywhere. Deciding not to bring something is
 _removing_ it (the entry, or the single piece) from the trip; its absence is
 recoverable by filtering and, for gear, by re-adding.
+
+### Quantities split across worlds, without per-unit identity
+
+A piece of gear can be partly at home and partly away, and both facts are true at
+once: two of the four chairs in Crate B, two on the Alps trip. This **split** is
+what whereabouts reports for counted and per-person gear (§4), and it is pure
+arithmetic over facts already recorded — `owned-count` less the bring-counts
+claimed by active trips, or, for per-person gear, which participants' pieces are
+out. The home residence is never vacated while units are away.
+
+Crucially this needs **no identity for individual units**, and the model
+deliberately refuses to give them one. Giving a counted gear's units their own
+identities, conditions, or purchase dates _is_ recording them as separate gear —
+at which point the counted kind has no reason to exist. The model already serves
+that need better: gear whose individual units genuinely differ is recorded as
+separate **single** gear. **Counted** is the deliberate simplification for gear
+whose units are interchangeable, and interchangeability is exactly what makes the
+arithmetic legitimate.
+
+### Unpack outcome — the third piece of trip state
+
+Alongside residence and status (§7), an entry or piece carries an **unpack
+outcome** once the trip is being unpacked: `back`, `consumed`, or `lost`, with no
+outcome meaning **open**. It is not a fourth packing status — it is the entry's
+_resolution_, the record of how it left the trip, and it is what the close is
+gated on (invariant 18).
+
+Two of the three touch Inventory, and they touch it very differently:
+
+- **`consumed`** genuinely writes: the owned-count falls by the consumed-count,
+  because the household really does own fewer. This is the second and only other
+  place a trip writes back to the depot (invariant 8). It applies once, at the
+  close; a later change to the outcome on a reopened trip **offers** the
+  correction for confirmation rather than silently re-applying it, because the
+  depot may have moved on since.
+- **`lost` writes nothing at all.** The gear's recorded home is left untouched —
+  destroying it would throw away the very fact needed when the thing turns up — and
+  the outcome is read instead by whereabouts, which reports the gear as
+  **unaccounted for**, naming where it was last seen. The standing ends on the
+  next fact about that gear: a re-home, or a later trip bringing it `back`. Lost is
+  therefore fully reversible and is never a form of retirement.
+
+Trip-only gear takes no outcome: it never entered the depot, so it is simply
+cleared at the close and is excluded from the open count.
 
 ---
 
@@ -239,8 +355,9 @@ The rules the model must never violate.
 7. Removing a piece of gear is a soft-delete (retire). References from past trips
    remain valid, and their history is unchanged.
 8. A trip references depot gear, people, and places by identity and never mutates
-   their depot details. Only the unpack pass writes back to the home
-   arrangement, and only what the quartermaster re-homes.
+   their depot details. The unpack pass is the only exception, and it writes back
+   exactly twice: what the quartermaster **re-homes**, and the owned-count
+   reduction of a **consumed** counted entry. An outcome of `lost` writes nothing.
 
 **Trip and packing**
 
@@ -259,9 +376,32 @@ The rules the model must never violate.
 
 **History**
 
-14. Closing a trip clears its packed arrangement and container journeys but
-    preserves the trip, its final decisions, and its kept notes as history.
+14. Closing a trip destroys nothing. Its packing arrangement and container
+    journeys are **retained without effect** — inert because the trip is no longer
+    active (§4), not erased — and its final decisions, unpack outcomes,
+    consumed-counts, and kept notes are preserved as history. Reopening restores
+    the arrangement rather than rebuilding it.
 15. Deleting a trip requires a deliberate, confirmed act.
+
+**Trip lifecycle and supply**
+
+16. A trip's phase is set by a quartermaster and may move in either direction
+    along `draft → pack-out → on trip → unpack → closed`. No phase locks any
+    editing capability; the phase describes the trip, it does not govern it.
+17. Only a trip in `pack-out`, `on trip`, or `unpack` is **active**. Only an
+    active trip's packing arrangement is reported by whereabouts, and only its
+    unresolved entries hold claims.
+18. Closing requires every entry and every per-person piece to be resolved — open
+    must be zero. Trip-only entries are excluded, taking no outcome. There is no
+    override: `lost` is always an available and truthful answer, so the gate can
+    never force a false one.
+19. Leaving `closed` — reopening — is a deliberate, confirmed act, the same weight
+    as deleting a trip.
+20. Claims across active trips may not exceed the depot's supply of a piece of
+    gear (§5.2). An over-claim is never a legitimate state; it is guarded against
+    when adding, activating, and reopening, and — because it cannot be prevented
+    across offline devices — is surfaced for a quartermaster to resolve when it
+    arrives through sync. It is never resolved by discarding a write.
 
 ---
 
@@ -284,6 +424,12 @@ other implementation.)
 **Trip planning**
 
 - _Trip created_ (with a name); _participant added / removed._
+- _Trip dates set / cleared._
+- _Trip phase moved_ — forward or back, along `draft → pack-out → on trip →
+  unpack → closed`; _trip reopened_ is the confirmed backward move out of
+  `closed`.
+- _Over-claim surfaced / resolved_ — the latter by removing the contested entry
+  from one of the claiming trips.
 - _Entry added to gear list_ — from depot gear, or as trip-only.
 - _Entry removed_; _per-person piece removed / restored._
 - _Bring-count set_ (counted entry).
@@ -300,10 +446,16 @@ other implementation.)
 
 - _Trip note posted_ (optionally about an entry); _note kept / discarded_ at
   unpack.
-- _Trip unpacked and closed_ — the unpack pass: gear re-homed, notes reviewed,
-  packed arrangement and journeys cleared, trip retained as history.
+- _Unpack outcome recorded / changed / cleared_ — `back`, `consumed`, or `lost`,
+  on an entry or a per-person piece.
+- _Consumed-count set_ (counted entry resolved as consumed); _owned-count
+  reduction applied_ at the close, and _offered_ if the outcome later changes.
+- _Trip unpacked and closed_ — the unpack pass: gear re-homed, outcomes recorded,
+  notes reviewed, trip retained as history with its arrangement and journeys made
+  inert rather than cleared.
 - _Trip started from_ a past trip — new trip takes over gear list, bring-counts,
-  tasks (unticked), and kept notes; packing and journeys start fresh.
+  tasks (unticked), and kept notes; packing, journeys, unpack outcomes,
+  consumed-counts, and dates all start fresh.
 - _Trip deleted_ — deliberate, confirmed.
 
 ---
@@ -325,6 +477,18 @@ from the former to the latter.
 - **Promote trip-only gear** (story 21) — a trip-only piece becomes depot gear,
   and past occurrences of the same piece link back to the new entry. Trip-only
   entries are the join.
+- **Gear history** (story 33) — an append-only account of one piece of gear's
+  life, **derived** from the changes already recorded rather than kept as a second
+  record. The join is that every change is attributable and timed; the model owes
+  no new state, only the discipline of never squashing that away.
+- **Saved slices** (story 34) — the filter combinations of story 13 made durable
+  and named. The join is story 13's criteria; making them storable is what turns
+  the filter language into data that must tolerate its own referents disappearing.
+- **Bulk operations** (story 35) — acting on many pieces of gear at once needs
+  **no seam at all**: move, tag, set owner, and retire already exist as
+  single-gear operations (§9), and containment (§3) already makes the commonest
+  bulk case — re-homing a whole crate — a single move. Noted here only so nobody
+  models it twice.
 - **Maintenance / Wishlist / Retirement views** (stories 17–19) — depot-level
   lists and states that build on the soft-delete and the promotion joins already
   present.

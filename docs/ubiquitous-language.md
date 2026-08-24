@@ -130,9 +130,22 @@ them.
   **home**. It is separate from, and unaffected by, how anything is packed on a
   trip.
 
-- **Whereabouts** — where a piece of gear _currently_ is, computed on demand: its
-  trip residence on an active trip if it is packed for one, otherwise its home.
-  Nothing stores "current location"; whereabouts is always derived.
+- **Whereabouts** — where a piece of gear _currently_ is, computed on demand.
+  Nothing stores "current location"; whereabouts is always derived, from the most
+  recent fact known about the gear. It has three possible answers:
+
+  - its **trip residence**, if an entry for it on an **active trip** (below) is
+    still unresolved;
+  - **unaccounted for**, naming where it was last seen, if its most recent
+    **unpack outcome** was `lost` and nothing later supersedes it;
+  - otherwise its **home**.
+
+  An unpack outcome supersedes trip residence: gear marked `back` reads as home
+  from that moment, without waiting for the trip to close.
+
+  For **counted** and **per-person** gear, whereabouts is a **quantity split**
+  rather than a single answer — two of the four chairs at home and two on the
+  Alps trip are both true at once, and the home slot is kept while units are out.
 
 ---
 
@@ -184,7 +197,37 @@ them.
 
 - **Trip** — a named undertaking outfitted from the depot: its participants, its
   gear list, its packing progress, its tasks, and its notes. A trip is kept after
-  it ends, both as history and as a template for the next similar one.
+  it ends, both as history and as a template for the next similar one. A trip may
+  also carry **dates** — an optional start and end — which identify and order it
+  but never drive its **phase** (below).
+
+- **Trip phase** — where a trip stands in its own life: `draft` → `pack-out` →
+  `on trip` → `unpack` → `closed`. The phase is set by a quartermaster and moves
+  **in both directions**; it describes the trip and never locks editing. Two
+  transitions are special: entering `closed` is gated on the unpack pass being
+  complete, and leaving `closed` — **reopening** — is a deliberate, confirmed act,
+  because it makes a settled record live again.
+
+- **Active trip** — a trip in `pack-out`, `on trip`, or `unpack`. A draft trip and
+  a closed trip are _not_ active. Only an active trip's packing arrangement has
+  effect: only it is reported by **whereabouts**, and only it holds **claims**
+  (below). Closing a trip therefore does not destroy its packing arrangement — the
+  arrangement is retained and simply ceases to have effect, and reopening restores
+  it.
+
+- **Claim** — an active trip's hold on part of the depot's supply of a piece of
+  gear, made by an **unresolved** entry. Recording an **unpack outcome** releases
+  the claim, so gear returns to the depot's free supply as the unpack pass
+  progresses rather than at the close.
+
+- **Over-claim** — claims across active trips exceeding what the depot owns: two
+  active trips holding the one tent, bring-counts summing past the owned-count, or
+  one participant's per-person piece claimed twice. It is never a legitimate state
+  — reality cannot be in it — so it is guarded against when adding gear to an
+  active trip, when activating a draft, and when reopening a closed trip. Because
+  quartermasters work offline, it cannot be _prevented_ outright; an over-claim
+  that arrives through sync is surfaced and resolved by hand, never silently
+  discarded.
 
 - **Trip planning** — the activity of setting up a trip: choosing participants,
   building its gear list, setting quantities and tasks. Precedes packing.
@@ -195,8 +238,9 @@ them.
 
 - **Entry** — one line on a gear list. An entry references a piece of depot gear
   (or is a trip-only piece) and carries that gear's **trip state** — packing
-  status, trip residence, and, for a counted entry, its bring-count. An entry
-  may reference an item or a container.
+  status, trip residence, its **unpack outcome** once the trip is being unpacked,
+  and, for a counted entry, its bring-count. An entry may reference an item or a
+  container.
 
   - **Trip item** _(informal gloss)_ — everyday name for the common case, an
     entry that references an item. Not the primary term: an entry can equally
@@ -230,8 +274,8 @@ them.
 - **Trip residence** — where an entry or a container sits _within a trip's own
   packing world_: in a trip container, or loose on the trip. The trip-scoped
   instance of **resides in**, independent of the gear's home arrangement and of
-  any other trip's packing. (What **Whereabouts** reports while a trip is
-  active.)
+  any other trip's packing. (What **Whereabouts** reports while an entry on an
+  active trip is still unresolved.)
 
 - **Packing status** — how far along an entry (or a per-person piece) is in
   packing. The MVP set is `not packed → staged → packed`; the guaranteed minimum
@@ -253,12 +297,36 @@ them.
 
 - **Unpack pass** — the deliberate, worked-through step that closes a trip:
   walking each piece of gear back to its home, re-homing on the spot anything
-  that now lives somewhere new, and reviewing the trip's notes. A real pass, not
-  an automatic wipe. Returns the depot to being the accurate year-round truth.
+  that now lives somewhere new, recording each entry's **unpack outcome**, and
+  reviewing the trip's notes. A real pass, not an automatic wipe. Returns the
+  depot to being the accurate year-round truth.
+
+- **Unpack outcome** — how one entry, or one per-person piece, ends its trip.
+  Exactly one of:
+
+  - **back** — it came home. Re-homed on the spot if it now lives somewhere new.
+  - **consumed** — it was used up (gas, bars). For counted gear this reduces the
+    **owned-count** by the **consumed-count** (below); the depot really does own
+    fewer.
+  - **lost** — it did not come home and nobody knows where it is. This writes
+    nothing to the depot: the gear's recorded home is kept untouched, and its
+    **whereabouts** reads as **unaccounted for**, naming the trip it was last seen
+    on. Distinct from **retired**, which is a deliberate removal from service;
+    lost gear is still owned, still searchable, and still expected back.
+
+  An entry with no outcome yet recorded is **open**. Trip-only gear takes no
+  outcome — it never entered the depot and is simply cleared at the close.
+
+- **Consumed-count** — for a counted entry resolved as `consumed`, how many of it
+  were used up on this trip; the remainder came back. A trip fact, kept with the
+  trip as history, so past trips answer "how many canisters did the Alps cost us?"
+  The third of the three counts, and deliberately named apart from **owned-count**
+  (how many we own) and **bring-count** (how many we take).
 
 - **Re-home** — during the unpack pass, to record that a piece of gear's home has
   changed (the stuff sack came back into a different box). A single small update
-  to the home arrangement.
+  to the home arrangement. Re-homing gear is also what settles it after it was
+  **unaccounted for**: the most recent fact wins.
 
 - **Trip note** — a low-friction free-text jotting against a trip — an
   observation, reminder, or half-formed idea — added mid-trip or after. A note
@@ -293,6 +361,12 @@ lists are their destinations.
 - **Promote** — to turn a fleeting capture into a durable record: a trip note
   into a maintenance need, a wishlist entry, or a retirement; or a trip-only
   piece of gear into a depot entry that past occurrences link back to.
+- **Gear history** — the append-only account of what has happened to one piece of
+  gear: recorded, moved, listed on a trip, packed, brought back, retired. A
+  **derived** view of changes already recorded, never a second record kept
+  alongside them.
+- **Saved slice** — a named, kept filter combination over the depot, so a slice
+  worked often is reached in one tap instead of rebuilt each time.
 - **Maintenance need** — a known item of upkeep owed on a piece of gear
   (re-waterproof the shell, wax the skis). A visible state of the depot.
 - **Wishlist** — one durable, depot-level want-list of gear that might be

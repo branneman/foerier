@@ -283,3 +283,68 @@ tablet frames and a Google-Fonts CDN link. This doc supersedes those two points
 ask Claude Design to update the boards to add **Roomy** and **Split** frames and
 note the self-hosted-font decision, keeping the visual source and this solution
 design consistent.
+
+### 9.1 Backlog from the domain reconciliation (2026-08-24)
+
+Seven concepts drawn on the boards had no story, glossary entry, or aggregate
+behind them. They were reconciled into
+[`user-stories.md`](user-stories.md), [`ubiquitous-language.md`](ubiquitous-language.md)
+and [`domain-model.md`](domain-model.md); the boards were deliberately **not**
+edited, and owe the changes below in the same pass as the frames and fonts above.
+
+The boards' own **Fidelity** note claims copy and layout are final and should be
+recreated pixel-perfectly, with no scope annotation anywhere — which is the root
+of the problem: a developer building the MVP from them builds Later features. The
+first ask of the pass is therefore that the boards **carry scope**, marking
+anything not in the MVP.
+
+**Mark as Later — the design is right, the timing is not**
+
+- **`LEDGER` group** on Gear detail — becomes story 33, derived from the change
+  log. Keep the design; mark it Later.
+- **Weight totals** — `EST 48.2 KG` in the builder header and footer, `1.9 KG
+  EACH` in gear meta. This is story 16, already tagged Later. Where weight is
+  welded into a composite line (`34 GEAR · 61 PIECES · 18 PER-PERSON · 3
+  TRIP-ONLY · EST 48.2 KG`), the board must also show the **MVP variant without
+  the weight segment**, or the build is left guessing.
+
+**Redraw — the design contradicts the model**
+
+- **Depot `PIECES` rows** (`Piece 1/2 · BOUGHT 2022 · GOOD`) — counted gear has no
+  per-unit identity, deliberately (domain-model §6). Replace the list with the
+  **split-whereabouts quantity line** (`×2 in Crate B · ×2 on Alps 2026`), which
+  is what the Whereabouts card above it already gets right.
+- **The word "Piece"** — reserved, narrowly, for one participant's copy of
+  per-person gear on a trip. The drawn `PIECES` group mixes both senses in one
+  list (`⌂ CRATE B` is a depot location; `▸ ALPS · PACKED M` is a genuine Piece).
+  Per-person Pieces belong only in a trip context.
+- **`OUT` vs `OPEN`** on Unpack — two words for one state, and `OUT` misreads as
+  "still away". Settle on **open**, matching story 11.
+
+**Remove — no story, decided against**
+
+- **Condition and purchase year** (`BOUGHT 2022 · GOOD`). No story asks for
+  either; condition is maintenance territory (story 17, Later) and belongs to gear
+  rather than to units if it ever lands.
+
+**Add — the model now says something the boards do not**
+
+- **Reopening a closed Trip** (stories 11, 32) — a confirmed action on a closed
+  trip, restoring it to Unpack. Needs the confirm sheet (the boards' existing
+  sheet primitive), and the closed-trip ledger row needs an affordance to reach
+  it. The copy should make clear nothing was thrown away at close, and that
+  changing away from `consumed` **offers** to restore the Owned-count rather than
+  doing it silently.
+- **Over-claim warning** (stories 6, 32) — the moment two Active Trips want the
+  same gear, shown when adding, when starting pack-out on a draft, and when
+  reopening. It is a warning, never a block, and never discards work — so it takes
+  the attention colour and the ▲ marker, not a filled red button.
+- **Unaccounted-for gear** (stories 3, 11) — `▲ LAST SEEN: TESSIN 2025` with
+  `RESOLVE`, already drawn on **Find**, is now MVP and should read consistently on
+  Gear detail and in the Depot's Whereabouts column.
+- **Trip phases moving backwards** (story 32) — the boards' phase chip is right as
+  drawn, but the phase must be reachable in both directions, and the CTA is a
+  suggestion rather than the only route.
+- **Optional Trip dates** (story 5) — drawn throughout and now correct, but the
+  boards should also show a Trip **without** dates, since they are optional and a
+  Draft usually has none.

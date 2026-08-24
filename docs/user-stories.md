@@ -212,10 +212,17 @@ Acceptance criteria:
 
 - I can look up Gear by name and see its full Home path: which Container, inside
   which Container, at which Place.
-- When Gear is packed for a Trip that is underway or being packed, its
-  Whereabouts shows where it sits on the Trip — inside a Container, or Loose —
-  instead of only its idle Home. (Whereabouts is derived on demand, never
-  stored.)
+- When Gear is listed on an **Active Trip** — one in Pack-out, On trip, or
+  Unpack (story 32) — its Whereabouts shows where it sits on the Trip — inside a
+  Container, or Loose — instead of only its idle Home. (Whereabouts is derived on
+  demand, never stored.)
+- For **Counted** and **Per-person** Gear, Whereabouts is a **quantity split**,
+  not one answer: "×2 in Crate B, ×2 on Alps 2026" are both true at once, and the
+  Home slot is kept while units are out.
+- Gear whose last Unpack outcome was `lost` (story 11) reads as **unaccounted
+  for**, naming the Trip it was last seen on, until a later fact settles it — I
+  Re-home it, or a later Trip brings it back. Its recorded Home is never
+  destroyed, so when it turns up I still know where it belongs.
 
 ### 4. People and Ownership
 
@@ -239,8 +246,44 @@ Acceptance criteria:
 
 - I can create a Trip with at least a name that identifies it ("Camping
   Alps 2026").
+- I can optionally record when the Trip runs — a start and an end — so that Trips
+  identify and order themselves without me smuggling a year into the name. Dates
+  stay optional: a Draft Trip often has none yet.
+- **Dates never drive the Trip's phase** (story 32). A Trip does not become On
+  trip because its start date arrived; it moves when I say it has.
 - I can record which of the household People participate — its Participants — and
   change that later.
+
+### 32. Move a Trip through its phases
+
+As a Quartermaster, from planning a Trip to filing it away, I want the Trip to
+say plainly where it stands — being drafted, packed, away, unpacked, done — so
+that I open the app and see what needs doing next instead of reconstructing it
+from a list of half-packed Gear.
+
+Acceptance criteria:
+
+- A Trip stands in exactly one phase: `draft` → `pack-out` → `on trip` →
+  `unpack` → `closed`. It shows me which, and what the next thing to do is.
+- **I move it; it never moves itself.** Nothing advances on a date, a timer, or a
+  count of packed Gear (story 5).
+- **A phase never locks anything.** I can add a forgotten Entry during Pack-out,
+  Re-home during the Trip, mark something packed while Unpacking. The phase
+  describes what is happening; it does not police it.
+- **I can move it back**, not just forward — I said we had left, then found the
+  duffel still in the hall.
+- Only Trips in Pack-out, On trip, or Unpack are **Active** — those are the ones
+  whose packing counts: Whereabouts reports them (story 3) and they hold Gear
+  against other Trips (story 6). A Draft Trip and a closed Trip hold nothing.
+- Starting Pack-out on a Draft Trip is where an overlap with another Active Trip
+  surfaces (story 6) — the moment I would actually have to choose.
+- **Closing is gated** on the Unpack pass being finished (story 11), and
+  **reopening a closed Trip is a deliberate, confirmed act** — the same weight as
+  deleting one (story 14), because it makes settled history live again. Reopening
+  restores the Trip as it stood; nothing was thrown away to close it.
+- Reopening a Trip makes it Active again and so may collide with a Trip started
+  since. The app tells me — it never refuses to reopen, because correcting the
+  record must not be blocked by an unrelated Trip.
 
 ### 6. Build the Trip's Gear list from the Depot
 
@@ -260,6 +303,17 @@ Acceptance criteria:
 - Deciding not to bring something means **removing its Entry from the Trip** —
   there is no "not coming" state (story 9). Its absence is recoverable by
   filtering (story 13), and Promoting Trip-only Gear into the Depot is story 21.
+- **Two Active Trips cannot both take the same Gear.** The Depot's supply is
+  finite, so when I add Gear that an Active Trip already holds, the app tells me
+  before I create a contradiction: Single Gear can be on one Active Trip; Counted
+  Bring-counts across Active Trips cannot exceed the Owned-count; Per-person Gear
+  is per Participant, so two Trips may take it for two different People.
+- **Draft Trips may overlap freely** — I plan two Trips ahead in peace, and the
+  clash surfaces when I start packing the second (story 32).
+- Because we both work offline, this cannot always be caught as it happens. If two
+  Devices claim the same Gear while apart, the app shows me the clash and I settle
+  it by removing the Entry from one Trip. **Nothing I recorded is ever discarded
+  to resolve it.**
 
 ### 7. Quantify Gear: Single, Per-person, or Counted
 
@@ -351,13 +405,41 @@ Acceptance criteria:
 - During the Unpack pass each piece of Gear returns to its Home; anything that now
   lives somewhere new I can Re-home on the spot (the stuff sack came back into a
   different box; the clothing went back to the wardrobe).
-- I review the Trip's **Notes** (story 12) as part of the pass — keeping the
-  useful ones as reference and discarding the rest.
-- Once the Trip is closed, its packed arrangement and Container Journeys are
-  cleared, but the Trip is kept as history (story 14).
+- Every Entry and every Per-person Piece takes an **Unpack outcome** — exactly one
+  of:
+  - **`back`** — it came home.
+  - **`consumed`** — it was used up. For Counted Gear I record how many (its
+    **Consumed-count**); that many come off the Owned-count, because we really do
+    own fewer now. The rest came back.
+  - **`lost`** — it did not come home and I do not know where it is.
+- An Entry with no outcome yet is **open**. Trip-only Gear takes no outcome: it
+  never entered the Depot and is simply cleared when the Trip closes.
+- **`lost` is honest, not final.** It changes nothing in the Depot: the Gear keeps
+  its recorded Home, stays searchable, and reads as **unaccounted for** wherever I
+  look it up (story 3), naming this Trip as where it was last seen. It is settled
+  by the next thing I learn — I Re-home it when it turns up, or a later Trip
+  brings it back. It is **not** a Retirement (story 2): the Gear is still ours and
+  still expected.
+- **I cannot close the Trip until nothing is open.** The button tells me how many
+  remain ("Close trip — 6 open") and only becomes available at zero. There is no
+  way to close around it — and none is needed, because `lost` is always a truthful
+  answer for anything I genuinely cannot account for. This gate is what stops the
+  Depot drifting after every Trip.
+- Marking an Entry resolved **hands its Gear straight back** — mid-pass, before
+  the Trip closes: its Whereabouts reads Home again (story 3) and another Trip may
+  claim it (story 6). Putting things away as I go is immediately true, not true
+  only at the close.
+- Once the Trip is closed it is kept as history (story 14), and **nothing is
+  destroyed** to close it: its packed arrangement and Container Journeys simply
+  stop having effect, and its outcomes and Consumed-counts are kept — so I can ask
+  later how many gas canisters the Alps cost us.
+- **I can reopen a closed Trip** (story 32) when I closed too early, or when the
+  tent I marked `lost` turns up in November. Reopening restores the Trip exactly as
+  it stood and lets me change an outcome. Changing away from `consumed` **offers**
+  to put the Owned-count back and waits for me to confirm — it never silently
+  rewrites a count I may have already corrected by hand.
 - Richer outcomes ride on Later features: Promoting a Note into a maintenance
-  need (story 17), the wishlist (story 18), or a retirement (story 19); or
-  dropping a Counted consumable that ran down (story 7).
+  need (story 17), the wishlist (story 18), or a retirement (story 19).
 
 ### 12. Trip notes
 
@@ -413,8 +495,8 @@ Acceptance criteria:
 - Deleting a Trip requires a deliberate, confirmed act; it is discouraged, not
   routine.
 - A new Trip Started from a past one takes over its Gear list, Bring-counts,
-  Pre-trip tasks, and kept reference Notes (story 12); Packing status and
-  Container Journeys start fresh.
+  Pre-trip tasks, and kept reference Notes (story 12); Packing status, Container
+  Journeys, Unpack outcomes, Consumed-counts, and dates all start fresh.
 
 ### 15. Pre-trip tasks
 
@@ -488,6 +570,55 @@ that already protects history in the MVP (story 2), so that the active Depot
 reflects today while the past stays true. A retirement can also be raised by
 Promoting a Trip note (story 12) — "the old stove finally died", noticed at the
 Unpack pass, becomes a retirement.
+
+### 33. See a piece of Gear's history
+
+As a Quartermaster, during Inventory management, I want to see what has happened
+to one piece of Gear — when we got it, where it has lived, which Trips it went
+on, when it came back — so that the Depot answers questions about the past and
+not only about today.
+
+Acceptance criteria:
+
+- A piece of Gear shows an append-only account of its own life: recorded, moved,
+  listed on a Trip, packed, brought back, lost, retired — each with when, and by
+  which of us.
+- The account is **derived from changes already recorded**; foerier keeps no
+  second history alongside them, and nothing can be edited into it by hand.
+- It reads as a ledger, in the app's plain voice: facts and dates, no narrative.
+
+### 34. Save a slice of the Depot
+
+As a Quartermaster, during Inventory management, I want to name and keep a filter
+combination I use often (story 13) — "our kid's Gear", "everything `bushcraft`
+not in a Trip" — so that a slice I work weekly is one tap away instead of rebuilt
+each time.
+
+Acceptance criteria:
+
+- I can name and keep any combination story 13 can express, and reach it again
+  later.
+- A saved slice survives the things it points at changing: a Tag renamed, a
+  Person or Place removed. It tells me plainly when part of it no longer applies
+  rather than silently returning the wrong Gear.
+- I can rename and delete saved slices.
+
+### 35. Act on many pieces of Gear at once
+
+As a Quartermaster, during Inventory management, I want to select several pieces
+of Gear and act on them together — move, Tag, set owner, Retire — so that
+re-organising a shelf is one action rather than twenty.
+
+Acceptance criteria:
+
+- I can select several pieces of Gear from a list and apply Move, Tag, Set owner,
+  or Retire to all of them at once.
+- The result is exactly what doing each one by hand would have produced, and I
+  can undo it as one action.
+- Note this needs **no new domain concept** — each verb already exists for a
+  single piece of Gear (story 2, story 4, story 13), and moving a Container
+  already carries its contents (story 1). It is an affordance, not a capability,
+  which is why it can land in any later slice at no structural cost.
 
 ### 20. Configurable per-Trip statuses
 
