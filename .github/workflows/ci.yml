@@ -1,0 +1,110 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Tier 0 — the cheapest tier, and a different class of issue than any
+  # behavioural test covers. Full-repo, never staged-files: these are the exact
+  # three commands the pre-commit hook runs (docs/testing.md).
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+
+  # Tiers 1, 2 and 3 — unit, convergence/merge, and component. No I/O, no
+  # database, no network.
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  # Tier 2s — the real Hono app against a real Postgres, over HTTP.
+  server-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: foerier
+          POSTGRES_PASSWORD: foerier
+          POSTGRES_DB: foerier_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgres://foerier:foerier@localhost:5432/foerier_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run test:server
+
+  # Both images, tagged with the commit SHA and `latest`. Publishing them is
+  # the whole of this repository's side of the deployment contract: what picks
+  # them up, and where they run, is the infrastructure repository's business.
+  build-push:
+    if: github.event_name == 'push'
+    needs: [static-analysis, tests, server-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - image: foerier-api
+            dockerfile: api/Dockerfile
+          - image: foerier-app
+            dockerfile: app/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          build-args: GIT_SHA=${{ github.sha }}
+          tags: |
+            ghcr.io/branneman/${{ matrix.image }}:latest
+            ghcr.io/branneman/${{ matrix.image }}:${{ github.sha }}
+
+  # Tier 4 (contract, polling GET /api/v1/version for the pushed SHA) and
+  # Tier 5 against the deployed site are deliberately absent until the
+  # infrastructure repository can actually deploy these images. Adding jobs
+  # that cannot pass yet would only teach us to ignore a red pipeline.
+  #
+  # Tier 5 runs locally in the meantime: `npm run test:e2e`.

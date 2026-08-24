@@ -898,3 +898,84 @@ Named so they are not built ahead of need:
 The domain-model [seams](domain-model.md#10-seams) (configurable status,
 promotion, weight, sharing, …) are unaffected by this design and attach as their
 stories are built.
+
+## 12. Implementation decisions
+
+Settled on 2026-08-24, when the first code landed. These are the calls the
+sections above deliberately left open, plus the ones the walking skeleton
+forced. Recorded here rather than in the decisions table at the top because
+they are one level down from architecture: they bind the toolchain, not the
+design.
+
+| Concern | Decision |
+| --- | --- |
+| Package manager | **npm workspaces** (`shared` · `ui` · `api` · `app`) |
+| Node | `.nvmrc` pins **24.19.0** exactly; `engines: >=24.19 <25`; images use the `node:24-alpine` **major** tag |
+| TypeScript | pinned **exactly** (5.9.2), never a range |
+| Strictness | `strict` + `exactOptionalPropertyTypes` + `noUncheckedIndexedAccess` + `noImplicitOverride` + `noFallthroughCasesInSwitch` + `verbatimModuleSyntax` + `isolatedModules` + `erasableSyntaxOnly` |
+| UUIDv7 | the **`uuid`** package's `v7()`, behind an injected `IdSource` |
+| Package linking | **source-exporting** internal packages — no build step, no `dist` |
+| Naming | ubiquitous-language terms **verbatim**; ops mirror the wire; state is camelCase |
+| Formatting | Prettier: no semicolons, single quotes, 80 columns; markdown excluded |
+
+**Why Node's major tag in images but an exact `.nvmrc`.** A TypeScript minor
+can change type-checking outcomes, so an unpinned compiler turns an unrelated
+commit red — that is the surprise worth paying a pin for. A Node *patch*
+carries security fixes and changes nothing observable, and there is no Renovate
+or Dependabot here yet, so pinning the base image exactly would leave it
+quietly unpatched. Humans and CI share one exact version; the image takes
+patches as it rebuilds.
+
+**Why `exactOptionalPropertyTypes` in particular.** [`sync-protocol.md`
+§1.3](sync-protocol.md) makes *absent is not null* a **protocol** rule: an
+absent payload field leaves a register alone, an explicit `null` clears it.
+This flag is the type-level enforcement of exactly that distinction. Without
+it, `{ start?: string | null }` lets the two collapse into each other and the
+compiler never notices.
+
+**Why ops are the one un-idiomatic corner.** Op envelopes and payloads keep the
+wire's `snake_case` and are **never transformed** in either direction, while
+folded state, selectors, and UI props are ordinary camelCase. [`sync-protocol.md`
+§1.2](sync-protocol.md) obliges a reader to *retain unknown fields verbatim*
+while ignoring them for the fold; a camelCase mapping layer over the envelope
+would be precisely the place that obligation breaks, on the one interface that
+must stay forward-compatible forever. Kysely maps database rows, and that is
+the only mapping in the system.
+
+**Why source-exporting packages.** `shared` and `ui` point their `exports` at
+raw TypeScript. Vite compiles them for the app, esbuild bundles them into the
+api image, and Vitest imports them directly — so there is no build ordering in
+CI, in either Dockerfile, or in watch mode, and no stale `dist` to mislead a
+debugging session. Project references buy incremental builds that a repo this
+size does not need.
+
+**Unused locals and parameters are ESLint's job, not `tsc`'s.** Both tools can
+report them; having both means every unused import is two errors. `tsc` owns
+types, ESLint owns correctness-style rules ([testing.md](testing.md) Tier 0).
+
+**Prettier does not touch markdown.** Every design doc here is hand-wrapped
+prose at 80 columns, and Prettier's markdown formatter reflows it into enormous
+diffs that hide the actual change. `docs/design/` is excluded for a stronger
+reason: the `*.dc.html` boards are the visual source of truth, exported
+byte-exact.
+
+### 12.1 Deviations from §8's S0, and why
+
+- **`landing/` is not scaffolded.** §7 lists five workspaces and S0 asks for the
+  GitHub Pages workflow. Four are built; `landing` waits until there is a `ui/`
+  worth showing off. Nothing depends on it — it carries no ops, no auth, and no
+  household data.
+- **Deployment is not in this repository.** S0 asks for the Caddy site blocks,
+  Watchtower, and the compose stack. Those moved to a separate infrastructure
+  repository so that `health` and foerier never learn about each other. This
+  repo's whole side of the contract is: publish `foerier-api` and `foerier-app`
+  to GHCR tagged `:latest` and `:<sha>`, listen on a port, run migrations at
+  start, and answer `GET /api/v1/version`. `docker-compose.dev.yml` is local
+  development only.
+- **Tier 4 and the deployed-target Tier 5 are absent from CI** until that
+  infrastructure can deploy the images. Adding jobs that cannot pass would only
+  teach us to ignore a red pipeline. Tier 5 runs locally against a production
+  build in the meantime.
+- **The API's response headers landed with the skeleton**, not with auth. They
+  are baseline hygiene for every response, and `Cache-Control: no-store` is
+  specifically what makes `/version` usable as a deploy signal.

@@ -1,0 +1,61 @@
+/**
+ * Element defaults (`frontend-design.md` §4.1).
+ */
+@layer base {
+  html {
+    /* Respect the reader. No 62.5% trick — see tokens.css. */
+    font-size: 100%;
+  }
+
+  body {
+    background: var(--color-bg-base);
+    color: var(--color-ink-primary);
+    /* The `size/line-height` token pairs are designed to be used in the `font`
+       shorthand, which requires a family in the same declaration. */
+    font: var(--text-body) var(--font-ui);
+  }
+
+  :focus-visible {
+    outline: none;
+    border-color: var(--color-brand-amber);
+    box-shadow: var(--focus-ring);
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+  }
+
+  /*
+   * Touch targets have a physical floor: minimum tap size is about finger
+   * size, which does not shrink when a reader picks a smaller font. Targets
+   * may grow with text but never fall below 48px
+   * (`frontend-design.md` §2.1).
+   */
+  button,
+  [role='button'],
+  a.target,
+  input,
+  select {
+    min-height: max(3rem, 48px);
+  }
+
+  /* Reduced motion and reduced data are gated in exactly one place. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  @media print {
+    body {
+      background: #fff;
+      color: #000;
+    }
+  }
+}

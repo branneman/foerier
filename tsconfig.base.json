@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+
+    // Node 24 runs TypeScript directly by stripping types, which only works
+    // for syntax that erases to whitespace — no enums, no parameter
+    // properties, no namespaces. `api` relies on that for `npm run dev:api`,
+    // so the constraint is enforced repo-wide rather than discovered at
+    // runtime in one package.
+    "erasableSyntaxOnly": true
+  }
+}

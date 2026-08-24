@@ -1,0 +1,86 @@
+/**
+ * The shell: the five named layout modes (`frontend-design.md` §3.1).
+ *
+ * Every breakpoint is in `em`, so a reader who zooms or raises their font-size
+ * crosses each boundary at the right *perceptual* point rather than at a fixed
+ * pixel width. That is a near-free accessibility win and the reason none of
+ * these are written in px.
+ *
+ * Modes are named for what structurally changes, never for a target device:
+ *
+ *   Compact     < 30em   bottom tabs · single column · gutter 12
+ *   Comfortable 30–40em  bottom tabs · single column · gutter 16
+ *   Roomy       40–52em  bottom tabs · single column, capped measure · 20–24
+ *   Split       52–64em  icon rail   · list + detail two-pane
+ *   Desktop     >= 64em  sidebar     · two/three-pane, centred at 1120
+ */
+@layer layout {
+  .shell {
+    --gutter: var(--space-12);
+    --nav-size: 0px;
+
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100svh;
+  }
+
+  .shell__main {
+    padding-inline: var(--gutter);
+    padding-block: var(--space-16);
+  }
+
+  @media (min-width: 30em) {
+    .shell {
+      --gutter: var(--space-16);
+    }
+  }
+
+  @media (min-width: 40em) {
+    .shell {
+      --gutter: var(--space-24);
+    }
+
+    .shell__main {
+      /* Roomy exists specifically to kill the wasted side space a
+         393px-designed single column leaves on a large phone or foldable. */
+      max-width: 45rem;
+      margin-inline: auto;
+      width: 100%;
+    }
+  }
+
+  @media (min-width: 52em) {
+    .shell {
+      --nav-size: 3.5rem; /* 56px icon rail */
+      grid-template-rows: auto 1fr;
+      grid-template-columns: var(--nav-size) 1fr;
+    }
+  }
+
+  @media (min-width: 64em) {
+    .shell {
+      --nav-size: 13.5rem; /* 216px labeled sidebar */
+    }
+
+    .shell__main {
+      max-width: 70rem; /* 1120px */
+    }
+  }
+
+  /*
+   * The signed-out shell keeps one structure across all five modes; the
+   * layout ladder applies to signed-in surfaces only
+   * (`docs/design/README.md` §8).
+   */
+  .shell--signed-out {
+    grid-template-rows: 1fr;
+    grid-template-columns: 1fr;
+    place-items: center;
+  }
+
+  @media print {
+    .shell__nav {
+      display: none;
+    }
+  }
+}

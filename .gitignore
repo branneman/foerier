@@ -3,3 +3,17 @@ examples/
 
 # macOS
 .DS_Store
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Tooling caches
+.vite/
+playwright-report/
+test-results/
+
+# Claude Code worktrees
+.claude/worktrees/

@@ -1,0 +1,19 @@
+@layer components {
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    /* Mark-to-text gap is 0.35 x cap height (docs/design/README.md, Assets).
+       In `em` so it tracks the wordmark's own size rather than the root. */
+    gap: 0.35em;
+    color: var(--color-ink-primary);
+  }
+
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 2em;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: lowercase;
+  }
+}

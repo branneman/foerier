@@ -1,0 +1,42 @@
+# Local development only — a Postgres to develop and run Tier 2s against.
+#
+# This is NOT the deployment stack. How foerier is deployed (the box, the
+# shared front door, TLS, Watchtower, backups) is owned by the infrastructure
+# repository, and deliberately appears nowhere in this one: an app repo's whole
+# obligation is to publish an image, listen on a port, and answer
+# GET /api/v1/version.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#   npm run migrate --workspace api
+#   npm run test:server
+#
+# Port 5433 rather than 5432 so this never fights a Postgres already running
+# locally for another project.
+
+# Pinned rather than derived from the directory name. Compose names volumes
+# `<project>_<volume>`, so without this a git worktree — whose directory is not
+# `foerier` — would silently get its own empty database instead of the one you
+# have been developing against.
+name: foerier-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: foerier_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: foerier
+      POSTGRES_PASSWORD: foerier
+      POSTGRES_DB: foerier_test
+    ports:
+      - '127.0.0.1:5433:5432'
+    volumes:
+      - foerier_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U foerier -d foerier_test']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  foerier_pgdata_dev: {}

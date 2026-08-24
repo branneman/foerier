@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+examples/
+
+# The Claude Design boards are the visual source of truth and are exported
+# byte-exact from the design tool. Reformatting them would destroy that.
+docs/design/
+
+# Markdown in this repo is hand-authored prose, wrapped by hand at 80 columns.
+# Prettier's markdown formatter reflows it and produces enormous, meaningless
+# diffs across the design docs. Prettier is for code here, not for prose.
+*.md

@@ -1,0 +1,149 @@
+/**
+ * Design tokens, from the Foundations board (`docs/design/README.md`).
+ *
+ * Three layers (`frontend-design.md` §2.2): primitive holds the raw scale,
+ * semantic holds intent and is the ONLY layer that flips theme, component
+ * holds local knobs where a component needs one.
+ *
+ * All sizes are `rem`, authored by dividing the design boards' px by 16.
+ * There is deliberately no `62.5%` root trick — the root stays at 100% so the
+ * reader's own font-size setting survives (`frontend-design.md` §2.1).
+ */
+@layer tokens {
+  :root {
+    /* ---- Primitive: spacing (4px base, snapped) ---- */
+    --space-4: 0.25rem;
+    --space-8: 0.5rem;
+    --space-12: 0.75rem;
+    --space-16: 1rem;
+    --space-20: 1.25rem;
+    --space-24: 1.5rem;
+    --space-32: 2rem;
+
+    /* ---- Primitive: shape ---- */
+    --radius-pill: 999px;
+    --radius-control: 0.5rem;
+    --radius-card: 0.75rem;
+    --radius-sheet: 1rem;
+    --stroke-rule: 1px;
+    --stroke-chip: 1.5px;
+
+    /* ---- Primitive: type ---- */
+    --font-display:
+      'Bricolage Grotesque', 'Bricolage Grotesque fallback', Georgia, serif;
+    --font-ui: 'Spline Sans', 'Spline Sans fallback', system-ui, sans-serif;
+    --font-mono:
+      'Spline Sans Mono', 'Spline Sans Mono fallback', ui-monospace, monospace;
+
+    --text-display: 1.75rem/2.125rem; /* 28/34 */
+    --text-title: 1.375rem/1.75rem; /* 22/28 */
+    --text-heading: 1.0625rem/1.5rem; /* 17/24 */
+    --text-body: 0.9375rem/1.375rem; /* 15/22 */
+    --text-secondary: 0.8125rem/1.125rem; /* 13/18 */
+    --text-data: 0.8125rem/1.125rem; /* 13/18 mono */
+    --text-label: 0.6875rem/0.875rem; /* 11/14 mono caps */
+
+    --tracking-label: 0.08em;
+
+    /* ---- Primitive: colour, dark ---- */
+    --sage-bg-base: #151a15;
+    --sage-bg-surface: #1f2620;
+    --sage-bg-raised: #28312a;
+    --sage-ink-primary: #e8e5d5;
+    --sage-ink-muted: #97a08c;
+    --sage-ink-faint: #6a7161;
+    --sage-ink-dim: #5e6857;
+    --sage-rule: #333c33;
+    --sage-rule-row: #2a3129;
+    --sage-rule-control: #47523f;
+    --sage-accent: #93bc9f;
+    --amber: #e2a65b;
+    --status-staged-dark: #d3a344;
+    --status-packed-dark: #7bb389;
+    --status-attention-dark: #d98263;
+    --well-dark: #0f130f;
+
+    /* ---- Primitive: colour, light ---- */
+    --parchment-bg-base: #f0ebdd;
+    --parchment-bg-surface: #f9f6ec;
+    --parchment-bg-raised: #ffffff;
+    --parchment-ink-primary: #232820;
+    --parchment-ink-muted: #6a7161;
+    --parchment-rule: #d8d2be;
+    --parchment-accent: #35523f;
+    --amber-light: #b4741f;
+    --status-staged-light: #8a6717;
+    --status-packed-light: #40724b;
+    --status-attention-light: #a84b2f;
+
+    /* ---- Semantic: dark is the default (frontend-design.md §2.4) ---- */
+    --color-bg-base: var(--sage-bg-base);
+    --color-bg-surface: var(--sage-bg-surface);
+    --color-bg-raised: var(--sage-bg-raised);
+    --color-ink-primary: var(--sage-ink-primary);
+    --color-ink-muted: var(--sage-ink-muted);
+    --color-ink-faint: var(--sage-ink-faint);
+    --color-ink-dim: var(--sage-ink-dim);
+    --color-rule: var(--sage-rule);
+    --color-rule-row: var(--sage-rule-row);
+    --color-rule-control: var(--sage-rule-control);
+    --color-accent: var(--sage-accent);
+    --color-brand-amber: var(--amber);
+    --color-status-not-packed: var(--sage-ink-muted);
+    --color-status-staged: var(--status-staged-dark);
+    --color-status-packed: var(--status-packed-dark);
+    --color-status-attention: var(--status-attention-dark);
+    --color-well: var(--well-dark);
+    --color-scrim: rgb(15 19 15 / 0.62);
+    --focus-ring: 0 0 0 2px rgb(226 166 91 / 0.3);
+  }
+
+  /*
+   * Light is opt-in by system preference, and the manual `[data-theme]`
+   * override below outranks it. Only this semantic block changes; nothing
+   * downstream of it knows a theme exists.
+   */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) {
+      --color-bg-base: var(--parchment-bg-base);
+      --color-bg-surface: var(--parchment-bg-surface);
+      --color-bg-raised: var(--parchment-bg-raised);
+      --color-ink-primary: var(--parchment-ink-primary);
+      --color-ink-muted: var(--parchment-ink-muted);
+      --color-ink-faint: var(--parchment-ink-muted);
+      --color-ink-dim: var(--parchment-ink-muted);
+      --color-rule: var(--parchment-rule);
+      --color-rule-row: var(--parchment-rule);
+      --color-rule-control: var(--parchment-rule);
+      --color-accent: var(--parchment-accent);
+      --color-brand-amber: var(--amber-light);
+      --color-status-not-packed: var(--parchment-ink-muted);
+      --color-status-staged: var(--status-staged-light);
+      --color-status-packed: var(--status-packed-light);
+      --color-status-attention: var(--status-attention-light);
+      --color-well: var(--parchment-bg-base);
+      --color-scrim: rgb(35 40 32 / 0.5);
+    }
+  }
+
+  :root[data-theme='light'] {
+    --color-bg-base: var(--parchment-bg-base);
+    --color-bg-surface: var(--parchment-bg-surface);
+    --color-bg-raised: var(--parchment-bg-raised);
+    --color-ink-primary: var(--parchment-ink-primary);
+    --color-ink-muted: var(--parchment-ink-muted);
+    --color-ink-faint: var(--parchment-ink-muted);
+    --color-ink-dim: var(--parchment-ink-muted);
+    --color-rule: var(--parchment-rule);
+    --color-rule-row: var(--parchment-rule);
+    --color-rule-control: var(--parchment-rule);
+    --color-accent: var(--parchment-accent);
+    --color-brand-amber: var(--amber-light);
+    --color-status-not-packed: var(--parchment-ink-muted);
+    --color-status-staged: var(--status-staged-light);
+    --color-status-packed: var(--status-packed-light);
+    --color-status-attention: var(--status-attention-light);
+    --color-well: var(--parchment-bg-base);
+    --color-scrim: rgb(35 40 32 / 0.5);
+  }
+}

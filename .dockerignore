@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+**/coverage
+.git
+.github
+.claude
+.husky
+docs
+examples
+test-results
+playwright-report
+*.md

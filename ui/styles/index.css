@@ -1,0 +1,50 @@
+/**
+ * The single stylesheet entry point.
+ *
+ * The layer order is declared here, once, before anything is imported. That is
+ * what makes the cascade boringly predictable: a utility can never lose a
+ * specificity fight to a component, and the fallback-first CSS the resilience
+ * layer depends on stays deterministic (`frontend-design.md` §4.1).
+ */
+@layer reset, tokens, base, layout, components, utilities, overrides;
+
+@import './reset.css';
+@import './tokens.css';
+@import './base.css';
+@import './layout.css';
+@import './utilities.css';
+
+/*
+ * Self-hosted variable fonts. `font-src 'self'` in the CSP means a CDN font
+ * would simply not load (`auth-design.md` §8.2), and precaching these is what
+ * makes them available offline.
+ *
+ * `font-display: swap` everywhere. The metric-matched fallback `@font-face`
+ * rules that keep the swap from reflowing are generated at build time by the
+ * Fontaine plugin from these very files, rather than hand-tuned
+ * (`frontend-design.md` §7) — which is why the stacks in tokens.css name
+ * `'… fallback'` families that appear nowhere in this file.
+ */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('../fonts/bricolage-grotesque-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Spline Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../fonts/spline-sans-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Spline Sans Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../fonts/spline-sans-mono-latin.woff2') format('woff2');
+}

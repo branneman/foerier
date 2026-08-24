@@ -1,0 +1,24 @@
+{
+  "name": "@foerier/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "node --watch src/index.ts",
+    "build": "node scripts/build.js",
+    "migrate": "node src/db/migrateCli.ts"
+  },
+  "dependencies": {
+    "@foerier/shared": "*",
+    "@hono/node-server": "^1.13.0",
+    "hono": "^4.6.0",
+    "kysely": "^0.28.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.11.0",
+    "esbuild": "^0.25.0"
+  }
+}

@@ -1,0 +1,73 @@
+@layer components {
+  .nav {
+    grid-row: 3;
+    display: flex;
+    border-top: var(--stroke-rule) solid var(--color-rule);
+    background: var(--color-bg-surface);
+  }
+
+  .navItem {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    min-height: max(3.5rem, 56px);
+    padding-block: var(--space-8);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .navItem[aria-current='page'] {
+    color: var(--color-accent);
+  }
+
+  .syncLine {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--gutter);
+    color: var(--color-ink-faint);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  .emptyState {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding-block: var(--space-32);
+    color: var(--color-ink-muted);
+  }
+
+  .emptyState h1 {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  /*
+   * Split (52em) and Desktop (64em): the bottom tab bar becomes a side rail,
+   * then a labeled sidebar (frontend-design.md §3.1).
+   */
+  @media (min-width: 52em) {
+    .nav {
+      grid-row: 1 / -1;
+      grid-column: 1;
+      flex-direction: column;
+      border-top: 0;
+      border-right: var(--stroke-rule) solid var(--color-rule);
+    }
+
+    .navItem {
+      flex: 0 0 auto;
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# Tier 0, on the whole monorepo — not just the staged files.
+#
+# Deliberate (docs/testing.md, Tier 0): LLM-authored changes tend to leave
+# unrelated files unformatted or half-edited, and a staged-files-only check is
+# blind to exactly that. These are the same three commands CI runs, with no
+# separate fast path, so a green commit means a green pipeline.
+npm run typecheck
+npm run lint
+npm run format:check

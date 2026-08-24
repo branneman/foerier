@@ -1,0 +1,43 @@
+{
+  "name": "foerier",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.19 <25"
+  },
+  "workspaces": [
+    "shared",
+    "ui",
+    "api",
+    "app"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --project shared --project ui --project app --project api",
+    "test:watch": "vitest --project shared --project ui --project app --project api",
+    "test:server": "vitest run --project server",
+    "test:e2e": "playwright test",
+    "dev": "npm run dev --workspace app",
+    "dev:api": "npm run dev --workspace api",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.62.1",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "husky": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "5.9.2",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}

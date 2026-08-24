@@ -1,0 +1,42 @@
+# Serves the built PWA inside the app image, on plain HTTP behind whatever
+# terminates TLS in front of it.
+#
+# The security headers live HERE, in this repo, rather than in the shared front
+# door — they are a property of this application (auth-design.md §8.2), they
+# are version-controlled alongside the code they protect, and a Tier 4 contract
+# test asserts them against the deployed box.
+
+:80 {
+	root * /srv
+	encode zstd gzip
+
+	header {
+		# No 'unsafe-inline', no hashes, no nonces. The build emits zero
+		# inline script and zero inline style, which is what makes this
+		# affordable: fonts are self-hosted and there is no third-party JS
+		# anywhere (auth-design.md §7.4).
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.foerier.app; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		# Belt to the fragment's braces on invite secrets (auth-design.md §3.2).
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "publickey-credentials-create=(self), publickey-credentials-get=(self), camera=(), microphone=(), geolocation=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		-Server
+	}
+
+	# Vite emits content-hashed filenames, so these can never go stale.
+	@hashed path /assets/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+	# The shell and the service worker must not be cached, or an open tab
+	# would never learn that a new version exists.
+	@shell path / /index.html /sw.js /manifest.webmanifest
+	header @shell Cache-Control "no-cache"
+
+	# SPA fallback: /signin and /join are client routes with no file behind
+	# them, and a cold or offline client must still resolve them
+	# (auth-design.md §8.4).
+	try_files {path} /index.html
+	file_server
+}
