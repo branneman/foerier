@@ -46,7 +46,10 @@ or framework choices into the [model](docs/domain-model.md),
   relationships, invariants, domain operations. Conceptual only.
 - [`docs/architecture-design.md`](docs/architecture-design.md)
   — the persistence, stack, sync, auth, hosting, and delivery design. Where all
-  the technical choices live.
+  the technical choices live. Its
+  [**§8 is the slice plan**](docs/architecture-design.md#8-the-slice-plan): the
+  dependency graph over the MVP stories, the ordered vertical slices, and what
+  each must preserve rather than deliver.
 - [`docs/sync-protocol.md`](docs/sync-protocol.md) — one level below the
   architecture: the op envelope, the HLC, conflict resolution, the **MVP op
   catalogue**, the evolution rules, the `/sync` wire format, and first-sync

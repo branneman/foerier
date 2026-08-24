@@ -632,6 +632,15 @@ something usable:
 Story 31 is not a slice; it is a property that each of the four must preserve,
 and it is enforced by the isolation tests rather than by a screen.
 
+**Interleaving with the domain slices.** The
+[architecture spec §8](architecture-design.md#8-the-slice-plan) places these four
+inside the full MVP order and makes one correction to the list above: **slice 2
+cannot precede story 4**, because it issues Invites for People *recorded* in the
+Household. It therefore lands after the People slice. Nothing is lost — slice 1
+already admits a second Quartermaster on a Maintainer-minted Invite (§3.4); only
+in-app issuance waits. Slices 3 and 4 introduce no ops and touch `shared/` not at
+all, so they float and may be built alongside any domain slice.
+
 ## 14. What this document does not settle
 
 - **Screens.** [`docs/design/`](design/) has no auth boards yet — no sign-in,
