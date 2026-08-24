@@ -500,9 +500,31 @@
       <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.7">Voice holds inside sheets: facts first (&#8220;It loses access at its next sync.&#8221;), consequences with counts (&#8220;&#9650; 4 changes not yet synced. Signing out clears them.&#8221;), no questions except the title.</div>
     </div>
   </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:28px 0 10px">10 — SCOPE TAG (LATER)</div>
+  <div style="display:grid; grid-template-columns:396px 1fr; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">THE TAG</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">LATER</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em">MONO 8/600 · LS .08EM · INK/FAINT · 1PX DASHED #47523F · RADIUS 3 · PADDING 2×5</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; margin-top:14px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">61 PIECES · EST 48.2 KG</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">LATER</span>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5; margin-top:8px">61 PIECES</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-top:10px; line-height:1.7">TAG SITS INLINE AFTER THE ELEMENT IT SCOPES; WHERE THAT ELEMENT IS A SEGMENT OF A COMPOSITE LINE, THE MVP VARIANT IS DRAWN ALONGSIDE (AS ABOVE).</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">RULE</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.7">LATER marks an element that is drawn final and decided, but not MVP: the ledger group on Gear detail (story 33) and every weight total (story 16). Build the MVP without tagged elements; their design does not change when they land. Dashed border = not yet committed, the same grammar as draft cards and future journey chips. The tag never recolours or dims the element it scopes — the element stays exactly as it will ship.</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.7">It is a scope marker, not a status: never ▲, never amber, never on interactive states. Anything untagged on the boards is MVP.</div>
+    </div>
+  </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1144,&quot;height&quot;:3760}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1144,&quot;height&quot;:4120}}">
 class Component extends DCLogic {
   state = { status: 1, stage: 2, people: {M:2, E:1, K:0}, count: 2, filters: {kind:true, person:true, tag:false, status:false}, auth: 0 };
   qr(seed) {
