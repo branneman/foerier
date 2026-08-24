@@ -27,6 +27,10 @@ that settles the two formerly-open decisions:
    auth; one monorepo on the existing Hetzner box. See the spec for the full
    picture and [`docs/testing.md`](docs/testing.md) for the test strategy.
 
+The op log itself is now specified as a concrete contract in
+[`docs/sync-protocol.md`](docs/sync-protocol.md) — envelope, HLC, merge rules,
+the full MVP op catalogue, and the `/sync` wire format.
+
 **The conceptual domain docs stay persistence-ignorant.** The schema and stack
 live in the architecture spec, and only there — do not smuggle tables, fields,
 or framework choices into the [model](docs/domain-model.md),
@@ -43,6 +47,11 @@ or framework choices into the [model](docs/domain-model.md),
 - [`docs/architecture-design.md`](docs/architecture-design.md)
   — the persistence, stack, sync, auth, hosting, and delivery design. Where all
   the technical choices live.
+- [`docs/sync-protocol.md`](docs/sync-protocol.md) — one level below the
+  architecture: the op envelope, the HLC, conflict resolution, the **MVP op
+  catalogue**, the evolution rules, the `/sync` wire format, and first-sync
+  bootstrap. The contract every vertical slice is cut from, and the one interface
+  that must stay forward-compatible forever.
 - [`docs/frontend-design.md`](docs/frontend-design.md) — one level below the
   architecture: scaling, responsive system, CSS architecture, `ui/` package,
   resilience.
@@ -68,6 +77,10 @@ ordered so every release gives the user something immediately usable, however
 thin. No waterfall gate. A slice is naturally new op type(s) + reducer +
 selector + endpoint + UI, and lands in **one atomic commit** (it is one
 monorepo).
+
+A slice's op types come from the catalogue in
+[`docs/sync-protocol.md`](docs/sync-protocol.md) §4; new ones follow its naming
+and evolution rules (§5).
 
 This coexists with offline-first only under one **non-negotiable discipline:**
 installed PWA clients run older app versions in the wild and may hold ops queued

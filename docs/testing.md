@@ -34,7 +34,7 @@ the purity of the merge logic and the convergence of divergent replicas.
 [T2s] Server integration ← real Hono + local Postgres (foerier_test), endpoints + household isolation
 [T3] Component          ← React Testing Library, core-flow screens (F1–F5)
 [T2] CONVERGENCE / MERGE ← ≥2 divergent op-logs → exchange → identical state (property-based)
-[T1] UNIT               ← op-log fold, LWW + smart rules, HLC, selectors, domain invariants
+[T1] UNIT               ← op-log fold, LWW + tombstones, HLC, selectors, domain invariants
 [T0] Static analysis    ← tsc, ESLint(+react-hooks), Prettier, Husky full-project pre-commit
 ```
 
@@ -68,8 +68,10 @@ thing written for any new logic. Nearly all of it lives in `shared/`.
 Covers the crown jewels:
 
 - **the op-log fold** — applying an op to state, snapshotting, tail-replay;
-- **conflict resolution** — per-field last-writer-wins, and the smart-rule
-  overrides (delete/retire-wins, packing-status furthest-stage-wins);
+- **conflict resolution** — per-field last-writer-wins by `(hlc, device_id)`,
+  tombstone semantics (a removal survives a later edit; only an explicit restore
+  clears one), and per-element registers for tags and participants
+  ([`sync-protocol.md` §3](sync-protocol.md));
 - **Hybrid Logical Clock** — monotonicity, merge on receive, tiebreak ordering,
   behaviour under skewed device clocks;
 - **selectors** — Whereabouts (home vs. trip residence), the emergent containment
@@ -94,12 +96,16 @@ Spin up ≥2 in-memory replicas sharing the real `shared/` reducer. Let them
 diverge offline, exchange ops through a **fake transport**, and assert they
 **converge to byte-identical state regardless of op arrival order** — expressed
 **property-based** (generate random interleavings of a random op set; the
-invariant is order-independent convergence). Specific scenarios pin the smart
-rules: a delete racing an edit resolves to deleted; concurrent packing-status
-changes resolve to the furthest stage; a field with no override (e.g. two
-`bring-count` edits) resolves by plain per-field LWW. Also covers the outbox:
-retry/backoff, idempotent re-send of the
-same UUIDv7 op, and pull-cursor advancement.
+invariant is order-independent convergence — the direct consequence of `apply`
+being commutative, associative, and idempotent). Specific scenarios pin the
+edges: a delete racing an edit resolves to deleted; two `bring-count` edits
+resolve by plain LWW on `(hlc, device_id)`; concurrent tagging **unions** rather
+than clobbering; and the two conditions a merge must *not* resolve — an
+over-claim, and a containment cycle from two concurrent moves — are surfaced and
+broken identically on every replica
+([`sync-protocol.md` §3.6](sync-protocol.md)). Also covers the outbox:
+retry/backoff, idempotent re-send of the same UUIDv7 op, per-op push outcomes and
+the dead-letter path, and pull-cursor advancement.
 
 **Tooling:** Vitest in Node, real reducer + fake transport + fake clock/store. No
 real network, no real DB — this tier proves the *algebra*, not the wiring.
@@ -203,6 +209,17 @@ op-format must stay tolerant. A dedicated Tier 2 group replays **op fixtures
 captured from a previous app version** through the current reducer and asserts they
 still fold correctly — the guard that keeps expand-contract honest as vertical
 slices ship.
+
+The obligations under test are enumerated in
+[`sync-protocol.md` §5.3](sync-protocol.md): an unknown op type is retained
+rather than discarded, unknown fields and enum values are ignored without
+crashing or coercing, absent is never treated as null, and a stored op is never
+mutated. §5.4's frozen list is the other half — a test that an existing op type's
+effect on folded state has not drifted.
+
+**Capture a fixture in the same commit as the slice that introduces an op type.**
+A fixture written later is captured from a format that has already drifted, and
+proves nothing.
 
 ## CI triggers summary
 

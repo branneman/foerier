@@ -18,7 +18,7 @@ stack live here, and only here.
 | Concern | Decision |
 | --- | --- |
 | Persistence model | Per-aggregate **operation log** in Postgres; state is a fold of ops |
-| Conflict resolution | Per-field **last-writer-wins** by **Hybrid Logical Clock**, silent, with a small smart-rule set |
+| Conflict resolution | Per-field **last-writer-wins** by **Hybrid Logical Clock**, silent, one rule ([contract](sync-protocol.md)) |
 | Client store | Op-log folded into a normalised **in-memory** store; IndexedDB for the log + snapshot |
 | Client stack | Vite + React + TypeScript, **wouter** router, `vite-plugin-pwa`, build-time CSS |
 | Server | **Hono** + **Kysely** + Postgres 17 |
@@ -86,25 +86,38 @@ device wall-clocks are the classic footgun: one phone with a wrong clock would
 win — or lose — every conflict forever. An HLC is monotonic and merges physical
 time with a logical counter, so ordering survives clock skew and stays stable.
 
-**Resolution — per field, silent, with a few smart rules.** The default is
-**last-writer-wins per field** by HLC (not per record — editing a piece of
-gear's home and its tags concurrently never collide). Resolution is applied
-**silently**; there is no conflict UI. A short list of fields override plain LWW
-because "drop the older one" would lose real information:
+**Resolution — per field, silent, one rule.** **Last-writer-wins per field** by
+HLC (not per record — editing a piece of gear's home and its tags concurrently
+never collide), tiebroken on device id. Resolution is applied **silently**; there
+is no conflict UI.
 
-- **delete / retire wins** over a concurrent edit (a race between removing a
-  thing and editing it resolves to removed);
-- **packing status = furthest-stage wins** (`packed` beats `staged` beats
-  `not packed`) — marking something packed is a real-world observation, not just
-  a later keystroke.
+**Delete / retire wins** over a concurrent edit — and it needs no special rule to
+do so: a tombstone is an ordinary per-field register, and an edit never writes
+it, so a removal survives a later rename. Only an explicit restore clears one.
 
-The exact override set is small and lives in `shared/` as pure, exhaustively
-unit-tested functions. Everything else is plain per-field LWW.
+This spec originally also carried *packing status = furthest-stage wins*. It has
+been **dropped** in favour of plain LWW, because it is in direct conflict with
+stories 9 and 32 — if `packed` always wins, a mistaken `packed` can never be
+un-marked. [`sync-protocol.md` §3.3](sync-protocol.md) records the reasoning, the
+convergent-but-heavier alternative that was rejected, and the fact that the
+decision is reversible additively.
+
+So the resolution logic in `shared/` is one comparator plus tombstone semantics,
+pure and exhaustively unit-tested. The two conditions that *cannot* be resolved
+by a merge — an over-claim, and a containment cycle produced by two concurrent
+moves — are computed by selectors and surfaced for a quartermaster, never fixed
+by discarding a write.
 
 **Tolerant reader, additive ops.** Ops are only ever *added*; an existing op
 type never changes meaning. Readers ignore unknown fields and tolerate unknown
 op types rather than rejecting them. This is what lets offline clients on older
 app versions keep syncing (see §7).
+
+**The concrete contract** — the exact envelope encoding, the HLC's serialised
+form and drift rule, the full MVP op catalogue, the evolution rules, and the
+`/sync` wire format — is
+[`docs/sync-protocol.md`](sync-protocol.md). This section states the shape; that
+document is what the implementation is built from.
 
 ## 3. Client architecture
 
@@ -152,6 +165,11 @@ status-chip cycling; **no async in any render path**.
 Sync is background and off the user's critical path — server latency, cold
 starts, and brief overloads never reach the UI.
 
+The shape is below; the **contract** — request and response bodies, cursor
+semantics, batch caps, per-op outcomes, the error classes and what a client does
+with each, and the first-sync bootstrap — is
+[`docs/sync-protocol.md`](sync-protocol.md) §6–§8.
+
 - **Outbox (push).** Local ops queue in IndexedDB and flush by `POST` to
   `api.foerier.app` when online — triggered on reconnect, app focus, and a gentle
   interval, with exponential-backoff retry. Ops carry client UUIDv7 ids, so
@@ -176,7 +194,10 @@ what you write is what runs) + **Postgres 17**.
 **Responsibilities.**
 
 - Accept pushed ops, assign each a **monotonic per-household sequence**, store
-  them in the op-log tables.
+  them in the op-log tables. The sequence comes from a per-household counter row
+  allocated inside the push transaction, **not** a Postgres `SEQUENCE` — see
+  [`sync-protocol.md` §6.6](sync-protocol.md) for the silent data-loss hazard
+  that rules out.
 - Serve ops since a cursor for pull.
 - Issue and validate auth (§6); scope every read and write by `household_id` from
   the session — a client can only ever exchange its own household's ops.
@@ -188,7 +209,9 @@ household's members are trusted with their own household's data. Server-side
 validation is a named **deferred** option (§10), reached for only if untrusted
 multi-tenant use makes it worth the weight.
 
-**Endpoints (under `/api/v1`).** `POST /sync/push`, `GET /sync/pull`, and
+**Endpoints (under `/api/v1`).** The `/sync/*` wire format, storage shape, and
+error contract are specified in [`sync-protocol.md` §6](sync-protocol.md).
+`POST /sync/push`, `GET /sync/pull`, and
 `GET /version` (returns the deployed commit SHA, matching the sibling `health`
 project's convention), plus the `/auth/*` surface enumerated in
 [`auth-design.md` §9.1](auth-design.md).
@@ -247,7 +270,7 @@ app/       PWA: sync client, IndexedDB, routing, screens   → Docker → CX33
 landing/   marketing + live demo (real UI on demo data)    → GitHub Pages
 api/       Hono + Kysely server                            → Docker → CX33
 shared/    pure-TS domain core: op & entity types, reducer,
-           LWW + smart rules, HLC, selectors, invariants    (app · api · tests)
+           LWW + tombstones, HLC, selectors, invariants     (app · api · tests)
 ui/        shared presentational React components            (app · landing)
 ```
 

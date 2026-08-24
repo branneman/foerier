@@ -85,4 +85,6 @@ exports of the spreadsheets it will replace. The domain is modelled conceptually
 independent of storage; the persistence approach (a per-aggregate operation log
 synced to Postgres) and the tech stack (an offline-first React PWA over a small
 Hono + Postgres server) are now chosen — the technical detail lives in the
-[architecture design](docs/architecture-design.md).
+[architecture design](docs/architecture-design.md), with the op log and its sync
+specified as a concrete contract in the
+[sync protocol](docs/sync-protocol.md).
