@@ -15,6 +15,8 @@ import { createAuthRoutes } from './auth/routes.ts'
 import { corsOrigins, rpConfig, type RpMode } from './auth/rp.ts'
 import { createAuthService } from './auth/service.ts'
 import type { Database } from './db/schema.ts'
+import { createSyncRoutes } from './sync/routes.ts'
+import { createSyncService } from './sync/service.ts'
 
 export interface AppDeps {
   gitSha: string
@@ -30,6 +32,14 @@ export interface AppDeps {
    * limiter is actually wired up.
    */
   rateLimit?: { capacity: number; refillPerMinute: number } | undefined
+  /**
+   * Per-device budget for `/sync/*`, injectable exactly like `rateLimit`
+   * above. Its own bucket, much higher than the auth one: every caller here
+   * is already authenticated, so this protects the box's capacity rather
+   * than guarding against enumeration, and a returning offline client
+   * legitimately bursts after a long disconnection (sync-protocol.md §6.3).
+   */
+  syncRateLimit?: { capacity: number; refillPerMinute: number } | undefined
 }
 
 /**
@@ -50,6 +60,10 @@ export function buildApp(deps: AppDeps) {
     // Order of 30/min, sized to protect the box rather than to substitute for
     // the 256-bit secrets (auth-design.md §9.4).
     rateLimit = { capacity: 30, refillPerMinute: 30 },
+    // A generous burst allowance, and a much higher sustained rate than the
+    // auth bucket: a device catching up after days offline can legitimately
+    // push and pull many batches in a row (sync-protocol.md §6.3).
+    syncRateLimit = { capacity: 300, refillPerMinute: 600 },
   } = deps
 
   const app = new Hono<{ Variables: AuthVariables }>()
@@ -95,13 +109,23 @@ export function buildApp(deps: AppDeps) {
       ids,
       rp: rpConfig(mode),
     })
+    const requireAuth = createAuthMiddleware({ db, clock })
 
     v1.route(
       '/auth',
       createAuthRoutes({
         service,
-        requireAuth: createAuthMiddleware({ db, clock }),
+        requireAuth,
         limiter: createRateLimiter({ ...rateLimit, clock }),
+      }),
+    )
+
+    v1.route(
+      '/sync',
+      createSyncRoutes({
+        service: createSyncService({ db, clock }),
+        requireAuth,
+        limiter: createRateLimiter({ ...syncRateLimit, clock }),
       }),
     )
   }

@@ -35,7 +35,10 @@ export interface Harness {
 }
 
 export async function createHarness(
-  options: { rateLimit?: { capacity: number; refillPerMinute: number } } = {},
+  options: {
+    rateLimit?: { capacity: number; refillPerMinute: number }
+    syncRateLimit?: { capacity: number; refillPerMinute: number }
+  } = {},
 ): Promise<Harness> {
   const db = await testDb()
   const clock = fakeClock(NOW)
@@ -51,6 +54,10 @@ export async function createHarness(
     // what actually broke. `rateLimiter.test.ts` proves the algorithm and
     // `rateLimit.test.ts` proves it is wired to the routes.
     rateLimit: options.rateLimit ?? {
+      capacity: 10_000,
+      refillPerMinute: 10_000,
+    },
+    syncRateLimit: options.syncRateLimit ?? {
       capacity: 10_000,
       refillPerMinute: 10_000,
     },

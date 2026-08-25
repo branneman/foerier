@@ -1,17 +1,30 @@
 import type { Kysely } from 'kysely'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import type { OpEnvelope } from '@foerier/shared'
+import {
+  MAX_BATCH_BYTES,
+  MAX_BATCH_OPS,
+  type OpEnvelope,
+} from '@foerier/shared'
 import { countingIdSource, fakeClock } from '@foerier/shared/testUtils'
 import type { FakeClock } from '@foerier/shared/testUtils'
 
+import { nextExpiry } from '../../src/auth/session.ts'
+import { issueDeviceToken } from '../../src/auth/tokens.ts'
 import type { Database } from '../../src/db/schema.ts'
 import {
   createSyncService,
   DEFAULT_PULL_LIMIT,
   type SyncService,
 } from '../../src/sync/service.ts'
-import { resetHouseholds, seedHousehold, NOW } from './harness.ts'
+import {
+  createHarness,
+  jsonOf,
+  resetHouseholds,
+  seedHousehold,
+  NOW,
+  type Harness,
+} from './harness.ts'
 import { testDb } from './testDb.ts'
 
 /**
@@ -430,5 +443,305 @@ describe('the sync service', () => {
         received_at: new Date(NOW).toISOString(),
       })
     })
+  })
+})
+
+/**
+ * `POST /sync/push` and `GET /sync/pull`, over real HTTP, against the real
+ * Hono app (`docs/sync-protocol.md` §6.1–§6.4).
+ *
+ * The service-level describe above proves the transaction, the locking and
+ * the sequence arithmetic; this one proves the wiring on top of it — auth,
+ * the tenancy rule, the batch caps, and the error shapes — which is a
+ * different failure mode entirely (a route that never mounted, a check that
+ * runs in the wrong order, a status code transposed).
+ *
+ * Reuses UUID registry slots #6 and #7 (`docs/testing.md`) — the same two
+ * households the service-level suite above owns, not a new claim.
+ */
+describe('the /sync routes', () => {
+  const HOUSEHOLD_A = '0f000006-0000-4000-8000-000000000006'
+  const HOUSEHOLD_B = '0f000007-0000-4000-8000-000000000007'
+  const AGGREGATE_ID = '0198e0b7-2a11-7f4c-93de-5a6b7c8d9e0f'
+  const DEVICE_ID = '0198c33d-77aa-7e10-a4bb-0c9d8e7f6a5b'
+
+  let h: Harness
+  let db: Kysely<Database>
+  let ids: ReturnType<typeof countingIdSource>
+
+  beforeAll(async () => {
+    h = await createHarness()
+    db = h.db
+  })
+
+  afterAll(async () => {
+    await db.destroy()
+  })
+
+  beforeEach(async () => {
+    await resetHouseholds(db, [HOUSEHOLD_A, HOUSEHOLD_B])
+    await seedHousehold(db, { id: HOUSEHOLD_A, name: 'Veldkamp' })
+    await seedHousehold(db, { id: HOUSEHOLD_B, name: 'Oosterhuis' })
+    h.clock.set(NOW)
+    ids = countingIdSource(1)
+  })
+
+  /** A real Device row and its bearer token — no WebAuthn ceremony needed. */
+  async function issueDevice(
+    householdId: string,
+  ): Promise<{ token: string; deviceId: string }> {
+    const loginId = crypto.randomUUID()
+    await db
+      .insertInto('login')
+      .values({
+        id: loginId,
+        household_id: householdId,
+        person_id: crypto.randomUUID(),
+      })
+      .execute()
+
+    const { token, tokenHash } = issueDeviceToken()
+    const deviceId = crypto.randomUUID()
+    await db
+      .insertInto('device')
+      .values({
+        id: deviceId,
+        login_id: loginId,
+        household_id: householdId,
+        token_hash: tokenHash,
+        label: null,
+        last_seen_at: new Date(h.clock.now()),
+        expires_at: nextExpiry(h.clock),
+        revoked_at: null,
+      })
+      .execute()
+
+    return { token, deviceId }
+  }
+
+  /** A fresh, well-formed envelope every call — nothing shared to mutate. */
+  function anOp(overrides: Partial<OpEnvelope> = {}): OpEnvelope {
+    return {
+      id: ids.next(),
+      household_id: HOUSEHOLD_A,
+      aggregate: 'gear',
+      aggregate_id: AGGREGATE_ID,
+      type: 'gear.recorded',
+      hlc: '2026-08-25T09:00:00.000Z-0000',
+      device_id: DEVICE_ID,
+      payload: { name: 'Tent' },
+      ...overrides,
+    }
+  }
+
+  function push(token: string | undefined, body: unknown) {
+    return h.app.request('/api/v1/sync/push', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token === undefined ? {} : { authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(body),
+    })
+  }
+
+  /** For the raw-bytes tests, which deliberately do not send valid JSON. */
+  function pushRaw(token: string | undefined, rawBody: string) {
+    return h.app.request('/api/v1/sync/push', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token === undefined ? {} : { authorization: `Bearer ${token}` }),
+      },
+      body: rawBody,
+    })
+  }
+
+  function pull(token: string | undefined, query: string) {
+    return h.app.request(`/api/v1/sync/pull${query}`, {
+      headers: token === undefined ? {} : { authorization: `Bearer ${token}` },
+    })
+  }
+
+  it('requires a bearer token on push and on pull', async () => {
+    expect((await push(undefined, { ops: [] })).status).toBe(401)
+    expect((await pull(undefined, '?since=0')).status).toBe(401)
+  })
+
+  it('takes household_id from the token, not from the body', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+    // An op claiming HOUSEHOLD_B's id, pushed on HOUSEHOLD_A's token.
+    const foreign = anOp({ household_id: HOUSEHOLD_B })
+
+    const res = await push(a.token, { ops: [foreign] })
+    expect(res.status).toBe(200)
+
+    const body = await jsonOf<{
+      results: Array<{ op_id: string; status: string; code?: string }>
+    }>(res)
+    // Rejected outright, never rewritten to the token's household — silence
+    // would hide a client bug indistinguishable from an attack.
+    expect(body.results).toEqual([
+      { op_id: foreign.id, status: 'rejected', code: 'household_mismatch' },
+    ])
+    expect(
+      await db
+        .selectFrom('op')
+        .selectAll()
+        .where('household_id', 'in', [HOUSEHOLD_A, HOUSEHOLD_B])
+        .execute(),
+    ).toHaveLength(0)
+  })
+
+  it('assigns seqs and returns them in request order', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+    const ops = [anOp(), anOp(), anOp()]
+
+    const res = await push(a.token, { ops })
+    expect(res.status).toBe(200)
+
+    const body = await jsonOf<{
+      results: Array<{ op_id: string; status: string; seq: number }>
+      household_seq: number
+    }>(res)
+    expect(body.results).toEqual([
+      { op_id: ops[0]!.id, status: 'accepted', seq: 1 },
+      { op_id: ops[1]!.id, status: 'accepted', seq: 2 },
+      { op_id: ops[2]!.id, status: 'accepted', seq: 3 },
+    ])
+    expect(body.household_seq).toBe(3)
+  })
+
+  it('returns 413 for a batch over 500 ops', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+    const ops = Array.from({ length: MAX_BATCH_OPS + 1 }, () => anOp())
+
+    const res = await push(a.token, { ops })
+
+    expect(res.status).toBe(413)
+    const body = await jsonOf<{ error: { code: string } }>(res)
+    expect(body.error.code).toBe('payload_too_large')
+    // A batch-level failure stores nothing at all (§6.1).
+    expect(
+      await db
+        .selectFrom('op')
+        .selectAll()
+        .where('household_id', '=', HOUSEHOLD_A)
+        .execute(),
+    ).toHaveLength(0)
+  })
+
+  it('returns 413 for a body over 1 MB', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+
+    // Not even valid JSON — the byte cap is checked before parsing, so this
+    // must never reach a parser.
+    const res = await pushRaw(a.token, 'x'.repeat(MAX_BATCH_BYTES + 1))
+
+    expect(res.status).toBe(413)
+    const body = await jsonOf<{ error: { code: string } }>(res)
+    expect(body.error.code).toBe('payload_too_large')
+  })
+
+  it('returns 400 bad_request for a malformed batch body', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+
+    const res = await pushRaw(a.token, 'not valid json at all')
+
+    expect(res.status).toBe(400)
+    const body = await jsonOf<{ error: { code: string } }>(res)
+    expect(body.error.code).toBe('bad_request')
+  })
+
+  it('returns 401 for a revoked device token', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+    await db
+      .updateTable('device')
+      .set({ revoked_at: new Date(h.clock.now()) })
+      .where('id', '=', a.deviceId)
+      .execute()
+
+    expect((await push(a.token, { ops: [] })).status).toBe(401)
+    expect((await pull(a.token, '?since=0')).status).toBe(401)
+  })
+
+  it('pages a pull with has_more and an advancing cursor', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+    await push(a.token, { ops: [anOp(), anOp(), anOp()] })
+
+    const first = await jsonOf<{
+      ops: unknown[]
+      cursor: number
+      has_more: boolean
+    }>(await pull(a.token, '?since=0&limit=2'))
+    expect(first.ops).toHaveLength(2)
+    expect(first.has_more).toBe(true)
+    expect(first.cursor).toBe(2)
+
+    const second = await jsonOf<{
+      ops: unknown[]
+      cursor: number
+      has_more: boolean
+    }>(await pull(a.token, `?since=${first.cursor}&limit=2`))
+    expect(second.ops).toHaveLength(1)
+    expect(second.has_more).toBe(false)
+    expect(second.cursor).toBe(3)
+  })
+
+  it('returns household_seq on pull as well as on push', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+
+    const pushed = await jsonOf<{ household_seq: number }>(
+      await push(a.token, { ops: [anOp(), anOp()] }),
+    )
+    expect(pushed.household_seq).toBe(2)
+
+    const pulled = await jsonOf<{ household_seq: number }>(
+      await pull(a.token, '?since=0'),
+    )
+    expect(pulled.household_seq).toBe(2)
+  })
+
+  it('stores and returns an unknown op type opaquely', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+    const alien = anOp({
+      aggregate: 'starship',
+      type: 'starship.warped',
+      payload: { destination: 'Risa', warp_factor: 9.975 },
+    })
+
+    await push(a.token, { ops: [alien] })
+
+    const pulled = await jsonOf<{ ops: Array<Record<string, unknown>> }>(
+      await pull(a.token, '?since=0'),
+    )
+    expect(pulled.ops).toHaveLength(1)
+    expect(pulled.ops[0]).toMatchObject({
+      id: alien.id,
+      aggregate: 'starship',
+      type: 'starship.warped',
+      payload: alien.payload,
+    })
+  })
+
+  it('rejects an op carrying seq or received_at', async () => {
+    const a = await issueDevice(HOUSEHOLD_A)
+    const withSeq = { ...anOp(), seq: 99 }
+    const withReceivedAt = {
+      ...anOp(),
+      received_at: '2026-01-01T00:00:00.000Z',
+    }
+
+    const res = await push(a.token, { ops: [withSeq, withReceivedAt] })
+    expect(res.status).toBe(200)
+
+    const body = await jsonOf<{
+      results: Array<{ status: string; code?: string }>
+    }>(res)
+    expect(body.results.map((r) => r.status)).toEqual(['rejected', 'rejected'])
+    expect(body.results.map((r) => r.code)).toEqual([
+      'envelope_invalid',
+      'envelope_invalid',
+    ])
   })
 })
