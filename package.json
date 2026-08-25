@@ -23,6 +23,8 @@
     "test:e2e": "playwright test",
     "dev": "npm run dev --workspace app",
     "dev:api": "npm run dev --workspace api",
+    "migrate": "npm run migrate --workspace api",
+    "admin:bootstrap": "npm run admin:bootstrap --workspace api --",
     "prepare": "husky"
   },
   "devDependencies": {

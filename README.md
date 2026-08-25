@@ -83,7 +83,7 @@ database.
 ```
 npm install
 docker compose -f docker-compose.dev.yml up -d   # Postgres on :5433
-npm run migrate --workspace api
+npm run migrate
 ```
 
 Then, in two terminals:
@@ -105,7 +105,7 @@ surface rather than mitigating it ([auth-design](docs/auth-design.md) §3). The
 first Login of a Household is minted out of band:
 
 ```
-npm run admin:bootstrap --workspace api -- --name "Veldkamp"
+npm run admin:bootstrap -- --name "Veldkamp"
 ```
 
 It prints a single-use join link for whichever origin the run targets — a
@@ -154,9 +154,12 @@ was built from.
 
 ## Status
 
-**Walking skeleton.** The monorepo, toolchain, test tiers and both container
-images exist and are green; there is no domain behaviour yet. Alongside that,
-the repo contains requirements (user stories), a
+**Walking skeleton, plus the first auth slice.** The monorepo, toolchain, test
+tiers and both container images exist and are green, and a Quartermaster can
+join a Household from an invite and sign in with a passkey (stories 26, 27).
+There is no domain behaviour yet — no gear, no trips, and no op log, so the
+Depot is honestly empty. Alongside that, the repo contains requirements (user
+stories), a
 DDD domain design (the [ubiquitous language](docs/ubiquitous-language.md) and
 [domain model](docs/domain-model.md)), an approved
 [architecture & delivery design](docs/architecture-design.md), and example
