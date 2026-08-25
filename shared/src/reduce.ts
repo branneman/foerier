@@ -113,29 +113,39 @@ function writeIfPresent<T>(
 }
 
 /**
- * The `name`-shaped counterpart to `writeIfPresent`, for the three registers
- * whose declared type includes `null` — `PlaceState.name`, `GearState.name`,
- * `PersonState.name`, all `Register<string | null>` (`state.ts`, Task 3).
+ * The `writeIfPresent` counterpart for a register whose **declared type
+ * includes `null`** — named for that, not for `name`, so it generalises for
+ * free the next time a nullable, non-`name` register shows up (`trip.
+ * dates_set`'s `start`/`end`, a later slice's `date｜null`, is exactly this
+ * shape). `PlaceState.name`, `GearState.name` and `PersonState.name` —
+ * `Register<string | null>` (`state.ts`, Task 3) — are the only registers on
+ * that side of the line today.
  *
  * The rule, uniform across every register in this reducer: **a register
  * whose declared type includes `null` takes an explicit `null` as a clear; a
  * register whose type does not treats a `null` payload as malformed and
- * ignores it** (§1.3, §5.3 obligation 5). `name` is the only family of
- * registers on the nullable side of that line today, so every op that
- * writes one — `place.recorded`/`place.renamed`, `gear.recorded`/
- * `gear.renamed`, `person.recorded` — goes through this function rather than
- * `writeIfPresent`, so the three behave identically wherever they are
- * written. (An earlier version of this file had `setPlaceName` collapse
- * `null` into absent — reasoning from §4.1's payload shape rather than from
- * the state type, and wrong: it made an explicit clear fold identically to
- * an absent field, exactly the conflation obligation 5 forbids. Corrected
- * once, here, rather than per op.)
+ * ignores it.** §1.3 is the authority for this — it states the
+ * absent-versus-null distinction generally, with no per-field carve-out.
+ * §5.3 obligation 5 is *not* the authority: its text runs one way only
+ * (treating an *absent* field as an explicit clear), so citing it to justify
+ * collapsing `null` into absent — the reverse direction — was an
+ * overstatement (`sync-protocol.md` §4.3's note records the correction).
+ *
+ * Every op that writes a `name` register — `place.recorded`/
+ * `place.renamed`, `gear.recorded`/`gear.renamed`, `person.recorded` — goes
+ * through this function rather than `writeIfPresent`, so the three behave
+ * identically wherever they are written. (An earlier version of this file
+ * had `setPlaceName` collapse `null` into absent, reasoning from §4.1's
+ * payload shape rather than from the state type; that made an explicit
+ * clear fold identically to an absent field, exactly the conflation
+ * obligation 5's own direction forbids. Corrected once, here, rather than
+ * per op.)
  */
-function writeNameIfPresent(
-  current: Register<string | null> | undefined,
-  read: Read<string>,
+function writeNullableIfPresent<T>(
+  current: Register<T | null> | undefined,
+  read: Read<T>,
   stamp: Stamp,
-): Register<string | null> | undefined {
+): Register<T | null> | undefined {
   if (read.kind === 'absent') return current
   const value = read.kind === 'null' ? null : read.value
   return writeRegister(current, value, stamp)
@@ -151,13 +161,13 @@ type Handler = (state: DepotState, op: OpEnvelope, stamp: Stamp) => DepotState
 const setPlaceName: Handler = (state, op, stamp) =>
   writePlace(state, op.aggregate_id, stamp, (place, st) => {
     // `PlaceState.name` is `Register<string | null>` (Task 3), so a `null`
-    // payload is a clear, not malformed input — `writeNameIfPresent`'s rule.
-    const next = writeNameIfPresent(
+    // payload is a clear, not malformed input — `writeNullableIfPresent`'s rule.
+    const next = writeNullableIfPresent(
       place.name,
       readString(op.payload, 'name'),
       st,
     )
-    // `writeRegister` (inside `writeNameIfPresent`) returns the identical
+    // `writeRegister` (inside `writeNullableIfPresent`) returns the identical
     // register on a lost write or an absent field; a spread here would still
     // fabricate a new `place` object, so the identity must be checked before
     // copying, not after. `next` is only ever `undefined` when it equals
@@ -178,7 +188,7 @@ const setPlaceName: Handler = (state, op, stamp) =>
  */
 const gearRecorded: Handler = (state, op, stamp) =>
   writeGear(state, op.aggregate_id, stamp, (gear, st) => {
-    const name = writeNameIfPresent(
+    const name = writeNullableIfPresent(
       gear.name,
       readString(op.payload, 'name'),
       st,
@@ -223,10 +233,10 @@ const gearRecorded: Handler = (state, op, stamp) =>
     }
   })
 
-/** `gear.renamed` (§4.3): sets `name`, via `writeNameIfPresent`'s rule. */
+/** `gear.renamed` (§4.3): sets `name`, via `writeNullableIfPresent`'s rule. */
 const gearRenamed: Handler = (state, op, stamp) =>
   writeGear(state, op.aggregate_id, stamp, (gear, st) => {
-    const next = writeNameIfPresent(
+    const next = writeNullableIfPresent(
       gear.name,
       readString(op.payload, 'name'),
       st,
@@ -278,7 +288,7 @@ const gearOwnedCountSet: Handler = (state, op, stamp) =>
  */
 const personRecorded: Handler = (state, op, stamp) =>
   writePerson(state, op.aggregate_id, stamp, (person, st) => {
-    const next = writeNameIfPresent(
+    const next = writeNullableIfPresent(
       person.name,
       readString(op.payload, 'name'),
       st,

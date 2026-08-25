@@ -602,15 +602,21 @@ describe('applyOp', () => {
 })
 
 /**
- * The rule (`sync-protocol.md` §1.3, §5.3 obligation 5, and the ruling that
- * corrected `setPlaceName`): a register whose declared type includes `null`
- * — `PlaceState.name`, `GearState.name`, `PersonState.name`, all
- * `Register<string | null>` — takes an explicit `null` as a clear; an
- * absent field leaves it alone. Every op that writes one of these three
- * registers is exercised here, paired: the `null` case proves the clear
- * with `toBeNull()`, and the omission case beside it proves the register was
- * never created at all with `Object.hasOwn`, so the two can't be confused
- * for each other.
+ * The rule (`sync-protocol.md` §1.3, and the ruling that corrected
+ * `setPlaceName` — §5.3 obligation 5 is not this rule's authority; it only
+ * states the absent-as-clear direction, not this one): a register whose
+ * declared type includes `null` — `PlaceState.name`, `GearState.name`,
+ * `PersonState.name`, all `Register<string | null>` — takes an explicit
+ * `null` as a clear; an absent field leaves it alone. Every op that writes
+ * one of these three registers is exercised here, paired: the `null` case
+ * proves the clear with `toBeNull()`. Three of the four omission cases prove
+ * the register was never created at all, with `Object.hasOwn` — but folded
+ * against an entity with no prior name, "leaves it alone" is trivially true
+ * of *both* absent and null, so on its own that pairing cannot show which
+ * direction is under test. `gear.renamed`'s omission case seeds a name
+ * first and asserts it survives untouched, which is the direction §1.3
+ * actually forbids: treating an absent field as if it were an explicit
+ * clear.
  */
 describe('name registers: an explicit null clears, an absent field leaves it alone', () => {
   it('place.renamed with an explicit null clears the name', () => {
@@ -670,11 +676,23 @@ describe('name registers: an explicit null clears, an absent field leaves it alo
     expect(state.gear['g1']?.name?.value).toBeNull()
   })
 
-  it('gear.renamed with name omitted never creates the register', () => {
-    // No prior gear.recorded provided a name either, so this is a clean
-    // absence, not a stale value surviving untouched.
-    const state = fold([op('gear', 'g1', 'gear.renamed', {}, at(1))])
-    expect(Object.hasOwn(state.gear['g1'] ?? {}, 'name')).toBe(false)
+  it('gear.renamed with name omitted leaves an existing name untouched', () => {
+    // Unlike the other three omission cases, this one seeds a name first
+    // (via `gear.recorded`) before applying the empty `gear.renamed`. The
+    // other three fold against an entity with no prior name, where "leaves
+    // it alone" is trivially true of an absent field *or* a coerced clear —
+    // they cannot tell the two apart. This one can: if omission were ever
+    // treated as a clear, `name` would come back `null` or absent here
+    // instead of the seeded value.
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      op('gear', 'g1', 'gear.renamed', {}, at(2)),
+    ])
+    expect(state.gear['g1']?.name?.value).toBe('Tarp')
   })
 
   it('person.recorded with an explicit null seeds the name register as null', () => {

@@ -421,15 +421,15 @@ payloads.
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |
 | --- | --- | --- | --- | --- |
-| `place.recorded` | `{name}` | Creates the Place; seeds `name` | Place recorded | 1 |
-| `place.renamed` | `{name}` | Sets `name` | Place renamed | 1 |
+| `place.recorded` | `{name: string｜null}` | Creates the Place; seeds `name`. `null` clears; absent ≠ null (§1.3) | Place recorded | 1 |
+| `place.renamed` | `{name: string｜null}` | Sets `name`. `null` clears; absent ≠ null (§1.3) | Place renamed | 1 |
 | `place.removed` | `{}` | Sets the tombstone. Gear residing there reads **loose** via the selector, never cascaded (§3.5, invariant 4) | Place removed | 1 |
 
 ### 4.2 Person — 2 ops
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |
 | --- | --- | --- | --- | --- |
-| `person.recorded` | `{name}` | Creates the Person; seeds `name` | Person recorded | 4 |
+| `person.recorded` | `{name: string｜null}` | Creates the Person; seeds `name`. `null` clears; absent ≠ null (§1.3) | Person recorded | 4 |
 | `person.renamed` | `{name}` | Sets `name` | Person renamed | 4 |
 
 A Person is never removed: gear ownership and past trips reference them, and the
@@ -440,8 +440,8 @@ model gives no removal operation. `login`/`device` disabling is
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |
 | --- | --- | --- | --- | --- |
-| `gear.recorded` | `{name, container: bool, kind, residence?, owner?, owned_count?}` | Creates the Gear and seeds each **present** field as its own register, all stamped with this op's clock | Gear recorded (as item or container) | 1, 2, 7 |
-| `gear.renamed` | `{name}` | Sets `name` | Gear renamed | 2 |
+| `gear.recorded` | `{name: string｜null, container: bool, kind, residence?, owner?, owned_count?}` | Creates the Gear and seeds each **present** field as its own register, all stamped with this op's clock. `name`'s `null` clears; absent ≠ null (§1.3) | Gear recorded (as item or container) | 1, 2, 7 |
+| `gear.renamed` | `{name: string｜null}` | Sets `name`. `null` clears; absent ≠ null (§1.3) | Gear renamed | 2 |
 | `gear.rehomed` | `{residence: Residence}` | Sets the **home** residence. The single small update of story 2, and what the unpack pass emits when re-homing on the spot | Gear re-homed | 2, 11 |
 | `gear.kind_set` | `{kind: "single"｜"per_person"｜"counted"}` | Sets `kind`. Exclusivity is structural — one register, one value (invariant 5) | Kind set | 7 |
 | `gear.owned_count_set` | `{count: int ≥ 0}` | Sets `owned_count`, **absolutely**. Also how the close applies a `consumed` reduction (§4.5) | Owned-count set · reduction applied | 2, 7, 11 |
@@ -462,6 +462,20 @@ and counters are hazardous under replay and under two devices closing the same
 trip. An absolute set is idempotent, LWW-safe, and matches story 11's requirement
 that changing away from `consumed` **offers** the correction rather than silently
 re-applying it — the offer computes the new absolute value and waits for a human.
+
+**`name` is nullable; this was settled during the S2 slice.**
+`place.recorded`/`place.renamed`, `gear.recorded`/`gear.renamed` and
+`person.recorded` all type their `name` field `string｜null`: an explicit
+`null` clears the field, a write like any other, while an absent field
+leaves it untouched. **§1.3 is the authority for this** — it states the
+absent-versus-null distinction generally, with no per-field carve-out.
+**§5.3 obligation 5 is *not* the authority**: its text runs one way only
+(treating an *absent* field as an explicit clear), so it says nothing about
+what a `null` payload should do, and citing it to justify collapsing `null`
+into absent — the reverse direction — was an error made and corrected during
+this slice, not a second, independent rule. `person.renamed` is not yet
+implemented by any reducer and is left as `{name}` here until the slice that
+folds it settles the same question for that row.
 
 ### 4.4 Trip — 23 ops
 

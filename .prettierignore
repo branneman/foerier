@@ -12,3 +12,11 @@ docs/design/
 # Prettier's markdown formatter reflows it and produces enormous, meaningless
 # diffs across the design docs. Prettier is for code here, not for prose.
 *.md
+
+# Backward-compatibility op fixtures (docs/testing.md) are hand-written, byte
+# for byte, so a future fixture captured as literal wire bytes stays exact.
+# Harmless today — JSON whitespace cannot change what the fold sees, and
+# Prettier already reformatted s2-depot.ops.json once with no semantic
+# effect — but this carve-out is the same one `docs/design/` gets, made
+# before it is load-bearing rather than after.
+shared/fixtures/
