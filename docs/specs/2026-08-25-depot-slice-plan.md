@@ -1525,12 +1525,23 @@ each guard protects, by experiment rather than by argument:
   assertion exists to catch.
 - What unsorted traversal actually perturbs is **`childrenOf`**, whose buckets
   are filled in iteration order.
-- The `(hlc, deviceId)` tiebreak protects `holderOf`/`brokenEdges` — without it,
-  an all-equal-stamp cycle resolves by walk-entry point, i.e. by insertion
-  order.
+- The `(hlc, deviceId)` tiebreak makes the choice among equal stamps
+  **canonical** (lowest id) rather than traversal-derived. It is *not* what
+  provides replica agreement — see below.
 
-Sorted iteration and the tiebreak are load-bearing for **different outputs**.
-Compare both.
+Compare all three outputs.
+
+*(Corrected a second time, after Task 9. An earlier revision of this note said
+the tiebreak "protects `holderOf`/`brokenEdges` — without it, an
+all-equal-stamp cycle resolves by walk-entry point, i.e. by insertion order."
+That is false, and it is the third wrong version of this reasoning: the sorted
+traversal makes walk entry deterministic, so the cycle array is a pure function
+of state **values** and the no-tiebreak fallback — "first in cycle-array order"
+— is already replica-independent. The sort does all the work for agreement; the
+tiebreak is defence-in-depth against a future traversal change. Equal stamps
+are genuinely reachable, per §2.3's lost `last` and §8.6's restore, but
+reachable does not imply divergent — that is the step three separate readings
+got wrong.)*
 
 `arbOpSets()` generates 2–4 devices × 0–15 ops drawn from all eleven builders,
 over a small shared pool of ~5 gear ids and ~3 place ids so that collisions on
