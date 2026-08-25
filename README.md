@@ -77,6 +77,13 @@ Requirements live in [docs/user-stories.md](docs/user-stories.md).
 
 ## Development
 
+**Everything in this section runs on your own machine, against the local
+Postgres.** The one task that has a production counterpart — minting the first
+Login of a Household — says so explicitly and shows both. Nothing else here
+touches a deployed environment, and no command in this repository can: where
+foerier runs is a separate repository's business (see
+[Deployment](#deployment)).
+
 Requires Node — the version in [`.nvmrc`](.nvmrc) — and Docker for the local
 database.
 
@@ -102,30 +109,68 @@ absence is a refusal to boot.
 
 There is no public sign-up — deliberately, since that removes the abuse
 surface rather than mitigating it ([auth-design](docs/auth-design.md) §3). The
-first Login of a Household is minted out of band:
+first Login of a Household is minted out of band by the **Maintainer**, who is
+not a role in the product but simply whoever has server access (§3.4). Every
+Invite after that is issued by a Quartermaster from inside the app.
+
+**Locally** — writes to the `docker-compose.dev.yml` Postgres:
 
 ```
 npm run admin:bootstrap -- --name "Veldkamp"
 ```
 
-It prints a single-use join link for whichever origin the run targets — a
-`localhost` one in development. Open it, name yourself, and the browser's
-passkey prompt does the rest.
+It prints a single-use join link at `http://localhost:5173`. Open it, name
+yourself, and the browser's passkey prompt does the rest.
 
-The link is single-use, so run the script again for another (each run creates a
-new Household). Sign-out lives under Account, which is a later slice; to test
-signing in again, delete the `foerier` IndexedDB database in devtools and
-reload — the passkey stays in the browser.
+**In production** — the same script, shipped in the `foerier-api` image as a
+second entrypoint and run *inside the deployed container*:
+
+```
+node dist/bootstrap.js --name "Veldkamp"
+```
+
+It prints a link at `https://app.foerier.app`. How you get a command into the
+running container is the infrastructure repository's business, not this one's —
+see [Deployment](#deployment).
+
+Two reasons it lives in the image rather than being pointed at production from
+a laptop. The database has no public port and is not meant to get one, so
+in-container is the only place the script can reach it. And the origin it
+prints is chosen by `NODE_ENV`, which the image already sets to `production` —
+so running it there makes the link right by construction. A link minted against
+the wrong origin does not fail as a bad URL; it fails as a passkey ceremony the
+browser refuses for an RP ID mismatch, which reads like a bug in the app.
+
+Either way the link is single-use, and each run creates a **new** Household —
+so run it again for another rather than reusing one. Sign-out lives under
+Account, which is a later slice; to test signing in again, delete the `foerier`
+IndexedDB database in devtools and reload — the passkey stays in the browser.
 
 The test tiers, from cheapest to most expensive
-([strategy](docs/testing.md)):
+([strategy](docs/testing.md)). All but the last run entirely on your machine:
 
 ```
 npm run typecheck && npm run lint && npm run format:check   # Tier 0
-npm test              # Tiers 1-3: unit, convergence, component
-npm run test:server   # Tier 2s: needs the local Postgres above
-npm run test:e2e      # Tier 5: Playwright, against a production build
+npm test               # Tiers 1-3: unit, convergence, component
+npm run test:server    # Tier 2s: the real server on the local Postgres
+npm run test:e2e       # Tier 5: Playwright, on a local production *build*
+npm run test:contract  # Tier 4: the real DEPLOYED server — see below
 ```
+
+Note which environment each targets, because two of them are easy to misread.
+`test:e2e` runs a production *build* of the PWA on `localhost` — a build mode,
+not a deployed environment. `test:contract` is the only command in this
+repository that leaves your machine: it asserts against the live
+`api.foerier.app` and `app.foerier.app`, because its whole charter is to prove
+things a local database cannot surface — that the migrations ran *there*, that
+the front door forwards the `Authorization` header, that the deployed process
+serves the production relying party. Point it elsewhere with
+`CONTRACT_API_URL` / `CONTRACT_APP_URL`.
+
+It is safe to run against production: it authenticates nothing, needs no
+Household, and writes nothing but a short-lived WebAuthn challenge row that the
+next ceremony sweeps up. CI runs it automatically after every deploy, so
+running it by hand is for diagnosing, not for gating.
 
 Tier 0 also runs full-repo in a pre-commit hook — the same three commands, no
 separate fast path.
@@ -145,12 +190,26 @@ the store.
 
 ### Deployment
 
-Not here. Where foerier runs — the box, TLS, the front door, backups — belongs
+Not here. Where foerier runs — the host, TLS, the front door, backups — belongs
 to a separate infrastructure repository, so that no application repo knows
-about another. This one's entire obligation is to publish its two images to
-GHCR tagged `:latest` and `:<commit-sha>`, listen on a documented port, run its
-own migrations at start, and answer `GET /api/v1/version` with the commit it
-was built from.
+about another. That is why no hostname, container name or deploy command
+appears anywhere above: this repository cannot deploy itself and is not
+supposed to be able to.
+
+Its entire obligation is to publish its two images to GHCR tagged `:latest` and
+`:<commit-sha>`, listen on a documented port, run its own migrations at start,
+and answer `GET /api/v1/version` with the commit it was built from. Pushing to
+`main` does all of it; a commit touching only prose skips the build, since
+there is no new image in it.
+
+The `foerier-api` image carries two entrypoints:
+
+```
+node dist/index.js       # the server (the image's default command)
+node dist/bootstrap.js   # the Maintainer bootstrap, run on demand
+```
+
+Both read their configuration from the environment and nothing else.
 
 ## Status
 
