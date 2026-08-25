@@ -1,0 +1,130 @@
+@layer components {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    min-height: 100svh;
+    padding: var(--space-16);
+    padding-bottom: var(--space-32);
+    max-width: 28rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .label {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .input {
+    min-height: max(3rem, 48px);
+    background: var(--color-well);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    padding-inline: var(--space-12);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  .toggleRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-height: max(3rem, 48px);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  .kindField {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    border: 0;
+    padding: 0;
+    margin: 0;
+  }
+
+  .segmented {
+    display: flex;
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    overflow: hidden;
+  }
+
+  .segment {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    color: var(--color-ink-muted);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .segment:has(input:checked) {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-primary);
+  }
+
+  .segment + .segment {
+    border-left: var(--stroke-rule) solid var(--color-rule-control);
+  }
+
+  .segment input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .homeRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-12);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .primary {
+    min-height: max(3rem, 48px);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .primary:disabled {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-dim);
+    cursor: default;
+  }
+}

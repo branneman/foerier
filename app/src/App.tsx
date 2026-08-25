@@ -28,6 +28,7 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from './depot/store'
+import { AddGear } from './screens/AddGear'
 import { Depot } from './screens/Depot'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
@@ -197,17 +198,15 @@ export function App({
                 <Route path="/">
                   <Depot />
                 </Route>
-                {/* Tasks 21 and 22's screens. Minimal placeholders here — do
-                    not build them as part of this route wiring. */}
+                {/* Task 22's screen. Minimal placeholder here — do not
+                    build it as part of this route wiring. */}
                 <Route path="/gear/:id">
                   <div className={styles['emptyState']}>
                     <h1>Gear</h1>
                   </div>
                 </Route>
                 <Route path="/add">
-                  <div className={styles['emptyState']}>
-                    <h1>Add gear</h1>
-                  </div>
+                  <AddGear />
                 </Route>
                 <Route path="/trips">
                   <EmptyState title="Trips" line="No trips." />
