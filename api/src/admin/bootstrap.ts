@@ -3,7 +3,7 @@ import { parseArgs } from 'node:util'
 import { systemClock, systemIdSource } from '@foerier/shared'
 
 import { createAuthService } from '../auth/service.ts'
-import { rpConfig } from '../auth/rp.ts'
+import { PRODUCTION_ORIGIN, rpConfig } from '../auth/rp.ts'
 import { loadConfig } from '../config.ts'
 import { createDb } from '../db/index.ts'
 
@@ -34,6 +34,9 @@ async function main(): Promise<void> {
     process.exit(2)
   }
 
+  const mode =
+    process.env['NODE_ENV'] === 'production' ? 'production' : 'development'
+
   const config = loadConfig()
   const db = createDb(config.databaseUrl)
 
@@ -42,9 +45,7 @@ async function main(): Promise<void> {
       db,
       clock: systemClock,
       ids: systemIdSource,
-      rp: rpConfig(
-        process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
-      ),
+      rp: rpConfig(mode),
     })
 
     const { householdId, personId, secret, expiresAt } =
@@ -61,9 +62,16 @@ async function main(): Promise<void> {
     )
     console.log(`  expires       ${expiresAt.toISOString()}`)
     console.log('')
+    // Printed against the origin this run actually targets. A production link
+    // handed to someone on a laptop running `npm run dev` is a link that
+    // cannot work, and the failure — a passkey ceremony refused by the browser
+    // for an RP ID mismatch — reads as a bug rather than as a wrong URL.
+    const appOrigin =
+      mode === 'production' ? PRODUCTION_ORIGIN : 'http://localhost:5173'
+
     console.log('Join link — single use, hand it over out of band:')
     console.log('')
-    console.log(`  https://app.foerier.app/join#${secret}`)
+    console.log(`  ${appOrigin}/join#${secret}`)
     console.log('')
   } finally {
     await db.destroy()

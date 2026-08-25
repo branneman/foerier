@@ -39,7 +39,7 @@ export async function mintInvite(): Promise<{
     { env: { ...process.env, DATABASE_URL } },
   )
 
-  const link = /https:\/\/app\.foerier\.app\/join#(\S+)/.exec(stdout)
+  const link = /\/join#(\S+)/.exec(stdout)
   if (link?.[1] === undefined) {
     throw new Error(`bootstrap printed no join link:\n${stdout}`)
   }
