@@ -56,3 +56,5 @@ export {
   placeRemoved,
   placeRenamed,
 } from './authoring.ts'
+
+export { applyOp, emptyState, fold } from './reduce.ts'
