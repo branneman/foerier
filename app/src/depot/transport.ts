@@ -165,8 +165,8 @@ export function createHttpTransport(deps: {
 // ---------------------------------------------------------------------------
 
 /**
- * A queued response override, consumed by the next call to either `push` or
- * `pull` — whichever comes first. `'error'` short-circuits the real logic
+ * A queued response override for one method (`push` or `pull` have their own
+ * queue — see {@link FakeServer}). `'error'` short-circuits the real logic
  * entirely, matching the real server: a batch-level 401/413/429/5xx is
  * decided before any op is read or stored. `'lost'` runs the real logic (so
  * a push's ops are genuinely committed, with real seqs) but reports back as
@@ -185,16 +185,26 @@ type QueuedOverride =
  * within-batch case: a second occurrence of the same `op_id` in one push is
  * a duplicate of the first, not a second reservation.
  *
- * `queueError` and `queueLostResponse` are the drivable control surface:
- * each call queues one override for the next `push`/`pull`, in FIFO order,
- * so a test can script a specific sequence of failures without touching the
- * store.
+ * `queueError` and `queueLostResponse` are the drivable control surface,
+ * each targeted at one `method`: `push` and `pull` each keep their own FIFO
+ * queue, so queuing a failure for one never steals a call meant for the
+ * other — load-bearing for a flush that pushes and then pulls in the same
+ * round trip. `queueRejection` is a third, narrower override: it does not
+ * touch the queue at all, but marks one `op_id` to come back `rejected` the
+ * next time it appears in a `push`, consumed on that use. A rejected op
+ * takes no seq and never advances `household_seq` — it never enters the
+ * transaction at all, mirroring the real service, where a per-op rejection
+ * is decided by validation before the household lock is even taken.
  */
 export interface FakeServer {
   push(ops: readonly OpEnvelope[]): TransportResult<PushBody>
   pull(since: number, limit: number): TransportResult<PullBody>
-  queueError(error: { status: number; code: string; retryAfter?: number }): void
-  queueLostResponse(): void
+  queueError(
+    method: 'push' | 'pull',
+    error: { status: number; code: string; retryAfter?: number },
+  ): void
+  queueLostResponse(method: 'push' | 'pull'): void
+  queueRejection(opId: string, code: string): void
 }
 
 function overrideResult<T>(override: {
@@ -216,10 +226,13 @@ export function createFakeServer(): FakeServer {
   const stored = new Map<string, StoredOp>()
   const bySeq: StoredOp[] = []
   let householdSeq = 0
-  const overrides: QueuedOverride[] = []
+  const pushOverrides: QueuedOverride[] = []
+  const pullOverrides: QueuedOverride[] = []
+  const rejections = new Map<string, string>()
 
   function realPush(ops: readonly OpEnvelope[]): PushBody {
     type Slot =
+      | { kind: 'rejected'; op_id: string; code: string }
       | { kind: 'duplicate'; op_id: string; seq: number }
       | { kind: 'repeat'; op_id: string; offset: number }
       | { kind: 'pending'; op: OpEnvelope; offset: number }
@@ -227,6 +240,11 @@ export function createFakeServer(): FakeServer {
     const offsetInBatch = new Map<string, number>()
     let newCount = 0
     const slots: Slot[] = ops.map((op) => {
+      const code = rejections.get(op.id)
+      if (code !== undefined) {
+        rejections.delete(op.id)
+        return { kind: 'rejected', op_id: op.id, code }
+      }
       const existing = stored.get(op.id)
       if (existing !== undefined) {
         return { kind: 'duplicate', op_id: op.id, seq: existing.seq }
@@ -257,6 +275,8 @@ export function createFakeServer(): FakeServer {
 
     const results: PushOutcome[] = slots.map((slot) => {
       switch (slot.kind) {
+        case 'rejected':
+          return { op_id: slot.op_id, status: 'rejected', code: slot.code }
         case 'duplicate':
           return { op_id: slot.op_id, status: 'duplicate', seq: slot.seq }
         case 'repeat':
@@ -291,7 +311,7 @@ export function createFakeServer(): FakeServer {
 
   return {
     push(ops) {
-      const override = overrides.shift()
+      const override = pushOverrides.shift()
       if (override?.kind === 'error') return overrideResult(override)
       if (override?.kind === 'lost') {
         realPush(ops)
@@ -301,7 +321,7 @@ export function createFakeServer(): FakeServer {
     },
 
     pull(since, limit) {
-      const override = overrides.shift()
+      const override = pullOverrides.shift()
       if (override?.kind === 'error') return overrideResult(override)
       if (override?.kind === 'lost') {
         realPull(since, limit)
@@ -310,12 +330,18 @@ export function createFakeServer(): FakeServer {
       return { ok: true, body: realPull(since, limit) }
     },
 
-    queueError(error) {
+    queueError(method, error) {
+      const overrides = method === 'push' ? pushOverrides : pullOverrides
       overrides.push({ kind: 'error', ...error })
     },
 
-    queueLostResponse() {
+    queueLostResponse(method) {
+      const overrides = method === 'push' ? pushOverrides : pullOverrides
       overrides.push({ kind: 'lost' })
+    },
+
+    queueRejection(opId, code) {
+      rejections.set(opId, code)
     },
   }
 }
