@@ -63,6 +63,24 @@ function placeRemoveOp(
   return op('place', placeId, 'place.removed', {}, hlc, deviceId)
 }
 
+function personOp(
+  personId: string,
+  name: string,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('person', personId, 'person.recorded', { name }, hlc, deviceId)
+}
+
+function personRenamedOp(
+  personId: string,
+  name: string,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('person', personId, 'person.renamed', { name }, hlc, deviceId)
+}
+
 function unknownOp(type: string): OpEnvelope {
   const aggregate = type.split('.')[0] as Aggregate
   return op(aggregate, 'x1', type, {}, at(1))
@@ -226,6 +244,7 @@ describe('applyOp', () => {
     expect(() =>
       applyOp(before, gearRenamedOp('g1', 'Stale', at(0))),
     ).not.toThrow()
+    expect(() => applyOp(before, personOp('pe1', 'Bran', at(2)))).not.toThrow()
   })
 
   it('emptyState has no places, no gear, no people, and nothing unfolded', () => {
@@ -551,5 +570,33 @@ describe('applyOp', () => {
       ),
     ])
     expect(state.gear['g1']?.container?.value).toBe(false)
+  })
+
+  it('person.recorded creates the Person and seeds the name', () => {
+    const state = fold([personOp('pe1', 'Bran', at(1))])
+    expect(state.people['pe1']?.id).toBe('pe1')
+    expect(state.people['pe1']?.name?.value).toBe('Bran')
+  })
+
+  it('person.recorded is idempotent under replay', () => {
+    const recordOp = personOp('pe1', 'Bran', at(1))
+    const once = fold([recordOp])
+    const twice = applyOp(once, recordOp)
+    // Identity, not just equality: a replayed op must be a no-op at O(1), the
+    // same guarantee `writeRegister`'s losing-write path gives every other
+    // handler.
+    expect(twice).toBe(once)
+    expect(twice.people['pe1']?.name?.value).toBe('Bran')
+  })
+
+  it('person.renamed is not folded in this slice and is counted as unfolded', () => {
+    const state = fold([personRenamedOp('pe1', 'Bran', at(1))])
+    expect(state.unfolded).toEqual({
+      count: 1,
+      types: { 'person.renamed': 1 },
+    })
+    // §5.3 obligation 1: retained, not folded — this build has no People
+    // list for `person.renamed` to land on yet (S4), so nothing is created.
+    expect(state.people).toEqual({})
   })
 })

@@ -1,13 +1,15 @@
 import type { Clock, IdSource } from '../src/boundaries.ts'
 
+export { aGear, aPlace, anOp, hlcAt } from './factories.ts'
+
 /**
  * Real, minimal in-memory fakes for the injected boundaries — not
  * mocking-framework mocks (`docs/testing.md`, Philosophy). They implement the
  * whole interface and behave like the thing they replace; a test that drives
  * one is exercising real control flow.
  *
- * The factory functions this module will grow (`aGear`, `aTrip`, …) arrive one
- * at a time with the slices that need them. No speculative fixture library.
+ * The factory functions this module will grow (`aTrip`, …) arrive one at a
+ * time with the slices that need them. No speculative fixture library.
  */
 
 /** A clock frozen at `start`, advanced only by an explicit {@link FakeClock.advance}. */

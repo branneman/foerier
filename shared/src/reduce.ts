@@ -10,7 +10,7 @@ import {
   type Read,
 } from './payloads.ts'
 import { writeRegister, type Register } from './registers.ts'
-import type { DepotState, GearState, PlaceState } from './state.ts'
+import type { DepotState, GearState, PersonState, PlaceState } from './state.ts'
 
 /**
  * The fold's starting point (`sync-protocol.md` §8.4): no places, no gear, no
@@ -76,6 +76,23 @@ function writeGear(
   const updated = update(current, stamp)
   if (updated === current) return state
   return { ...state, gear: { ...state.gear, [id]: updated } }
+}
+
+/**
+ * The `writePlace`/`writeGear` shape, reused for `people` (Task 7). Reads or
+ * creates the `PersonState` at `id`, applies `update`, and copies only what
+ * changed.
+ */
+function writePerson(
+  state: DepotState,
+  id: string,
+  stamp: Stamp,
+  update: (person: PersonState, stamp: Stamp) => PersonState,
+): DepotState {
+  const current = state.people[id] ?? { id }
+  const updated = update(current, stamp)
+  if (updated === current) return state
+  return { ...state, people: { ...state.people, [id]: updated } }
 }
 
 /**
@@ -216,6 +233,20 @@ const gearOwnedCountSet: Handler = (state, op, stamp) =>
   })
 
 /**
+ * `person.recorded` (`sync-protocol.md` §4.2): creates the Person and seeds
+ * `name`. Only this op is in scope for this slice — `person.renamed` stays
+ * unfolded (§5.3 obligation 1) until a later slice gives it a People list to
+ * land on.
+ */
+const personRecorded: Handler = (state, op, stamp) =>
+  writePerson(state, op.aggregate_id, stamp, (person, st) => {
+    const name = readString(op.payload, 'name')
+    if (name.kind !== 'value') return person
+    const next = writeRegister(person.name, name.value, st)
+    return next === person.name ? person : { ...person, name: next }
+  })
+
+/**
  * The op-type dispatch table (`sync-protocol.md` §4.1, §4.3). A `Record`, not
  * a `switch`, so "is this type known?" is a lookup — the same question the
  * tolerant reader asks. Task 7 extends this table with Person.
@@ -247,6 +278,7 @@ const handlers: Record<string, Handler> = {
       const next = writeRegister(gear.retired, false, st)
       return next === gear.retired ? gear : { ...gear, retired: next }
     }),
+  'person.recorded': personRecorded,
 }
 
 /**
