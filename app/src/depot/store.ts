@@ -311,58 +311,83 @@ export function createDepotStore(
   function emitDurable(spec: OpSpec): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       enqueue(async () => {
-        const op = authorOp(deps.author, spec)
-        const bytes = opByteLength(op)
-
-        if (bytes > MAX_OP_BYTES) {
-          // §1.4's cap is enforced by the server too, but only *after* the
-          // 1 MB body check — so an op authored over it would be accepted
-          // here, pushed as a batch of one, 413'd, and dead-lettered a round
-          // trip later. Refusing to author is the difference between telling
-          // the quartermaster now and losing their work quietly.
-          refuse({
-            reason: 'too-large',
-            type: op.type,
-            bytes,
-            limit: MAX_OP_BYTES,
-          })
-          reject(
-            new Error(
-              `depot: refused to author ${op.type}: ${bytes} bytes is over the ${MAX_OP_BYTES}-byte cap`,
-            ),
-          )
-          return
-        }
+        // One `try` around the whole job, so **every** exit settles the
+        // promise the caller is holding. A job that threw before reaching an
+        // explicit `reject` would otherwise leave that promise pending
+        // forever — and the caller is the join path, where a hang is worse
+        // than an error: a screen that never resolves rather than one that
+        // can say what went wrong.
+        let op: OpEnvelope | null = null
+        let bytes = 0
+        let appended = false
 
         try {
+          op = authorOp(deps.author, spec)
+          bytes = opByteLength(op)
+
+          if (bytes > MAX_OP_BYTES) {
+            // §1.4's cap is enforced by the server too, but only *after* the
+            // 1 MB body check — so an op authored over it would be accepted
+            // here, pushed as a batch of one, 413'd, and dead-lettered a
+            // round trip later. Refusing to author is the difference between
+            // telling the quartermaster now and losing their work quietly.
+            refuse({
+              reason: 'too-large',
+              type: op.type,
+              bytes,
+              limit: MAX_OP_BYTES,
+            })
+            reject(
+              new Error(
+                `depot: refused to author ${op.type}: ${bytes} bytes is over the ${MAX_OP_BYTES}-byte cap`,
+              ),
+            )
+            return
+          }
+
           await deps.log.append(op)
+          appended = true
+          // Durable. Nothing below can un-write what the log now holds, so
+          // this is the moment the caller was waiting for.
+          resolve()
+
+          await foldForward()
+          if (store.getState().refusal !== null) {
+            store.setState({ refusal: null })
+          }
+          // Fire-and-forget, deliberately: awaiting the network here would
+          // put it on the path a caller waits for, which is the whole thing
+          // §8.5 and architecture §3 forbid.
+          nudge()
         } catch (error) {
-          // The op is nowhere. Saying so is the whole point: a caller that
-          // would otherwise throw away its only copy of what the user typed
-          // has to be able to tell, and a screen has to be able to say the
-          // change did not save.
-          console.error('depot: an op could not be appended', error)
+          const failure =
+            error instanceof Error ? error : new Error(String(error))
+
+          if (appended) {
+            // The op is in the log; the fold or the nudge is what failed. The
+            // caller has already been told the truth — `resolve()` sits
+            // immediately after `appended = true` with nothing awaited
+            // between them, so this branch is unreachable with the caller
+            // still waiting. **Keep those two adjacent.** Let the queue's
+            // tail log the failure rather than pretend the write did not
+            // happen: it did, and the next load folds it from the log (§8.4).
+            throw failure
+          }
+
+          // The op is nowhere — the log refused it, or authoring itself did.
+          // Saying so is the whole point: a caller that would otherwise throw
+          // away its only copy of what the user typed has to be able to tell,
+          // and a screen has to be able to say the change did not save.
+          console.error('depot: an op could not be appended', failure)
           refuse({
             reason: 'not-saved',
-            type: op.type,
+            type: op?.type ?? spec.type,
             bytes,
             limit: MAX_OP_BYTES,
-            detail: error instanceof Error ? error.message : String(error),
+            detail: failure.message,
           })
-          reject(error instanceof Error ? error : new Error(String(error)))
-          return
+          reject(failure)
         }
-
-        // Durable. Everything below is memory and network, and none of it can
-        // un-write what the log now holds.
-        resolve()
-
-        await foldForward()
-        if (store.getState().refusal !== null) store.setState({ refusal: null })
-        // Fire-and-forget, deliberately: awaiting the network here would put
-        // it on the path a caller waits for, which is the whole thing §8.5
-        // and architecture §3 forbid.
-        nudge()
       })
     })
   }

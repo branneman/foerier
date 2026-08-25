@@ -160,6 +160,24 @@ function failingLog(inner: OpLog, failures: number): OpLog {
   }
 }
 
+/**
+ * An {@link OpLog} whose `since` rejects from the `nth` call onwards — the
+ * read the store folds from. The append still lands, so this is the one case
+ * where the op **is** durable and the memory half is what failed.
+ */
+function unreadableAfter(inner: OpLog, nth: number): OpLog {
+  let calls = 0
+  return {
+    ...inner,
+    since: (lsn) => {
+      calls += 1
+      return calls >= nth
+        ? Promise.reject(new Error('opLog: the read failed'))
+        : inner.since(lsn)
+    },
+  }
+}
+
 /** An {@link OpLog} whose `append` only completes when the test says so. */
 function gatedLog(inner: OpLog): OpLog & { release(): void } {
   const waiting: (() => void)[] = []
@@ -488,6 +506,53 @@ describe('the depot store', () => {
     expect(store.getState().refusal).toBeNull()
     expect(await log.all()).toHaveLength(1)
   })
+
+  it('emitDurable resolves once the op is durable even if the fold fails', async () => {
+    // The second `since` is the emit's catch-up read; the first is the load's.
+    const log = unreadableAfter(inMemoryOpLog(), 2)
+    const { factory } = fakeEngines()
+    const store = startStore({ log, engine: factory })
+    await drained(store)
+
+    const placeId = anId()
+    // Durability is the promise's whole meaning, and the op *is* in the log.
+    // A later failure in memory must not be reported as a failure to save.
+    await expect(
+      store.getState().emitDurable(placeRecorded(placeId, 'Shed')),
+    ).resolves.toBeUndefined()
+
+    expect(await log.all()).toHaveLength(1)
+    // …and the fold that failed is simply not there, to be re-folded from the
+    // log on the next load (§8.4).
+    expect(Object.hasOwn(store.getState().state.places, placeId)).toBe(false)
+  })
+
+  it('emitDurable rejects rather than hanging when authoring throws', async () => {
+    const log = inMemoryOpLog()
+    const { factory } = fakeEngines()
+    // A boundary that fails *before* the op exists at all — earlier than
+    // any of the explicit refusals. The promise must still settle: the
+    // caller is the join path, where a hang is worse than an error.
+    const author: OpAuthor = {
+      ...anAuthor(),
+      ids: {
+        next: () => {
+          throw new Error('ids: no identifier available')
+        },
+      },
+    }
+    const store = startStore({ log, engine: factory, author })
+    await drained(store)
+
+    await expect(
+      store.getState().emitDurable(placeRecorded(anId(), 'Shed')),
+    ).rejects.toThrow('ids: no identifier available')
+
+    expect(await log.all()).toHaveLength(0)
+    // The op never existed, so the refusal falls back to the spec's type.
+    expect(store.getState().refusal?.reason).toBe('not-saved')
+    expect(store.getState().refusal?.type).toBe('place.recorded')
+  }, 1_000) // rather than stall. // A regression here is a hang, not a wrong value, so the suite must fail
 
   it('builds a fresh engine rather than resuming a frozen one', async () => {
     const log = inMemoryOpLog()
