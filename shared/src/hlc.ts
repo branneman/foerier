@@ -126,13 +126,9 @@ export function createHlcClock(
     },
     receive: (remoteHlc) => {
       const remote = parseHlc(remoteHlc)
-      // An unparseable HLC teaches us nothing about the peer's clock — the
-      // reducer still retains and folds the op itself — but receiving it is
-      // still a local event, so it ticks like any other (§2.4).
-      if (remote === null) {
-        last = issueAt(last, clock.now())
-        return { driftExceeded: false }
-      }
+      // An unparseable HLC is a malformed op, not a clock event. The reducer
+      // still retains and folds what it can; it simply teaches us nothing.
+      if (remote === null) return { driftExceeded: false }
       const { next, driftExceeded } = receiveAt(last, remote, clock.now())
       last = next
       return { driftExceeded }

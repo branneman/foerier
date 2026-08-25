@@ -169,8 +169,11 @@ describe('createHlcClock', () => {
   })
 
   it('ignores an unparseable peer hlc rather than throwing', () => {
-    const clock = createHlcClock(fakeClock(T))
+    const clock = createHlcClock(fakeClock(T), { ms: T, counter: 3 })
     expect(() => clock.receive('not-an-hlc')).not.toThrow()
-    expect(clock.state()).toEqual({ ms: T, counter: 0 })
+    // A malformed op teaches the clock nothing about the peer, so the clock
+    // must not move. `issue()` maxes against the wall clock anyway, so
+    // standing still here costs nothing.
+    expect(clock.state()).toEqual({ ms: T, counter: 3 })
   })
 })
