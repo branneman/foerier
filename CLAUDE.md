@@ -152,10 +152,16 @@ artifacts with no external consumer.
   `git log` reads as the order work actually landed and a slice remains one
   reviewable commit rather than something to untangle from a merge bubble.
   (Same rule as the sibling repos.)
-- **Doc paths: no `spec`/`specs` directory, and no date prefixes on durable,
-  generic docs.** A durable design doc lives flat in `docs/`, named for what it
-  is — `docs/architecture-design.md`, not `docs/specs/2026-08-20-architecture-design.md`.
-  (Same rule as the sibling repos.)
+- **Doc paths: two shelves, and the date is what separates them.** A
+  **perpetually relevant** doc — one that is kept true as the code evolves —
+  lives flat in `docs/`, named for what it is and never dated:
+  `docs/architecture-design.md`, `docs/testing.md`. A **feature spec** — the
+  design for one slice or feature, retired once it has shipped — lives in
+  `docs/specs/YYYY-MM-DD-<slug>.md`, dated because its value is historical the
+  moment it lands. Never date a durable doc, and never put a feature spec on the
+  flat shelf where it will quietly rot. (The sibling repos have no `docs/specs/`
+  shelf; this repo diverges deliberately, because slices here carry more design
+  than a commit message can hold.)
 
 ## Requirements process
 
