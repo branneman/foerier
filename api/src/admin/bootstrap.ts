@@ -10,7 +10,11 @@ import { createDb } from '../db/index.ts'
 /**
  * The Maintainer bootstrap (`auth-design.md` §3.4).
  *
- *   npm run admin:bootstrap --workspace api -- --name "Veldkamp"
+ *   npm run admin:bootstrap -- --name "Veldkamp"   (local)
+ *   node dist/bootstrap.js --name "Veldkamp"       (in the api image)
+ *
+ * The two are not interchangeable, and which one you are running decides which
+ * origin the join link carries — see the note on `appOrigin` below.
  *
  * Only the **first** Login of a brand-new Household is arranged out of band.
  * Every Invite after that is issued by a Quartermaster from inside the app,
@@ -26,16 +30,23 @@ async function main(): Promise<void> {
     options: { name: { type: 'string' } },
   })
 
+  const mode =
+    process.env['NODE_ENV'] === 'production' ? 'production' : 'development'
+
   const name = values.name?.trim()
   if (name === undefined || name === '') {
+    // Describes the invocation for the environment this run is actually in.
+    // Locally that is an npm script; in the image it is the bundled
+    // entrypoint, and the two are not interchangeable — printing the local
+    // form to someone inside the container is how a Household ends up in the
+    // wrong database, or a link against the wrong origin.
     console.error(
-      'usage: npm run admin:bootstrap --workspace api -- --name "Veldkamp"',
+      mode === 'production'
+        ? 'usage: node dist/bootstrap.js --name "Veldkamp"'
+        : 'usage: npm run admin:bootstrap -- --name "Veldkamp"',
     )
     process.exit(2)
   }
-
-  const mode =
-    process.env['NODE_ENV'] === 'production' ? 'production' : 'development'
 
   const config = loadConfig()
   const db = createDb(config.databaseUrl)
