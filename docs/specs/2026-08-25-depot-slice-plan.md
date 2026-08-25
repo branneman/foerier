@@ -2260,10 +2260,26 @@ action bar offers nothing.
 - `'EDIT changes the owned-count and emits gear.owned_count_set'`
 - `'EDIT changes the kind and emits gear.kind_set'`
 - `'RETIRE emits gear.retired only after the confirmation'`
-- `'renders RETIRE as text, not as a filled button'`
+- `'gives RETIRE a class distinct from the bordered MOVE/EDIT buttons'`
+
+  *(Renamed after implementation, from `'renders RETIRE as text, not as a
+  filled button'`. jsdom does not wire CSS Module rules to computed style —
+  `css: true` was tried and reverted — so no test here can see whether the
+  button is filled. The original name promised coverage the tooling cannot
+  provide. **The visual rule still holds and rests on review**, and the test
+  file says so at the assertion.)*
+
 - `'renders a retired piece of gear struck through, with no actions'`
-- `'renders an unknown kind value verbatim rather than crashing'` —
-  obligation 4, all the way to the screen
+- `'does not crash or show a false owned-count for an unrecognised kind'` —
+  obligation 4, as far as this screen can carry it.
+
+  *(Renamed after implementation. It read `'renders an unknown kind value
+  verbatim rather than crashing'`, written before the meta line's first
+  segment was settled as the **containment trait** rather than the Kind.
+  Once Kind has no token on this line there is nothing for the screen to
+  render verbatim, so the name asserted the opposite of what the test
+  checks. Verbatim retention is the reducer's obligation and is tested
+  there.)*
 
 - [ ] **Step 2–4:** fail → implement → pass
 
