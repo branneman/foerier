@@ -68,12 +68,62 @@ jobs:
       - run: npm ci
       - run: npm run test:server
 
+  # Whether this push contains anything that could change either image.
+  # Watchtower redeploys within ~60 s of a `:latest` push, so building on a
+  # prose-only commit would restart production to ship a typo fix in a design
+  # doc. Everything downstream of the images hangs off this one boolean —
+  # notably Tier 4, which would otherwise poll forever for a SHA that was never
+  # deployed because no image was ever built.
+  #
+  # The test jobs above deliberately still run on every commit: they are cheap,
+  # and "main is green" is worth more as a live fact than as a stale one.
+  changes:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      deployable: ${{ steps.filter.outputs.deployable }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          # Fail *open*. Anything that cannot be worked out reliably — a new
+          # branch, a force-push that orphaned the old tip — deploys. A missed
+          # deploy is a silent main/production mismatch that nothing reports; a
+          # redundant one costs a container restart.
+          if [ -z "$BEFORE" ] \
+            || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+            || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "no usable diff base — deploying"
+            echo "deployable=true" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BEFORE" "$AFTER")
+          echo "changed:"; printf '%s\n' "$changed" | sed 's/^/  /'
+          # Non-deployable: docs/, .claude/, and root-level *.md (README,
+          # CLAUDE). Everything else — source, Dockerfiles, the lockfile, this
+          # workflow — deploys.
+          if printf '%s\n' "$changed" \
+            | grep -qvE '^(docs/|\.claude/|[^/]+\.md$)'; then
+            echo "deployable=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "prose only — not deploying"
+            echo "deployable=false" >>"$GITHUB_OUTPUT"
+          fi
+
   # Both images, tagged with the commit SHA and `latest`. Publishing them is
   # the whole of this repository's side of the deployment contract: what picks
   # them up, and where they run, is the infrastructure repository's business.
+  #
+  # No `github.event_name` guard: `changes` carries it, and a skipped `needs`
+  # skips its dependents.
   build-push:
-    if: github.event_name == 'push'
-    needs: [static-analysis, tests, server-tests]
+    if: needs.changes.outputs.deployable == 'true'
+    needs: [changes, static-analysis, tests, server-tests]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -102,9 +152,46 @@ jobs:
             ghcr.io/branneman/${{ matrix.image }}:latest
             ghcr.io/branneman/${{ matrix.image }}:${{ github.sha }}
 
-  # Tier 4 (contract, polling GET /api/v1/version for the pushed SHA) and
-  # Tier 5 against the deployed site are deliberately absent until the
-  # infrastructure repository can actually deploy these images. Adding jobs
-  # that cannot pass yet would only teach us to ignore a red pipeline.
+  # Tier 4 — the contract tier (docs/testing.md): the real deployed server, over
+  # the real Caddy, at the real origin. A different claim from Tier 2s, which
+  # proves the code correct against a local Postgres; this proves the *box*.
   #
-  # Tier 5 runs locally in the meantime: `npm run test:e2e`.
+  # Tier 5 against the deployed site is still absent — the golden path needs
+  # domain behaviour that does not exist before S2. It runs locally in the
+  # meantime: `npm run test:e2e`.
+  contract:
+    needs: [changes, build-push]
+    if: needs.changes.outputs.deployable == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      # Watchtower polls GHCR on a 60 s interval, and the container then has to
+      # start and run its migrations before it serves. Poll rather than sleep,
+      # so a fast deploy stays fast and a stuck one fails saying what it is
+      # actually serving instead of just timing out.
+      - name: Wait for Watchtower to deploy this commit
+        env:
+          EXPECTED: ${{ github.sha }}
+        run: |
+          deadline=$((SECONDS + 300))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            got=$(curl -fsS --max-time 10 \
+              https://api.foerier.app/api/v1/version \
+              | jq -r '.sha // empty' || true)
+            if [ "$got" = "$EXPECTED" ]; then
+              echo "deployed $got after ${SECONDS}s"
+              exit 0
+            fi
+            echo "serving ${got:-<unreachable>}, want $EXPECTED"
+            sleep 10
+          done
+          echo "::error::api.foerier.app never reported $EXPECTED within 300s"
+          exit 1
+
+      - run: npm run test:contract
