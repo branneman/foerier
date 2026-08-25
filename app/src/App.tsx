@@ -60,9 +60,32 @@ const localEngine: EngineFactory = () => ({
   bootstrap: () => null,
 })
 
+/**
+ * The line `AppShell` shows in place of the real sync status while the
+ * bridge is live. `online ? 'Synced' : 'Offline'` would be a lie here —
+ * nothing is durable and nothing reaches the household — so this is what
+ * `App.tsx` passes instead, in the same factual, non-alarming register as
+ * the design's own `Offline. Saved on device.` and
+ * `SIGNED OUT · SAVED ON DEVICE` lines. Deleted the same day Task 23 deletes
+ * the bridge itself.
+ */
+const BRIDGE_SYNC_LINE = 'Not saved. Lost on reload.'
+
 /** One in-memory store per signed-in session — real reducer, real op log,
- * nothing durable and nothing synced yet (see {@link localEngine}). */
+ * nothing durable and nothing synced yet (see {@link localEngine}).
+ *
+ * Warns loudly on construction: this is a temporary bridge (Task 23 replaces
+ * it with the session-backed, persisted, synced store), and a Quartermaster
+ * who reloads mid-session loses everything typed here with no error anywhere
+ * in the UI. `BRIDGE_SYNC_LINE` is the user-facing half of that same warning;
+ * this is the developer/CI-facing half. */
 function createLocalDepotStore(session: Session): StoreApi<DepotStoreState> {
+  console.warn(
+    'depot: using a temporary in-memory store for this session — nothing ' +
+      'persists across a reload and nothing syncs to the server. This is a ' +
+      'bridge (app/src/App.tsx, createLocalDepotStore); Task 23 replaces it ' +
+      'with the real session-backed, persisted, synced store.',
+  )
   const author: OpAuthor = {
     household_id: session.householdId,
     device_id: session.deviceId,
@@ -168,7 +191,7 @@ export function App({
         {session === null ? (
           <Redirect to="/signin" />
         ) : depotStore === null ? null : (
-          <AppShell syncLine={online ? 'Synced' : 'Offline'}>
+          <AppShell syncLine={BRIDGE_SYNC_LINE}>
             <DepotProvider value={depotStore}>
               <Switch>
                 <Route path="/">

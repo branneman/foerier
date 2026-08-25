@@ -96,6 +96,17 @@ export function Depot() {
             const name = item.name?.value ?? ''
             const meta = metaFor(state, item, view)
             const isContainer = item.container?.value === true
+            const metaId = `depot-row-meta-${item.id}`
+            const whereaboutsId = `depot-row-whereabouts-${item.id}`
+            // The row's accessible name stays just the gear's name (rows are
+            // queried by it in tests, and it's what you'd say the row *is*),
+            // but the home path and whereabouts are real content — the
+            // answer to "where is it" — so a screen-reader activating the
+            // row still hears them, via `aria-describedby` rather than
+            // folding them into the name.
+            const describedBy = [meta !== '' ? metaId : null, whereaboutsId]
+              .filter((id) => id !== null)
+              .join(' ')
 
             return (
               <li key={item.id}>
@@ -103,17 +114,24 @@ export function Depot() {
                   href={`/gear/${item.id}`}
                   className={styles['row']}
                   aria-label={name}
+                  aria-describedby={describedBy}
                 >
                   <span className={styles['rowMain']}>
                     <span className={styles['name']}>{name}</span>
                     {meta !== '' && (
-                      <span className={styles['meta']} data-testid="meta">
+                      <span
+                        id={metaId}
+                        className={styles['meta']}
+                        data-testid="meta"
+                      >
                         {meta}
                       </span>
                     )}
                   </span>
                   <span className={styles['rowSide']}>
-                    <span className={styles['whereabouts']}>⌂ HOME</span>
+                    <span id={whereaboutsId} className={styles['whereabouts']}>
+                      ⌂ HOME
+                    </span>
                     {isContainer && (
                       <span className={styles['chevron']} aria-hidden="true">
                         ›
