@@ -24,12 +24,16 @@ export interface SyncRoutesDeps {
 type Vars = { Variables: AuthVariables }
 
 type BatchErrorCode =
-  'bad_request' | 'payload_too_large' | 'rate_limited' | 'server_error'
+  | 'bad_request'
+  | 'unauthorized'
+  | 'payload_too_large'
+  | 'rate_limited'
+  | 'server_error'
 
 /** §6.3's one shape for every batch-level failure. */
 function batchError(
   c: Context<Vars>,
-  status: 400 | 413 | 429 | 500,
+  status: 400 | 401 | 413 | 429 | 500,
   code: BatchErrorCode,
   message: string,
 ) {
@@ -41,18 +45,52 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * `requireAuth`'s own 401 is `{ "error": "unauthorized" }` — the flat shape
+ * `/auth/*` shipped with in the auth slice. `auth-design.md` specifies no
+ * body for a 401, so that shape is incidental rather than contractual, but an
+ * installed app may already parse it, so it stays exactly as it is for
+ * `/auth/*`; rewriting another slice's observable responses is not this
+ * route's business.
+ *
+ * `/sync/*` is bound by a different contract: `sync-protocol.md` §6.3 lists
+ * 401 in the *batch-level* error table alongside 400/413/429/5xx, all under
+ * the one `{ error: { code, message, detail } }` shape. This wrapper is what
+ * makes `/sync/*`'s 401 honour that, without touching `requireAuth` or
+ * `/auth/*` at all. Unifying the two shapes is a later decision for whoever
+ * owns `/auth/*`.
+ */
+function withSyncAuthShape(
+  requireAuth: MiddlewareHandler<Vars>,
+): MiddlewareHandler<Vars> {
+  return async (c, next) => {
+    const result = await requireAuth(c, next)
+    if (result !== undefined && result.status === 401) {
+      return batchError(
+        c,
+        401,
+        'unauthorized',
+        'Missing, revoked, or expired device token.',
+      )
+    }
+    return result
+  }
+}
+
+/**
  * A `SyncError` and a driver failure both become the same `server_error` to
  * the client — §6.3 has no code for either, and its per-op set is closed —
  * but they are logged distinctly, which is the whole point of `SyncError`
  * existing as its own type: a `SyncError` in the log means an invariant
  * `sync/service.ts` owns was violated and the batch was refused
- * deliberately, not that Postgres is unreachable.
+ * deliberately, not that Postgres is unreachable. `route` says which of
+ * push/pull it happened on, so a grep for one does not surface the other's
+ * failures.
  */
-function serverError(c: Context<Vars>, error: unknown) {
+function serverError(c: Context<Vars>, route: 'push' | 'pull', error: unknown) {
   if (error instanceof SyncError) {
-    console.error(`sync push refused: ${error.reason}: ${error.message}`)
+    console.error(`sync ${route} refused: ${error.reason}: ${error.message}`)
   } else {
-    console.error('sync push failed:', error)
+    console.error(`sync ${route} failed:`, error)
   }
   return batchError(c, 500, 'server_error', 'Something went wrong.')
 }
@@ -64,17 +102,20 @@ export function createSyncRoutes({
 }: SyncRoutesDeps) {
   const sync = new Hono<Vars>()
 
-  sync.use('*', requireAuth)
+  sync.use('*', withSyncAuthShape(requireAuth))
 
   // `/sync/*` gets its own bucket, much higher than `/auth/*`'s, and keyed by
-  // Device rather than by IP: every caller here is already authenticated, so
-  // there is no enumeration risk to guard against, only the box's own
-  // capacity — and a household's devices can share one NAT'd IP, which IP
-  // keying would needlessly conflate. Sized generously because a returning
-  // offline client legitimately bursts after a long disconnection (§6.3).
+  // Device rather than by IP: every caller here is already authenticated —
+  // requireAuth above runs first, so an unauthenticated caller is turned away
+  // with 401 and never spends against this bucket at all — so there is no
+  // enumeration risk to guard against, only the box's own capacity, and a
+  // household's devices can share one NAT'd IP, which IP keying would
+  // needlessly conflate. Sized generously because a returning offline client
+  // legitimately bursts after a long disconnection (§6.3).
   sync.use('*', async (c, next) => {
     const { deviceId } = c.get('auth')
     if (!limiter.take(deviceId)) {
+      c.header('Retry-After', String(limiter.retryAfterSeconds()))
       return batchError(c, 429, 'rate_limited', 'Too many requests.')
     }
     await next()
@@ -128,7 +169,7 @@ export function createSyncRoutes({
       const result = await service.push(householdId, ops)
       return c.json(result)
     } catch (error) {
-      return serverError(c, error)
+      return serverError(c, 'push', error)
     }
   })
 
@@ -153,7 +194,7 @@ export function createSyncRoutes({
       const result = await service.pull(householdId, since, limit)
       return c.json(result)
     } catch (error) {
-      return serverError(c, error)
+      return serverError(c, 'pull', error)
     }
   })
 

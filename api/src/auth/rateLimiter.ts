@@ -22,6 +22,14 @@ export interface RateLimiter {
   take(key: string): boolean
   /** Number of tracked callers. Exposed so the eviction rule is testable. */
   size(): number
+  /**
+   * Seconds until a caller can expect at least one token back, for a
+   * `Retry-After` header. Conservative and per-limiter rather than per-key —
+   * it reads the configured refill rate, not any one caller's exact bucket
+   * state, which is enough for a client backing off and costs no extra
+   * bookkeeping.
+   */
+  retryAfterSeconds(): number
 }
 
 interface Bucket {
@@ -68,5 +76,7 @@ export function createRateLimiter({
     },
 
     size: () => buckets.size,
+
+    retryAfterSeconds: () => Math.max(1, Math.ceil(60 / refillPerMinute)),
   }
 }

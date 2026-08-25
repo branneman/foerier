@@ -23,9 +23,48 @@ import {
   resetHouseholds,
   seedHousehold,
   NOW,
+  TEST_ORIGIN,
   type Harness,
 } from './harness.ts'
 import { testDb } from './testDb.ts'
+
+/**
+ * A real Device row and its bearer token — no WebAuthn ceremony needed.
+ * Module-level so both describe blocks below can share it.
+ */
+async function issueDevice(
+  db: Kysely<Database>,
+  clock: FakeClock,
+  householdId: string,
+): Promise<{ token: string; deviceId: string }> {
+  const loginId = crypto.randomUUID()
+  await db
+    .insertInto('login')
+    .values({
+      id: loginId,
+      household_id: householdId,
+      person_id: crypto.randomUUID(),
+    })
+    .execute()
+
+  const { token, tokenHash } = issueDeviceToken()
+  const deviceId = crypto.randomUUID()
+  await db
+    .insertInto('device')
+    .values({
+      id: deviceId,
+      login_id: loginId,
+      household_id: householdId,
+      token_hash: tokenHash,
+      label: null,
+      last_seen_at: new Date(clock.now()),
+      expires_at: nextExpiry(clock),
+      revoked_at: null,
+    })
+    .execute()
+
+  return { token, deviceId }
+}
 
 /**
  * The sync service — push, pull, and sequence assignment
@@ -486,39 +525,6 @@ describe('the /sync routes', () => {
     ids = countingIdSource(1)
   })
 
-  /** A real Device row and its bearer token — no WebAuthn ceremony needed. */
-  async function issueDevice(
-    householdId: string,
-  ): Promise<{ token: string; deviceId: string }> {
-    const loginId = crypto.randomUUID()
-    await db
-      .insertInto('login')
-      .values({
-        id: loginId,
-        household_id: householdId,
-        person_id: crypto.randomUUID(),
-      })
-      .execute()
-
-    const { token, tokenHash } = issueDeviceToken()
-    const deviceId = crypto.randomUUID()
-    await db
-      .insertInto('device')
-      .values({
-        id: deviceId,
-        login_id: loginId,
-        household_id: householdId,
-        token_hash: tokenHash,
-        label: null,
-        last_seen_at: new Date(h.clock.now()),
-        expires_at: nextExpiry(h.clock),
-        revoked_at: null,
-      })
-      .execute()
-
-    return { token, deviceId }
-  }
-
   /** A fresh, well-formed envelope every call — nothing shared to mutate. */
   function anOp(overrides: Partial<OpEnvelope> = {}): OpEnvelope {
     return {
@@ -563,13 +569,29 @@ describe('the /sync routes', () => {
     })
   }
 
+  /**
+   * `/sync/*`'s 401 must use §6.3's one batch-error shape — unlike
+   * `/auth/*`'s flat `{ error: 'unauthorized' }`, which is a different,
+   * earlier-shipped contract this router deliberately leaves alone.
+   */
+  async function expectUnauthorized(res: Response): Promise<void> {
+    expect(res.status).toBe(401)
+    expect(await jsonOf<{ error: unknown }>(res)).toEqual({
+      error: {
+        code: 'unauthorized',
+        message: expect.any(String),
+        detail: {},
+      },
+    })
+  }
+
   it('requires a bearer token on push and on pull', async () => {
-    expect((await push(undefined, { ops: [] })).status).toBe(401)
-    expect((await pull(undefined, '?since=0')).status).toBe(401)
+    await expectUnauthorized(await push(undefined, { ops: [] }))
+    await expectUnauthorized(await pull(undefined, '?since=0'))
   })
 
   it('takes household_id from the token, not from the body', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
     // An op claiming HOUSEHOLD_B's id, pushed on HOUSEHOLD_A's token.
     const foreign = anOp({ household_id: HOUSEHOLD_B })
 
@@ -594,7 +616,7 @@ describe('the /sync routes', () => {
   })
 
   it('assigns seqs and returns them in request order', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
     const ops = [anOp(), anOp(), anOp()]
 
     const res = await push(a.token, { ops })
@@ -613,7 +635,7 @@ describe('the /sync routes', () => {
   })
 
   it('returns 413 for a batch over 500 ops', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
     const ops = Array.from({ length: MAX_BATCH_OPS + 1 }, () => anOp())
 
     const res = await push(a.token, { ops })
@@ -632,7 +654,7 @@ describe('the /sync routes', () => {
   })
 
   it('returns 413 for a body over 1 MB', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
 
     // Not even valid JSON — the byte cap is checked before parsing, so this
     // must never reach a parser.
@@ -644,7 +666,7 @@ describe('the /sync routes', () => {
   })
 
   it('returns 400 bad_request for a malformed batch body', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
 
     const res = await pushRaw(a.token, 'not valid json at all')
 
@@ -654,19 +676,19 @@ describe('the /sync routes', () => {
   })
 
   it('returns 401 for a revoked device token', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
     await db
       .updateTable('device')
       .set({ revoked_at: new Date(h.clock.now()) })
       .where('id', '=', a.deviceId)
       .execute()
 
-    expect((await push(a.token, { ops: [] })).status).toBe(401)
-    expect((await pull(a.token, '?since=0')).status).toBe(401)
+    await expectUnauthorized(await push(a.token, { ops: [] }))
+    await expectUnauthorized(await pull(a.token, '?since=0'))
   })
 
   it('pages a pull with has_more and an advancing cursor', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
     await push(a.token, { ops: [anOp(), anOp(), anOp()] })
 
     const first = await jsonOf<{
@@ -689,7 +711,7 @@ describe('the /sync routes', () => {
   })
 
   it('returns household_seq on pull as well as on push', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
 
     const pushed = await jsonOf<{ household_seq: number }>(
       await push(a.token, { ops: [anOp(), anOp()] }),
@@ -703,11 +725,19 @@ describe('the /sync routes', () => {
   })
 
   it('stores and returns an unknown op type opaquely', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
+    // The whole envelope must round-trip byte for byte — `hlc`, `device_id`
+    // and `household_id` included, not just the fields it would be easy to
+    // remember to check (§6.2).
     const alien = anOp({
       aggregate: 'starship',
       type: 'starship.warped',
-      payload: { destination: 'Risa', warp_factor: 9.975 },
+      payload: {
+        destination: 'Risa',
+        warp_factor: 9.975,
+        crew: ['Ada', 'Bran'],
+        nested: { deeper: { still: null } },
+      },
     })
 
     await push(a.token, { ops: [alien] })
@@ -716,16 +746,15 @@ describe('the /sync routes', () => {
       await pull(a.token, '?since=0'),
     )
     expect(pulled.ops).toHaveLength(1)
-    expect(pulled.ops[0]).toMatchObject({
-      id: alien.id,
-      aggregate: 'starship',
-      type: 'starship.warped',
-      payload: alien.payload,
+    expect(pulled.ops[0]).toEqual({
+      ...alien,
+      seq: 1,
+      received_at: new Date(NOW).toISOString(),
     })
   })
 
   it('rejects an op carrying seq or received_at', async () => {
-    const a = await issueDevice(HOUSEHOLD_A)
+    const a = await issueDevice(db, h.clock, HOUSEHOLD_A)
     const withSeq = { ...anOp(), seq: 99 }
     const withReceivedAt = {
       ...anOp(),
@@ -743,5 +772,71 @@ describe('the /sync routes', () => {
       'envelope_invalid',
       'envelope_invalid',
     ])
+  })
+})
+
+/**
+ * Proves the sync limiter is actually *wired to the routes*, the same way
+ * `rateLimit.test.ts` does for `/auth/*`: `AppDeps.syncRateLimit` and
+ * `createRateLimiter` are already covered elsewhere, but a bucket that is
+ * configured and never mounted passes every other test in this file.
+ *
+ * Its own harness, with the sync bucket deliberately tiny — reuses
+ * registry slot #6, not a new claim.
+ */
+describe('the /sync rate limit', () => {
+  const HOUSEHOLD = '0f000006-0000-4000-8000-000000000006'
+
+  let h: Harness
+  let db: Kysely<Database>
+
+  beforeAll(async () => {
+    h = await createHarness({
+      syncRateLimit: { capacity: 2, refillPerMinute: 1 },
+    })
+    db = h.db
+  })
+
+  afterAll(async () => {
+    await db.destroy()
+  })
+
+  beforeEach(async () => {
+    await resetHouseholds(db, [HOUSEHOLD])
+    await seedHousehold(db, { id: HOUSEHOLD, name: 'Veldkamp' })
+    h.clock.set(NOW)
+  })
+
+  function pull(token: string) {
+    return h.app.request('/api/v1/sync/pull?since=0', {
+      headers: { authorization: `Bearer ${token}` },
+    })
+  }
+
+  it('returns 429 with the batch error shape once the sync bucket is exhausted', async () => {
+    const a = await issueDevice(db, h.clock, HOUSEHOLD)
+
+    expect((await pull(a.token)).status).toBe(200)
+    expect((await pull(a.token)).status).toBe(200)
+
+    const res = await pull(a.token)
+    expect(res.status).toBe(429)
+    expect(res.headers.get('retry-after')).not.toBeNull()
+    expect(await jsonOf<{ error: unknown }>(res)).toEqual({
+      error: {
+        code: 'rate_limited',
+        message: expect.any(String),
+        detail: {},
+      },
+    })
+
+    // It is the *sync* bucket that is exhausted, not the auth one: this
+    // harness leaves `rateLimit` at its generous default, so an /auth/*
+    // request must still succeed.
+    const authRes = await h.app.request('/api/v1/auth/login/options', {
+      method: 'POST',
+      headers: { origin: TEST_ORIGIN },
+    })
+    expect(authRes.status).toBe(200)
   })
 })
