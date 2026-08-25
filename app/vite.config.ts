@@ -66,5 +66,14 @@ export default defineConfig({
 
   server: {
     port: 5173,
+    // Listen on every interface rather than loopback only. Firefox's handling
+    // of the `localhost` domain makes the default binding awkward to work
+    // against, and this costs nothing locally.
+    host: true,
+  },
+
+  preview: {
+    port: 4173,
+    host: true,
   },
 })
