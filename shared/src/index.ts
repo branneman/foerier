@@ -16,3 +16,6 @@ export {
   parseHlc,
   receiveAt,
 } from './hlc.ts'
+
+export type { Register } from './registers.ts'
+export { stampOf, writeRegister } from './registers.ts'
