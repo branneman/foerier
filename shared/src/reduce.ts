@@ -112,6 +112,35 @@ function writeIfPresent<T>(
   return writeRegister(current, read.value, stamp)
 }
 
+/**
+ * The `name`-shaped counterpart to `writeIfPresent`, for the three registers
+ * whose declared type includes `null` — `PlaceState.name`, `GearState.name`,
+ * `PersonState.name`, all `Register<string | null>` (`state.ts`, Task 3).
+ *
+ * The rule, uniform across every register in this reducer: **a register
+ * whose declared type includes `null` takes an explicit `null` as a clear; a
+ * register whose type does not treats a `null` payload as malformed and
+ * ignores it** (§1.3, §5.3 obligation 5). `name` is the only family of
+ * registers on the nullable side of that line today, so every op that
+ * writes one — `place.recorded`/`place.renamed`, `gear.recorded`/
+ * `gear.renamed`, `person.recorded` — goes through this function rather than
+ * `writeIfPresent`, so the three behave identically wherever they are
+ * written. (An earlier version of this file had `setPlaceName` collapse
+ * `null` into absent — reasoning from §4.1's payload shape rather than from
+ * the state type, and wrong: it made an explicit clear fold identically to
+ * an absent field, exactly the conflation obligation 5 forbids. Corrected
+ * once, here, rather than per op.)
+ */
+function writeNameIfPresent(
+  current: Register<string | null> | undefined,
+  read: Read<string>,
+  stamp: Stamp,
+): Register<string | null> | undefined {
+  if (read.kind === 'absent') return current
+  const value = read.kind === 'null' ? null : read.value
+  return writeRegister(current, value, stamp)
+}
+
 type Handler = (state: DepotState, op: OpEnvelope, stamp: Stamp) => DepotState
 
 /**
@@ -121,20 +150,22 @@ type Handler = (state: DepotState, op: OpEnvelope, stamp: Stamp) => DepotState
  */
 const setPlaceName: Handler = (state, op, stamp) =>
   writePlace(state, op.aggregate_id, stamp, (place, st) => {
-    const name = readString(op.payload, 'name')
-    // Absent and `null` both fall through here, and that is deliberate, not
-    // an obligation-5 collapse: the catalogue types this payload's `name` as
-    // a string (§4.1), so a `null` is malformed input, not a clear — there is
-    // no wire shape that legitimately clears a Place's name. `PlaceState.name`
-    // is `Register<string | null>` only because `Read<T>`'s `null` outcome is
-    // shared machinery; nothing in this op catalogue is nullable (§5.4 also
-    // forbids ever giving this field that meaning without a new op type).
-    if (name.kind !== 'value') return place
-    const next = writeRegister(place.name, name.value, st)
-    // `writeRegister` returns the identical register on a lost write; a
-    // spread here would still fabricate a new `place` object, so the
-    // identity must be checked before copying, not after.
-    return next === place.name ? place : { ...place, name: next }
+    // `PlaceState.name` is `Register<string | null>` (Task 3), so a `null`
+    // payload is a clear, not malformed input — `writeNameIfPresent`'s rule.
+    const next = writeNameIfPresent(
+      place.name,
+      readString(op.payload, 'name'),
+      st,
+    )
+    // `writeRegister` (inside `writeNameIfPresent`) returns the identical
+    // register on a lost write or an absent field; a spread here would still
+    // fabricate a new `place` object, so the identity must be checked before
+    // copying, not after. `next` is only ever `undefined` when it equals
+    // `place.name` (both absent) — that branch is caught above, so the
+    // second check is for the type checker, not runtime, under
+    // `exactOptionalPropertyTypes`.
+    if (next === place.name) return place
+    return next === undefined ? place : { ...place, name: next }
   })
 
 /**
@@ -147,7 +178,11 @@ const setPlaceName: Handler = (state, op, stamp) =>
  */
 const gearRecorded: Handler = (state, op, stamp) =>
   writeGear(state, op.aggregate_id, stamp, (gear, st) => {
-    const name = writeIfPresent(gear.name, readString(op.payload, 'name'), st)
+    const name = writeNameIfPresent(
+      gear.name,
+      readString(op.payload, 'name'),
+      st,
+    )
     const container = writeIfPresent(
       gear.container,
       readBoolean(op.payload, 'container'),
@@ -188,22 +223,16 @@ const gearRecorded: Handler = (state, op, stamp) =>
     }
   })
 
-/**
- * `gear.renamed` (§4.3): sets `name`. Unlike Place's name — see
- * `setPlaceName`'s comment above, which deliberately collapses `null` into
- * absent — the wire permits an explicit clear here: `GearState.name` is
- * `Register<string | null>` for exactly this reason (Task 3). An absent
- * field leaves the register alone; an explicit `null` is a write like any
- * other and clears it (§5.3 obligation 5), even though no S2 builder emits
- * one yet.
- */
+/** `gear.renamed` (§4.3): sets `name`, via `writeNameIfPresent`'s rule. */
 const gearRenamed: Handler = (state, op, stamp) =>
   writeGear(state, op.aggregate_id, stamp, (gear, st) => {
-    const name = readString(op.payload, 'name')
-    if (name.kind === 'absent') return gear
-    const value = name.kind === 'null' ? null : name.value
-    const next = writeRegister(gear.name, value, st)
-    return next === gear.name ? gear : { ...gear, name: next }
+    const next = writeNameIfPresent(
+      gear.name,
+      readString(op.payload, 'name'),
+      st,
+    )
+    if (next === gear.name) return gear
+    return next === undefined ? gear : { ...gear, name: next }
   })
 
 /** `gear.rehomed` (§4.3): sets the **home** residence. A trip never touches it. */
@@ -249,10 +278,13 @@ const gearOwnedCountSet: Handler = (state, op, stamp) =>
  */
 const personRecorded: Handler = (state, op, stamp) =>
   writePerson(state, op.aggregate_id, stamp, (person, st) => {
-    const name = readString(op.payload, 'name')
-    if (name.kind !== 'value') return person
-    const next = writeRegister(person.name, name.value, st)
-    return next === person.name ? person : { ...person, name: next }
+    const next = writeNameIfPresent(
+      person.name,
+      readString(op.payload, 'name'),
+      st,
+    )
+    if (next === person.name) return person
+    return next === undefined ? person : { ...person, name: next }
   })
 
 /**

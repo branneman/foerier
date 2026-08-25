@@ -291,8 +291,8 @@ exports[`the S2 op fixture > folds the S2 fixture to exactly the state it folded
       "id": "22222222-0000-7000-8000-000000000001",
       "name": {
         "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
-        "hlc": "2026-05-10T14:20:00.000Z-0000",
-        "value": "Garage shed",
+        "hlc": "2026-08-08T09:00:00.000Z-0000",
+        "value": null,
       },
       "removed": {
         "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",

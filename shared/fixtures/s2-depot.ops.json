@@ -7,7 +7,9 @@
     "type": "place.recorded",
     "hlc": "2026-04-04T09:00:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "name": "Garage" },
+    "payload": {
+      "name": "Garage"
+    },
     "seq": 1,
     "received_at": "2026-04-04T09:00:05Z"
   },
@@ -19,7 +21,9 @@
     "type": "person.recorded",
     "hlc": "2026-04-04T09:05:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "name": "Maren" },
+    "payload": {
+      "name": "Maren"
+    },
     "seq": 2,
     "received_at": "2026-04-04T09:05:05Z"
   },
@@ -230,7 +234,9 @@
     "type": "gear.kind_set",
     "hlc": "2026-04-20T08:00:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "kind": "per_person" },
+    "payload": {
+      "kind": "per_person"
+    },
     "seq": 13,
     "received_at": "2026-04-20T08:00:05Z"
   },
@@ -242,7 +248,9 @@
     "type": "gear.kind_set",
     "hlc": "2026-04-20T08:05:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "kind": "counted" },
+    "payload": {
+      "kind": "counted"
+    },
     "seq": 14,
     "received_at": "2026-04-20T08:05:05Z"
   },
@@ -254,7 +262,9 @@
     "type": "gear.kind_set",
     "hlc": "2026-04-21T08:00:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "kind": "single" },
+    "payload": {
+      "kind": "single"
+    },
     "seq": 15,
     "received_at": "2026-04-21T08:00:05Z"
   },
@@ -266,7 +276,9 @@
     "type": "place.renamed",
     "hlc": "2026-05-10T14:20:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "name": "Garage shed" },
+    "payload": {
+      "name": "Garage shed"
+    },
     "seq": 16,
     "received_at": "2026-05-10T14:20:05Z"
   },
@@ -278,7 +290,9 @@
     "type": "gear.renamed",
     "hlc": "2026-05-12T10:00:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "name": "Camp stove, 2-burner" },
+    "payload": {
+      "name": "Camp stove, 2-burner"
+    },
     "seq": 17,
     "received_at": "2026-05-12T10:00:05Z"
   },
@@ -343,7 +357,9 @@
     "type": "gear.kind_set",
     "hlc": "2026-07-01T10:00:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "kind": "rented" },
+    "payload": {
+      "kind": "rented"
+    },
     "seq": 22,
     "received_at": "2026-07-01T10:00:05Z"
   },
@@ -355,7 +371,9 @@
     "type": "gear.owned_count_set",
     "hlc": "2026-07-15T09:00:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "count": 20 },
+    "payload": {
+      "count": 20
+    },
     "seq": 23,
     "received_at": "2026-07-15T09:00:05Z"
   },
@@ -379,7 +397,9 @@
     "type": "gear.renamed",
     "hlc": "2026-08-05T09:00:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": { "name": null },
+    "payload": {
+      "name": null
+    },
     "seq": 25,
     "received_at": "2026-08-05T09:00:05Z"
   },
@@ -398,6 +418,20 @@
   {
     "id": "55555555-0000-7000-8000-00000000001b",
     "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "place",
+    "aggregate_id": "22222222-0000-7000-8000-000000000001",
+    "type": "place.renamed",
+    "hlc": "2026-08-08T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": null
+    },
+    "seq": 27,
+    "received_at": "2026-08-08T09:00:05Z"
+  },
+  {
+    "id": "55555555-0000-7000-8000-00000000001c",
+    "household_id": "11111111-0000-7000-8000-000000000001",
     "aggregate": "trip",
     "aggregate_id": "66666666-0000-7000-8000-000000000001",
     "type": "trip.entry_status_set",
@@ -407,19 +441,21 @@
       "entry_id": "77777777-0000-7000-8000-000000000001",
       "status": "packed"
     },
-    "seq": 27,
+    "seq": 28,
     "received_at": "2026-08-10T09:00:05Z"
   },
   {
-    "id": "55555555-0000-7000-8000-00000000001c",
+    "id": "55555555-0000-7000-8000-00000000001d",
     "household_id": "11111111-0000-7000-8000-000000000001",
     "aggregate": "gear",
     "aggregate_id": "44444444-0000-7000-8000-000000000008",
     "type": "gear.kind_set",
     "hlc": "2026-06-25T08:00:00.000Z-0000",
     "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
-    "payload": { "kind": "counted" },
-    "seq": 28,
+    "payload": {
+      "kind": "counted"
+    },
+    "seq": 29,
     "received_at": "2026-08-20T10:00:00Z"
   }
 ]

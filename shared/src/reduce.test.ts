@@ -600,3 +600,108 @@ describe('applyOp', () => {
     expect(state.people).toEqual({})
   })
 })
+
+/**
+ * The rule (`sync-protocol.md` §1.3, §5.3 obligation 5, and the ruling that
+ * corrected `setPlaceName`): a register whose declared type includes `null`
+ * — `PlaceState.name`, `GearState.name`, `PersonState.name`, all
+ * `Register<string | null>` — takes an explicit `null` as a clear; an
+ * absent field leaves it alone. Every op that writes one of these three
+ * registers is exercised here, paired: the `null` case proves the clear
+ * with `toBeNull()`, and the omission case beside it proves the register was
+ * never created at all with `Object.hasOwn`, so the two can't be confused
+ * for each other.
+ */
+describe('name registers: an explicit null clears, an absent field leaves it alone', () => {
+  it('place.renamed with an explicit null clears the name', () => {
+    const state = fold([
+      placeOp('p1', 'Attic', at(1)),
+      op('place', 'p1', 'place.renamed', { name: null }, at(2)),
+    ])
+    expect(state.places['p1']?.name?.value).toBeNull()
+  })
+
+  it('place.renamed with name omitted never creates the register', () => {
+    // No prior op wrote anything for this Place either, so this is not just
+    // an absent `name` key — the identity-preserving no-op path
+    // (`writePlace`) never fabricates the entity at all. `?? {}` makes the
+    // assertion correct either way, matching the fixture's own pattern for
+    // this exact contrast (obligation 5).
+    const state = fold([op('place', 'p1', 'place.renamed', {}, at(1))])
+    expect(Object.hasOwn(state.places['p1'] ?? {}, 'name')).toBe(false)
+  })
+
+  it('gear.recorded with an explicit null seeds the name register as null', () => {
+    const state = fold([
+      op(
+        'gear',
+        'g1',
+        'gear.recorded',
+        { name: null, container: false, kind: 'single' },
+        at(1),
+      ),
+    ])
+    expect(state.gear['g1']?.name?.value).toBeNull()
+  })
+
+  it('gear.recorded with name omitted never creates the register', () => {
+    const state = fold([
+      op(
+        'gear',
+        'g1',
+        'gear.recorded',
+        { container: false, kind: 'single' },
+        at(1),
+      ),
+    ])
+    expect(state.gear['g1']?.id).toBe('g1')
+    expect(Object.hasOwn(state.gear['g1']!, 'name')).toBe(false)
+  })
+
+  it('gear.renamed with an explicit null clears the name', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      op('gear', 'g1', 'gear.renamed', { name: null }, at(2)),
+    ])
+    expect(state.gear['g1']?.name?.value).toBeNull()
+  })
+
+  it('gear.renamed with name omitted never creates the register', () => {
+    // No prior gear.recorded provided a name either, so this is a clean
+    // absence, not a stale value surviving untouched.
+    const state = fold([op('gear', 'g1', 'gear.renamed', {}, at(1))])
+    expect(Object.hasOwn(state.gear['g1'] ?? {}, 'name')).toBe(false)
+  })
+
+  it('person.recorded with an explicit null seeds the name register as null', () => {
+    const state = fold([
+      op('person', 'pe1', 'person.recorded', { name: null }, at(1)),
+    ])
+    expect(state.people['pe1']?.name?.value).toBeNull()
+  })
+
+  it('person.recorded with name omitted never creates the register', () => {
+    const state = fold([op('person', 'pe1', 'person.recorded', {}, at(1))])
+    expect(Object.hasOwn(state.people['pe1'] ?? {}, 'name')).toBe(false)
+  })
+
+  // The non-nullable registers stay exactly as they were: `residence`'s type
+  // has no `null` member, so a `null` payload is malformed input, not a
+  // clear, and is ignored the same as an absent field (`writeIfPresent`,
+  // unchanged by this ruling).
+  it('gear.rehomed with an explicit null residence is ignored, not a clear', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      op('gear', 'g1', 'gear.rehomed', { residence: null }, at(2)),
+    ])
+    expect(Object.hasOwn(state.gear['g1']!, 'residence')).toBe(false)
+  })
+})
