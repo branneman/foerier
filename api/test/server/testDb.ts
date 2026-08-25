@@ -1,7 +1,7 @@
 import type { Kysely } from 'kysely'
 
-import { createDb, migrateToLatest } from '../../src/db/index'
-import type { Database } from '../../src/db/schema'
+import { createDb, migrateToLatest } from '../../src/db/index.ts'
+import type { Database } from '../../src/db/schema.ts'
 
 /**
  * The Tier 2s database: a real, persistent local Postgres, not a container

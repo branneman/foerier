@@ -170,8 +170,11 @@ link. There is a chicken-and-egg here worth naming: a new Household has no ops,
 therefore no People, so nothing exists to bind the Invite to. Resolution:
 
 1. The script **generates a fresh UUIDv7** and pre-binds the Invite to it.
-2. Onboarding asks the joiner their name and emits the `person.create` op **with
-   that exact id**, as the Household's first op.
+2. Onboarding asks the joiner their name and emits the **`person.recorded`** op
+   **with that exact id**, as the Household's first op. (This document
+   originally said `person.create`; the MVP catalogue in
+   [`sync-protocol.md` §4.2](sync-protocol.md) is authoritative and names it
+   `person.recorded`.)
 
 So the invariant holds from the very first second, and the script never has to
 know anything about the domain. Every later Invite takes the reverse route: the
@@ -479,6 +482,7 @@ Marked **A** = requires a valid Device token.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| POST | `/auth/join/preview` | describe an Invite (household name, expiry) so the join screen can ask before anything is agreed to. Consumes nothing |
 | POST | `/auth/register/options` | validate a join Invite, return creation options |
 | POST | `/auth/register/verify` | create Login + credential + Device, consume Invite |
 | POST | `/auth/login/options` | return username-less request options |
@@ -508,7 +512,7 @@ is satisfied trivially.
 | --- | --- |
 | `household` | `id`, `name`, `created_at` |
 | `login` | `id`, `household_id` →`household`, `person_id` (opaque UUID, §2.1), `created_at`, `disabled_at`; unique `(household_id, person_id)` |
-| `credential` | `id`, `login_id` →`login`, `credential_id` (bytea, unique), `public_key`, `sign_count`, `transports`, `aaguid`, `uv_seen`, `label`, `created_at`, `last_used_at` |
+| `passkey` | `id`, `login_id` →`login`, `credential_id` (bytea, unique), `public_key`, `sign_count`, `transports`, `aaguid`, `uv_seen`, `label`, `created_at`, `last_used_at` |
 | `device` | `id`, `login_id`, `household_id`, `token_hash` (bytea, unique), `label`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at` |
 | `invite` | `id`, `household_id`, `person_id`, `purpose` (`join`\|`device`), `secret_hash` (bytea, unique), `login_id` (device Invites only), `created_by_login`, `expires_at`, `used_at`, `revoked_at` |
 | `webauthn_challenge` | `id`, `challenge` (bytea, unique), `purpose`, `login_id` (nullable), `expires_at`, `consumed_at` |
@@ -516,6 +520,13 @@ is satisfied trivially.
 `device.household_id` is denormalised so the auth middleware resolves a request
 in **one indexed lookup**. Challenges live 5 minutes and are consumed on use;
 expired rows are deleted lazily on write rather than by a cron job.
+
+The table is **`passkey`**, not `credential` — one word means one thing in this
+repo, and Passkey is the word the glossary, the stories, and every screen use.
+The *column* stays `credential_id`, because that one is WebAuthn's own term for
+the value it holds. (There is a practical bonus: TypeScript's DOM library
+already declares a global `Credential`, which a domain type of that name would
+shadow.)
 
 ### 9.3 Auth middleware and tenancy
 

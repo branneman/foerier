@@ -1,0 +1,72 @@
+import type { Clock } from '@foerier/shared'
+
+/**
+ * A coarse per-IP token bucket for the unauthenticated auth endpoints
+ * (`auth-design.md` §9.4).
+ *
+ * Sized to protect the box, **not** to substitute for the 256-bit secrets —
+ * there is nothing to brute-force in those, so this is capacity protection
+ * rather than a security control. In-memory is correct while there is one
+ * server instance; if that ever changes, the bucket moves to Postgres.
+ */
+
+export interface RateLimiterOptions {
+  /** Burst size. */
+  capacity: number
+  refillPerMinute: number
+  clock: Clock
+}
+
+export interface RateLimiter {
+  /** Consumes one token. `false` means the caller should get a 429. */
+  take(key: string): boolean
+  /** Number of tracked callers. Exposed so the eviction rule is testable. */
+  size(): number
+}
+
+interface Bucket {
+  tokens: number
+  updatedAt: number
+}
+
+export function createRateLimiter({
+  capacity,
+  refillPerMinute,
+  clock,
+}: RateLimiterOptions): RateLimiter {
+  const buckets = new Map<string, Bucket>()
+  const refillPerMs = refillPerMinute / 60_000
+
+  // A bucket that has sat full for this long tells us nothing we would not
+  // infer from a fresh one, so it can be dropped.
+  const idleEvictionMs = (capacity / refillPerMs) * 2
+
+  function evictIdle(now: number): void {
+    for (const [key, bucket] of buckets) {
+      if (now - bucket.updatedAt > idleEvictionMs) buckets.delete(key)
+    }
+  }
+
+  return {
+    take(key) {
+      const now = clock.now()
+      evictIdle(now)
+
+      const bucket = buckets.get(key) ?? { tokens: capacity, updatedAt: now }
+      const refilled = Math.min(
+        capacity,
+        bucket.tokens + (now - bucket.updatedAt) * refillPerMs,
+      )
+
+      if (refilled < 1) {
+        buckets.set(key, { tokens: refilled, updatedAt: now })
+        return false
+      }
+
+      buckets.set(key, { tokens: refilled - 1, updatedAt: now })
+      return true
+    },
+
+    size: () => buckets.size,
+  }
+}

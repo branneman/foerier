@@ -19,7 +19,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --project shared --project ui --project app --project api",
     "test:watch": "vitest --project shared --project ui --project app --project api",
-    "test:server": "vitest run --project server",
+    "test:server": "vitest run --project server --no-file-parallelism",
     "test:e2e": "playwright test",
     "dev": "npm run dev --workspace app",
     "dev:api": "npm run dev --workspace api",

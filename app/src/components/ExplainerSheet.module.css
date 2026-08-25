@@ -1,0 +1,57 @@
+@layer components {
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--color-scrim);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .sheet {
+    width: 100%;
+    max-width: 32rem;
+    background: var(--color-bg-surface);
+    border-top: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    padding: 0.625rem var(--space-20) var(--space-24);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+  }
+
+  .grabber {
+    width: 2.25rem;
+    height: 0.25rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-rule-control);
+    margin: 0 auto var(--space-8);
+  }
+
+  .title {
+    font: var(--text-title) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .primaryPara {
+    font-size: 0.875rem;
+    line-height: 1.3125rem;
+    color: var(--color-ink-primary);
+  }
+
+  .mutedPara {
+    font-size: 0.875rem;
+    line-height: 1.3125rem;
+    color: var(--color-ink-muted);
+  }
+
+  .close {
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}

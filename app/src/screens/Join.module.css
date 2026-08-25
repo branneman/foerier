@@ -1,0 +1,126 @@
+@layer components {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    min-height: 100svh;
+    padding: var(--space-16);
+    max-width: 28rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .card {
+    background: var(--color-bg-surface);
+    border: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-card);
+    padding: var(--space-16);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+  }
+
+  .rowLabel {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .rowValue {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-ink-primary);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+  }
+
+  .chip {
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  /* Under an hour the expiry chip goes amber (docs/design/README.md §14). */
+  .chip[data-urgent='true'] {
+    border-color: var(--color-brand-amber);
+    background: rgb(226 166 91 / 0.08);
+    color: var(--color-brand-amber);
+  }
+
+  .fact {
+    font: var(--text-secondary) var(--font-mono);
+    color: var(--color-ink-muted);
+  }
+
+  .quiet {
+    font: var(--text-secondary) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .input {
+    min-height: max(3rem, 48px);
+    background: var(--color-well);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    padding-inline: var(--space-12);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  .primary {
+    min-height: max(3rem, 48px);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .primary:disabled {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-dim);
+    cursor: default;
+  }
+
+  .bordered {
+    min-height: max(3rem, 48px);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+}

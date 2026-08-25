@@ -1,4 +1,4 @@
-import type { Clock, IdSource } from '../src/boundaries'
+import type { Clock, IdSource } from '../src/boundaries.ts'
 
 /**
  * Real, minimal in-memory fakes for the injected boundaries — not

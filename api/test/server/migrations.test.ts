@@ -1,9 +1,9 @@
 import { sql, type Kysely } from 'kysely'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { migrateToLatest } from '../../src/db/index'
-import type { Database } from '../../src/db/schema'
-import { testDb } from './testDb'
+import { migrateToLatest } from '../../src/db/index.ts'
+import type { Database } from '../../src/db/schema.ts'
+import { testDb } from './testDb.ts'
 
 /**
  * The migration runner is what the container entrypoint calls before it serves

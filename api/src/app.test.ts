@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildApp } from './app'
+import { buildApp } from './app.ts'
 
 const app = buildApp({ gitSha: '7c39f2a' })
 

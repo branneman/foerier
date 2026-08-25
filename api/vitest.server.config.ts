@@ -8,17 +8,20 @@ import { defineConfig } from 'vitest/config'
  * tiers deliberately do not: `npm test` must stay runnable with nothing
  * installed but Node.
  *
- * Single-threaded on purpose. Each test class owns a fixed `household_id` and
+ * Run single-threaded, via `--no-file-parallelism` in the `test:server` script
+ * rather than here: `fileParallelism` is a root-level Vitest option and is
+ * silently ignored inside a project config.
+ *
+ * Serial matters because each test class owns a fixed `household_id` and
  * deletes its own mutable rows in setup rather than rolling back a transaction
- * (the `health` isolation model); running classes concurrently against one
- * database would let one class's setup delete another's rows mid-test.
+ * (the `health` isolation model). Concurrent classes against one database let
+ * one class's setup delete another's rows mid-ceremony.
  */
 export default defineConfig({
   test: {
     name: 'server',
     environment: 'node',
     include: ['test/server/**/*.test.ts'],
-    fileParallelism: false,
     // Tier 2s talks to a real database over a real socket; the default 5s is
     // tight for a cold connection pool on a first run.
     testTimeout: 20_000,

@@ -1,5 +1,5 @@
-import { loadConfig } from '../config'
-import { createDb, migrateToLatest } from './index'
+import { loadConfig } from '../config.ts'
+import { createDb, migrateToLatest } from './index.ts'
 
 /**
  * `npm run migrate --workspace api`

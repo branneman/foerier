@@ -1,6 +1,7 @@
 import type { Migration, MigrationProvider } from 'kysely'
 
-import * as m0001 from '../../migrations/0001_household'
+import * as m0001 from '../../migrations/0001_household.ts'
+import * as m0002 from '../../migrations/0002_auth.ts'
 
 /**
  * Migrations are imported explicitly rather than read off disk with Kysely's
@@ -16,6 +17,7 @@ import * as m0001 from '../../migrations/0001_household'
  */
 const migrations: Record<string, Migration> = {
   '0001_household': m0001,
+  '0002_auth': m0002,
 }
 
 export const migrationProvider: MigrationProvider = {

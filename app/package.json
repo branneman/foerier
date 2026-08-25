@@ -12,6 +12,8 @@
   "dependencies": {
     "@foerier/shared": "*",
     "@foerier/ui": "*",
+    "@simplewebauthn/browser": "^13.3.0",
+    "idb": "^7.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "wouter": "^3.3.0"

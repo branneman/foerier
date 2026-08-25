@@ -7,11 +7,13 @@
     "typecheck": "tsc --noEmit",
     "dev": "node --watch src/index.ts",
     "build": "node scripts/build.js",
-    "migrate": "node src/db/migrateCli.ts"
+    "migrate": "node src/db/migrateCli.ts",
+    "admin:bootstrap": "node src/admin/bootstrap.ts"
   },
   "dependencies": {
     "@foerier/shared": "*",
     "@hono/node-server": "^1.13.0",
+    "@simplewebauthn/server": "^13.3.2",
     "hono": "^4.6.0",
     "kysely": "^0.28.0",
     "pg": "^8.13.0"

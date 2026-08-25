@@ -979,3 +979,33 @@ byte-exact.
 - **The API's response headers landed with the skeleton**, not with auth. They
   are baseline hygiene for every response, and `Cache-Control: no-store` is
   specifically what makes `/version` usable as a deploy signal.
+
+### 12.2 Consequences of auth slice 1
+
+- **Relative imports in `api/` and `shared/` carry an explicit `.ts`
+  extension**, enabled by `allowImportingTsExtensions`. Node's ESM resolver
+  does not guess extensions, and `node src/…` is what runs the dev server, the
+  migration CLI, and the **Maintainer bootstrap script** — none of which would
+  resolve an extensionless specifier no matter what the type checker thinks.
+  Vite and esbuild handle `.ts` specifiers, so the bundled side is unaffected.
+- **The relying party has three modes, not two.** WebAuthn requires the RP ID
+  to be a registrable suffix of the origin's domain, so `foerier.app` simply
+  cannot work on `localhost` — no configuration makes both work at once. Local
+  development and Tier 5 therefore use `localhost`, which yields credentials
+  that are correctly useless anywhere else. **Tier 2s uses the production
+  values**, since it needs no browser: the RP ID and origin that actually ship
+  are the ones under test. Production is a constant with no environment
+  override, because a wrong RP ID in production is unrecoverable.
+- **One endpoint was added to [auth-design §9.1](auth-design.md):**
+  `POST /auth/join/preview`. The join screen has to render "Join Veldkamp?"
+  before the user agrees to anything, and no endpoint in the original table
+  could tell it the household's name. It consumes nothing and stores nothing —
+  not even a challenge — so a link preview still burns no Invite.
+- **The `credential` table is named `passkey`**, per the rule that each term
+  means exactly one thing; the `credential_id` column keeps WebAuthn's word.
+- **Story 27's last acceptance criterion is not delivered.** "If this Device
+  cannot hold a Passkey, I can still complete the join" needs
+  `POST /auth/device/claim`, which [auth-design §13](auth-design.md) places in
+  slice **3**, not slice 1. The tension is between that slicing and the story's
+  own criteria; it is recorded rather than resolved, because promoting work
+  across a slice boundary is the maintainer's call, not the implementer's.

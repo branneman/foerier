@@ -133,7 +133,22 @@ registry** below so a persistent `foerier_test` DB never collides across classes
 
 | # | household UUID suffix | Test class |
 | --- | --- | --- |
+| 1 | `0f000001-…-000000000001` | `auth.test.ts` — the join and sign-in ceremonies |
+| 2 | `0f000002-…-000000000002` | `householdIsolation.test.ts` — household A |
+| 3 | `0f000003-…-000000000003` | `householdIsolation.test.ts` — household B |
 | _(claim the next free slot when adding a server-integration class)_ | | |
+
+Two rules the suite learned the hard way and that a new class must follow:
+
+- **Scope every query to your own household.** `foerier_test` is persistent and
+  shared, so an unscoped `select … from login` silently counts another class's
+  rows and passes or fails for reasons that have nothing to do with the test.
+- **Never clear a table you do not own.** `webauthn_challenge` belongs to no
+  household — challenges exist before a Login does — so wiping it in `beforeEach`
+  pulls the rug from under a ceremony running in another file. Tier 2s runs
+  single-threaded (`--no-file-parallelism`) for the same reason; note that
+  `fileParallelism` is a *root-level* Vitest option and is silently ignored
+  inside a project config.
 
 ## Tier 3 — Component tests
 

@@ -1,4 +1,4 @@
-import type { ColumnType, Insertable, Selectable } from 'kysely'
+import type { ColumnType, Insertable, Selectable, Updateable } from 'kysely'
 
 /**
  * The database shape, **hand-maintained** and updated when a migration lands
@@ -14,15 +14,92 @@ import type { ColumnType, Insertable, Selectable } from 'kysely'
 /** Written by the database on insert, never supplied, never updated. */
 type CreatedAt = ColumnType<Date, never, never>
 
+/** Supplied on insert with a default, and updatable afterwards. */
+type Timestamp = ColumnType<Date, Date | undefined, Date>
+
 export interface HouseholdTable {
   id: string
   name: string
   created_at: CreatedAt
 }
 
+export interface LoginTable {
+  id: string
+  household_id: string
+  /** Opaque UUID; the server attaches no meaning to it (auth-design.md §2.1). */
+  person_id: string
+  created_at: CreatedAt
+  disabled_at: Date | null
+}
+
+export interface PasskeyTable {
+  id: string
+  login_id: string
+  credential_id: Uint8Array
+  public_key: Uint8Array
+  /** `bigint` reaches the driver as a string; see `db/index.ts`. */
+  sign_count: ColumnType<number, number | undefined, number>
+  transports: ColumnType<string[] | null, string | null, string | null>
+  aaguid: string | null
+  uv_seen: ColumnType<boolean, boolean | undefined, boolean>
+  label: string | null
+  created_at: CreatedAt
+  last_used_at: Date | null
+}
+
+export interface DeviceTable {
+  id: string
+  login_id: string
+  household_id: string
+  token_hash: Uint8Array
+  label: string | null
+  created_at: CreatedAt
+  last_seen_at: Timestamp
+  expires_at: Date
+  revoked_at: Date | null
+}
+
+export type InvitePurpose = 'join' | 'device'
+
+export interface InviteTable {
+  id: string
+  household_id: string
+  person_id: string
+  purpose: InvitePurpose
+  secret_hash: Uint8Array
+  login_id: string | null
+  created_by_login: string | null
+  created_at: CreatedAt
+  expires_at: Date
+  used_at: Date | null
+  revoked_at: Date | null
+}
+
+export type ChallengePurpose = 'register' | 'login' | 'add-passkey'
+
+export interface WebauthnChallengeTable {
+  id: string
+  challenge: Uint8Array
+  purpose: ChallengePurpose
+  login_id: string | null
+  created_at: CreatedAt
+  expires_at: Date
+  consumed_at: Date | null
+}
+
 export interface Database {
   household: HouseholdTable
+  login: LoginTable
+  passkey: PasskeyTable
+  device: DeviceTable
+  invite: InviteTable
+  webauthn_challenge: WebauthnChallengeTable
 }
 
 export type Household = Selectable<HouseholdTable>
 export type NewHousehold = Insertable<HouseholdTable>
+export type Login = Selectable<LoginTable>
+export type Passkey = Selectable<PasskeyTable>
+export type Device = Selectable<DeviceTable>
+export type DeviceUpdate = Updateable<DeviceTable>
+export type Invite = Selectable<InviteTable>

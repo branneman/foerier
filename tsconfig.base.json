@@ -24,6 +24,14 @@
     // properties, no namespaces. `api` relies on that for `npm run dev:api`,
     // so the constraint is enforced repo-wide rather than discovered at
     // runtime in one package.
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+
+    // Relative imports in `api` and `shared` carry an explicit `.ts`
+    // extension. Node's ESM resolver does not guess extensions, so
+    // `node src/index.ts` — which runs the dev server, the migration CLI, and
+    // the Maintainer bootstrap script — cannot resolve an extensionless
+    // specifier no matter what the type checker thinks. Vite and esbuild
+    // handle `.ts` specifiers fine, so this costs nothing on the bundled side.
+    "allowImportingTsExtensions": true
   }
 }

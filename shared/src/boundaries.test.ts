@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { systemIdSource } from './boundaries'
+import { systemIdSource } from './boundaries.ts'
 
 const CANONICAL_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/

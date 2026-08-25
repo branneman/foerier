@@ -1,8 +1,14 @@
 import { Kysely, Migrator, PostgresDialect } from 'kysely'
 import pg from 'pg'
 
-import type { Database } from './schema'
-import { migrationProvider } from './migrations'
+import type { Database } from './schema.ts'
+import { migrationProvider } from './migrations.ts'
+
+// `bigint` (OID 20) arrives as a string, because a Postgres bigint can exceed
+// Number.MAX_SAFE_INTEGER. The only one foerier has is a WebAuthn signature
+// counter, which is a uint32 — comfortably safe, and comparing it as a string
+// would silently break the "counter must increase" check ('9' > '10').
+pg.types.setTypeParser(20, (value) => Number(value))
 
 export function createDb(databaseUrl: string): Kysely<Database> {
   return new Kysely<Database>({
