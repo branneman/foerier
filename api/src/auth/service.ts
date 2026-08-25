@@ -350,6 +350,11 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
             token_hash: tokenHash,
             label: deviceLabelFrom(userAgent),
             expires_at: nextExpiry(clock),
+            // Explicit rather than left to the column's `now()` default: this
+            // value is later compared against the injected clock by
+            // `shouldRefreshLastSeen`, so a row stamped by Postgres instead
+            // mixes two clocks in one comparison.
+            last_seen_at: new Date(clock.now()),
           })
           .execute()
       })
@@ -475,6 +480,11 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
             token_hash: tokenHash,
             label: deviceLabelFrom(userAgent),
             expires_at: nextExpiry(clock),
+            // Explicit rather than left to the column's `now()` default: this
+            // value is later compared against the injected clock by
+            // `shouldRefreshLastSeen`, so a row stamped by Postgres instead
+            // mixes two clocks in one comparison.
+            last_seen_at: new Date(clock.now()),
           })
           .execute()
       })
