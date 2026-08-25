@@ -1,6 +1,7 @@
 import {
   createHlcClock,
   gearRecorded,
+  gearRetired,
   placeRecorded,
   type Clock,
   type IdSource,
@@ -9,7 +10,7 @@ import {
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { inMemoryOpLog } from '../depot/opLog'
@@ -77,14 +78,14 @@ function renderPicker(
   store: StoreApi<DepotStoreState>,
   props: Partial<{ excludeGearId: string }> = {},
 ) {
-  const onClose = vi.fn()
-  const onSelect = vi.fn()
+  // A real no-op, not `vi.fn()`: no test in this suite asserts on either
+  // callback's call state, and this repo's rule is real fakes, never
+  // mocking-framework mocks (`docs/testing.md`).
   render(
     <DepotProvider value={store}>
-      <HomePicker open onClose={onClose} onSelect={onSelect} {...props} />
+      <HomePicker open onClose={() => {}} onSelect={() => {}} {...props} />
     </DepotProvider>,
   )
-  return { onClose, onSelect }
 }
 
 describe('the Home picker', () => {
@@ -170,6 +171,44 @@ describe('the Home picker', () => {
     expect(
       screen.getByText('4 pieces of gear become loose.'),
     ).toBeInTheDocument()
+  })
+
+  it('excludes retired gear from the count of gear that becomes loose', async () => {
+    const placeId = anId()
+    const retiredId = anId()
+    const specs: OpSpec[] = [placeRecorded(placeId, 'Attic')]
+    for (const name of ['Rope', 'Mug', 'Axe']) {
+      specs.push(
+        gearRecorded(anId(), {
+          name,
+          container: false,
+          kind: 'single',
+          residence: { in: 'place', id: placeId },
+        }),
+      )
+    }
+    specs.push(
+      gearRecorded(retiredId, {
+        name: 'Old lantern',
+        container: false,
+        kind: 'single',
+        residence: { in: 'place', id: placeId },
+      }),
+      gearRetired(retiredId),
+    )
+    const store = await seededStore(specs)
+    const user = userEvent.setup()
+    renderPicker(store)
+
+    await user.click(screen.getByRole('button', { name: 'Remove Attic' }))
+
+    // Four pieces reside in Attic, but one is retired — a soft-delete
+    // (invariant 7), not gear waiting to be re-homed — so the count reads 3,
+    // not 4.
+    expect(
+      screen.getByText('3 pieces of gear become loose.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('4 pieces of gear become loose.')).toBeNull()
   })
 
   it('emits place.removed only after the confirmation', async () => {

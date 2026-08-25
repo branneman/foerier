@@ -157,10 +157,18 @@ export function HomePicker({
 
   const removingPlace: PlaceState | null =
     removingId === null ? null : (state.places[removingId] ?? null)
+  // `childrenOf` includes retired gear — it still sits where it sits
+  // (`selectors/containment.ts`'s own doc). But retirement is a soft-delete
+  // (invariant 7): a retired piece is not waiting to be re-homed, it lives
+  // in `retiredGear`, so it does not belong in this count — `looseGear`
+  // excludes it for the identical reason.
   const removingCount =
     removingId === null
       ? 0
-      : view.childrenOf({ kind: 'place', id: removingId }).length
+      : view
+          .childrenOf({ kind: 'place', id: removingId })
+          .map((id) => state.gear[id])
+          .filter((gear) => gear?.retired?.value !== true).length
 
   function startRename(id: string, current: string) {
     setRenamingId(id)
