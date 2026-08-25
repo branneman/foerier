@@ -40,3 +40,19 @@ export {
   readResidence,
   readString,
 } from './payloads.ts'
+
+export type { OpAuthor, OpSpec } from './authoring.ts'
+export {
+  authorOp,
+  gearKindSet,
+  gearOwnedCountSet,
+  gearRecorded,
+  gearRehomed,
+  gearRenamed,
+  gearRestored,
+  gearRetired,
+  personRecorded,
+  placeRecorded,
+  placeRemoved,
+  placeRenamed,
+} from './authoring.ts'
