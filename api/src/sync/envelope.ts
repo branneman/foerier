@@ -33,6 +33,20 @@ export function isUuidV7(s: string): boolean {
   return UUID_V7_PATTERN.test(s)
 }
 
+/**
+ * Any-version canonical lowercase UUID shape. `household_id` is typed as a
+ * plain UUID in §1.1 — v7 is specified only for `id` — so a household minted
+ * by an earlier slice may carry any version. Used only for the *shape*
+ * check; equality against the token's household is a separate concern
+ * (`household_mismatch`, not `envelope_invalid`).
+ */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+function isUuid(s: string): boolean {
+  return UUID_PATTERN.test(s)
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -80,12 +94,36 @@ export function validateOp(raw: unknown, householdId: string): Validated {
     }
   }
 
+  // `household_id`'s *shape* is an envelope concern — a malformed value is
+  // "malformed" per §6.3's envelope_invalid row, full stop. Equality against
+  // the token's household is a separate, later check: `household_mismatch`
+  // exists to surface a client bug indistinguishable from an attack
+  // (auth-design.md §9.3), and folding a shape error into that code would
+  // pollute the signal an operator watches for tenancy violations.
+  if (!isUuid(raw['household_id'] as string)) {
+    return { ok: false, code: 'envelope_invalid' }
+  }
+
   // `payload` may be `{}` — present but empty — never absent, never `null`
   // (§1.1, §1.3).
   if (!isPlainObject(raw['payload'])) {
     return { ok: false, code: 'envelope_invalid' }
   }
 
+  // §6.3 defines `hlc_invalid` as failing §2.2's *grammar*, not calendar
+  // validity. A day-of-month overflow (e.g. `2026-02-30…`, which JS `Date`
+  // silently rolls forward to `2026-03-02`) matches the grammar and parses,
+  // so it is accepted here rather than rejected — deliberately, not an
+  // oversight. No legitimate client can emit one: `formatHlc` always builds
+  // the string from `new Date(ms).toISOString()`, which is always a real
+  // date. A rolled-over date is also harmless where it matters: the HLC is
+  // compared as a plain string, so it still sorts consistently into the
+  // total order, and an out-of-range date normally lands outside the
+  // 5-minute drift bound, where the merge rule already applies the op
+  // without adopting the peer's clock (§2.6). Rejecting it would be
+  // stricter than the contract for no gain, at the cost of a user's work.
+  // A genuinely unparseable date (e.g. month 13) still fails and returns
+  // `hlc_invalid`.
   if (parseHlc(raw['hlc'] as string) === null) {
     return { ok: false, code: 'hlc_invalid' }
   }

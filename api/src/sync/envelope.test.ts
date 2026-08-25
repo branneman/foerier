@@ -104,6 +104,27 @@ describe('validateOp', () => {
     expect(op.household_id).toBe(OTHER_HOUSEHOLD_ID)
   })
 
+  it('rejects a malformed household_id as envelope_invalid', () => {
+    // Not a UUID at all — shape, not equality, is the defect. Folding this
+    // into household_mismatch would pollute the signal that code exists to
+    // give an operator watching for tenancy violations.
+    const op = { ...baseOp(), household_id: 'not-a-uuid' }
+    expect(validateOp(op, HOUSEHOLD_ID)).toEqual({
+      ok: false,
+      code: 'envelope_invalid',
+    })
+  })
+
+  it('still rejects a well-formed but different household_id as household_mismatch', () => {
+    // OTHER_HOUSEHOLD_ID is a well-formed, canonical UUID — the shape check
+    // must not swallow the case it sits in front of.
+    const op = { ...baseOp(), household_id: OTHER_HOUSEHOLD_ID }
+    expect(validateOp(op, HOUSEHOLD_ID)).toEqual({
+      ok: false,
+      code: 'household_mismatch',
+    })
+  })
+
   it('rejects a missing aggregate, aggregate_id, type or device_id as envelope_invalid', () => {
     for (const field of [
       'aggregate',
