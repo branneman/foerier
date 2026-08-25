@@ -369,9 +369,13 @@ describe('applyOp', () => {
       ),
     ])
     const gear = state.gear['g1']
-    expect(gear?.residence).toBeUndefined()
-    expect(gear?.owner).toBeUndefined()
-    expect(gear?.ownedCount).toBeUndefined()
+    // `hasOwn`, not `toBeUndefined`: property access reads an absent key and
+    // a key holding `undefined` identically, so `toBeUndefined` would pass
+    // even if the reducer had defaulted the field. Absent is not null
+    // (sync-protocol §1.3) and this is the assertion that proves it.
+    expect(Object.hasOwn(gear!, 'residence')).toBe(false)
+    expect(Object.hasOwn(gear!, 'owner')).toBe(false)
+    expect(Object.hasOwn(gear!, 'ownedCount')).toBe(false)
   })
 
   it('gear.recorded stamps every seeded register with the same clock', () => {
@@ -419,6 +423,7 @@ describe('applyOp', () => {
     expect(gear?.residence?.value).toEqual({ in: 'place', id: 'p1' })
     expect(gear?.name?.value).toBe('Tarp')
     expect(gear?.kind?.value).toBe('single')
+    expect(gear?.container?.value).toBe(false)
   })
 
   it('gear.kind_set replaces the kind, one register and one value', () => {
