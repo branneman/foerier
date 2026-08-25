@@ -9,6 +9,11 @@ export default tseslint.config(
       '**/dist/**',
       '**/node_modules/**',
       '**/coverage/**',
+      // Claude Code keeps its git worktrees nested at `.claude/worktrees/`,
+      // so without this ESLint lints a second checkout of the whole monorepo
+      // — and the pre-commit hook lints everything, not just staged files,
+      // which would let a lint error on one branch block commits on another.
+      '.claude/**',
       'docs/design/**',
       'examples/**',
     ],
