@@ -118,7 +118,12 @@ const defaultSchedule: Schedule = (fn, ms) => {
 const BATCH_ENVELOPE_BYTES = '{"ops":[]}'.length
 const encoder = new TextEncoder()
 
-function byteLengthOf(op: OpEnvelope): number {
+/**
+ * An op's size on the wire, in bytes — what §1.4's two caps are measured in.
+ * Shared with `store.ts`, which applies the per-op cap at authoring time,
+ * because a length in characters is not a length in bytes.
+ */
+export function opByteLength(op: OpEnvelope): number {
   return encoder.encode(JSON.stringify(op)).length
 }
 
@@ -133,7 +138,7 @@ function chunkOf(records: readonly LoggedOp[]): LoggedOp[] {
   const chunk: LoggedOp[] = []
   let bytes = BATCH_ENVELOPE_BYTES
   for (const record of records) {
-    const size = byteLengthOf(record.op) + 1
+    const size = opByteLength(record.op) + 1
     if (chunk.length > 0 && bytes + size > MAX_BATCH_BYTES) break
     bytes += size
     chunk.push(record)

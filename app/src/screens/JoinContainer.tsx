@@ -88,10 +88,10 @@ export function JoinContainer({
     const attestation = await startRegistration({ optionsJSON: options })
     const result = await api.registerVerify(secret, attestation)
 
-    // ── SEAM ──────────────────────────────────────────────────────────────
     // The joiner's name and the Invite's pre-bound person_id are captured
-    // here and go no further: emitting `person.recorded` needs the op layer,
-    // which does not exist yet. See auth/pendingFirstPerson.ts.
+    // here rather than authored here: the op needs a depot store, which is
+    // built from the session this flow has only just written.
+    // `flushPendingFirstPerson` emits it on the other side of that.
     if (name !== null && name !== '') {
       await pending.save({
         personId: result.person_id,
