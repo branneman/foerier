@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./testUtils": "./testUtils/index.ts"
+    "./testUtils": "./testUtils/index.ts",
+    "./fixtures": "./fixtures/s2-depot.ops.json"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

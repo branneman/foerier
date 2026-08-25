@@ -188,12 +188,21 @@ const gearRecorded: Handler = (state, op, stamp) =>
     }
   })
 
-/** `gear.renamed` (§4.3): sets `name`. */
+/**
+ * `gear.renamed` (§4.3): sets `name`. Unlike Place's name — see
+ * `setPlaceName`'s comment above, which deliberately collapses `null` into
+ * absent — the wire permits an explicit clear here: `GearState.name` is
+ * `Register<string | null>` for exactly this reason (Task 3). An absent
+ * field leaves the register alone; an explicit `null` is a write like any
+ * other and clears it (§5.3 obligation 5), even though no S2 builder emits
+ * one yet.
+ */
 const gearRenamed: Handler = (state, op, stamp) =>
   writeGear(state, op.aggregate_id, stamp, (gear, st) => {
     const name = readString(op.payload, 'name')
-    if (name.kind !== 'value') return gear
-    const next = writeRegister(gear.name, name.value, st)
+    if (name.kind === 'absent') return gear
+    const value = name.kind === 'null' ? null : name.value
+    const next = writeRegister(gear.name, value, st)
     return next === gear.name ? gear : { ...gear, name: next }
   })
 
