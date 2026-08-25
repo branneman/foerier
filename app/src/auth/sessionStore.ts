@@ -1,5 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb'
 
+import { DB_NAME, DB_VERSION, upgradeFoerierDb } from '../depot/opLog'
+
 /**
  * Where the Device token lives (`auth-design.md` §6.1, §7.4).
  *
@@ -29,21 +31,18 @@ export interface SessionStore {
   clear(): Promise<void>
 }
 
-const DB_NAME = 'foerier'
-const DB_VERSION = 1
 const AUTH_STORE = 'auth'
 const SESSION_KEY = 'session'
 
 let dbPromise: Promise<IDBPDatabase> | null = null
 
+// `DB_NAME`/`DB_VERSION`/the upgrade itself come from `depot/opLog.ts`, which
+// now owns the schema: every module that opens `foerier` must request the
+// same version and pass the same idempotent upgrade, or whichever one wins
+// the race to cross the version boundary silently skips the stores the
+// others need (see that module's docstring).
 function db(): Promise<IDBPDatabase> {
-  dbPromise ??= openDB(DB_NAME, DB_VERSION, {
-    upgrade(database) {
-      if (!database.objectStoreNames.contains(AUTH_STORE)) {
-        database.createObjectStore(AUTH_STORE)
-      }
-    },
-  })
+  dbPromise ??= openDB(DB_NAME, DB_VERSION, { upgrade: upgradeFoerierDb })
   return dbPromise
 }
 

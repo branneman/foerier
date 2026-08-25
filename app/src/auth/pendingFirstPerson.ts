@@ -1,5 +1,7 @@
 import { openDB } from 'idb'
 
+import { DB_NAME, DB_VERSION, upgradeFoerierDb } from '../depot/opLog'
+
 /**
  * ┌──────────────────────────────────────────────────────────────────────────┐
  * │  SEAM — the op layer is not built yet.                                   │
@@ -74,7 +76,10 @@ export const PENDING_KEY = KEY
  * lifetime to manage, and a local wipe should take both.
  */
 export function indexedDbPendingStore(): PendingStore {
-  const open = () => openDB('foerier', 1)
+  // Same `DB_NAME`/`DB_VERSION`/upgrade as `sessionStore.ts` and
+  // `depot/opLog.ts` — see `opLog.ts`'s docstring for why every opener of
+  // `foerier` must pass the identical, idempotent upgrade rather than its own.
+  const open = () => openDB(DB_NAME, DB_VERSION, { upgrade: upgradeFoerierDb })
 
   return {
     async save(pending) {
