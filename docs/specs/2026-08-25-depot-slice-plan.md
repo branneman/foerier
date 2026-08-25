@@ -2041,9 +2041,17 @@ and error mapping. A network throw maps to
   exponentially with **full jitter**, base 1 s, cap 5 min, **indefinitely**.
 - **Triggers:** `online`, `visibilitychange`, a 30-second interval, and after
   every `emit`. Never on a render path.
-- **Bootstrap:** when the local log is empty and `household_seq > 0`, report
+- **Bootstrap:** when the **cursor is 0** and `household_seq > 0`, report
   `{ folded, total }` per page. A failure mid-bootstrap sets `paused: true` and
   keeps the cursor — it resumes, it never restarts.
+
+  *(Corrected after Task 18. This said "when the local log is empty", which is
+  the wrong test: a device that joins, records gear **offline**, and only then
+  first-syncs has a non-empty log at cursor 0, and would get no progress
+  display while folding the household's entire history — the one screen whose
+  whole promise is a determinate number. The cursor is what actually means "has
+  never pulled"; the log's emptiness means "has never authored", which is a
+  different question.)*
 
 - [ ] **Step 1: Write the failing tests** — real fakes throughout, a
 `fakeClock` driven by hand, and `vi.useFakeTimers()` only for the interval.
