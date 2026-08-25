@@ -242,9 +242,23 @@ crashing or coercing, absent is never treated as null, and a stored op is never
 mutated. §5.4's frozen list is the other half — a test that an existing op type's
 effect on folded state has not drifted.
 
-**Capture a fixture in the same commit as the slice that introduces an op type.**
-A fixture written later is captured from a format that has already drifted, and
-proves nothing.
+**Capture a fixture in the same slice that introduces an op type.** A fixture
+written later is captured from a format that has already drifted, and proves
+nothing.
+
+*Same slice, not same commit.* The rule protects against **drift**, not against
+commit boundaries: what matters is that no format change happened between the op
+type landing and the fixture being taken. A large slice that keeps its history
+rather than squashing (see [CLAUDE.md](../CLAUDE.md)'s merge convention) will
+have the fixture a few commits after the reducer, and that is fine — the format
+did not move in between. A fixture taken a *slice* later is not fine, because by
+then it can have.
+
+S2a is the evidence the rule earns its keep: the fixture caught a live
+obligation-5 violation on its first run — `gear.renamed{name: null}` was being
+silently collapsed into "absent" — that fifteen named reducer tests and a
+passing review had all missed, because no op in that slice was nullable and
+nothing else reached the path.
 
 ## CI triggers summary
 

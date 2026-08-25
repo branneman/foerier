@@ -482,6 +482,27 @@ describe('the depot store', () => {
     expect(store.getState().deadLetterCount).toBe(1)
   })
 
+  it('counts the outbox and the dead-letter together as unsynced', async () => {
+    // The number the sign-in screen states after a 401 and the sign-out
+    // confirm sheet states before it destroys it. The two sets do not
+    // overlap: a dead-lettered record has left the outbox.
+    const log = inMemoryOpLog()
+    const doomed = anOp(placeRecorded(anId(), 'Shed'))
+    await log.append(doomed)
+    await log.append(anOp(placeRecorded(anId(), 'Loft')))
+
+    const { store, server, engines } = liveHarness(log)
+    await drained(store)
+    expect(await store.getState().unsyncedCount()).toBe(2)
+
+    server.queueRejection(doomed.id, 'unknown_type')
+    await engines[0]!.flush()
+    await drained(store)
+
+    // One dead-lettered, one accepted and carrying a seq.
+    expect(await store.getState().unsyncedCount()).toBe(1)
+  })
+
   it('refuses to author an op larger than MAX_OP_BYTES', async () => {
     const log = inMemoryOpLog()
     const { factory } = fakeEngines()

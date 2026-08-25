@@ -1,5 +1,5 @@
 import { startAuthentication } from '@simplewebauthn/browser'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Redirect, Route, Switch, useLocation } from 'wouter'
 import { useStore } from 'zustand'
 import type { StoreApi } from 'zustand/vanilla'
@@ -37,15 +37,30 @@ function EmptyState({ title, line }: { title: string; line: string }) {
  * The shell, subscribed to the one thing above the routes that changes: the
  * engine's status. A separate component because the store only exists once
  * there is a session, and a hook cannot be conditional.
+ *
+ * It is also where the **401 contract** ([auth-design §7.2](auth-design.md))
+ * is enforced. A 401 freezes the engine and reports `signed-out`; that is the
+ * app's only signal that the Device's token is gone, and without acting on it
+ * the depot would sit frozen forever with no route back — `/signin` redirects
+ * away while a session exists. So the status is what calls
+ * `handleUnauthorized`, which marks the session invalid and routes to
+ * `/signin`, **keeping the op log and the outbox untouched**: queued offline
+ * work is the Quartermaster's, and auth's to leave alone (story 26).
  */
 function SignedInShell({
   store,
+  onSignedOut,
   children,
 }: {
   store: StoreApi<DepotStoreState>
+  onSignedOut: (store: StoreApi<DepotStoreState>) => void
   children: ReactNode
 }) {
   const sync = useStore(store, (depot) => depot.sync)
+
+  useEffect(() => {
+    if (sync === 'signed-out') onSignedOut(store)
+  }, [sync, store, onSignedOut])
 
   return (
     <AppShell syncLine={syncLine(sync)} syncTone={syncTone(sync)}>
@@ -93,11 +108,36 @@ export function App({
   pendingStore = defaultPendingStore,
   createDepot = createSessionDepot,
 }: AppProps = {}) {
-  const { session, loading, sessionLost, signIn } = useSession(sessionStore)
+  const { session, loading, sessionLost, signIn, handleUnauthorized } =
+    useSession(sessionStore)
   const [, navigate] = useLocation()
   const online = useOnline()
   const [depotStore, setDepotStore] =
     useState<StoreApi<DepotStoreState> | null>(null)
+  const [unsyncedCount, setUnsyncedCount] = useState(0)
+
+  /**
+   * Read the count **before** the session goes, because ending the session
+   * drops the store that can answer the question. It is the whole reassurance
+   * of the sign-in screen's session-lost line: the work is on the device and
+   * flushes after the next sign-in, and saying so needs a real number.
+   */
+  const onSignedOut = useCallback(
+    (store: StoreApi<DepotStoreState>) => {
+      void store
+        .getState()
+        .unsyncedCount()
+        .catch((error: unknown) => {
+          console.error('depot: the unsynced count could not be read', error)
+          return 0
+        })
+        .then(async (count) => {
+          setUnsyncedCount(count)
+          await handleUnauthorized()
+        })
+    },
+    [handleUnauthorized],
+  )
 
   /**
    * One depot per signed-in session. Building it starts the engine; the
@@ -181,7 +221,7 @@ export function App({
             onSignIn={signInWithPasskey}
             online={online}
             buildSha={BUILD_SHA}
-            {...(sessionLost ? { sessionLost: { unsyncedCount: 0 } } : {})}
+            {...(sessionLost ? { sessionLost: { unsyncedCount } } : {})}
           />
         )}
       </Route>
@@ -190,7 +230,7 @@ export function App({
         {session === null ? (
           <Redirect to="/signin" />
         ) : depotStore === null ? null : (
-          <SignedInShell store={depotStore}>
+          <SignedInShell store={depotStore} onSignedOut={onSignedOut}>
             <Switch>
               <Route path="/">
                 <Depot />

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
+import type { OpEnvelope } from '@foerier/shared'
+
 import { App } from './App'
 import { createAuthApi } from './auth/api'
 import {
@@ -130,18 +132,70 @@ describe('the sync line', () => {
 
     expect(await screen.findByText('SYNCED')).toBeVisible()
   })
+})
 
-  it('says the work is safe when the token has expired', async () => {
-    // A 401 freezes the engine and keeps every queued op. The header says so
-    // in one quiet line — no banner, no lock, no prompt (story 26).
+describe('when the device token has expired', () => {
+  /** An op this device authored and never got a seq for — the outbox. */
+  function anUnpushedOp(): OpEnvelope {
+    return {
+      id: 'eeeeeeee-0000-7000-8000-00000000000f',
+      household_id: A_SESSION.householdId,
+      aggregate: 'gear',
+      aggregate_id: 'eeeeeeee-0000-7000-8000-0000000000f1',
+      type: 'gear.recorded',
+      hlc: '2026-08-25T10:00:00.000Z-0001',
+      device_id: A_SESSION.deviceId,
+      payload: { name: 'Zeltbahn', container: false, kind: 'single' },
+    }
+  }
+
+  async function seeded(): Promise<OpLog> {
+    const log = inMemoryOpLog()
+    await log.append(anUnpushedOp())
+    return log
+  }
+
+  it('routes to sign-in rather than freezing the depot forever', async () => {
+    // The 401 contract (auth-design.md §7.2). Without this the engine freezes
+    // and there is no way back: `/signin` redirects away while a session
+    // exists, so the depot would sit signed-out until someone opened
+    // devtools.
     const server = createFakeServer()
-    server.queueError('pull', { status: 401, code: 'unauthorized' })
+    server.queueError('push', { status: 401, code: 'unauthorized' })
 
-    renderAt('/', { server })
+    renderAt('/', { server, log: await seeded() })
 
     expect(
-      await screen.findByText('SIGNED OUT · SAVED ON DEVICE'),
+      await screen.findByRole('button', { name: 'Sign in' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Sections' })).toBeNull()
+  })
+
+  it('states how much work is waiting on the device', async () => {
+    // The whole reassurance of that screen, and it has to be a real number:
+    // a hardcoded 0 tells a Quartermaster nothing is pending when something
+    // is (architecture-design.md §12.3).
+    const server = createFakeServer()
+    server.queueError('push', { status: 401, code: 'unauthorized' })
+
+    renderAt('/', { server, log: await seeded() })
+
+    expect(
+      await screen.findByText(/1 changes saved here and not yet synced\./),
     ).toBeVisible()
+  })
+
+  it('keeps the outbox — a 401 never costs queued work', async () => {
+    // Story 26. Signing out is the only thing that clears the local log, and
+    // this is not that.
+    const server = createFakeServer()
+    server.queueError('push', { status: 401, code: 'unauthorized' })
+    const log = await seeded()
+
+    renderAt('/', { server, log })
+
+    await screen.findByRole('button', { name: 'Sign in' })
+    expect(await log.outbox(10)).toHaveLength(1)
   })
 })
 

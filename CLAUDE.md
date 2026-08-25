@@ -39,10 +39,16 @@ phone with no signal and find it on a laptop.
 **S2b still owes:** story 3's Home path and whereabouts, F2 Find, and the
 join screen's gated **first-sync fold** — the app's one unavoidable loading
 screen, which [§12.2](docs/architecture-design.md) records as owed. Zero new
-op types and zero new endpoints: purely additive client read-side code. Two
-smaller debts ride along — there is no Account screen yet, so
-`sign out this device` has a `clearLocalData()` but no button, and a frozen
-engine's `resumeSync()` has no re-auth flow to call it.
+op types and zero new endpoints: purely additive client read-side code.
+
+**One debt rides along:** there is no Account screen, so `sign out this
+device` has both its halves — `clearLocalData()` and the store's
+`unsyncedCount()` for the confirm sheet — and no button. The **401 contract
+is wired**: the engine reporting `signed-out` calls `handleUnauthorized()`,
+which routes to `/signin` and leaves the op log and outbox untouched
+([auth-design §7.2](docs/auth-design.md)). A frozen engine is never resumed —
+re-signing in builds a new one — so `resumeSync()` stays for a future
+recover-in-place flow.
 
 Three conventions the code now carries that are easy to trip over:
 
@@ -123,8 +129,10 @@ Build in **vertical slices via XP-style continuous delivery.** Each story ships
 end-to-end (server + app) as an independently valuable increment; stories are
 ordered so every release gives the user something immediately usable, however
 thin. No waterfall gate. A slice is naturally new op type(s) + reducer +
-selector + endpoint + UI, and lands in **one atomic commit** (it is one
-monorepo).
+selector + endpoint + UI, and lands as **one reviewable unit** (it is one
+monorepo) — usually one commit, but see the merge convention below: past about
+a thousand lines the branch's own history is the reviewable unit and squashing
+it destroys more than it tidies.
 
 A slice's op types come from the catalogue in
 [`docs/sync-protocol.md`](docs/sync-protocol.md) §4; new ones follow its naming
@@ -169,9 +177,22 @@ artifacts with no external consumer.
 - **Merge via rebase + fast-forward only. Never create a merge commit.**
   Before integrating a branch: `git rebase main`, then
   `git checkout main && git merge --ff-only <branch>`. History stays linear, so
-  `git log` reads as the order work actually landed and a slice remains one
-  reviewable commit rather than something to untangle from a merge bubble.
-  (Same rule as the sibling repos.)
+  `git log` reads as the order work actually landed rather than something to
+  untangle from a merge bubble. (Same rule as the sibling repos.)
+- **Squash a small slice; keep a large one's history.** The delivery model says
+  a slice lands in one atomic commit, and for a slice of a few hundred lines
+  that is right — the commit *is* the reviewable unit. Past roughly a thousand
+  lines it inverts: one commit stops being reviewable and its message stops
+  being able to carry the reasoning, so squashing destroys the record instead of
+  tidying it. S2a was ~18,800 lines over 50 commits, each carrying why a
+  decision went the way it did — a fixture catching a live obligation-5 bug, an
+  HLC that must not advance on garbage, a lock taken before a dedupe so a
+  sequence stays gapless. That is worth more than a tidy log.
+  So: **fast-forward is absolute; squashing is a judgement.** Squash when the
+  slice is small enough that one commit can still be read and explained. Keep
+  the history when it is not, and let `git log --oneline main..<branch>` be the
+  review surface instead. Either way the branch is linear and no merge commit
+  appears.
 - **Working in a git worktree: run `npm ci` in it, first thing.** A fresh
   worktree has no `node_modules`, so Node's resolver walks *up* and finds the
   main checkout's — where `node_modules/@foerier/shared` is a symlink to the

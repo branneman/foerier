@@ -148,6 +148,18 @@ export interface DepotStoreState {
    * failed. Durability is {@link emitDurable}.
    */
   drained(): Promise<void>
+  /**
+   * How much of this Device's work the household has not accepted yet: the
+   * outbox plus the dead-letter, which do not overlap (a dead-lettered record
+   * has left the outbox).
+   *
+   * The number two screens state as a fact — the sign-in screen's *"N changes
+   * saved here and not yet synced"* after a 401, and the Account screen's
+   * `sign out this device` confirm sheet, which is the one action that
+   * destroys it. Async because the outbox is a query over the log, never a
+   * counter kept alongside it.
+   */
+  unsyncedCount(): Promise<number>
   /** After re-authenticating: build and start a **fresh** engine. */
   resumeSync(): void
   /** Sign-out and teardown: stop the engine and drop the pending snapshot. */
@@ -446,6 +458,12 @@ export function createDepotStore(
     emit,
     emitDurable,
     drained: () => queue.then(() => undefined),
+    async unsyncedCount(): Promise<number> {
+      // No limit: this is a count, not a batch, and a device with more queued
+      // ops than fit in one push still has to be able to say how many.
+      const queued = await deps.log.outbox(Number.MAX_SAFE_INTEGER)
+      return queued.length + store.getState().deadLetterCount
+    },
     resumeSync() {
       // Never the old one: `freeze()` set a flag that is never cleared, and
       // unwired its timer and listeners on the way (`syncEngine.ts`).

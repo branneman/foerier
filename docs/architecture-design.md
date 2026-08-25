@@ -1093,9 +1093,27 @@ byte-exact.
   "any interleaving of the same ops reaches the same state" checks that are
   this project's signature test, and the one tier that cannot be written by
   hand.
-- **The Depot ships without the Account screen, so `sign out this device` has
-  no button yet.** Its other half exists — `clearLocalData()` in
-  `app/src/depot/wiring.ts`, the one path that clears the local log — and the
-  confirm sheet's unsynced count is the store's `deadLetterCount` plus the
-  outbox length. A 401 deliberately takes neither: it freezes the engine,
-  keeps every queued op, and the header reads `SIGNED OUT · SAVED ON DEVICE`.
+- **A 401 is acted on, not merely displayed.** The engine reporting
+  `signed-out` is the app's only signal that a Device's token is gone, and it
+  is what calls `handleUnauthorized()`: [auth-design §7.2](auth-design.md)
+  literally — mark the session invalid, route to `/signin`, and **leave the op
+  log and the outbox untouched**. Ending the session drops the store and stops
+  the frozen engine through the same effect cleanup a sign-out uses, and
+  re-signing in builds a **new** store with a **new** engine. A frozen engine
+  is still never resumed; `resumeSync()` exists for a re-auth flow that
+  recovers *in place*, which this deliberately is not.
+
+  Without this the depot froze with `SIGNED OUT · SAVED ON DEVICE` in the
+  header and no route back — `/signin` redirects away while a session exists
+  — so the shell line is now what it should always have been: the state for
+  the moment between the freeze and the redirect, not a resting place.
+- **The sign-in screen's unsynced count is read before the session ends**, for
+  the obvious reason that ending it drops the store that can answer. The
+  number is `DepotStoreState.unsyncedCount()` — the outbox plus the
+  dead-letter, which do not overlap — and it is the whole reassurance of that
+  screen: the work is on the device and flushes after the next sign-in.
+- **Still owed to the Account screen: `sign out this device`.** Its destructive
+  half exists — `clearLocalData()` in `app/src/depot/wiring.ts`, the one path
+  that clears the local log — and so does the count its confirm sheet must
+  state, but S2a builds no Account screen, so nothing calls either yet. A 401
+  must never take that path.
