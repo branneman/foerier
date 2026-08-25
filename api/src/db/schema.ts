@@ -107,7 +107,16 @@ export interface OpTable {
   /** Inserted as a JSON string and cast by Postgres; selected back already
    * parsed. Never updated — an accepted op is immutable once stored. */
   payload: ColumnType<Record<string, unknown>, string, never>
-  received_at: CreatedAt
+  /**
+   * Supplied by the push transaction from the injected clock — the one
+   * timestamp foerier writes rather than letting Postgres write, because a
+   * test that proves a re-push does **not** move it (`sync-protocol.md` §8.1)
+   * has to be able to advance time by a day between the two pushes. The
+   * column's `now()` default stays as the backstop.
+   *
+   * Never updated: a re-push must be invisible to every other client.
+   */
+  received_at: ColumnType<Date, Date | undefined, never>
 }
 
 export interface Database {
