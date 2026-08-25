@@ -13,7 +13,32 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-Pre-code, architecture decided. The repo holds requirements plus a DDD domain
+**Code has started.** Two slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+have landed:
+
+- **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
+  `ui`; `landing` deferred), the Tier 0 toolchain and pre-commit hook, the test
+  tiers, both container images, and `GET /api/v1/version`.
+- **S1, auth slice 1** (stories 26, 27) — the Maintainer bootstrap script, both
+  WebAuthn ceremonies, device tokens, the auth middleware and tenancy rule, and
+  the sign-in and join screens.
+
+So a Quartermaster can join a Household and sign in. **There is still no domain
+behaviour**: no gear, no trips, and no op log — `shared/` holds the envelope
+types and nothing else, deliberately, because the reducer is S2's work. The
+next slice is **S2, the Depot**.
+
+Two conventions the code now carries that are easy to trip over:
+
+- Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**
+  (Node's ESM resolver does not guess, and `node src/…` runs the dev server,
+  the migration CLI, and the bootstrap script).
+- **Ops mirror the wire** — `snake_case`, never transformed — while folded
+  state and UI props are ordinary camelCase. See
+  [architecture §12](docs/architecture-design.md) for that and the rest of the
+  toolchain decisions.
+
+The repo also holds requirements plus a DDD domain
 design — a [ubiquitous language](docs/ubiquitous-language.md) (the glossary) and
 a conceptual, persistence-ignorant [domain model](docs/domain-model.md)
 (aggregates, invariants, the two worlds of home and trip) — and now an approved

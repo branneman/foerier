@@ -424,6 +424,9 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 ### 8.3 The slices
 
+**Landed so far: S0 and S1.** S2, the Depot, is next — and is the first slice
+to need the op log, the reducer, and `/sync`, none of which exist yet.
+
 Two properties hold across every slice below and are not repeated in each:
 
 - **Domain slices add no endpoints.** The server has no op vocabulary
