@@ -19,3 +19,24 @@ export {
 
 export type { Register } from './registers.ts'
 export { stampOf, writeRegister } from './registers.ts'
+
+export type {
+  DepotState,
+  GearState,
+  KindValue,
+  Owner,
+  PersonState,
+  PlaceState,
+  Residence,
+  UnfoldedOps,
+} from './state.ts'
+
+export type { Read } from './payloads.ts'
+export {
+  readBoolean,
+  readCount,
+  readOpen,
+  readOwner,
+  readResidence,
+  readString,
+} from './payloads.ts'
