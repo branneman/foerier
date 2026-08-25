@@ -30,6 +30,7 @@ import {
 } from './depot/store'
 import { AddGear } from './screens/AddGear'
 import { Depot } from './screens/Depot'
+import { GearDetail } from './screens/GearDetail'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
 import { AppShell } from './shell/AppShell'
@@ -198,12 +199,8 @@ export function App({
                 <Route path="/">
                   <Depot />
                 </Route>
-                {/* Task 22's screen. Minimal placeholder here — do not
-                    build it as part of this route wiring. */}
                 <Route path="/gear/:id">
-                  <div className={styles['emptyState']}>
-                    <h1>Gear</h1>
-                  </div>
+                  <GearDetail />
                 </Route>
                 <Route path="/add">
                   <AddGear />
