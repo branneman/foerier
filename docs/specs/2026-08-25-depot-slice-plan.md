@@ -1374,12 +1374,22 @@ breaks the same edge — the fold is untouched, convergence is untouched, and
 every device displays the same thing.
 
 **One hazard the implementer must not walk into.** Iterate gear ids in
-**sorted order** when detecting cycles. `Object.keys` returns insertion order,
-which differs between replicas that received the same ops in different orders;
-a DFS driven by it can discover overlapping cycles differently on two devices
-and break different edges. Sorting costs nothing and removes the failure mode
-entirely. Do not skip it because "the min is order-independent" — it is, per
-cycle, but *which cycles you find first* is not.
+**sorted order**, and break an all-equal-stamp tie on gear id. `Object.keys`
+returns insertion order, which differs between replicas that received the same
+ops in different orders.
+
+*(Corrected after implementation, by experiment — the original rationale here
+was wrong and is preserved as a caution. It claimed a DFS could discover
+**overlapping cycles** differently and so break different edges. It cannot: the
+residence graph is **functional**, out-degree ≤ 1, so cycles are
+vertex-disjoint, every cycle is discovered exactly once whatever the start
+order, and a minimum over a total order on a fixed set is start-independent.
+`holderOf` and `brokenEdges` are already insertion-order independent. What
+unsorted iteration actually perturbs is **`childrenOf`**, whose buckets are
+filled in iteration order — and what protects `holderOf`/`brokenEdges` is the
+**id tiebreak**, since `compareStamps` returns 0 on identical stamps and
+"first seen wins" then resolves by walk-entry point. Both guards are needed,
+for different outputs.)*
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1479,11 +1489,48 @@ it('converges to identical state regardless of arrival order', () => {
 
       const first = replicas[0]!.state()
       for (const r of replicas.slice(1)) expect(r.state()).toEqual(first)
+
+      // Folded state is not enough. The cycle break lives in a SELECTOR,
+      // downstream of the fold, so two replicas can hold byte-identical state
+      // and still display different trees. Task 8 established the determinism;
+      // this is where it is held.
+      const view = containmentView(first)
+      for (const r of replicas.slice(1)) {
+        const other = containmentView(r.state())
+        for (const id of Object.keys(first.gear)) {
+          expect(other.holderOf(id)).toEqual(view.holderOf(id))
+          expect(other.childrenOf({ kind: 'gear', id })).toEqual(
+            view.childrenOf({ kind: 'gear', id }),
+          )
+        }
+        expect(other.childrenOf({ kind: 'loose' })).toEqual(
+          view.childrenOf({ kind: 'loose' }),
+        )
+        expect([...other.brokenEdges].sort()).toEqual([...view.brokenEdges].sort())
+      }
     }),
     { numRuns: 200 },
   )
 })
 ```
+
+**Compare `childrenOf`, not only `holderOf`** — Task 8 established which output
+each guard protects, by experiment rather than by argument:
+
+- The residence graph is **functional** (out-degree ≤ 1), so cycles are
+  vertex-disjoint, every cycle is discovered exactly once whatever the start
+  order, and a minimum over a total order on a fixed set is start-independent.
+  `holderOf` and `brokenEdges` are therefore *already* insertion-order
+  independent, and comparing them alone would go green on the very bug this
+  assertion exists to catch.
+- What unsorted traversal actually perturbs is **`childrenOf`**, whose buckets
+  are filled in iteration order.
+- The `(hlc, deviceId)` tiebreak protects `holderOf`/`brokenEdges` — without it,
+  an all-equal-stamp cycle resolves by walk-entry point, i.e. by insertion
+  order.
+
+Sorted iteration and the tiebreak are load-bearing for **different outputs**.
+Compare both.
 
 `arbOpSets()` generates 2–4 devices × 0–15 ops drawn from all eleven builders,
 over a small shared pool of ~5 gear ids and ~3 place ids so that collisions on
