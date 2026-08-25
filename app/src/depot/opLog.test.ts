@@ -4,7 +4,8 @@ import { formatHlc, type OpEnvelope, type StoredOp } from '@foerier/shared'
 import { openDB } from 'idb'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { DB_NAME, indexedDbOpLog, inMemoryOpLog, type OpLog } from './opLog'
+import { DB_NAME } from '../db'
+import { indexedDbOpLog, inMemoryOpLog, type OpLog } from './opLog'
 
 /**
  * The same suite runs against both implementations (`describe.each` below),
@@ -107,8 +108,12 @@ describe.each(implementations)('opLog (%s)', (_label, createLog) => {
 
     expect(await log.outbox(10)).toEqual([])
 
-    const [record] = await log.since(0)
-    expect(record?.seq).toBe(34)
+    // Guards the specific bug the name describes: an ingest that both
+    // updates the existing row *and* inserts a duplicate would also leave
+    // the outbox empty, so an empty outbox alone cannot tell them apart.
+    const all = await log.all()
+    expect(all).toHaveLength(1)
+    expect(all[0]?.seq).toBe(34)
   })
 
   it('ingest does not duplicate an op already in the log', async () => {
@@ -145,6 +150,42 @@ describe.each(implementations)('opLog (%s)', (_label, createLog) => {
     ])
   })
 
+  it("orders deadLetters by the op's lsn, not opId or dead-letter call order", async () => {
+    // Ids are deliberately *not* in append order, so a `deadLetters()` that
+    // (mis)sorts by `opId` — which the real store's `getAll()` would do if
+    // nothing else were asked of it — fails this the same way a naive
+    // Map-insertion-order fake would, just from the other direction.
+    const first = await log.append(
+      anOp({ id: 'ffffffff-0000-7000-8000-000000000001' }),
+    )
+    const second = await log.append(
+      anOp({ id: '11111111-0000-7000-8000-000000000002' }),
+    )
+    const third = await log.append(
+      anOp({ id: '77777777-0000-7000-8000-000000000003' }),
+    )
+
+    // Dead-lettered out of both lsn order and opId order.
+    await log.deadLetter([{ opId: third.op.id, code: 'envelope_invalid' }])
+    await log.deadLetter([{ opId: first.op.id, code: 'envelope_invalid' }])
+    await log.deadLetter([{ opId: second.op.id, code: 'envelope_invalid' }])
+
+    expect(await log.deadLetters()).toEqual([
+      { opId: first.op.id, code: 'envelope_invalid' },
+      { opId: second.op.id, code: 'envelope_invalid' },
+      { opId: third.op.id, code: 'envelope_invalid' },
+    ])
+  })
+
+  it('rejects appending an op whose id is already in the log', async () => {
+    // The real store's unique index on `op.id` throws `ConstraintError` here;
+    // the fake must fail the same way rather than silently double-writing.
+    const op = anOp()
+    await log.append(op)
+
+    await expect(log.append(op)).rejects.toThrow()
+  })
+
   it('since(lsn) returns only records appended after that lsn', async () => {
     const first = await log.append(anOp())
     const second = await log.append(anOp())
@@ -163,16 +204,23 @@ describe.each(implementations)('opLog (%s)', (_label, createLog) => {
   })
 
   it('never mutates a stored op', async () => {
-    const op = anOp()
-    const before = JSON.stringify(op)
+    // Carries an unknown field too, so this also confirms it survives every
+    // operation below that touches the record's bookkeeping — not just a
+    // fresh append (that half is `preserves an unknown envelope field...`).
+    const withExtra = { ...anOp(), future_field: 'unrecognised' } as OpEnvelope
+    const before = structuredClone(withExtra)
 
-    const logged = await log.append(op)
-    await log.markPushed([{ opId: op.id, seq: 3 }])
-    await log.deadLetter([{ opId: op.id, code: 'envelope_invalid' }])
-    await log.ingest([toStoredOp(op, 3)])
+    const logged = await log.append(withExtra)
+    await log.markPushed([{ opId: withExtra.id, seq: 3 }])
+    await log.deadLetter([{ opId: withExtra.id, code: 'envelope_invalid' }])
+    await log.ingest([toStoredOp(withExtra, 3)])
 
-    expect(JSON.stringify(op)).toBe(before)
-    expect(logged.op).not.toBe(op)
+    // `seq` and `deadLettered` are expected to change by now — only the op
+    // envelope itself must stay byte-identical to what was authored (§5.3
+    // obligation 6, load-bearing for the idempotent re-push in §8.1).
+    const [record] = await log.since(0)
+    expect(record?.op).toEqual(before)
+    expect(logged.op).not.toBe(withExtra)
   })
 
   it('preserves an unknown envelope field through a store and a read', async () => {

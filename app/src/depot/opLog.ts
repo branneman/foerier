@@ -1,6 +1,16 @@
 import type { OpEnvelope, StoredOp } from '@foerier/shared'
 import { openDB, type IDBPDatabase } from 'idb'
 
+import {
+  DB_NAME,
+  DB_VERSION,
+  DEAD_LETTER_STORE,
+  META_STORE,
+  OP_ID_INDEX,
+  OP_STORE,
+  upgradeFoerierDb,
+} from '../db'
+
 /**
  * The client's durable op log — local source of truth for the offline-first
  * design (`docs/sync-protocol.md` §7.5). Two implementations, one contract:
@@ -81,6 +91,20 @@ function envelopeOf(stored: StoredOp): OpEnvelope {
   return clone as unknown as OpEnvelope
 }
 
+/**
+ * `deadLetters()` orders by the dead-lettered op's `lsn` in both
+ * implementations — chronological, deterministic, and consistent with the
+ * ordering `since`/`all`/`outbox` already give. An op that failed to publish
+ * still occupies the `lsn` it was authored at, and a dead-lettered entry
+ * whose op cannot be found (should not happen, but the store must not throw
+ * over it) sorts last rather than crashing the read.
+ */
+function byLsn(a: { lsn: number }, b: { lsn: number }): number {
+  return a.lsn - b.lsn
+}
+
+const UNKNOWN_LSN = Number.MAX_SAFE_INTEGER
+
 // ---------------------------------------------------------------------------
 // In-memory fake
 // ---------------------------------------------------------------------------
@@ -88,7 +112,10 @@ function envelopeOf(stored: StoredOp): OpEnvelope {
 export function inMemoryOpLog(): OpLog {
   const records: LoggedOp[] = []
   let nextLsn = 1
-  const deadLetterEntries = new Map<string, { opId: string; code: string }>()
+  const deadLetterEntries = new Map<
+    string,
+    { opId: string; code: string; lsn: number }
+  >()
   const meta = new Map<MetaKey, unknown>()
 
   function findByOpId(opId: string): LoggedOp | undefined {
@@ -97,6 +124,15 @@ export function inMemoryOpLog(): OpLog {
 
   return {
     append(op) {
+      if (findByOpId(op.id)) {
+        // Mirrors the real store's unique index on `op.id` (`ConstraintError`
+        // on a duplicate `add()`) — the fake's whole job is to fail where the
+        // real one fails.
+        return Promise.reject(
+          new Error(`opLog: an op with id ${op.id} is already in the log`),
+        )
+      }
+
       const stored: LoggedOp = {
         lsn: nextLsn++,
         op: structuredClone(op),
@@ -155,8 +191,12 @@ export function inMemoryOpLog(): OpLog {
 
     deadLetter(entries) {
       for (const entry of entries) {
-        deadLetterEntries.set(entry.opId, { ...entry })
         const record = findByOpId(entry.opId)
+        deadLetterEntries.set(entry.opId, {
+          opId: entry.opId,
+          code: entry.code,
+          lsn: record ? record.lsn : UNKNOWN_LSN,
+        })
         if (record) record.deadLettered = true
       }
       return Promise.resolve()
@@ -164,7 +204,9 @@ export function inMemoryOpLog(): OpLog {
 
     deadLetters() {
       return Promise.resolve(
-        [...deadLetterEntries.values()].map((entry) => ({ ...entry })),
+        [...deadLetterEntries.values()]
+          .sort(byLsn)
+          .map(({ opId, code }) => ({ opId, code })),
       )
     },
 
@@ -183,57 +225,6 @@ export function inMemoryOpLog(): OpLog {
 // ---------------------------------------------------------------------------
 // IndexedDB
 // ---------------------------------------------------------------------------
-
-/**
- * The database every `app/` store shares — `auth` (`sessionStore.ts`,
- * `pendingFirstPerson.ts`) included.
- */
-export const DB_NAME = 'foerier'
-
-/** Bumped 1 → 2 here, to add the op log alongside the pre-existing `auth`
- * store. */
-export const DB_VERSION = 2
-
-const AUTH_STORE = 'auth'
-const OP_STORE = 'op'
-const META_STORE = 'meta'
-const DEAD_LETTER_STORE = 'deadLetter'
-const OP_ID_INDEX = 'op.id'
-
-/**
- * Passed to every `openDB('foerier', …)` call in the app (`sessionStore.ts`
- * and `pendingFirstPerson.ts` import this rather than defining their own).
- *
- * IndexedDB only runs the `upgrade` callback belonging to whichever
- * connection happens to be the one that actually crosses the version
- * boundary — not every connection that requests it. If each module carried
- * its own upgrade logic, whichever one's request wins that race would create
- * only *its* stores, silently stranding the others the first time a device
- * upgrades. So this one function builds the **entire** schema, idempotently,
- * and every opener uses it.
- */
-export function upgradeFoerierDb(database: IDBPDatabase): void {
-  if (!database.objectStoreNames.contains(AUTH_STORE)) {
-    database.createObjectStore(AUTH_STORE)
-  }
-
-  if (!database.objectStoreNames.contains(OP_STORE)) {
-    const op = database.createObjectStore(OP_STORE, {
-      keyPath: 'lsn',
-      autoIncrement: true,
-    })
-    op.createIndex(OP_ID_INDEX, 'op.id', { unique: true })
-    op.createIndex('seq', 'seq')
-  }
-
-  if (!database.objectStoreNames.contains(META_STORE)) {
-    database.createObjectStore(META_STORE)
-  }
-
-  if (!database.objectStoreNames.contains(DEAD_LETTER_STORE)) {
-    database.createObjectStore(DEAD_LETTER_STORE, { keyPath: 'opId' })
-  }
-}
 
 export function indexedDbOpLog(): OpLog {
   /**
@@ -262,6 +253,8 @@ export function indexedDbOpLog(): OpLog {
           seq: null,
           deadLettered: false,
         }
+        // The `op.id` unique index makes this reject with a `ConstraintError`
+        // on a duplicate append, same as the in-memory fake above.
         const lsn = (await db.add(OP_STORE, record)) as number
         // `lsn` last: IndexedDB's in-line key generator may inject its own
         // `lsn` onto `record` as a side effect of `add()`, and the freshly
@@ -341,9 +334,14 @@ export function indexedDbOpLog(): OpLog {
         const index = opStore.index(OP_ID_INDEX)
 
         for (const entry of entries) {
-          await deadLetterStore.put({ opId: entry.opId, code: entry.code })
-
           const existing = (await index.get(entry.opId)) as LoggedOp | undefined
+
+          await deadLetterStore.put({
+            opId: entry.opId,
+            code: entry.code,
+            lsn: existing ? existing.lsn : UNKNOWN_LSN,
+          })
+
           if (existing) {
             await opStore.put({ ...existing, deadLettered: true })
           }
@@ -354,7 +352,14 @@ export function indexedDbOpLog(): OpLog {
     },
 
     deadLetters() {
-      return withDb((db) => db.getAll(DEAD_LETTER_STORE))
+      return withDb(async (db) => {
+        const all = (await db.getAll(DEAD_LETTER_STORE)) as {
+          opId: string
+          code: string
+          lsn: number
+        }[]
+        return all.sort(byLsn).map(({ opId, code }) => ({ opId, code }))
+      })
     },
 
     readMeta<T>(key: MetaKey) {

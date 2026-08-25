@@ -1,6 +1,6 @@
 import { openDB } from 'idb'
 
-import { DB_NAME, DB_VERSION, upgradeFoerierDb } from '../depot/opLog'
+import { AUTH_STORE, DB_NAME, DB_VERSION, upgradeFoerierDb } from '../db'
 
 /**
  * ┌──────────────────────────────────────────────────────────────────────────┐
@@ -77,23 +77,23 @@ export const PENDING_KEY = KEY
  */
 export function indexedDbPendingStore(): PendingStore {
   // Same `DB_NAME`/`DB_VERSION`/upgrade as `sessionStore.ts` and
-  // `depot/opLog.ts` — see `opLog.ts`'s docstring for why every opener of
+  // `depot/opLog.ts` — see `../db.ts`'s docstring for why every opener of
   // `foerier` must pass the identical, idempotent upgrade rather than its own.
   const open = () => openDB(DB_NAME, DB_VERSION, { upgrade: upgradeFoerierDb })
 
   return {
     async save(pending) {
-      await (await open()).put('auth', pending, KEY)
+      await (await open()).put(AUTH_STORE, pending, KEY)
     },
     async read() {
       try {
-        return (await (await open()).get('auth', KEY)) ?? null
+        return (await (await open()).get(AUTH_STORE, KEY)) ?? null
       } catch {
         return null
       }
     },
     async clear() {
-      await (await open()).delete('auth', KEY)
+      await (await open()).delete(AUTH_STORE, KEY)
     },
   }
 }
