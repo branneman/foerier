@@ -146,6 +146,12 @@ artifacts with no external consumer.
   stories 2 and 3. The backlog's numbers are not a sequence and the document's
   order is the reading order. Deleting a story retires its number rather than
   freeing it.
+- **Merge via rebase + fast-forward only. Never create a merge commit.**
+  Before integrating a branch: `git rebase main`, then
+  `git checkout main && git merge --ff-only <branch>`. History stays linear, so
+  `git log` reads as the order work actually landed and a slice remains one
+  reviewable commit rather than something to untangle from a merge bubble.
+  (Same rule as the sibling repos.)
 - **Doc paths: no `spec`/`specs` directory, and no date prefixes on durable,
   generic docs.** A durable design doc lives flat in `docs/`, named for what it
   is — `docs/architecture-design.md`, not `docs/specs/2026-08-20-architecture-design.md`.
