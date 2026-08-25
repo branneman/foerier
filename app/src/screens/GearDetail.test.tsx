@@ -223,6 +223,10 @@ describe('Gear detail', () => {
     await store.getState().drained()
 
     expect(store.getState().state.gear[gearId]?.kind?.value).toBe('per_person')
+    // The meta line names the containment trait, not the Kind (fix round 1):
+    // per-person gear is still an item, so switching Kind must not move the
+    // rendered label off ITEM.
+    expect(screen.getByText('ITEM · SHARED')).toBeInTheDocument()
   })
 
   it('RETIRE emits gear.retired only after the confirmation', async () => {
@@ -250,7 +254,17 @@ describe('Gear detail', () => {
     expect(store.getState().state.gear[gearId]?.retired?.value).toBe(true)
   })
 
-  it('renders RETIRE as text, not as a filled button', async () => {
+  // Fix round 1: this test's original name — 'renders RETIRE as text, not as
+  // a filled button' — claimed more than a class-name comparison can prove.
+  // `test.css` is off for this project (`vitest.config.ts`), so jsdom never
+  // applies `GearDetail.module.css` — a mutation that repaints `.retire` as
+  // a filled button *without* renaming the class would pass unnoticed. What
+  // this test actually verifies, honestly: RETIRE is styled with a class of
+  // its own, distinct from the bordered MOVE/EDIT class. The "text, never a
+  // filled button" rule itself — `.retire` in GearDetail.module.css carries
+  // no border and no background, matching `HomePicker`'s own `.remove` — is
+  // unverified by automated test here and rests on code review.
+  it('gives RETIRE a class distinct from the bordered MOVE/EDIT buttons', async () => {
     const gearId = anId()
     const store = await seededStore([
       gearRecorded(gearId, {
@@ -286,6 +300,14 @@ describe('Gear detail', () => {
     expect(screen.queryByRole('button', { name: 'RETIRE' })).toBeNull()
   })
 
+  // Fix round 1 moved the meta line's first segment off Kind entirely (onto
+  // `gear.container`) — Kind's only remaining consequence on this line is
+  // the ×N gate below, so an unrecognised `kind` has no token of its own
+  // left to render verbatim here. What obligation 4 demands at this line's
+  // altitude is narrower than the original name suggests: no crash, and no
+  // false ×N glyph from treating an unrecognised string as `'counted'`. The
+  // test keeps its original name (one of the ten the brief fixed) but
+  // asserts what is actually true post-fix.
   it('renders an unknown kind value verbatim rather than crashing', async () => {
     const gearId = anId()
     const store = await seededStore([
@@ -297,6 +319,34 @@ describe('Gear detail', () => {
     ])
 
     expect(() => renderGearDetail(store, gearId)).not.toThrow()
-    expect(screen.getByText('exotic_future_kind · SHARED')).toBeInTheDocument()
+    expect(screen.getByText('ITEM · SHARED')).toBeInTheDocument()
+  })
+
+  it('shows CONTAINER in the meta line for container gear', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Crate B',
+        container: true,
+        kind: 'single',
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('CONTAINER · SHARED')).toBeInTheDocument()
+  })
+
+  it('shows ITEM in the meta line for per-person gear', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('ITEM · SHARED')).toBeInTheDocument()
   })
 })

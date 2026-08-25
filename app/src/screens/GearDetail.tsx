@@ -32,18 +32,21 @@ const KIND_OPTIONS: readonly { value: KindValue; label: string }[] = [
 ]
 
 /**
- * `ITEM` for single and counted gear, `PER-PERSON` for per-person — the
- * meta line's kind segment (`docs/design/README.md` §4: `ITEM · SHARED ·
- * ×2`; Components board's dense table shows the same `ITEM` label for a
- * counted row). An unrecognised kind is shown **verbatim** rather than
- * coerced — obligation 4 (`sync-protocol.md` §5.3): a newer build may widen
- * the enum, and this build shows the raw string rather than guess or crash.
+ * `ITEM` or `CONTAINER` — the meta line's first segment names the
+ * **containment trait** (`gear.container`), not the Kind. §4's own running
+ * example, "Sleeping bag, winter", is labelled `ITEM` while showing `×2` —
+ * and invariant 6 says owned-count exists only for *counted* gear, so that
+ * example is necessarily counted, yet still reads `ITEM`. The literal words
+ * `SINGLE`/`COUNTED` never appear anywhere in the design bundle, and every
+ * KIND column across the boards is binary — `ITEM` or `CONT.` (the dense
+ * table's abbreviation; this line uses the detail idiom's full `CONTAINER`
+ * instead) — never a third value for Kind. `ubiquitous-language.md` pairs
+ * Item/Container to this same trait, and domain §2 says gear with the trait
+ * is a container, gear without it is an item. Kind has no token of its own
+ * here; its only visible consequence on this line is the `×N` glyph below.
  */
-function kindLabel(kind: KindValue | undefined): string {
-  if (kind === undefined) return ''
-  if (kind === 'per_person') return 'PER-PERSON'
-  if (kind === 'single' || kind === 'counted') return 'ITEM'
-  return kind
+function traitLabel(gear: GearState): string {
+  return gear.container?.value === true ? 'CONTAINER' : 'ITEM'
 }
 
 /** `SHARED`, or the owning person's name — an intrinsic attribute
@@ -59,11 +62,13 @@ function ownerLabel(state: DepotState, gear: GearState): string {
 
 /** `ITEM · SHARED · ×2` — the MVP meta line (no weight segment; that is
  * story 16, tagged LATER). `×N` appears only for counted gear
- * (invariant 6: owned-count exists only for counted gear). */
+ * (invariant 6: owned-count exists only for counted gear); an unrecognised
+ * `kind` simply never matches `'counted'`, so it neither crashes nor is
+ * coerced into showing a count it does not own — obligation 4
+ * (`sync-protocol.md` §5.3) at this line's altitude. */
 function metaLine(state: DepotState, gear: GearState): string {
-  const kind = gear.kind?.value
-  const parts = [kindLabel(kind), ownerLabel(state, gear)]
-  if (kind === 'counted' && gear.ownedCount?.value !== undefined) {
+  const parts = [traitLabel(gear), ownerLabel(state, gear)]
+  if (gear.kind?.value === 'counted' && gear.ownedCount?.value !== undefined) {
     parts.push(`×${gear.ownedCount.value}`)
   }
   return parts.filter((part) => part !== '').join(' · ')
@@ -190,6 +195,13 @@ export function GearDetail() {
         </div>
       )}
 
+      {/* Mounted unconditionally, not gated by `!retired`: `HomePicker`
+          itself renders nothing while `open` is false, and `moveOpen` can
+          only ever become true from the MOVE button above, which exists
+          solely inside that `!retired` branch. Retired gear's action bar
+          still offers nothing — this just leans on that instead of a second
+          `!retired` check, so a later refactor of the button doesn't leave
+          this picker reachable without also touching this comment. */}
       <HomePicker
         open={moveOpen}
         onClose={() => setMoveOpen(false)}
