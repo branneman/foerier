@@ -2,6 +2,10 @@ import type { Clock, IdSource } from '../src/boundaries.ts'
 
 export { aGear, aPlace, anOp, hlcAt } from './factories.ts'
 
+/** The convergence tier's in-memory client (`docs/testing.md` Tier 2). */
+export type { Replica } from './replica.ts'
+export { createReplica, exchange } from './replica.ts'
+
 /**
  * Real, minimal in-memory fakes for the injected boundaries — not
  * mocking-framework mocks (`docs/testing.md`, Philosophy). They implement the
