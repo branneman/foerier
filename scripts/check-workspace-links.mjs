@@ -31,22 +31,24 @@
  */
 
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
-import { dirname, relative, resolve, sep } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+/**
+ * Canonicalised, because the comparison below is against `realpathSync` of a
+ * symlink and the two must be canonicalised the same way. A checkout reached
+ * through a symlink anywhere in its path — macOS `/tmp` → `/private/tmp`, a
+ * symlinked home directory, some CI layouts — would otherwise compare unequal
+ * to itself, and this guard would block every commit with a message saying
+ * the opposite of what was wrong.
+ */
+const root = realpathSync(
+  resolve(dirname(fileURLToPath(import.meta.url)), '..'),
+)
 
 const { workspaces } = JSON.parse(
   readFileSync(resolve(root, 'package.json'), 'utf8'),
 )
-
-/** True when `path` is `root` itself or lives underneath it. */
-function isInside(path) {
-  // `relative` beats `startsWith`: it is not fooled by a sibling directory
-  // whose path happens to share this one's prefix.
-  const from = relative(root, path)
-  return from !== '' && !from.startsWith('..') && !from.startsWith(sep)
-}
 
 const problems = []
 
@@ -64,12 +66,14 @@ for (const workspace of workspaces) {
     continue
   }
 
+  // One comparison covers every way this can be wrong. `expected` is by
+  // construction inside this tree, so anything the link actually points at —
+  // another checkout, a stale copy, the wrong workspace — fails here, and the
+  // message names where it went.
   const target = realpathSync(link)
   const expected = resolve(root, workspace)
   if (target !== expected) {
     problems.push(`  ${name} → ${target}`)
-  } else if (!isInside(target)) {
-    problems.push(`  ${name} → ${target} (outside this tree)`)
   }
 }
 
