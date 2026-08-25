@@ -1514,8 +1514,8 @@ it('converges to identical state regardless of arrival order', () => {
 })
 ```
 
-**Compare `childrenOf`, not only `holderOf`** — Task 8 established which output
-each guard protects, by experiment rather than by argument:
+**Compare all three outputs** — Task 8 established which guard protects which,
+by experiment rather than by argument:
 
 - The residence graph is **functional** (out-degree ≤ 1), so cycles are
   vertex-disjoint, every cycle is discovered exactly once whatever the start
