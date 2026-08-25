@@ -1,0 +1,125 @@
+@layer components {
+  .screen {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    padding: var(--space-16);
+    /* 76px bottom list clearance so the FAB never covers the last row
+       (docs/design/README.md §3). */
+    padding-bottom: 4.75rem;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .search {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  .search::placeholder {
+    color: var(--color-ink-faint);
+  }
+
+  .countLine {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .empty {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  .list li + li {
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    padding-block: var(--space-12);
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .rowMain {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .name {
+    font: var(--text-heading) var(--font-ui);
+    font-weight: 600;
+    color: var(--color-ink-primary);
+  }
+
+  .meta {
+    font: var(--text-label) var(--font-mono);
+    color: var(--color-ink-muted);
+  }
+
+  .rowSide {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    flex: none;
+  }
+
+  .whereabouts {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+  }
+
+  .chevron {
+    color: var(--color-ink-faint);
+  }
+
+  .fab {
+    position: fixed;
+    right: var(--space-16);
+    /* 74px above the 3-tab bar. */
+    bottom: 4.625rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--radius-sheet);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-title) var(--font-ui);
+    font-weight: 700;
+    text-decoration: none;
+  }
+}
