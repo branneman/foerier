@@ -44,5 +44,15 @@ export default tseslint.config(
     },
   },
 
+  // Repo tooling that runs on Node directly, outside any workspace's tsconfig.
+  // `js.configs.recommended` assumes a browser, so Node's globals have to be
+  // declared or `no-undef` fires on `process`.
+  {
+    files: ['scripts/**/*.mjs', 'api/scripts/**/*.js'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly' },
+    },
+  },
+
   prettier,
 )

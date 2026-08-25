@@ -152,6 +152,17 @@ artifacts with no external consumer.
   `git log` reads as the order work actually landed and a slice remains one
   reviewable commit rather than something to untangle from a merge bubble.
   (Same rule as the sibling repos.)
+- **Working in a git worktree: run `npm ci` in it, first thing.** A fresh
+  worktree has no `node_modules`, so Node's resolver walks *up* and finds the
+  main checkout's — where `node_modules/@foerier/shared` is a symlink to the
+  **main checkout's** `shared/`. Nothing errors. You edit `shared/` in the
+  worktree while `api/` and `app/` compile and test against the other tree, so
+  an export you just added reads as missing and a behaviour you just changed
+  reads as unchanged — both look like ordinary bugs, and the hours go into the
+  wrong file. `npm run check:workspaces` (first step of `npm run typecheck`,
+  so pre-commit and CI both run it) turns that silence into an error that names
+  the fix. npm workspaces cannot link into a worktree without an install there;
+  the guard is the whole of the defence.
 - **Doc paths: two shelves, and the date is what separates them.** A
   **perpetually relevant** doc — one that is kept true as the code evolves —
   lives flat in `docs/`, named for what it is and never dated:

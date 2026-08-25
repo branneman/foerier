@@ -12,7 +12,8 @@
     "app"
   ],
   "scripts": {
-    "typecheck": "npm run typecheck --workspaces && tsc -p tsconfig.test.json",
+    "check:workspaces": "node scripts/check-workspace-links.mjs",
+    "typecheck": "npm run check:workspaces && npm run typecheck --workspaces && tsc -p tsconfig.test.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

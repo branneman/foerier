@@ -4,6 +4,9 @@
 # unrelated files unformatted or half-edited, and a staged-files-only check is
 # blind to exactly that. These are the same three commands CI runs, with no
 # separate fast path, so a green commit means a green pipeline.
+# `typecheck` runs the workspace-link guard first. In a git worktree with no
+# install of its own, Node resolves `@foerier/*` up into the main checkout and
+# every check below silently passes judgement on the wrong source tree.
 npm run typecheck
 npm run lint
 npm run format:check

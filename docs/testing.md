@@ -45,6 +45,12 @@ the purity of the merge logic and the convergence of divergent replicas.
 **Charter:** catch syntax, type, and style errors before any behavioural test —
 the cheapest tier, and a different class of issue than behaviour covers.
 
+- **`npm run check:workspaces` — first, and cheapest of all.** It asserts every
+  `@foerier/*` package is linked inside *this* working tree. A git worktree
+  with no install of its own resolves them up into the main checkout instead,
+  and then every tier below this one passes judgement on the wrong source
+  tree without erroring. Detection, not prevention: npm workspaces cannot link
+  into a worktree without an install there.
 - `tsc --noEmit` across every workspace (`app` · `landing` · `api` · `shared` ·
   `ui`).
 - ESLint (`typescript-eslint` + `eslint-plugin-react-hooks`) — correctness rules
