@@ -1,8 +1,16 @@
 import type { Stamp } from './hlc.ts'
 import type { OpEnvelope } from './ops.ts'
-import { readString } from './payloads.ts'
-import { writeRegister } from './registers.ts'
-import type { DepotState, PlaceState } from './state.ts'
+import {
+  readBoolean,
+  readCount,
+  readOpen,
+  readOwner,
+  readResidence,
+  readString,
+  type Read,
+} from './payloads.ts'
+import { writeRegister, type Register } from './registers.ts'
+import type { DepotState, GearState, PlaceState } from './state.ts'
 
 /**
  * The fold's starting point (`sync-protocol.md` §8.4): no places, no gear, no
@@ -54,6 +62,39 @@ function writePlace(
   return { ...state, places: { ...state.places, [id]: updated } }
 }
 
+/**
+ * The `writePlace` shape, reused for `gear` (Task 6). Reads or creates the
+ * `GearState` at `id`, applies `update`, and copies only what changed.
+ */
+function writeGear(
+  state: DepotState,
+  id: string,
+  stamp: Stamp,
+  update: (gear: GearState, stamp: Stamp) => GearState,
+): DepotState {
+  const current = state.gear[id] ?? { id }
+  const updated = update(current, stamp)
+  if (updated === current) return state
+  return { ...state, gear: { ...state.gear, [id]: updated } }
+}
+
+/**
+ * Writes `read`'s value into `current` via `writeRegister` only when `read`
+ * actually carries a value — an absent (or malformed) field leaves `current`
+ * untouched, propagating its identity so a caller can tell nothing changed.
+ * This is what lets `gear.recorded` seed only the fields its payload
+ * actually carries (§4.3), including falsy ones: `container: false` and
+ * `owned_count: 0` are `{ kind: 'value' }`, not `{ kind: 'absent' }`.
+ */
+function writeIfPresent<T>(
+  current: Register<T> | undefined,
+  read: Read<T>,
+  stamp: Stamp,
+): Register<T> | undefined {
+  if (read.kind !== 'value') return current
+  return writeRegister(current, read.value, stamp)
+}
+
 type Handler = (state: DepotState, op: OpEnvelope, stamp: Stamp) => DepotState
 
 /**
@@ -80,9 +121,104 @@ const setPlaceName: Handler = (state, op, stamp) =>
   })
 
 /**
- * The op-type dispatch table (`sync-protocol.md` §4.1). A `Record`, not a
- * `switch`, so "is this type known?" is a lookup — the same question the
- * tolerant reader asks. Tasks 6 and 7 extend this table with Gear and Person.
+ * `gear.recorded` (`sync-protocol.md` §4.3): creates the Gear and seeds each
+ * **present** field as its own register, all stamped with this op's clock.
+ * An absent field leaves its register absent — it is not defaulted. A second
+ * `gear.recorded` for the same id (there is no other op for `container`) is
+ * just an ordinary LWW write on each register it carries; nothing here
+ * special-cases a repeat.
+ */
+const gearRecorded: Handler = (state, op, stamp) =>
+  writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+    const name = writeIfPresent(gear.name, readString(op.payload, 'name'), st)
+    const container = writeIfPresent(
+      gear.container,
+      readBoolean(op.payload, 'container'),
+      st,
+    )
+    // An unrecognised `kind` is stored verbatim (§5.3 obligation 4) — hence
+    // `readOpen`, not a closed enum reader.
+    const kind = writeIfPresent(gear.kind, readOpen(op.payload, 'kind'), st)
+    const residence = writeIfPresent(
+      gear.residence,
+      readResidence(op.payload, 'residence'),
+      st,
+    )
+    const owner = writeIfPresent(gear.owner, readOwner(op.payload, 'owner'), st)
+    const ownedCount = writeIfPresent(
+      gear.ownedCount,
+      readCount(op.payload, 'owned_count'),
+      st,
+    )
+    if (
+      name === gear.name &&
+      container === gear.container &&
+      kind === gear.kind &&
+      residence === gear.residence &&
+      owner === gear.owner &&
+      ownedCount === gear.ownedCount
+    ) {
+      return gear
+    }
+    return {
+      ...gear,
+      ...(name === undefined ? {} : { name }),
+      ...(container === undefined ? {} : { container }),
+      ...(kind === undefined ? {} : { kind }),
+      ...(residence === undefined ? {} : { residence }),
+      ...(owner === undefined ? {} : { owner }),
+      ...(ownedCount === undefined ? {} : { ownedCount }),
+    }
+  })
+
+/** `gear.renamed` (§4.3): sets `name`. */
+const gearRenamed: Handler = (state, op, stamp) =>
+  writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+    const name = readString(op.payload, 'name')
+    if (name.kind !== 'value') return gear
+    const next = writeRegister(gear.name, name.value, st)
+    return next === gear.name ? gear : { ...gear, name: next }
+  })
+
+/** `gear.rehomed` (§4.3): sets the **home** residence. A trip never touches it. */
+const gearRehomed: Handler = (state, op, stamp) =>
+  writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+    const residence = readResidence(op.payload, 'residence')
+    if (residence.kind !== 'value') return gear
+    const next = writeRegister(gear.residence, residence.value, st)
+    return next === gear.residence ? gear : { ...gear, residence: next }
+  })
+
+/**
+ * `gear.kind_set` (§4.3): sets `kind`. Exclusivity is structural — one
+ * register, one value (domain invariant 5) — so there is nothing to guard.
+ * An unrecognised value is stored verbatim (§5.3 obligation 4).
+ */
+const gearKindSet: Handler = (state, op, stamp) =>
+  writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+    const kind = readOpen(op.payload, 'kind')
+    if (kind.kind !== 'value') return gear
+    const next = writeRegister(gear.kind, kind.value, st)
+    return next === gear.kind ? gear : { ...gear, kind: next }
+  })
+
+/**
+ * `gear.owned_count_set` (§4.3): sets `ownedCount` **absolutely**, never a
+ * delta — a counter would be hazardous under replay and under two devices
+ * closing the same trip. The payload key is `count`, not `owned_count`.
+ */
+const gearOwnedCountSet: Handler = (state, op, stamp) =>
+  writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+    const count = readCount(op.payload, 'count')
+    if (count.kind !== 'value') return gear
+    const next = writeRegister(gear.ownedCount, count.value, st)
+    return next === gear.ownedCount ? gear : { ...gear, ownedCount: next }
+  })
+
+/**
+ * The op-type dispatch table (`sync-protocol.md` §4.1, §4.3). A `Record`, not
+ * a `switch`, so "is this type known?" is a lookup — the same question the
+ * tolerant reader asks. Task 7 extends this table with Person.
  */
 const handlers: Record<string, Handler> = {
   'place.recorded': setPlaceName,
@@ -92,6 +228,24 @@ const handlers: Record<string, Handler> = {
     writePlace(state, op.aggregate_id, stamp, (place, st) => {
       const next = writeRegister(place.removed, true, st)
       return next === place.removed ? place : { ...place, removed: next }
+    }),
+  'gear.recorded': gearRecorded,
+  'gear.renamed': gearRenamed,
+  'gear.rehomed': gearRehomed,
+  'gear.kind_set': gearKindSet,
+  'gear.owned_count_set': gearOwnedCountSet,
+  // `gear.retired` / `gear.restored` are an ordinary LWW pair on `retired`
+  // (§3.5); an edit never writes it, so a retire that a later edit races
+  // still leaves the gear retired.
+  'gear.retired': (state, op, stamp) =>
+    writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+      const next = writeRegister(gear.retired, true, st)
+      return next === gear.retired ? gear : { ...gear, retired: next }
+    }),
+  'gear.restored': (state, op, stamp) =>
+    writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+      const next = writeRegister(gear.retired, false, st)
+      return next === gear.retired ? gear : { ...gear, retired: next }
     }),
 }
 

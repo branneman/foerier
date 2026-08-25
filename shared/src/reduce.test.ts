@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { formatHlc } from './hlc.ts'
 import type { Aggregate, OpEnvelope } from './ops.ts'
 import { applyOp, emptyState, fold } from './reduce.ts'
+import type { Residence } from './state.ts'
 
 const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
 const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
+const DEVICE_B = 'bbbbbbbb-0000-7000-8000-000000000002'
 
 const at = (counter: number) => formatHlc({ ms: 1_700_000_000_000, counter })
 
@@ -66,6 +68,80 @@ function unknownOp(type: string): OpEnvelope {
   return op(aggregate, 'x1', type, {}, at(1))
 }
 
+/**
+ * `fields` mirrors the wire payload directly (`snake_case`, `owned_count`
+ * included) — it is forwarded verbatim, not translated — so a test can
+ * exercise "present but only some fields" without going through
+ * `authoring.ts`'s stricter, always-complete builder.
+ */
+function gearRecordedOp(
+  gearId: string,
+  fields: {
+    name?: string
+    container?: boolean
+    kind?: string
+    residence?: Residence
+    owner?: Record<string, unknown>
+    owned_count?: number
+  },
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('gear', gearId, 'gear.recorded', fields, hlc, deviceId)
+}
+
+function gearRenamedOp(
+  gearId: string,
+  name: string,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('gear', gearId, 'gear.renamed', { name }, hlc, deviceId)
+}
+
+function gearRehomedOp(
+  gearId: string,
+  residence: Residence,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('gear', gearId, 'gear.rehomed', { residence }, hlc, deviceId)
+}
+
+function gearKindSetOp(
+  gearId: string,
+  kind: string,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('gear', gearId, 'gear.kind_set', { kind }, hlc, deviceId)
+}
+
+function gearOwnedCountSetOp(
+  gearId: string,
+  count: number,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('gear', gearId, 'gear.owned_count_set', { count }, hlc, deviceId)
+}
+
+function gearRetiredOp(
+  gearId: string,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('gear', gearId, 'gear.retired', {}, hlc, deviceId)
+}
+
+function gearRestoredOp(
+  gearId: string,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('gear', gearId, 'gear.restored', {}, hlc, deviceId)
+}
+
 /** Freezes an object graph so any mutation at any depth throws in strict mode. */
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
@@ -102,7 +178,14 @@ describe('applyOp', () => {
   })
 
   it('does not mutate the state it is given', () => {
-    const before = fold([placeOp('p1', 'Attic', at(1))])
+    const before = fold([
+      placeOp('p1', 'Attic', at(1)),
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single', owned_count: 1 },
+        at(1),
+      ),
+    ])
 
     // A deep freeze is the real witness. A JSON snapshot only catches a
     // mutation that changes the serialisation, and misses one to a nested
@@ -121,6 +204,27 @@ describe('applyOp', () => {
     // And a losing write, which takes the early-return path.
     expect(() =>
       applyOp(before, placeRenameOp('p1', 'Stale', at(0))),
+    ).not.toThrow()
+    expect(() =>
+      applyOp(before, gearRecordedOp('g1', { name: 'Tarp v2' }, at(2))),
+    ).not.toThrow()
+    expect(() =>
+      applyOp(before, gearRenamedOp('g1', 'Tarp, blue', at(2))),
+    ).not.toThrow()
+    expect(() =>
+      applyOp(before, gearRehomedOp('g1', { in: 'loose' }, at(2))),
+    ).not.toThrow()
+    expect(() =>
+      applyOp(before, gearKindSetOp('g1', 'counted', at(2))),
+    ).not.toThrow()
+    expect(() =>
+      applyOp(before, gearOwnedCountSetOp('g1', 5, at(2))),
+    ).not.toThrow()
+    expect(() => applyOp(before, gearRetiredOp('g1', at(2)))).not.toThrow()
+    expect(() => applyOp(before, gearRestoredOp('g1', at(3)))).not.toThrow()
+    // And a losing gear write too.
+    expect(() =>
+      applyOp(before, gearRenamedOp('g1', 'Stale', at(0))),
     ).not.toThrow()
   })
 
@@ -214,5 +318,233 @@ describe('applyOp', () => {
     const forward = fold([rename, remove])
     const backward = fold([remove, rename])
     expect(forward).toEqual(backward)
+  })
+
+  it('leaves gear retired AND renamed when a retire races a later rename', () => {
+    // sync-protocol §3.5: a tombstone is an ordinary LWW field and an edit
+    // never touches it, so "delete wins" needs no special rule. Device A
+    // retires at hlc 100; device B renames at hlc 200. Both apply.
+    const state = fold([
+      gearRecordedOp('g1', { name: 'Tarp' }, at(1)),
+      gearRetiredOp('g1', at(100)),
+      gearRenamedOp('g1', 'Tarp, blue', at(200)),
+    ])
+    expect(state.gear['g1']?.retired?.value).toBe(true)
+    expect(state.gear['g1']?.name?.value).toBe('Tarp, blue')
+  })
+
+  it('gear.recorded seeds every present field as its own register', () => {
+    // container: false and owned_count: 0 are deliberately chosen, not true
+    // and a positive count — a falsy-value check would silently drop both.
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        {
+          name: 'Tent',
+          container: false,
+          kind: 'single',
+          residence: { in: 'place', id: 'p1' },
+          owner: { type: 'shared' },
+          owned_count: 0,
+        },
+        at(1),
+      ),
+    ])
+    const gear = state.gear['g1']
+    expect(gear?.id).toBe('g1')
+    expect(gear?.name?.value).toBe('Tent')
+    expect(gear?.container?.value).toBe(false)
+    expect(gear?.kind?.value).toBe('single')
+    expect(gear?.residence?.value).toEqual({ in: 'place', id: 'p1' })
+    expect(gear?.owner?.value).toEqual({ type: 'shared' })
+    expect(gear?.ownedCount?.value).toBe(0)
+  })
+
+  it('gear.recorded leaves an absent optional field absent, not defaulted', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: true, kind: 'single' },
+        at(1),
+      ),
+    ])
+    const gear = state.gear['g1']
+    expect(gear?.residence).toBeUndefined()
+    expect(gear?.owner).toBeUndefined()
+    expect(gear?.ownedCount).toBeUndefined()
+  })
+
+  it('gear.recorded stamps every seeded register with the same clock', () => {
+    const hlc = at(7)
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tent', container: true, kind: 'single', owned_count: 3 },
+        hlc,
+      ),
+    ])
+    const gear = state.gear['g1']
+    expect(gear?.name?.hlc).toBe(hlc)
+    expect(gear?.name?.deviceId).toBe(DEVICE)
+    expect(gear?.container?.hlc).toBe(hlc)
+    expect(gear?.container?.deviceId).toBe(DEVICE)
+    expect(gear?.kind?.hlc).toBe(hlc)
+    expect(gear?.kind?.deviceId).toBe(DEVICE)
+    expect(gear?.ownedCount?.hlc).toBe(hlc)
+    expect(gear?.ownedCount?.deviceId).toBe(DEVICE)
+  })
+
+  it('gear.renamed sets the name', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearRenamedOp('g1', 'Tarp, blue', at(2)),
+    ])
+    expect(state.gear['g1']?.name?.value).toBe('Tarp, blue')
+  })
+
+  it('gear.rehomed sets the home residence and touches nothing else', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearRehomedOp('g1', { in: 'place', id: 'p1' }, at(2)),
+    ])
+    const gear = state.gear['g1']
+    expect(gear?.residence?.value).toEqual({ in: 'place', id: 'p1' })
+    expect(gear?.name?.value).toBe('Tarp')
+    expect(gear?.kind?.value).toBe('single')
+  })
+
+  it('gear.kind_set replaces the kind, one register and one value', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Stove', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearKindSetOp('g1', 'counted', at(2)),
+    ])
+    expect(state.gear['g1']?.kind?.value).toBe('counted')
+  })
+
+  it('gear.kind_set stores an unrecognised kind verbatim', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Stove', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearKindSetOp('g1', 'weighed', at(2)),
+    ])
+    expect(state.gear['g1']?.kind?.value).toBe('weighed')
+  })
+
+  it('gear.owned_count_set sets the count absolutely, not by delta', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Mug', container: false, kind: 'counted', owned_count: 4 },
+        at(1),
+      ),
+      gearOwnedCountSetOp('g1', 2, at(2)),
+    ])
+    expect(state.gear['g1']?.ownedCount?.value).toBe(2)
+  })
+
+  it('gear.owned_count_set applied twice with the same op is idempotent', () => {
+    const setOp = gearOwnedCountSetOp('g1', 3, at(2))
+    const once = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Mug', container: false, kind: 'counted' },
+        at(1),
+      ),
+      setOp,
+    ])
+    const twice = applyOp(once, setOp)
+    expect(twice).toBe(once)
+    expect(twice.gear['g1']?.ownedCount?.value).toBe(3)
+  })
+
+  it('gear.retired sets the tombstone', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearRetiredOp('g1', at(2)),
+    ])
+    expect(state.gear['g1']?.retired?.value).toBe(true)
+  })
+
+  it('gear.restored clears the tombstone when strictly later', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearRetiredOp('g1', at(2)),
+      gearRestoredOp('g1', at(3)),
+    ])
+    expect(state.gear['g1']?.retired?.value).toBe(false)
+  })
+
+  it('gear.restored earlier than the retirement leaves it retired', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearRetiredOp('g1', at(5)),
+      gearRestoredOp('g1', at(3)),
+    ])
+    expect(state.gear['g1']?.retired?.value).toBe(true)
+  })
+
+  it('two concurrent rehomes resolve by plain LWW on (hlc, deviceId)', () => {
+    // Same hlc on both — the tie is broken purely by device_id (§3.2), not
+    // by which op happens to apply first.
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Tarp', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearRehomedOp('g1', { in: 'place', id: 'p1' }, at(2), DEVICE),
+      gearRehomedOp('g1', { in: 'place', id: 'p2' }, at(2), DEVICE_B),
+    ])
+    expect(state.gear['g1']?.residence?.value).toEqual({
+      in: 'place',
+      id: 'p2',
+    })
+  })
+
+  it('the containment trait has no mutation op, so a later gear.recorded cannot flip it', () => {
+    // There is no dedicated op for `container`; a second `gear.recorded` for
+    // the same id is an ordinary LWW write on each register it carries,
+    // `container` included. This asserts that behaviour, not a guard against
+    // it — the domain says there is nothing to guard.
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Crate', container: true, kind: 'single' },
+        at(1),
+      ),
+      gearRecordedOp(
+        'g1',
+        { name: 'Crate', container: false, kind: 'single' },
+        at(2),
+      ),
+    ])
+    expect(state.gear['g1']?.container?.value).toBe(false)
   })
 })
