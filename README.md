@@ -86,12 +86,36 @@ docker compose -f docker-compose.dev.yml up -d   # Postgres on :5433
 npm run migrate --workspace api
 ```
 
-Then:
+Then, in two terminals:
 
 ```
 npm run dev              # the PWA on :5173
 npm run dev:api          # the server on :8080
 ```
+
+Outside production the server defaults to the database
+`docker-compose.dev.yml` creates, so none of these need `DATABASE_URL` set.
+Export it to point somewhere else; in a container it is required and its
+absence is a refusal to boot.
+
+### Getting into the app
+
+There is no public sign-up — deliberately, since that removes the abuse
+surface rather than mitigating it ([auth-design](docs/auth-design.md) §3). The
+first Login of a Household is minted out of band:
+
+```
+npm run admin:bootstrap --workspace api -- --name "Veldkamp"
+```
+
+It prints a single-use join link for whichever origin the run targets — a
+`localhost` one in development. Open it, name yourself, and the browser's
+passkey prompt does the rest.
+
+The link is single-use, so run the script again for another (each run creates a
+new Household). Sign-out lives under Account, which is a later slice; to test
+signing in again, delete the `foerier` IndexedDB database in devtools and
+reload — the passkey stays in the browser.
 
 The test tiers, from cheapest to most expensive
 ([strategy](docs/testing.md)):
