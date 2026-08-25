@@ -64,6 +64,13 @@ type Handler = (state: DepotState, op: OpEnvelope, stamp: Stamp) => DepotState
 const setPlaceName: Handler = (state, op, stamp) =>
   writePlace(state, op.aggregate_id, stamp, (place, st) => {
     const name = readString(op.payload, 'name')
+    // Absent and `null` both fall through here, and that is deliberate, not
+    // an obligation-5 collapse: the catalogue types this payload's `name` as
+    // a string (§4.1), so a `null` is malformed input, not a clear — there is
+    // no wire shape that legitimately clears a Place's name. `PlaceState.name`
+    // is `Register<string | null>` only because `Read<T>`'s `null` outcome is
+    // shared machinery; nothing in this op catalogue is nullable (§5.4 also
+    // forbids ever giving this field that meaning without a new op type).
     if (name.kind !== 'value') return place
     const next = writeRegister(place.name, name.value, st)
     // `writeRegister` returns the identical register on a lost write; a

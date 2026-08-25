@@ -66,6 +66,17 @@ function unknownOp(type: string): OpEnvelope {
   return op(aggregate, 'x1', type, {}, at(1))
 }
 
+/** Freezes an object graph so any mutation at any depth throws in strict mode. */
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.freeze(value)
+    for (const key of Object.getOwnPropertyNames(value)) {
+      deepFreeze((value as Record<string, unknown>)[key])
+    }
+  }
+  return value
+}
+
 describe('applyOp', () => {
   it('leaves state identical when a write loses the comparison', () => {
     const seeded = fold([placeOp('p1', 'Attic', at(5))])
@@ -92,9 +103,25 @@ describe('applyOp', () => {
 
   it('does not mutate the state it is given', () => {
     const before = fold([placeOp('p1', 'Attic', at(1))])
-    const frozen = JSON.stringify(before)
-    applyOp(before, placeRenameOp('p1', 'Loft', at(2)))
-    expect(JSON.stringify(before)).toBe(frozen)
+
+    // A deep freeze is the real witness. A JSON snapshot only catches a
+    // mutation that changes the serialisation, and misses one to a nested
+    // register object entirely. Under ES modules — always strict mode — a
+    // write to a frozen object throws, so this fails on any mutation at any
+    // depth. Purity is not tidiness here: Task 9's convergence tier asserts
+    // that `apply` is commutative, associative and idempotent, and an impure
+    // reducer would make that tier prove something weaker than it claims.
+    deepFreeze(before)
+
+    expect(() =>
+      applyOp(before, placeRenameOp('p1', 'Loft', at(2))),
+    ).not.toThrow()
+    expect(() => applyOp(before, placeRemoveOp('p1', at(3)))).not.toThrow()
+    expect(() => applyOp(before, unknownOp('gear.weighed'))).not.toThrow()
+    // And a losing write, which takes the early-return path.
+    expect(() =>
+      applyOp(before, placeRenameOp('p1', 'Stale', at(0))),
+    ).not.toThrow()
   })
 
   it('emptyState has no places, no gear, no people, and nothing unfolded', () => {
