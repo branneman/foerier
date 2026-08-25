@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Redirect, Route, Switch, useLocation } from 'wouter'
 
 import { createAuthApi, type AuthApi } from './auth/api'
+import { BUILD_SHA } from './build'
 import {
   indexedDbPendingStore,
   type PendingStore,
@@ -13,8 +14,6 @@ import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
 import { AppShell } from './shell/AppShell'
 import styles from './shell/AppShell.module.css'
-
-const BUILD_SHA = import.meta.env['VITE_GIT_SHA'] ?? 'dev'
 
 function EmptyState({ title, line }: { title: string; line: string }) {
   return (

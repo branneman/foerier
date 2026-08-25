@@ -91,9 +91,10 @@ function anAuthor(device = DEVICE): OpAuthor {
   }
 }
 
-/** Awaits every piece of work the store has queued so far. */
-function settled(store: { getState(): DepotStoreState }): Promise<void> {
-  return store.getState().settled()
+/** Awaits every piece of work the store has queued so far. Not a durability
+ * signal — that is `emitDurable`, and the suite says so where it matters. */
+function drained(store: { getState(): DepotStoreState }): Promise<void> {
+  return store.getState().drained()
 }
 
 /** One macrotask, for the debounced snapshot and for the engine's own queue. */
@@ -140,6 +141,25 @@ function reorderingLog(inner: OpLog, longest: number): OpLog {
   }
 }
 
+/**
+ * An {@link OpLog} whose first `failures` appends **reject** — a full quota, a
+ * blocked upgrade, IndexedDB in a private window. The op never reaches the
+ * log, so nothing downstream may act as though it did.
+ */
+function failingLog(inner: OpLog, failures: number): OpLog {
+  let left = failures
+  return {
+    ...inner,
+    append: (op) => {
+      if (left > 0) {
+        left -= 1
+        return Promise.reject(new Error('opLog: the write was refused'))
+      }
+      return inner.append(op)
+    },
+  }
+}
+
 /** An {@link OpLog} whose `append` only completes when the test says so. */
 function gatedLog(inner: OpLog): OpLog & { release(): void } {
   const waiting: (() => void)[] = []
@@ -163,7 +183,10 @@ interface FakeEngine extends SyncEngine {
 
 /** A {@link SyncEngine} that does nothing but remember what it was asked to
  * do, and hands the test the hooks the store wired into it. */
-function fakeEngines(): { factory: EngineFactory; built: FakeEngine[] } {
+function fakeEngines(events?: string[]): {
+  factory: EngineFactory
+  built: FakeEngine[]
+} {
   const built: FakeEngine[] = []
   const factory: EngineFactory = (hooks) => {
     const engine: FakeEngine = {
@@ -172,6 +195,7 @@ function fakeEngines(): { factory: EngineFactory; built: FakeEngine[] } {
       flushes: 0,
       flush() {
         engine.flushes += 1
+        events?.push('nudge')
         return Promise.resolve()
       },
       pull: () => Promise.resolve(),
@@ -257,9 +281,9 @@ describe('the depot store', () => {
   it('emit appends to the log before folding into memory', async () => {
     const events: string[] = []
     const log = recordingLog(inMemoryOpLog(), events)
-    const { factory, built } = fakeEngines()
+    const { factory, built } = fakeEngines(events)
     const store = startStore({ log, engine: factory })
-    await settled(store)
+    await drained(store)
     expect(built[0]!.started).toBe(true)
 
     events.length = 0
@@ -268,10 +292,10 @@ describe('the depot store', () => {
     })
 
     store.getState().emit(placeRecorded(anId(), 'Shed'))
-    await settled(store)
+    await drained(store)
 
-    expect(events).toEqual(['append', 'since', 'fold'])
-    // …and only then is the outbox nudged.
+    // The whole of §8.5's authoring order, in one array.
+    expect(events).toEqual(['append', 'since', 'fold', 'nudge'])
     expect(built[0]!.flushes).toBe(1)
   })
 
@@ -288,13 +312,13 @@ describe('the depot store', () => {
     }
     const log = inMemoryOpLog()
     const { store } = liveHarness(log, stalled)
-    await settled(store)
+    await drained(store)
 
     const placeId = anId()
     const returned = store.getState().emit(placeRecorded(placeId, 'Shed'))
     expect(returned).toBeUndefined()
 
-    await settled(store)
+    await drained(store)
     expect(store.getState().state.places[placeId]?.name?.value).toBe('Shed')
 
     // …and the outbox was still nudged, it was just never waited on.
@@ -307,12 +331,12 @@ describe('the depot store', () => {
     const log = reorderingLog(inner, 8)
     const { factory } = fakeEngines()
     const store = startStore({ log, engine: factory })
-    await settled(store)
+    await drained(store)
 
     for (let n = 0; n < 8; n += 1) {
       store.getState().emit(placeRecorded(anId(), `Place ${n}`))
     }
-    await settled(store)
+    await drained(store)
 
     const records = await log.all()
     expect(records).toHaveLength(8)
@@ -347,7 +371,7 @@ describe('the depot store', () => {
     const store = startStore({ log, engine: factory })
     expect(store.getState().status).toBe('loading')
 
-    await settled(store)
+    await drained(store)
 
     expect(store.getState().status).toBe('ready')
     expect(store.getState().state.places[placeId]?.name?.value).toBe('Shed')
@@ -358,7 +382,7 @@ describe('the depot store', () => {
     const { log, ghostId, gearId, placeId } = await seededForSnapshot(SHA)
     const { factory } = fakeEngines()
     const store = startStore({ log, engine: factory, sha: SHA })
-    await settled(store)
+    await drained(store)
 
     const state = store.getState().state
     // The ghost is only in the snapshot, so its presence proves the snapshot
@@ -374,7 +398,7 @@ describe('the depot store', () => {
     const { log, ghostId, gearId, placeId } = await seededForSnapshot(OTHER_SHA)
     const { factory } = fakeEngines()
     const store = startStore({ log, engine: factory, sha: SHA })
-    await settled(store)
+    await drained(store)
 
     const state = store.getState().state
     // Nothing of the snapshot survives…
@@ -388,13 +412,13 @@ describe('the depot store', () => {
     const log = inMemoryOpLog()
     const { factory } = fakeEngines()
     const store = startStore({ log, engine: factory, sha: SHA })
-    await settled(store)
+    await drained(store)
 
     const placeId = anId()
     store.getState().emit(placeRecorded(placeId, 'Shed'))
-    await settled(store)
+    await drained(store)
     await tick()
-    await settled(store)
+    await drained(store)
 
     const snapshot = await log.readMeta<DepotSnapshot>('snapshot')
     expect(snapshot?.sha).toBe(SHA)
@@ -404,7 +428,7 @@ describe('the depot store', () => {
 
   it('applies ops delivered by the engine without re-appending them', async () => {
     const { store, log, server, engines } = liveHarness()
-    await settled(store)
+    await drained(store)
 
     const gearId = anId()
     const elsewhere = anOp(
@@ -414,7 +438,7 @@ describe('the depot store', () => {
     server.push([elsewhere])
 
     await engines[0]!.pull()
-    await settled(store)
+    await drained(store)
 
     expect(store.getState().state.gear[gearId]?.name?.value).toBe('Stove')
     const records = await log.all()
@@ -431,11 +455,11 @@ describe('the depot store', () => {
 
     const { store, server, engines } = liveHarness(log)
     server.queueRejection(doomed.id, 'unknown_type')
-    await settled(store)
+    await drained(store)
     expect(store.getState().deadLetterCount).toBe(0)
 
     await engines[0]!.flush()
-    await settled(store)
+    await drained(store)
 
     expect(store.getState().deadLetterCount).toBe(1)
   })
@@ -444,11 +468,11 @@ describe('the depot store', () => {
     const log = inMemoryOpLog()
     const { factory } = fakeEngines()
     const store = startStore({ log, engine: factory })
-    await settled(store)
+    await drained(store)
 
     const gearId = anId()
     store.getState().emit(gearRenamed(gearId, 'x'.repeat(MAX_OP_BYTES)))
-    await settled(store)
+    await drained(store)
 
     const refusal = store.getState().refusal
     expect(refusal?.reason).toBe('too-large')
@@ -460,7 +484,7 @@ describe('the depot store', () => {
 
     // …and the next ordinary op clears the refusal.
     store.getState().emit(gearRenamed(gearId, 'Tent'))
-    await settled(store)
+    await drained(store)
     expect(store.getState().refusal).toBeNull()
     expect(await log.all()).toHaveLength(1)
   })
@@ -471,10 +495,10 @@ describe('the depot store', () => {
 
     const { store, server, engines } = liveHarness(log)
     server.queueError('push', { status: 401, code: 'unauthorized' })
-    await settled(store)
+    await drained(store)
 
     await engines[0]!.flush()
-    await settled(store)
+    await drained(store)
     expect(store.getState().sync).toBe('signed-out')
     expect(await log.outbox(10)).toHaveLength(1)
 
@@ -484,7 +508,7 @@ describe('the depot store', () => {
     expect(store.getState().sync).not.toBe('signed-out')
 
     await engines[1]!.flush()
-    await settled(store)
+    await drained(store)
     expect(store.getState().sync).toBe('idle')
 
     // The queued op went out under the new engine; the frozen one would
@@ -498,7 +522,7 @@ describe('the depot store', () => {
     const log = inMemoryOpLog()
     const { factory } = fakeEngines()
     const store = startStore({ log, engine: factory })
-    await settled(store)
+    await drained(store)
 
     const wrapper = ({ children }: { children: ReactNode }) =>
       createElement(DepotProvider, { value: store }, children)
@@ -556,16 +580,16 @@ describe('flushPendingFirstPerson', () => {
     return { personId: PERSON, householdId: HOUSEHOLD, name: 'Bran' }
   }
 
-  function emitterOver(log: OpLog) {
+  /** A real store over `log` — it is the store that satisfies `OpEmitter`. */
+  function storeOver(log: OpLog) {
     const { factory } = fakeEngines()
-    const store = startStore({ log, engine: factory })
-    return store
+    return startStore({ log, engine: factory })
   }
 
   it('flushPendingFirstPerson emits person.recorded with the pre-bound id', async () => {
     const log = inMemoryOpLog()
-    const store = emitterOver(log)
-    await settled(store)
+    const store = storeOver(log)
+    await drained(store)
     const pending = aPending()
     const pendingStore: PendingStore = inMemoryPendingStore(pending)
 
@@ -588,7 +612,7 @@ describe('flushPendingFirstPerson', () => {
 
   it('flushPendingFirstPerson clears the pending record only after the append', async () => {
     const log = gatedLog(inMemoryOpLog())
-    const store = emitterOver(log)
+    const store = storeOver(log)
     const pending = aPending()
     const pendingStore: PendingStore = inMemoryPendingStore(pending)
 
@@ -609,23 +633,51 @@ describe('flushPendingFirstPerson', () => {
     expect(await pendingStore.read()).toBeNull()
   })
 
+  it('flushPendingFirstPerson keeps the pending record when the append fails', async () => {
+    // The one append this flush makes is refused, so there is no
+    // `person.recorded` in the log — and the joiner's name is the only copy
+    // of something that can never be re-derived. Clearing it here would
+    // leave the Login pointing at a Person nobody ever created, forever.
+    const log = failingLog(inMemoryOpLog(), 1)
+    const store = storeOver(log)
+    await drained(store)
+    const pending = aPending()
+    const pendingStore: PendingStore = inMemoryPendingStore(pending)
+
+    expect(
+      await flushPendingFirstPerson(pending, store.getState(), pendingStore),
+    ).toBe(false)
+    expect(await pendingStore.read()).toEqual(pending)
+    expect(await log.all()).toHaveLength(0)
+
+    // …and the retry, once the log takes writes again, still authors the
+    // pre-bound id.
+    expect(
+      await flushPendingFirstPerson(pending, store.getState(), pendingStore),
+    ).toBe(true)
+    expect(await pendingStore.read()).toBeNull()
+    const records = await log.all()
+    expect(records).toHaveLength(1)
+    expect(records[0]!.op.aggregate_id).toBe(PERSON)
+  })
+
   it('flushPendingFirstPerson is a no-op when nothing is pending', async () => {
     const log = inMemoryOpLog()
-    const store = emitterOver(log)
-    await settled(store)
+    const store = storeOver(log)
+    await drained(store)
     const pendingStore: PendingStore = inMemoryPendingStore(null)
 
     expect(
       await flushPendingFirstPerson(null, store.getState(), pendingStore),
     ).toBe(false)
-    await settled(store)
+    await drained(store)
     expect(await log.all()).toHaveLength(0)
   })
 
   it('flushPendingFirstPerson does not emit a second op when run twice', async () => {
     const log = inMemoryOpLog()
-    const store = emitterOver(log)
-    await settled(store)
+    const store = storeOver(log)
+    await drained(store)
     const pending = aPending()
     const pendingStore: PendingStore = inMemoryPendingStore(pending)
 
@@ -636,7 +688,7 @@ describe('flushPendingFirstPerson', () => {
       await flushPendingFirstPerson(pending, store.getState(), pendingStore),
     ).toBe(false)
 
-    await settled(store)
+    await drained(store)
     const records = await log.all()
     expect(records).toHaveLength(1)
     expect(records[0]!.op.type).toBe('person.recorded')

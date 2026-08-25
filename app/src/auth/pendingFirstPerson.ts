@@ -112,14 +112,17 @@ export function inMemoryPendingStore(
 }
 
 /**
- * The two calls {@link flushPendingFirstPerson} needs from the depot store,
- * named as an interface so `auth/` does not depend on `depot/`: `emit` is
- * fire-and-forget by design, so the durability handshake is `settled()`.
+ * The one call {@link flushPendingFirstPerson} needs from the depot store,
+ * named as an interface so `auth/` does not depend on `depot/`.
+ *
+ * The store's ordinary `emit` is fire-and-forget and reports nothing, and a
+ * queue-drain signal is not good enough here: it resolves just as readily
+ * after an append that *failed*, and acting on that would clear the joiner's
+ * name with no `person.recorded` anywhere. So this is the per-op handshake —
+ * it resolves only when this op is in the log, and rejects when it is not.
  */
 export interface OpEmitter {
-  emit(spec: OpSpec): void
-  /** Resolves once every op emitted so far is durably in the local log. */
-  settled(): Promise<void>
+  emitDurable(spec: OpSpec): Promise<void>
 }
 
 /**
@@ -132,7 +135,8 @@ export interface OpEmitter {
  * there is nothing to do without paying for a store read — and the store is
  * consulted again here only to answer whether the op is still owed.
  *
- * Returns whether it emitted.
+ * An append that fails leaves the record exactly where it was, so the next
+ * run retries it. Returns whether the op reached the log.
  */
 export async function flushPendingFirstPerson(
   pending: PendingFirstPerson | null,
@@ -143,9 +147,16 @@ export async function flushPendingFirstPerson(
   // Already flushed by an earlier run, on this device, for this join.
   if ((await store.read()) === null) return false
 
-  emitter.emit(personRecorded(pending.personId, pending.name))
-  // Durable first. Only the append may license the clear.
-  await emitter.settled()
+  try {
+    // Durable first. Only the append may license the clear.
+    await emitter.emitDurable(personRecorded(pending.personId, pending.name))
+  } catch (error) {
+    // The op is not in the log, so the name is still the only copy of
+    // something that cannot be re-derived. Keep it and let the caller retry.
+    console.error('auth: the first person op could not be authored', error)
+    return false
+  }
+
   await store.clear()
   return true
 }

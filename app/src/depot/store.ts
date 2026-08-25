@@ -12,6 +12,7 @@ import { createContext, useContext } from 'react'
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
+import { BUILD_SHA } from '../build'
 import type { OpLog } from './opLog'
 import {
   opByteLength,
@@ -42,6 +43,23 @@ import {
  * the queue, so authoring order, `lsn` order and HLC order are the same
  * order, always.
  *
+ * ## Durability is answered per op, never by the queue being empty
+ *
+ * {@link DepotStoreState.emitDurable} resolves when **that** op is in the
+ * log and rejects when it is not — refused for size, or refused by the log
+ * itself. A caller that must not act until an op is durable (clearing the
+ * joiner's name, `auth/pendingFirstPerson.ts`) waits on that and nothing
+ * else. `drained()` answers a different and much weaker question — "has the
+ * queue caught up" — and is true just as readily after a *failed* append, so
+ * it must never be mistaken for a durability signal.
+ *
+ * ## An op that could not be written is surfaced, never swallowed
+ *
+ * A rejected append loses authored work more completely than an oversized op
+ * does, because the user believes it saved. Both land in
+ * {@link DepotStoreState.refusal}, which is the channel a screen reads to say
+ * so.
+ *
  * ## Memory is folded from the log, never from the caller's hand
  *
  * Both paths — a local `emit` and a page the engine pulled — end in the same
@@ -70,14 +88,20 @@ import {
  * restarting the corpse.
  */
 
-/** The op the UI would have authored, and why the store would not. */
+/** The op the UI meant to author, and why it is not in the log. */
 export interface OpRefusal {
-  /** The only reason today: §1.4's 16 KB per-op cap. */
-  reason: 'too-large'
-  /** The op type that was refused, for the message the screen shows. */
+  /**
+   * `too-large` — §1.4's 16 KB per-op cap, refused before authoring.
+   * `not-saved` — the local log rejected the write (a full quota, a blocked
+   * upgrade, IndexedDB unavailable). Nothing was appended either way.
+   */
+  reason: 'too-large' | 'not-saved'
+  /** The op type, for the message the screen shows. */
   type: string
   bytes: number
   limit: number
+  /** What the log said, when it is the log that said no. */
+  detail?: string
 }
 
 /**
@@ -110,12 +134,20 @@ export interface DepotStoreState {
   /** The one authoring path. Never awaited, never throws. */
   emit(spec: OpSpec): void
   /**
-   * Resolves once every piece of work queued **so far** has finished — the
-   * append included. The durability handshake: a caller that must not act
-   * until an op is in the log (see `auth/pendingFirstPerson.ts`) waits on
-   * this rather than on `emit`, which by design returns nothing.
+   * The same authoring path, with a per-op durability handshake: resolves
+   * once **this** op is in the local log, and rejects when it never got
+   * there. The caller that clears the joiner's name waits on exactly this
+   * (`auth/pendingFirstPerson.ts`); a screen calls {@link emit} and reads
+   * {@link refusal}.
    */
-  settled(): Promise<void>
+  emitDurable(spec: OpSpec): Promise<void>
+  /**
+   * Resolves once every piece of work queued **so far** has finished, however
+   * it finished. A queue-drain signal for tests and teardown — **not** a
+   * durability signal: it resolves just as readily after an append that
+   * failed. Durability is {@link emitDurable}.
+   */
+  drained(): Promise<void>
   /** After re-authenticating: build and start a **fresh** engine. */
   resumeSync(): void
   /** Sign-out and teardown: stop the engine and drop the pending snapshot. */
@@ -148,8 +180,6 @@ export interface DepotStoreDeps {
  * closed tab rarely loses more than a second of folding work. */
 export const SNAPSHOT_DEBOUNCE_MS = 2_000
 
-const BUILD_SHA = import.meta.env['VITE_GIT_SHA'] ?? 'dev'
-
 export function createDepotStore(
   deps: DepotStoreDeps,
 ): StoreApi<DepotStoreState> {
@@ -167,8 +197,9 @@ export function createDepotStore(
 
   function enqueue(job: () => Promise<void>): void {
     // The tail must never reject: one failed job would otherwise skip every
-    // piece of work queued behind it, and `settled()` would surface a
-    // rejection to a UI that has nothing to do with it.
+    // piece of work queued behind it. The job's *own* caller still sees the
+    // failure — `emitDurable` rejects, and `refusal` records it — so this
+    // catch drops nothing a caller was relying on.
     queue = queue.then(job).catch((error: unknown) => {
       console.error('depot: a queued job failed', error)
     })
@@ -273,36 +304,73 @@ export function createDepotStore(
     })
   }
 
-  function emit(spec: OpSpec): void {
-    enqueue(async () => {
-      const op = authorOp(deps.author, spec)
-      const bytes = opByteLength(op)
+  function refuse(refusal: OpRefusal): void {
+    store.setState({ refusal })
+  }
 
-      if (bytes > MAX_OP_BYTES) {
-        // §1.4's cap is enforced by the server too, but only *after* the 1 MB
-        // body check — so an op authored over it would be accepted here,
-        // pushed as a batch of one, 413'd, and dead-lettered a round trip
-        // later. Refusing to author is the difference between telling the
-        // quartermaster now and losing their work quietly.
-        store.setState({
-          refusal: {
+  function emitDurable(spec: OpSpec): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      enqueue(async () => {
+        const op = authorOp(deps.author, spec)
+        const bytes = opByteLength(op)
+
+        if (bytes > MAX_OP_BYTES) {
+          // §1.4's cap is enforced by the server too, but only *after* the
+          // 1 MB body check — so an op authored over it would be accepted
+          // here, pushed as a batch of one, 413'd, and dead-lettered a round
+          // trip later. Refusing to author is the difference between telling
+          // the quartermaster now and losing their work quietly.
+          refuse({
             reason: 'too-large',
             type: op.type,
             bytes,
             limit: MAX_OP_BYTES,
-          },
-        })
-        return
-      }
+          })
+          reject(
+            new Error(
+              `depot: refused to author ${op.type}: ${bytes} bytes is over the ${MAX_OP_BYTES}-byte cap`,
+            ),
+          )
+          return
+        }
 
-      await deps.log.append(op)
-      await foldForward()
-      if (store.getState().refusal !== null) store.setState({ refusal: null })
-      // Fire-and-forget, deliberately: awaiting the network here would put it
-      // on the path `settled()` waits for, which is the whole thing §8.5 and
-      // architecture §3 forbid.
-      nudge()
+        try {
+          await deps.log.append(op)
+        } catch (error) {
+          // The op is nowhere. Saying so is the whole point: a caller that
+          // would otherwise throw away its only copy of what the user typed
+          // has to be able to tell, and a screen has to be able to say the
+          // change did not save.
+          console.error('depot: an op could not be appended', error)
+          refuse({
+            reason: 'not-saved',
+            type: op.type,
+            bytes,
+            limit: MAX_OP_BYTES,
+            detail: error instanceof Error ? error.message : String(error),
+          })
+          reject(error instanceof Error ? error : new Error(String(error)))
+          return
+        }
+
+        // Durable. Everything below is memory and network, and none of it can
+        // un-write what the log now holds.
+        resolve()
+
+        await foldForward()
+        if (store.getState().refusal !== null) store.setState({ refusal: null })
+        // Fire-and-forget, deliberately: awaiting the network here would put
+        // it on the path a caller waits for, which is the whole thing §8.5
+        // and architecture §3 forbid.
+        nudge()
+      })
     })
+  }
+
+  function emit(spec: OpSpec): void {
+    // Nothing throws out of `emit`: the failure is already in `refusal`, and
+    // a screen reads it there rather than catching it here.
+    void emitDurable(spec).catch(() => undefined)
   }
 
   // -------------------------------------------------------------------------
@@ -351,7 +419,8 @@ export function createDepotStore(
     deadLetterCount: 0,
     refusal: null,
     emit,
-    settled: () => queue.then(() => undefined),
+    emitDurable,
+    drained: () => queue.then(() => undefined),
     resumeSync() {
       // Never the old one: `freeze()` set a flag that is never cleared, and
       // unwired its timer and listeners on the way (`syncEngine.ts`).

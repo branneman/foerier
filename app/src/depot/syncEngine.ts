@@ -25,8 +25,14 @@ import type { PullBody, PushOutcome, Transport } from './transport'
  *   The cursor is the only record of what has been seen, so advancing it
  *   first turns any failure in between into permanent loss. Hence the exact
  *   order in {@link createSyncEngine}'s pull loop — `ingest`, then `onOps`,
- *   then `writeMeta('cursor')` — and hence a fold that throws propagates with
- *   the cursor untouched rather than being swallowed.
+ *   then `writeMeta('cursor')` — and hence an `onOps` that throws propagates
+ *   with the cursor untouched rather than being swallowed.
+ *
+ *   `ingest` is the durable half of that pair and `onOps` only the memory
+ *   half, which is why `store.ts` is free to return from `onOps` as soon as
+ *   it has queued the fold: a fold that fails there no longer holds the
+ *   cursor back, and nothing is lost by it, because the page is already in
+ *   the log and the next load folds it from there (§8.4).
  *
  * ## `has_more` is the sole paging condition (§6.4)
  *
