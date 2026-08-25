@@ -1006,6 +1006,14 @@ byte-exact.
   not even a challenge — so a link preview still burns no Invite.
 - **The `credential` table is named `passkey`**, per the rule that each term
   means exactly one thing; the `credential_id` column keeps WebAuthn's word.
+- **The join success screen owes a first-sync fold.** The design boards were
+  revised (`ff31e38`) after this slice was built: `Open the depot` used to be
+  ungated and explicitly "does not wait for sync to finish", which is what is
+  implemented. It is now specified as the app's one unavoidable loading screen
+  — a determinate, resumable fold of the household's op log, with the CTA
+  gated on completion. That cannot be built until the op log exists, and the
+  screen is correct as it stands today because a new Household has nothing to
+  fold. **S2 owes the gated variant.**
 - **Story 27's last acceptance criterion is not delivered.** "If this Device
   cannot hold a Passkey, I can still complete the join" needs
   `POST /auth/device/claim`, which [auth-design §13](auth-design.md) places in
