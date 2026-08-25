@@ -1,6 +1,8 @@
 import type { Kysely } from 'kysely'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
+import { systemIdSource, type OpEnvelope } from '@foerier/shared'
+
 import type { Database } from '../../src/db/schema.ts'
 import {
   createHarness,
@@ -86,6 +88,43 @@ describe('household isolation', () => {
       }),
       device,
       personId: invite.personId,
+    }
+  }
+
+  async function pull(query: string, token: string) {
+    return h.app.request(`/api/v1/sync/pull${query}`, {
+      headers: { authorization: `Bearer ${token}` },
+    })
+  }
+
+  async function householdSeq(householdId: string): Promise<number> {
+    const row = await db
+      .selectFrom('household')
+      .select('op_seq')
+      .where('id', '=', householdId)
+      .executeTakeFirstOrThrow()
+    return row.op_seq
+  }
+
+  // A deliberately independent envelope builder — a small local one, not
+  // `sync.test.ts`'s, so this suite does not couple to another class's
+  // fixtures (see the task brief). `id` comes from `systemIdSource`, a real
+  // UUIDv7 generator, rather than a counter reset to 1: `op_id` is the
+  // primary key on a shared, persistent `foerier_test` and a predictable
+  // counter would collide with `sync.test.ts`'s own ops across files.
+  const AGGREGATE_ID = '0198e0b7-aaaa-7f4c-93de-5a6b7c8d9e0f'
+  const DEVICE_ID = '0198e0b7-bbbb-7f4c-93de-5a6b7c8d9e0f'
+
+  function anOp(householdId: string): OpEnvelope {
+    return {
+      id: systemIdSource.next(),
+      household_id: householdId,
+      aggregate: 'gear',
+      aggregate_id: AGGREGATE_ID,
+      type: 'gear.recorded',
+      hlc: '2026-08-25T09:00:00.000Z-0000',
+      device_id: DEVICE_ID,
+      payload: { name: 'Tent' },
     }
   }
 
@@ -281,5 +320,127 @@ describe('household isolation', () => {
         })
         .execute(),
     ).rejects.toThrow()
+  })
+
+  // The half of Story 31 auth slice 1 could not assert, because `/sync` did
+  // not exist yet (`architecture-design.md` §8.7, `auth-design.md` §9.3).
+
+  it("rejects an op carrying another household's id, and stores nothing", async () => {
+    const a = await joinHousehold(HOUSEHOLD_A)
+    const foreign = anOp(HOUSEHOLD_B)
+
+    const res = await post('/api/v1/sync/push', { ops: [foreign] }, a.token)
+    expect(res.status).toBe(200)
+
+    const body = await jsonOf<{
+      results: Array<{ op_id: string; status: string; code?: string }>
+    }>(res)
+    // Rejected outright — the op's own household_id is what got compared
+    // against the token's, never silently rewritten to match it. Silence
+    // would hide a client bug indistinguishable from an attack (§9.3).
+    expect(body.results).toEqual([
+      { op_id: foreign.id, status: 'rejected', code: 'household_mismatch' },
+    ])
+
+    // The rejection alone is not the property: a rejection that still wrote
+    // a row would pass the status check above. Nothing may have landed in
+    // either household — least of all the one the op claimed.
+    expect(
+      await db
+        .selectFrom('op')
+        .select('op_id')
+        .where('household_id', '=', HOUSEHOLD_B)
+        .execute(),
+    ).toHaveLength(0)
+    expect(
+      await db
+        .selectFrom('op')
+        .select('op_id')
+        .where('household_id', '=', HOUSEHOLD_A)
+        .execute(),
+    ).toHaveLength(0)
+  })
+
+  it("never returns household B's ops to household A at any cursor", async () => {
+    const a = await joinHousehold(HOUSEHOLD_A)
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    const pushed = await post(
+      '/api/v1/sync/push',
+      { ops: [anOp(HOUSEHOLD_B), anOp(HOUSEHOLD_B), anOp(HOUSEHOLD_B)] },
+      b.token,
+    )
+    expect(pushed.status).toBe(200)
+
+    // since=0 is the bootstrap case, and the one that would leak everything
+    // if it leaked at all — but it is not the only cursor a client ever
+    // pulls at, so try one past it too.
+    for (const since of [0, 1, 1000]) {
+      const res = await pull(`?since=${since}`, a.token)
+      expect(res.status).toBe(200)
+      const body = await jsonOf<{ ops: unknown[] }>(res)
+      expect(body.ops).toEqual([])
+    }
+  })
+
+  it("never advances household A's op_seq when household B pushes", async () => {
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    const before = await householdSeq(HOUSEHOLD_A)
+    expect(before).toBe(0)
+
+    const pushed = await post(
+      '/api/v1/sync/push',
+      { ops: [anOp(HOUSEHOLD_B), anOp(HOUSEHOLD_B)] },
+      b.token,
+    )
+    expect(pushed.status).toBe(200)
+
+    // The counter the first-sync fold reads as an op count (§7.6). A shared
+    // counter would make A's bootstrap wait forever on ops it can never
+    // receive.
+    expect(await householdSeq(HOUSEHOLD_A)).toBe(before)
+  })
+
+  it('gives each household its own seq space starting at 1', async () => {
+    const a = await joinHousehold(HOUSEHOLD_A)
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    // B goes first and banks two seqs. If the two households shared one
+    // counter, A's very first op would be handed seq 3, not 1.
+    const bRes = await post(
+      '/api/v1/sync/push',
+      { ops: [anOp(HOUSEHOLD_B), anOp(HOUSEHOLD_B)] },
+      b.token,
+    )
+    const bBody = await jsonOf<{ results: Array<{ seq?: number }> }>(bRes)
+    expect(bBody.results[0]?.seq).toBe(1)
+
+    const aRes = await post(
+      '/api/v1/sync/push',
+      { ops: [anOp(HOUSEHOLD_A)] },
+      a.token,
+    )
+    const aBody = await jsonOf<{ results: Array<{ seq?: number }> }>(aRes)
+    expect(aBody.results[0]?.seq).toBe(1)
+  })
+
+  it('ignores a household_id supplied in the pull query string', async () => {
+    const a = await joinHousehold(HOUSEHOLD_A)
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    const aOp = anOp(HOUSEHOLD_A)
+    await post('/api/v1/sync/push', { ops: [aOp] }, a.token)
+    await post('/api/v1/sync/push', { ops: [anOp(HOUSEHOLD_B)] }, b.token)
+
+    // The token wins; the request never gets a say.
+    const res = await pull(`?since=0&household_id=${HOUSEHOLD_B}`, a.token)
+    expect(res.status).toBe(200)
+
+    const body = await jsonOf<{
+      ops: Array<{ id: string; household_id: string }>
+    }>(res)
+    expect(body.ops.map((op) => op.id)).toEqual([aOp.id])
+    expect(body.ops.every((op) => op.household_id === HOUSEHOLD_A)).toBe(true)
   })
 })
