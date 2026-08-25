@@ -515,8 +515,14 @@ describe('convergence', () => {
 
     a.emit(personRecorded(known, 'Bran'))
     clock.advance(1000)
-    b.emit(personRenamed)
+    const unfoldable = b.emit(personRenamed)
     exchange(a, b)
+
+    // `noteUnfolded` is the one counter in the fold that is *not* register-
+    // guarded, so its idempotence rests entirely on `op.id` dedupe: hand the
+    // op again to the replica that already has it, and the count must not
+    // climb.
+    a.receive([unfoldable])
 
     expect(a.state()).toEqual(b.state())
     for (const r of [a, b]) {

@@ -95,13 +95,17 @@ function resolvePointer(state: DepotState, gear: GearState): HolderRef {
  * holds identical registers, so every replica breaks the same edge — the fold
  * stays untouched and every device displays the same tree.
  *
- * The id is a final tiebreak, and it is not decoration. `compareStamps` calls
- * two edges equal when both hlc and device id match, which a well-behaved
- * device never produces (its HLC is strictly monotonic) but a hand-rolled or
- * replayed log can. Without the tiebreak the minimum is ambiguous, "first one
- * seen wins" resolves it, and *first* depends on where the walk entered the
- * cycle — i.e. on insertion order. That is precisely the divergence this whole
- * function exists to prevent, so the comparison is made total instead.
+ * The id is a final tiebreak, and it is defence-in-depth rather than the
+ * source of that agreement. `compareStamps` calls two edges equal when both
+ * hlc and device id match, which a well-behaved device never produces (its HLC
+ * is strictly monotonic) but a hand-rolled log, or one restored behind its own
+ * clock, can. **Replica agreement comes from the sorted traversal below, not
+ * from this line**: `parentOf` reads only resolved holders, so the cycle array
+ * handed in here is a pure function of state *values* and is identical on
+ * every replica — "first one seen wins" would already agree everywhere. What
+ * the tiebreak buys is that the choice among equal stamps is **canonical (the
+ * lowest id)** instead of traversal-derived, so it stays put if the traversal
+ * is ever restructured.
  */
 function lowestEdgeOf(
   state: DepotState,
