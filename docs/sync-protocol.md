@@ -763,7 +763,7 @@ gate, and supply are all client-side and deterministic
 | --- | --- | --- |
 | 400 | `bad_request` | The batch itself is malformed — a client bug. **Dead-letter the batch** (§6.5), log it, do not retry. |
 | 401 | `unauthorized` | Token missing, revoked, expired, or its Login disabled. **Freeze sync, keep the outbox intact**, prompt sign-in. A 401 must never cost a user queued offline work. |
-| 413 | `payload_too_large` | Halve the batch and retry. |
+| 413 | `payload_too_large` | Halve the batch and retry. A batch of **one** that is still too large is **dead-lettered** (§6.5) rather than retried: it cannot be halved again, and retrying it forever would wedge every op behind it in `lsn` order permanently. |
 | 429 | `rate_limited` | Honour `Retry-After`, then back off. `/sync/*` has a much higher limit than the auth endpoints, because a returning offline client legitimately bursts ([auth §9.4](auth-design.md)). |
 | 5xx | `server_error` | Retry with exponential backoff + full jitter, base 1 s, cap 5 min, **indefinitely**. |
 | — | *(network / timeout)* | The same as 5xx. |

@@ -220,12 +220,34 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
     cancelRetry?.()
     cancelRetry = null
     retryAt = 0
+    // A frozen engine never runs again — recovery is a *new* engine, built
+    // once the app has a token — so it lets go of the interval and both DOM
+    // listeners here rather than leaving them for a `stop()` the caller has
+    // no obvious reason to make. `start()`'s guard tolerates the unwiring.
+    unwire()
     // A bootstrap caught by a 401 is paused like any other interruption: its
     // cursor is kept, and it resumes once the app has a token again.
     pauseBootstrap()
     // The outbox is untouched. A 401 must never cost a user queued offline
     // work (§6.3).
     setStatus('signed-out')
+  }
+
+  /** Releases the interval and both listeners. Idempotent; shared by
+   * {@link freeze} and `stop()`. */
+  function unwire(): void {
+    if (interval !== null) {
+      clearInterval(interval)
+      interval = null
+    }
+    if (onOnline !== null) {
+      window.removeEventListener('online', onOnline)
+      onOnline = null
+    }
+    if (onVisibility !== null) {
+      document.removeEventListener('visibilitychange', onVisibility)
+      onVisibility = null
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -464,18 +486,7 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
     },
 
     stop() {
-      if (interval !== null) {
-        clearInterval(interval)
-        interval = null
-      }
-      if (onOnline !== null) {
-        window.removeEventListener('online', onOnline)
-        onOnline = null
-      }
-      if (onVisibility !== null) {
-        document.removeEventListener('visibilitychange', onVisibility)
-        onVisibility = null
-      }
+      unwire()
       cancelRetry?.()
       cancelRetry = null
     },

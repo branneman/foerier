@@ -248,6 +248,17 @@ function createHarness(
   }
 }
 
+/**
+ * Lets the engine's serialised chain run to completion without calling into
+ * the engine to do it. Every collaborator in this suite resolves
+ * synchronously, so the chain is pure microtasks and a bounded number of
+ * turns drains it deterministically — no timer, and no `flush()` doing the
+ * trigger's work for it and hiding a listener that was never wired.
+ */
+async function drainMicrotasks(): Promise<void> {
+  for (let turn = 0; turn < 100; turn += 1) await Promise.resolve()
+}
+
 async function appendAll(
   log: OpLog,
   ops: readonly OpEnvelope[],
@@ -768,11 +779,20 @@ describe('the sync engine triggers', () => {
     await h.log.append(anOp())
 
     window.dispatchEvent(new Event('online'))
-    await h.engine.flush()
-    h.engine.stop()
+    await drainMicrotasks()
 
+    // Asserted before any `flush()`: a `flush()` here would push, see the
+    // mark exceed the cursor and pull all by itself, so the same two numbers
+    // would hold with no listener wired at all.
     expect(h.transport.pushes).toHaveLength(1)
     expect(h.transport.pulls).toHaveLength(1)
+
+    h.engine.stop()
+    await h.log.append(anOp())
+    window.dispatchEvent(new Event('online'))
+    await drainMicrotasks()
+
+    expect(h.transport.pushes).toHaveLength(1)
   })
 
   it('syncs when the document becomes visible again', async () => {
@@ -781,11 +801,67 @@ describe('the sync engine triggers', () => {
     await h.log.append(anOp())
 
     document.dispatchEvent(new Event('visibilitychange'))
-    await h.engine.flush()
-    h.engine.stop()
+    await drainMicrotasks()
 
     expect(h.transport.pushes).toHaveLength(1)
     expect(h.transport.pulls).toHaveLength(1)
+
+    h.engine.stop()
+    await h.log.append(anOp())
+    document.dispatchEvent(new Event('visibilitychange'))
+    await drainMicrotasks()
+
+    expect(h.transport.pushes).toHaveLength(1)
+  })
+
+  it('does not let a trigger stampede through a backoff window', async () => {
+    const h = createHarness({ random: () => 1 })
+    h.engine.start()
+    await h.log.append(anOp())
+    h.server.queueError('push', { status: 503, code: 'server_error' })
+
+    await h.engine.flush()
+    expect(h.transport.pushes).toHaveLength(1)
+    const delay = h.scheduled[0]!.ms
+
+    // The clock has not moved, so the window is still open. A trigger fires
+    // at least twice a minute, so without this gate §6.3's 5-minute cap
+    // would be unenforceable — the backoff would be whatever the interval is.
+    document.dispatchEvent(new Event('visibilitychange'))
+    await drainMicrotasks()
+    expect(h.transport.pushes).toHaveLength(1)
+
+    h.clock.advance(delay)
+    document.dispatchEvent(new Event('visibilitychange'))
+    await drainMicrotasks()
+    expect(h.transport.pushes).toHaveLength(2)
+
+    h.engine.stop()
+  })
+
+  it('unwires its triggers when a 401 freezes it', async () => {
+    vi.useFakeTimers()
+    const h = createHarness()
+    h.engine.start()
+    await h.log.append(anOp())
+    h.server.queueError('push', { status: 401, code: 'unauthorized' })
+
+    await h.engine.flush()
+    expect(h.engine.status()).toBe('signed-out')
+
+    // A frozen engine is dead, and a dead engine holding a live interval and
+    // two DOM listeners is a leak every re-authentication would repeat.
+    expect(vi.getTimerCount()).toBe(0)
+
+    window.dispatchEvent(new Event('online'))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.advanceTimersByTimeAsync(SYNC_INTERVAL_MS * 2)
+    await drainMicrotasks()
+
+    expect(h.transport.pushes).toHaveLength(1)
+    expect(h.transport.pulls).toEqual([])
+    // And the queued work is still queued (§6.3).
+    expect(await h.log.outbox(10)).toHaveLength(1)
   })
 
   it('syncs on the interval, and stops when the engine stops', async () => {
