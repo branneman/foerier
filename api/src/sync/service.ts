@@ -16,6 +16,27 @@ import { validateOp, type RejectionCode } from './envelope.ts'
  * client newer than this deploy is stored and returned unchanged.
  */
 
+/**
+ * A failure the sync service diagnosed itself, as opposed to one the driver
+ * threw at it.
+ *
+ * Both become the same `server_error` to the client (§6.3 has no code for
+ * this, and its per-op set is closed), so the distinction is entirely for the
+ * operator: a `SyncError` in the log means an invariant this module owns was
+ * violated and the batch was refused deliberately, not that Postgres was
+ * unreachable. The route logs the two differently; the client cannot tell.
+ */
+export class SyncError extends Error {
+  /** Precise in the log, never rendered to a client. */
+  readonly reason: string
+
+  constructor(reason: string, message: string) {
+    super(message)
+    this.name = 'SyncError'
+    this.reason = reason
+  }
+}
+
 /** One entry per submitted op, in request order, always (§6.1). */
 export interface PushOutcome {
   op_id: string
@@ -242,9 +263,16 @@ export function createSyncService({ db, clock }: SyncServiceDeps) {
         // row occupies, which is precisely the gap the whole ordering above
         // exists to prevent. Fail the batch loudly instead.
         if (inserted.length !== rows.length) {
-          throw new Error(
-            `op_id collision outside household ${householdId}: ` +
-              `${rows.length} ops submitted, ${inserted.length} stored`,
+          // `RETURNING` already tells us which rows landed, so name the
+          // offender rather than reporting a count an operator cannot act on.
+          const stored = new Set(inserted.map((row) => row.op_id))
+          const collided = rows
+            .filter((row) => !stored.has(row.op_id))
+            .map((row) => row.op_id)
+          throw new SyncError(
+            'op_id_collision',
+            `op_id already stored outside household ${householdId}: ` +
+              collided.join(', '),
           )
         }
       }

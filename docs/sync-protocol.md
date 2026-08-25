@@ -785,7 +785,8 @@ Returns ops with `seq > since`, ordered by `seq` ascending. `since` is an
 {
   "ops": [ { …envelope…, "seq": 4102, "received_at": "2026-08-24T10:03:12.881Z" } ],
   "cursor": 4471,
-  "has_more": false
+  "has_more": false,
+  "household_seq": 4471
 }
 ```
 
@@ -793,10 +794,36 @@ Returns ops with `seq > since`, ordered by `seq` ascending. `since` is an
   `since`. When `ops` is empty it echoes the request's `since`.
 - `has_more` says whether the page was truncated by `limit`. The client keeps
   paging while it is true.
+- `household_seq` is the household's high-water mark, the same field push
+  returns (§6.1). Because `seq` is gapless it **is** the household's op count,
+  which is what lets the first sync show a determinate `folded / total` instead
+  of a spinner (§7.6).
 
 **The client persists its cursor only after the whole page is durably folded and
 written to its local log** — never on receipt. A crash between the two loses ops
 permanently, because the cursor is the only record of what has been seen.
+
+**`has_more` is the paging condition; `household_seq` is not.** The server reads
+the high-water mark *after* it has read the page, so a client can legitimately
+receive `has_more: false` alongside `household_seq > cursor` — it simply means
+ops arrived while the page was being read. The reverse ordering would be worse:
+it could report a mark *below* a `seq` the same response just handed out.
+
+So, precisely:
+
+- **Page while `has_more` is true, stop when it is false.** It means "this page
+  was truncated by `limit`", nothing more.
+- **Never loop on `cursor < household_seq`.** On a household being written to
+  while a device bootstraps, that condition need never come true, and a client
+  that waits for it never finishes.
+- **Treat `household_seq` as a denominator, and a moving one.** A bootstrap
+  displays `folded / household_seq`, tolerates the denominator growing
+  mid-flight, and treats `has_more: false` as completion even when
+  `cursor < household_seq`. The remainder arrives on the next ordinary pull.
+
+The consequence of getting this wrong lands on the one screen that cannot
+absorb it: a first sync that gates its CTA on reaching `household_seq` would
+show a progress bar stuck below 100% and a button that never enables (§7.6).
 
 **Pull returns the client's own ops too.** It has already applied them
 optimistically, and re-applying is an idempotent no-op (§3.2). Filtering by

@@ -6,7 +6,11 @@ import { countingIdSource, fakeClock } from '@foerier/shared/testUtils'
 import type { FakeClock } from '@foerier/shared/testUtils'
 
 import type { Database } from '../../src/db/schema.ts'
-import { createSyncService, type SyncService } from '../../src/sync/service.ts'
+import {
+  createSyncService,
+  DEFAULT_PULL_LIMIT,
+  type SyncService,
+} from '../../src/sync/service.ts'
 import { resetHouseholds, seedHousehold, NOW } from './harness.ts'
 import { testDb } from './testDb.ts'
 
@@ -316,12 +320,14 @@ describe('the sync service', () => {
     it('pull echoes since as the cursor when the page is empty', async () => {
       await sync.push(HOUSEHOLD_A, [anOp(), anOp(), anOp()])
 
-      const page = await sync.pull(HOUSEHOLD_A, 3)
+      // Deliberately past the high-water mark, so the assertion can tell the
+      // three candidate answers apart: 0 (a rewind that would re-fold the
+      // whole log), 3 (the high-water mark), and 7 (the client's own cursor
+      // handed back, which is the contract).
+      const page = await sync.pull(HOUSEHOLD_A, 7)
 
       expect(page.ops).toEqual([])
-      // Not 0, and not the high-water mark: the client's own cursor back, so
-      // a caught-up client does not rewind and re-fold the whole log.
-      expect(page.cursor).toBe(3)
+      expect(page.cursor).toBe(7)
       expect(page.has_more).toBe(false)
       expect(page.household_seq).toBe(3)
     })
@@ -338,6 +344,16 @@ describe('the sync service', () => {
       expect(second.ops.map((op) => op.seq)).toEqual([3])
       expect(second.has_more).toBe(false)
       expect(second.cursor).toBe(3)
+
+      // The boundary: a limit that exactly fits the rows remaining. This is
+      // where reading one row past the page can be off by one in either
+      // direction — a false `has_more` sends the client back for a page that
+      // does not exist, and a client that stops paging on an empty page would
+      // never notice.
+      const exact = await sync.pull(HOUSEHOLD_A, 0, 3)
+      expect(exact.ops.map((op) => op.seq)).toEqual([1, 2, 3])
+      expect(exact.has_more).toBe(false)
+      expect(exact.cursor).toBe(3)
     })
 
     it('pull clamps limit to 1000', async () => {
@@ -351,6 +367,27 @@ describe('the sync service', () => {
       expect(page.cursor).toBe(1000)
       expect(page.has_more).toBe(true)
       expect(page.household_seq).toBe(1001)
+    })
+
+    it('pull defaults to a page of 500, and falls back to it for a nonsensical limit', async () => {
+      await sync.push(
+        HOUSEHOLD_A,
+        Array.from({ length: DEFAULT_PULL_LIMIT + 1 }, () => anOp()),
+      )
+
+      const omitted = await sync.pull(HOUSEHOLD_A, 0)
+      expect(omitted.ops).toHaveLength(DEFAULT_PULL_LIMIT)
+      expect(omitted.has_more).toBe(true)
+
+      // Honoured literally, `limit=0` would return an empty page with
+      // `has_more` set, forever — a sync that looks alive and never advances.
+      // Falling back to the default is a better answer to a client bug than
+      // obeying it.
+      const zero = await sync.pull(HOUSEHOLD_A, 0, 0)
+      expect(zero.ops).toHaveLength(DEFAULT_PULL_LIMIT)
+
+      const nonsense = await sync.pull(HOUSEHOLD_A, 0, Number.NaN)
+      expect(nonsense.ops).toHaveLength(DEFAULT_PULL_LIMIT)
     })
 
     it("pull returns the pushing device's own ops", async () => {
