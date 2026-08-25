@@ -13,7 +13,7 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-**Code has started.** Two slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+**Code has started.** Three commits of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
 have landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
@@ -22,21 +22,41 @@ have landed:
 - **S1, auth slice 1** (stories 26, 27) — the Maintainer bootstrap script, both
   WebAuthn ceremonies, device tokens, the auth middleware and tenancy rule, and
   the sign-in and join screens.
+- **S2a, the Depot** (stories 1, 2) — the op log, `/sync`, and gear. S2 is the
+  one slice in the plan that ships as **two** commits; see
+  [§8.3](docs/architecture-design.md#83-the-slices) for the seam and
+  [§12.3](docs/architecture-design.md#123-consequences-of-s2a-the-depot) for
+  what it settled.
 
-So a Quartermaster can join a Household and sign in. **There is still no domain
-behaviour**: no gear, no trips, and no op log — `shared/` holds the envelope
-types and nothing else, deliberately, because the reducer is S2's work. The
-next slice is **S2, the Depot**.
+**S2a delivers:** eleven op types and the reducer that folds them
+(`shared/`), per-field LWW by HLC, the containment selector and its cycle
+break; the client's IndexedDB op log, the HLC persisted across restarts, the
+outbox, the pull cursor and the dead-letter; `POST /sync/push` and
+`GET /sync/pull` with gapless per-household seqs; and the screens — F1 Add
+Gear, the Depot list, the gear detail. A Quartermaster can record gear on a
+phone with no signal and find it on a laptop.
 
-Two conventions the code now carries that are easy to trip over:
+**S2b still owes:** story 3's Home path and whereabouts, F2 Find, and the
+join screen's gated **first-sync fold** — the app's one unavoidable loading
+screen, which [§12.2](docs/architecture-design.md) records as owed. Zero new
+op types and zero new endpoints: purely additive client read-side code. Two
+smaller debts ride along — there is no Account screen yet, so
+`sign out this device` has a `clearLocalData()` but no button, and a frozen
+engine's `resumeSync()` has no re-auth flow to call it.
+
+Three conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**
   (Node's ESM resolver does not guess, and `node src/…` runs the dev server,
-  the migration CLI, and the bootstrap script).
+  the migration CLI, and the bootstrap script). **`app/` is the exception** —
+  Vite resolves, so relative imports there carry no extension.
 - **Ops mirror the wire** — `snake_case`, never transformed — while folded
   state and UI props are ordinary camelCase. See
   [architecture §12](docs/architecture-design.md) for that and the rest of the
   toolchain decisions.
+- **`null` clears a nullable register; an absent field leaves it alone.**
+  [sync §1.3](docs/sync-protocol.md) is the authority — not §5.3's obligation
+  5, which runs the other way only.
 
 The repo also holds requirements plus a DDD domain
 design — a [ubiquitous language](docs/ubiquitous-language.md) (the glossary) and

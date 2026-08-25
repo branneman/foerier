@@ -36,12 +36,27 @@ export interface AppShellProps {
    * (`docs/design/README.md`, Interactions). Offline is normal.
    */
   syncLine?: string
+  /** Sage while the household is reachable, amber while it is not. The dot
+   * is the only colour this line carries. */
+  syncTone?: 'reachable' | 'unreachable'
 }
 
-export function AppShell({ children, syncLine = 'Offline' }: AppShellProps) {
+export function AppShell({
+  children,
+  syncLine = 'OFFLINE',
+  syncTone = 'unreachable',
+}: AppShellProps) {
   return (
     <div className="shell">
-      <header className={styles['syncLine']}>{syncLine}</header>
+      <header className={styles['syncLine']}>
+        <span
+          className={`${styles['syncDot']} ${
+            syncTone === 'unreachable' ? styles['syncDotUnreachable'] : ''
+          }`}
+          aria-hidden="true"
+        />
+        {syncLine}
+      </header>
 
       <main className="shell__main">{children}</main>
 

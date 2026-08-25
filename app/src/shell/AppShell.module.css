@@ -39,6 +39,19 @@
     text-transform: uppercase;
   }
 
+  .syncDot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+  }
+
+  /* Amber, not red: unreachable is a fact about the network, never an error
+   * about the Quartermaster's work. */
+  .syncDotUnreachable {
+    background: var(--color-brand-amber);
+  }
+
   .emptyState {
     display: flex;
     flex-direction: column;

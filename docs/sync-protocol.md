@@ -436,6 +436,16 @@ A Person is never removed: gear ownership and past trips reference them, and the
 model gives no removal operation. `login`/`device` disabling is
 [auth-design](auth-design.md)'s concern and is not an op.
 
+**The two rows ship in different slices: `person.recorded` in S2,
+`person.renamed` in S4.** Both trace to story 4, and the `Story` column above
+says so — but the story that *introduces* an op is not always the slice that
+*builds* it. S1's join screen already asks the joiner their name and pre-binds
+their Person id ([auth-design §3.4](auth-design.md)), so until something
+authors `person.recorded` the Household's own Login points at a Person nobody
+ever created. It therefore lands with the first slice that has an op log to
+append to, which is S2; `person.renamed` and the People UI stay in S4
+([architecture §8.3](architecture-design.md)).
+
 ### 4.3 Gear — 10 ops
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |

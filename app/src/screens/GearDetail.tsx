@@ -13,7 +13,7 @@ import { Link, useParams } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
 import { useDepot } from '../depot/store'
-import type { SyncStatus } from '../depot/syncEngine'
+import { syncLabel } from '../depot/syncLabel'
 import styles from './GearDetail.module.css'
 
 /**
@@ -65,20 +65,6 @@ function metaLine(state: DepotState, gear: GearState): string {
     parts.push(`×${gear.ownedCount.value}`)
   }
   return parts.filter((part) => part !== '').join(' · ')
-}
-
-function syncLabel(status: SyncStatus): string {
-  switch (status) {
-    case 'syncing':
-    case 'bootstrapping':
-      return 'SYNCING'
-    case 'offline':
-      return 'OFFLINE'
-    case 'signed-out':
-      return 'SIGNED OUT'
-    case 'idle':
-      return 'SYNCED'
-  }
 }
 
 export function GearDetail() {

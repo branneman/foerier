@@ -424,8 +424,10 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 ### 8.3 The slices
 
-**Landed so far: S0 and S1.** S2, the Depot, is next — and is the first slice
-to need the op log, the reducer, and `/sync`, none of which exist yet.
+**Landed so far: S0, S1, and S2a.** S2 was the first slice to need the op log,
+the reducer, and `/sync`, and it landed in **two commits rather than one** —
+see its entry below for why, and §12.3 for what it settled. **S2b, find it, is
+next.**
 
 Two properties hold across every slice below and are not repeated in each:
 
@@ -441,9 +443,9 @@ Two properties hold across every slice below and are not repeated in each:
 
 The op counts below sum to **38** — exactly the MVP catalogue of
 [sync §4](sync-protocol.md), each op type introduced by precisely one slice:
-3 Place (S2), 2 Person (S4), 10 Gear (S2 · S3 · S4), 23 Trip (S6 · S7 · S8 · S9
-· S10 · S12 · S13 · S14). If a slice needs an op that is not in that catalogue,
-that is a signal to check the domain, not to invent a row.
+3 Place (S2), 2 Person (S2 · S4), 10 Gear (S2 · S3 · S4), 23 Trip (S6 · S7
+· S8 · S9 · S10 · S12 · S13 · S14). If a slice needs an op that is not in
+that catalogue, that is a signal to check the domain, not to invent a row.
 
 ---
 
@@ -488,10 +490,10 @@ GitHub Pages workflow for `landing/`.
 The architecture's named first usable slice — "auth + add-gear + find-gear, a
 searchable household inventory, before Trips exist."
 
-- **Ops (10):** `place.recorded`, `place.renamed`, `place.removed`;
-  `gear.recorded`, `gear.renamed`, `gear.rehomed`, `gear.kind_set`,
-  `gear.owned_count_set`, `gear.retired`, `gear.restored`; plus the client outbox
-  and pull cursor going live against `/sync`.
+- **Ops (11):** `place.recorded`, `place.renamed`, `place.removed`;
+  `person.recorded`; `gear.recorded`, `gear.renamed`, `gear.rehomed`,
+  `gear.kind_set`, `gear.owned_count_set`, `gear.retired`, `gear.restored`; plus
+  the client outbox and pull cursor going live against `/sync`.
 - **UI:** F1 Add Gear, F2 Find, the Depot list and the gear-detail screen
   (Screens A + B).
 - **Tests:** Tier 1 — the fold, per-field LWW, tombstones, the HLC, the
@@ -506,7 +508,32 @@ searchable household inventory, before Trips exist."
   Later. The op ships so that a restore is expressible and its merge behaviour is
   pinned by tests from day one; no Retired screen is built. Deliberate, not an
   oversight.
+- **Note:** **`person.recorded` is S2's, not S4's.** It was catalogued with the
+  rest of Person because that is where People become a *feature*; but S1 already
+  ships a join screen that asks the joiner their name and pre-binds their Person
+  id ([auth-design §3.4](auth-design.md)), and until some slice authors that op
+  the Household's own Login points at a Person nobody ever created. The op
+  therefore lands with the first slice that has an op log to append it to, which
+  is this one. S4 keeps `person.renamed` and the People UI.
 - **Usable?** The spreadsheet's inventory tab is replaced.
+
+**S2 landed as two commits, S2a and S2b.** Not a change of plan about what a
+slice is — S2's whole span is one increment and both halves ship inside it —
+but a recognition that "the op log, the reducer, `/sync`, the outbox and four
+screens" is the largest single commit in the plan by a wide margin, and that
+it contains a clean seam:
+
+- **S2a — the Depot.** Everything that *writes*: the eleven ops and the
+  reducer, the IndexedDB op log, the HLC, `/sync/push` and `/sync/pull` with
+  gapless per-household seqs, the outbox and its dead-letter, F1 Add Gear, the
+  Depot list, and the gear-detail screen. `person.recorded` is authored here,
+  from the name the join screen took. Ends with a Quartermaster who can record
+  gear on a phone with no signal and find it on a laptop.
+- **S2b — find it.** Everything that *reads*: story 3's Home path and
+  whereabouts, F2 Find, and the gated first-sync fold §12.2 records as owed by
+  the join screen. **Zero new op types and zero new endpoints** — purely
+  additive client read-side code, which is exactly what makes the seam a clean
+  one.
 
 **S3 — Tags and the slicing engine.** *Advances 13.*
 
@@ -525,7 +552,8 @@ later, and every later narrowing extends one engine instead of growing its own.
 
 **S4 — People and ownership.** *Delivers 4.*
 
-- **Ops (3):** `person.recorded`, `person.renamed`, `gear.ownership_set`.
+- **Ops (2):** `person.renamed`, `gear.ownership_set`. `person.recorded` is
+  S2's — see that slice's second note.
 - **UI:** the People list; owner on the gear detail; **Person** and **Ownership**
   added to S3's slicing cluster — which is how story 4's "narrowed to one
   Person's Personal gear, or to Shared only" is delivered, rather than as a
@@ -1020,3 +1048,54 @@ byte-exact.
   slice **3**, not slice 1. The tension is between that slicing and the story's
   own criteria; it is recorded rather than resolved, because promoting work
   across a slice boundary is the maintainer's call, not the implementer's.
+
+### 12.3 Consequences of S2a, the Depot
+
+- **The local log is keyed by `lsn`, not by `seq`.** A locally-authored op has
+  no `seq` at all until the server assigns one, so `seq` can key neither the
+  log nor the snapshot's high-water mark. `lsn` is a purely local append
+  counter: never sent, never compared across devices, and meaningless beyond
+  "written to this device's log before that one". It is what makes the outbox
+  a *query* rather than a second structure — every record with `seq === null`
+  and not dead-lettered, in `lsn` order — and what lets the store fold by
+  catching up from `since(lastLsn)` whether the op came from a local `emit` or
+  from a pulled page.
+- **The push transaction locks, then dedupes, then reserves — in that order.**
+  `sync/push` takes the household's row lock first, resolves which submitted
+  ops are already stored (they get back the seq they *already had*, never a
+  fresh one), and only then reserves one contiguous range for the genuinely
+  new ones. Reversing any two of those steps leaves the sequence with a **gap**
+  — a reserved seq that no op ever occupies — and a gap is not cosmetic here:
+  [sync §6.4](sync-protocol.md)'s `household_seq` is usable as the first
+  sync's *total* precisely because `seq` is gapless and therefore counts. A
+  bootstrap denominator that can never be reached is the app's one unavoidable
+  loading screen never finishing.
+- **`household_seq` rides on the pull response as well as the push one.** It
+  is the same field and the same fact — the household's high-water mark — and
+  pull is where the first sync actually needs it. It is a **denominator**, and
+  a moving one; `has_more` remains the sole paging condition. A client that
+  paged until `cursor` caught `household_seq` would never finish against a
+  household being written to.
+- **`null` clears a nullable register; an absent field leaves it alone.**
+  [sync §1.3](sync-protocol.md) is the authority for that, generally and with
+  no per-field carve-out. **§5.3 obligation 5 is not**: its text runs one way
+  only — treating an *absent* field as an explicit clear — so it says nothing
+  about what a `null` payload should do, and citing it to justify collapsing
+  `null` into absent was an error made and corrected inside this slice. This
+  is also what `exactOptionalPropertyTypes` (§12) has been enforcing at the
+  type level since S0.
+- **Two dependencies were added.** `zustand` in `app/` — the reactive surface
+  §3 named from the start, finally needed now that there is a fold to
+  subscribe to; the store is built with `zustand/vanilla` and provided through
+  React context rather than reached for as a module global, so a test renders
+  a screen over a store it seeded. And `fast-check` at the **root**, for the
+  convergence tier ([testing.md](testing.md) Tier 2) — the property-based
+  "any interleaving of the same ops reaches the same state" checks that are
+  this project's signature test, and the one tier that cannot be written by
+  hand.
+- **The Depot ships without the Account screen, so `sign out this device` has
+  no button yet.** Its other half exists — `clearLocalData()` in
+  `app/src/depot/wiring.ts`, the one path that clears the local log — and the
+  confirm sheet's unsynced count is the store's `deadLetterCount` plus the
+  outbox length. A 401 deliberately takes neither: it freezes the engine,
+  keeps every queued op, and the header reads `SIGNED OUT · SAVED ON DEVICE`.
