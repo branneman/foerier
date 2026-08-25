@@ -1,0 +1,103 @@
+import { describe, expect, it } from 'vitest'
+
+import { aGear, anOp, aPlace, hlcAt } from '../../testUtils/index.ts'
+import {
+  gearRehomed,
+  gearRetired,
+  placeRemoved,
+  type OpSpec,
+} from '../authoring.ts'
+import type { OpEnvelope } from '../ops.ts'
+import { fold } from '../reduce.ts'
+import {
+  depotCounts,
+  looseGear,
+  retiredGear,
+  visibleGear,
+  visiblePlaces,
+} from './depot.ts'
+
+const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
+
+function at(specs: readonly OpSpec[], counter: number): OpEnvelope[] {
+  return specs.map((s) => anOp(s, { hlc: hlcAt(counter), deviceId: DEV_A }))
+}
+
+function one(spec: OpSpec, counter: number): OpEnvelope {
+  return anOp(spec, { hlc: hlcAt(counter), deviceId: DEV_A })
+}
+
+const ids = (gear: readonly { id: string }[]) => gear.map((g) => g.id)
+
+describe('depot selectors', () => {
+  it('visibleGear excludes retired gear and sorts by name', () => {
+    const ops = [
+      ...at(aGear({ id: 'g-tent', name: 'Tent' }), 1),
+      ...at(aGear({ id: 'g-b', name: 'Rope' }), 2),
+      ...at(aGear({ id: 'g-a', name: 'Rope' }), 3),
+      ...at(aGear({ id: 'g-axe', name: 'Axe' }), 4),
+      ...at(aGear({ id: 'g-billy', name: 'Billy can' }), 5),
+      one(gearRetired('g-billy'), 6),
+    ]
+    const state = fold(ops)
+
+    // Sorted by name; the two Ropes are separated by id, the documented
+    // tiebreak — never by the insertion order of the ops that recorded them.
+    expect(ids(visibleGear(state))).toEqual(['g-axe', 'g-a', 'g-b', 'g-tent'])
+    expect(ids(retiredGear(state))).toEqual(['g-billy'])
+  })
+
+  it('depotCounts sums ownedCount for counted gear and 1 for everything else', () => {
+    const ops = [
+      ...at(
+        aGear({
+          id: 'g-peg',
+          name: 'Tent peg',
+          kind: 'counted',
+          ownedCount: 4,
+        }),
+        1,
+      ),
+      ...at(aGear({ id: 'g-tent', name: 'Tent', kind: 'single' }), 2),
+      ...at(aGear({ id: 'g-mug', name: 'Mug', kind: 'per_person' }), 3),
+      // Retired gear counts for nothing, however many pieces it once had.
+      ...at(
+        aGear({
+          id: 'g-old',
+          name: 'Old rope',
+          kind: 'counted',
+          ownedCount: 9,
+        }),
+        4,
+      ),
+      one(gearRetired('g-old'), 5),
+    ]
+
+    expect(depotCounts(fold(ops))).toEqual({ gear: 3, pieces: 6 })
+  })
+
+  it('looseGear reports gear whose holder is gone as well as gear recorded loose', () => {
+    const ops = [
+      ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
+      ...at(aPlace({ id: 'shed', name: 'Shed' }), 2),
+      ...at(aGear({ id: 'g-axe', name: 'Axe' }), 3),
+      ...at(aGear({ id: 'g-rope', name: 'Rope' }), 4),
+      ...at(aGear({ id: 'g-tent', name: 'Tent' }), 5),
+      ...at(aGear({ id: 'g-old', name: 'Old sack' }), 6),
+      // Explicitly loose.
+      one(gearRehomed('g-rope', { in: 'loose' }), 7),
+      // Its holder is gone — the Place was removed, and nothing cascaded.
+      one(gearRehomed('g-axe', { in: 'place', id: 'shed' }), 8),
+      one(placeRemoved('shed'), 9),
+      // Still properly housed.
+      one(gearRehomed('g-tent', { in: 'place', id: 'attic' }), 10),
+      // Loose, but retired: not surfaced for re-homing.
+      one(gearRehomed('g-old', { in: 'loose' }), 11),
+      one(gearRetired('g-old'), 12),
+    ]
+    const state = fold(ops)
+
+    expect(ids(looseGear(state))).toEqual(['g-axe', 'g-rope'])
+    expect(ids(visiblePlaces(state))).toEqual(['attic'])
+  })
+})

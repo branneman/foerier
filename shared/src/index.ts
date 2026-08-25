@@ -58,3 +58,18 @@ export {
 } from './authoring.ts'
 
 export { applyOp, emptyState, fold } from './reduce.ts'
+
+export type {
+  ContainmentView,
+  HolderRef,
+  PathSegment,
+} from './selectors/containment.ts'
+export { containmentView, homePath } from './selectors/containment.ts'
+
+export {
+  depotCounts,
+  looseGear,
+  retiredGear,
+  visibleGear,
+  visiblePlaces,
+} from './selectors/depot.ts'
