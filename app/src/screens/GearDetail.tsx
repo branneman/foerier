@@ -33,17 +33,10 @@ const KIND_OPTIONS: readonly { value: KindValue; label: string }[] = [
 
 /**
  * `ITEM` or `CONTAINER` — the meta line's first segment names the
- * **containment trait** (`gear.container`), not the Kind. §4's own running
- * example, "Sleeping bag, winter", is labelled `ITEM` while showing `×2` —
- * and invariant 6 says owned-count exists only for *counted* gear, so that
- * example is necessarily counted, yet still reads `ITEM`. The literal words
- * `SINGLE`/`COUNTED` never appear anywhere in the design bundle, and every
- * KIND column across the boards is binary — `ITEM` or `CONT.` (the dense
- * table's abbreviation; this line uses the detail idiom's full `CONTAINER`
- * instead) — never a third value for Kind. `ubiquitous-language.md` pairs
- * Item/Container to this same trait, and domain §2 says gear with the trait
- * is a container, gear without it is an item. Kind has no token of its own
+ * **containment trait** (`gear.container`), not the Kind (`docs/design/
+ * README.md` §4; `docs/domain-model.md` §2). Kind has no token of its own
  * here; its only visible consequence on this line is the `×N` glyph below.
+ * See the fix-round-1 commit and task report for why.
  */
 function traitLabel(gear: GearState): string {
   return gear.container?.value === true ? 'CONTAINER' : 'ITEM'

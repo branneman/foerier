@@ -300,15 +300,13 @@ describe('Gear detail', () => {
     expect(screen.queryByRole('button', { name: 'RETIRE' })).toBeNull()
   })
 
-  // Fix round 1 moved the meta line's first segment off Kind entirely (onto
-  // `gear.container`) — Kind's only remaining consequence on this line is
-  // the ×N gate below, so an unrecognised `kind` has no token of its own
-  // left to render verbatim here. What obligation 4 demands at this line's
-  // altitude is narrower than the original name suggests: no crash, and no
-  // false ×N glyph from treating an unrecognised string as `'counted'`. The
-  // test keeps its original name (one of the ten the brief fixed) but
-  // asserts what is actually true post-fix.
-  it('renders an unknown kind value verbatim rather than crashing', async () => {
+  // The meta line's first segment is the containment trait, not Kind
+  // (fix round 1) — Kind's only remaining consequence here is the ×N gate
+  // below. An unrecognised `kind` therefore has no token of its own to
+  // render verbatim; what obligation 4 (sync-protocol.md §5.3) guarantees
+  // at this line's altitude is narrower: no crash, and no false ×N from
+  // treating an unrecognised string as `'counted'`.
+  it('does not crash or show a false owned-count for an unrecognised kind', async () => {
     const gearId = anId()
     const store = await seededStore([
       gearRecorded(gearId, {
