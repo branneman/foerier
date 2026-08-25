@@ -1,0 +1,18 @@
+{
+  // The root-level TypeScript nothing else owns: the tiers that live outside a
+  // workspace (Tier 4 in `test/contract`, Tier 5 in `test/e2e`) and the configs
+  // that drive them. `npm run typecheck` runs `--workspaces`, so before this
+  // existed every one of these files was linted but never type-checked — the
+  // e2e specs had never been checked at all.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": [
+    "test",
+    "playwright.config.ts",
+    "vitest.config.ts",
+    "vitest.contract.config.ts"
+  ]
+}
