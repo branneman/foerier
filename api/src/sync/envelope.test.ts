@@ -125,6 +125,24 @@ describe('validateOp', () => {
     })
   })
 
+  it('rejects a malformed aggregate_id as envelope_invalid', () => {
+    // Non-empty, so this only fails the UUID shape check, not the earlier
+    // non-empty-string check — the case this test exists to distinguish.
+    const op = { ...baseOp(), aggregate_id: 'abc' }
+    expect(validateOp(op, HOUSEHOLD_ID)).toEqual({
+      ok: false,
+      code: 'envelope_invalid',
+    })
+  })
+
+  it('rejects a malformed device_id as envelope_invalid', () => {
+    const op = { ...baseOp(), device_id: 'abc' }
+    expect(validateOp(op, HOUSEHOLD_ID)).toEqual({
+      ok: false,
+      code: 'envelope_invalid',
+    })
+  })
+
   it('rejects a missing aggregate, aggregate_id, type or device_id as envelope_invalid', () => {
     for (const field of [
       'aggregate',

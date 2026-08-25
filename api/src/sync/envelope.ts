@@ -34,11 +34,12 @@ export function isUuidV7(s: string): boolean {
 }
 
 /**
- * Any-version canonical lowercase UUID shape. `household_id` is typed as a
- * plain UUID in §1.1 — v7 is specified only for `id` — so a household minted
- * by an earlier slice may carry any version. Used only for the *shape*
- * check; equality against the token's household is a separate concern
- * (`household_mismatch`, not `envelope_invalid`).
+ * Any-version canonical lowercase UUID shape. `household_id`, `aggregate_id`
+ * and `device_id` are all typed as plain UUID in §1.1 — v7 is specified only
+ * for `id` — so any of them may carry whatever version the minting slice
+ * used. Used only for the *shape* check; `household_id`'s equality against
+ * the token's household is a separate concern (`household_mismatch`, not
+ * `envelope_invalid`).
  */
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -101,6 +102,22 @@ export function validateOp(raw: unknown, householdId: string): Validated {
   // (auth-design.md §9.3), and folding a shape error into that code would
   // pollute the signal an operator watches for tenancy violations.
   if (!isUuid(raw['household_id'] as string)) {
+    return { ok: false, code: 'envelope_invalid' }
+  }
+
+  // `aggregate_id` and `device_id` are shape-checked here rather than left
+  // to the database for a reason that only shows up downstream: both
+  // columns are Postgres `uuid` (task 11's migration, `api/migrations/
+  // 0003_op.ts`). A non-empty-but-non-UUID value like `"abc"` would pass a
+  // bare string check, reach the INSERT, and throw — turning what should be
+  // a per-op `envelope_invalid` rejection into a batch-level 5xx. Under
+  // §6.3 a client answers 5xx with indefinite retry, so that single
+  // malformed op would wedge the entire outbox behind it forever — exactly
+  // the failure §6.1's per-op response exists to prevent.
+  if (
+    !isUuid(raw['aggregate_id'] as string) ||
+    !isUuid(raw['device_id'] as string)
+  ) {
     return { ok: false, code: 'envelope_invalid' }
   }
 
