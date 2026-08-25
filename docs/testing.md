@@ -142,6 +142,8 @@ registry** below so a persistent `foerier_test` DB never collides across classes
 | 1 | `0f000001-…-000000000001` | `auth.test.ts` — the join and sign-in ceremonies |
 | 2 | `0f000002-…-000000000002` | `householdIsolation.test.ts` — household A |
 | 3 | `0f000003-…-000000000003` | `householdIsolation.test.ts` — household B |
+| 4 | `0f000004-…-000000000004` | `migrations.test.ts` — the op table, household A |
+| 5 | `0f000005-…-000000000005` | `migrations.test.ts` — the op table, household B |
 | _(claim the next free slot when adding a server-integration class)_ | | |
 
 Two rules the suite learned the hard way and that a new class must follow:

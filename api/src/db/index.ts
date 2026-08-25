@@ -5,9 +5,13 @@ import type { Database } from './schema.ts'
 import { migrationProvider } from './migrations.ts'
 
 // `bigint` (OID 20) arrives as a string, because a Postgres bigint can exceed
-// Number.MAX_SAFE_INTEGER. The only one foerier has is a WebAuthn signature
-// counter, which is a uint32 — comfortably safe, and comparing it as a string
-// would silently break the "counter must increase" check ('9' > '10').
+// Number.MAX_SAFE_INTEGER. Every bigint column foerier has — the WebAuthn
+// signature counter, and `op.seq` / `household.op_seq` (`sync-protocol.md`
+// §6.6) — is comfortably safe as a `number`, and comparing any of them as a
+// string would silently break: a counter's "must increase" check ('9' >
+// '10'), and a seq's ordering and cursor comparisons alike. One parser,
+// installed once here, covers every table rather than each call site
+// re-deriving it.
 pg.types.setTypeParser(20, (value) => Number(value))
 
 export function createDb(databaseUrl: string): Kysely<Database> {

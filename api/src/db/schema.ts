@@ -21,6 +21,8 @@ export interface HouseholdTable {
   id: string
   name: string
   created_at: CreatedAt
+  /** `bigint` reaches the driver as a string; see `db/index.ts`. */
+  op_seq: ColumnType<number, number | undefined, number>
 }
 
 export interface LoginTable {
@@ -87,6 +89,27 @@ export interface WebauthnChallengeTable {
   consumed_at: Date | null
 }
 
+/**
+ * The op log (`sync-protocol.md` §6.7). `type` is `text`, never a Postgres
+ * enum — see the doc comment in `migrations/0003_op.ts` for why.
+ */
+export interface OpTable {
+  op_id: string
+  household_id: string
+  /** `bigint` reaches the driver as a string; see `db/index.ts`. Never
+   * updated — an accepted op is immutable once stored. */
+  seq: ColumnType<number, number, never>
+  aggregate: string
+  aggregate_id: string
+  type: string
+  hlc: string
+  device_id: string
+  /** Inserted as a JSON string and cast by Postgres; selected back already
+   * parsed. Never updated — an accepted op is immutable once stored. */
+  payload: ColumnType<Record<string, unknown>, string, never>
+  received_at: CreatedAt
+}
+
 export interface Database {
   household: HouseholdTable
   login: LoginTable
@@ -94,6 +117,7 @@ export interface Database {
   device: DeviceTable
   invite: InviteTable
   webauthn_challenge: WebauthnChallengeTable
+  op: OpTable
 }
 
 export type Household = Selectable<HouseholdTable>
@@ -103,3 +127,4 @@ export type Passkey = Selectable<PasskeyTable>
 export type Device = Selectable<DeviceTable>
 export type DeviceUpdate = Updateable<DeviceTable>
 export type Invite = Selectable<InviteTable>
+export type Op = Selectable<OpTable>
