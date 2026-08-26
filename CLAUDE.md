@@ -45,8 +45,10 @@ off.
 **The next slice is S3, Tags and the slicing engine.**
 
 **One debt rides along:** there is no Account screen, so `sign out this
-device` has both its halves — `clearLocalData()` and the store's
-`unsyncedCount()` for the confirm sheet — and no button. The **401 contract
+device` has no button. `unsyncedCount()` already has a caller —
+`app/src/App.tsx:145` feeds it to the sign-in screen's session-lost line
+(§12.3) — but `clearLocalData()` (`app/src/depot/wiring.ts:243`), the action
+that button would trigger, is genuinely uncalled. The **401 contract
 is wired**: the engine reporting `signed-out` calls `handleUnauthorized()`,
 which routes to `/signin` and leaves the op log and outbox untouched
 ([auth-design §7.2](docs/auth-design.md)). A frozen engine is never resumed —
