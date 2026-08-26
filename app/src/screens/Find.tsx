@@ -26,11 +26,19 @@ import styles from './Find.module.css'
  *   both need an unpack outcome and a trip residence, neither of which exist
  *   before S12/S9-10. `whereabouts` returns exactly one `home` slice today,
  *   and this screen renders exactly that — no placeholder.
- * - the per-person piece breakdown (§6's "Headlamp" card, one row per
- *   person) — pieces are a trip concept (`docs/ubiquitous-language.md`).
- *   The **structure** that card teaches — a header naming the gear apart
- *   from a list of whereabouts rows — is what `counted` gear borrows below,
- *   ahead of having more than one slice to show in it.
+ * - `per_person` gear falls through to {@link PlainRow} below, same as
+ *   `single`, and that is a deferred seam, not an oversight: story 3 groups
+ *   Counted **and** Per-person gear under the quantity-split treatment, but
+ *   the two splits are different mechanisms. Counted's is an arithmetic
+ *   home/trip *count* split — exactly what `WhereaboutsSlice[]` already
+ *   models, which is why {@link CountedCard} can map over `result.slices`
+ *   generically today and needs no restructuring once story 11 lands a
+ *   second slice. Per-person's is a per-**Piece** breakdown (one row per
+ *   participant, `docs/ubiquitous-language.md`), a shape `WhereaboutsSlice`
+ *   does not represent at all — routing it through `CountedCard` now would
+ *   hard-code a wrong `COUNTED` label and commit to the wrong row semantics
+ *   ahead of Pieces existing. It waits for Pieces, rather than being
+ *   approximated.
  */
 
 const RECENT_LIMIT = 5
