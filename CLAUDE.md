@@ -26,8 +26,9 @@ have landed:
   whereabouts. S2 is the one slice in the plan that ships as **two halves**,
   S2a and S2b; see [§8.3](docs/architecture-design.md#83-the-slices) for the
   seam and [§12.3](docs/architecture-design.md#123-consequences-of-s2a-the-depot)
-  for what it settled. A slice is not a commit: S2a alone landed as 61, under
-  the merge convention below.
+  + [§12.4](docs/architecture-design.md#124-consequences-of-s2b-find-whereabouts-and-the-fold)
+  for what each half settled. A slice is not a commit: S2a alone landed as
+  61, under the merge convention below.
 
 **The Depot is complete, both halves.** S2a delivered eleven op types and the
 reducer that folds them (`shared/`), per-field LWW by HLC, the containment

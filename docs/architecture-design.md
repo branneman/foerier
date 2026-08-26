@@ -426,8 +426,8 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 **Landed so far: S0, S1, S2a, and S2b.** S2 was the first slice to need the op
 log, the reducer, and `/sync`, and it landed in **two halves rather than
-one** — see its entry below for why, and §12.3 for what it settled. **S3, Tags
-and the slicing engine, is next.**
+one** — see its entry below for why, and §12.3 and §12.4 for what each half
+settled. **S3, Tags and the slicing engine, is next.**
 
 Two properties hold across every slice below and are not repeated in each:
 
@@ -1132,3 +1132,40 @@ byte-exact.
   that clears the local log — and so does the count its confirm sheet must
   state, but S2a builds no Account screen, so nothing calls either yet. A 401
   must never take that path.
+
+### 12.4 Consequences of S2b: Find, whereabouts, and the fold
+
+- **`ownedCount` must be gated on `kind` wherever it is read.** Per-field LWW
+  leaves the `ownedCount` register intact through a `gear.kind_set` to
+  `single`, by design — nothing cascades. So any reader that does not gate
+  shows a count the gear no longer owns. This shipped as a live bug: the gear
+  detail screen rendered `ITEM · SHARED` from a gated `metaLine` directly
+  above a Whereabouts card reading `×6 THERE`. Fixed in `dec9462`. The three
+  readers that must agree are `shared/src/selectors/whereabouts.ts`,
+  `shared/src/selectors/depot.ts`'s `depotCounts`, and `GearDetail.tsx`'s
+  `metaLine`. This is the most important entry — two screens two lines apart
+  depend on it and no durable doc said so until now.
+- **Two different 401 body shapes.** `/auth/*` returns a flat
+  `{ "error": "unauthorized" }` (`api/src/auth/middleware.ts:41,63,67,69,72`);
+  `/sync/*` returns sync §6.3's `{ error: { code, message, detail } }`
+  (`api/src/sync/routes.ts:47-60`, whose comment ends "Unifying the two shapes
+  is a later decision for whoever owns `/auth/*`"). `auth-design.md` specifies
+  no 401 body at all, so neither shape is a contract violation — but the
+  divergence is real, and the decision to unify them is deferred rather than
+  made.
+- **`WhereaboutsCard` has a known future collision.** `HOME_LABEL` is
+  hardcoded inside the map and `key={slice.kind}` collides the moment two
+  `'trip'` slices coexist — i.e. multiple active trips. Recorded today only
+  in the component's JSDoc (`app/src/components/WhereaboutsCard.tsx:13-18`);
+  the type will force both edits when a second `'trip'` slice kind lands, but
+  nothing enforces it before then.
+- **`ui/` never received its composites.** `ui/src/` holds only `Logo`, while
+  [frontend-design §5](frontend-design.md) assigns `WhereaboutsCard`,
+  `GearRow`, `TripCard`, the Radix-wrapped primitives, `ErrorBoundary`, `Icon`
+  and `motion` to `ui/`. `WhereaboutsCard` and `HomePicker` were built in
+  `app/src/components/` instead, and Radix is not a dependency yet.
+  `Find.module.css` and `Depot.module.css` now share nine byte-identical
+  blocks, and `Find`'s `PlainRow` duplicates `Depot`'s row JSX — the second
+  copy, which is what makes a shared `GearRow` worth extracting in S3.
+- **`/trips` is a stub.** `app/src/App.tsx:268-270` renders an `EmptyState`
+  placeholder awaiting S6.
