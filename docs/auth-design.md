@@ -654,10 +654,11 @@ all, so they float and may be built alongside any domain slice.
 
 ## 14. What this document does not settle
 
-- **Screens.** [`docs/design/`](design/) has no auth boards yet — no sign-in,
-  join, account, or device-list screen exists in the visual system. That gap is
-  recorded here and closed by a follow-up pass over the design boards, in the
-  same way [`frontend-design.md` §9](frontend-design.md) feeds decisions back.
+- **Screens.** Closed. The follow-up pass over the design boards landed:
+  [`docs/design/Screens C - Auth + Account.dc.html`](design/) is the full auth
+  and account surface, and [`docs/design/README.md`](design/README.md) §§8–13
+  document sign-in, join, the passkey-less path, Account, Devices, and People
+  & logins.
 - Exact wording of the auth screens, in the design system's strict-ledger voice.
 - The precise Device label taxonomy derived from the User-Agent.
 - Whether `userVerification` is later tightened to `required` (§4) — a policy
