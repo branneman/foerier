@@ -28,7 +28,7 @@ have landed:
   seam and [§12.3](docs/architecture-design.md#123-consequences-of-s2a-the-depot)
   + [§12.4](docs/architecture-design.md#124-consequences-of-s2b-find-whereabouts-and-the-fold)
   for what each half settled. A slice is not a commit: S2a alone landed as
-  61, under the merge convention below.
+  51, under the merge convention below.
 
 **The Depot is complete, both halves.** S2a delivered eleven op types and the
 reducer that folds them (`shared/`), per-field LWW by HLC, the containment
@@ -190,7 +190,7 @@ artifacts with no external consumer.
   that is right — the commit *is* the reviewable unit. Past roughly a thousand
   lines it inverts: one commit stops being reviewable and its message stops
   being able to carry the reasoning, so squashing destroys the record instead of
-  tidying it. S2a was ~19,500 lines over 61 commits, each carrying why a
+  tidying it. S2a was ~19,000 lines over 51 commits, each carrying why a
   decision went the way it did — a fixture catching a live obligation-5 bug, an
   HLC that must not advance on garbage, a lock taken before a dedupe so a
   sequence stays gapless. That is worth more than a tidy log.
