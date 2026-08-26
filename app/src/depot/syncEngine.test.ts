@@ -709,6 +709,11 @@ describe('the sync engine bootstrapping a new device', () => {
     await h.engine.pull()
 
     expect(h.progress).toEqual([
+      // `household_seq` arrives *with* the first page (§6.4), so the
+      // denominator is unknown for exactly one round trip and is reported as
+      // `0` — the screen renders that as `OP 0 OF —` rather than showing
+      // nothing at all until a page lands.
+      { folded: 0, total: 0, paused: false },
       { folded: 2, total: 5, paused: false },
       { folded: 4, total: 5, paused: false },
       { folded: 5, total: 5, paused: false },
@@ -717,6 +722,28 @@ describe('the sync engine bootstrapping a new device', () => {
     expect(h.statuses).toContain('bootstrapping')
     expect(h.engine.bootstrap()).toBe(null)
     expect(h.engine.status()).toBe('idle')
+  })
+
+  it('bootstraps a device that authored before it ever pulled', async () => {
+    // The **cursor** is what means "has never pulled"; an empty log means
+    // "has never authored", which is a different question. A Device that
+    // joined, recorded gear offline and only then first-synced holds a
+    // non-empty log at cursor 0 and is folding the household's whole history
+    // just the same — so it gets a determinate number, not nothing.
+    const h = createHarness({ pageSize: 2 })
+    await h.log.append(anOp())
+    h.server.push(
+      Array.from({ length: 3 }, () => anOp({ device_id: OTHER_DEVICE })),
+    )
+
+    await h.engine.pull()
+
+    expect(h.progress).toEqual([
+      { folded: 0, total: 0, paused: false },
+      { folded: 2, total: 3, paused: false },
+      { folded: 3, total: 3, paused: false },
+      null,
+    ])
   })
 
   it('pauses rather than restarting when a bootstrap page fails', async () => {
@@ -747,6 +774,7 @@ describe('the sync engine bootstrapping a new device', () => {
     await h.engine.pull()
 
     expect(h.progress).toEqual([
+      { folded: 0, total: 0, paused: false },
       { folded: 2, total: 5, paused: false },
       { folded: 2, total: 5, paused: true },
     ])
@@ -758,6 +786,7 @@ describe('the sync engine bootstrapping a new device', () => {
 
     expect(h.transport.pulls.map((call) => call.since)).toEqual([0, 2, 2, 4])
     expect(h.progress).toEqual([
+      { folded: 0, total: 0, paused: false },
       { folded: 2, total: 5, paused: false },
       { folded: 2, total: 5, paused: true },
       { folded: 4, total: 5, paused: false },

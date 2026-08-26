@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { InvitePreview } from '../auth/api'
+import { FirstSync } from '../components/FirstSync'
 import styles from './Join.module.css'
 
 export type DeadEndReason = 'expired' | 'used' | 'unknown'
@@ -55,13 +56,12 @@ export function Join({
         <h1 className={styles['title']}>Signed in.</h1>
         <p className={styles['fact']}>Passkey saved on this device.</p>
         <div className={styles['spacer']} />
-        <button
-          type="button"
-          className={styles['primary']}
-          onClick={onOpenDepot}
-        >
-          Open the depot
-        </button>
+        {/* The one screen a Quartermaster cannot walk past: a Device that has
+            never pulled folds the household's history before the depot can
+            show anything, so the CTA is gated on that fold rather than on
+            having signed in. A brand-new household has nothing to fold, and
+            `FirstSync` renders the ungated button instead. */}
+        <FirstSync onOpenDepot={onOpenDepot} />
       </div>
     )
   }

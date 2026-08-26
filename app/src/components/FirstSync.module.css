@@ -1,0 +1,113 @@
+@layer components {
+  /* The full-screen variant: the fold sits ahead of the shell, so it owns
+     the viewport rather than a slot inside one. */
+  .screen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-16);
+    min-height: 100svh;
+    padding: var(--space-16);
+    max-width: 28rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .card {
+    background: var(--color-bg-surface);
+    border: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-card);
+    padding: var(--space-16);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+  }
+
+  .label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
+  /* The offline dot — the one amber on a paused frame, and the whole of its
+     colour budget. No attention colour and no `▲`: nothing of the user's is
+     wrong (docs/design/README.md §9). */
+  .dot {
+    inline-size: 6px;
+    block-size: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--color-brand-amber);
+    flex: none;
+  }
+
+  .percent {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 6px, determinate, never indeterminate: the whole point of §7.6 is that
+     this bar always has a number behind it. */
+  .bar {
+    block-size: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--color-bg-raised);
+    overflow: hidden;
+  }
+
+  .fill {
+    block-size: 100%;
+    background: var(--color-accent);
+  }
+
+  .ops {
+    font: var(--text-data) var(--font-mono);
+    font-weight: 500;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .copy {
+    font: var(--text-secondary) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+
+  /* Quiet, and deliberately not attention-coloured: a paused fold is not an
+     error, and nothing of the user's is wrong (docs/design/README.md §9). */
+  .retry {
+    align-self: flex-start;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-12);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-primary);
+    cursor: pointer;
+  }
+
+  .primary {
+    min-height: max(3rem, 48px);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Muted while the fold runs — gated, not broken. */
+  .primary:disabled {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-dim);
+    cursor: default;
+  }
+}

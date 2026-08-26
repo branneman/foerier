@@ -1,16 +1,25 @@
 import { startRegistration } from '@simplewebauthn/browser'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'wouter'
+import type { StoreApi } from 'zustand/vanilla'
 
 import type { AuthApi, InvitePreview } from '../auth/api'
 import type { PendingStore } from '../auth/pendingFirstPerson'
 import type { Session } from '../auth/sessionStore'
+import { DepotProvider, type DepotStoreState } from '../depot/store'
 import { Join, type DeadEndReason } from './Join'
 
 export interface JoinContainerProps {
   api: AuthApi
   pending: PendingStore
   onSignedIn: (session: Session) => Promise<void>
+  /**
+   * The Device's depot, once it has one. `null` until the session this flow
+   * writes has been read back and a store built over it — a window the
+   * success frame's first-sync card renders inside, so it is nullable rather
+   * than required.
+   */
+  depot?: StoreApi<DepotStoreState> | null
 }
 
 /**
@@ -36,6 +45,7 @@ export function JoinContainer({
   api,
   pending,
   onSignedIn,
+  depot = null,
 }: JoinContainerProps) {
   const [, navigate] = useLocation()
   // Whether THIS flow completed the join — not merely whether a session
@@ -110,7 +120,7 @@ export function JoinContainer({
     setJustJoined(true)
   }
 
-  return (
+  const join = (
     <Join
       preview={preview}
       deadEnd={deadEnd}
@@ -119,5 +129,14 @@ export function JoinContainer({
       signedIn={justJoined}
       onOpenDepot={() => navigate('/')}
     />
+  )
+
+  // The provider only where there is something to provide: the success
+  // frame's first-sync card reads the engine through it, and tolerates its
+  // absence for the moment between signing in and the depot being built.
+  return depot === null ? (
+    join
+  ) : (
+    <DepotProvider value={depot}>{join}</DepotProvider>
   )
 }

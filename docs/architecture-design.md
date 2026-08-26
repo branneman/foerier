@@ -1041,7 +1041,10 @@ byte-exact.
   — a determinate, resumable fold of the household's op log, with the CTA
   gated on completion. That cannot be built until the op log exists, and the
   screen is correct as it stands today because a new Household has nothing to
-  fold. **S2 owes the gated variant.**
+  fold. **S2b delivered the gated variant** — one `FirstSync` component, keyed
+  off the engine's bootstrap progress rather than its status string, composed
+  into the join card and rendered full-screen ahead of the shell everywhere
+  else.
 - **Story 27's last acceptance criterion is not delivered.** "If this Device
   cannot hold a Passkey, I can still complete the join" needs
   `POST /auth/device/claim`, which [auth-design §13](auth-design.md) places in

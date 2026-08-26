@@ -13,6 +13,7 @@ import {
 } from './auth/pendingFirstPerson'
 import { indexedDbSessionStore, type SessionStore } from './auth/sessionStore'
 import { useSession } from './auth/useSession'
+import { FirstSync } from './components/FirstSync'
 import { DepotProvider, type DepotStoreState } from './depot/store'
 import { syncLine, syncTone } from './depot/syncLabel'
 import { createSessionDepot, type DepotFactory } from './depot/wiring'
@@ -58,10 +59,24 @@ function SignedInShell({
   children: ReactNode
 }) {
   const sync = useStore(store, (depot) => depot.sync)
+  const bootstrap = useStore(store, (depot) => depot.bootstrap)
 
   useEffect(() => {
     if (sync === 'signed-out') onSignedOut(store)
   }, [sync, store, onSignedOut])
+
+  // A Device that has never pulled folds the household's whole op log before
+  // it can show anything (`sync-protocol.md` §7.6), so the fold comes *ahead*
+  // of the shell rather than inside it — there is nothing to navigate to yet.
+  // Keyed off the engine's progress, never `sync`: the status cannot know a
+  // pull is a bootstrap until the first page carries `household_seq`.
+  if (bootstrap !== null) {
+    return (
+      <DepotProvider value={store}>
+        <FirstSync variant="screen" />
+      </DepotProvider>
+    )
+  }
 
   return (
     <AppShell syncLine={syncLine(sync)} syncTone={syncTone(sync)}>
@@ -211,7 +226,15 @@ export function App({
   return (
     <Switch>
       <Route path="/join">
-        <JoinContainer api={api} pending={pendingStore} onSignedIn={signIn} />
+        {/* The depot is handed down so the success frame's first-sync card
+            can read the engine. It does not exist until the Device has a
+            session, which is why `JoinContainer` takes it as nullable. */}
+        <JoinContainer
+          api={api}
+          pending={pendingStore}
+          onSignedIn={signIn}
+          depot={depotStore}
+        />
       </Route>
 
       <Route path="/signin">

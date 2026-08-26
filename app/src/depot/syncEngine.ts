@@ -76,6 +76,10 @@ export type SyncStatus =
  * gapless (§6.4) — which is what makes the first sync determinate rather than
  * a spinner (§7.6). It may grow mid-flight, and completion is `has_more`,
  * never `folded === total`.
+ *
+ * **`total: 0` means not known yet**, not "nothing to fold": `household_seq`
+ * only arrives with the first page, so a bootstrap reports `0 / 0` for
+ * exactly one round trip and the screen renders that denominator as `—`.
  */
 export interface BootstrapProgress {
   folded: number
@@ -180,7 +184,19 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
     deps.onStatus(next)
   }
 
+  /** Silent when nothing about the fold changed: `BootstrapProgress` is a
+   * value, and re-reporting the same three numbers only costs the first-sync
+   * screen a render. */
   function setProgress(next: BootstrapProgress | null): void {
+    if (
+      next !== null &&
+      progress !== null &&
+      next.folded === progress.folded &&
+      next.total === progress.total &&
+      next.paused === progress.paused
+    ) {
+      return
+    }
     progress = next
     deps.onBootstrap(next)
   }
@@ -359,16 +375,7 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
   }
 
   function reportBootstrap(fresh: boolean, page: PullBody): void {
-    if (progress === null) {
-      if (!fresh || page.household_seq === 0) return
-      setProgress({
-        folded: page.ops.length,
-        total: Math.max(page.household_seq, page.ops.length),
-        paused: false,
-      })
-      setStatus('bootstrapping')
-      return
-    }
+    if (!fresh || progress === null) return
     const folded = progress.folded + page.ops.length
     // The denominator moves, and may already be behind what we just folded.
     setProgress({
@@ -381,13 +388,23 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
   /** Returns `true` when it halted. */
   async function pullPages(): Promise<boolean> {
     let cursor = await readCursor()
-    // A device with nothing in its log is bootstrapping — as is one already
-    // part-way through a bootstrap that paused. The `cursor === 0` guard is
-    // what keeps this off the ordinary path: reading the whole log to ask
-    // whether it is empty is affordable only on a device that has never
-    // pulled, which is the only device where it can be.
-    const fresh =
-      progress !== null || (cursor === 0 && (await deps.log.all()).length === 0)
+    // A device whose cursor is still 0 has never pulled, so this is its first
+    // sync — as is one already part-way through a bootstrap that paused. The
+    // **cursor**, never the log's emptiness: the cursor means "has never
+    // pulled" and an empty log means "has never authored", and a Device that
+    // joined, recorded gear offline and only then first-synced holds a
+    // non-empty log at cursor 0 while folding the household's whole history.
+    const fresh = progress !== null || cursor === 0
+
+    // `household_seq` arrives *with* the first page (§6.4), so the
+    // denominator is unknown for exactly one round trip. Report the fold
+    // anyway, with `total: 0` for "not known yet": the alternative is a first
+    // sync that shows nothing at all until a page lands, and a CTA that
+    // enables and then disables under the user's finger (§7.6).
+    if (fresh && progress === null) {
+      setProgress({ folded: 0, total: 0, paused: false })
+      setStatus('bootstrapping')
+    }
 
     for (;;) {
       const result = await deps.transport.pull(cursor, pageSize)

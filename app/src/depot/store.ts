@@ -160,6 +160,16 @@ export interface DepotStoreState {
    * counter kept alongside it.
    */
   unsyncedCount(): Promise<number>
+  /**
+   * `RETRY NOW` on the first-sync card. A paused bootstrap keeps its cursor,
+   * so this **resumes** — the engine reads the cursor back out of the log and
+   * asks for the next page, never for the first one (§7.6).
+   *
+   * It is not decoration. A pull refused with a 400 pauses the bootstrap,
+   * reports `idle` and schedules **no** retry (`syncEngine.ts`), so without a
+   * hand on the screen that state never ends.
+   */
+  retrySync(): void
   /** After re-authenticating: build and start a **fresh** engine. */
   resumeSync(): void
   /** Sign-out and teardown: stop the engine and drop the pending snapshot. */
@@ -464,6 +474,11 @@ export function createDepotStore(
       const queued = await deps.log.outbox(Number.MAX_SAFE_INTEGER)
       return queued.length + store.getState().deadLetterCount
     },
+    retrySync() {
+      engine.pull().catch((error: unknown) => {
+        console.error('depot: the first sync could not be resumed', error)
+      })
+    },
     resumeSync() {
       // Never the old one: `freeze()` set a flag that is never cleared, and
       // unwired its timer and listeners on the way (`syncEngine.ts`).
@@ -498,6 +513,18 @@ export function createDepotStore(
 const DepotContext = createContext<StoreApi<DepotStoreState> | null>(null)
 
 export const DepotProvider = DepotContext.Provider
+
+/**
+ * The store above this component, or `null` where there is none — unlike
+ * {@link useDepot}, which throws.
+ *
+ * The join screen is the reason: it renders in the window between a Device
+ * signing in and its depot being built, so the first-sync card it composes
+ * has to tolerate the absence rather than take the screen down with it.
+ */
+export function useDepotStore(): StoreApi<DepotStoreState> | null {
+  return useContext(DepotContext)
+}
 
 /**
  * Selector-subscribed: a component re-renders only when the slice it asked
