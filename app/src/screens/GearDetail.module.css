@@ -76,6 +76,57 @@
     color: var(--color-ink-muted);
   }
 
+  /* COUNT group (`docs/design/README.md` §4): right-aligned ×N OWNED, one
+     split-whereabouts chip line, and a vocabulary-guard hint. */
+  .countGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .countHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .groupLabel {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .countOwned {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .countChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+  }
+
+  .countChip {
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.625rem;
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .countHint {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
   .actionBar {
     display: flex;
     align-items: center;

@@ -4,24 +4,29 @@ import {
   gearRehomed,
   gearRenamed,
   gearRetired,
+  whereabouts,
   type DepotState,
   type GearState,
   type KindValue,
+  type PathSegment,
+  type WhereaboutsSlice,
 } from '@foerier/shared'
 import { useState } from 'react'
 import { Link, useParams } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
+import { WhereaboutsCard } from '../components/WhereaboutsCard'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import styles from './GearDetail.module.css'
 
 /**
- * Gear detail — identity and action bar (`docs/design/README.md` §4). This
- * task builds the top (header, name, MVP meta line) and the bottom (the
- * action bar); the Whereabouts card and the COUNT group are the next slice
- * half's read (story 3), and tag chips (story 13) and the LEDGER group
- * (story 33, LATER) are later slices again — none of the three are built or
+ * Gear detail — identity, whereabouts, count and the action bar
+ * (`docs/design/README.md` §4). The previous task built the top (header,
+ * name, MVP meta line) and the bottom (the action bar); this task builds the
+ * middle — the Whereabouts card and the COUNT group (story 3's read) — from
+ * the `whereabouts` selector. Tag chips (story 13) and the LEDGER group
+ * (story 33, LATER) are later slices again — neither is built or
  * placeholder'd here.
  */
 
@@ -65,6 +70,21 @@ function metaLine(state: DepotState, gear: GearState): string {
     parts.push(`×${gear.ownedCount.value}`)
   }
   return parts.filter((part) => part !== '').join(' · ')
+}
+
+/** The innermost segment's name, or `HOME` for a loose slice — the COUNT
+ * chip's location word (`docs/design/README.md` §4: `×1 ⌂ CRATE B`). CAPS is
+ * a CSS transform on `.countChip` (`GearDetail.module.css`), not applied
+ * here, matching how the rest of this codebase renders label text. */
+function chipLocation(path: readonly PathSegment[]): string {
+  const last = path[path.length - 1]
+  return last === undefined ? 'HOME' : last.name
+}
+
+/** `×1 ⌂ CRATE B` — one chip per {@link WhereaboutsSlice}, never per unit
+ * (Vocabulary guards: depot units of counted gear carry no identity). */
+function chipLabel(slice: WhereaboutsSlice): string {
+  return `×${slice.count} ⌂ ${chipLocation(slice.path)}`
 }
 
 export function GearDetail() {
@@ -122,6 +142,8 @@ export function GearDetail() {
 
   const name = gear.name?.value ?? ''
   const retired = gear.retired?.value === true
+  const counted = gear.kind?.value === 'counted'
+  const { slices } = whereabouts(state, gearId)
 
   return (
     <div className={styles['screen']}>
@@ -147,6 +169,35 @@ export function GearDetail() {
           {retired && <span className={styles['retiredBadge']}>RETIRED</span>}
         </div>
       </div>
+
+      <WhereaboutsCard slices={slices} />
+
+      {counted && (
+        <div className={styles['countGroup']} data-testid="count-group">
+          <div className={styles['countHeader']}>
+            <span className={styles['groupLabel']}>COUNT</span>
+            <span className={styles['countOwned']}>
+              ×{gear.ownedCount?.value ?? 0} OWNED
+            </span>
+          </div>
+          <div className={styles['countChips']}>
+            {slices.map((slice) => (
+              <span
+                key={slice.kind}
+                className={styles['countChip']}
+                data-testid="count-chip"
+              >
+                {chipLabel(slice)}
+              </span>
+            ))}
+          </div>
+          <p className={styles['countHint']}>
+            {
+              'COUNTED GEAR HAS NO PER-UNIT IDENTITY — UNITS THAT DIFFER ARE SEPARATE SINGLE GEAR.'
+            }
+          </p>
+        </div>
+      )}
 
       {!retired && (
         <div className={styles['actionBar']}>

@@ -122,8 +122,11 @@ describe('Gear detail', () => {
       gearRecorded(singleId, { name: 'Axe', container: false, kind: 'single' }),
     ])
     renderGearDetail(singleStore, singleId)
+    // `getByText` matches the full, exact text of the node — this alone
+    // proves the meta line itself carries no `×`. It can no longer be a
+    // page-wide absence check: the Whereabouts card added below always shows
+    // `×1 THERE` for the home slot, single gear included.
     expect(screen.getByText('ITEM · SHARED')).toBeInTheDocument()
-    expect(screen.queryByText(/×/)).toBeNull()
     cleanup()
 
     const countedId = anId()
@@ -346,5 +349,81 @@ describe('Gear detail', () => {
     renderGearDetail(store, gearId)
 
     expect(screen.getByText('ITEM · SHARED')).toBeInTheDocument()
+  })
+
+  // The COUNT group (`docs/design/README.md` §4) exists only for counted
+  // gear — invariant 6, same gate `metaLine`'s ×N segment already uses.
+  it('shows the COUNT group only for counted gear', async () => {
+    const singleId = anId()
+    const singleStore = await seededStore([
+      gearRecorded(singleId, { name: 'Axe', container: false, kind: 'single' }),
+    ])
+    renderGearDetail(singleStore, singleId)
+    expect(screen.queryByTestId('count-group')).toBeNull()
+    cleanup()
+
+    const countedId = anId()
+    const countedStore = await seededStore([
+      gearRecorded(countedId, {
+        name: 'Mug',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+    ])
+    renderGearDetail(countedStore, countedId)
+    expect(screen.getByTestId('count-group')).toBeInTheDocument()
+  })
+
+  it('shows ×N OWNED in the COUNT group', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Mug',
+        container: false,
+        kind: 'counted',
+        owned_count: 4,
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('×4 OWNED')).toBeInTheDocument()
+  })
+
+  // `whereabouts` returns one chip per *slice*, not per unit — S2b has
+  // exactly one `home` slice regardless of owned-count, so a five-unit piece
+  // of gear renders exactly one chip. A per-unit rendering would render five.
+  it('renders no per-unit rows', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Mug',
+        container: false,
+        kind: 'counted',
+        owned_count: 5,
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getAllByTestId('count-chip')).toHaveLength(1)
+  })
+
+  // LEDGER is story 33, tagged LATER, and derived from the change log rather
+  // than a second record — S2a's task was told not to build it and not to
+  // leave a placeholder either, and this slice holds that line too.
+  it('renders no LEDGER group', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Mug',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.queryByText('LEDGER')).toBeNull()
+    expect(screen.queryByText('APPEND-ONLY')).toBeNull()
   })
 })
