@@ -1004,10 +1004,11 @@ byte-exact.
   to GHCR tagged `:latest` and `:<sha>`, listen on a port, run migrations at
   start, and answer `GET /api/v1/version`. `docker-compose.dev.yml` is local
   development only.
-- **Tier 4 and the deployed-target Tier 5 are absent from CI** until that
-  infrastructure can deploy the images. Adding jobs that cannot pass would only
-  teach us to ignore a red pipeline. Tier 5 runs locally against a production
-  build in the meantime.
+- **The deployed-target Tier 5 is absent from CI** until that infrastructure
+  can deploy the images. Adding a job that cannot pass would only teach us to
+  ignore a red pipeline. Tier 5 runs locally against a production build in the
+  meantime. Tier 4 has since landed (`1539df4`): CI's `contract` job waits for
+  Watchtower to serve the pushed SHA, then runs `npm run test:contract`.
 - **The API's response headers landed with the skeleton**, not with auth. They
   are baseline hygiene for every response, and `Cache-Control: no-store` is
   specifically what makes `/version` usable as a deploy signal.

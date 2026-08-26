@@ -157,8 +157,8 @@ jobs:
   # proves the code correct against a local Postgres; this proves the *box*.
   #
   # Tier 5 against the deployed site is still absent — the golden path needs
-  # domain behaviour that does not exist before S2. It runs locally in the
-  # meantime: `npm run test:e2e`.
+  # domain behaviour (trips, pack, close) that awaits S6-S10. It runs locally
+  # in the meantime: `npm run test:e2e`.
   contract:
     needs: [changes, build-push]
     if: needs.changes.outputs.deployable == 'true'
