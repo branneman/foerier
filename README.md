@@ -213,13 +213,19 @@ Both read their configuration from the environment and nothing else.
 
 ## Status
 
-**Walking skeleton, plus the first auth slice.** The monorepo, toolchain, test
-tiers and both container images exist and are green, and a Quartermaster can
-join a Household from an invite and sign in with a passkey (stories 26, 27).
-There is no domain behaviour yet — no gear, no trips, and no op log, so the
-Depot is honestly empty. Alongside that, the repo contains requirements (user
-stories), a
-DDD domain design (the [ubiquitous language](docs/ubiquitous-language.md) and
+**Four slices in.** The monorepo, toolchain, test tiers and both container
+images exist and are green (S0); a Quartermaster can join a Household from an
+invite and sign in with a passkey (S1, stories 26, 27); and the Depot itself
+is real (S2a + S2b, stories 1–3). The op log and its reducer, eleven op
+types, and per-field last-writer-wins by Hybrid Logical Clock all ship, synced
+through `POST /sync/push` and `GET /sync/pull`. On top of that: F1 Add Gear,
+the Depot list, gear detail, F2 Find, whereabouts, and the join screen's
+gated first-sync fold. A Quartermaster can record gear on a phone with no
+signal, find it, and see where it lives.
+
+Trips do not exist yet — that lands in S6 onward. Alongside the running code,
+the repo contains requirements (user stories), a DDD domain design (the
+[ubiquitous language](docs/ubiquitous-language.md) and
 [domain model](docs/domain-model.md)), an approved
 [architecture & delivery design](docs/architecture-design.md), and example
 exports of the spreadsheets it will replace. The domain is modelled conceptually,
