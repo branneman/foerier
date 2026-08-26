@@ -13,7 +13,7 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-**Code has started.** Three commits of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+**Code has started.** Four commits of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
 have landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
@@ -22,24 +22,26 @@ have landed:
 - **S1, auth slice 1** (stories 26, 27) — the Maintainer bootstrap script, both
   WebAuthn ceremonies, device tokens, the auth middleware and tenancy rule, and
   the sign-in and join screens.
-- **S2a, the Depot** (stories 1, 2) — the op log, `/sync`, and gear. S2 is the
-  one slice in the plan that ships as **two** commits; see
-  [§8.3](docs/architecture-design.md#83-the-slices) for the seam and
-  [§12.3](docs/architecture-design.md#123-consequences-of-s2a-the-depot) for
-  what it settled.
+- **S2, the Depot** (stories 1, 2) — the op log, `/sync`, gear, Find, and
+  whereabouts. S2 is the one slice in the plan that ships as **two** commits,
+  S2a and S2b; see [§8.3](docs/architecture-design.md#83-the-slices) for the
+  seam and [§12.3](docs/architecture-design.md#123-consequences-of-s2a-the-depot)
+  for what it settled.
 
-**S2a delivers:** eleven op types and the reducer that folds them
-(`shared/`), per-field LWW by HLC, the containment selector and its cycle
-break; the client's IndexedDB op log, the HLC persisted across restarts, the
-outbox, the pull cursor and the dead-letter; `POST /sync/push` and
-`GET /sync/pull` with gapless per-household seqs; and the screens — F1 Add
-Gear, the Depot list, the gear detail. A Quartermaster can record gear on a
-phone with no signal and find it on a laptop.
+**The Depot is complete, both halves.** S2a delivered eleven op types and the
+reducer that folds them (`shared/`), per-field LWW by HLC, the containment
+selector and its cycle break; the client's IndexedDB op log, the HLC
+persisted across restarts, the outbox, the pull cursor and the dead-letter;
+`POST /sync/push` and `GET /sync/pull` with gapless per-household seqs; and
+the screens — F1 Add Gear, the Depot list, the gear detail. S2b delivered
+story 3's Home path and whereabouts, F2 Find, and the join screen's gated
+**first-sync fold** — the app's one unavoidable loading screen. **Zero new op
+types and zero new endpoints**: purely additive client read-side code. A
+Quartermaster can record gear on a phone with no signal, find it, and see
+where it lives — all from a laptop, or from that same phone with the radio
+off.
 
-**S2b still owes:** story 3's Home path and whereabouts, F2 Find, and the
-join screen's gated **first-sync fold** — the app's one unavoidable loading
-screen, which [§12.2](docs/architecture-design.md) records as owed. Zero new
-op types and zero new endpoints: purely additive client read-side code.
+**The next slice is S3, Tags and the slicing engine.**
 
 **One debt rides along:** there is no Account screen, so `sign out this
 device` has both its halves — `clearLocalData()` and the store's

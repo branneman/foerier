@@ -424,10 +424,10 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 ### 8.3 The slices
 
-**Landed so far: S0, S1, and S2a.** S2 was the first slice to need the op log,
-the reducer, and `/sync`, and it landed in **two commits rather than one** —
-see its entry below for why, and §12.3 for what it settled. **S2b, find it, is
-next.**
+**Landed so far: S0, S1, S2a, and S2b.** S2 was the first slice to need the op
+log, the reducer, and `/sync`, and it landed in **two commits rather than
+one** — see its entry below for why, and §12.3 for what it settled. **S3, Tags
+and the slicing engine, is next.**
 
 Two properties hold across every slice below and are not repeated in each:
 
@@ -530,10 +530,11 @@ it contains a clean seam:
   from the name the join screen took. Ends with a Quartermaster who can record
   gear on a phone with no signal and find it on a laptop.
 - **S2b — find it.** Everything that *reads*: story 3's Home path and
-  whereabouts, F2 Find, and the gated first-sync fold §12.2 records as owed by
-  the join screen. **Zero new op types and zero new endpoints** — purely
-  additive client read-side code, which is exactly what makes the seam a clean
-  one.
+  whereabouts, F2 Find, and the join screen's gated first-sync fold (§12.2).
+  **Zero new op types and zero new endpoints** — purely additive client
+  read-side code, which is exactly what made the seam a clean one. Ends with a
+  Quartermaster who can find any piece of gear and see where it lives, all
+  from local state, with the radio off.
 
 **S3 — Tags and the slicing engine.** *Advances 13.*
 

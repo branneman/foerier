@@ -109,6 +109,26 @@ test('gear recorded offline reaches the depot, survives a reload, and syncs', as
   await expect(page.getByRole('link', { name: 'Feldflasche' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Zeltbahn' })).toBeVisible()
 
+  // ---- find it, still offline ---------------------------------------------
+
+  // Find runs entirely over the local fold — `findGear`/`whereabouts` — so
+  // this is the leg that proves story 3 rather than merely exercising it:
+  // the radio stays off for all of it.
+  await page.getByRole('link', { name: 'Find' }).click()
+  await expect(page.getByRole('heading', { name: 'Find' })).toBeVisible()
+
+  await page.getByRole('searchbox', { name: 'Search gear' }).fill('Feldflasche')
+  await expect(page.getByText('1 MATCH · ON-DEVICE INDEX')).toBeVisible()
+
+  const match = page.getByRole('link', { name: 'Feldflasche' })
+  await expect(match).toBeVisible()
+  await expect(match.getByText('⌂ HOME')).toBeVisible()
+
+  await match.click()
+  await expect(page.getByRole('heading', { name: 'Feldflasche' })).toBeVisible()
+  await page.getByRole('link', { name: 'Depot', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Depot' })).toBeVisible()
+
   // ---- back online --------------------------------------------------------
 
   await context.setOffline(false)
