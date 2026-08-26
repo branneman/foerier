@@ -18,6 +18,7 @@ import { syncLine, syncTone } from './depot/syncLabel'
 import { createSessionDepot, type DepotFactory } from './depot/wiring'
 import { AddGear } from './screens/AddGear'
 import { Depot } from './screens/Depot'
+import { Find } from './screens/Find'
 import { GearDetail } from './screens/GearDetail'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
@@ -245,7 +246,7 @@ export function App({
                 <EmptyState title="Trips" line="No trips." />
               </Route>
               <Route path="/find">
-                <EmptyState title="Find" line="Nothing to search yet." />
+                <Find />
               </Route>
               <Route>
                 <EmptyState title="Not found." line="No such page." />
