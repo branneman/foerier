@@ -73,3 +73,9 @@ export {
   visibleGear,
   visiblePlaces,
 } from './selectors/depot.ts'
+
+export type { Whereabouts, WhereaboutsSlice } from './selectors/whereabouts.ts'
+export { whereabouts } from './selectors/whereabouts.ts'
+
+export type { Match } from './selectors/find.ts'
+export { findGear } from './selectors/find.ts'
