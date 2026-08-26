@@ -425,7 +425,7 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 ### 8.3 The slices
 
 **Landed so far: S0, S1, S2a, and S2b.** S2 was the first slice to need the op
-log, the reducer, and `/sync`, and it landed in **two commits rather than
+log, the reducer, and `/sync`, and it landed in **two halves rather than
 one** — see its entry below for why, and §12.3 for what it settled. **S3, Tags
 and the slicing engine, is next.**
 
@@ -517,7 +517,7 @@ searchable household inventory, before Trips exist."
   is this one. S4 keeps `person.renamed` and the People UI.
 - **Usable?** The spreadsheet's inventory tab is replaced.
 
-**S2 landed as two commits, S2a and S2b.** Not a change of plan about what a
+**S2 landed as two halves, S2a and S2b.** Not a change of plan about what a
 slice is — S2's whole span is one increment and both halves ship inside it —
 but a recognition that "the op log, the reducer, `/sync`, the outbox and four
 screens" is the largest single commit in the plan by a wide margin, and that

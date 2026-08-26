@@ -26,7 +26,7 @@ have landed:
   whereabouts. S2 is the one slice in the plan that ships as **two halves**,
   S2a and S2b; see [§8.3](docs/architecture-design.md#83-the-slices) for the
   seam and [§12.3](docs/architecture-design.md#123-consequences-of-s2a-the-depot)
-  for what it settled. A slice is not a commit: S2a alone landed as 51, under
+  for what it settled. A slice is not a commit: S2a alone landed as 61, under
   the merge convention below.
 
 **The Depot is complete, both halves.** S2a delivered eleven op types and the
@@ -187,7 +187,7 @@ artifacts with no external consumer.
   that is right — the commit *is* the reviewable unit. Past roughly a thousand
   lines it inverts: one commit stops being reviewable and its message stops
   being able to carry the reasoning, so squashing destroys the record instead of
-  tidying it. S2a was ~18,800 lines over 50 commits, each carrying why a
+  tidying it. S2a was ~19,500 lines over 61 commits, each carrying why a
   decision went the way it did — a fixture catching a live obligation-5 bug, an
   HLC that must not advance on garbage, a lock taken before a dedupe so a
   sequence stays gapless. That is worth more than a tidy log.
