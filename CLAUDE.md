@@ -13,7 +13,7 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-**Code has started.** Four commits of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+**Code has started.** Four slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
 have landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
@@ -23,10 +23,11 @@ have landed:
   WebAuthn ceremonies, device tokens, the auth middleware and tenancy rule, and
   the sign-in and join screens.
 - **S2, the Depot** (stories 1, 2) — the op log, `/sync`, gear, Find, and
-  whereabouts. S2 is the one slice in the plan that ships as **two** commits,
+  whereabouts. S2 is the one slice in the plan that ships as **two halves**,
   S2a and S2b; see [§8.3](docs/architecture-design.md#83-the-slices) for the
   seam and [§12.3](docs/architecture-design.md#123-consequences-of-s2a-the-depot)
-  for what it settled.
+  for what it settled. A slice is not a commit: S2a alone landed as 51, under
+  the merge convention below.
 
 **The Depot is complete, both halves.** S2a delivered eleven op types and the
 reducer that folds them (`shared/`), per-field LWW by HLC, the containment
