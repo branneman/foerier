@@ -51,8 +51,9 @@ the cheapest tier, and a different class of issue than behaviour covers.
   and then every tier below this one passes judgement on the wrong source
   tree without erroring. Detection, not prevention: npm workspaces cannot link
   into a worktree without an install there.
-- `tsc --noEmit` across every workspace (`app` · `landing` · `api` · `shared` ·
-  `ui`).
+- `tsc --noEmit` across every workspace (`app` · `api` · `shared` · `ui`).
+  `landing` is not scaffolded yet (architecture §12.1) and carries no
+  workspace to check.
 - ESLint (`typescript-eslint` + `eslint-plugin-react-hooks`) — correctness rules
   (unused vars, hook-dependency bugs, unreachable code).
 - Prettier for formatting only; `eslint-config-prettier` keeps the two from
@@ -146,6 +147,7 @@ registry** below so a persistent `foerier_test` DB never collides across classes
 | 5 | `0f000005-…-000000000005` | `migrations.test.ts` — the op table, household B |
 | 6 | `0f000006-…-000000000006` | `sync.test.ts` — push, pull, sequence assignment |
 | 7 | `0f000007-…-000000000007` | `sync.test.ts` — the other household |
+| 8 | none | `rateLimit.test.ts` — claims no household UUID, so nothing can collide |
 | _(claim the next free slot when adding a server-integration class)_ | | |
 
 Two rules the suite learned the hard way and that a new class must follow:
@@ -220,20 +222,28 @@ Three contexts, three strategies — never shared across contexts.
 - **Tier 2s:** each class seeds its own rows under its registered `household_id`
   and cleans mutable rows in setup; delete-by-both-UUID-and-natural-key to survive
   a persistent `foerier_test` DB (the `health` `init`-block pattern).
-- **Tiers 4 & 5:** dedicated production **test households** with SQL seed files
-  (`local-db-seed/test-api-household-seed.sql`,
-  `local-db-seed/test-e2e-household-seed.sql`), checked in, using clearly
-  synthetic data. A seeded/virtual passkey credential per test household; secrets
-  via env/CI, never committed.
+- **Tier 4** needs no household and no credentials at all
+  (`test/contract/deployment.test.ts:12-15`): its charter is everything
+  reachable unauthenticated, which is what lets it run from the first deploy
+  rather than from the first feature that needs a Household.
+- **Tier 5** mints a fresh Household per test by invoking the real Maintainer
+  bootstrap script (`test/e2e/mintInvite.ts:11-46`), deliberately rather than
+  seeding rows directly — `auth-design.md` §3.4 makes that script the only way
+  a Household's first Login is ever arranged, so a test that bypassed it would
+  not notice the front door breaking.
 
 ## Backward-compatibility testing
 
 Because installed PWAs run older app versions with **offline-queued ops** (see the
 [architecture spec](architecture-design.md) §7), the
-op-format must stay tolerant. A dedicated Tier 2 group replays **op fixtures
-captured from a previous app version** through the current reducer and asserts they
-still fold correctly — the guard that keeps expand-contract honest as vertical
-slices ship.
+op-format must stay tolerant. A dedicated Tier 2 group replays **op fixtures**
+through the current reducer and asserts they still fold correctly — the guard
+that keeps expand-contract honest as vertical slices ship. Most of the
+fixture is genuinely captured from a previous app version; two ops
+(`shared/src/fixtures.test.ts:9-17`) are **forward-compatibility probes**
+instead, standing in for a foreign or future client — `authoring.ts` types
+every builder's `name` as `string`, so no foerier client, past or present,
+can author the `{name: null}` those two ops carry.
 
 The obligations under test are enumerated in
 [`sync-protocol.md` §5.3](sync-protocol.md): an unknown op type is retained
