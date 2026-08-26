@@ -1,6 +1,8 @@
 import {
+  containmentView,
   findGear,
   whereabouts,
+  type ContainmentView,
   type DepotState,
   type Match,
   type PathSegment,
@@ -56,11 +58,14 @@ function pathText(path: readonly PathSegment[]): string {
   return path.map((segment) => segment.name).join(' ▸ ')
 }
 
-/** `⌂ HOME` for a slice with no containing path, else `⌂ <path>` — the
- * whereabouts line, mono 11, muted for home (`docs/design/README.md` §6). */
+/** `⌂ LOOSE` for a slice with no containing path, else `⌂ <path>` — the
+ * whereabouts line, mono 11, muted for home (`docs/design/README.md` §6).
+ * `LOOSE` is the ubiquitous-language term for gear with no residence
+ * (`docs/ubiquitous-language.md`) and matches `WhereaboutsCard.pathText` and
+ * `GearDetail.chipLocation`'s fallback for the identical condition. */
 function sliceText(slice: WhereaboutsSlice): string {
   const text = pathText(slice.path)
-  return text === '' ? '⌂ HOME' : `⌂ ${text}`
+  return text === '' ? '⌂ LOOSE' : `⌂ ${text}`
 }
 
 /**
@@ -69,10 +74,23 @@ function sliceText(slice: WhereaboutsSlice): string {
  * `whereabouts` always answers with exactly one `home` slice, so this card
  * shows one row today — the shape is what carries forward once story 11's
  * quantity split gives counted gear a second slice to add here.
+ *
+ * `view` is hoisted once for the whole screen (the way `Depot.tsx` hoists
+ * its own) and handed in, rather than left to `whereabouts`' default
+ * parameter — which would build a fresh `containmentView`, an O(n log n)
+ * sort over the whole depot, once per counted match, on every keystroke.
  */
-function CountedCard({ state, match }: { state: DepotState; match: Match }) {
+function CountedCard({
+  state,
+  match,
+  view,
+}: {
+  state: DepotState
+  match: Match
+  view: ContainmentView
+}) {
   const name = match.gear.name?.value ?? ''
-  const result = whereabouts(state, match.gear.id)
+  const result = whereabouts(state, match.gear.id, view)
   const count = result.slices.reduce((sum, slice) => sum + slice.count, 0)
   const metaId = `find-card-meta-${match.gear.id}`
   const sliceIds = result.slices.map(
@@ -146,6 +164,7 @@ export function Find() {
 
   const trimmed = query.trim()
   const matches = useMemo(() => findGear(state, trimmed), [state, trimmed])
+  const view = useMemo(() => containmentView(state), [state])
 
   // Recent searches are a per-viewer convenience, not a fact about the
   // household — nothing here is an op, so nothing here is folded, synced, or
@@ -198,7 +217,7 @@ export function Find() {
           {matches.map((match) => (
             <li key={match.gear.id}>
               {match.gear.kind?.value === 'counted' ? (
-                <CountedCard state={state} match={match} />
+                <CountedCard state={state} match={match} view={view} />
               ) : (
                 <PlainRow match={match} />
               )}

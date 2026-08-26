@@ -11,8 +11,11 @@ import styles from './WhereaboutsCard.module.css'
  * slice kinds that do not exist yet.
  *
  * **Maps over `slices`, never reads `slices[0]`** — the same shape `Find`'s
- * `CountedCard` already takes, so a second slice kind slots in here without a
- * restructuring.
+ * `CountedCard` already takes. That does not make a second slice kind free,
+ * though: `HOME_LABEL` is hardcoded inside the map and `key={slice.kind}`
+ * collides once two `'trip'` slices exist at once (multiple active trips).
+ * The type will force both edits when that lands; this just keeps the
+ * iteration shape from needing to change too.
  */
 
 const HOME_LABEL = '⌂ HOME SLOT'

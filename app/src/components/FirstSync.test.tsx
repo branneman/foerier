@@ -163,7 +163,18 @@ afterEach(() => {
 })
 
 function harness(
-  options: { history?: number; pageSize?: number } = {},
+  options: {
+    history?: number
+    pageSize?: number
+    /**
+     * Full jitter at zero by default, so a dropped page's backoff window is
+     * over the moment it opens and plain paging is never blocked by it. One
+     * test overrides this to a non-zero value, precisely to arm a window that
+     * only an explicit `RETRY NOW` — not the passage of time, which this
+     * harness's clock does not have — can get through.
+     */
+    random?: () => number
+  } = {},
 ): Harness {
   const server = createFakeServer()
   server.push(householdHistory(options.history ?? 0))
@@ -186,9 +197,7 @@ function harness(
         onStatus: hooks.onStatus,
         onBootstrap: hooks.onBootstrap,
         pageSize: options.pageSize ?? 2,
-        // Full jitter at zero, so a dropped page's backoff window is over the
-        // moment it opens and `RETRY NOW` is never blocked by it.
-        random: () => 0,
+        random: options.random ?? (() => 0),
         // Captured and never run: nothing may resume behind the test's back,
         // so every resume in this file is one the screen asked for.
         schedule: () => () => undefined,
@@ -387,6 +396,42 @@ describe('the first-sync fold', () => {
 
     // Page three is asked for from 2, never from 0: the two ops already
     // folded are not folded again, and the household is not re-sent.
+    await waitFor(() => {
+      expect(h.wire.pulls).toEqual([0, 2, 2, 4])
+    })
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Open the depot' }),
+      ).toBeEnabled()
+    })
+    expect(screen.queryByRole('region', { name: 'First sync' })).toBeNull()
+  })
+
+  it('reaches the transport on RETRY NOW after a dropped connection arms a backoff window', async () => {
+    // The suite's other `RETRY NOW` coverage uses `random: () => 0`, which
+    // collapses the backoff window to zero, and its dropped-connection case
+    // above uses a 400, which arms no `retryAt` at all — so neither would
+    // have caught `syncEngine.ts` refusing an explicit retry while a real
+    // window is still open. This one arms a non-zero window with a network
+    // drop and this harness's clock never advances on its own, so the only
+    // way the second pull below can reach the transport is the click itself
+    // clearing the backoff — waiting cannot do it here.
+    const h = harness({ history: 5, random: () => 0.9 })
+    h.wire.drop(2)
+    renderJoinSuccess(h.store)
+
+    await h.engine.pull()
+    expect(h.wire.pulls).toEqual([0, 2])
+    expect(
+      await screen.findByRole('button', {
+        name: 'Open the depot — paused at 40%',
+      }),
+    ).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'RETRY NOW' }))
+
+    // The retry actually asked the transport for page three, from the kept
+    // cursor — not a status change with nothing behind it.
     await waitFor(() => {
       expect(h.wire.pulls).toEqual([0, 2, 2, 4])
     })

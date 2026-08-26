@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import { aGear, aPlace, anOp, hlcAt } from '../../testUtils/index.ts'
-import { gearRehomed, placeRemoved, type OpSpec } from '../authoring.ts'
+import {
+  gearKindSet,
+  gearRehomed,
+  placeRemoved,
+  type OpSpec,
+} from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
 import { whereabouts } from './whereabouts.ts'
@@ -66,6 +71,25 @@ describe('whereabouts', () => {
     const state = fold(ops)
 
     expect(whereabouts(state, 'peg').slices[0]?.count).toBe(6)
+  })
+
+  it('reports a count of 1 once counted gear is edited back to single', () => {
+    // `gear.kind_set` touches only the `kind` register — per-field LWW
+    // cascades nothing (§5.3 obligation 4) — so `ownedCount` still reads `6`
+    // underneath. Reading it un-gated here would report `×6 THERE` while
+    // `GearDetail.tsx`'s `metaLine` (which does gate) renders plain
+    // `ITEM · SHARED` two lines away on the same screen.
+    const ops = [
+      ...at(
+        aGear({ id: 'mug', name: 'Mug', kind: 'counted', ownedCount: 6 }),
+        1,
+      ),
+      one(gearKindSet('mug', 'single'), 2),
+    ]
+    const state = fold(ops)
+
+    expect(state.gear['mug']?.ownedCount?.value).toBe(6)
+    expect(whereabouts(state, 'mug').slices[0]?.count).toBe(1)
   })
 
   it('reports an empty path for loose gear', () => {

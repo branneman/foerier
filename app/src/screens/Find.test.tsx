@@ -198,7 +198,9 @@ describe('Find', () => {
 
     const card = screen.getByRole('link', { name: 'Mug' })
     expect(within(card).getByText('COUNTED · ×4')).toBeInTheDocument()
-    expect(within(card).getByText('⌂ HOME')).toBeInTheDocument()
+    // `LOOSE`, not `HOME` — the ubiquitous-language term for gear with no
+    // residence, matching `WhereaboutsCard` and `GearDetail`'s COUNT chip.
+    expect(within(card).getByText('⌂ LOOSE')).toBeInTheDocument()
   })
 
   it('says there are no matches rather than showing an empty list', async () => {

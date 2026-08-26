@@ -693,6 +693,49 @@ describe('the sync engine handling errors', () => {
     expect(h.transport.pushes).toHaveLength(1)
     expect(h.scheduled).toEqual([])
   })
+
+  it('lets an explicit retry through a backoff window', async () => {
+    // random() === 1 is the top of the window, so it stays open for the
+    // whole test — nothing here waits it out or advances the clock.
+    const h = createHarness({ random: () => 1 })
+    h.server.queueError('pull', { status: 503, code: 'server_error' })
+
+    await h.engine.pull()
+    expect(h.transport.pulls).toHaveLength(1)
+    expect(h.engine.status()).toBe('offline')
+
+    // The window is armed and the clock has not moved, so a plain retry is
+    // refused — `RETRY NOW`'s bug, reproduced: nothing reaches the
+    // transport, nothing changes.
+    await h.engine.pull()
+    expect(h.transport.pulls).toHaveLength(1)
+
+    // The explicit retry — what `store.retrySync()` actually calls — clears
+    // the window first and gets through.
+    await h.engine.pull({ force: true })
+    expect(h.transport.pulls).toHaveLength(2)
+    expect(h.engine.status()).toBe('idle')
+  })
+
+  it('does not let the ordinary interval through a backoff window', async () => {
+    // The guard against over-fixing item 1: `force` must be the only door.
+    // If a plain `pull()` ever cleared the backoff too, the 30-second
+    // interval trigger — which calls `pull` with no options, same as every
+    // other trigger calls `sync` with no options — would stampede straight
+    // through the window §6.3 exists to enforce.
+    const h = createHarness({ random: () => 1 })
+    h.server.queueError('pull', { status: 503, code: 'server_error' })
+
+    await h.engine.pull()
+    expect(h.transport.pulls).toHaveLength(1)
+
+    // Three ordinary retries, still inside the window: still refused.
+    await h.engine.pull()
+    await h.engine.pull()
+    await h.engine.pull()
+    expect(h.transport.pulls).toHaveLength(1)
+    expect(h.engine.status()).toBe('offline')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -794,6 +837,38 @@ describe('the sync engine bootstrapping a new device', () => {
       null,
     ])
     expect(h.folds.flatMap((page) => page).length).toBe(5)
+  })
+
+  it('pauses a bootstrap left mid-fold when the next push fails, same as pullPages', async () => {
+    // A fold that throws (`does not advance the cursor when folding throws`,
+    // above) rejects `pullPages` without ever calling `pauseBootstrap` —
+    // there is no failed transport result to hand it — so it leaves
+    // `progress` at `{ paused: false }`. `serial`'s queue swallows that
+    // rejection and moves on (`syncEngine.ts`'s own comment on `serial`), so
+    // the *next* queued sync sees a bootstrap that is genuinely mid-fold and
+    // unpaused. If that next sync is a push and it fails, `pushOutbox` must
+    // pause the bootstrap itself — nothing upstream will.
+    const h = createHarness({
+      pageSize: 2,
+      onOps: () => {
+        throw new Error('fold failed')
+      },
+    })
+    h.server.push(
+      Array.from({ length: 5 }, () => anOp({ device_id: OTHER_DEVICE })),
+    )
+    await expect(h.engine.pull()).rejects.toThrow('fold failed')
+    expect(h.engine.bootstrap()).toEqual({ folded: 0, total: 0, paused: false })
+
+    await h.log.append(anOp())
+    h.server.queueError('push', { status: 503, code: 'server_error' })
+
+    await h.engine.flush()
+
+    // Without `pauseBootstrap()` in `pushOutbox`'s failure path, this would
+    // still read `paused: false` — the card frozen mid-fold, no `RETRY NOW`.
+    expect(h.engine.bootstrap()).toEqual({ folded: 0, total: 0, paused: true })
+    expect(h.engine.status()).toBe('offline')
   })
 
   it('does not bootstrap a device that has already pulled an empty household', async () => {

@@ -475,7 +475,10 @@ export function createDepotStore(
       return queued.length + store.getState().deadLetterCount
     },
     retrySync() {
-      engine.pull().catch((error: unknown) => {
+      // `force`: an explicit tap must actually clear the backoff window it is
+      // responding to, or the button does nothing while the wait is still
+      // running — see `syncEngine.ts`'s `pull()`.
+      engine.pull({ force: true }).catch((error: unknown) => {
         console.error('depot: the first sync could not be resumed', error)
       })
     },

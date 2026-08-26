@@ -89,7 +89,14 @@ export interface BootstrapProgress {
 
 export interface SyncEngine {
   flush(): Promise<void>
-  pull(): Promise<void>
+  /**
+   * `options.force` clears an armed backoff window before running — for an
+   * explicit user gesture only (`store.retrySync()`), never for the ordinary
+   * 30-second interval or the `online`/`visibilitychange` triggers, which all
+   * go through `trigger()` → `run('sync')` and never see this flag. Plain
+   * `pull()` still respects the window like everything else.
+   */
+  pull(options?: { force?: boolean }): Promise<void>
   start(): void
   stop(): void
   status(): SyncStatus
@@ -346,6 +353,10 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
           limit = Math.floor(chunk.length / 2)
           continue
         }
+        // A bootstrap interrupted here is paused exactly as `pullPages`
+        // pauses one: otherwise a push failure mid-fold leaves the card
+        // frozen with no `RETRY NOW` and no explanation.
+        pauseBootstrap()
         retryLater(result)
         return true
       }
@@ -514,7 +525,18 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
 
   return {
     flush: () => serial(() => run('flush')),
-    pull: () => serial(() => run('pull')),
+    pull: (options) => {
+      if (options?.force) {
+        // An explicit user gesture — `RETRY NOW` — is at least as strong a
+        // signal as the `online` handler above, which clears the same
+        // backoff on the weaker evidence that the network is merely back.
+        // Cleared before `canRun()` runs, so the very tap that asked for
+        // this pull is the one that gets to make it through the window
+        // rather than being refused by the window it is trying to end.
+        clearBackoff()
+      }
+      return serial(() => run('pull'))
+    },
 
     start() {
       if (interval !== null) return

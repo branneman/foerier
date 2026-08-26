@@ -103,7 +103,7 @@ describe('WhereaboutsCard', () => {
     expect(screen.getByText('×1 THERE')).toBeInTheDocument()
   })
 
-  it('shows the split-count hint', async () => {
+  it('shows an empty path as loose rather than as a blank row, and the split-count hint', async () => {
     const gearId = anId()
     const slices = await slicesFor(
       [
@@ -118,28 +118,15 @@ describe('WhereaboutsCard', () => {
 
     render(<WhereaboutsCard slices={slices} />)
 
+    // `LOOSE` only renders inside `slices.map`, so this is the assertion
+    // that actually depends on the map running — the hint below is a
+    // static footer outside it and would pass with the map deleted, which
+    // is why it rides along here rather than carrying its own test.
+    expect(screen.getByText('LOOSE')).toBeInTheDocument()
     expect(
       screen.getByText(
         'SPLIT COUNT — BOTH TRUE AT ONCE. HOME SLOT IS KEPT WHILE OUT.',
       ),
     ).toBeInTheDocument()
-  })
-
-  it('shows an empty path as loose rather than as a blank row', async () => {
-    const gearId = anId()
-    const slices = await slicesFor(
-      [
-        gearRecorded(gearId, {
-          name: 'Rope',
-          container: false,
-          kind: 'single',
-        }),
-      ],
-      gearId,
-    )
-
-    render(<WhereaboutsCard slices={slices} />)
-
-    expect(screen.getByText('LOOSE')).toBeInTheDocument()
   })
 })

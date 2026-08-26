@@ -52,7 +52,14 @@ export function whereabouts(
   view: ContainmentView = containmentView(state),
 ): Whereabouts {
   const gear = state.gear[gearId]
-  const count = gear?.ownedCount?.value ?? 1
+  // `ownedCount` is a register of its own and survives a `kind_set` to
+  // `single` untouched — correctly, per-field LWW cascades nothing (§5.3
+  // obligation 4). Reading it un-gated would let a Mug edited from ×6 back to
+  // Single report `×6 THERE` here while `GearDetail.tsx`'s `metaLine` — which
+  // does gate — renders plain `ITEM · SHARED` two lines away. The two must
+  // agree, so this mirrors that gate exactly.
+  const count =
+    gear?.kind?.value === 'counted' ? (gear.ownedCount?.value ?? 1) : 1
   const path = homePath(state, gearId, view)
   return { gearId, slices: [{ kind: 'home', path, count }] }
 }

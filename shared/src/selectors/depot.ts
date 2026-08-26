@@ -104,6 +104,13 @@ export function depotCounts(state: DepotState): {
 } {
   const gear = visibleGear(state)
   let pieces = 0
-  for (const item of gear) pieces += item.ownedCount?.value ?? 1
+  for (const item of gear) {
+    // `ownedCount` is its own register and outlives a `kind_set` back to
+    // `single` untouched (per-field LWW cascades nothing, §5.3 obligation 4).
+    // Gated the same way `GearDetail.tsx`'s `metaLine` and
+    // `selectors/whereabouts.ts` are, so all three agree on what a
+    // no-longer-counted item counts as.
+    pieces += item.kind?.value === 'counted' ? (item.ownedCount?.value ?? 1) : 1
+  }
   return { gear: gear.length, pieces }
 }
