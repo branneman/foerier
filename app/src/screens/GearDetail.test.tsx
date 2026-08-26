@@ -390,6 +390,26 @@ describe('Gear detail', () => {
     expect(screen.getByText('×4 OWNED')).toBeInTheDocument()
   })
 
+  // Fix round 1: counted gear with no residence (reachable in practice — Add
+  // Gear records gear as loose when no home is chosen) must read LOOSE in
+  // the COUNT chip, the same word the Whereabouts card uses two elements
+  // above it for the identical condition. `HOME` was a second word for one
+  // state and not a term this vocabulary defines.
+  it('shows the COUNT chip as loose when the gear has no residence', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Mug',
+        container: false,
+        kind: 'counted',
+        owned_count: 3,
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('×3 ⌂ LOOSE')).toBeInTheDocument()
+  })
+
   // `whereabouts` returns one chip per *slice*, not per unit — S2b has
   // exactly one `home` slice regardless of owned-count, so a five-unit piece
   // of gear renders exactly one chip. A per-unit rendering would render five.

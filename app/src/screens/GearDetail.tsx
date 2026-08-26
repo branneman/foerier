@@ -72,13 +72,18 @@ function metaLine(state: DepotState, gear: GearState): string {
   return parts.filter((part) => part !== '').join(' · ')
 }
 
-/** The innermost segment's name, or `HOME` for a loose slice — the COUNT
- * chip's location word (`docs/design/README.md` §4: `×1 ⌂ CRATE B`). CAPS is
- * a CSS transform on `.countChip` (`GearDetail.module.css`), not applied
- * here, matching how the rest of this codebase renders label text. */
+/** The innermost segment's name, or `LOOSE` for a loose slice — the COUNT
+ * chip's location word (`docs/design/README.md` §4: `×1 ⌂ CRATE B`).
+ * `LOOSE` is the ubiquitous-language term for gear with no residence
+ * (`docs/ubiquitous-language.md`) and matches `WhereaboutsCard`'s own
+ * `pathText` fallback for the identical condition — fix round 1 caught this
+ * chip disagreeing with the card two elements above it on the same screen.
+ * CAPS is a CSS transform on `.countChip` (`GearDetail.module.css`), not
+ * applied here, matching how the rest of this codebase renders label
+ * text. */
 function chipLocation(path: readonly PathSegment[]): string {
   const last = path[path.length - 1]
-  return last === undefined ? 'HOME' : last.name
+  return last === undefined ? 'LOOSE' : last.name
 }
 
 /** `×1 ⌂ CRATE B` — one chip per {@link WhereaboutsSlice}, never per unit
