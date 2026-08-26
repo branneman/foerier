@@ -38,10 +38,28 @@ describe('findGear', () => {
   })
 
   it('matches with diacritics folded', () => {
-    const ops = [...at(aGear({ id: 'g-oil', name: 'Ölzeug' }), 1)]
+    const ops = [
+      ...at(aGear({ id: 'g-oil', name: 'Ölzeug' }), 1),
+      ...at(aGear({ id: 'g-oil2', name: 'Olzeug' }), 2),
+    ]
     const state = fold(ops)
 
-    expect(names(findGear(state, 'olzeug'))).toEqual(['Ölzeug'])
+    // A query typed without marks finds a name recorded with them.
+    expect(names(findGear(state, 'olzeug'))).toEqual(['Olzeug', 'Ölzeug'])
+    // And the reverse: a query typed *with* marks finds a name recorded
+    // without them — both sides are folded, not just the stored name.
+    expect(names(findGear(state, 'Ölzeug'))).toEqual(['Olzeug', 'Ölzeug'])
+  })
+
+  it('folds letters Unicode gives no canonical decomposition to', () => {
+    const ops = [
+      ...at(aGear({ id: 'g-jacket', name: 'Norrøna jacket' }), 1),
+      ...at(aGear({ id: 'g-strap', name: 'Straße strap' }), 2),
+    ]
+    const state = fold(ops)
+
+    expect(names(findGear(state, 'norrona'))).toEqual(['Norrøna jacket'])
+    expect(names(findGear(state, 'strasse'))).toEqual(['Straße strap'])
   })
 
   it('excludes retired gear', () => {
