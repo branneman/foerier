@@ -108,9 +108,18 @@ function FirstSyncFrame({
   if (progress === null) {
     if (onOpenDepot === undefined) return null
     return (
-      <button type="button" className={styles['primary']} onClick={onOpenDepot}>
-        Open the depot
-      </button>
+      <>
+        {/* Pins the CTA to the thumb zone (§9), same as the folding case
+            below — Join.tsx no longer carries a spacer of its own for this. */}
+        <div className={styles['spacer']} />
+        <button
+          type="button"
+          className={styles['primary']}
+          onClick={onOpenDepot}
+        >
+          Open the depot
+        </button>
+      </>
     )
   }
 
@@ -145,6 +154,10 @@ function FirstSyncFrame({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent}
+        // The denominator is unknown for exactly one round trip (§6.4), and
+        // `percent` reads `0` for that instant same as it would for genuine
+        // zero progress — so a screen reader gets told rather than guessing.
+        {...(progress.total <= 0 ? { 'aria-valuetext': 'Counting' } : {})}
       >
         <div className={styles['fill']} style={{ inlineSize: `${percent}%` }} />
       </div>
@@ -178,16 +191,22 @@ function FirstSyncFrame({
     <>
       {card}
       {onOpenDepot === undefined ? null : (
-        <button
-          type="button"
-          className={styles['primary']}
-          onClick={onOpenDepot}
-          disabled
-        >
-          {progress.paused
-            ? `Open the depot — paused at ${percent}%`
-            : `Open the depot — folding ${percent}%`}
-        </button>
+        <>
+          {/* §9 puts the card in the body; only the CTA belongs in the thumb
+              zone, so the spacer sits here — between the two — rather than
+              above the card, which would flush both down together. */}
+          <div className={styles['spacer']} />
+          <button
+            type="button"
+            className={styles['primary']}
+            onClick={onOpenDepot}
+            disabled
+          >
+            {progress.paused
+              ? `Open the depot — paused at ${percent}%`
+              : `Open the depot — folding ${percent}%`}
+          </button>
+        </>
       )}
     </>
   )

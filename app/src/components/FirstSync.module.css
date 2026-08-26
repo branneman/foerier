@@ -110,4 +110,11 @@
     color: var(--color-ink-dim);
     cursor: default;
   }
+
+  /* Pins the CTA to the thumb zone without pushing the card down with it
+     (§9) — the card stays in the body. Only meaningful in the `'card'`
+     variant, inside a flex column ancestor: `Join.tsx`'s `.screen`. */
+  .spacer {
+    flex: 1;
+  }
 }

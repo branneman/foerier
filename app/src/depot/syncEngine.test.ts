@@ -795,6 +795,39 @@ describe('the sync engine bootstrapping a new device', () => {
     ])
     expect(h.folds.flatMap((page) => page).length).toBe(5)
   })
+
+  it('does not bootstrap a device that has already pulled an empty household', async () => {
+    const h = createHarness()
+
+    await h.engine.pull()
+    await h.engine.pull()
+
+    // Recorded across both pulls, not sampled at the end: the bug is a
+    // transient that a settled-state assertion (just checking the last value)
+    // would sail straight past. The first pull is this device's one
+    // legitimate bootstrap round trip against an empty household — `{0, 0,
+    // false}` then `null`. A second pull must report nothing at all: no
+    // second `{0, 0, false}`, no second `null`, no second 'bootstrapping'
+    // status — because `cursor === 0` cannot distinguish "never pulled" from
+    // "pulled an empty household", and testing it would re-enter the
+    // bootstrap on every 30-second trigger forever.
+    expect(h.progress).toEqual([{ folded: 0, total: 0, paused: false }, null])
+    expect(h.statuses.filter((status) => status === 'bootstrapping')).toEqual([
+      'bootstrapping',
+    ])
+  })
+
+  it('writes the cursor as 0 after pulling an empty household', async () => {
+    const h = createHarness()
+
+    await h.engine.pull()
+
+    // `null` (never written) and `0` (written, found nothing) are the two
+    // states the single bootstrap guard above depends on staying distinct.
+    // `toBeFalsy()` would pass on either and is exactly the trap: it does not
+    // tell `0` apart from the `null` that means something else entirely.
+    expect(await h.log.readMeta<number>('cursor')).toBe(0)
+  })
 })
 
 // ---------------------------------------------------------------------------

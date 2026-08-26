@@ -1045,6 +1045,16 @@ byte-exact.
   off the engine's bootstrap progress rather than its status string, composed
   into the join card and rendered full-screen ahead of the shell everywhere
   else.
+- **The first-sync screens still owe `person_name`.** The success frame's
+  `Els · Veldkamp` and the confirm frame's `YOU JOIN AS` / `INVITED BY` are
+  all blocked on one field: `InvitePreview` (`app/src/auth/api.ts:22`) carries
+  `household_name` and no person, so that line is currently half-buildable —
+  which is worse than absent, and neither frame renders it. Widening the auth
+  contract on a slice's last task was rejected deliberately; this records the
+  debt rather than paying it. A second, unrelated field is a candidate for the
+  same trip if one is ever made: `household_seq` on the join response, which
+  would let the confirm frame's `OP 0 OF —` denominator resolve immediately
+  instead of waiting on the first pull — a possibility, not a commitment.
 - **Story 27's last acceptance criterion is not delivered.** "If this Device
   cannot hold a Passkey, I can still complete the join" needs
   `POST /auth/device/claim`, which [auth-design §13](auth-design.md) places in

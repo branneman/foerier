@@ -90,6 +90,10 @@ function householdHistory(count: number): OpEnvelope[] {
  * back the `since` every page was asked for, which is the whole evidence that
  * a resume is not a restart. A real fake over the real in-memory server.
  */
+/** A lost connection by default; a test that needs a specific server refusal
+ * (a 400, say) passes it explicitly. */
+const NETWORK_DROP = { status: 0, code: 'network' } as const
+
 interface Wire {
   transport: Transport
   /** The `since` of every page asked for, in order. */
@@ -97,14 +101,16 @@ interface Wire {
   /** Hold the nth pull open until {@link release}. */
   hold(nth: number): void
   release(): void
-  /** Drop the nth pull the way a lost connection does. */
-  drop(nth: number): void
+  /** Fail the nth pull the way a lost connection does, unless `failure` names
+   * a different refusal. */
+  drop(nth: number, failure?: { status: number; code: string }): void
 }
 
 function controllable(inner: Transport): Wire {
   const pulls: number[] = []
   let holdAt: number | null = null
   let dropAt: number | null = null
+  let dropWith: { status: number; code: string } = NETWORK_DROP
   let held: (() => void) | null = null
 
   return {
@@ -112,8 +118,9 @@ function controllable(inner: Transport): Wire {
     hold(nth) {
       holdAt = nth
     },
-    drop(nth) {
+    drop(nth, failure = NETWORK_DROP) {
       dropAt = nth
+      dropWith = failure
     },
     release() {
       held?.()
@@ -127,8 +134,7 @@ function controllable(inner: Transport): Wire {
         if (nth === dropAt) {
           const dropped: TransportResult<PullBody> = {
             ok: false,
-            status: 0,
-            code: 'network',
+            ...dropWith,
           }
           return dropped
         }
@@ -257,6 +263,14 @@ describe('the first-sync fold', () => {
 
     expect(await screen.findByText('OP 1,000 OF 1,234 FOLDED')).toBeVisible()
     expect(screen.getByText('81%')).toBeVisible()
+    // The "one-time" honesty §7.6 asks for — the only §9 requirement that had
+    // no coverage anywhere in this file.
+    expect(
+      screen.getByText(
+        "This device folds the household's history once. After this it " +
+          'starts instantly and works offline.',
+      ),
+    ).toBeVisible()
 
     h.wire.release()
     await pulling
@@ -297,7 +311,12 @@ describe('the first-sync fold', () => {
     await pulling
   })
 
-  it('enables the CTA immediately for a household with nothing to fold', async () => {
+  it('enables the CTA once the first page confirms there is nothing to fold', async () => {
+    // Awaits the pull before asserting, so this pins the *settled* state only
+    // — it does not say whether the card showed for one round trip on the way
+    // there. R50 settled that a brand-new household does show the card for
+    // that one round trip; test 3 above ('shows a dash for the total before
+    // the first page arrives') owns that frame.
     const h = harness({ history: 0 })
     renderJoinSuccess(h.store)
 
@@ -347,9 +366,13 @@ describe('the first-sync fold', () => {
   it('resumes from the kept cursor on RETRY NOW rather than restarting', async () => {
     // Driven through the join frame, because a paused fold still gates the
     // CTA there — and `RETRY NOW` is the only thing on the screen that can
-    // end it: a pull refused with a 400 schedules no retry at all.
+    // end it: a pull refused with a 400 schedules no retry at all, so nothing
+    // but the click resumes it. (A dropped connection would also pause, but
+    // through `retryLater`, which *does* schedule — the schedule here is
+    // just a capturing no-op, so that path would leave this constraint
+    // unpinned.)
     const h = harness({ history: 5 })
-    h.wire.drop(2)
+    h.wire.drop(2, { status: 400, code: 'bad_request' })
     renderJoinSuccess(h.store)
 
     await h.engine.pull()
@@ -396,8 +419,18 @@ describe('the first-sync fold', () => {
     wire.hold(1)
 
     const log = inMemoryOpLog()
-    const createDepot: DepotFactory = (forSession) =>
-      createSessionDepot(forSession, { log, transport: wire.transport })
+    // Registered onto `built` the moment it exists, same as every other
+    // harness-built store in this file — otherwise `afterEach` never calls
+    // `stopSync()` on it, and this engine's 30 s interval and DOM listeners
+    // outlive the test.
+    const createDepot: DepotFactory = async (forSession) => {
+      const store = await createSessionDepot(forSession, {
+        log,
+        transport: wire.transport,
+      })
+      built.push(store)
+      return store
+    }
 
     const { hook } = memoryLocation({ path: '/' })
     render(

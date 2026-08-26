@@ -387,14 +387,24 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
 
   /** Returns `true` when it halted. */
   async function pullPages(): Promise<boolean> {
-    let cursor = await readCursor()
-    // A device whose cursor is still 0 has never pulled, so this is its first
-    // sync — as is one already part-way through a bootstrap that paused. The
-    // **cursor**, never the log's emptiness: the cursor means "has never
+    const seen = await deps.log.readMeta<number>('cursor')
+    let cursor = seen ?? 0
+    // A device that has never *written* a cursor has never pulled, so this is
+    // its first sync — as is one already part-way through a bootstrap that
+    // paused. That is not `cursor === 0`: both the real server and the fake
+    // return `cursor: ops.at(-1)?.seq ?? since`, so a household with no ops
+    // ever leaves an empty device's cursor at `0`, and testing `=== 0` would
+    // re-enter the bootstrap on every 30-second trigger. `writeMeta('cursor',
+    // page.cursor)` below runs on every page, including a page whose cursor is
+    // `0`, so `readMeta` returning `null` is the one test that actually means
+    // "never pulled" — `readCursor()`'s `?? 0` answers a different question,
+    // the loop's starting value, and must not be reused for this one.
+    //
+    // The **cursor**, never the log's emptiness: the cursor means "has never
     // pulled" and an empty log means "has never authored", and a Device that
     // joined, recorded gear offline and only then first-synced holds a
     // non-empty log at cursor 0 while folding the household's whole history.
-    const fresh = progress !== null || cursor === 0
+    const fresh = progress !== null || seen === null
 
     // `household_seq` arrives *with* the first page (§6.4), so the
     // denominator is unknown for exactly one round trip. Report the fold
@@ -465,7 +475,15 @@ export function createSyncEngine(deps: SyncEngineDeps): SyncEngine {
   }
 
   function canRun(): boolean {
-    if (frozen) return false
+    if (frozen) {
+      // The interval and both DOM listeners are unwired the moment this
+      // engine freezes (`freeze()`), so the only way to land here is an
+      // explicit caller — `retrySync()`, most likely — reaching a frozen
+      // engine after the fact. Otherwise that call is a silent no-op with
+      // nothing to point at (§6.3: re-authenticating builds a new engine).
+      console.warn('sync: refused — this engine is frozen; sign in again')
+      return false
+    }
     // Respect a backoff window rather than letting a trigger stampede past
     // it. The scheduled retry clears `retryAt` before it runs.
     return deps.clock.now() >= retryAt

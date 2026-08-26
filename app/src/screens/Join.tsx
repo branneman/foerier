@@ -55,12 +55,14 @@ export function Join({
       <div className={styles['screen']}>
         <h1 className={styles['title']}>Signed in.</h1>
         <p className={styles['fact']}>Passkey saved on this device.</p>
-        <div className={styles['spacer']} />
         {/* The one screen a Quartermaster cannot walk past: a Device that has
             never pulled folds the household's history before the depot can
             show anything, so the CTA is gated on that fold rather than on
             having signed in. A brand-new household has nothing to fold, and
-            `FirstSync` renders the ungated button instead. */}
+            `FirstSync` renders the ungated button instead. No spacer here:
+            §9 puts the fold card in the body, and `FirstSync` owns its own
+            spacer between the card and the CTA so only the button — never
+            the card — sits in the thumb zone. */}
         <FirstSync onOpenDepot={onOpenDepot} />
       </div>
     )
