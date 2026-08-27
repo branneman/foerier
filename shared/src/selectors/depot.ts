@@ -93,6 +93,70 @@ export function visiblePlaces(state: DepotState): readonly PlaceState[] {
 }
 
 /**
+ * The tags currently applied to one piece of gear, sorted.
+ *
+ * Only registers holding `true`. A register holding `false` is a **removal**,
+ * which is a write with a clock rather than an absence
+ * (`sync-protocol.md` §3.4) — it stays in the fold so a concurrent re-apply
+ * can win on its own stamp, and it is this selector's job not to show it.
+ *
+ * Sorted for the same reason every selector in this file sorts: `Object.keys`
+ * returns the order *this replica* happened to receive ops in, so two devices
+ * holding identical state would draw the chips differently.
+ */
+export function tagsOf(gear: GearState): readonly string[] {
+  const tags = gear.tags
+  if (tags === undefined) return []
+  return Object.keys(tags)
+    .filter((tag) => tags[tag]?.value === true)
+    .sort()
+}
+
+/** One tag in the household's vocabulary, and how much gear wears it. */
+export interface TagCount {
+  tag: string
+  count: number
+}
+
+/**
+ * The household's whole tag vocabulary, with counts — what both tag pickers
+ * offer (`docs/design/README.md` §4a).
+ *
+ * **There is no Tag entity**, by design: the vocabulary is derived from
+ * whatever is currently applied, and there is no rename op, ever. A tag
+ * therefore exists exactly as long as some visible gear wears it, and a
+ * misspelling is corrected only by removing it and applying the right one.
+ * That is why the counts are here at all — near-duplicates become visible at
+ * the moment they would be created, which is the only defence there is.
+ *
+ * **Count descending, then tag ascending.** Descending-count because the most
+ * used tag is the one most likely to be wanted; ascending-tag because the
+ * order must be *total*, or two devices with identical state would draw the
+ * picker differently.
+ *
+ * Retired gear contributes nothing, for the same reason it contributes
+ * nothing to {@link depotCounts}: this vocabulary slices the visible depot.
+ * A non-conforming tag is offered exactly as it was folded — the register key
+ * is the literal string that arrived (§5), and hiding it would leave a
+ * Quartermaster unable to remove the tag they can plainly see on the gear.
+ */
+export function depotTags(state: DepotState): readonly TagCount[] {
+  const counts = new Map<string, number>()
+  for (const gear of visibleGear(state)) {
+    for (const tag of tagsOf(gear)) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1)
+    }
+  }
+  return [...counts]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => {
+      if (a.count !== b.count) return b.count - a.count
+      if (a.tag === b.tag) return 0
+      return a.tag < b.tag ? -1 : 1
+    })
+}
+
+/**
  * The headline pair: how many distinct pieces of gear the household owns, and
  * how many physical things that adds up to. Only counted gear carries an
  * owned-count (invariant 6); everything else is one thing, so it counts as

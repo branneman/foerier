@@ -5,18 +5,30 @@ import {
   gearKindSet,
   gearRehomed,
   gearRetired,
+  gearTagApplied,
+  gearTagRemoved,
   placeRemoved,
   type OpSpec,
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
+import { normalizeTag, type TagString } from '../tags.ts'
 import {
   depotCounts,
+  depotTags,
   looseGear,
   retiredGear,
+  tagsOf,
   visibleGear,
   visiblePlaces,
 } from './depot.ts'
+
+/** The only way a `TagString` is made (`tags.ts`). */
+function aTag(raw: string): TagString {
+  const tag = normalizeTag(raw)
+  if (tag === null) throw new Error(`not a tag: ${raw}`)
+  return tag
+}
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 
@@ -119,5 +131,114 @@ describe('depot selectors', () => {
 
     expect(ids(looseGear(state))).toEqual(['g-axe', 'g-rope'])
     expect(ids(visiblePlaces(state))).toEqual(['attic'])
+  })
+})
+
+/**
+ * There is **no Tag entity** — the vocabulary is derived from whatever is
+ * currently applied (`docs/design/README.md` §4a). These two selectors are
+ * that derivation, and they are what both tag pickers read.
+ */
+describe('tagsOf', () => {
+  it('reports only the tags whose register is present', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      one(gearTagApplied('g1', aTag('winter')), 2),
+      one(gearTagApplied('g1', aTag('cooking')), 3),
+      one(gearTagRemoved('g1', aTag('winter')), 4),
+    ])
+    expect(tagsOf(state.gear['g1']!)).toEqual(['cooking'])
+  })
+
+  it('sorts, so two replicas draw the chips in one order', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      one(gearTagApplied('g1', aTag('winter')), 2),
+      one(gearTagApplied('g1', aTag('cooking')), 3),
+      one(gearTagApplied('g1', aTag('3-season')), 4),
+    ])
+    expect(tagsOf(state.gear['g1']!)).toEqual(['3-season', 'cooking', 'winter'])
+  })
+
+  it('answers empty for gear no tag op has ever addressed', () => {
+    const state = fold(at(aGear({ id: 'g1', name: 'Pot set' }), 1))
+    expect(tagsOf(state.gear['g1']!)).toEqual([])
+  })
+})
+
+describe('depotTags', () => {
+  /**
+   * Count descending, then tag ascending — the order both pickers draw
+   * (`#winter 23 · #cooking 14 · #sleep 9`). The `cook-set` / `cooking` pair
+   * is what settles it as count-first rather than alphabetical: `cook-set`
+   * sorts *before* `cooking`, yet the board draws it second.
+   */
+  it('orders by count descending, then tag ascending', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...at(aGear({ id: 'g2', name: 'Pan' }), 2),
+      ...at(aGear({ id: 'g3', name: 'Kettle' }), 3),
+      one(gearTagApplied('g1', aTag('cooking')), 4),
+      one(gearTagApplied('g2', aTag('cooking')), 5),
+      one(gearTagApplied('g3', aTag('cooking')), 6),
+      one(gearTagApplied('g1', aTag('cook-set')), 7),
+      one(gearTagApplied('g2', aTag('cook-set')), 8),
+      one(gearTagApplied('g3', aTag('winter')), 9),
+      one(gearTagApplied('g1', aTag('alpine')), 10),
+    ])
+    expect(depotTags(state)).toEqual([
+      { tag: 'cooking', count: 3 },
+      { tag: 'cook-set', count: 2 },
+      { tag: 'alpine', count: 1 },
+      { tag: 'winter', count: 1 },
+    ])
+  })
+
+  it('drops a tag once nothing carries it any more', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      one(gearTagApplied('g1', aTag('winter')), 2),
+      one(gearTagRemoved('g1', aTag('winter')), 3),
+    ])
+    // The register survives holding `false`; the vocabulary does not — there
+    // is no Tag entity, so a tag exists exactly as long as something wears it.
+    expect(state.gear['g1']?.tags?.['winter']?.value).toBe(false)
+    expect(depotTags(state)).toEqual([])
+  })
+
+  // Retired gear contributes nothing, for the same reason it contributes
+  // nothing to `depotCounts`: the picker offers a vocabulary for slicing the
+  // *visible* depot.
+  it('does not count retired gear', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...at(aGear({ id: 'g2', name: 'Old pan' }), 2),
+      one(gearTagApplied('g1', aTag('cooking')), 3),
+      one(gearTagApplied('g2', aTag('cooking')), 4),
+      one(gearRetired('g2'), 5),
+    ])
+    expect(depotTags(state)).toEqual([{ tag: 'cooking', count: 1 }])
+  })
+
+  // §5's tolerant reader again: a tag a foreign build authored is part of the
+  // vocabulary exactly as it arrived, because the register is.
+  it('offers a non-conforming tag exactly as it was folded', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      anOp(
+        {
+          aggregate: 'gear',
+          aggregate_id: 'g1',
+          type: 'gear.tag_applied',
+          payload: { tag: 'Cooking' },
+        },
+        { hlc: hlcAt(2), deviceId: DEV_A },
+      ),
+      one(gearTagApplied('g1', aTag('cooking')), 3),
+    ])
+    expect(depotTags(state)).toEqual([
+      { tag: 'Cooking', count: 1 },
+      { tag: 'cooking', count: 1 },
+    ])
   })
 })

@@ -71,13 +71,33 @@ export type {
 } from './selectors/containment.ts'
 export { containmentView, homePath } from './selectors/containment.ts'
 
+export type { TagCount } from './selectors/depot.ts'
 export {
   depotCounts,
+  depotTags,
   looseGear,
   retiredGear,
+  tagsOf,
   visibleGear,
   visiblePlaces,
 } from './selectors/depot.ts'
+
+export type {
+  Dimension,
+  DimensionId,
+  GroupKey,
+  SliceGroup,
+  SliceResult,
+  SliceSpec,
+  SortKey,
+} from './selectors/slice.ts'
+export {
+  DIMENSIONS,
+  dimension,
+  EMPTY_SLICE,
+  recordedAt,
+  sliceDepot,
+} from './selectors/slice.ts'
 
 export type { Whereabouts, WhereaboutsSlice } from './selectors/whereabouts.ts'
 export { whereabouts } from './selectors/whereabouts.ts'
