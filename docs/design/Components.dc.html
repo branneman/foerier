@@ -148,7 +148,7 @@
         <div style="display:grid; grid-template-columns:30px 1.5fr .6fr 1.5fr .9fr 50px 120px; gap:0 12px; padding:0 16px; height:44px; align-items:center; border-bottom:1px solid #2A3129" style-hover="background:#28312A">
           <svg width="16" height="16" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#1F2620" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg>
           <div style="font-weight:600; font-size:14px">Sleeping bag, winter</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">COUNTED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">ATTIC ▸ SHELF L-TOP ▸ CRATE B</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">#winter #sleep</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">×2</div>
@@ -157,32 +157,36 @@
         <div style="display:grid; grid-template-columns:30px 1.5fr .6fr 1.5fr .9fr 50px 120px; gap:0 12px; padding:0 16px; height:44px; align-items:center; border-bottom:1px solid #2A3129" style-hover="background:#28312A">
           <svg width="16" height="16" viewBox="0 0 12 12"><path d="M6,1.6 A4.4,4.4 0 0 0 6,10.4 Z" fill="#D3A344"></path><circle cx="6" cy="6" r="4.4" fill="none" stroke="#D3A344" stroke-width="1.6"></circle></svg>
           <div style="font-weight:600; font-size:14px">Water filter</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SINGLE</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">KELDER ▸ SHELF 2</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">#water #cooking</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">×1</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">—</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; color:#D3A344">◐ STAGED</div>
         </div>
         <div style="display:grid; grid-template-columns:30px 1.5fr .6fr 1.5fr .9fr 50px 120px; gap:0 12px; padding:0 16px; height:44px; align-items:center" style-hover="background:#28312A">
           <svg width="16" height="16" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg>
           <div style="font-weight:600; font-size:14px">Crate B <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">5 INSIDE</span></div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">CONT.</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SINGLE</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">ATTIC ▸ SHELF L-TOP</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">#storage</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">—</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; color:#97A08C">○ 2/5 PACKED</div>
         </div>
       </div>
-      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-top:8px">DESKTOP DENSE · H44 · HOVER RAISES · CLICK = DETAIL, ⌘-CLICK = MULTI-SELECT FOR BULK EDIT</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-top:8px">DESKTOP DENSE · H44 · HOVER RAISES · CLICK = DETAIL · ⌘-CLICK MULTI-SELECT FEEDS THE BULK BAR (STORY 35 — LATER)</div>
     </div>
   </div>
+  <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 18px; margin-top:10px">
+    <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">ONE GEARROW — THE VARIANT MAP (EXTRACTED INTO ui/ AT S3 — FRONTEND-DESIGN §5, ARCH §12.4)</div>
+    <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.7">One component, three renders picked by @container, never by viewport: <span style="color:#E8E5D5">2-LINE</span> (&lt;~600px pane — phone list, Split 900's 308px list pane; name + trailing whereabouts word, meta line = owner · path · qty), <span style="color:#E8E5D5">1-LINE</span> (≥~600px — Roomy; meta moves inline), <span style="color:#E8E5D5">TABLE 44</span> (desktop 8-column row). Find's plain match is the same 2-LINE row with the meta slot swapped to the ⌂ path — answer-first is a meta-slot choice, not a new component. The builder's 40px row is a <span style="color:#E8E5D5">different component</span>: trailing action (+ ADD / IN LIST ✓), no whereabouts. KIND cells carry the glossary Kind — SINGLE · PER-PERSON · COUNTED; containment shows as the name's N INSIDE suffix and ›, never as a fake Kind. QTY = ×N for counted only — singles read —. Tags appear ONLY in the table's TAGS column (plain mono, ellipsis) and on gear detail; phone rows never show tags — a tag filter changes which rows appear, not the rows.</div>
+  </div>
 
-  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:28px 0 10px">04 — SLICE BAR (LIVE)</div>
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:28px 0 10px">04 — SLICE BAR (LIVE) · S3 SHIP STATE</div>
   <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:12px">
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-      <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
-        <sc-if value="{{ f.active }}"><span onClick="{{ f.toggle }}" style="display:inline-flex; align-items:center; gap:7px; height:40px; padding:0 14px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; cursor:pointer; user-select:none">{{ f.label }}<span style="color:#93BC9F">✕</span></span></sc-if>
-        <sc-if value="{{ f.inactive }}" hint-placeholder-val="{{ true }}"><span onClick="{{ f.toggle }}" style="display:inline-flex; align-items:center; height:40px; padding:0 14px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; cursor:pointer; user-select:none" style-hover="border-color:#93BC9F; color:#E8E5D5">+ {{ f.label }}</span></sc-if>
+      <sc-for list="{{ filters }}" as="f" hint-placeholder-count="2">
+        <sc-if value="{{ f.active }}"><span onClick="{{ f.toggle }}" style="display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; cursor:pointer; user-select:none">{{ f.label }}<span style="color:#93BC9F">✕</span></span></sc-if>
+        <sc-if value="{{ f.inactive }}" hint-placeholder-val="{{ true }}"><span onClick="{{ f.toggle }}" style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; cursor:pointer; user-select:none" style-hover="border-color:#93BC9F; color:#E8E5D5">{{ f.ghost }}</span></sc-if>
       </sc-for>
       <span style="flex:1"></span>
       <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#E8E5D5">{{ resultText }}</span>
@@ -192,13 +196,40 @@
       <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#6A7161">GROUP BY</span>
       <div style="display:inline-flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:36px">
         <span style="display:inline-flex; align-items:center; padding:0 13px; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">NONE</span>
-        <span style="display:inline-flex; align-items:center; padding:0 13px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F; cursor:pointer" style-hover="color:#E8E5D5">CONTAINER</span>
-        <span style="display:inline-flex; align-items:center; padding:0 13px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F; cursor:pointer" style-hover="color:#E8E5D5">PERSON</span>
         <span style="display:inline-flex; align-items:center; padding:0 13px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F; cursor:pointer" style-hover="color:#E8E5D5">KIND</span>
       </div>
       <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#6A7161; margin-left:10px">SORT</span>
       <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 13px; border:1px solid #47523F; border-radius:8px; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; cursor:pointer" style-hover="border-color:#93BC9F">NAME A→Z <span style="color:#5E6857">▾</span></span>
-      <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-left:auto">FILTERS COMBINE WITH AND · COUNT UPDATES PER TAP</span>
+      <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-left:auto">SEARCH + FILTERS COMBINE WITH AND · COUNT UPDATES PER TAP</span>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; border-top:1px solid #2A3129; padding-top:12px">
+      <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#6A7161">FUTURE DIMENSIONS — NEVER AVAILABLE EARLY</span>
+      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">PERSON · S4</span>
+      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">OWNERSHIP · S4</span>
+      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">TRIP · S7</span>
+      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">PIECES BY PERSON · S8</span>
+      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">STATUS · S9</span>
+      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">CONTAINER · S9</span>
+      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">OUTCOME · S10</span>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:396px 1fr; gap:10px; margin-top:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">COLLAPSED (&lt;600PX CONTAINER) · SORT MENU (DESKTOP)</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; background:#151A15; border:1px solid #333C33; border-radius:8px; padding:10px 12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">9 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (1)</span></span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; cursor:pointer"><span style="color:#E8E5D5; font-weight:600">KIND</span> · NAME A→Z <span style="color:#5E6857">▾</span></span>
+      </div>
+      <div style="width:200px; background:#28312A; border:1px solid #333C33; border-radius:8px; margin-top:12px; padding:4px 12px; box-shadow:0 8px 24px rgba(0,0,0,.4)">
+        <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #333C33"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">NAME A→Z</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#93BC9F">● NOW</span></div>
+        <div style="display:flex; align-items:center; min-height:36px; border-bottom:1px solid #333C33"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">NAME Z→A</span></div>
+        <div style="display:flex; align-items:center; min-height:36px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">NEWEST FIRST</span></div>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-top:10px; line-height:1.7">THE READOUT OPENS THE SORT-AND-GROUP SHEET ON PHONE (SCREENS A §03) · ON DESKTOP THE TABLE'S COLUMN HEADS SORT AND THE ▾ CONTROL APPEARS ONLY WHERE NO HEADS EXIST</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">S3 RULES — SETTLED</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.7">The chip is <span style="color:#E8E5D5">36px everywhere</span> — the 32/36/40 drift across boards is settled here. Ghost add-chips are <span style="color:#E8E5D5">dimension-only</span> (+ TAG) and open a picker; the old value-carrying ghost (+ TAG: #WINTER) is retired. Single-valued dimensions (KIND) hide their ghost while active; TAG keeps its ghost — several tag chips AND together. S3 carries TAG and KIND, nothing else; §8.5's ladder above is drawn dashed and is never available early. <span style="color:#E8E5D5">GROUP BY never offers TAG — deliberate</span>: tags are multi-valued, so tag groups would not partition the list (a three-tag gear lands in three groups); slicing by tag is the filter's job. Sort keys at S3: NAME A→Z / Z→A / NEWEST FIRST (recorded). One count line: N OF 128 covers search and filters together; Find's N MATCHES · ON-DEVICE INDEX is a different surface and keeps its read. Sort + group persist per device; filters + search reset on a fresh start; CLEAR (n) is story 13's undo and stays visible while anything narrows.</div>
     </div>
   </div>
 
@@ -278,12 +309,12 @@
     <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
       <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">TAGS</div>
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px">
-        <span style="padding:7px 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em">#winter</span>
-        <span style="padding:7px 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em">#cooking</span>
-        <span style="padding:7px 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em">#alps ✕</span>
-        <span style="padding:7px 12px; border-radius:99px; border:1px dashed #47523F; color:#6A7161; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em; cursor:pointer" style-hover="color:#93BC9F; border-color:#93BC9F">+ tag</span>
+        <span style="display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em">#winter</span>
+        <span style="display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em">#cooking</span>
+        <span style="display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em">#alps ✕</span>
+        <span style="display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:99px; border:1px dashed #47523F; color:#6A7161; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em; cursor:pointer" style-hover="color:#93BC9F; border-color:#93BC9F">+ tag</span>
       </div>
-      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-top:12px; line-height:1.7">LOWERCASE · FILLED = ACTIVE FILTER · TAGS ARE FLAT, NOT HIERARCHY</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-top:12px; line-height:1.7">THE SETTLED CHIP: LOWERCASE · MONO 10.5 · 32PX · # IS DRAWN, NOT STORED · FILLED = ACTIVE FILTER (FILTER SURFACES ONLY) · FLAT, NOT HIERARCHY · ✕ LIVES IN THE PICKER, NOT ON READ SCREENS · TRIP-ONLY GEAR IS NEVER TAGGED</div>
       <div style="border-top:1px solid #2A3129; margin-top:12px; padding-top:12px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">SYNC STATE</div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px">
@@ -512,6 +543,8 @@
       <div style="display:flex; align-items:center; gap:6px; margin-top:14px">
         <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">61 PIECES · EST 48.2 KG</span>
         <span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">LATER</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px; margin-left:8px">S8 · PIECES</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">API FIELD</span>
       </div>
       <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5; margin-top:8px">61 PIECES</div>
       <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-top:10px; line-height:1.7">TAG SITS INLINE AFTER THE ELEMENT IT SCOPES; WHERE THAT ELEMENT IS A SEGMENT OF A COMPOSITE LINE, THE MVP VARIANT IS DRAWN ALONGSIDE (AS ABOVE).</div>
@@ -520,13 +553,32 @@
       <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">RULE</div>
       <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.7">LATER marks an element that is drawn final and decided, but not MVP: the ledger group on Gear detail (story 33) and every weight total (story 16). Build the MVP without tagged elements; their design does not change when they land. Dashed border = not yet committed, the same grammar as draft cards and future journey chips. The tag never recolours or dims the element it scopes — the element stays exactly as it will ship.</div>
       <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.7">It is a scope marker, not a status: never ▲, never amber, never on interactive states. Anything untagged on the boards is MVP.</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.7">Two text variants, same anatomy: a slice number (S8 · PIECES) marks an MVP element that lands with a later slice — decided and final, not Later, not regressed (Find's per-person card). API FIELD marks copy blocked on an endpoint field (the join names) — omitted until the field exists, never faked. LATER alone stays post-MVP.</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:28px 0 10px">11 — WHEREABOUTS VOCABULARY · TWO QUESTIONS, TWO WORDS</div>
+  <div style="display:grid; grid-template-columns:396px 1fr; gap:10px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">THE GLYPH = WORLD · THE WORD = THE ANSWER</div>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px; font-family:'Spline Sans Mono',monospace; font-size:11px">
+        <div style="display:flex; gap:12px; align-items:baseline"><span style="color:#97A08C; width:110px; flex-shrink:0">⌂ HOME</span><span style="color:#6A7161; font-size:9.5px">WORLD ONLY — CHIPS, COLUMNS</span></div>
+        <div style="display:flex; gap:12px; align-items:baseline"><span style="color:#E2A65B; width:110px; flex-shrink:0">▸ ON TRIP</span><span style="color:#6A7161; font-size:9.5px">WORLD ONLY — AMBER, EVERYWHERE</span></div>
+        <div style="display:flex; gap:12px; align-items:baseline"><span style="color:#97A08C; width:110px; flex-shrink:0">⌂ ATTIC ▸ CRATE B</span><span style="color:#6A7161; font-size:9.5px">RESIDENCE — WHERE IT LIVES</span></div>
+        <div style="display:flex; gap:12px; align-items:baseline"><span style="color:#97A08C; width:110px; flex-shrink:0">⌂ LOOSE</span><span style="color:#6A7161; font-size:9.5px">RESIDENCE — LIVES NOWHERE (LEGITIMATE, NOT AN ERROR)</span></div>
+        <div style="display:flex; gap:12px; align-items:baseline"><span style="color:#D98263; width:110px; flex-shrink:0">▲ LAST SEEN: …</span><span style="color:#6A7161; font-size:9.5px">UNACCOUNTED — ATTENTION CLASS</span></div>
+      </div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">RULING — SETTLED</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.7">Two words answer two different questions and both are correct — on the same screen if it asks both. ⌂ HOME answers <span style="color:#E8E5D5">which world is this in</span> (§82's two-worlds indicator: ⌂ muted vs ▸ amber); LOOSE answers <span style="color:#E8E5D5">where does it live</span> — the glossary term for residing nowhere. The glyph always names the world; the word after it names the residence where the surface answers residence (a path, or LOOSE), and the bare world (HOME, ON TRIP) where it only answers world. HOME never names a residence; LOOSE never stands alone as a world — it is written ⌂ LOOSE. Find showing the ⌂ HOME chip beside a ⌂ LOOSE line is the grammar working, not a contradiction.</div>
     </div>
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1144,&quot;height&quot;:4120}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1144,&quot;height&quot;:5100}}">
 class Component extends DCLogic {
-  state = { status: 1, stage: 2, people: {M:2, E:1, K:0}, count: 2, filters: {kind:true, person:true, tag:false, status:false}, auth: 0 };
+  state = { status: 1, stage: 2, people: {M:2, E:1, K:0}, count: 2, filters: {tag:true, kind:false}, auth: 0 };
   qr(seed) {
     const n = 21, cells = [];
     let s = seed;
@@ -558,7 +610,7 @@ class Component extends DCLogic {
       cycle: () => this.setState(st => ({ people: { ...st.people, [k]: cyc(st.people[k]) } }))
     }));
     const packedN = ['M', 'E', 'K'].filter(k => s.people[k] === 2).length;
-    const defs = [['kind', 'KIND: SHELTER'], ['person', 'PERSON: E'], ['tag', 'TAG: #WINTER'], ['status', 'STATUS: LEFT']];
+    const defs = [['tag', 'TAG: #WINTER', '+ TAG'], ['kind', 'KIND: COUNTED', '+ KIND']];
     const active = defs.filter(d => s.filters[d[0]]).length;
     return {
       st0: s.status === 0, st1: s.status === 1, st2: s.status === 2,
@@ -570,12 +622,12 @@ class Component extends DCLogic {
       inc: () => this.setState(st => ({ count: Math.min(9, st.count + 1) })),
       dec: () => this.setState(st => ({ count: Math.max(0, st.count - 1) })),
       filters: defs.map(d => ({
-        label: d[1], active: s.filters[d[0]], inactive: !s.filters[d[0]],
+        label: d[1], ghost: d[2], active: s.filters[d[0]], inactive: !s.filters[d[0]],
         toggle: () => this.setState(st => ({ filters: { ...st.filters, [d[0]]: !st.filters[d[0]] } }))
       })),
-      resultText: [128, 64, 23, 11, 4][active] + ' OF 128',
+      resultText: [128, 40, 23][active] + ' OF 128',
       activeCount: active, hasActive: active > 0,
-      clearFilters: () => this.setState({ filters: { kind: false, person: false, tag: false, status: false } }),
+      clearFilters: () => this.setState({ filters: { tag: false, kind: false } }),
       authIdle: s.auth === 0, authPending: s.auth === 1, authFailed: s.auth === 2,
       authTap: () => this.setState(st => ({ auth: (st.auth + 1) % 3 })),
       qrInvite: this.qr(5)

@@ -229,7 +229,7 @@
       <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px" style-hover="background:#1F2620"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">⌂ ATTIC</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">18</span></div>
       <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px" style-hover="background:#1F2620"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">⌂ KELDER</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">32</span></div>
       <div style="display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px" style-hover="background:#1F2620"><span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">⌂ GARAGE</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">9</span></div>
-      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161; padding:14px 10px 6px">SAVED SLICES</div>
+      <div style="display:flex; align-items:center; gap:8px; padding:14px 10px 6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161">SAVED SLICES</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">LATER</span></div>
       <div style="padding:8px 10px; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5" style-hover="background:#1F2620">WINTER KIT</div>
       <div style="padding:8px 10px; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5" style-hover="background:#1F2620">PER-PERSON GEAR</div>
       <div style="padding:8px 10px; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#6A7161; text-decoration:line-through" style-hover="background:#1F2620">RETIRED · 11</div>
@@ -243,15 +243,24 @@
         <button style="height:40px; padding:0 16px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">+ Add gear</button>
       </div>
       <div style="display:flex; gap:6px; align-items:center; margin-top:14px; flex-wrap:wrap">
-        <span style="display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 11px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">KIND: SHELTER <span style="color:#93BC9F">✕</span></span>
-        <span style="display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 11px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">TAG: #WINTER <span style="color:#93BC9F">✕</span></span>
-        <span style="display:inline-flex; align-items:center; height:32px; padding:0 11px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ PERSON</span>
-        <span style="display:inline-flex; align-items:center; height:32px; padding:0 11px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ WHEREABOUTS</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">TAG: #WINTER <span style="color:#93BC9F">✕</span></span>
+        <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">KIND: COUNTED <span style="color:#93BC9F">✕</span></span>
+        <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ TAG</span>
         <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5">23 OF 128</span>
         <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em; cursor:pointer">CLEAR (2)</span>
       </div>
+      <div style="display:flex; gap:10px; align-items:center; margin-top:10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#6A7161">GROUP BY</span>
+        <div style="display:inline-flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:36px">
+          <span style="display:inline-flex; align-items:center; padding:0 13px; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">NONE</span>
+          <span style="display:inline-flex; align-items:center; padding:0 13px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F; cursor:pointer" style-hover="color:#E8E5D5">KIND</span>
+        </div>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em">SORT — CLICK A COLUMN HEAD (GEAR ↑)</span>
+        <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em">SEARCH + FILTERS COMBINE WITH AND</span>
+      </div>
       <div style="background:rgba(147,188,159,.07); border:1px solid #35523F; border-radius:8px; margin-top:12px; padding:8px 14px; display:flex; align-items:center; gap:14px">
         <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; color:#93BC9F; letter-spacing:.06em">3 SELECTED</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">LATER</span>
         <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; color:#E8E5D5; letter-spacing:.06em; cursor:pointer">MOVE</span>
         <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; color:#E8E5D5; letter-spacing:.06em; cursor:pointer">TAG</span>
         <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; color:#E8E5D5; letter-spacing:.06em; cursor:pointer">SET OWNER</span>
@@ -265,17 +274,17 @@
         <div style="display:grid; grid-template-columns:34px 1.45fr .5fr .6fr 1.45fr .95fr 44px 130px; gap:0 10px; padding:0 14px; height:44px; align-items:center; border-bottom:1px solid #2A3129; background:rgba(147,188,159,.05)">
           <span style="width:18px; height:18px; border-radius:4px; background:#93BC9F; display:inline-flex; align-items:center; justify-content:center"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2.5,6.5 L5,9 L9.5,3.5" stroke="#151A15" stroke-width="1.8" fill="none" stroke-linecap="round"></path></svg></span>
           <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Tent, tunnel 4p</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SINGLE</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SHARED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">GARAGE ▸ SHELF 1</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">#shelter #winter</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">×1</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">—</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em; color:#97A08C">⌂ HOME</div>
         </div>
         <div style="display:grid; grid-template-columns:34px 1.45fr .5fr .6fr 1.45fr .95fr 44px 130px; gap:0 10px; padding:0 14px; height:44px; align-items:center; border-bottom:1px solid #2A3129; background:rgba(147,188,159,.05)">
           <span style="width:18px; height:18px; border-radius:4px; background:#93BC9F; display:inline-flex; align-items:center; justify-content:center"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2.5,6.5 L5,9 L9.5,3.5" stroke="#151A15" stroke-width="1.8" fill="none" stroke-linecap="round"></path></svg></span>
           <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Sleeping bag, winter</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">COUNTED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SHARED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">ATTIC ▸ SHELF L-TOP ▸ CRATE B</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">#winter #sleep</div>
@@ -285,17 +294,17 @@
         <div style="display:grid; grid-template-columns:34px 1.45fr .5fr .6fr 1.45fr .95fr 44px 130px; gap:0 10px; padding:0 14px; height:44px; align-items:center; border-bottom:1px solid #2A3129; background:rgba(147,188,159,.05)">
           <span style="width:18px; height:18px; border-radius:4px; background:#93BC9F; display:inline-flex; align-items:center; justify-content:center"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2.5,6.5 L5,9 L9.5,3.5" stroke="#151A15" stroke-width="1.8" fill="none" stroke-linecap="round"></path></svg></span>
           <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Tarp 3×4</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SINGLE</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SHARED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">ATTIC ▸ CRATE A</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">#shelter</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">×1</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">—</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em; color:#97A08C">⌂ HOME</div>
         </div>
         <div style="display:grid; grid-template-columns:34px 1.45fr .5fr .6fr 1.45fr .95fr 44px 130px; gap:0 10px; padding:0 14px; height:44px; align-items:center; border-bottom:1px solid #2A3129" style-hover="background:#1F2620">
           <span style="width:18px; height:18px; border-radius:4px; border:1.5px solid #47523F"></span>
           <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Crate B <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; font-weight:500">5 INSIDE</span></div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">CONT.</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SINGLE</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SHARED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">ATTIC ▸ SHELF L-TOP</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">#storage</div>
@@ -305,27 +314,27 @@
         <div style="display:grid; grid-template-columns:34px 1.45fr .5fr .6fr 1.45fr .95fr 44px 130px; gap:0 10px; padding:0 14px; height:44px; align-items:center; border-bottom:1px solid #2A3129" style-hover="background:#1F2620">
           <span style="width:18px; height:18px; border-radius:4px; border:1.5px solid #47523F"></span>
           <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Down jacket, E</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SINGLE</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#E8E5D5">E</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">SLAAPKAMER ▸ KAST</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">#winter #clothing</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">×1</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">—</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em; color:#97A08C">⌂ HOME</div>
         </div>
         <div style="display:grid; grid-template-columns:34px 1.45fr .5fr .6fr 1.45fr .95fr 44px 130px; gap:0 10px; padding:0 14px; height:44px; align-items:center; border-bottom:1px solid #2A3129" style-hover="background:#1F2620">
           <span style="width:18px; height:18px; border-radius:4px; border:1.5px solid #47523F"></span>
           <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Winter boots, M</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SINGLE</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#E8E5D5">M</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">HAL ▸ SCHOENENREK</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">#winter #footwear</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">×1</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">—</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em; color:#97A08C">⌂ HOME</div>
         </div>
         <div style="display:grid; grid-template-columns:34px 1.45fr .5fr .6fr 1.45fr .95fr 44px 130px; gap:0 10px; padding:0 14px; height:44px; align-items:center; border-bottom:1px solid #2A3129" style-hover="background:#1F2620">
           <span style="width:18px; height:18px; border-radius:4px; border:1.5px solid #47523F"></span>
           <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Headlamp</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">COUNTED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SHARED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">HAL ▸ LADE 2</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">#light</div>
@@ -335,23 +344,23 @@
         <div style="display:grid; grid-template-columns:34px 1.45fr .5fr .6fr 1.45fr .95fr 44px 130px; gap:0 10px; padding:0 14px; height:44px; align-items:center; opacity:.55" style-hover="background:#1F2620">
           <span style="width:18px; height:18px; border-radius:4px; border:1.5px solid #47523F"></span>
           <div style="font-weight:600; font-size:14px; color:#97A08C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Tent, 2p (old)</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">ITEM</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SINGLE</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">SHARED</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#6A7161">—</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">#shelter</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">×1</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; text-align:right">—</div>
           <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em; color:#6A7161; text-decoration:line-through">RETIRED</div>
         </div>
       </div>
       <div style="display:flex; gap:14px; margin-top:10px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em">
-        <span>↑↓ ROW · SPACE SELECT · / SEARCH · ENTER DETAIL</span>
+        <span>↑↓ ROW · SPACE SELECT · / SEARCH · ENTER DETAIL · CLICK A COLUMN HEAD = SORT</span>
         <span style="margin-left:auto">WHEREABOUTS: ⌂ HOME (MUTED) VS ▸ ON TRIP (AMBER) VS ▲ UNACCOUNTED (ATTENTION — LOST KEEPS ITS HOME SLOT) — THE TWO WORLDS, PER PRINCIPLE 3</span>
       </div>
     </div>
   </div>
 
   <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">03 — DEPOT · COMPACT/COMFORTABLE 393</div>
-  <div style="display:flex; gap:24px; align-items:flex-start">
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
     <div data-screen-label="Depot phone" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
       <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 0">
         <svg width="28" height="22" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
@@ -362,11 +371,13 @@
         <input placeholder="Search the depot…" style="height:48px; width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 14px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:15px; outline:none; margin-top:12px" style-focus="border-color:#E2A65B">
         <div style="display:flex; gap:6px; margin-top:10px; overflow:hidden">
           <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; flex-shrink:0">TAG: #WINTER ✕</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; flex-shrink:0">+ TAG</span>
           <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; flex-shrink:0">+ KIND</span>
-          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; flex-shrink:0">+ PLACE</span>
-          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; flex-shrink:0">+ OWN…</span>
         </div>
-        <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:10px">9 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (1)</span></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">9 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (1)</span></span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; cursor:pointer">NAME A→Z <span style="color:#5E6857">▾</span></span>
+        </div>
       </div>
       <div style="border-top:1px solid #333C33">
         <div style="padding:12px 16px; border-bottom:1px solid #2A3129; display:flex; flex-direction:column; gap:3px">
@@ -415,6 +426,81 @@
         </div>
       </div>
     </div>
+    <div data-screen-label="Depot phone — grouped by kind" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 0">
+        <svg width="28" height="22" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="width:26px; height:26px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600">M</span>
+      </div>
+      <div style="padding:10px 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Depot</div>
+        <input placeholder="Search the depot…" style="height:48px; width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 14px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:15px; outline:none; margin-top:12px" style-focus="border-color:#E2A65B">
+        <div style="display:flex; gap:6px; margin-top:10px; overflow:hidden">
+          <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; flex-shrink:0">TAG: #WINTER ✕</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; flex-shrink:0">+ TAG</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em; flex-shrink:0">+ KIND</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">9 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (1)</span></span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; cursor:pointer"><span style="color:#E8E5D5; font-weight:600">KIND</span> · NAME A→Z <span style="color:#5E6857">▾</span></span>
+        </div>
+      </div>
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:11px 16px; display:flex; justify-content:space-between; align-items:center">
+        <span style="font-weight:600; font-size:16px">Counted</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">3</span>
+      </div>
+      <div style="padding:12px 16px; border-top:1px solid #2A3129; display:flex; flex-direction:column; gap:3px">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <span style="font-weight:600; font-size:16px">Sleeping bag, winter</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#E2A65B; letter-spacing:.04em; flex-shrink:0">▸ ALPS · CAR</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">⌂ ATTIC ▸ CRATE B · ×2</div>
+      </div>
+      <div style="padding:12px 16px; border-top:1px solid #2A3129; display:flex; flex-direction:column; gap:3px">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <span style="font-weight:600; font-size:16px">Hand warmers</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ HOME</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">⌂ KELDER ▸ BAK 3 · ×12</div>
+      </div>
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:11px 16px; display:flex; justify-content:space-between; align-items:center">
+        <span style="font-weight:600; font-size:16px">Per-person</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">1</span>
+      </div>
+      <div style="padding:12px 16px; border-top:1px solid #2A3129; display:flex; flex-direction:column; gap:3px">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <span style="font-weight:600; font-size:16px">Ski gloves <span style="color:#5E6857; font-size:18px">›</span></span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ HOME</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">PER-PERSON · ATTIC ▸ CRATE D</div>
+      </div>
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:11px 16px; display:flex; justify-content:space-between; align-items:center">
+        <span style="font-weight:600; font-size:16px">Single</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">5</span>
+      </div>
+      <div style="padding:12px 16px; border-top:1px solid #2A3129; display:flex; flex-direction:column; gap:3px">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <span style="font-weight:600; font-size:16px">Down jacket, E</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ HOME</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">PERSONAL E · SLAAPKAMER ▸ KAST</div>
+      </div>
+      <div style="height:70px"></div>
+      <div style="position:absolute; right:16px; bottom:74px; width:56px; height:56px; border-radius:16px; background:#93BC9F; display:flex; align-items:center; justify-content:center; color:#151A15; font-size:26px; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,.4)">+</div>
+      <div style="display:flex; border-top:1px solid #333C33; background:#1F2620">
+        <div style="flex:1; text-align:center; padding:9px 0 12px; border-top:2px solid #93BC9F; margin-top:-1px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="13" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="13" y="13" width="8" height="8" rx="1.5" fill="#93BC9F"></rect></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#93BC9F; margin-top:3px">DEPOT</div>
+        </div>
+        <div style="flex:1; text-align:center; padding:9px 0 12px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><line x1="5.5" y1="3" x2="5.5" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line><polygon points="5.5,4 19,7.5 5.5,11" fill="#97A08C"></polygon></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#97A08C; margin-top:3px">TRIPS</div>
+        </div>
+        <div style="flex:1; text-align:center; padding:9px 0 12px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#97A08C" stroke-width="1.8"></circle><line x1="15.5" y1="15.5" x2="21" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#97A08C; margin-top:3px">FIND</div>
+        </div>
+      </div>
+    </div>
     <div style="width:330px; display:flex; flex-direction:column; gap:12px">
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DESKTOP ↔ PHONE</div>
@@ -423,6 +509,22 @@
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DOMAIN RIGOR</div>
         <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Depot shows no packing status — that belongs to a trip. Home world shows HOME path + whereabouts only. Gear on a trip keeps its home path (muted) and gains the amber ▸ trip marker. Gear marked lost reads ▲ with its last-seen trip — lost writes nothing to the depot and the home slot is kept until resolved; the same read as Find and Gear detail.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">GROUPED LIST + THE PHONE ARRANGE CONTROL — S3</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The group header is Packing's header minus the journey rail: surface band, name 16/600, right mono count. On phone, GROUP BY and SORT collapse into the readout at the count line's right — no extra chrome row; tapping it opens the sheet below. Sort and group persist per device; filter chips and search reset on a fresh start but survive navigation — CLEAR (n) is story 13's undo and stays visible while anything narrows. One count line everywhere: N OF 128 covers filters and search together (they AND); the shipped 4 MATCHES read becomes 4 OF 128 when this bar lands. Rows never show tags — a tag filter changes which rows appear, not the rows; tags live in the desktop TAGS column and on gear detail.</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:16px 16px 0 0; margin-top:12px; padding:10px 16px 14px">
+          <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 12px"></div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:18px">Sort and group</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161; margin-top:12px">SORT</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:40px; border-bottom:1px solid #2A3129"><span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#E8E5D5">NAME A→Z</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#93BC9F">● NOW</span></div>
+          <div style="display:flex; align-items:center; min-height:40px; border-bottom:1px solid #2A3129"><span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">NAME Z→A</span></div>
+          <div style="display:flex; align-items:center; min-height:40px"><span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">NEWEST FIRST</span></div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161; margin-top:10px">GROUP BY</div>
+          <div style="display:flex; align-items:center; min-height:40px; border-bottom:1px solid #2A3129"><span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">NONE</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:40px"><span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#E8E5D5">KIND</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#93BC9F">● NOW</span></div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.06em; margin-top:8px; line-height:1.7">THE SHEET PRIMITIVE · ROWS 40+ · CURRENT = ● NOW (SET PHASE ANATOMY) · S3 OFFERS NONE / KIND — THE LADDER OF LATER DIMENSIONS IS IN COMPONENTS §04</div>
       </div>
     </div>
   </div>
@@ -439,12 +541,13 @@
         <input placeholder="Search the depot…" style="height:48px; width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 14px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:15px; outline:none; margin-top:12px" style-focus="border-color:#E2A65B">
         <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap">
           <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">TAG: #WINTER ✕</span>
-          <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">KIND: SHELTER ✕</span>
-          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ PLACE</span>
-          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ OWNER</span>
-          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ WHEREABOUTS</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">KIND: COUNTED ✕</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ TAG</span>
         </div>
-        <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:10px">6 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (2)</span></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">6 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (2)</span></span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; cursor:pointer">NAME A→Z <span style="color:#5E6857">▾</span></span>
+        </div>
       </div>
       <div style="border-top:1px solid #333C33">
         <div style="display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:0 20px; height:56px; border-bottom:1px solid #2A3129">
@@ -519,7 +622,7 @@
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS AT ROOMY</div>
-        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">640–832 (40–52em) keeps the phone shell — bottom tabs, one primary column — but stops wasting the sides: gutters 20–24, prose capped to a readable measure, filter chips wrap instead of scrolling, list rows carry owner · path · qty inline on one line, and card content goes 2-up. Same components as 393 — @container picks the layout, not the viewport.</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">640–832 (40–52em) keeps the phone shell — bottom tabs, one primary column — but stops wasting the sides: gutters 20–24, prose capped to a readable measure, filter chips wrap instead of scrolling, list rows carry owner · path · qty inline on one line, and card content goes 2-up. Same components as 393 — @container picks the layout, not the viewport. The arrange readout stays on the count line until the bar is handed ≥600px — the expanded GROUP BY row is desktop's.</div>
       </div>
     </div>
   </div>
@@ -538,10 +641,14 @@
         <div style="display:flex; justify-content:space-between; align-items:baseline"><span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px">Depot</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">128</span></div>
         <input placeholder="Search…  /" style="height:40px; width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 12px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:13.5px; outline:none; margin-top:10px" style-focus="border-color:#E2A65B">
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap">
-          <span style="display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 11px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">TAG: #WINTER ✕</span>
-          <span style="display:inline-flex; align-items:center; height:32px; padding:0 11px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ KIND</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">TAG: #WINTER ✕</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ TAG</span>
+          <span style="display:inline-flex; align-items:center; height:36px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.05em">+ KIND</span>
         </div>
-        <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:8px">9 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (1)</span></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">9 OF 128 · <span style="color:#93BC9F; font-weight:600">CLEAR (1)</span></span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; cursor:pointer">NAME A→Z <span style="color:#5E6857">▾</span></span>
+        </div>
       </div>
       <div style="border-top:1px solid #333C33">
         <div style="padding:12px 16px; border-bottom:1px solid #2A3129; display:flex; flex-direction:column; gap:3px; background:rgba(147,188,159,.05); box-shadow:inset 2px 0 0 #93BC9F">
@@ -581,10 +688,11 @@
         <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED</span>
       </div>
       <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:24px; line-height:30px; margin-top:10px">Sleeping bag, winter</div>
-      <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:4px">ITEM · SHARED · ×2 · 1.9 KG EACH</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:4px">ITEM · SHARED · ×2</div>
       <div style="display:flex; gap:6px; margin-top:10px">
-        <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">#winter</span>
-        <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">#sleep</span>
+        <span style="display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em">#winter</span>
+        <span style="display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em">#sleep</span>
+        <span style="display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:99px; border:1px dashed #47523F; color:#6A7161; font-family:'Spline Sans Mono',monospace; font-size:10.5px; letter-spacing:.03em; cursor:pointer" style-hover="color:#93BC9F; border-color:#93BC9F">+ tag</span>
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:14px; padding:2px 14px">
         <div style="display:grid; grid-template-columns:1fr auto; gap:2px 12px; align-items:center; padding:10px 0; border-bottom:1px solid #333C33">
@@ -598,21 +706,15 @@
           <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#E8E5D5">DUFFEL 90 L · PACKED BY M</div>
         </div>
       </div>
-      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161; margin-top:14px">PIECES</div>
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #2A3129">
-        <div>
-          <div style="font-weight:600; font-size:15px">Piece 1</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:1px">BOUGHT 2022 · GOOD</div>
-        </div>
-        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ CRATE B</span>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:14px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161">COUNT</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">×2 OWNED</span>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0">
-        <div>
-          <div style="font-weight:600; font-size:15px">Piece 2</div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-top:1px">BOUGHT 2022 · GOOD</div>
-        </div>
-        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#E2A65B; letter-spacing:.04em; flex-shrink:0">▸ ALPS · PACKED M</span>
+      <div style="display:flex; align-items:center; gap:6px; margin-top:8px">
+        <span style="padding:4px 9px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em">×1 ⌂ CRATE B</span>
+        <span style="padding:4px 9px; border-radius:99px; border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em">×1 ▸ ALPS 2026</span>
       </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.05em; margin-top:8px; line-height:1.6">COUNTED GEAR HAS NO PER-UNIT IDENTITY.</div>
       <div style="display:flex; gap:8px; align-items:center; margin-top:14px">
         <button style="height:40px; padding:0 18px; background:transparent; border:1px solid #47523F; border-radius:8px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Move</button>
         <button style="height:40px; padding:0 18px; background:transparent; border:1px solid #47523F; border-radius:8px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Edit</button>
@@ -630,8 +732,236 @@
       <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The list pane is ~310 wide, so its rows render the folded two-line phone layout even though the viewport is 900 — rows respond to the pane they are handed, not the screen. The detail column reuses the gear-detail components at its own width.</div>
     </div>
   </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">06 — ADD GEAR (F1) · THE FIRST RECORD · 393 / 540 / 900 — NEW</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Add gear — phone 393" style="width:393px; height:640px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ DEPOT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#E2A65B"></span>OFFLINE</span>
+      </div>
+      <div style="padding:0 16px; display:flex; flex-direction:column; gap:14px; flex:1">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Add gear</div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">NAME</div>
+          <div style="height:48px; display:flex; align-items:center; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 14px; font-size:15px; margin-top:8px">Gas canister 450 g</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; min-height:48px">
+          <span style="width:18px; height:18px; border-radius:4px; border:1.5px solid #47523F; flex-shrink:0"></span>
+          <span style="font-size:15px">Container</span>
+          <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em">CAN HOLD OTHER GEAR</span>
+        </div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">KIND</div>
+          <div style="display:flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:48px; margin-top:8px">
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">SINGLE</span>
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">PER-PERSON</span>
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">COUNTED</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">OWNED COUNT</div>
+          <div style="height:48px; width:120px; display:flex; align-items:center; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 14px; font-family:'Spline Sans Mono',monospace; font-size:15px; margin-top:8px">6</div>
+        </div>
+        <div style="height:48px; display:flex; align-items:center; justify-content:space-between; border:1px solid #47523F; border-radius:8px; padding:0 14px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">HOME</span>
+          <span style="display:inline-flex; align-items:center; gap:8px; font-size:15px">Loose <span style="color:#5E6857; font-size:18px">›</span></span>
+        </div>
+      </div>
+      <div style="padding:0 16px 18px">
+        <button style="width:100%; height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Add gear</button>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#6A7161; text-align:center; letter-spacing:.04em; margin-top:10px">RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND</div>
+      </div>
+    </div>
+
+    <div data-screen-label="Add gear — roomy 540" style="width:540px; height:640px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 20px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ DEPOT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED</span>
+      </div>
+      <div style="width:448px; margin:0 auto; padding:0 0 18px; display:flex; flex-direction:column; gap:14px; flex:1; box-sizing:border-box">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Add gear</div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">NAME</div>
+          <div style="height:48px; display:flex; align-items:center; background:#0F130F; border:1px solid #E2A65B; box-shadow:0 0 0 2px rgba(226,166,91,.3); border-radius:8px; padding:0 14px; font-size:15px; margin-top:8px"><span style="width:2px; height:18px; background:#E2A65B"></span></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; min-height:48px">
+          <span style="width:18px; height:18px; border-radius:4px; border:1.5px solid #47523F; flex-shrink:0"></span>
+          <span style="font-size:15px">Container</span>
+          <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em">CAN HOLD OTHER GEAR</span>
+        </div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">KIND</div>
+          <div style="display:flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:48px; margin-top:8px">
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">SINGLE</span>
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">PER-PERSON</span>
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">COUNTED</span>
+          </div>
+        </div>
+        <div style="height:48px; display:flex; align-items:center; justify-content:space-between; border:1px solid #47523F; border-radius:8px; padding:0 14px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">HOME</span>
+          <span style="display:inline-flex; align-items:center; gap:8px; font-size:15px">Loose <span style="color:#5E6857; font-size:18px">›</span></span>
+        </div>
+        <div style="margin-top:auto">
+          <button style="width:100%; height:48px; background:#28312A; color:#5E6857; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:not-allowed">Add gear</button>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#6A7161; text-align:center; letter-spacing:.04em; margin-top:10px">RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:330px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Owned count appears only while Kind = Counted and inserts BELOW the Kind control — the control just tapped never moves; only Home slides down, out of the thumb's path. Container is a trait, not a setting: an 18px checkbox (the table-select anatomy) with one mono fact — orthogonal to Kind. The CTA reads Add gear in both states and is disabled only while Name is empty — Name is the only required input, so the disabled state is brief. There is no failure state to draw: recording is one local op, instant with or without signal; the line under the CTA says where it went. Submit emits one gear.recorded and lands on the new gear's detail. Home defaults to Loose — a legitimate resting state, not an error.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">STATES COVERED</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Counted reveal, offline (393) · default Single, focused empty Name, disabled CTA (540, capped 448 measure) · container checked + Home chosen, in the Split pane (900) · the entry points stay §2's + Add gear button and §3's FAB.</div>
+      </div>
+    </div>
+  </div>
+
+  <div data-screen-label="Add gear — split 900" style="width:900px; background:#151A15; border:1px solid #333C33; border-radius:16px; overflow:hidden; display:grid; grid-template-columns:56px 308px 1fr; margin-top:24px">
+    <div style="border-right:1px solid #333C33; display:flex; flex-direction:column; align-items:center; padding:16px 0 14px; gap:8px">
+      <svg width="26" height="21" viewBox="0 0 28 22" style="margin-bottom:8px"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+      <span style="width:40px; height:40px; border-radius:10px; background:#28312A; display:inline-flex; align-items:center; justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="13" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="#93BC9F" stroke-width="1.6"></rect><rect x="13" y="13" width="8" height="8" rx="1.5" fill="#93BC9F"></rect></svg></span>
+      <span style="width:40px; height:40px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24"><line x1="5.5" y1="3" x2="5.5" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line><polygon points="5.5,4 19,7.5 5.5,11" fill="#97A08C"></polygon></svg></span>
+      <span style="width:40px; height:40px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#97A08C" stroke-width="1.8"></circle><line x1="15.5" y1="15.5" x2="21" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line></svg></span>
+      <span style="margin-top:auto; width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>
+    </div>
+    <div style="border-right:1px solid #333C33; min-width:0; display:flex; flex-direction:column">
+      <div style="padding:16px 16px 12px">
+        <div style="display:flex; justify-content:space-between; align-items:baseline"><span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px">Depot</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">128</span></div>
+        <input placeholder="Search…  /" style="height:40px; width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 12px; color:#E8E5D5; font-family:'Spline Sans',sans-serif; font-size:13.5px; outline:none; margin-top:10px">
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="padding:12px 16px; border-bottom:1px solid #2A3129; display:flex; flex-direction:column; gap:3px">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+            <span style="font-weight:600; font-size:15px">Sleeping bag, winter</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#E2A65B; letter-spacing:.04em; flex-shrink:0">▸ ALPS · CAR</span>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">⌂ ATTIC ▸ CRATE B · ×2</div>
+        </div>
+        <div style="padding:12px 16px; border-bottom:1px solid #2A3129; display:flex; flex-direction:column; gap:3px">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+            <span style="font-weight:600; font-size:15px">Down jacket, E</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.04em; flex-shrink:0">⌂ HOME</span>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">PERSONAL E · SLAAPKAMER ▸ KAST</div>
+        </div>
+      </div>
+      <div style="margin-top:auto; padding:10px 16px; border-top:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em">THE LIST STAYS — ADD GEAR TAKES THE DETAIL PANE</div>
+    </div>
+    <div style="padding:18px 22px; min-width:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161">ADD GEAR</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED</span>
+      </div>
+      <div style="max-width:448px; display:flex; flex-direction:column; gap:12px; margin-top:10px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:24px; line-height:30px">Add gear</div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">NAME</div>
+          <div style="height:40px; display:flex; align-items:center; background:#0F130F; border:1px solid #47523F; border-radius:8px; padding:0 12px; font-size:14px; margin-top:6px">Stuff sack, green</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; min-height:40px">
+          <span style="width:18px; height:18px; border-radius:4px; background:#93BC9F; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2.5,6.5 L5,9 L9.5,3.5" stroke="#151A15" stroke-width="1.8" fill="none" stroke-linecap="round"></path></svg></span>
+          <span style="font-size:14px">Container</span>
+          <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em">CAN HOLD OTHER GEAR</span>
+        </div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">KIND</div>
+          <div style="display:flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:40px; margin-top:6px">
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">SINGLE</span>
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">PER-PERSON</span>
+            <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">COUNTED</span>
+          </div>
+        </div>
+        <div style="height:40px; display:flex; align-items:center; justify-content:space-between; border:1px solid #47523F; border-radius:8px; padding:0 12px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">HOME</span>
+          <span style="display:inline-flex; align-items:center; gap:8px; font-size:14px">Crate B <span style="color:#5E6857; font-size:17px">›</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:4px">
+          <button style="height:40px; padding:0 18px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Add gear</button>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.04em">RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">07 — HOME PICKER · ONE SHEET FOR ADD GEAR AND MOVE — NEW</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Home picker" style="width:393px; height:640px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 12px"></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Home</div>
+        <div style="margin-top:8px">
+          <div style="display:flex; align-items:center; min-height:48px; border-bottom:1px solid #2A3129">
+            <span style="font-weight:600; font-size:15px">Loose</span>
+            <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em">NO RESIDENCE — THE DEFAULT</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; min-height:48px">
+            <span style="font-weight:600; font-size:15px">⌂ Attic</span>
+            <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.08em; cursor:pointer">RENAME</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#D98263; letter-spacing:.08em; cursor:pointer">REMOVE</span>
+          </div>
+          <div style="display:flex; align-items:center; min-height:44px; padding-left:16px"><span style="font-size:14px">Crate A</span></div>
+          <div style="display:flex; align-items:center; min-height:44px; padding-left:16px"><span style="font-size:14px">Crate B</span></div>
+          <div style="display:flex; align-items:center; min-height:44px; padding-left:32px; border-bottom:1px solid #2A3129"><span style="font-size:14px">Stuff sack, green</span></div>
+          <div style="display:flex; align-items:center; gap:8px; min-height:56px; border-bottom:1px solid #2A3129">
+            <div style="flex:1; height:44px; display:flex; align-items:center; background:#0F130F; border:1px solid #E2A65B; border-radius:8px; padding:0 12px; font-size:14px">Kelder</div>
+            <button style="height:40px; padding:0 14px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Save</button>
+            <button style="height:40px; padding:0 10px; background:transparent; color:#97A08C; border:none; font-family:'Spline Sans',sans-serif; font-size:13.5px; cursor:pointer">Cancel</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; min-height:48px; border-bottom:1px solid #2A3129">
+            <span style="font-weight:600; font-size:15px">⌂ Garage</span>
+            <span style="margin-left:auto; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#97A08C; letter-spacing:.08em; cursor:pointer">RENAME</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; color:#D98263; letter-spacing:.08em; cursor:pointer">REMOVE</span>
+          </div>
+        </div>
+        <button style="width:100%; height:48px; margin-top:12px; background:transparent; color:#97A08C; border:1px dashed #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:14px; cursor:pointer">+ New place</button>
+        <button style="width:100%; height:48px; margin-top:4px; background:transparent; color:#97A08C; border:none; font-family:'Spline Sans',sans-serif; font-size:14px; cursor:pointer">Close</button>
+      </div>
+    </div>
+
+    <div style="width:330px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#6A7161">REMOVE — ALWAYS CONFIRMED WITH THE LOOSE COUNT</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; margin-top:10px; padding:16px">
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:19px">Remove Garage?</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#D98263; margin-top:8px">4 pieces of gear become loose.</div>
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px">
+            <button style="height:40px; padding:0 14px; background:transparent; color:#97A08C; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:13.5px; cursor:pointer">Cancel</button>
+            <button style="height:40px; padding:0 14px; background:transparent; color:#D98263; border:1px solid #D98263; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer">Remove place</button>
+          </div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.06em; margin-top:8px; line-height:1.7">AN EMPTY PLACE READS “0 PIECES OF GEAR BECOME LOOSE.” — THE COUNT IS THE DISTINCTION. THE RETIRE RULE HOLDS: BORDERED ATTENTION, NEVER FILLED RED.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#6A7161">EMPTY — A BRAND-NEW HOUSEHOLD</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:16px 16px 0 0; margin-top:10px; padding:10px 16px 16px">
+          <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 12px"></div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:19px">Home</div>
+          <div style="display:flex; align-items:center; min-height:44px; border-bottom:1px solid #2A3129; margin-top:4px"><span style="font-weight:600; font-size:14px">Loose</span></div>
+          <button style="width:100%; height:44px; margin-top:10px; background:transparent; color:#97A08C; border:1px dashed #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:13.5px; cursor:pointer">+ New place</button>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.06em; margin-top:8px; line-height:1.7">NO PLACES YET — LOOSE AND + NEW PLACE ARE THE WHOLE SHEET. THE FIRST PLACE IS CREATED RIGHT HERE.</div>
+      </div>
+    </div>
+
+    <div style="width:393px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SHEET</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Loose sits first — the default and the explicit “no residence” answer; one tap selects and closes. RENAME and REMOVE are quiet mono labels on Place rows only — containers are gear and are renamed from their own detail (EDIT); the row body stays the selection target, so the common path is one tap. Creating a Place belongs here and is drawn — this sheet is the only surface that edits the shape of storage; a brand-new household starts from the empty state at left. Nesting indents 16px per level and caps at three levels; a deeper container keeps the cap indent and prefixes its parent in faint mono (CRATE B ▸). ⌂ marks Place rows; container rows carry no glyph — the same place-vs-gear distinction as the sidebar and paths. Selection closes the sheet; rename, remove and create do not.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">TWO INVISIBLE RULES + MOVE</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Only Places and container-gear are ever offered — plain gear is never a home (invariant 2). MOVE opens this same sheet with one difference: the moved gear itself and its whole subtree are simply absent, at any depth (invariant 3) — a crate can never be put inside itself. Components §05 draws the blocked-rows read of the same rule. Shared by Add Gear and MOVE; the caller only supplies which gear to exclude.</div>
+      </div>
+    </div>
+  </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:3850}}"></script>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:6600}}"></script>
 </body>
 </html>

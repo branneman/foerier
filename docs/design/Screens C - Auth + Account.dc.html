@@ -171,8 +171,8 @@
         <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Join Veldkamp?</div>
         <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:16px; padding:4px 16px">
           <div style="display:flex; justify-content:space-between; align-items:baseline; padding:11px 0; border-bottom:1px solid #2A3129"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">HOUSEHOLD</span><span style="font-weight:600; font-size:16px">Veldkamp</span></div>
-          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:11px 0; border-bottom:1px solid #2A3129"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">YOU JOIN AS</span><span style="font-weight:600; font-size:16px">Els</span></div>
-          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:11px 0"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">INVITED BY</span><span style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C">MARK &#183; 2026-08-21</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:11px 0; border-bottom:1px solid #2A3129"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">YOU JOIN AS</span><span style="display:inline-flex; align-items:center; gap:8px"><span style="font-weight:600; font-size:16px">Els</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">API FIELD</span></span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:11px 0"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">INVITED BY</span><span style="display:inline-flex; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C">MARK &#183; 2026-08-21</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">API FIELD</span></span></div>
         </div>
         <div style="display:flex; gap:8px; margin-top:12px">
           <span style="display:inline-flex; align-items:center; padding:6px 12px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#97A08C">EXPIRES IN 6 d</span>
@@ -223,7 +223,7 @@
       </div>
       <div style="padding:8px 20px 0">
         <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Signed in.</div>
-        <div style="font-size:16px; font-weight:600; margin-top:8px">Els &#183; Veldkamp</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:8px"><span style="font-size:16px; font-weight:600">Els &#183; Veldkamp</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">API FIELD</span></div>
         <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:20px; padding:14px 16px">
           <div style="display:flex; justify-content:space-between; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">FIRST SYNC — ONE-TIME</span><span>36%</span></div>
           <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:8px"><div style="width:36%; height:100%; background:#7BB389"></div></div>
@@ -268,17 +268,41 @@
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">SUCCESS = FIRST SYNC</div>
         <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The success screen is a receipt, not a celebration: who you are, where you landed, and the fold progressing with real counts. It is also the app&#8217;s only unavoidable loading screen — a brand-new device folds the household&#8217;s entire operation log before it can show anything (sync-protocol §7: a paged pull, so the cost is real and grows with the household). Determinate always — ops folded of ops known, never a spinner. The button is gated like the close button and names what it waits for. The copy is honest that this is one-time: every later start is instant.</div>
       </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">NAMES WAIT ON ONE API FIELD</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Els · Veldkamp here, and YOU JOIN AS / INVITED BY on the confirm frame, are drawn final but blocked on one thing: the invite and session endpoints do not return the person name yet. The dashed API FIELD tag (§10 anatomy) marks them so they stop reading as built. Recommended: make the endpoint change — the ubiquitous language says an invite always names the person it is for, so returning that name is alignment, not scope creep. Until it lands the line is omitted, never faked.</div>
+      </div>
     </div>
   </div>
-  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">03B — FIRST SYNC · CONNECTION DROPPED MID-FOLD</div>
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">03B — FIRST SYNC · THE FIRST ROUND TRIP + CONNECTION DROPPED MID-FOLD</div>
   <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="First sync — counting" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; justify-content:flex-end; padding:14px 16px">
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCING</span>
+      </div>
+      <div style="padding:8px 20px 0">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Signed in.</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:8px"><span style="font-size:16px; font-weight:600">Els &#183; Veldkamp</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">API FIELD</span></div>
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:20px; padding:14px 16px">
+          <div style="display:flex; justify-content:space-between; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">FIRST SYNC — ONE-TIME</span><span>0%</span></div>
+          <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:8px"></div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:8px">OP 0 OF — FOLDED</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; margin-top:8px; letter-spacing:.02em; line-height:1.6">This device folds the household&#8217;s history once. After this it starts instantly and works offline.</div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:16px">Passkey saved on this device.</div>
+      </div>
+      <div style="margin-top:auto; padding:0 20px 24px">
+        <button style="width:100%; height:48px; background:#28312A; color:#97A08C; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Open the depot — folding 0%</button>
+      </div>
+    </div>
+
     <div data-screen-label="First sync — resumes" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
       <div style="display:flex; justify-content:flex-end; padding:14px 16px">
         <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#E2A65B"></span>OFFLINE</span>
       </div>
       <div style="padding:8px 20px 0">
         <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Signed in.</div>
-        <div style="font-size:16px; font-weight:600; margin-top:8px">Els &#183; Veldkamp</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:8px"><span style="font-size:16px; font-weight:600">Els &#183; Veldkamp</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161; border:1px dashed #47523F; border-radius:3px; padding:2px 5px">API FIELD</span></div>
         <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:20px; padding:14px 16px">
           <div style="display:flex; justify-content:space-between; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">FIRST SYNC — PAUSED</span><span>36%</span></div>
           <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:8px"><div style="width:36%; height:100%; background:#7BB389"></div></div>
@@ -296,6 +320,10 @@
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">RESUMABLE, AND NOT AN ERROR</div>
         <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The bootstrap cursor is persisted per page, so a dropped connection pauses the fold and continues it — it never restarts. Nothing is wrong with the user&#8217;s world, so nothing reads as an error: the header dot is the only amber, there is no ▲, the bar keeps its colour and its progress, and RETRY NOW is a quiet text action beside the fact line. Same receipt, same layout — one swapped card state, in the register of the dead-end screen.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE DASH IS A STATE, NOT A BUG</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The denominator arrives with the first page of the pull, so for exactly one round trip the honest line is OP 0 OF — FOLDED with an empty bar — the first frame every new device sees, now drawn. A screen reader hears “Counting”. The CTA starts gated at 0% and only ever enables once — never enables-then-disables under the finger. A brand-new household with nothing to fold sees this card flash once before the app opens; accepted, and cheaper than a CTA that flickers.</div>
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">WHERE IT LIVES</div>
@@ -840,7 +868,7 @@
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:8400}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:8800}}">
 class Component extends DCLogic {
   qr(seed) {
     const n = 21, cells = [];
