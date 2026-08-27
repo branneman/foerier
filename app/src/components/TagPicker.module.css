@@ -1,0 +1,239 @@
+@layer components {
+  .scrim {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: var(--color-scrim);
+    z-index: 20;
+  }
+
+  .sheet {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    width: 100%;
+    max-width: 32rem;
+    max-height: 85svh;
+    overflow-y: auto;
+    padding: var(--space-12) var(--space-16) var(--space-24);
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    background: var(--color-bg-surface);
+  }
+
+  .grabber {
+    align-self: center;
+    width: 2.25rem;
+    height: 0.25rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-rule);
+  }
+
+  .title {
+    font: var(--text-title) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .groupLabel {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .none {
+    font: var(--text-secondary) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    list-style: none;
+  }
+
+  /* 32px, bordered — Components §06's settled tag chip. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding-left: var(--space-12);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    color: var(--color-ink-primary);
+  }
+
+  .chipLabel {
+    font-family: var(--font-mono);
+    font-size: 0.65625rem;
+    text-transform: lowercase;
+  }
+
+  .chipRemove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    min-height: 2rem;
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font-size: 0.6875rem;
+    cursor: pointer;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .fieldLabel {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .well {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+  }
+
+  /* Fixed, undeletable, and never part of the value. */
+  .hash {
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    color: var(--color-ink-faint);
+  }
+
+  .input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    color: var(--color-ink-primary);
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+  }
+
+  .input:focus {
+    outline: none;
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: max(2.75rem, 44px);
+    padding-inline: var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--color-ink-primary);
+    cursor: pointer;
+  }
+
+  .row:disabled {
+    color: var(--color-ink-dim);
+    cursor: default;
+  }
+
+  .rowTag {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    text-transform: lowercase;
+  }
+
+  .rowCount {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink-faint);
+  }
+
+  /* Visibly distinct, deliberately: creating is never the default action. */
+  .create {
+    display: flex;
+    align-items: center;
+    min-height: max(2.75rem, 44px);
+    padding-inline: var(--space-12);
+    border: var(--stroke-rule) solid var(--color-accent);
+    border-radius: var(--radius-control);
+    background: var(--color-accent-fill);
+    color: var(--color-ink-primary);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.06em;
+    line-height: 1.7;
+    color: var(--color-ink-faint);
+  }
+
+  .close {
+    align-self: center;
+    min-height: max(2.75rem, 44px);
+    padding-inline: var(--space-24);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  /*
+   * A popover, not a sheet, once there is room for one beside the chip that
+   * opened it — `docs/design/README.md` §4a: "popover on desktop, same sheet
+   * ... on phone". Split (52em) is where the two-pane layout arrives, so it
+   * is where a sheet stops being the right shape.
+   */
+  @media (min-width: 52em) {
+    .scrim {
+      align-items: center;
+      background: none;
+    }
+
+    .sheet {
+      max-width: 22rem;
+      border: var(--stroke-rule) solid var(--color-rule);
+      border-radius: var(--radius-card);
+      box-shadow: 0 12px 32px rgb(0 0 0 / 0.32);
+    }
+
+    .grabber {
+      display: none;
+    }
+  }
+}

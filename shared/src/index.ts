@@ -42,7 +42,12 @@ export {
 } from './payloads.ts'
 
 export type { TagString } from './tags.ts'
-export { normalizeTag, TAG_MAX_LENGTH, TAG_PATTERN } from './tags.ts'
+export {
+  normalizeTag,
+  normalizeTagInput,
+  TAG_MAX_LENGTH,
+  TAG_PATTERN,
+} from './tags.ts'
 
 export type { OpAuthor, OpSpec } from './authoring.ts'
 export {

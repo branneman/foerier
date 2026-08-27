@@ -1,7 +1,12 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 
-import { normalizeTag, TAG_PATTERN, type TagString } from './tags.ts'
+import {
+  normalizeTag,
+  normalizeTagInput,
+  TAG_PATTERN,
+  type TagString,
+} from './tags.ts'
 
 /**
  * `sync-protocol.md` §4.3's `TagString` is an **authoring** rule: lowercase
@@ -112,6 +117,48 @@ describe('normalizeTag', () => {
       expect(once).not.toBeNull()
       expect(normalizeTag(once as string)).toBe(once)
     }
+  })
+})
+
+/**
+ * The typing-time half of the rule. `normalizeTag` trims trailing hyphens,
+ * because a finished tag must never end in one — but applied to every
+ * keystroke that destroys the space in `cook set` before the `s` arrives, and
+ * the picker silently produces `cookset`. A live field needs the same rule
+ * minus the trailing trim.
+ */
+describe('normalizeTagInput', () => {
+  it('keeps the hyphen a trailing space became, so the next word can follow', () => {
+    expect(normalizeTagInput('cook ')).toBe('cook-')
+    expect(normalizeTagInput('cook set')).toBe('cook-set')
+  })
+
+  it('still refuses a leading hyphen — no tag may start with one', () => {
+    expect(normalizeTagInput(' cook')).toBe('cook')
+    expect(normalizeTagInput('-cook')).toBe('cook')
+  })
+
+  it('still collapses runs, folds case, and drops what is outside the charset', () => {
+    expect(normalizeTagInput('Cook  Set!')).toBe('cook-set')
+    expect(normalizeTagInput('#hütte')).toBe('hutte')
+    expect(normalizeTagInput('cook--')).toBe('cook-')
+  })
+
+  it('answers empty rather than null — a field holds a string', () => {
+    expect(normalizeTagInput('###')).toBe('')
+  })
+
+  /**
+   * The contract that ties the two together: whatever the field holds,
+   * `normalizeTag` of it is what the op will carry. There is no third rule
+   * hiding between what is typed and what is stored.
+   */
+  it('agrees with normalizeTag on everything but the trailing hyphen', () => {
+    fc.assert(
+      fc.property(fc.string(), (input) => {
+        expect(normalizeTag(normalizeTagInput(input))).toBe(normalizeTag(input))
+      }),
+    )
   })
 })
 
