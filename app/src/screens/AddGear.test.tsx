@@ -6,7 +6,7 @@ import {
   type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -106,7 +106,25 @@ function soleGear(store: StoreApi<DepotStoreState>) {
   return { id, gear }
 }
 
-describe('Add Gear', () => {
+/**
+ * **F1, redrawn round 2** (`docs/design/README.md` §3b, Screens A §06,
+ * Components' Add-gear atoms).
+ *
+ * The order is the ledger line being written: NAME · KIND (+ count) · HOME ·
+ * RECORDED AS. Three round-1 decisions are retired and their replacements are
+ * what most of these tests are about:
+ *
+ * - **The screen stays after Add.** Round 1 navigated to the new gear's
+ *   detail after every record; a depot is populated shelf by shelf, and that
+ *   made the batch loop a round trip per item.
+ * - **The container checkbox is retired.** A checkbox reads as a setting; the
+ *   trait is `RECORDED AS · ITEM | CONTAINER`, the glossary's own meta-line
+ *   words, sitting last because it is the rarest decision and the only
+ *   irreversible one.
+ * - **The Owned-count well opens empty and gates the CTA.** A silent `×1` is
+ *   a wrong ledger line.
+ */
+describe('Add gear — the record', () => {
   it('emits one gear.recorded carrying every field the form holds', async () => {
     const placeId = anId()
     const store = await seededStore([placeRecorded(placeId, 'Attic')])
@@ -114,11 +132,9 @@ describe('Add Gear', () => {
     renderAddGear(store)
 
     await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Tent')
-    await user.click(screen.getByRole('checkbox', { name: 'Container' }))
     await user.click(screen.getByRole('radio', { name: 'Counted' }))
-    const countField = screen.getByRole('spinbutton', { name: 'Owned count' })
-    await user.clear(countField)
-    await user.type(countField, '4')
+    await user.type(screen.getByRole('textbox', { name: 'Owned count' }), '4')
+    await user.click(screen.getByRole('radio', { name: 'Container' }))
 
     await user.click(screen.getByRole('button', { name: 'Home' }))
     await user.click(screen.getByRole('button', { name: 'Attic' }))
@@ -126,111 +142,291 @@ describe('Add Gear', () => {
     await user.click(screen.getByRole('button', { name: 'Add gear' }))
     await store.getState().drained()
 
-    const { id, gear } = soleGear(store)
+    const { gear } = soleGear(store)
     expect(gear.name?.value).toBe('Tent')
     expect(gear.container?.value).toBe(true)
     expect(gear.kind?.value).toBe('counted')
     expect(gear.ownedCount?.value).toBe(4)
     expect(gear.residence?.value).toEqual({ in: 'place', id: placeId })
-    expect(await screen.findByText(`Gear detail ${id}`)).toBeInTheDocument()
   })
 
-  it('shows the owned-count field only when Counted is chosen', async () => {
+  it('defaults to a single item, loose', async () => {
     const store = await seededStore()
     const user = userEvent.setup()
     renderAddGear(store)
 
-    expect(screen.queryByRole('spinbutton', { name: 'Owned count' })).toBeNull()
-
-    await user.click(screen.getByRole('radio', { name: 'Counted' }))
-    expect(
-      screen.getByRole('spinbutton', { name: 'Owned count' }),
-    ).toBeInTheDocument()
-
-    await user.click(screen.getByRole('radio', { name: 'Single' }))
-    expect(screen.queryByRole('spinbutton', { name: 'Owned count' })).toBeNull()
-  })
-
-  it('omits owned_count from the payload for single and per-person gear', async () => {
-    const singleStore = await seededStore()
-    const user1 = userEvent.setup()
-    renderAddGear(singleStore)
-    await user1.type(screen.getByRole('textbox', { name: 'Name' }), 'Axe')
-    await user1.click(screen.getByRole('button', { name: 'Add gear' }))
-    await singleStore.getState().drained()
-    const single = soleGear(singleStore)
-    expect(Object.hasOwn(single.gear, 'ownedCount')).toBe(false)
-    cleanup()
-
-    const perPersonStore = await seededStore()
-    const user2 = userEvent.setup()
-    renderAddGear(perPersonStore)
-    await user2.type(
-      screen.getByRole('textbox', { name: 'Name' }),
-      'Sleeping bag',
-    )
-    await user2.click(screen.getByRole('radio', { name: 'Per-person' }))
-    await user2.click(screen.getByRole('button', { name: 'Add gear' }))
-    await perPersonStore.getState().drained()
-    const perPerson = soleGear(perPersonStore)
-    expect(Object.hasOwn(perPerson.gear, 'ownedCount')).toBe(false)
-  })
-
-  it('defaults the kind to single', async () => {
-    const store = await seededStore()
-    const user = userEvent.setup()
-    renderAddGear(store)
-
-    expect(screen.getByRole('radio', { name: 'Single' })).toBeChecked()
-
-    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Rope')
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Axe')
     await user.click(screen.getByRole('button', { name: 'Add gear' }))
     await store.getState().drained()
 
     const { gear } = soleGear(store)
     expect(gear.kind?.value).toBe('single')
-  })
-
-  it('records a container when the container toggle is on', async () => {
-    const store = await seededStore()
-    const user = userEvent.setup()
-    renderAddGear(store)
-
-    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Crate B')
-    await user.click(screen.getByRole('checkbox', { name: 'Container' }))
-    await user.click(screen.getByRole('button', { name: 'Add gear' }))
-    await store.getState().drained()
-
-    const { gear } = soleGear(store)
-    expect(gear.container?.value).toBe(true)
-  })
-
-  it('records gear as loose when no home is chosen', async () => {
-    const store = await seededStore()
-    const user = userEvent.setup()
-    renderAddGear(store)
-
-    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Rope')
-    await user.click(screen.getByRole('button', { name: 'Add gear' }))
-    await store.getState().drained()
-
-    const { gear } = soleGear(store)
+    expect(gear.container?.value).toBe(false)
     expect(Object.hasOwn(gear, 'residence')).toBe(false)
   })
 
-  it('refuses to submit without a name', async () => {
+  it('omits owned_count for gear that is not counted', async () => {
     const store = await seededStore()
     const user = userEvent.setup()
     renderAddGear(store)
 
-    const submit = screen.getByRole('button', { name: 'Add gear' })
-    expect(submit).toBeDisabled()
-
-    await user.type(screen.getByRole('textbox', { name: 'Name' }), '   ')
-    expect(submit).toBeDisabled()
-
-    await user.click(submit)
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Mug')
+    await user.click(screen.getByRole('radio', { name: 'Per-person' }))
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
     await store.getState().drained()
-    expect(Object.keys(store.getState().state.gear)).toHaveLength(0)
+
+    const { gear } = soleGear(store)
+    expect(Object.hasOwn(gear, 'ownedCount')).toBe(false)
+  })
+})
+
+describe('Add gear — the CTA gate', () => {
+  it('refuses to record without a name', async () => {
+    const store = await seededStore()
+    renderAddGear(store)
+
+    expect(screen.getByRole('button', { name: 'Add gear' })).toBeDisabled()
+  })
+
+  /**
+   * "The well **opens empty** and gates the CTA — a silent ×1 is a wrong
+   * ledger line." Round 1 pre-filled `1`, which recorded a count nobody
+   * chose every time Counted was picked and the field ignored.
+   */
+  it('opens the owned-count well empty and gates the CTA on it', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Tent peg')
+    expect(screen.getByRole('button', { name: 'Add gear' })).toBeEnabled()
+
+    await user.click(screen.getByRole('radio', { name: 'Counted' }))
+    expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Add gear' })).toBeDisabled()
+
+    await user.type(screen.getByRole('textbox', { name: 'Owned count' }), '8')
+    expect(screen.getByRole('button', { name: 'Add gear' })).toBeEnabled()
+  })
+
+  it('keeps the CTA label constant rather than describing the gate', async () => {
+    const store = await seededStore()
+    renderAddGear(store)
+    expect(screen.getByRole('button', { name: 'Add gear' })).toBeInTheDocument()
+  })
+
+  it('shows the owned-count well only while Counted is chosen', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    expect(screen.queryByRole('textbox', { name: 'Owned count' })).toBeNull()
+
+    await user.click(screen.getByRole('radio', { name: 'Counted' }))
+    expect(
+      screen.getByRole('textbox', { name: 'Owned count' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: 'Single' }))
+    expect(screen.queryByRole('textbox', { name: 'Owned count' })).toBeNull()
+  })
+
+  it('steps the owned count without typing', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.click(screen.getByRole('radio', { name: 'Counted' }))
+    await user.click(screen.getByRole('button', { name: 'More' }))
+    expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue(
+      '1',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Fewer' }))
+    // Never below zero, and never back to empty: once stepped, a count has
+    // been chosen.
+    expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue(
+      '0',
+    )
+    await user.click(screen.getByRole('button', { name: 'Fewer' }))
+    expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue(
+      '0',
+    )
+  })
+})
+
+/**
+ * **The sitting.** After Add the screen stays: the name clears and keeps
+ * focus so the loop is type → return → type, Kind / count / trait reset to
+ * their defaults, and **Home carries over** — a depot is recorded shelf by
+ * shelf.
+ */
+describe('Add gear — the sitting', () => {
+  it('stays on the screen and clears the name for the next record', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    const name = screen.getByRole('textbox', { name: 'Name' })
+    await user.type(name, 'Tent peg')
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    expect(name).toHaveValue('')
+    expect(name).toHaveFocus()
+    expect(screen.queryByText(/Gear detail/)).toBeNull()
+  })
+
+  it('records on the return key, so the loop needs no reach for the CTA', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Tent peg{Enter}',
+    )
+    await store.getState().drained()
+
+    expect(soleGear(store).gear.name?.value).toBe('Tent peg')
+  })
+
+  it('counts the sitting once something has been recorded', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    // Nothing to count before the first record, so the line is absent rather
+    // than reading `0 RECORDED`.
+    expect(screen.queryByTestId('session-count')).toBeNull()
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Tent peg{Enter}',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Mallet{Enter}',
+    )
+    await store.getState().drained()
+
+    expect(screen.getByTestId('session-count')).toHaveTextContent('2 RECORDED')
+  })
+
+  it('carries Home over to the next record but resets kind, count and trait', async () => {
+    const placeId = anId()
+    const store = await seededStore([placeRecorded(placeId, 'Attic')])
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.click(screen.getByRole('button', { name: 'Home' }))
+    await user.click(screen.getByRole('button', { name: 'Attic' }))
+    await user.click(screen.getByRole('radio', { name: 'Counted' }))
+    await user.type(screen.getByRole('textbox', { name: 'Owned count' }), '4')
+    await user.click(screen.getByRole('radio', { name: 'Container' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Crate B{Enter}',
+    )
+    await store.getState().drained()
+
+    // A depot is recorded shelf by shelf, so the shelf stays.
+    expect(screen.getByRole('button', { name: 'Home' })).toHaveTextContent(
+      'Attic',
+    )
+    expect(screen.getByRole('radio', { name: 'Single' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Item' })).toBeChecked()
+    expect(screen.queryByRole('textbox', { name: 'Owned count' })).toBeNull()
+  })
+
+  it('confirms what was recorded and where', async () => {
+    const placeId = anId()
+    const store = await seededStore([placeRecorded(placeId, 'Attic')])
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.click(screen.getByRole('button', { name: 'Home' }))
+    await user.click(screen.getByRole('button', { name: 'Attic' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Gas canister 450 g{Enter}',
+    )
+    await store.getState().drained()
+
+    // CAPS is a `text-transform` on the line, not applied here — the same
+    // convention the rest of this codebase's label text follows.
+    expect(screen.getByTestId('confirmation')).toHaveTextContent(
+      'RECORDED · Gas canister 450 g → Attic',
+    )
+  })
+
+  it('opens the record it just confirmed', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Tent peg{Enter}',
+    )
+    await store.getState().drained()
+    await user.click(screen.getByTestId('confirmation'))
+
+    const { id } = soleGear(store)
+    expect(await screen.findByText(`Gear detail ${id}`)).toBeInTheDocument()
+  })
+
+  /**
+   * **The one departure from the board on this screen.** Screens A §06 draws
+   * `UNDO` beside the confirmation line, specified as "restores the record
+   * into the form and **removes the op**".
+   *
+   * An op cannot be removed from an append-only log that may already have
+   * pushed it, and story 36 — Undo, Later, opening with a design phase — rules
+   * out the only compensating op that exists: "It does not leave the Gear
+   * marked, Retired, or otherwise visibly different from how it stood
+   * before." A retraction that works only before the first push is the
+   * weaker-because-time-passed reversal that story's third criterion forbids
+   * by name.
+   *
+   * So the line ships without it, and the board element is blocked on story
+   * 36 rather than wrong.
+   */
+  it('offers no UNDO, because story 36 has not been designed yet', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Tent peg{Enter}',
+    )
+    await store.getState().drained()
+
+    expect(screen.queryByRole('button', { name: /undo/i })).toBeNull()
+  })
+})
+
+describe('Add gear — the trait', () => {
+  // A checkbox reads as a setting; this is not a setting. The permanence is
+  // stated beside it rather than discovered later.
+  it('offers the trait as the glossary meta-line words, and says it is fixed', async () => {
+    const store = await seededStore()
+    renderAddGear(store)
+
+    expect(screen.getByRole('radio', { name: 'Item' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Container' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(
+      screen.getByText('CONTAINERS HOLD OTHER GEAR · FIXED WHEN RECORDED'),
+    ).toBeInTheDocument()
+  })
+
+  it('states that the record is local and syncs on its own', async () => {
+    const store = await seededStore()
+    renderAddGear(store)
+    expect(
+      screen.getByText('RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND'),
+    ).toBeInTheDocument()
   })
 })

@@ -3,12 +3,13 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
-    min-height: 100svh;
-    padding: var(--space-16);
-    padding-bottom: var(--space-32);
-    max-width: 28rem;
-    margin-inline: auto;
-    width: 100%;
+  }
+
+  .titleRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-12);
   }
 
   .title {
@@ -17,47 +18,69 @@
     color: var(--color-ink-primary);
   }
 
+  .sessionCount {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* The confirmation line, under the title. Tapping it opens the record —
+     the only route out of the sitting, and never a forced one. */
+  .confirmation {
+    display: block;
+    width: 100%;
+    padding: var(--space-8) var(--space-12);
+    border: var(--stroke-rule) solid var(--color-accent);
+    border-radius: var(--radius-control);
+    background: var(--color-accent-fill);
+    color: var(--color-ink-primary);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-align: left;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
   .field {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-4);
   }
 
   .label {
-    font: var(--text-label) var(--font-mono);
-    letter-spacing: var(--tracking-label);
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-ink-faint);
   }
 
   .input {
+    width: 100%;
     min-height: max(3rem, 48px);
-    background: var(--color-well);
+    padding-inline: var(--space-16);
     border: var(--stroke-rule) solid var(--color-rule-control);
     border-radius: var(--radius-control);
-    padding-inline: var(--space-12);
+    background: var(--color-well);
     color: var(--color-ink-primary);
     font: var(--text-body) var(--font-ui);
   }
 
-  .toggleRow {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    min-height: max(3rem, 48px);
-    color: var(--color-ink-primary);
-    font: var(--text-body) var(--font-ui);
-  }
-
-  .kindField {
+  .segmentedField {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-4);
     border: 0;
     padding: 0;
-    margin: 0;
   }
 
+  /* 48px segmented control — the phone height everywhere on this screen. */
   .segmented {
     display: flex;
     border: var(--stroke-rule) solid var(--color-rule-control);
@@ -66,53 +89,107 @@
   }
 
   .segment {
-    position: relative;
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 2.5rem;
+    min-height: max(3rem, 48px);
     color: var(--color-ink-muted);
-    font: var(--text-label) var(--font-mono);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
+    font: var(--text-body) var(--font-ui);
     cursor: pointer;
-  }
-
-  .segment:has(input:checked) {
-    background: var(--color-bg-raised);
-    color: var(--color-ink-primary);
   }
 
   .segment + .segment {
     border-left: var(--stroke-rule) solid var(--color-rule-control);
   }
 
+  /* The radio itself is the state, not the styling — it stays in the
+     accessibility tree and is simply not drawn. */
   .segment input {
     position: absolute;
+    width: 1px;
+    height: 1px;
     opacity: 0;
     pointer-events: none;
+  }
+
+  .segment:has(input:checked) {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-primary);
+    font-weight: 600;
+  }
+
+  .segment:has(input:focus-visible) {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* Stepper-flanked mono well (Components, Add-gear atoms). */
+  .stepper {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-8);
+  }
+
+  .stepperButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: max(3rem, 48px);
+    min-height: max(3rem, 48px);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-primary);
+    font: var(--text-title) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .stepperWell {
+    flex: 1;
+    min-width: 0;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    color: var(--color-ink-primary);
+    font-family: var(--font-mono);
+    font-size: 1.0625rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
   }
 
   .homeRow {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
     min-height: max(3rem, 48px);
-    padding-inline: var(--space-12);
+    padding-inline: var(--space-16);
     border: var(--stroke-rule) solid var(--color-rule-control);
     border-radius: var(--radius-control);
     background: none;
     color: var(--color-ink-primary);
-    font: var(--text-body) var(--font-ui);
     cursor: pointer;
   }
 
-  .spacer {
-    flex: 1;
+  .homeValue {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+  }
+
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
   }
 
   .primary {
+    width: 100%;
     min-height: max(3rem, 48px);
     border: 0;
     border-radius: var(--radius-control);
@@ -123,9 +200,21 @@
     cursor: pointer;
   }
 
+  /* Disabled is a *state of the ledger line*, not a failure: the label never
+     changes, so the button never explains itself in place of the fact above
+     it saying what is missing. */
   .primary:disabled {
     background: var(--color-bg-raised);
-    color: var(--color-ink-dim);
+    color: var(--color-ink-muted);
     cursor: default;
+  }
+
+  /* Roomy 540 centres a 448 measure (Screens A §06). */
+  @media (min-width: 40em) {
+    .screen {
+      max-width: 28rem;
+      margin-inline: auto;
+      width: 100%;
+    }
   }
 }
