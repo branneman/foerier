@@ -456,10 +456,34 @@ append to, which is S2; `person.renamed` and the People UI stay in S4
 | `gear.kind_set` | `{kind: "single"｜"per_person"｜"counted"}` | Sets `kind`. Exclusivity is structural — one register, one value (invariant 5) | Kind set | 7 |
 | `gear.owned_count_set` | `{count: int ≥ 0}` | Sets `owned_count`, **absolutely**. Also how the close applies a `consumed` reduction (§4.5) | Owned-count set · reduction applied | 2, 7, 11 |
 | `gear.ownership_set` | `{owner: {"type":"shared"} ｜ {"type":"person","person_id":<uuid>}}` | Sets `owner` | Ownership set | 4 |
-| `gear.tag_applied` | `{tag}` | Sets the per-tag register to present (§3.4) | Tag applied | 13 |
-| `gear.tag_removed` | `{tag}` | Sets the per-tag register to absent | Tag removed | 13 |
+| `gear.tag_applied` | `{tag: TagString}` | Sets the per-tag register to present (§3.4) | Tag applied | 13 |
+| `gear.tag_removed` | `{tag: TagString}` | Sets the per-tag register to absent | Tag removed | 13 |
 | `gear.retired` | `{}` | Sets the tombstone. Soft-delete; past trips keep their history (invariant 7) | Gear retired | 2 |
 | `gear.restored` | `{}` | Clears the tombstone if strictly later | Gear restored | 2 |
+
+**`TagString` — an authoring rule, not a validation gate.** A conforming tag is
+**lowercase `[a-z0-9-]`, 1–40 characters**, stored **without** the leading `#`
+that every screen draws. Authoring clients normalise before emitting: case
+folded down, runs of whitespace collapsed to a single hyphen, a typed `#`
+stripped. The constraint comes from the design boards (`docs/design/README.md`
+§4a), which own it because the tag pickers are the only place a spelling is
+ever chosen — there is **no Tag entity, and no rename op, by design**, so a
+misspelling is corrected only by removing it and applying the right one.
+
+**Readers do not enforce it.** §5's tolerant-reader discipline is absolute and
+outranks this rule: a `tag` that does not conform is folded exactly as
+received, never rejected, never rewritten, and never dropped — an installed PWA
+running an older build may hold ops queued offline against an earlier
+normalisation, and rejecting them would discard a Quartermaster's work to
+enforce a cosmetic rule. The register key is the literal string that arrived
+(§3.4). Two spellings of one intent are therefore two registers that both
+fold, which is precisely why the defence is the picker at authoring time and
+not a check at the boundary.
+
+Tightening the rule later is additive and needs no migration: old ops keep
+folding, and only newly authored tags take the new shape. **Trip-only gear is
+never tagged** (domain invariant 9); no op enforces this either, because
+trip-only entries are not Gear aggregates and so have no tag register to write.
 
 **The containment trait is set once, at `gear.recorded`, and has no mutation op.**
 Domain §9 records gear as an item *or* a container and never as changing between
