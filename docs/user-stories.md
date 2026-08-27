@@ -520,6 +520,57 @@ Acceptance criteria:
 Roughly in the order we expect to want them. The rich Weight analysis is
 deliberately last.
 
+### 36. Undo a change
+
+As a Quartermaster, during Inventory management and Packing, I want to reverse
+the change I have just made — a mistyped record, a Move applied to the wrong
+Gear, a Packing status tapped by accident — so that working quickly is safe and
+I never have to reconstruct by hand what something looked like before I touched
+it.
+
+Acceptance criteria:
+
+- After a change, the way to reverse it is offered where the change happened,
+  and reversing takes one deliberate action.
+- Reversing restores what I would recognise as the previous state. It does not
+  leave the Gear marked, Retired, or otherwise visibly different from how it
+  stood before.
+- The offer means the same thing every time. It never quietly becomes a weaker
+  kind of reversal because time passed, because the change reached the rest of
+  the Household, or because I was offline when I made it.
+- What can and cannot be reversed is stated where it applies, rather than
+  discovered by trying.
+- Reversing never silently discards another Quartermaster's work.
+
+**This story opens with a design phase, not a slice.** Undo is the first
+requirement that pushes back on decisions the rest of the system has already
+made, and the criteria above are deliberately written as the user's expectation
+rather than as something the current design can obviously deliver. Settle these
+in the docs that own them, before any slice is cut:
+
+- **Language.** Is there one term, and does it mean exactly one thing? Undo on
+  a mistyped record, on a Move, on a Packing status tap, and on story 35's bulk
+  action may be four different promises. Is what is offered *reverse my last
+  change* or *reverse this change*? The [glossary](ubiquitous-language.md)
+  takes a headword either way.
+- **Domain.** Is reversal a domain operation, or only an affordance built over
+  operations that already exist? The [model](domain-model.md) names no inverse
+  today, and some operations have none that restores the prior state —
+  Retiring Gear is not the opposite of recording it.
+- **Persistence and sync.** The change log is append-only and merges per field
+  by last writer, which makes a reversal a *new* change carrying a later clock
+  rather than the removal of an old one. So a reversal can itself be lost to a
+  concurrent edit, and reversing a field another Device changed at the same
+  moment may resurrect a value nobody wants. Whether reversal is expressible at
+  all without a new kind of entry belongs to that design, not to a slice.
+- **Scope and window.** Everything, or only the last thing? Always, or only
+  while the change is still on this Device? A window that expires quietly is
+  exactly the failure the third criterion above forbids.
+
+Until that design lands, **the MVP does not lean on Undo**: a screen that would
+drop a confirmation on the grounds that Undo exists keeps its confirmation
+instead.
+
 ### 16. Simple Weight totals
 
 As a Quartermaster, during Trip planning, I want to optionally record Weight in
