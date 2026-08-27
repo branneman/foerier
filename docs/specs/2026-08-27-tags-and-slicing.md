@@ -662,3 +662,39 @@ written later is captured from a format that has already drifted.
 - **Radix.** See [§4.3](#43-radix-stays-deferred).
 - **Any endpoint.** The server has no op vocabulary
   ([sync §6.2](../sync-protocol.md)); two new op types are a client-side deploy.
+
+---
+
+## 12. What the build changed, and why
+
+This spec was written before the code. Four things it did not foresee, kept
+here so the spec is not read as a record of what shipped — the durable record
+is [architecture §12.5](../architecture-design.md#125-consequences-of-s3-tags-and-the-slicing-engine).
+
+- **Normalisation needed two halves.** [§2](#2-tagstring--an-authoring-rule-not-a-validation-gate)
+  assumed one `normalizeTag`, applied on every keystroke. A failing picker
+  test found that it trims the trailing hyphen — as a *finished* tag must —
+  and so eats the space in `cook set` before the `s` arrives to give it
+  something to separate, silently storing `cookset`. `normalizeTagInput` is
+  the typing-time half; `normalizeTag` is now defined in terms of it, so there
+  is one pipeline and no third rule between what a field shows and what an op
+  stores.
+- **`GearRow`'s table variant is a prop, not a container query.**
+  [§4.1](#41-gearrow--one-component-three-renders) repeated Components §03's
+  "picked by `@container`, never by viewport" for all three renders. It holds
+  for `2-LINE` ↔ `1-LINE` and not for `TABLE-44`, which is a different DOM:
+  choosing it in CSS means rendering both sets of cells and hiding one, which
+  duplicates every fact in the accessibility tree — and Roomy's widest
+  container (~672px) against Desktop's narrowest table (~760px) leaves a 24px
+  margin that would break at one untested viewport.
+- **The desktop arrange row keeps its `SORT` options.**
+  [§6.1](#61-depot--the-slice-bar-at-five-modes) took the board's "sort on
+  desktop = click a column head" literally. No column shows when a piece of
+  gear was recorded, so column heads alone leave `NEWEST FIRST` unreachable at
+  that width. The `GEAR` head toggles A→Z / Z→A *and* the options stay.
+- **`depotTags` became `dimensionValues`.** [§3.5](#35-the-tag-vocabulary)
+  scoped the derived vocabulary to tags. The `+ KIND` ghost chip needs the
+  identical list, and so will every dimension S4 through S10 adds — so it is
+  per-dimension, which is also how an unrecognised Kind from a peer on another
+  build reaches the menu at all: it is in the depot, so it is offered, with no
+  list of known values for anyone to have forgotten to update.
