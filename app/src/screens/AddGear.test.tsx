@@ -422,6 +422,15 @@ describe('Add gear — the trait', () => {
     ).toBeInTheDocument()
   })
 
+  // Every board frame of this screen carries `‹ DEPOT` + the sync state, the
+  // same header gear detail has. Without it the only way back is the tab bar,
+  // which is not where the eye goes on a form.
+  it('offers the way back the board draws', async () => {
+    const store = await seededStore()
+    renderAddGear(store)
+    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeInTheDocument()
+  })
+
   it('states that the record is local and syncs on its own', async () => {
     const store = await seededStore()
     renderAddGear(store)

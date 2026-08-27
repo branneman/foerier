@@ -1244,6 +1244,16 @@ byte-exact.
   which panes or elements *exist*, a **container** query decides how what
   exists *lays out*. Desktop deliberately keeps no detail pane; the board's
   1024 frame spends that width on the table.
+- **The Depot's desktop `PLACES` sidebar is deferred, and the reason is a
+  design gap rather than scope.** §2's desktop frame draws a 216px sidebar
+  holding logo · ALL GEAR · PLACES · sync line, and draws no nav at all — but
+  [frontend-design §3.1](frontend-design.md) gives Desktop a **labeled nav
+  sidebar** at that exact width, so building both put two 216px rails side by
+  side. It was built, seen to be wrong at a real viewport, and removed. The
+  deciding argument is that a `PLACES` list has nothing to do: **Place is not
+  a dimension** — not in S3 and not anywhere in §8.5's ladder — so the list
+  could only ever have been decorative. It should return with a Place
+  dimension, and the board's desktop frame owes a nav treatment either way.
 - **Two board elements ship changed, both because story 36 (Undo) is Later.**
   Add gear's confirmation line has no `UNDO` — the board specifies "removes
   the op", which an append-only log that may already have pushed cannot do,

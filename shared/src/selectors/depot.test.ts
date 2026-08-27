@@ -16,7 +16,6 @@ import { normalizeTag, type TagString } from '../tags.ts'
 import {
   depotCounts,
   looseGear,
-  placeGearCounts,
   retiredGear,
   tagsOf,
   visibleGear,
@@ -163,105 +162,5 @@ describe('tagsOf', () => {
   it('answers empty for gear no tag op has ever addressed', () => {
     const state = fold(at(aGear({ id: 'g1', name: 'Pot set' }), 1))
     expect(tagsOf(state.gear['g1']!)).toEqual([])
-  })
-})
-
-/**
- * The Depot desktop sidebar's `PLACES` list (`docs/design/README.md` §2), and
- * Components §05's rule for what its number means: **count = everything
- * beneath**, at any depth, not the direct children.
- */
-describe('placeGearCounts', () => {
-  const nested = () =>
-    fold([
-      ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
-      ...at(aPlace({ id: 'kelder', name: 'Kelder' }), 2),
-      ...at(aPlace({ id: 'garage', name: 'Garage' }), 3),
-      ...at(
-        aGear({
-          id: 'crate',
-          name: 'Crate B',
-          container: true,
-          residence: { in: 'place', id: 'attic' },
-        }),
-        4,
-      ),
-      ...at(
-        aGear({
-          id: 'sack',
-          name: 'Stuff sack',
-          container: true,
-          residence: { in: 'gear', id: 'crate' },
-        }),
-        5,
-      ),
-      ...at(
-        aGear({
-          id: 'tent',
-          name: 'Tent',
-          residence: { in: 'gear', id: 'sack' },
-        }),
-        6,
-      ),
-      ...at(
-        aGear({
-          id: 'axe',
-          name: 'Axe',
-          residence: { in: 'place', id: 'kelder' },
-        }),
-        7,
-      ),
-    ])
-
-  it('counts everything beneath a place, at any depth', () => {
-    const counts = placeGearCounts(nested())
-    // Attic holds the crate, the sack inside it, and the tent inside that.
-    expect(counts.map((entry) => [entry.place.id, entry.count])).toEqual([
-      ['attic', 3],
-      ['garage', 0],
-      ['kelder', 1],
-    ])
-  })
-
-  it('counts an empty place as zero rather than omitting it', () => {
-    const counts = placeGearCounts(nested())
-    expect(counts.find((entry) => entry.place.id === 'garage')?.count).toBe(0)
-  })
-
-  it('omits a removed place', () => {
-    const state = fold([
-      ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
-      ...at(aPlace({ id: 'shed', name: 'Shed' }), 2),
-      one(placeRemoved('shed'), 3),
-    ])
-    expect(placeGearCounts(state).map((entry) => entry.place.id)).toEqual([
-      'attic',
-    ])
-  })
-
-  // Retired gear counts for nothing here either — the sidebar counts what a
-  // Quartermaster would find if they walked to the place.
-  it('does not count retired gear', () => {
-    const state = fold([
-      ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
-      ...at(
-        aGear({
-          id: 'g1',
-          name: 'Tent',
-          residence: { in: 'place', id: 'attic' },
-        }),
-        2,
-      ),
-      ...at(
-        aGear({
-          id: 'g2',
-          name: 'Old tent',
-          residence: { in: 'place', id: 'attic' },
-        }),
-        3,
-      ),
-      one(gearRetired('g2'), 4),
-    ])
-    expect(placeGearCounts(state)[0]?.count).toBe(1)
   })
 })

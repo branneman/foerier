@@ -76,11 +76,9 @@ export type {
 } from './selectors/containment.ts'
 export { containmentView, homePath } from './selectors/containment.ts'
 
-export type { PlaceGearCount } from './selectors/depot.ts'
 export {
   depotCounts,
   looseGear,
-  placeGearCounts,
   retiredGear,
   tagsOf,
   visibleGear,

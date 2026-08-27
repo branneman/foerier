@@ -508,18 +508,6 @@ describe('the Depot at desktop width', () => {
     ])
   }
 
-  it('lists the places with everything beneath them', async () => {
-    setViewport(DESKTOP)
-    renderDepot(await aHomedDepot())
-
-    const sidebar = screen.getByRole('complementary', { name: 'Depot places' })
-    const attic = within(sidebar).getByText('⌂ Attic').closest('li')
-    expect(attic).not.toBeNull()
-    // The crate and the bag inside it: count = everything beneath, at any
-    // depth. Scoped to the Attic row because ALL GEAR also reads 2.
-    expect(within(attic as HTMLElement).getByText('2')).toBeInTheDocument()
-  })
-
   // Tags appear in the table's own column and nowhere else — at 44px density
   // chips would dominate the row, and the full set is on gear detail.
   it('shows tags in the table column that the folded row hides', async () => {

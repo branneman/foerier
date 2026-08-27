@@ -4,14 +4,12 @@ import {
   dimension,
   dimensionValues,
   homePath,
-  placeGearCounts,
   sliceDepot,
   tagsOf,
   type ContainmentView,
   type DepotState,
   type DimensionId,
   type GearState,
-  type PlaceGearCount,
   type SliceGroup,
 } from '@foerier/shared'
 import { GearRow, Logo } from '@foerier/ui'
@@ -158,32 +156,6 @@ function Group({
   )
 }
 
-/** The desktop sidebar: logo · ALL GEAR · PLACES · sync line. `SAVED SLICES`
- * is story 34 and tagged LATER on the board; it is not built. */
-function Sidebar({ state }: { state: DepotState }) {
-  const places = useMemo(() => placeGearCounts(state), [state])
-  const counts = useMemo(() => depotCounts(state), [state])
-
-  return (
-    <aside className={styles['sidebar']} aria-label="Depot places">
-      <Logo size={24} title="foerier" />
-      <div className={styles['sidebarRow']} data-testid="all-gear">
-        <span>ALL GEAR</span>
-        <span className={styles['sidebarCount']}>{counts.gear}</span>
-      </div>
-      <span className={styles['sidebarLabel']}>PLACES</span>
-      <ul className={styles['sidebarList']}>
-        {places.map((entry: PlaceGearCount) => (
-          <li key={entry.place.id} className={styles['sidebarRow']}>
-            <span>⌂ {entry.place.name?.value ?? ''}</span>
-            <span className={styles['sidebarCount']}>{entry.count}</span>
-          </li>
-        ))}
-      </ul>
-    </aside>
-  )
-}
-
 export interface DepotProps {
   /** The gear the Split detail pane is showing, so its row stays visible
    * while the detail is read (`docs/design/README.md` §3a). */
@@ -208,8 +180,6 @@ export function Depot({ selectedId }: DepotProps = {}) {
 
   return (
     <div className={styles['screen']}>
-      {isDesktop && <Sidebar state={state} />}
-
       <div className={styles['main']}>
         {!isDesktop && (
           <header className={styles['header']}>
@@ -235,7 +205,13 @@ export function Depot({ selectedId }: DepotProps = {}) {
             }
           />
           {isDesktop && (
-            <Link href="/add" className={styles['addButton']}>
+            // The `+` is decoration; the phone FAB and this button are the
+            // same action, so they carry the same accessible name.
+            <Link
+              href="/add"
+              className={styles['addButton']}
+              aria-label="Add gear"
+            >
               + Add gear
             </Link>
           )}

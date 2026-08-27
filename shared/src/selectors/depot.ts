@@ -1,9 +1,5 @@
 import type { DepotState, GearState, PlaceState } from '../state.ts'
-import {
-  containmentView,
-  type ContainmentView,
-  type HolderRef,
-} from './containment.ts'
+import { containmentView, type ContainmentView } from './containment.ts'
 
 /**
  * The depot's list-level selectors: what a Quartermaster sees when they open
@@ -114,50 +110,6 @@ export function tagsOf(gear: GearState): readonly string[] {
   return Object.keys(tags)
     .filter((tag) => tags[tag]?.value === true)
     .sort()
-}
-
-/** One row of the Depot desktop sidebar's `PLACES` list. */
-export interface PlaceGearCount {
-  place: PlaceState
-  count: number
-}
-
-/**
- * How much gear lives in each Place — **everything beneath it, at any
- * depth**, which is Components §05's rule for what the sidebar's number
- * means. A crate in the attic and a tent inside that crate both count towards
- * the attic.
- *
- * Retired gear counts for nothing, the same as everywhere else: this number
- * answers "what would I find if I walked to the attic", and a retired piece
- * is not something to go and find.
- *
- * An empty Place reads `0` rather than being omitted — a Place a
- * Quartermaster made and has not filled yet is exactly the one they are about
- * to fill.
- */
-export function placeGearCounts(
-  state: DepotState,
-  view: ContainmentView = containmentView(state),
-): readonly PlaceGearCount[] {
-  const countUnder = (holder: HolderRef): number => {
-    let total = 0
-    for (const id of view.childrenOf(holder)) {
-      const gear = state.gear[id]
-      // A retired container still holds what it holds — retirement changes
-      // whether a thing may *hold* something, not whether what is inside it
-      // exists — so the walk continues through it even though it does not
-      // count itself.
-      if (gear !== undefined && !isRetired(gear)) total += 1
-      total += countUnder({ kind: 'gear', id })
-    }
-    return total
-  }
-
-  return visiblePlaces(state).map((place) => ({
-    place,
-    count: countUnder({ kind: 'place', id: place.id }),
-  }))
 }
 
 /**

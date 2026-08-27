@@ -5,10 +5,11 @@ import {
   type Residence,
 } from '@foerier/shared'
 import { useRef, useState } from 'react'
-import { useLocation } from 'wouter'
+import { Link, useLocation } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
 import { useDepot } from '../depot/store'
+import { syncLabel } from '../depot/syncLabel'
 import styles from './AddGear.module.css'
 
 /**
@@ -82,6 +83,7 @@ interface Recorded {
 export function AddGear() {
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
+  const sync = useDepot((depot) => depot.sync)
   const [, navigate] = useLocation()
 
   const [name, setName] = useState('')
@@ -144,6 +146,19 @@ export function AddGear() {
 
   return (
     <div className={styles['screen']}>
+      {/* The same header gear detail carries, and the one every board frame
+          of this screen draws. Without it the only way back from a form is
+          the tab bar. */}
+      <header className={styles['header']}>
+        <Link href="/" className={styles['back']}>
+          ‹ DEPOT
+        </Link>
+        <span className={styles['sync']}>
+          <span className={styles['syncDot']} aria-hidden="true" />
+          {syncLabel(sync)}
+        </span>
+      </header>
+
       <div className={styles['titleRow']}>
         <h1 className={styles['title']}>Add gear</h1>
         {sessionCount > 0 && (

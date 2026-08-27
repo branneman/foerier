@@ -131,13 +131,11 @@
     }
   }
 
-  /* ---- Desktop 1024: the sidebar, the table, the 8 columns ---- */
+  /* ---- Desktop 1024: the table and its 8 columns ---- */
   @media (min-width: 64em) {
     .screen {
-      display: grid;
-      grid-template-columns: 13.5rem 1fr;
-      gap: var(--space-24);
-      align-items: start;
+      /* No second rail: the shell's own 216px labeled nav is the sidebar
+         the ladder promises at this width (`ui/styles/layout.css`). */
       padding-bottom: var(--space-24);
     }
 
@@ -185,49 +183,6 @@
     .list > li.columnHeads {
       padding-inline: var(--space-12);
     }
-  }
-
-  .sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-    padding: var(--space-16) 0;
-  }
-
-  .sidebarLabel {
-    margin-top: var(--space-16);
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--color-ink-faint);
-  }
-
-  .sidebarList {
-    display: flex;
-    flex-direction: column;
-    list-style: none;
-  }
-
-  .sidebarRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-8);
-    min-height: 2.25rem;
-    padding-inline: var(--space-8);
-    border-radius: var(--radius-control);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-ink-muted);
-  }
-
-  .sidebarCount {
-    font-variant-numeric: tabular-nums;
-    color: var(--color-ink-faint);
   }
 
   .addButton {

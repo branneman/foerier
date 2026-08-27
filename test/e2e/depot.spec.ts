@@ -56,16 +56,26 @@ async function setOnlineFlag(page: Page, online: boolean) {
   }, online)
 }
 
+/**
+ * S3 redrew this screen (`docs/design/README.md` §3b): **after Add the screen
+ * stays**, so the batch loop is type → return → type. Round 1 navigated to
+ * the new gear's detail after every record, which this helper used to assert
+ * — leaving on purpose is now what has to be asserted instead.
+ */
 async function addGear(page: Page, name: string) {
   await page.getByRole('link', { name: 'Add gear' }).click()
   await expect(page.getByRole('heading', { name: 'Add gear' })).toBeVisible()
 
-  await page.getByRole('textbox').fill(name)
+  await page.getByRole('textbox', { name: 'Name' }).fill(name)
   await page.getByRole('button', { name: 'Add gear' }).click()
 
-  // Submitting lands on the new gear's detail screen.
-  await expect(page.getByRole('heading', { name })).toBeVisible()
-  // `exact`, because the gear detail's own back link reads `‹ DEPOT`.
+  // The screen stays, the name clears, and the confirmation line says what
+  // was recorded.
+  await expect(page.getByTestId('confirmation')).toContainText(name)
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('')
+  await expect(page.getByRole('heading', { name: 'Add gear' })).toBeVisible()
+
+  // `exact`, because this screen's own back link reads `‹ DEPOT`.
   await page.getByRole('link', { name: 'Depot', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Depot' })).toBeVisible()
 }
