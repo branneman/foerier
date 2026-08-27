@@ -75,11 +75,13 @@ function Row({
   gear,
   view,
   layout,
+  selected,
 }: {
   state: DepotState
   gear: GearState
   view: ContainmentView
   layout: 'row' | 'table'
+  selected: boolean
 }) {
   const inside = view.childrenOf({ kind: 'gear', id: gear.id }).length
   const meta = metaFor(state, gear, view)
@@ -99,6 +101,7 @@ function Row({
         // deliberately not placeholder'd (the same call `Find` made in S2b).
         whereabouts="⌂ HOME"
         layout={layout}
+        selected={selected}
         {...(gear.container?.value === true ? { insideCount: inside } : {})}
         {...(layout === 'table'
           ? {
@@ -122,11 +125,13 @@ function Group({
   state,
   view,
   layout,
+  selectedId,
 }: {
   group: SliceGroup
   state: DepotState
   view: ContainmentView
   layout: 'row' | 'table'
+  selectedId: string | undefined
 }) {
   return (
     <>
@@ -140,7 +145,13 @@ function Group({
       )}
       {group.gear.map((gear) => (
         <li key={gear.id}>
-          <Row state={state} gear={gear} view={view} layout={layout} />
+          <Row
+            state={state}
+            gear={gear}
+            view={view}
+            layout={layout}
+            selected={gear.id === selectedId}
+          />
         </li>
       ))}
     </>
@@ -173,7 +184,13 @@ function Sidebar({ state }: { state: DepotState }) {
   )
 }
 
-export function Depot() {
+export interface DepotProps {
+  /** The gear the Split detail pane is showing, so its row stays visible
+   * while the detail is read (`docs/design/README.md` §3a). */
+  selectedId?: string
+}
+
+export function Depot({ selectedId }: DepotProps = {}) {
   const state = useDepot((depot) => depot.state)
   const [spec, setSpec] = useSliceSpec()
   const isDesktop = useMediaQuery(DESKTOP)
@@ -284,6 +301,7 @@ export function Depot() {
                 state={state}
                 view={view}
                 layout={layout}
+                selectedId={selectedId}
               />
             ))}
           </ul>

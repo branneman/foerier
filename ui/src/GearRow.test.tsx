@@ -152,6 +152,20 @@ describe('GearRow', () => {
     )
   })
 
+  /**
+   * Split 900 keeps the selection visible while the detail pane is read
+   * (`docs/design/README.md` §3a). `aria-current` rather than a class alone,
+   * so the state is announced and not colour-only — the same principle the
+   * status grammar carries.
+   */
+  it('marks the row the detail pane is showing', () => {
+    const { rerender } = render(<GearRow {...BAG} />)
+    expect(screen.getByRole('link')).not.toHaveAttribute('aria-current')
+
+    rerender(<GearRow {...BAG} selected />)
+    expect(screen.getByRole('link')).toHaveAttribute('aria-current', 'true')
+  })
+
   it('forwards the click to whatever wraps it', async () => {
     const onClick = vi.fn((event: React.MouseEvent) => event.preventDefault())
     render(<GearRow {...BAG} onClick={onClick} />)

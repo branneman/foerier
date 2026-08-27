@@ -71,6 +71,9 @@ export interface GearRowProps {
   /** Table column only — never drawn in a folding row. */
   tags?: readonly string[]
   retired?: boolean
+  /** The row whose gear the detail pane is showing (Split 900). Announced
+   * via `aria-current`, not tint alone. */
+  selected?: boolean
   /** `row` folds by `@container`; `table` is the desktop 8-column row. */
   layout?: 'row' | 'table'
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void
@@ -105,6 +108,7 @@ export function GearRow(props: GearRowProps) {
     qty,
     tags,
     retired = false,
+    selected = false,
     layout = 'row',
     onClick,
     anchorProps,
@@ -119,6 +123,7 @@ export function GearRow(props: GearRowProps) {
     styles['row'],
     layout === 'table' ? styles['table'] : styles['folding'],
     retired ? styles['retired'] : '',
+    selected ? styles['selected'] : '',
   ]
     .filter((part) => part !== '')
     .join(' ')
@@ -154,6 +159,7 @@ export function GearRow(props: GearRowProps) {
       // a screen reader still reaches them, through `describedby` rather than
       // through a name nobody would read aloud.
       aria-label={name}
+      {...(selected ? { 'aria-current': true as const } : {})}
       aria-describedby={[meta === '' ? null : metaId, whereaboutsId]
         .filter((id) => id !== null)
         .join(' ')}

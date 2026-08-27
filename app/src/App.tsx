@@ -17,10 +17,9 @@ import { FirstSync } from './components/FirstSync'
 import { DepotProvider, type DepotStoreState } from './depot/store'
 import { syncLine, syncTone } from './depot/syncLabel'
 import { createSessionDepot, type DepotFactory } from './depot/wiring'
+import { DepotView } from './shell/DepotView'
 import { AddGear } from './screens/AddGear'
-import { Depot } from './screens/Depot'
 import { Find } from './screens/Find'
-import { GearDetail } from './screens/GearDetail'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
 import { AppShell } from './shell/AppShell'
@@ -256,11 +255,14 @@ export function App({
         ) : depotStore === null ? null : (
           <SignedInShell store={depotStore} onSignedOut={onSignedOut}>
             <Switch>
+              {/* One view for both routes: below Split it renders whichever
+                  screen the route names, and at Split it renders the list and
+                  the detail side by side (`shell/DepotView.tsx`). */}
               <Route path="/">
-                <Depot />
+                <DepotView />
               </Route>
               <Route path="/gear/:id">
-                <GearDetail />
+                <DepotView />
               </Route>
               <Route path="/add">
                 <AddGear />

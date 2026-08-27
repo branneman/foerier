@@ -108,6 +108,13 @@
     color: var(--color-ink-faint);
   }
 
+  /* Split 900: the selection stays visible while the detail is read — a
+     tint plus a 2px accent inset edge, never tint alone. */
+  .selected {
+    background: rgb(147 188 159 / 0.05);
+    box-shadow: inset 2px 0 0 var(--color-accent);
+  }
+
   @container (min-width: 38rem) {
     /* 1-LINE: the meta moves inline beside the name rather than beneath it. */
     .folding {
