@@ -17,6 +17,7 @@ import {
   type PathSegment,
   type WhereaboutsSlice,
 } from '@foerier/shared'
+import { Chip } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
@@ -201,19 +202,18 @@ export function GearDetail() {
         anything by mis-tap. A gear with no tags shows the lone ghost.
       */}
       <div className={styles['tagChips']} data-testid="tag-chips">
+        {/* `ui`'s settled chip at its 32px size — the same component the
+            slice bar uses at 36px, so the two cannot drift apart again. */}
         {tagsOf(gear).map((tag) => (
-          <span key={tag} className={styles['tagChip']}>
-            #{tag}
-          </span>
+          <Chip key={tag} label={`#${tag}`} size="tag" />
         ))}
         {!retired && (
-          <button
-            type="button"
-            className={styles['tagGhost']}
+          <Chip
+            label="+ tag"
+            size="tag"
+            ghost
             onClick={() => setTagsOpen(true)}
-          >
-            + tag
-          </button>
+          />
         )}
       </div>
 

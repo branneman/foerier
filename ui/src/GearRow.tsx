@@ -56,13 +56,18 @@ export interface GearRowProps {
   href: string
   /** `⌂ HOME` · `▸ ALPS · CAR` · `▲ ×1 TESSIN 2025` · `RETIRED`. */
   whereabouts: string
-  /** Which world the whereabouts names — muted, amber, or attention. */
+  /** Which world the whereabouts names — muted, amber, or attention. Only
+   * `home` is reachable today; `trip` arrives with the trip slices and
+   * `attention` with story 11's `lost` outcome. Drawn on the board for all
+   * three, so the slot is named rather than invented later. */
   tone?: 'home' | 'trip' | 'attention'
   /** How much gear sits inside this container, at any depth. */
   insideCount?: number
   /** The **glossary** Kind, already formatted. Table column only. */
   kind?: string
-  /** `SHARED`, or the owning Person. Meta line and table column. */
+  /** `SHARED`, or the owning Person. Meta line and table column. **S4 fills
+   * it**; until then the table's OWNER column reads `—`, which is honest —
+   * the column is drawn on the board and the fact does not exist yet. */
   owner?: string
   /** `ATTIC ▸ SHELF L-TOP ▸ CRATE B`. Meta line and table column. */
   path?: string
