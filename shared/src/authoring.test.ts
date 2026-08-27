@@ -9,6 +9,8 @@ import {
   gearRenamed,
   gearRestored,
   gearRetired,
+  gearTagApplied,
+  gearTagRemoved,
   personRecorded,
   placeRecorded,
   placeRemoved,
@@ -17,6 +19,14 @@ import {
   type OpAuthor,
 } from './authoring.ts'
 import { createHlcClock } from './hlc.ts'
+import { normalizeTag, type TagString } from './tags.ts'
+
+/** A conforming tag, the only way one can be made. */
+function tag(raw: string): TagString {
+  const normalized = normalizeTag(raw)
+  if (normalized === null) throw new Error(`not a tag: ${raw}`)
+  return normalized
+}
 
 function anAuthor(overrides: Partial<OpAuthor> = {}): OpAuthor {
   return {
@@ -159,5 +169,41 @@ describe('authorOp', () => {
     expect(placeRemoved('pl1').payload).toEqual({})
     expect(gearRetired('g1').payload).toEqual({})
     expect(gearRestored('g1').payload).toEqual({})
+  })
+})
+
+describe('the tag builders', () => {
+  it('carries the tag as the payload, without a #', () => {
+    expect(gearTagApplied('g1', tag('winter')).payload).toEqual({
+      tag: 'winter',
+    })
+    expect(gearTagRemoved('g1', tag('winter')).payload).toEqual({
+      tag: 'winter',
+    })
+  })
+
+  it('scopes both ops to the gear aggregate', () => {
+    for (const spec of [
+      gearTagApplied('g1', tag('winter')),
+      gearTagRemoved('g1', tag('winter')),
+    ]) {
+      expect(spec.aggregate).toBe('gear')
+      expect(spec.aggregate_id).toBe('g1')
+    }
+  })
+
+  it('names the op types the catalogue names', () => {
+    expect(gearTagApplied('g1', tag('winter')).type).toBe('gear.tag_applied')
+    expect(gearTagRemoved('g1', tag('winter')).type).toBe('gear.tag_removed')
+  })
+
+  /**
+   * The whole point of the brand (`tags.ts`): the picker is the only place a
+   * spelling is decided, so an un-normalised string must not be able to reach
+   * a builder. Checked by Tier 0's `tsc`, not at runtime.
+   */
+  it('refuses a raw string at the type level', () => {
+    // @ts-expect-error only a TagString may be applied; normalizeTag makes one
+    gearTagApplied('g1', 'Winter Kit')
   })
 })

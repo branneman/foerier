@@ -1,0 +1,134 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the S3 tag fixture > folds the S3 fixture to exactly the state it folded to when captured 1`] = `
+{
+  "gear": {
+    "44444444-0000-7000-8000-000000000001": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:00:00.000Z-0000",
+        "value": false,
+      },
+      "id": "44444444-0000-7000-8000-000000000001",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:00:00.000Z-0000",
+        "value": "counted",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:00:00.000Z-0000",
+        "value": "Sleeping bag, winter",
+      },
+      "ownedCount": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:00:00.000Z-0000",
+        "value": 2,
+      },
+      "tags": {
+        "3-season": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:21:00.000Z-0000",
+          "value": true,
+        },
+        "bulky": {
+          "deviceId": "bbbbbbbb-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:06:00.000Z-0000",
+          "value": false,
+        },
+        "sleep": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:04:00.000Z-0000",
+          "value": true,
+        },
+        "winter": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:03:00.000Z-0000",
+          "value": true,
+        },
+      },
+    },
+    "44444444-0000-7000-8000-000000000002": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:01:00.000Z-0000",
+        "value": false,
+      },
+      "id": "44444444-0000-7000-8000-000000000002",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:01:00.000Z-0000",
+        "value": "single",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:01:00.000Z-0000",
+        "value": "Pot set",
+      },
+      "tags": {
+        "#winter": {
+          "deviceId": "bbbbbbbb-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:09:00.000Z-0000",
+          "value": true,
+        },
+        "WINTER": {
+          "deviceId": "bbbbbbbb-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:07:00.000Z-0000",
+          "value": true,
+        },
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+          "deviceId": "bbbbbbbb-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:10:00.000Z-0000",
+          "value": true,
+        },
+        "cook set": {
+          "deviceId": "bbbbbbbb-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:08:00.000Z-0000",
+          "value": true,
+        },
+        "ünter": {
+          "deviceId": "bbbbbbbb-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:11:00.000Z-0000",
+          "value": true,
+        },
+      },
+    },
+    "44444444-0000-7000-8000-000000000003": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:02:00.000Z-0000",
+        "value": false,
+      },
+      "id": "44444444-0000-7000-8000-000000000003",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:02:00.000Z-0000",
+        "value": "counted",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:02:00.000Z-0000",
+        "value": "Gas canister 450 g",
+      },
+      "ownedCount": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-26T09:02:00.000Z-0000",
+        "value": 4,
+      },
+      "tags": {
+        "food": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-08-26T09:20:00.000Z-0000",
+          "value": true,
+        },
+      },
+    },
+  },
+  "people": {},
+  "places": {},
+  "unfolded": {
+    "count": 0,
+    "types": {},
+  },
+}
+`;

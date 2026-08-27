@@ -723,3 +723,137 @@ describe('name registers: an explicit null clears, an absent field leaves it alo
     expect(Object.hasOwn(state.gear['g1']!, 'residence')).toBe(false)
   })
 })
+
+/**
+ * `sync-protocol.md` §3.4: tags are **not** a single register holding an
+ * array — that would make two quartermasters tagging concurrently clobber
+ * each other. Each member is its own register, keyed
+ * `(gear_id, "tags", <tag string>)`, and `gear.tag_applied` /
+ * `gear.tag_removed` are an ordinary LWW pair on it.
+ */
+describe('gear tags', () => {
+  const GEAR = 'gear-tags'
+
+  const tagOp = (
+    type: 'gear.tag_applied' | 'gear.tag_removed',
+    tag: unknown,
+    hlc: string,
+    deviceId = DEVICE,
+  ) => op('gear', GEAR, type, { tag }, hlc, deviceId)
+
+  it('sets a per-tag register to present', () => {
+    const state = fold([tagOp('gear.tag_applied', 'winter', at(1))])
+    expect(state.gear[GEAR]?.tags?.['winter']?.value).toBe(true)
+  })
+
+  it('sets the register to absent rather than deleting the key', () => {
+    const state = fold([
+      tagOp('gear.tag_applied', 'winter', at(1)),
+      tagOp('gear.tag_removed', 'winter', at(2)),
+    ])
+    // The key survives: a removal is a write carrying a clock, and discarding
+    // it would let a concurrent re-apply win by arrival order instead of on
+    // its own stamp.
+    expect(Object.hasOwn(state.gear[GEAR]?.tags ?? {}, 'winter')).toBe(true)
+    expect(state.gear[GEAR]?.tags?.['winter']?.value).toBe(false)
+  })
+
+  it('keeps two tags as two independent registers', () => {
+    const state = fold([
+      tagOp('gear.tag_applied', 'winter', at(1)),
+      tagOp('gear.tag_applied', 'sleep', at(2)),
+      tagOp('gear.tag_removed', 'winter', at(3)),
+    ])
+    expect(state.gear[GEAR]?.tags?.['winter']?.value).toBe(false)
+    expect(state.gear[GEAR]?.tags?.['sleep']?.value).toBe(true)
+  })
+
+  it('lets an older op arriving late lose, whichever order it folds in', () => {
+    const forwards = fold([
+      tagOp('gear.tag_removed', 'winter', at(1)),
+      tagOp('gear.tag_applied', 'winter', at(2)),
+    ])
+    const backwards = fold([
+      tagOp('gear.tag_applied', 'winter', at(2)),
+      tagOp('gear.tag_removed', 'winter', at(1)),
+    ])
+    expect(forwards.gear[GEAR]?.tags?.['winter']?.value).toBe(true)
+    expect(backwards.gear[GEAR]?.tags?.['winter']?.value).toBe(true)
+  })
+
+  it('breaks an identical-clock tie by device id', () => {
+    const state = fold([
+      tagOp('gear.tag_applied', 'winter', at(1), DEVICE),
+      tagOp('gear.tag_removed', 'winter', at(1), DEVICE_B),
+    ])
+    // DEVICE_B sorts after DEVICE by id, so the removal wins.
+    expect(state.gear[GEAR]?.tags?.['winter']?.value).toBe(false)
+  })
+
+  it('creates the gear from a tag op alone, out of authoring order', () => {
+    const state = fold([tagOp('gear.tag_applied', 'winter', at(1))])
+    expect(state.gear[GEAR]?.id).toBe(GEAR)
+  })
+
+  /**
+   * §5's tolerant-reader discipline **outranks** §4.3's `TagString` rule. An
+   * installed PWA may hold ops queued offline against an earlier
+   * normalisation, and rejecting them would discard a Quartermaster's work to
+   * enforce a cosmetic rule. So the register key is the literal string that
+   * arrived — never normalised, never rejected, never dropped.
+   *
+   * These payloads are hand-shaped precisely because `authoring.ts` cannot
+   * produce them: `gearTagApplied` takes a `TagString`. This test stands in
+   * for a different build, and correctly cannot reach our builders.
+   */
+  it('folds a non-conforming tag exactly as received', () => {
+    const long = 'a'.repeat(200)
+    const state = fold([
+      tagOp('gear.tag_applied', 'WINTER', at(1)),
+      tagOp('gear.tag_applied', 'cook set', at(2)),
+      tagOp('gear.tag_applied', '#winter', at(3)),
+      tagOp('gear.tag_applied', long, at(4)),
+    ])
+    const tags = state.gear[GEAR]?.tags ?? {}
+    expect(Object.keys(tags).sort()).toEqual(
+      ['WINTER', 'cook set', '#winter', long].sort(),
+    )
+  })
+
+  it('treats two spellings of one intent as two registers', () => {
+    const state = fold([
+      tagOp('gear.tag_applied', 'cooking', at(1)),
+      tagOp('gear.tag_applied', 'Cooking', at(2)),
+    ])
+    expect(state.gear[GEAR]?.tags?.['cooking']?.value).toBe(true)
+    expect(state.gear[GEAR]?.tags?.['Cooking']?.value).toBe(true)
+  })
+
+  it('ignores an op whose tag is absent or not a string', () => {
+    const before = fold([tagOp('gear.tag_applied', 'winter', at(1))])
+    const after = fold(
+      [
+        op('gear', GEAR, 'gear.tag_applied', {}, at(2)),
+        tagOp('gear.tag_applied', 42, at(3)),
+        tagOp('gear.tag_applied', null, at(4)),
+      ],
+      before,
+    )
+    expect(after).toBe(before)
+  })
+
+  it('returns the identical state object when a write loses', () => {
+    const before = fold([tagOp('gear.tag_applied', 'winter', at(5))])
+    const after = applyOp(before, tagOp('gear.tag_removed', 'winter', at(2)))
+    // Identity, not equality: a lost write must not invalidate a memo
+    // downstream — the same contract `writeRegister` carries.
+    expect(after).toBe(before)
+  })
+
+  it('leaves tags absent on gear no tag op has ever addressed', () => {
+    const state = fold([
+      op('gear', 'untagged', 'gear.recorded', { name: 'Tent' }, at(1)),
+    ])
+    expect(Object.hasOwn(state.gear['untagged'] ?? {}, 'tags')).toBe(false)
+  })
+})

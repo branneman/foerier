@@ -2,6 +2,7 @@ import type { Aggregate, OpEnvelope } from './ops.ts'
 import type { HlcClock } from './hlc.ts'
 import type { IdSource } from './boundaries.ts'
 import type { KindValue, Owner, Residence } from './state.ts'
+import type { TagString } from './tags.ts'
 
 /**
  * The **strict** half of the reader (`docs/sync-protocol.md` §5.3). Its
@@ -175,6 +176,41 @@ export function gearOwnedCountSet(id: string, count: number): OpSpec {
     aggregate_id: id,
     type: 'gear.owned_count_set',
     payload: { count },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.3: sets the per-tag register to **present** (§3.4).
+ *
+ * The parameter is a {@link TagString}, not a `string`, and that is the
+ * design's spelling defence made structural: there is no Tag entity and no
+ * rename op, so the picker is the only place a spelling is ever decided, and
+ * `normalizeTag` is the only way to make one. The `#` every screen draws is
+ * never stored.
+ */
+export function gearTagApplied(id: string, tag: TagString): OpSpec {
+  return {
+    aggregate: 'gear',
+    aggregate_id: id,
+    type: 'gear.tag_applied',
+    payload: { tag },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.3: sets the per-tag register to **absent** (§3.4).
+ *
+ * Not a delete — one register, written `false`, carrying a clock like any
+ * other write. That is what lets a concurrent re-apply win on merit rather
+ * than on which device happened to sync first, and what makes an apply/remove
+ * race resolve by plain LWW instead of by arrival order.
+ */
+export function gearTagRemoved(id: string, tag: TagString): OpSpec {
+  return {
+    aggregate: 'gear',
+    aggregate_id: id,
+    type: 'gear.tag_removed',
+    payload: { tag },
   }
 }
 

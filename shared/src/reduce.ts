@@ -281,6 +281,36 @@ const gearOwnedCountSet: Handler = (state, op, stamp) =>
   })
 
 /**
+ * `gear.tag_applied` / `gear.tag_removed` (`sync-protocol.md` §4.3), which
+ * are the same handler with a different value — an ordinary LWW pair on one
+ * **per-tag** register (§3.4).
+ *
+ * The whole concurrency story is the register key, not the code here. Two
+ * devices applying *different* tags address different registers, so neither
+ * write is contested and both survive: the union is not computed, it is the
+ * absence of a conflict. Apply and remove of the *same* tag address one
+ * register and resolve by `writeRegister` like every other field.
+ *
+ * `readString`, deliberately, and no normalisation: §5's tolerant reader
+ * outranks §4.3's `TagString` rule, so the key is the literal string that
+ * arrived. `tags.ts` applies the rule on the way out, which is the only place
+ * a spelling is ever decided.
+ */
+const gearTagWritten =
+  (present: boolean): Handler =>
+  (state, op, stamp) =>
+    writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+      const tag = readString(op.payload, 'tag')
+      if (tag.kind !== 'value') return gear
+      const current = gear.tags?.[tag.value]
+      const next = writeRegister(current, present, st)
+      // Identity propagated, same as every other handler: a lost write must
+      // not fabricate a new `gear` and invalidate a memo downstream.
+      if (next === current) return gear
+      return { ...gear, tags: { ...gear.tags, [tag.value]: next } }
+    })
+
+/**
  * `person.recorded` (`sync-protocol.md` §4.2): creates the Person and seeds
  * `name`. Only this op is in scope for this slice — `person.renamed` stays
  * unfolded (§5.3 obligation 1) until a later slice gives it a People list to
@@ -316,6 +346,9 @@ const handlers: Record<string, Handler> = {
   'gear.rehomed': gearRehomed,
   'gear.kind_set': gearKindSet,
   'gear.owned_count_set': gearOwnedCountSet,
+  // Per-tag registers (§3.4). Present and absent, not create and delete.
+  'gear.tag_applied': gearTagWritten(true),
+  'gear.tag_removed': gearTagWritten(false),
   // `gear.retired` / `gear.restored` are an ordinary LWW pair on `retired`
   // (§3.5); an edit never writes it, so a retire that a later edit races
   // still leaves the gear retired.

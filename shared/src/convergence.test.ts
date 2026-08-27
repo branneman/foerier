@@ -16,6 +16,8 @@ import {
   gearRenamed,
   gearRestored,
   gearRetired,
+  gearTagApplied,
+  gearTagRemoved,
   personRecorded,
   placeRecorded,
   placeRemoved,
@@ -25,6 +27,7 @@ import {
 import type { OpEnvelope } from './ops.ts'
 import { containmentView } from './selectors/containment.ts'
 import type { KindValue, Residence } from './state.ts'
+import { normalizeTag, type TagString } from './tags.ts'
 
 /**
  * **Tier 2, the convergence tier** (`docs/testing.md`) — foerier's signature
@@ -76,6 +79,23 @@ const PERSON_IDS = [
   '40000000-0000-7000-8000-000000000000',
   '40000000-0000-7000-8000-000000000001',
 ] as const
+
+/**
+ * Three tags, shared across every device, for exactly the reason the id pools
+ * above are small: a large vocabulary would give each device its own
+ * registers, and the property would prove a **union** where it is supposed to
+ * prove a **merge**. With three, two devices contesting one tag register is
+ * the common case.
+ */
+const TAGS = ['food', 'kitchen', 'winter'] as const
+
+/** The only way a `TagString` is made (`tags.ts`) — the picker's rule, at
+ * the one place authoring applies it. */
+function aTag(raw: string): TagString {
+  const tag = normalizeTag(raw)
+  if (tag === null) throw new Error(`not a tag: ${raw}`)
+  return tag
+}
 
 const BASE_MS = 1_700_000_000_000
 
@@ -153,6 +173,7 @@ const arbGearId = fc.constantFrom(...GEAR_IDS)
 const arbPlaceId = fc.constantFrom(...PLACE_IDS)
 const arbPersonId = fc.constantFrom(...PERSON_IDS)
 const arbName = fc.constantFrom('Tent', 'Axe', 'Crate', 'Rope')
+const arbTag = fc.constantFrom(...TAGS)
 /** `sled` is deliberately not one of the three known kinds: §5.3 obligation 4. */
 const arbKind = fc.constantFrom<KindValue[]>(
   'single',
@@ -179,9 +200,9 @@ const arbResidence: fc.Arbitrary<Residence> = fc.oneof(
 )
 
 /**
- * All eleven MVP op types (`sync-protocol.md` §4), authored through the real
- * builders — never a hand-shaped payload, so the generator cannot drift from
- * the wire format.
+ * All thirteen op types this build folds (`sync-protocol.md` §4), authored
+ * through the real builders — never a hand-shaped payload, so the generator
+ * cannot drift from the wire format.
  */
 const arbSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc.tuple(arbPlaceId, arbName).map(([id, name]) => placeRecorded(id, name)),
@@ -221,6 +242,8 @@ const arbSpec: fc.Arbitrary<OpSpec> = fc.oneof(
     .map(([id, count]) => gearOwnedCountSet(id, count)),
   arbGearId.map((id) => gearRetired(id)),
   arbGearId.map((id) => gearRestored(id)),
+  fc.tuple(arbGearId, arbTag).map(([id, tag]) => gearTagApplied(id, aTag(tag))),
+  fc.tuple(arbGearId, arbTag).map(([id, tag]) => gearTagRemoved(id, aTag(tag))),
   fc.tuple(arbPersonId, arbName).map(([id, name]) => personRecorded(id, name)),
 )
 
@@ -578,5 +601,85 @@ describe('convergence', () => {
     expect(staged[0]).toEqual(single[0])
     expect(staged[0]?.gear[gear]?.retired?.value).toBe(false)
     expect(staged[0]?.gear[gear]?.name?.value).toBe('Storm tent')
+  })
+
+  /**
+   * **S3's named scenario** (`docs/testing.md`, Tier 2): *concurrent tagging
+   * must union, never clobber* — the per-element-register case
+   * `sync-protocol.md` §3.4 exists for.
+   *
+   * The claim is structural rather than algorithmic. Had tags been one
+   * register holding an array, these two writes would have contested it and
+   * exactly one would have survived. Because each tag is its own register,
+   * the two ops never meet, so there is nothing for LWW to decide.
+   */
+  it('concurrent tagging unions rather than clobbering', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, { name: 'Pot set', container: false, kind: 'single' }),
+    )
+    exchange(a, b)
+
+    // Neither device has seen the other's tag when it authors its own.
+    clock.advance(1000)
+    a.emit(gearTagApplied(gear, aTag('food')))
+    clock.advance(1000)
+    b.emit(gearTagApplied(gear, aTag('kitchen')))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    expect(a.state().gear[gear]?.tags?.['food']?.value).toBe(true)
+    expect(a.state().gear[gear]?.tags?.['kitchen']?.value).toBe(true)
+
+    // The reason, asserted rather than assumed: each tag carries the stamp of
+    // the device that wrote it, so neither write was ever contested. If these
+    // ever agreed, the two tags would be sharing one register and the union
+    // above would be luck.
+    const tags = a.state().gear[gear]?.tags
+    expect(tags?.['food']?.deviceId).toBe(a.deviceId)
+    expect(tags?.['kitchen']?.deviceId).toBe(b.deviceId)
+  })
+
+  /**
+   * The other half of §3.4: apply and remove of **the same** tag *are* one
+   * register, and resolve by plain LWW — no set-union rule, no add-wins bias.
+   */
+  it('an apply racing a remove of the same tag resolves by plain LWW', () => {
+    const gear = GEAR_IDS[0]
+
+    const race = (removeIsLater: boolean) => {
+      const { clock, a, b } = aWorld()
+      a.emit(
+        gearRecorded(gear, {
+          name: 'Pot set',
+          container: false,
+          kind: 'single',
+        }),
+      )
+      a.emit(gearTagApplied(gear, aTag('food')))
+      exchange(a, b)
+
+      clock.advance(1000)
+      const first = removeIsLater
+        ? a.emit(gearTagApplied(gear, aTag('food')))
+        : b.emit(gearTagRemoved(gear, aTag('food')))
+      clock.advance(1000)
+      const second = removeIsLater
+        ? b.emit(gearTagRemoved(gear, aTag('food')))
+        : a.emit(gearTagApplied(gear, aTag('food')))
+      exchange(a, b)
+
+      expect(a.state()).toEqual(b.state())
+      expect(first.hlc < second.hlc).toBe(true)
+      return a.state().gear[gear]?.tags?.['food']
+    }
+
+    // Whichever op carries the later stamp wins, and the register carries
+    // that op's own stamp — proving the loser arrived and lost, rather than
+    // never arriving at all.
+    expect(race(true)?.value).toBe(false)
+    expect(race(false)?.value).toBe(true)
   })
 })

@@ -1,0 +1,235 @@
+[
+  {
+    "id": "66666666-0000-7000-8000-000000000001",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000001",
+    "type": "gear.recorded",
+    "hlc": "2026-08-26T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Sleeping bag, winter",
+      "container": false,
+      "kind": "counted",
+      "owned_count": 2
+    },
+    "seq": 1,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000002",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000002",
+    "type": "gear.recorded",
+    "hlc": "2026-08-26T09:01:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Pot set",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 2,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000003",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000003",
+    "type": "gear.recorded",
+    "hlc": "2026-08-26T09:02:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Gas canister 450 g",
+      "container": false,
+      "kind": "counted",
+      "owned_count": 4
+    },
+    "seq": 3,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000004",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000001",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:03:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "winter"
+    },
+    "seq": 4,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000005",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000001",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:04:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "sleep"
+    },
+    "seq": 5,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000006",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000001",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:05:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "bulky"
+    },
+    "seq": 6,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000007",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000001",
+    "type": "gear.tag_removed",
+    "hlc": "2026-08-26T09:06:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "bulky"
+    },
+    "seq": 7,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000008",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000002",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:07:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "WINTER"
+    },
+    "seq": 8,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000009",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000002",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:08:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "cook set"
+    },
+    "seq": 9,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-00000000000a",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000002",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:09:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "#winter"
+    },
+    "seq": 10,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-00000000000b",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000002",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:10:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "seq": 11,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-00000000000c",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000002",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:11:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "\u00fcnter"
+    },
+    "seq": 12,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-00000000000d",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000003",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:20:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "food"
+    },
+    "seq": 13,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-00000000000e",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000003",
+    "type": "gear.tag_removed",
+    "hlc": "2026-08-26T09:12:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "food"
+    },
+    "seq": 14,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-00000000000f",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000001",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:21:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": "3-season",
+      "colour": "red"
+    },
+    "seq": 15,
+    "received_at": "2026-08-27T10:00:00Z"
+  },
+  {
+    "id": "66666666-0000-7000-8000-000000000010",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "44444444-0000-7000-8000-000000000001",
+    "type": "gear.tag_applied",
+    "hlc": "2026-08-26T09:22:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "tag": 42
+    },
+    "seq": 16,
+    "received_at": "2026-08-27T10:00:00Z"
+  }
+]

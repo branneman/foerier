@@ -51,6 +51,25 @@ export interface GearState {
   /** The register exists because `gear.recorded` may carry it; S4 writes it. */
   owner?: Register<Owner>
   retired?: Register<boolean>
+  /**
+   * Per-tag registers (`sync-protocol.md` §3.4). **Not one register holding
+   * an array** — that would make two quartermasters tagging concurrently
+   * clobber each other. Each member is its own register, so
+   * `tag_applied{food}` and `tag_applied{kitchen}` union without ever
+   * meeting, and an apply racing a remove of the *same* tag is one register
+   * resolving by plain LWW.
+   *
+   * The key is the **literal string that arrived**, never normalised on the
+   * way in: §5's tolerant reader outranks §4.3's `TagString` rule, so two
+   * spellings of one intent are two registers that both fold. `tags.ts` is
+   * where the rule is applied, on the way out.
+   *
+   * `false` is a real value with a real clock, not an absence — a removal is
+   * a write, and dropping the key would let a concurrent re-apply win by
+   * arrival order. An absent `tags` key is the different fact that no tag op
+   * has ever addressed this gear.
+   */
+  tags?: Readonly<Record<string, Register<boolean>>>
 }
 
 export interface PersonState {
