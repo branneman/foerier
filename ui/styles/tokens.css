@@ -57,6 +57,8 @@
     --sage-rule-row: #2a3129;
     --sage-rule-control: #47523f;
     --sage-accent: #93bc9f;
+    /* Selected filter chip fill (docs/design/README.md, derived fills). */
+    --sage-accent-fill: #35523f;
     --amber: #e2a65b;
     --status-staged-dark: #d3a344;
     --status-packed-dark: #7bb389;
@@ -88,6 +90,7 @@
     --color-rule-row: var(--sage-rule-row);
     --color-rule-control: var(--sage-rule-control);
     --color-accent: var(--sage-accent);
+    --color-accent-fill: var(--sage-accent-fill);
     --color-brand-amber: var(--amber);
     --color-status-not-packed: var(--sage-ink-muted);
     --color-status-staged: var(--status-staged-dark);
@@ -116,6 +119,7 @@
       --color-rule-row: var(--parchment-rule);
       --color-rule-control: var(--parchment-rule);
       --color-accent: var(--parchment-accent);
+      --color-accent-fill: rgb(53 82 63 / 0.16);
       --color-brand-amber: var(--amber-light);
       --color-status-not-packed: var(--parchment-ink-muted);
       --color-status-staged: var(--status-staged-light);
@@ -138,6 +142,7 @@
     --color-rule-row: var(--parchment-rule);
     --color-rule-control: var(--parchment-rule);
     --color-accent: var(--parchment-accent);
+    --color-accent-fill: rgb(53 82 63 / 0.16);
     --color-brand-amber: var(--amber-light);
     --color-status-not-packed: var(--parchment-ink-muted);
     --color-status-staged: var(--status-staged-light);

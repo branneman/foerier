@@ -1,0 +1,93 @@
+@layer components {
+  /* The ✕ sits inside the chip's outline on every board, so the chip and its
+     remover share one bordered shell rather than sitting side by side. */
+  .group {
+    display: inline-flex;
+    align-items: stretch;
+    border-radius: var(--radius-pill);
+  }
+
+  .group > .chip {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: 0;
+    padding-right: var(--space-8);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  button.chip {
+    cursor: pointer;
+  }
+
+  /* 36px — Components §04 settles the drift across boards. */
+  .filter {
+    min-height: 2.25rem;
+    padding-inline: var(--space-12);
+    font-size: 0.6875rem;
+  }
+
+  /* 32px — Components §06, gear detail's tag chips. Lowercase, because a tag
+     is lowercase and the `#` is drawn beside it. */
+  .tag {
+    min-height: 2rem;
+    padding-inline: var(--space-12);
+    font-size: 0.65625rem;
+    text-transform: lowercase;
+  }
+
+  /* Filled — an active filter. Filter surfaces only: a tag chip on gear
+     detail is bordered, never filled, because it is not a filter. */
+  .selected {
+    border-color: var(--color-accent);
+    background: var(--color-accent-fill);
+    color: var(--color-ink-primary);
+  }
+
+  /* Dashed — an add affordance rather than a value. */
+  .ghost {
+    border-style: dashed;
+    border-width: var(--stroke-rule);
+    color: var(--color-ink-faint);
+  }
+
+  .remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Padding, not width: the ✕ must stay a real target beside a chip whose
+       height is 32 or 36 (Touch: targets >= 48 where they stand alone; this
+       one sits inside a larger row-level target). */
+    padding-inline: var(--space-8);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-left: 0;
+    border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+    background: none;
+    color: inherit;
+    font-size: 0.6875rem;
+    cursor: pointer;
+  }
+
+  .group:has(.selected) .remove {
+    border-color: var(--color-accent);
+    background: var(--color-accent-fill);
+    color: var(--color-ink-primary);
+  }
+
+  .label {
+    display: inline-block;
+  }
+}
