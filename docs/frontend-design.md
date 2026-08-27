@@ -152,6 +152,25 @@ efficiently at every size" robust rather than a one-off tweak. Container queries
 are supported across evergreen browsers and **fail open**: with no `@container`
 support, components fall back to their base single-column layout (§6).
 
+**The fold is `38rem` (608px), and `ui/src/GearRow.module.css` owns it.**
+Settled at S3, which built the first `@container` query in the codebase. Both
+this section and the boards had left it as an unowned approximation — the
+boards annotate `~600px` in three places and this section named no number at
+all — so the first component to need it picked one and wrote it down. `rem`
+rather than `px`, like every other breakpoint here, so a reader who raises
+their font-size crosses it at the right *perceptual* point; and it sits clear
+of Split's 308px list pane below and Roomy's 640px shell boundary above.
+
+**Where the line between §3.1 and this section actually falls.** A query is a
+**media** query when it decides *which panes or elements exist* — the two-pane
+unlock, the Depot's table-versus-list — because that changes what is rendered,
+and a CSS-only switch would mean rendering both and hiding one, putting every
+fact in the accessibility tree twice. It is a **container** query when it
+decides *how what exists lays out*. S3 is the worked example both ways:
+`DepotView` chooses its panes from a media query, and `GearRow` folds inside
+whichever pane it lands in, which is why Split 900's 308px list renders the
+two-line row at a viewport of 900.
+
 ## 4. CSS architecture
 
 ### 4.1 Cascade layers

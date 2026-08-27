@@ -546,6 +546,12 @@ later, and every later narrowing extends one engine instead of growing its own.
   ([sync §3.4](sync-protocol.md)).
 - **UI:** tag editing on gear; the filter/sort/group cluster on the Depot list,
   carrying the dimensions that exist today — **Tag** and **Kind**.
+- **Also, and not optional:** `GearRow` moves into `ui/` (§12.4 named this
+  slice for it), and S3 pays down **S0's layout shortfall** — the pane
+  structure and the `@container` layer of
+  [frontend-design §3](frontend-design.md), neither of which was ever built
+  (§12.1). The boards draw S3's own tag chips inside Split's detail pane, so
+  the slice cannot ship whole without it.
 - **Tests:** Tier 1 — the composable slicing selector. **Tier 2 — concurrent
   tagging must union, never clobber**; this is the named per-element-register
   scenario. Tier 3 — the filter cluster.
@@ -1012,6 +1018,20 @@ byte-exact.
 - **The API's response headers landed with the skeleton**, not with auth. They
   are baseline hygiene for every response, and `Cache-Control: no-store` is
   specifically what makes `/version` usable as a deploy signal.
+- **The layout ladder landed by half, and this list did not say so** — found
+  and closed at S3, recorded here because the omission is the interesting
+  part. S0's entry asks for "the five layout modes and nav treatments of
+  [frontend-design §3.1](frontend-design.md)", and because nothing here
+  contradicted it the ladder was believed complete for three slices. What
+  *had* landed (`ui/styles/layout.css`, `AppShell.module.css`) is the
+  viewport ladder: the em breakpoints, the gutter steps, `--nav-size`
+  flipping 56px → 216px, and the nav's three treatments. What had **not** is
+  the **pane structure** §3.1 also promises — no screen ever grew a second
+  pane — and the entire `@container` layer of §3.2, of which `app/src` held
+  exactly zero rules against five specified layout modes. S3 built both
+  ([§12.5](#125-consequences-of-s3-tags-and-the-slicing-engine)). The lesson
+  for a future slice: a deviation that is *invisible* until a later slice
+  needs it is exactly the one worth writing down here.
 
 ### 12.2 Consequences of auth slice 1
 
@@ -1167,5 +1187,78 @@ byte-exact.
   `Find.module.css` and `Depot.module.css` now share nine byte-identical
   blocks, and `Find`'s `PlainRow` duplicates `Depot`'s row JSX — the second
   copy, which is what makes a shared `GearRow` worth extracting in S3.
-- **`/trips` is a stub.** `app/src/App.tsx:268-270` renders an `EmptyState`
+- **`/trips` is a stub.** `app/src/App.tsx` renders an `EmptyState`
   placeholder awaiting S6.
+
+### 12.5 Consequences of S3: tags and the slicing engine
+
+- **A dimension is a row in a table, never a branch in a predicate.**
+  `shared/src/selectors/slice.ts` holds `DIMENSION_TABLE`, and each dimension
+  declares an `arity`, a `valuesOf` and a `format`. §8.5's five later slices
+  add a row there. Two things already fall out of `arity` rather than being
+  special-cased: whether picking a value **adds or replaces**, and whether a
+  ghost add-chip survives an active value. `valuesOf` takes `state` as well
+  as `gear` even though neither S3 dimension needs it — S4's Ownership must
+  resolve a `personId` and S7's Trip membership is cross-aggregate, and
+  reshaping the table later is the expensive version of that.
+- **There is exactly one filter rule: every selected value must be carried.**
+  Search ANDs with it. A second combinator was the obvious thing to build and
+  buys nothing: several tags AND (Components §04 says so), a single-arity
+  dimension degenerates to equality for free, and a dimension with nothing
+  selected is skipped rather than turned into a predicate matching
+  everything.
+- **`NEWEST FIRST` is derived, because there is no `createdAt`.**
+  `recordedAt` is the **minimum `(hlc, deviceId)` across a gear's registers**.
+  Adding a register would have been wrong for every piece of gear recorded
+  before this slice — i.e. the only depot that exists — and reading
+  `gear.container`'s stamp ties the sort to an omission §4.3 records as
+  deliberate. The derivation is convergent (every replica holds the same
+  registers) and monotone (a register only accepts a strictly later write).
+  **Tag registers count too**; excluding them would make the answer depend on
+  which dimensions happened to exist when the gear was recorded.
+- **`TagString` is the project's first branded type.** There is no Tag entity
+  and no rename op, so the picker is the only place a spelling is decided —
+  and the brand is what makes "only" structural rather than aspirational:
+  `gearTagApplied` cannot be handed a raw string. It costs nothing at
+  runtime. The reader stays entirely tolerant: `reduce.ts` reads the tag with
+  plain `readString`, so a non-conforming tag folds exactly as received and
+  two spellings of one intent are two registers.
+- **Normalisation has two halves, and the split was found by a test.**
+  `normalizeTag` trims the trailing hyphen, because a finished tag must never
+  carry one — but run on every keystroke that eats the space in `cook set`
+  before the `s` arrives, and the picker silently stores `cookset`.
+  `normalizeTagInput` is the typing-time half, and `normalizeTag` is defined
+  in terms of it so no third rule can hide between what a field shows and
+  what an op stores.
+- **`ui/` finally has composites, and `GearRow`'s table variant is a prop.**
+  Components §03 says all three renders are "picked by `@container`, never by
+  viewport", and `2-LINE` ↔ `1-LINE` is exactly that. `TABLE-44` is not: it
+  is a different DOM (a `KIND` cell and a `TAGS` cell no folding row has), so
+  a CSS-only switch would render both and hide one, duplicating every fact in
+  the accessibility tree — and the widths do not separate, Roomy's widest
+  container being ~672px against Desktop's narrowest table at ~760px. Recorded
+  as a deliberate departure from §03.
+- **S0's layout shortfall is paid down** (§12.1): the Split two-pane, and the
+  first `@container` rules in `app/`. The rule the two now follow is written
+  into [frontend-design §3.2](frontend-design.md) — a **media** query decides
+  which panes or elements *exist*, a **container** query decides how what
+  exists *lays out*. Desktop deliberately keeps no detail pane; the board's
+  1024 frame spends that width on the table.
+- **Two board elements ship changed, both because story 36 (Undo) is Later.**
+  Add gear's confirmation line has no `UNDO` — the board specifies "removes
+  the op", which an append-only log that may already have pushed cannot do,
+  and story 36 rules out `gear.retired` by name — and the Home picker's
+  `MOVE` **gains a confirm**, since "UNDO per the global rule" has no global
+  rule to lean on. Both revisit when story 36's design phase lands.
+- **The desktop board leaves `NEWEST FIRST` unreachable.** Sort there is
+  "click a column head", and no column shows when gear was recorded. The
+  expanded arrange row therefore keeps its `SORT` options *and* the `GEAR`
+  head toggles A→Z / Z→A — strictly more reachable than either alone.
+- **Radix is still not a dependency.** [§5](frontend-design.md) assigns the
+  interactive primitives to thin Radix wrappers in `ui/`; the sheets that
+  shipped in S2 are hand-rolled scrims and S3's two new surfaces match them.
+  A deliberate deferral, not an oversight.
+- **`localStorage` enters the app, for two enum values only.** Sort and group
+  persist per device; `localStorage` because it is **synchronous**, and an
+  async `META_STORE` read would paint the default sort on the most-visited
+  screen and then flip it. It holds no household data and must not.

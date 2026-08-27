@@ -13,7 +13,7 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-**Code has started.** Four slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+**Code has started.** Five slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
 have landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
@@ -43,9 +43,37 @@ Quartermaster can record gear on a phone with no signal, find it, and see
 where it lives — all from a laptop, or from that same phone with the radio
 off.
 
-**The next slice is S3, Tags and the slicing engine.**
+- **S3, Tags and the slicing engine** (advances story 13) — two ops, the
+  composable slicing selector, `ui/`'s first composites, and the Depot's
+  slice bar at all five layout modes. See
+  [its spec](docs/specs/2026-08-27-tags-and-slicing.md) for the reasoning and
+  [§12.5](docs/architecture-design.md#125-consequences-of-s3-tags-and-the-slicing-engine)
+  for what it settled.
 
-**One debt rides along:** there is no Account screen, so `sign out this
+**S3 was the first slice designed before it was coded**, and that changed how
+it was cut: the boards led and the code followed, so a handful of decisions
+arrived as *departures* to be justified rather than as choices to be made. The
+three worth knowing before touching this area:
+
+- **A dimension is a row in a table** (`shared/src/selectors/slice.ts`), and
+  §8.5's five later slices each add one. Arity already decides add-or-replace
+  and whether a ghost chip survives; there is exactly one filter rule (every
+  selected value must be carried) and deliberately no second combinator.
+- **`TagString` is branded**, because there is no Tag entity and no rename op,
+  so the picker is the only place a spelling is decided and the compiler is
+  what points every author at it. The *reader* stays entirely tolerant — a
+  non-conforming tag folds exactly as received.
+- **Story 36 (Undo) being Later is load-bearing.** Add gear's `UNDO` is drawn
+  and not built; the Home picker's `MOVE` gains a confirm the board does not
+  draw. Both are recorded in `docs/design/README.md` §3b/§3c and revisit when
+  story 36's design phase lands.
+
+**The next slice is S4, People and ownership.** It adds `person.renamed` and
+`gear.ownership_set`, the People list, the owner on gear detail — and
+**Person and Ownership as two more rows in S3's dimension table**, which is
+how story 4's narrowing is delivered rather than as a second, private filter.
+
+**Two debts ride along.** There is no Account screen, so `sign out this
 device` has no button. `unsyncedCount()` already has a caller —
 `app/src/App.tsx:145` feeds it to the sign-in screen's session-lost line
 (§12.3) — but `clearLocalData()` (`app/src/depot/wiring.ts:243`), the action
@@ -56,7 +84,13 @@ which routes to `/signin` and leaves the op log and outbox untouched
 re-signing in builds a new one — so `resumeSync()` stays for a future
 recover-in-place flow.
 
-Three conventions the code now carries that are easy to trip over:
+And **Radix is still not a dependency**, against
+[frontend-design §5](docs/frontend-design.md)'s assignment of every interactive
+primitive to a thin wrapper in `ui/`. Every sheet in the app is a hand-rolled
+scrim. Deferred deliberately at S2 and again at S3; the slice that adds it
+should convert them all at once rather than leaving two idioms in place.
+
+Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**
   (Node's ESM resolver does not guess, and `node src/…` runs the dev server,
@@ -69,6 +103,12 @@ Three conventions the code now carries that are easy to trip over:
 - **`null` clears a nullable register; an absent field leaves it alone.**
   [sync §1.3](docs/sync-protocol.md) is the authority — not §5.3's obligation
   5, which runs the other way only.
+- **A media query decides which panes or elements *exist*; a container query
+  decides how what exists *lays out*.** Settled at S3 and written into
+  [frontend-design §3.2](docs/frontend-design.md). The reason is not taste: a
+  CSS-only switch between two different DOMs has to render both and hide one,
+  which puts every fact in the accessibility tree twice. The fold is `38rem`,
+  owned by `ui/src/GearRow.module.css`.
 
 The repo also holds requirements plus a DDD domain
 design — a [ubiquitous language](docs/ubiquitous-language.md) (the glossary) and
