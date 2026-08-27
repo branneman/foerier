@@ -1,4 +1,36 @@
 @layer components {
+  /* The settled tag chip (Components §06): 32px, bordered, mono 10.5,
+     lowercase, the `#` drawn beside the value and never stored. Never
+     filled — a filled chip means "active filter", and this is a read
+     screen, not a filter surface. */
+  .tagChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+  }
+
+  .tagChip,
+  .tagGhost {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding-inline: var(--space-12);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-primary);
+    font-family: var(--font-mono);
+    font-size: 0.65625rem;
+    text-transform: lowercase;
+  }
+
+  /* Dashed: an add affordance, not a value. */
+  .tagGhost {
+    border-style: dashed;
+    border-width: var(--stroke-rule);
+    color: var(--color-ink-faint);
+    cursor: pointer;
+  }
   .screen {
     display: flex;
     flex-direction: column;

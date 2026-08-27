@@ -1,9 +1,14 @@
 import {
+  dimensionValues,
   gearKindSet,
   gearOwnedCountSet,
   gearRehomed,
   gearRenamed,
   gearRetired,
+  gearTagApplied,
+  gearTagRemoved,
+  normalizeTag,
+  tagsOf,
   whereabouts,
   type DepotState,
   type GearState,
@@ -11,23 +16,29 @@ import {
   type PathSegment,
   type WhereaboutsSlice,
 } from '@foerier/shared'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
+import { TagPicker } from '../components/TagPicker'
 import { WhereaboutsCard } from '../components/WhereaboutsCard'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import styles from './GearDetail.module.css'
 
 /**
- * Gear detail — identity, whereabouts, count and the action bar
- * (`docs/design/README.md` §4). The previous task built the top (header,
- * name, MVP meta line) and the bottom (the action bar); this task builds the
- * middle — the Whereabouts card and the COUNT group (story 3's read) — from
- * the `whereabouts` selector. Tag chips (story 13) and the LEDGER group
- * (story 33, LATER) are later slices again — neither is built or
- * placeholder'd here.
+ * Gear detail — identity, tags, whereabouts, count and the action bar
+ * (`docs/design/README.md` §4).
+ *
+ * S2 built the top (header, name, MVP meta line), the middle (the Whereabouts
+ * card and the COUNT group, from the `whereabouts` selector) and the bottom
+ * (the action bar). **S3 adds the tag chips** — the settled chip of
+ * Components §06, and the trailing `+ tag` ghost that is the one edit
+ * affordance on an otherwise read-only screen.
+ *
+ * Still not built, and still not placeholder'd: the **LEDGER** group (story
+ * 33) and every **weight** segment (story 16), both drawn final on the board
+ * and both tagged LATER.
  */
 
 const KIND_OPTIONS: readonly { value: KindValue; label: string }[] = [
@@ -105,6 +116,12 @@ export function GearDetail() {
   const [kindDraft, setKindDraft] = useState<KindValue>('single')
   const [countDraft, setCountDraft] = useState('1')
   const [retireOpen, setRetireOpen] = useState(false)
+  const [tagsOpen, setTagsOpen] = useState(false)
+
+  // The vocabulary both the counts and the near-duplicate defence come from.
+  // Derived from the whole depot, not from this gear: the point of the counts
+  // is to show a spelling that already exists *elsewhere*.
+  const vocabulary = useMemo(() => dimensionValues(state, 'tag'), [state])
 
   const gear: GearState | undefined =
     gearId === undefined ? undefined : state.gear[gearId]
@@ -173,6 +190,30 @@ export function GearDetail() {
           <span className={styles['meta']}>{metaLine(state, gear)}</span>
           {retired && <span className={styles['retiredBadge']}>RETIRED</span>}
         </div>
+      </div>
+
+      {/*
+        The settled tag chip (Components §06): lowercase, mono, 32px,
+        bordered, the `#` drawn and never stored. The trailing dashed ghost is
+        **the one edit affordance on this read screen**, and ✕ lives in the
+        picker rather than on the chips — a read screen should not destroy
+        anything by mis-tap. A gear with no tags shows the lone ghost.
+      */}
+      <div className={styles['tagChips']} data-testid="tag-chips">
+        {tagsOf(gear).map((tag) => (
+          <span key={tag} className={styles['tagChip']}>
+            #{tag}
+          </span>
+        ))}
+        {!retired && (
+          <button
+            type="button"
+            className={styles['tagGhost']}
+            onClick={() => setTagsOpen(true)}
+          >
+            + tag
+          </button>
+        )}
       </div>
 
       <WhereaboutsCard slices={slices} />
@@ -246,6 +287,26 @@ export function GearDetail() {
         }}
         excludeGearId={gearId}
       />
+
+      {tagsOpen && (
+        <TagPicker
+          mode="gear"
+          vocabulary={vocabulary}
+          applied={tagsOf(gear)}
+          onApply={(tag) => {
+            // Already normalised by the picker — `normalizeTag` here is what
+            // turns that string back into the `TagString` the builder
+            // demands, and it is the one place that conversion happens.
+            const value = normalizeTag(tag)
+            if (value !== null) emit(gearTagApplied(gearId, value))
+          }}
+          onRemove={(tag) => {
+            const value = normalizeTag(tag)
+            if (value !== null) emit(gearTagRemoved(gearId, value))
+          }}
+          onClose={() => setTagsOpen(false)}
+        />
+      )}
 
       {editOpen && (
         <div

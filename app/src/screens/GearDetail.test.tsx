@@ -2,13 +2,16 @@ import {
   createHlcClock,
   gearRecorded,
   gearRetired,
+  gearTagApplied,
+  normalizeTag,
   placeRecorded,
   type Clock,
   type IdSource,
   type OpAuthor,
   type OpSpec,
+  type TagString,
 } from '@foerier/shared'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -23,6 +26,13 @@ import {
   type EngineFactory,
 } from '../depot/store'
 import { GearDetail } from './GearDetail'
+
+/** The only way a `TagString` is made (`shared/src/tags.ts`). */
+function aTag(raw: string): TagString {
+  const tag = normalizeTag(raw)
+  if (tag === null) throw new Error(`not a tag: ${raw}`)
+  return tag
+}
 
 /**
  * Every test seeds a **real** store — `inMemoryOpLog` plus the real reducer
@@ -445,5 +455,119 @@ describe('Gear detail', () => {
 
     expect(screen.queryByText('LEDGER')).toBeNull()
     expect(screen.queryByText('APPEND-ONLY')).toBeNull()
+  })
+})
+
+/**
+ * The settled tag chip (Components §06, `docs/design/README.md` §4): lowercase,
+ * mono, 32px, bordered, the `#` **drawn and never stored**. The trailing
+ * dashed `+ tag` ghost is the one edit affordance on this read screen, and
+ * **✕ lives in the picker, not on the chips**.
+ */
+describe('gear detail tags', () => {
+  async function aTaggedGear() {
+    const gearId = anId()
+    const otherId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Sleeping bag',
+        container: false,
+        kind: 'single',
+      }),
+      gearRecorded(otherId, { name: 'Mug', container: false, kind: 'single' }),
+      gearTagApplied(gearId, aTag('winter')),
+      gearTagApplied(gearId, aTag('sleep')),
+      gearTagApplied(otherId, aTag('winter')),
+    ])
+    return { store, gearId }
+  }
+
+  it('draws each applied tag with the # it never stores', async () => {
+    const { store, gearId } = await aTaggedGear()
+    renderGearDetail(store, gearId)
+
+    const tags = screen.getByTestId('tag-chips')
+    expect(tags).toHaveTextContent('#sleep')
+    expect(tags).toHaveTextContent('#winter')
+  })
+
+  it('puts no remove control on the chips themselves', async () => {
+    const { store, gearId } = await aTaggedGear()
+    renderGearDetail(store, gearId)
+
+    // ✕ lives in the picker. A read screen does not destroy things by
+    // mis-tap.
+    expect(
+      within(screen.getByTestId('tag-chips')).queryByRole('button', {
+        name: /Remove/,
+      }),
+    ).toBeNull()
+  })
+
+  it('shows the lone ghost on gear with no tags', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, { name: 'Axe', container: false, kind: 'single' }),
+    ])
+    renderGearDetail(store, gearId)
+
+    const tags = screen.getByTestId('tag-chips')
+    expect(
+      within(tags).getByRole('button', { name: '+ tag' }),
+    ).toBeInTheDocument()
+    expect(tags).not.toHaveTextContent('#')
+  })
+
+  it('applies a tag from the picker, and shows it straight away', async () => {
+    const { store, gearId } = await aTaggedGear()
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: '+ tag' }))
+    await user.type(screen.getByLabelText('Tag'), 'alpine')
+    await user.click(screen.getByTestId('create-tag'))
+
+    expect(screen.getByTestId('tag-chips')).toHaveTextContent('#alpine')
+  })
+
+  // The near-duplicate defence, on the real vocabulary: another piece of gear
+  // already carries `winter`, so the picker offers it with its count rather
+  // than letting a second spelling be typed past it.
+  it('offers the household vocabulary with counts', async () => {
+    const { store, gearId } = await aTaggedGear()
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: '+ tag' }))
+    expect(screen.getByTestId('in-the-depot')).toHaveTextContent('#winter')
+    expect(screen.getByTestId('in-the-depot')).toHaveTextContent('2')
+  })
+
+  it('removes a tag from the picker without confirming', async () => {
+    const { store, gearId } = await aTaggedGear()
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: '+ tag' }))
+    await user.click(screen.getByRole('button', { name: 'Remove #winter' }))
+
+    // One op, instantly reversible by re-applying — so nothing to confirm.
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.getByTestId('tag-chips')).not.toHaveTextContent('#winter')
+  })
+
+  it('records the tag as an op, so it survives a remount', async () => {
+    const { store, gearId } = await aTaggedGear()
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: '+ tag' }))
+    await user.type(screen.getByLabelText('Tag'), 'alpine')
+    await user.click(screen.getByTestId('create-tag'))
+
+    cleanup()
+    renderGearDetail(store, gearId)
+    expect(screen.getByTestId('tag-chips')).toHaveTextContent('#alpine')
   })
 })
