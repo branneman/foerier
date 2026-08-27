@@ -166,6 +166,12 @@ describe('Gear detail', () => {
     expect(screen.getByRole('dialog', { name: 'Home' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Attic' }))
+
+    // MOVE confirms. Story 36 (Undo) is Later and opens with a design phase,
+    // so the board's "selection moves and closes; UNDO per the global rule"
+    // has no global rule to lean on, and a mis-tapped destination in a nested
+    // picker would otherwise be unrecoverable without re-navigating.
+    await user.click(screen.getByRole('button', { name: 'Move gear' }))
     await store.getState().drained()
 
     expect(store.getState().state.gear[gearId]?.residence?.value).toEqual({

@@ -1,4 +1,5 @@
 import {
+  containmentView,
   dimensionValues,
   gearKindSet,
   gearOwnedCountSet,
@@ -286,6 +287,19 @@ export function GearDetail() {
           setMoveOpen(false)
         }}
         excludeGearId={gearId}
+        {...(gear.residence?.value === undefined
+          ? {}
+          : { current: gear.residence.value })}
+        // MOVE, so the picker draws the context line and confirms before it
+        // moves anything (see `HomePicker`'s header for why story 36 makes
+        // that necessary).
+        moving={{
+          name,
+          insideCount: containmentView(state).childrenOf({
+            kind: 'gear',
+            id: gearId,
+          }).length,
+        }}
       />
 
       {tagsOpen && (

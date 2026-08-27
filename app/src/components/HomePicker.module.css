@@ -1,4 +1,94 @@
 @layer components {
+  .titleRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  /* A quiet mono toggle, top right — not a button competing with the rows. */
+  .modeToggle {
+    min-height: max(2.75rem, 44px);
+    padding-inline: var(--space-8);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  /* MOVE's context line: what is moving, and what rides along. */
+  .context,
+  .fact,
+  .gearNote {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* One body line that teaches the model at the moment it matters. */
+  .teach {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+
+  .rowMain {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    text-align: left;
+  }
+
+  .rowName {
+    font: var(--text-body) var(--font-ui);
+    color: inherit;
+  }
+
+  /* The ancestry the indent cap hid — the GearRow name+meta anatomy. */
+  .rowMeta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* The SET PHASE anatomy, reused: one app, one way of saying "this is the
+     one you are on". */
+  .now {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+
+  /* Edit suspends selection, so the rows that cannot be picked say so by
+     going quiet rather than by disappearing. */
+  .dim {
+    color: var(--color-ink-dim);
+  }
+
+  /* Nothing is destroyed by a move, so the primary stays accent. */
+  .confirmMove {
+    min-height: max(2.75rem, 44px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
   .scrim {
     position: fixed;
     inset: 0;
@@ -57,6 +147,11 @@
     font: var(--text-body) var(--font-ui);
     font-weight: 600;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    text-align: left;
   }
 
   .placeRow {
@@ -76,6 +171,11 @@
     font: var(--text-heading) var(--font-ui);
     font-weight: 600;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    text-align: left;
   }
 
   .minor {
@@ -116,6 +216,11 @@
     color: var(--color-ink-primary);
     font: var(--text-body) var(--font-ui);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    text-align: left;
   }
 
   .renameRow {
