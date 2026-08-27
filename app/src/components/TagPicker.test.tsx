@@ -1,4 +1,4 @@
-import type { TagCount } from '@foerier/shared'
+import type { DimensionValue } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -14,10 +14,10 @@ import { TagPicker } from './TagPicker'
  * That is what the counts are for, and what the two modes differ over.
  */
 
-const VOCABULARY: readonly TagCount[] = [
-  { tag: 'winter', count: 23 },
-  { tag: 'cooking', count: 14 },
-  { tag: 'cook-set', count: 3 },
+const VOCABULARY: readonly DimensionValue[] = [
+  { value: 'winter', count: 23 },
+  { value: 'cooking', count: 14 },
+  { value: 'cook-set', count: 3 },
 ]
 
 function renderPicker(

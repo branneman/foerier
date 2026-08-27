@@ -15,8 +15,8 @@ import { fold } from '../reduce.ts'
 import { normalizeTag, type TagString } from '../tags.ts'
 import {
   depotCounts,
-  depotTags,
   looseGear,
+  placeGearCounts,
   retiredGear,
   tagsOf,
   visibleGear,
@@ -166,79 +166,102 @@ describe('tagsOf', () => {
   })
 })
 
-describe('depotTags', () => {
-  /**
-   * Count descending, then tag ascending — the order both pickers draw
-   * (`#winter 23 · #cooking 14 · #sleep 9`). The `cook-set` / `cooking` pair
-   * is what settles it as count-first rather than alphabetical: `cook-set`
-   * sorts *before* `cooking`, yet the board draws it second.
-   */
-  it('orders by count descending, then tag ascending', () => {
-    const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
-      ...at(aGear({ id: 'g2', name: 'Pan' }), 2),
-      ...at(aGear({ id: 'g3', name: 'Kettle' }), 3),
-      one(gearTagApplied('g1', aTag('cooking')), 4),
-      one(gearTagApplied('g2', aTag('cooking')), 5),
-      one(gearTagApplied('g3', aTag('cooking')), 6),
-      one(gearTagApplied('g1', aTag('cook-set')), 7),
-      one(gearTagApplied('g2', aTag('cook-set')), 8),
-      one(gearTagApplied('g3', aTag('winter')), 9),
-      one(gearTagApplied('g1', aTag('alpine')), 10),
+/**
+ * The Depot desktop sidebar's `PLACES` list (`docs/design/README.md` §2), and
+ * Components §05's rule for what its number means: **count = everything
+ * beneath**, at any depth, not the direct children.
+ */
+describe('placeGearCounts', () => {
+  const nested = () =>
+    fold([
+      ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
+      ...at(aPlace({ id: 'kelder', name: 'Kelder' }), 2),
+      ...at(aPlace({ id: 'garage', name: 'Garage' }), 3),
+      ...at(
+        aGear({
+          id: 'crate',
+          name: 'Crate B',
+          container: true,
+          residence: { in: 'place', id: 'attic' },
+        }),
+        4,
+      ),
+      ...at(
+        aGear({
+          id: 'sack',
+          name: 'Stuff sack',
+          container: true,
+          residence: { in: 'gear', id: 'crate' },
+        }),
+        5,
+      ),
+      ...at(
+        aGear({
+          id: 'tent',
+          name: 'Tent',
+          residence: { in: 'gear', id: 'sack' },
+        }),
+        6,
+      ),
+      ...at(
+        aGear({
+          id: 'axe',
+          name: 'Axe',
+          residence: { in: 'place', id: 'kelder' },
+        }),
+        7,
+      ),
     ])
-    expect(depotTags(state)).toEqual([
-      { tag: 'cooking', count: 3 },
-      { tag: 'cook-set', count: 2 },
-      { tag: 'alpine', count: 1 },
-      { tag: 'winter', count: 1 },
+
+  it('counts everything beneath a place, at any depth', () => {
+    const counts = placeGearCounts(nested())
+    // Attic holds the crate, the sack inside it, and the tent inside that.
+    expect(counts.map((entry) => [entry.place.id, entry.count])).toEqual([
+      ['attic', 3],
+      ['garage', 0],
+      ['kelder', 1],
     ])
   })
 
-  it('drops a tag once nothing carries it any more', () => {
-    const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
-      one(gearTagApplied('g1', aTag('winter')), 2),
-      one(gearTagRemoved('g1', aTag('winter')), 3),
-    ])
-    // The register survives holding `false`; the vocabulary does not — there
-    // is no Tag entity, so a tag exists exactly as long as something wears it.
-    expect(state.gear['g1']?.tags?.['winter']?.value).toBe(false)
-    expect(depotTags(state)).toEqual([])
+  it('counts an empty place as zero rather than omitting it', () => {
+    const counts = placeGearCounts(nested())
+    expect(counts.find((entry) => entry.place.id === 'garage')?.count).toBe(0)
   })
 
-  // Retired gear contributes nothing, for the same reason it contributes
-  // nothing to `depotCounts`: the picker offers a vocabulary for slicing the
-  // *visible* depot.
+  it('omits a removed place', () => {
+    const state = fold([
+      ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
+      ...at(aPlace({ id: 'shed', name: 'Shed' }), 2),
+      one(placeRemoved('shed'), 3),
+    ])
+    expect(placeGearCounts(state).map((entry) => entry.place.id)).toEqual([
+      'attic',
+    ])
+  })
+
+  // Retired gear counts for nothing here either — the sidebar counts what a
+  // Quartermaster would find if they walked to the place.
   it('does not count retired gear', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
-      ...at(aGear({ id: 'g2', name: 'Old pan' }), 2),
-      one(gearTagApplied('g1', aTag('cooking')), 3),
-      one(gearTagApplied('g2', aTag('cooking')), 4),
-      one(gearRetired('g2'), 5),
-    ])
-    expect(depotTags(state)).toEqual([{ tag: 'cooking', count: 1 }])
-  })
-
-  // §5's tolerant reader again: a tag a foreign build authored is part of the
-  // vocabulary exactly as it arrived, because the register is.
-  it('offers a non-conforming tag exactly as it was folded', () => {
-    const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
-      anOp(
-        {
-          aggregate: 'gear',
-          aggregate_id: 'g1',
-          type: 'gear.tag_applied',
-          payload: { tag: 'Cooking' },
-        },
-        { hlc: hlcAt(2), deviceId: DEV_A },
+      ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
+      ...at(
+        aGear({
+          id: 'g1',
+          name: 'Tent',
+          residence: { in: 'place', id: 'attic' },
+        }),
+        2,
       ),
-      one(gearTagApplied('g1', aTag('cooking')), 3),
+      ...at(
+        aGear({
+          id: 'g2',
+          name: 'Old tent',
+          residence: { in: 'place', id: 'attic' },
+        }),
+        3,
+      ),
+      one(gearRetired('g2'), 4),
     ])
-    expect(depotTags(state)).toEqual([
-      { tag: 'Cooking', count: 1 },
-      { tag: 'cooking', count: 1 },
-    ])
+    expect(placeGearCounts(state)[0]?.count).toBe(1)
   })
 })

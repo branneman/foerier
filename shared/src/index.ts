@@ -76,11 +76,11 @@ export type {
 } from './selectors/containment.ts'
 export { containmentView, homePath } from './selectors/containment.ts'
 
-export type { TagCount } from './selectors/depot.ts'
+export type { PlaceGearCount } from './selectors/depot.ts'
 export {
   depotCounts,
-  depotTags,
   looseGear,
+  placeGearCounts,
   retiredGear,
   tagsOf,
   visibleGear,
@@ -90,6 +90,7 @@ export {
 export type {
   Dimension,
   DimensionId,
+  DimensionValue,
   GroupKey,
   SliceGroup,
   SliceResult,
@@ -99,6 +100,7 @@ export type {
 export {
   DIMENSIONS,
   dimension,
+  dimensionValues,
   EMPTY_SLICE,
   recordedAt,
   sliceDepot,

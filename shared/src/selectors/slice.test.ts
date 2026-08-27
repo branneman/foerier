@@ -13,6 +13,7 @@ import type { DepotState } from '../state.ts'
 import { normalizeTag, type TagString } from '../tags.ts'
 import {
   dimension,
+  dimensionValues,
   EMPTY_SLICE,
   recordedAt,
   sliceDepot,
@@ -402,5 +403,108 @@ describe('the dimension table', () => {
   it('labels each dimension as its chip draws it', () => {
     expect(dimension('tag').label).toBe('TAG')
     expect(dimension('kind').label).toBe('KIND')
+  })
+})
+
+describe('dimensionValues', () => {
+  /**
+   * Count descending, then tag ascending — the order both pickers draw
+   * (`#winter 23 · #cooking 14 · #sleep 9`). The `cook-set` / `cooking` pair
+   * is what settles it as count-first rather than alphabetical: `cook-set`
+   * sorts *before* `cooking`, yet the board draws it second.
+   */
+  it('orders by count descending, then tag ascending', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...at(aGear({ id: 'g2', name: 'Pan' }), 2),
+      ...at(aGear({ id: 'g3', name: 'Kettle' }), 3),
+      one(gearTagApplied('g1', aTag('cooking')), 4),
+      one(gearTagApplied('g2', aTag('cooking')), 5),
+      one(gearTagApplied('g3', aTag('cooking')), 6),
+      one(gearTagApplied('g1', aTag('cook-set')), 7),
+      one(gearTagApplied('g2', aTag('cook-set')), 8),
+      one(gearTagApplied('g3', aTag('winter')), 9),
+      one(gearTagApplied('g1', aTag('alpine')), 10),
+    ])
+    expect(dimensionValues(state, 'tag')).toEqual([
+      { value: 'cooking', count: 3 },
+      { value: 'cook-set', count: 2 },
+      { value: 'alpine', count: 1 },
+      { value: 'winter', count: 1 },
+    ])
+  })
+
+  it('drops a tag once nothing carries it any more', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      one(gearTagApplied('g1', aTag('winter')), 2),
+      one(gearTagRemoved('g1', aTag('winter')), 3),
+    ])
+    // The register survives holding `false`; the vocabulary does not — there
+    // is no Tag entity, so a tag exists exactly as long as something wears it.
+    expect(state.gear['g1']?.tags?.['winter']?.value).toBe(false)
+    expect(dimensionValues(state, 'tag')).toEqual([])
+  })
+
+  // Retired gear contributes nothing, for the same reason it contributes
+  // nothing to `depotCounts`: the picker offers a vocabulary for slicing the
+  // *visible* depot.
+  it('does not count retired gear', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...at(aGear({ id: 'g2', name: 'Old pan' }), 2),
+      one(gearTagApplied('g1', aTag('cooking')), 3),
+      one(gearTagApplied('g2', aTag('cooking')), 4),
+      one(gearRetired('g2'), 5),
+    ])
+    expect(dimensionValues(state, 'tag')).toEqual([
+      { value: 'cooking', count: 1 },
+    ])
+  })
+
+  // §5's tolerant reader again: a tag a foreign build authored is part of the
+  // vocabulary exactly as it arrived, because the register is.
+  it('offers a non-conforming tag exactly as it was folded', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      anOp(
+        {
+          aggregate: 'gear',
+          aggregate_id: 'g1',
+          type: 'gear.tag_applied',
+          payload: { tag: 'Cooking' },
+        },
+        { hlc: hlcAt(2), deviceId: DEV_A },
+      ),
+      one(gearTagApplied('g1', aTag('cooking')), 3),
+    ])
+    expect(dimensionValues(state, 'tag')).toEqual([
+      { value: 'Cooking', count: 1 },
+      { value: 'cooking', count: 1 },
+    ])
+  })
+
+  /**
+   * The reason this is per-dimension rather than tag-only: the `+ KIND`
+   * ghost chip needs the same list, and so will every dimension S4 through
+   * S10 adds. A dimension is a row in a table; its vocabulary comes from the
+   * same place.
+   */
+  it('derives a single-valued dimension the same way', () => {
+    expect(dimensionValues(aDepot(), 'kind')).toEqual([
+      { value: 'single', count: 2 },
+      { value: 'counted', count: 1 },
+      { value: 'per_person', count: 1 },
+    ])
+  })
+
+  // Which is also how an unrecognised kind reaches the chip menu at all —
+  // it is in the depot, so it is offered, without any list of known values
+  // to be added to.
+  it('offers an unrecognised value because it is derived, not declared', () => {
+    const state = fold(at(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), 1))
+    expect(dimensionValues(state, 'kind')).toEqual([
+      { value: 'sled', count: 1 },
+    ])
   })
 })

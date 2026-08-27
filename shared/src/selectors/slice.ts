@@ -112,6 +112,57 @@ export function dimension(id: DimensionId): Dimension {
 
 export const DIMENSIONS: readonly Dimension[] = Object.values(DIMENSION_TABLE)
 
+/** One value a dimension offers, and how much visible gear carries it. */
+export interface DimensionValue {
+  value: string
+  count: number
+}
+
+/**
+ * What a dimension can be narrowed **by**, right now — derived from the
+ * visible depot rather than declared anywhere.
+ *
+ * For Tag that is the literal design rule: **there is no Tag entity**, the
+ * vocabulary is whatever is currently applied, and there is no rename
+ * (`docs/design/README.md` §4a). For Kind it happens to be the same
+ * mechanism, and gives the tolerant reader's unrecognised values somewhere to
+ * appear for free.
+ *
+ * **Count descending, then value ascending.** Descending-count because the
+ * most-used value is the one most likely to be wanted, and it is the order
+ * both boards draw (`#winter 23 · #cooking 14 · #sleep 9`). The
+ * `#cook-set` / `#cooking` pair is what settles it as count-first rather than
+ * alphabetical: `cook-set` sorts *before* `cooking`, yet is drawn second.
+ * The ascending tiebreak makes the order **total**, which is what stops two
+ * devices with identical state drawing the picker differently.
+ *
+ * Retired gear contributes nothing, for the same reason it contributes
+ * nothing to {@link depotCounts}: this is the vocabulary for slicing the
+ * *visible* depot. A non-conforming tag is offered exactly as it was folded —
+ * the register key is the literal string that arrived (§5), and hiding it
+ * would leave a Quartermaster unable to remove the tag they can plainly see
+ * on the gear.
+ */
+export function dimensionValues(
+  state: DepotState,
+  id: DimensionId,
+): readonly DimensionValue[] {
+  const of = dimension(id)
+  const counts = new Map<string, number>()
+  for (const gear of visibleGear(state)) {
+    for (const value of of.valuesOf(gear, state)) {
+      counts.set(value, (counts.get(value) ?? 0) + 1)
+    }
+  }
+  return [...counts]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => {
+      if (a.count !== b.count) return b.count - a.count
+      if (a.value === b.value) return 0
+      return a.value < b.value ? -1 : 1
+    })
+}
+
 /** One narrowing, as a screen holds it. */
 export interface SliceSpec {
   search: string

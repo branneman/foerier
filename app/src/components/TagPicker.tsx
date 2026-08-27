@@ -1,4 +1,8 @@
-import { normalizeTag, normalizeTagInput, type TagCount } from '@foerier/shared'
+import {
+  normalizeTag,
+  normalizeTagInput,
+  type DimensionValue,
+} from '@foerier/shared'
 import { useState } from 'react'
 
 import styles from './TagPicker.module.css'
@@ -37,7 +41,7 @@ import styles from './TagPicker.module.css'
 export interface TagPickerProps {
   mode: 'gear' | 'slice'
   /** The household's whole vocabulary, with counts. */
-  vocabulary: readonly TagCount[]
+  vocabulary: readonly DimensionValue[]
   /** What is on this gear (`gear` mode) or already selected (`slice` mode). */
   applied: readonly string[]
   /** The normalised tag. In `slice` mode it is always one that exists. */
@@ -71,13 +75,13 @@ export function TagPicker({
 
   const appliedSet = new Set(applied)
   const offered = vocabulary.filter(
-    (entry) => draft === '' || entry.tag.includes(draft),
+    (entry) => draft === '' || entry.value.includes(draft),
   )
   const canCreate =
     mode === 'gear' &&
     candidate !== null &&
     !appliedSet.has(candidate) &&
-    !vocabulary.some((entry) => entry.tag === candidate)
+    !vocabulary.some((entry) => entry.value === candidate)
 
   return (
     <div
@@ -161,14 +165,14 @@ export function TagPicker({
           ) : (
             <ul className={styles['rows']}>
               {offered.map((entry) => (
-                <li key={entry.tag}>
+                <li key={entry.value}>
                   <button
                     type="button"
                     className={styles['row']}
-                    disabled={appliedSet.has(entry.tag)}
-                    onClick={() => onApply(entry.tag)}
+                    disabled={appliedSet.has(entry.value)}
+                    onClick={() => onApply(entry.value)}
                   >
-                    <span className={styles['rowTag']}>#{entry.tag}</span>
+                    <span className={styles['rowTag']}>#{entry.value}</span>
                     <span className={styles['rowCount']}>{entry.count}</span>
                   </button>
                 </li>

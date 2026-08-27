@@ -1,5 +1,9 @@
 import type { DepotState, GearState, PlaceState } from '../state.ts'
-import { containmentView, type ContainmentView } from './containment.ts'
+import {
+  containmentView,
+  type ContainmentView,
+  type HolderRef,
+} from './containment.ts'
 
 /**
  * The depot's list-level selectors: what a Quartermaster sees when they open
@@ -112,48 +116,48 @@ export function tagsOf(gear: GearState): readonly string[] {
     .sort()
 }
 
-/** One tag in the household's vocabulary, and how much gear wears it. */
-export interface TagCount {
-  tag: string
+/** One row of the Depot desktop sidebar's `PLACES` list. */
+export interface PlaceGearCount {
+  place: PlaceState
   count: number
 }
 
 /**
- * The household's whole tag vocabulary, with counts — what both tag pickers
- * offer (`docs/design/README.md` §4a).
+ * How much gear lives in each Place — **everything beneath it, at any
+ * depth**, which is Components §05's rule for what the sidebar's number
+ * means. A crate in the attic and a tent inside that crate both count towards
+ * the attic.
  *
- * **There is no Tag entity**, by design: the vocabulary is derived from
- * whatever is currently applied, and there is no rename op, ever. A tag
- * therefore exists exactly as long as some visible gear wears it, and a
- * misspelling is corrected only by removing it and applying the right one.
- * That is why the counts are here at all — near-duplicates become visible at
- * the moment they would be created, which is the only defence there is.
+ * Retired gear counts for nothing, the same as everywhere else: this number
+ * answers "what would I find if I walked to the attic", and a retired piece
+ * is not something to go and find.
  *
- * **Count descending, then tag ascending.** Descending-count because the most
- * used tag is the one most likely to be wanted; ascending-tag because the
- * order must be *total*, or two devices with identical state would draw the
- * picker differently.
- *
- * Retired gear contributes nothing, for the same reason it contributes
- * nothing to {@link depotCounts}: this vocabulary slices the visible depot.
- * A non-conforming tag is offered exactly as it was folded — the register key
- * is the literal string that arrived (§5), and hiding it would leave a
- * Quartermaster unable to remove the tag they can plainly see on the gear.
+ * An empty Place reads `0` rather than being omitted — a Place a
+ * Quartermaster made and has not filled yet is exactly the one they are about
+ * to fill.
  */
-export function depotTags(state: DepotState): readonly TagCount[] {
-  const counts = new Map<string, number>()
-  for (const gear of visibleGear(state)) {
-    for (const tag of tagsOf(gear)) {
-      counts.set(tag, (counts.get(tag) ?? 0) + 1)
+export function placeGearCounts(
+  state: DepotState,
+  view: ContainmentView = containmentView(state),
+): readonly PlaceGearCount[] {
+  const countUnder = (holder: HolderRef): number => {
+    let total = 0
+    for (const id of view.childrenOf(holder)) {
+      const gear = state.gear[id]
+      // A retired container still holds what it holds — retirement changes
+      // whether a thing may *hold* something, not whether what is inside it
+      // exists — so the walk continues through it even though it does not
+      // count itself.
+      if (gear !== undefined && !isRetired(gear)) total += 1
+      total += countUnder({ kind: 'gear', id })
     }
+    return total
   }
-  return [...counts]
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => {
-      if (a.count !== b.count) return b.count - a.count
-      if (a.tag === b.tag) return 0
-      return a.tag < b.tag ? -1 : 1
-    })
+
+  return visiblePlaces(state).map((place) => ({
+    place,
+    count: countUnder({ kind: 'place', id: place.id }),
+  }))
 }
 
 /**

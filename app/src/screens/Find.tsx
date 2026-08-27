@@ -8,7 +8,7 @@ import {
   type PathSegment,
   type WhereaboutsSlice,
 } from '@foerier/shared'
-import { Logo } from '@foerier/ui'
+import { GearRow, Logo } from '@foerier/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'wouter'
 
@@ -123,35 +123,26 @@ function CountedCard({
   )
 }
 
-/** The standard 2-line row for a plain match — a name, its full home path,
- * and a `⌂ HOME` mini status echoing the Depot list's own row. */
+/**
+ * The standard 2-line row for a plain match — **the same `GearRow` the Depot
+ * list uses**, with the meta slot swapped to the `⌂` path.
+ *
+ * "Answer-first is a meta-slot choice, not a new component" (Components §03).
+ * Until S3 this screen carried its own copy of the Depot's row JSX, and
+ * `Find.module.css` and `Depot.module.css` shared nine byte-identical blocks
+ * — the duplication [architecture §12.4](../../../docs/architecture-design.md)
+ * named as the reason to extract at this slice.
+ */
 function PlainRow({ match }: { match: Match }) {
-  const name = match.gear.name?.value ?? ''
   const text = pathText(match.path)
-  const metaId = `find-row-meta-${match.gear.id}`
-  const whereaboutsId = `find-row-whereabouts-${match.gear.id}`
-  const describedBy = [text !== '' ? metaId : null, whereaboutsId]
-    .filter((id) => id !== null)
-    .join(' ')
-
   return (
-    <Link
-      href={`/gear/${match.gear.id}`}
-      className={styles['row']}
-      aria-label={name}
-      aria-describedby={describedBy}
-    >
-      <span className={styles['rowMain']}>
-        <span className={styles['name']}>{name}</span>
-        {text !== '' && (
-          <span id={metaId} className={styles['meta']} data-testid="meta">
-            ⌂ {text}
-          </span>
-        )}
-      </span>
-      <span id={whereaboutsId} className={styles['whereabouts']}>
-        ⌂ HOME
-      </span>
+    <Link href={`/gear/${match.gear.id}`} asChild>
+      <GearRow
+        name={match.gear.name?.value ?? ''}
+        href={`/gear/${match.gear.id}`}
+        whereabouts="⌂ HOME"
+        {...(text === '' ? {} : { path: `⌂ ${text}` })}
+      />
     </Link>
   )
 }

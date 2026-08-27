@@ -1,0 +1,98 @@
+@layer components {
+  .bar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+  }
+
+  /*
+   * Compact/Comfortable: the chips scroll sideways rather than wrapping, so
+   * the list keeps its vertical room. Roomy (40em) is where they wrap onto a
+   * second line instead — a shell decision, so a media query, per
+   * frontend-design §3.1.
+   */
+  .chips {
+    display: flex;
+    gap: var(--space-8);
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Bleed to the gutter edges so a scrolled chip is not clipped mid-row. */
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (min-width: 40em) {
+    .chips {
+      flex-wrap: wrap;
+      overflow-x: visible;
+      margin-inline: 0;
+      padding-inline: 0;
+    }
+  }
+
+  .countRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  /* One count line: `N OF M` covers search and filters together. */
+  .count {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-8);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Story 13's undo. Accent, because it undoes rather than destroys. */
+  .clear {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--color-accent);
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+  }
+
+  .readout {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-height: max(2rem, 32px);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .arrangeRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-16);
+  }
+
+  .hint {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+}

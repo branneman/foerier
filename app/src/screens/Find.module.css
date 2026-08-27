@@ -65,42 +65,10 @@
     border-top: var(--stroke-rule) solid var(--color-rule-row);
   }
 
-  /* Plain match — the standard 2-line row. */
-  .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-12);
-    padding-block: var(--space-12);
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .rowMain {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    min-width: 0;
-  }
-
   .name {
     font: var(--text-heading) var(--font-ui);
     font-weight: 600;
     color: var(--color-ink-primary);
-  }
-
-  .meta {
-    font: var(--text-label) var(--font-mono);
-    color: var(--color-ink-muted);
-  }
-
-  .whereabouts {
-    flex: none;
-    font: var(--text-label) var(--font-mono);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-ink-muted);
-    white-space: nowrap;
   }
 
   /* Answer-first card — counted gear. A header naming the gear apart from

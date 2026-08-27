@@ -2,13 +2,16 @@ import {
   createHlcClock,
   gearRecorded,
   gearRetired,
+  gearTagApplied,
+  normalizeTag,
   placeRecorded,
   type Clock,
   type IdSource,
   type OpAuthor,
   type OpSpec,
+  type TagString,
 } from '@foerier/shared'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -22,7 +25,16 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { DESKTOP } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { Depot } from './Depot'
+
+/** The only way a `TagString` is made (`shared/src/tags.ts`). */
+function aTag(raw: string): TagString {
+  const tag = normalizeTag(raw)
+  if (tag === null) throw new Error(`not a tag: ${raw}`)
+  return tag
+}
 
 /**
  * Every test seeds a **real** store — `inMemoryOpLog` plus the real reducer
@@ -189,7 +201,7 @@ describe('the Depot list', () => {
     renderDepot(store)
 
     const row = screen.getByRole('link', { name: 'Rope' })
-    expect(within(row).queryByTestId('meta')).toBeNull()
+    expect(within(row).queryByTestId('gear-row-meta')).toBeNull()
   })
 
   it('shows the owned-count only for counted gear', async () => {
@@ -208,10 +220,10 @@ describe('the Depot list', () => {
     renderDepot(store)
 
     const mugRow = screen.getByRole('link', { name: 'Mug' })
-    expect(within(mugRow).getByTestId('meta')).toHaveTextContent('×4')
+    expect(within(mugRow).getByTestId('gear-row-meta')).toHaveTextContent('×4')
 
     const tentRow = screen.getByRole('link', { name: 'Tent' })
-    expect(within(tentRow).queryByTestId('meta')).toBeNull()
+    expect(within(tentRow).queryByTestId('gear-row-meta')).toBeNull()
   })
 
   it('filters rows by the search field', async () => {
@@ -240,7 +252,14 @@ describe('the Depot list', () => {
     expect(screen.queryByRole('link', { name: 'Tent' })).toBeNull()
   })
 
-  it('reports the match count when a filter is active', async () => {
+  /**
+   * **One count line**, always both numbers (`docs/design/README.md` §3):
+   * `N OF M` covers search and filters together, because they AND. S2's
+   * `2 GEAR · 2 PIECES` at rest and `1 MATCH` while searching were two reads
+   * of the same line, and both are gone — the headline pair survives only as
+   * the desktop title row's, where the board puts it.
+   */
+  it('reports one count line covering search and filters together', async () => {
     const axeId = anId()
     const stoveId = anId()
     const store = await seededStore([
@@ -254,14 +273,14 @@ describe('the Depot list', () => {
     const user = userEvent.setup()
 
     renderDepot(store)
-    expect(screen.getByText('2 GEAR · 2 PIECES')).toBeInTheDocument()
+    expect(screen.getByTestId('count-line')).toHaveTextContent('2 OF 2')
 
     await user.type(
       screen.getByRole('searchbox', { name: 'Search gear' }),
       'sto',
     )
 
-    expect(screen.getByText('1 MATCH')).toBeInTheDocument()
+    expect(screen.getByTestId('count-line')).toHaveTextContent('1 OF 2')
     expect(screen.queryByText('2 GEAR · 2 PIECES')).toBeNull()
   })
 
@@ -295,5 +314,255 @@ describe('the Depot list', () => {
     await user.click(screen.getByRole('link', { name: 'Add gear' }))
 
     expect(await screen.findByText('Add gear screen')).toBeInTheDocument()
+  })
+})
+
+/**
+ * **Tier 3's named target: the filter cluster**, wired to the real store and
+ * the real slicing engine rather than to a fake. `SliceBar.test.tsx` proves
+ * the cluster's own mechanics; this proves it actually narrows the list.
+ */
+describe('the Depot slice bar', () => {
+  async function aTaggedDepot() {
+    const bagId = anId()
+    const potId = anId()
+    const mugId = anId()
+    return seededStore([
+      gearRecorded(bagId, {
+        name: 'Sleeping bag',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+      gearRecorded(potId, {
+        name: 'Pot set',
+        container: false,
+        kind: 'single',
+      }),
+      gearRecorded(mugId, {
+        name: 'Mug',
+        container: false,
+        kind: 'per_person',
+      }),
+      gearTagApplied(bagId, aTag('winter')),
+      gearTagApplied(mugId, aTag('winter')),
+      gearTagApplied(potId, aTag('cooking')),
+    ])
+  }
+
+  it('narrows the list to a tag picked from the vocabulary', async () => {
+    const user = userEvent.setup()
+    renderDepot(await aTaggedDepot())
+
+    await user.click(screen.getByRole('button', { name: '+ TAG' }))
+    await user.click(screen.getByRole('button', { name: /#winter 2/ }))
+
+    expect(gearRows().map((row) => row.getAttribute('aria-label'))).toEqual([
+      'Mug',
+      'Sleeping bag',
+    ])
+    expect(screen.getByTestId('count-line')).toHaveTextContent('2 OF 3')
+  })
+
+  it('ANDs a second tag rather than widening the list', async () => {
+    const user = userEvent.setup()
+    renderDepot(await aTaggedDepot())
+
+    await user.click(screen.getByRole('button', { name: '+ TAG' }))
+    await user.click(screen.getByRole('button', { name: /#winter 2/ }))
+    await user.click(screen.getByRole('button', { name: '+ TAG' }))
+    await user.click(screen.getByRole('button', { name: /#cooking 1/ }))
+
+    // Nothing carries both, and that is the point: tags AND.
+    expect(screen.getByTestId('count-line')).toHaveTextContent('0 OF 3')
+    expect(screen.getByText('No matches.')).toBeInTheDocument()
+  })
+
+  it('ANDs the search with an active tag', async () => {
+    const user = userEvent.setup()
+    renderDepot(await aTaggedDepot())
+
+    await user.click(screen.getByRole('button', { name: '+ TAG' }))
+    await user.click(screen.getByRole('button', { name: /#winter 2/ }))
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search gear' }),
+      'mug',
+    )
+
+    expect(screen.getByTestId('count-line')).toHaveTextContent('1 OF 3')
+    expect(screen.getByTestId('count-line')).toHaveTextContent('CLEAR (2)')
+  })
+
+  it('puts the list back with CLEAR', async () => {
+    const user = userEvent.setup()
+    renderDepot(await aTaggedDepot())
+
+    await user.click(screen.getByRole('button', { name: '+ TAG' }))
+    await user.click(screen.getByRole('button', { name: /#winter 2/ }))
+    await user.click(screen.getByRole('button', { name: 'CLEAR (1)' }))
+
+    expect(gearRows()).toHaveLength(3)
+    expect(screen.queryByRole('button', { name: /CLEAR/ })).toBeNull()
+  })
+
+  // Rows never show tags: a tag filter changes which rows appear, not the
+  // rows (`docs/design/README.md` §3).
+  it('never draws a tag on a row', async () => {
+    renderDepot(await aTaggedDepot())
+
+    const row = screen.getByRole('link', { name: 'Sleeping bag' })
+    expect(within(row).queryByTestId('gear-row-tags')).toBeNull()
+    expect(within(row).queryByText(/#winter/)).toBeNull()
+  })
+
+  it('groups by kind, and never offers grouping by tag', async () => {
+    const user = userEvent.setup()
+    renderDepot(await aTaggedDepot())
+
+    await user.click(screen.getByTestId('arrange-readout'))
+    const group = screen.getByTestId('group-options')
+    expect(group).not.toHaveTextContent('TAG')
+
+    await user.click(within(group).getByRole('button', { name: /KIND/ }))
+
+    // Alphabetically by label, which is the board's grouped frame and not the
+    // enum's own order.
+    expect(
+      screen
+        .getAllByText(/^(Counted|Per-person|Single)$/)
+        .map((element) => element.textContent),
+    ).toEqual(['Counted', 'Per-person', 'Single'])
+  })
+
+  it('reorders the list from the sort sheet', async () => {
+    const user = userEvent.setup()
+    renderDepot(await aTaggedDepot())
+
+    await user.click(screen.getByTestId('arrange-readout'))
+    await user.click(
+      within(screen.getByTestId('sort-options')).getByRole('button', {
+        name: /NAME Z→A/,
+      }),
+    )
+
+    expect(gearRows().map((row) => row.getAttribute('aria-label'))).toEqual([
+      'Sleeping bag',
+      'Pot set',
+      'Mug',
+    ])
+  })
+
+  /**
+   * "Sort and group persist per device; filter chips and search reset on a
+   * fresh start, but survive navigation." A remount is the fresh start.
+   */
+  it('keeps the sort across a fresh start but drops the filters', async () => {
+    const user = userEvent.setup()
+    const store = await aTaggedDepot()
+    renderDepot(store)
+
+    await user.click(screen.getByRole('button', { name: '+ TAG' }))
+    await user.click(screen.getByRole('button', { name: /#winter 2/ }))
+    await user.click(screen.getByTestId('arrange-readout'))
+    await user.click(
+      within(screen.getByTestId('sort-options')).getByRole('button', {
+        name: /NAME Z→A/,
+      }),
+    )
+
+    cleanup()
+    renderDepot(store)
+
+    expect(screen.getByTestId('arrange-readout')).toHaveTextContent('NAME Z→A')
+    expect(screen.queryByRole('button', { name: /CLEAR/ })).toBeNull()
+    expect(gearRows()).toHaveLength(3)
+  })
+})
+
+/**
+ * Desktop 1024 (`docs/design/README.md` §2): the sidebar, the 8-column table,
+ * and column heads that sort. A **shell** decision, so it comes from a media
+ * query rather than a container query — frontend-design §3.1's own split.
+ */
+describe('the Depot at desktop width', () => {
+  async function aHomedDepot() {
+    const atticId = anId()
+    const crateId = anId()
+    const bagId = anId()
+    return seededStore([
+      placeRecorded(atticId, 'Attic'),
+      gearRecorded(crateId, {
+        name: 'Crate B',
+        container: true,
+        kind: 'single',
+        residence: { in: 'place', id: atticId },
+      }),
+      gearRecorded(bagId, {
+        name: 'Sleeping bag',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+        residence: { in: 'gear', id: crateId },
+      }),
+      gearTagApplied(bagId, aTag('winter')),
+    ])
+  }
+
+  it('lists the places with everything beneath them', async () => {
+    setViewport(DESKTOP)
+    renderDepot(await aHomedDepot())
+
+    const sidebar = screen.getByRole('complementary', { name: 'Depot places' })
+    const attic = within(sidebar).getByText('⌂ Attic').closest('li')
+    expect(attic).not.toBeNull()
+    // The crate and the bag inside it: count = everything beneath, at any
+    // depth. Scoped to the Attic row because ALL GEAR also reads 2.
+    expect(within(attic as HTMLElement).getByText('2')).toBeInTheDocument()
+  })
+
+  // Tags appear in the table's own column and nowhere else — at 44px density
+  // chips would dominate the row, and the full set is on gear detail.
+  it('shows tags in the table column that the folded row hides', async () => {
+    setViewport(DESKTOP)
+    renderDepot(await aHomedDepot())
+
+    const row = screen.getByRole('link', { name: 'Sleeping bag' })
+    expect(within(row).getByTestId('gear-row-tags')).toHaveTextContent(
+      '#winter',
+    )
+    expect(within(row).getByTestId('gear-row-kind')).toHaveTextContent(
+      'Counted',
+    )
+  })
+
+  it('sorts from the GEAR column head', async () => {
+    setViewport(DESKTOP)
+    const user = userEvent.setup()
+    renderDepot(await aHomedDepot())
+
+    await user.click(screen.getByRole('button', { name: 'GEAR ↑' }))
+
+    expect(gearRows().map((row) => row.getAttribute('aria-label'))).toEqual([
+      'Sleeping bag',
+      'Crate B',
+    ])
+  })
+
+  /**
+   * The board's desktop leaves `NEWEST FIRST` unreachable — sort there is
+   * "click a column head", and no column shows when a piece of gear was
+   * recorded. So the expanded arrange row keeps its SORT options rather than
+   * dropping them as "the ▾ control appears only where no heads exist" would
+   * suggest. A recorded deviation, not an oversight.
+   */
+  it('keeps every sort key reachable, including the one no column head offers', async () => {
+    setViewport(DESKTOP)
+    renderDepot(await aHomedDepot())
+
+    expect(
+      within(screen.getByTestId('sort-options')).getByRole('button', {
+        name: /NEWEST FIRST/,
+      }),
+    ).toBeInTheDocument()
   })
 })

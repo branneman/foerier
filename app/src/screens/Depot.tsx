@@ -1,153 +1,300 @@
 import {
   containmentView,
   depotCounts,
+  dimension,
+  dimensionValues,
   homePath,
-  visibleGear,
+  placeGearCounts,
+  sliceDepot,
+  tagsOf,
   type ContainmentView,
   type DepotState,
+  type DimensionId,
   type GearState,
+  type PlaceGearCount,
+  type SliceGroup,
 } from '@foerier/shared'
-import { Logo } from '@foerier/ui'
-import { useMemo, useState } from 'react'
+import { GearRow, Logo } from '@foerier/ui'
+import { useMemo } from 'react'
 import { Link } from 'wouter'
 
+import { SliceBar } from '../components/SliceBar'
 import { useDepot } from '../depot/store'
+import { useSliceSpec } from '../depot/useSliceSpec'
+import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Depot.module.css'
 
 /**
  * The Depot list — the first screen a Quartermaster sees
- * (`docs/design/README.md` §3). It never shows packing status: that belongs
- * to a Trip, and this is the year-round, at-home inventory.
+ * (`docs/design/README.md` §2, §3, §3a). It never shows packing status: that
+ * belongs to a Trip, and this is the year-round, at-home inventory.
+ *
+ * S3 rebuilt it on two things it did not have:
+ *
+ * - **`sliceDepot`**, the shared slicing engine. S2's name-substring filter
+ *   lived inside this component; it is now one dimension-free case of a
+ *   selector five later slices extend.
+ * - **`ui/`'s `GearRow`**, which `Find` shares — the duplication
+ *   [architecture §12.4](../../../docs/architecture-design.md) named as the
+ *   reason to extract.
+ *
+ * **One count line.** `9 OF 128` covers search and filters together, so S2's
+ * `4 MATCHES` read is gone. `128 GEAR · 214 PIECES` survives as the desktop
+ * title row's headline, where the board puts it.
  */
 
-/**
- * `home path · ×N` — a row's mono meta line, under its name. Empty for loose,
- * non-counted gear, in which case the caller renders nothing at all rather
- * than an empty span.
- */
+/** `ATTIC ▸ CRATE B · ×2` — the row's meta slot. Owner joins it at S4. */
 function metaFor(
   state: DepotState,
   gear: GearState,
   view: ContainmentView,
-): string {
+): string | undefined {
   const path = homePath(state, gear.id, view)
-  const pathText = path.map((segment) => segment.name).join(' ▸ ')
-  const ownedCount = gear.ownedCount?.value
-  const countText =
-    gear.kind?.value === 'counted' && ownedCount !== undefined
-      ? `×${ownedCount}`
+    .map((segment) => segment.name)
+    .join(' ▸ ')
+  // `ownedCount` outlives a `kind_set` back to `single` untouched, so it is
+  // gated on `kind` here exactly as `depotCounts` and `GearDetail`'s
+  // `metaLine` gate it (§12.4 — the three must agree).
+  const count =
+    gear.kind?.value === 'counted' && gear.ownedCount?.value !== undefined
+      ? `×${gear.ownedCount.value}`
       : ''
-  return [pathText, countText].filter((part) => part !== '').join(' · ')
+  const meta = [path, count].filter((part) => part !== '').join(' · ')
+  return meta === '' ? undefined : meta
 }
 
-/** `1 MATCH` / `4 MATCHES` — the count line while the search field narrows
- * the list, in place of the household-wide `N GEAR · M PIECES` headline. */
-function matchLine(count: number): string {
-  return count === 1 ? '1 MATCH' : `${count} MATCHES`
+/** `×N` for counted gear only — a single reads `—` in the table (§03). */
+function qtyFor(gear: GearState): string | undefined {
+  return gear.kind?.value === 'counted' && gear.ownedCount?.value !== undefined
+    ? `×${gear.ownedCount.value}`
+    : undefined
+}
+
+function Row({
+  state,
+  gear,
+  view,
+  layout,
+}: {
+  state: DepotState
+  gear: GearState
+  view: ContainmentView
+  layout: 'row' | 'table'
+}) {
+  const inside = view.childrenOf({ kind: 'gear', id: gear.id }).length
+  const meta = metaFor(state, gear, view)
+  const path = homePath(state, gear.id, view)
+    .map((segment) => segment.name)
+    .join(' ▸ ')
+  const kind = gear.kind?.value
+  const qty = qtyFor(gear)
+
+  return (
+    <Link href={`/gear/${gear.id}`} asChild>
+      <GearRow
+        name={gear.name?.value ?? ''}
+        href={`/gear/${gear.id}`}
+        // Only the home world exists today; the amber trip read and the ▲
+        // unaccounted read arrive with the trip and outcome slices, and are
+        // deliberately not placeholder'd (the same call `Find` made in S2b).
+        whereabouts="⌂ HOME"
+        layout={layout}
+        {...(gear.container?.value === true ? { insideCount: inside } : {})}
+        {...(layout === 'table'
+          ? {
+              ...(kind === undefined
+                ? {}
+                : { kind: dimension('kind').format(kind) }),
+              ...(path === '' ? {} : { path }),
+              ...(qty === undefined ? {} : { qty }),
+              tags: tagsOf(gear),
+            }
+          : meta === undefined
+            ? {}
+            : { path: meta })}
+      />
+    </Link>
+  )
+}
+
+function Group({
+  group,
+  state,
+  view,
+  layout,
+}: {
+  group: SliceGroup
+  state: DepotState
+  view: ContainmentView
+  layout: 'row' | 'table'
+}) {
+  return (
+    <>
+      {group.label !== '' && (
+        // Packing's group header minus the journey rail: surface band, name
+        // 16/600, right mono count (Screens A §03).
+        <li className={styles['groupHeader']}>
+          <span className={styles['groupName']}>{group.label}</span>
+          <span className={styles['groupCount']}>{group.gear.length}</span>
+        </li>
+      )}
+      {group.gear.map((gear) => (
+        <li key={gear.id}>
+          <Row state={state} gear={gear} view={view} layout={layout} />
+        </li>
+      ))}
+    </>
+  )
+}
+
+/** The desktop sidebar: logo · ALL GEAR · PLACES · sync line. `SAVED SLICES`
+ * is story 34 and tagged LATER on the board; it is not built. */
+function Sidebar({ state }: { state: DepotState }) {
+  const places = useMemo(() => placeGearCounts(state), [state])
+  const counts = useMemo(() => depotCounts(state), [state])
+
+  return (
+    <aside className={styles['sidebar']} aria-label="Depot places">
+      <Logo size={24} title="foerier" />
+      <div className={styles['sidebarRow']} data-testid="all-gear">
+        <span>ALL GEAR</span>
+        <span className={styles['sidebarCount']}>{counts.gear}</span>
+      </div>
+      <span className={styles['sidebarLabel']}>PLACES</span>
+      <ul className={styles['sidebarList']}>
+        {places.map((entry: PlaceGearCount) => (
+          <li key={entry.place.id} className={styles['sidebarRow']}>
+            <span>⌂ {entry.place.name?.value ?? ''}</span>
+            <span className={styles['sidebarCount']}>{entry.count}</span>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  )
 }
 
 export function Depot() {
   const state = useDepot((depot) => depot.state)
-  const [query, setQuery] = useState('')
+  const [spec, setSpec] = useSliceSpec()
+  const isDesktop = useMediaQuery(DESKTOP)
 
   const view = useMemo(() => containmentView(state), [state])
-  const gear = useMemo(() => visibleGear(state), [state])
+  const result = useMemo(() => sliceDepot(state, spec), [state, spec])
   const counts = useMemo(() => depotCounts(state), [state])
+  const valuesFor = useMemo(
+    () => (id: DimensionId) => dimensionValues(state, id),
+    [state],
+  )
 
-  const trimmed = query.trim().toLowerCase()
-  const filtered =
-    trimmed === ''
-      ? gear
-      : gear.filter((item) =>
-          (item.name?.value ?? '').toLowerCase().includes(trimmed),
-        )
-
-  const countLine =
-    trimmed === ''
-      ? `${counts.gear} GEAR · ${counts.pieces} PIECES`
-      : matchLine(filtered.length)
+  const layout = isDesktop ? 'table' : 'row'
+  const nothingRecorded = result.total === 0
 
   return (
     <div className={styles['screen']}>
-      <header className={styles['header']}>
-        <Logo size={28} title="foerier" />
-      </header>
+      {isDesktop && <Sidebar state={state} />}
 
-      <h1 className={styles['title']}>Depot</h1>
+      <div className={styles['main']}>
+        {!isDesktop && (
+          <header className={styles['header']}>
+            <Logo size={28} title="foerier" />
+          </header>
+        )}
 
-      <input
-        type="search"
-        className={styles['search']}
-        aria-label="Search gear"
-        placeholder="Search gear"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
+        <div className={styles['titleRow']}>
+          <h1 className={styles['title']}>Depot</h1>
+          {isDesktop && (
+            <span className={styles['headline']}>
+              {counts.gear} GEAR · {counts.pieces} PIECES
+            </span>
+          )}
+          <input
+            type="search"
+            className={styles['search']}
+            aria-label="Search gear"
+            placeholder="Search gear"
+            value={spec.search}
+            onChange={(event) =>
+              setSpec({ ...spec, search: event.target.value })
+            }
+          />
+          {isDesktop && (
+            <Link href="/add" className={styles['addButton']}>
+              + Add gear
+            </Link>
+          )}
+        </div>
 
-      <p className={styles['countLine']}>{countLine}</p>
+        <SliceBar
+          spec={spec}
+          result={result}
+          valuesFor={valuesFor}
+          onChange={setSpec}
+          layout={isDesktop ? 'expanded' : 'collapsed'}
+        />
 
-      {gear.length === 0 ? (
-        <p className={styles['empty']}>Nothing recorded yet.</p>
-      ) : filtered.length === 0 ? (
-        <p className={styles['empty']}>No matches.</p>
-      ) : (
-        <ul className={styles['list']}>
-          {filtered.map((item) => {
-            const name = item.name?.value ?? ''
-            const meta = metaFor(state, item, view)
-            const isContainer = item.container?.value === true
-            const metaId = `depot-row-meta-${item.id}`
-            const whereaboutsId = `depot-row-whereabouts-${item.id}`
-            // The row's accessible name stays just the gear's name (rows are
-            // queried by it in tests, and it's what you'd say the row *is*),
-            // but the home path and whereabouts are real content — the
-            // answer to "where is it" — so a screen-reader activating the
-            // row still hears them, via `aria-describedby` rather than
-            // folding them into the name.
-            const describedBy = [meta !== '' ? metaId : null, whereaboutsId]
-              .filter((id) => id !== null)
-              .join(' ')
-
-            return (
-              <li key={item.id}>
-                <Link
-                  href={`/gear/${item.id}`}
-                  className={styles['row']}
-                  aria-label={name}
-                  aria-describedby={describedBy}
+        {nothingRecorded ? (
+          <p className={styles['empty']}>Nothing recorded yet.</p>
+        ) : result.shown === 0 ? (
+          <p className={styles['empty']}>No matches.</p>
+        ) : (
+          <ul
+            className={`${styles['list']} ${isDesktop ? styles['table'] : ''}`}
+          >
+            {isDesktop && (
+              <li className={styles['columnHeads']}>
+                {/*
+                 * "Click a column head = sort" (§2). Only GEAR sorts, because
+                 * at S3 two of the three sort keys are name and the third —
+                 * NEWEST FIRST — has no column to be the head of: nothing in
+                 * the table shows when a piece of gear was recorded. That is
+                 * why the expanded arrange row keeps its SORT options here
+                 * rather than dropping them as "the ▾ control appears only
+                 * where no heads exist" would suggest: dropping them would
+                 * leave NEWEST FIRST unreachable at desktop width.
+                 */}
+                <button
+                  type="button"
+                  className={styles['columnHead']}
+                  onClick={() =>
+                    setSpec({
+                      ...spec,
+                      sort: spec.sort === 'name-asc' ? 'name-desc' : 'name-asc',
+                    })
+                  }
                 >
-                  <span className={styles['rowMain']}>
-                    <span className={styles['name']}>{name}</span>
-                    {meta !== '' && (
-                      <span
-                        id={metaId}
-                        className={styles['meta']}
-                        data-testid="meta"
-                      >
-                        {meta}
-                      </span>
-                    )}
-                  </span>
-                  <span className={styles['rowSide']}>
-                    <span id={whereaboutsId} className={styles['whereabouts']}>
-                      ⌂ HOME
-                    </span>
-                    {isContainer && (
-                      <span className={styles['chevron']} aria-hidden="true">
-                        ›
-                      </span>
-                    )}
-                  </span>
-                </Link>
+                  GEAR{' '}
+                  {spec.sort === 'name-asc'
+                    ? '↑'
+                    : spec.sort === 'name-desc'
+                      ? '↓'
+                      : ''}
+                </button>
+                <span>KIND</span>
+                <span>OWNER</span>
+                <span>HOME</span>
+                <span>TAGS</span>
+                <span>QTY</span>
+                <span>WHEREABOUTS</span>
               </li>
-            )
-          })}
-        </ul>
-      )}
+            )}
+            {result.groups.map((group) => (
+              <Group
+                key={group.key}
+                group={group}
+                state={state}
+                view={view}
+                layout={layout}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
 
-      <Link href="/add" className={styles['fab']} aria-label="Add gear">
-        +
-      </Link>
+      {!isDesktop && (
+        <Link href="/add" className={styles['fab']} aria-label="Add gear">
+          +
+        </Link>
+      )}
     </div>
   )
 }
