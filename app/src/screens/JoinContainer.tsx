@@ -24,6 +24,38 @@ export interface JoinContainerProps {
 }
 
 /**
+ * Best-effort: asks the installed service worker, if any, to check for a new
+ * version before `takeSecretFromFragment` strips the Invite secret out of
+ * the URL.
+ *
+ * With `registerType: 'autoUpdate'` (`vite.config.ts`), the moment a new
+ * worker takes control, `virtual:pwa-register`'s runtime reloads the page.
+ * That reload must not land after the fragment has already been rewritten to
+ * a bare `/join` — the secret is single-use with a one-hour expiry, so a
+ * reload landing after the strip destroys it with no way to retry. Calling
+ * `update()` here and awaiting it means any resulting reload fires while
+ * `#secret` is still in the URL, so it is harmless and the fresh build picks
+ * the secret up normally on the reload.
+ *
+ * Every step below can fail — `navigator.serviceWorker` is absent in the
+ * test environment and on an insecure origin, `getRegistration()` can
+ * resolve `undefined`, and `update()` rejects when offline — and every
+ * failure is treated as "proceed as if fresh". Refusing to redeem a link
+ * because an update check could not be made would be worse than redeeming it
+ * on an old build.
+ */
+async function checkForServiceWorkerUpdate(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration()
+    await registration?.update()
+  } catch {
+    // Offline, or nothing registered yet — proceed as if fresh.
+  }
+}
+
+/**
  * Reads the Invite secret out of the URL **fragment**.
  *
  * The fragment is never sent to a server, so the secret stays out of Caddy's
@@ -70,7 +102,12 @@ export function JoinContainer({
   const [passkeySaved, setPasskeySaved] = useState(false)
 
   useEffect(() => {
-    function load() {
+    async function load() {
+      // Must resolve before `takeSecretFromFragment()` runs — see that
+      // function's and `checkForServiceWorkerUpdate`'s comments for why the
+      // ordering, not merely doing both, is the fix.
+      await checkForServiceWorkerUpdate()
+
       const found = takeSecretFromFragment()
       if (found === null) {
         setDeadEnd('unknown')
@@ -93,7 +130,7 @@ export function JoinContainer({
         })
     }
 
-    load()
+    void load()
 
     // A second link pasted into an open tab is a *fragment-only* navigation:
     // the browser changes the URL without reloading, so nothing would react
@@ -107,7 +144,7 @@ export function JoinContainer({
     // now-empty hash it just cleared and dead-end a page that had just
     // loaded correctly. A legitimate second link always carries a secret.
     function onHashChange() {
-      if (window.location.hash !== '') load()
+      if (window.location.hash !== '') void load()
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)

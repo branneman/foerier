@@ -78,7 +78,20 @@ function renderJoinContainer(options: {
 
 afterEach(() => {
   window.location.hash = ''
+  // Only ever defined by the tests below, which stub it per-case; jsdom has
+  // no `serviceWorker` of its own to restore.
+  Reflect.deleteProperty(navigator, 'serviceWorker')
 })
+
+/** Stubs `navigator.serviceWorker` with a fake single-registration container. */
+function stubServiceWorker(registration: {
+  update: () => Promise<void>
+}): void {
+  Object.defineProperty(navigator, 'serviceWorker', {
+    value: { getRegistration: () => Promise.resolve(registration) },
+    configurable: true,
+  })
+}
 
 describe('JoinContainer', () => {
   it('skips the confirm frame entirely for a device link', async () => {
@@ -157,5 +170,75 @@ describe('JoinContainer', () => {
       householdId: CLAIMED.household_id,
       name: 'Bran',
     })
+  })
+})
+
+describe('JoinContainer — stale service worker vs. the Invite secret', () => {
+  it('checks for a service worker update before the secret is stripped from the URL', async () => {
+    // `autoUpdate` reloads the page the instant a new worker takes control.
+    // If that update check ran *after* `history.replaceState`, the ordering
+    // bug would be back even though both things still "happened" — so this
+    // asserts the order itself, via a shared log both fakes write into,
+    // rather than merely that both were called.
+    const calls: string[] = []
+    stubServiceWorker({
+      update: () => {
+        calls.push('service-worker-update')
+        return Promise.resolve()
+      },
+    })
+    const replaceStateSpy = vi
+      .spyOn(window.history, 'replaceState')
+      .mockImplementation((data, unused, url) => {
+        calls.push('history-replaceState')
+        return Object.getPrototypeOf(window.history).replaceState.call(
+          window.history,
+          data,
+          unused,
+          url,
+        )
+      })
+
+    renderJoinContainer({
+      responses: { '/auth/join/preview': DEVICE_PREVIEW },
+    })
+
+    await screen.findByRole('heading', {
+      name: 'Continue without a passkey',
+    })
+
+    expect(calls).toEqual(['service-worker-update', 'history-replaceState'])
+    replaceStateSpy.mockRestore()
+  })
+
+  it('proceeds unchanged when there is no service worker at all', async () => {
+    // jsdom has no `navigator.serviceWorker`, and nothing in `afterEach`
+    // stubs one back in — this is the environment every other test in this
+    // file already runs under, asserted explicitly here.
+    expect('serviceWorker' in navigator).toBe(false)
+
+    renderJoinContainer({
+      responses: { '/auth/join/preview': DEVICE_PREVIEW },
+    })
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Continue without a passkey',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('proceeds unchanged, without throwing, when the update check rejects offline', async () => {
+    stubServiceWorker({ update: () => Promise.reject(new Error('offline')) })
+
+    renderJoinContainer({
+      responses: { '/auth/join/preview': DEVICE_PREVIEW },
+    })
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Continue without a passkey',
+      }),
+    ).toBeInTheDocument()
   })
 })

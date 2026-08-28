@@ -20,7 +20,16 @@ export default defineConfig({
     }),
 
     VitePWA({
-      registerType: 'prompt',
+      // `prompt` was chosen when there was no update affordance designed: it
+      // deliberately never calls `skipWaiting`, so a deploy reached a client
+      // only once every tab for the origin had closed — for `/join`, whose
+      // Invite secret is single-use with a one-hour expiry, that is too easy
+      // to lose to a stale shell running the wrong flow. `autoUpdate` makes a
+      // new worker take control (and the page reload) on the next load
+      // instead. `JoinContainer` checks for that update *before* it strips
+      // the secret from the URL, so the reload this causes cannot land after
+      // the strip and destroy an otherwise-valid link.
+      registerType: 'autoUpdate',
 
       // The CSP forbids inline script outright — no `unsafe-inline`, no
       // hashes, no nonces (`auth-design.md` §8.2). The plugin's default
