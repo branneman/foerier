@@ -74,17 +74,44 @@ three worth knowing before touching this area:
   draw. Both are recorded in `docs/design/README.md` §3b/§3c and revisit when
   story 36's design phase lands.
 
-**The next slice is S4, People and ownership.** It adds `person.renamed` and
+**The next slice is S3.5, Auth 3+4** — designed, not yet built. See
+[its spec](docs/specs/2026-08-28-auth-device-links.md). It delivers stories 29
+and 30: `POST /auth/device/claim` and the token-only path that needs nothing of
+a Device beyond a browser, in-app device links, the Devices list, add/remove
+passkey, and the **Account screen**. No ops and no `shared/`, so it was free to
+move ahead of S4 — [§8.6](docs/architecture-design.md#86-what-can-be-built-in-parallel)
+already granted the float. Three things about it are worth knowing before
+touching auth:
+
+- **The compatibility floor is wider than "cannot".** A phone can pass every
+  capability check and still be unusable, because the only credential store it
+  offers is one the household declined. So the token-only path is reachable
+  **by choice**, not only by failure — a departure from the boards, recorded in
+  `docs/design/README.md` §10, which also falsified one drawn line.
+- **`invite.person_recorded` replaces a guess.** The join screen learned whether
+  the joiner names themselves from *"does this Household have any Login"*, which
+  is right for the first Person and wrong for every one after — the second
+  joiner would get no name field and a Login pointing at a Person nobody
+  recorded. The fact now lives on the Invite. Spec §4.
+- **Two Maintainer scripts, `admin:invite` and `admin:list`**, because
+  [auth-design §3.4](docs/auth-design.md)'s "only the first Login is arranged out
+  of band" left the *second* Login with no route at all until S5, and §5's named
+  escape hatch had no mechanism.
+
+**Then S4, People and ownership.** It adds `person.renamed` and
 `gear.ownership_set`, the People list, the owner on gear detail — and
 **Person and Ownership as two more rows in S3's dimension table**, which is
 how story 4's narrowing is delivered rather than as a second, private filter.
 
-**Two debts ride along.** There is no Account screen — which is now three
-missing affordances rather than one, since the R3 shell round settled an
-`ACCOUNT` row in the desktop sidebar, an avatar on the Split rail, and an
-avatar in the phone header, and all three wait on the same screen
+**Two debts ride along, and S3.5 is what discharges the first.** There is no
+Account screen — four missing affordances rather than one, since the R3 shell
+round settled an `ACCOUNT` row in the desktop sidebar, an avatar on the Split
+rail, and an avatar in the phone header, and all three wait on the same screen
+as `sign out this device`
 ([§12.6](docs/architecture-design.md#126-consequences-of-the-r3-shell-round)).
-`sign out this device` has no button for the same reason. `unsyncedCount()` already has a caller —
+Their absence is pinned by a test (`app/src/shell/AppShell.test.tsx`, "the
+account affordance") that S3.5 must **invert rather than delete**, so the diff
+records the discharge. `unsyncedCount()` already has a caller —
 `app/src/App.tsx:145` feeds it to the sign-in screen's session-lost line
 (§12.3) — but `clearLocalData()` (`app/src/depot/wiring.ts:243`), the action
 that button would trigger, is genuinely uncalled. The **401 contract
@@ -97,8 +124,11 @@ recover-in-place flow.
 And **Radix is still not a dependency**, against
 [frontend-design §5](docs/frontend-design.md)'s assignment of every interactive
 primitive to a thin wrapper in `ui/`. Every sheet in the app is a hand-rolled
-scrim. Deferred deliberately at S2 and again at S3; the slice that adds it
-should convert them all at once rather than leaving two idioms in place.
+scrim. Deferred deliberately at S2, at S3, and a third time at S3.5 — which
+takes the count to roughly six sheets and so replaces the deferral with a
+condition: **the conversion is its own slice, immediately after S3.5 and before
+S4**, converting all six at once rather than leaving two idioms in place. Pure
+`ui/` work; no ops, no endpoints, no `shared/`.
 
 Four conventions the code now carries that are easy to trip over:
 

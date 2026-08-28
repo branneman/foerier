@@ -31,7 +31,7 @@ mechanises. Stories 26–31 are the user-facing contract.
 | Who invites | Any **Quartermaster**, from inside the app. The **Maintainer** only bootstraps a Household's first Login |
 | Invite secret | 256-bit random in the URL **fragment**; stored hashed; single-use; short-lived |
 | Second device | **Device-link Invite** (our mechanism) + the browser's own cross-device QR sign-in (free) |
-| Compatibility floor | A Device that cannot hold a passkey is **fully supported** via a Device link — token only, no feature loss |
+| Compatibility floor | A Device that cannot hold a passkey — **or cannot hold one the household will use** — is **fully supported** via a Device link: token only, no feature loss |
 | Session | Opaque **bearer token per Device**, hashed at rest, **sliding 1-year expiry** |
 | Session transport | `Authorization` header. **No cookies** → no CSRF surface, no cookie-domain juggling |
 | Revocation | Per-Device, from any Device; per-Login by any Quartermaster |
@@ -246,6 +246,34 @@ QR flow does not help, because there the phone must be the *authenticator*, and
 it is the device that cannot hold credentials. WebAuthn's own fallback — a
 hardware security key over USB or NFC — is not something to require of a
 household.
+
+**The floor is wider than "cannot", and testing against a real device is what
+showed it.** Android routes passkeys through Credential Manager, and a
+third-party credential provider can only take that seat if the OEM's build
+exposes the setting for it. Several do not. Such a phone *can* still complete a
+ceremony — the platform's own credential store answers, and a WebAuthn test site
+registers against it happily — so every capability check passes. What it cannot
+offer is **the credential store the household chose**. The real shape of this
+section is therefore *a Device that cannot hold a passkey the household is
+willing to use*, and the mechanism below is unchanged by that: a Device link
+needs nothing but a browser either way. What changes is the **trigger**.
+Capability detection alone sails straight past such a device and into a store
+its owner deliberately declined, so the token-only path must be reachable **by
+choice** and not only by failure. See
+[`docs/specs/2026-08-28-auth-device-links.md`](specs/2026-08-28-auth-device-links.md)
+§8 for the affordance that follows.
+
+**Two facts about passkeys that this section depends on**, stated here because
+they are the ones most often assumed the other way round. A passkey is **not
+portable** — the private half is non-exportable by design, provider sync happens
+inside the provider's own encrypted channel, and there is no user-facing export
+or import. Moving between credential stores is therefore not a migration but
+`add a passkey` on the new Device followed by `remove` on the old one, against
+the same Login, which is why several passkeys per Login (§2) is load-bearing
+rather than a convenience. And **the link is short-lived; the session it creates
+is not** — an hour bounds the interception window, while the Device token it
+issues runs to a year after last use (§6.2). The real fragility on a token-only
+Device is local storage eviction, not expiry.
 
 **The answer: a Device link needs nothing but a browser.**
 
@@ -480,6 +508,11 @@ rather than a mitigated risk.
 All under `/api/v1`, replacing the three placeholders in the architecture spec.
 Marked **A** = requires a valid Device token.
 
+**What exists as of S3.5:** everything below except `GET /auth/logins` and
+`DELETE /auth/logins/:id`, which are story 28's and wait for S5. `POST
+/auth/invites` accepts only `purpose: "device"` until then — a join Invite must
+name a Person, and there is no way to pick one before S4 records People.
+
 | Method | Path | Purpose |
 | --- | --- | --- |
 | POST | `/auth/join/preview` | describe an Invite (household name, expiry) so the join screen can ask before anything is agreed to. Consumes nothing |
@@ -488,7 +521,7 @@ Marked **A** = requires a valid Device token.
 | POST | `/auth/login/options` | return username-less request options |
 | POST | `/auth/login/verify` | verify assertion, issue a Device token |
 | POST | `/auth/device/claim` | redeem **either** Invite kind for a token **without** a credential (§5) — a device Invite signs its Login in; a join Invite creates the Login first, exactly as `register/verify` would, minus the credential |
-| GET | `/auth/me` | **A** — Login id, `person_id`, `household_id`, current Device |
+| GET | `/auth/me` | **A** — Login id, `person_id`, `household_id`, `household_name`, current Device |
 | POST | `/auth/signout` | **A** — revoke the calling Device |
 | GET | `/auth/devices` | **A** — list this Login's Devices |
 | DELETE | `/auth/devices/:id` | **A** — revoke one Device of this Login |
@@ -588,6 +621,20 @@ protect.
   hashing scheme, a breach-relevant table, a handle, lockout logic, and a reset
   story — for a mechanism whose recovery path would be the same social re-invite.
   Revisit only if Device links prove insufficient in practice.
+- **A recovery code** — the shape a second credential should take *if* one is
+  ever needed, recorded here so it is not re-derived from scratch. The Device
+  link leaves exactly one real gap: a Login holding no passkey that has lost
+  every session needs another Quartermaster, or the Maintainer. A single
+  256-bit secret per Login, shown once, stored in whatever password manager the
+  household already keeps, redeemed through `device/claim`'s **existing** path
+  and rotated on use, closes that gap while adding none of the machinery the
+  bullet above rejects — no hashing scheme beyond the `invite` table's, no
+  lockout, no reset story, no mail. Its honest cost is that it is phishable in
+  a way a passkey is not, which is tolerable for a path used once a year and
+  intolerable as a daily one. **Not built and not written as a story**, because
+  with two Quartermasters and a Maintainer who is one of them the gap is not
+  reachable. The household that first reaches it should write it as a story and
+  take the next unused number.
 - **Email.** Nothing sends mail. Would be a prerequisite for password reset and
   for delivering Invites in-product.
 - **App-level lock / re-verify on open** — rejected for now (§7.3); would be
@@ -651,6 +698,22 @@ Household. It therefore lands after the People slice. Nothing is lost — slice 
 already admits a second Quartermaster on a Maintainer-minted Invite (§3.4); only
 in-app issuance waits. Slices 3 and 4 introduce no ops and touch `shared/` not at
 all, so they float and may be built alongside any domain slice.
+
+**What actually happened: slices 3 and 4 landed together, as S3.5, ahead of
+slice 2 and ahead of the People slice.** Three reasons, and only the third
+forced it. They are free to move — that is the float above. Four settled
+affordances were queued behind the Account screen that slice 4 builds
+([architecture §12.6](architecture-design.md#126-consequences-of-the-r3-shell-round)).
+And the maintainer's own phone could not sign in at all until §5's Device link
+existed, which makes the compatibility floor the difference between a working
+product and a demo. Two things rode along that slice 1 should arguably have
+carried: a **`admin:invite`** script, because §3.4's "only the first Login is
+arranged out of band" left the *second* Login with no route at all before slice
+2 exists; and a fix to the way the join screen learned whether the joiner names
+themselves, which had been inferred from "does this Household have any Login"
+and was therefore correct for exactly one Person per Household. See
+[`docs/specs/2026-08-28-auth-device-links.md`](specs/2026-08-28-auth-device-links.md)
+§4 and §5.
 
 ## 14. What this document does not settle
 

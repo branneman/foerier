@@ -557,6 +557,32 @@ later, and every later narrowing extends one engine instead of growing its own.
   scenario. Tier 3 — the filter cluster.
 - **Usable?** "Everything `bushcraft`" is one tap. See §8.5 for the rest of 13.
 
+**S3.5 — Auth 3+4: device links and the Account screen.** *Delivers 29, 30.*
+
+[auth-design §13](auth-design.md) slices 3 and 4, landed together and ahead of
+slice 2 by spending the float §8.6 grants. **Not a renumbering** — the slices
+either side keep their names, for the same reason stories do.
+
+- **Ops:** none. `shared/` is untouched.
+- **Endpoints:** `POST /auth/device/claim`; `POST · GET · DELETE
+  /auth/invites` (`purpose: "device"` only until S5); `GET /auth/devices`,
+  `DELETE /auth/devices/:id`; `POST /auth/passkeys/options` + `/verify`,
+  `GET · DELETE /auth/passkeys[/:id]`; `household_name` added to `/auth/me`.
+  Plus two Maintainer scripts, `admin:invite` and `admin:list`.
+- **Migration:** one additive column, `invite.person_recorded`, replacing a
+  server-side guess that was right for exactly the first Login of a Household
+  and wrong for every one after it.
+- **UI:** Screens C — Account, Devices, Invite issued, and the
+  passkey-less path; the `ACCOUNT` affordance in **all three** nav modes at
+  once, discharging §12.6's four-way debt; `clearLocalData()` gains its only
+  caller.
+- **Tests:** Tier 2s across nine new authenticated routes, the isolation test
+  extended to each. **Tier 5 — a device link claimed in a browser context with
+  no virtual authenticator registered**, which is the honest simulation of a
+  phone whose credential store the household will not use.
+- **Usable?** Every Device the household owns can be signed in, and any of them
+  cut off from any other. Before this, one of them could not get in at all.
+
 **S4 — People and ownership.** *Delivers 4.*
 
 - **Ops (2):** `person.renamed`, `gear.ownership_set`. `person.recorded` is
@@ -823,9 +849,14 @@ What genuinely parallelises:
 - **Auth 3 (story 29, second Device) and auth 4 (story 30, Device management)**
   introduce **no ops**, touch `shared/` not at all, and live in `api/`'s auth
   tables and the account routes of Screens C. They can be built alongside any
-  domain slice from S2 onwards, in either order. Recommended landing point: any
-  time before S10, so that real use of the tool is backed by working Device
-  management — but nothing forces it.
+  domain slice from S2 onwards, in either order. **They were spent immediately
+  after S3, together, as S3.5** — this bullet's float is the permission that
+  made that a scheduling decision rather than a re-plan. The trigger was not the
+  "any time before S10" this bullet used to recommend: the R3 shell round had
+  queued four settled affordances behind the Account screen (§12.6), and a
+  household device could not sign in at all until the Device link of
+  [auth-design §5](auth-design.md) existed. Float is worth having precisely
+  because you cannot predict which week it gets spent.
 - **S12 (notes) and S13 (tasks)** touch disjoint Trip register namespaces
   (`notes.<id>` vs `tasks.<id>`, [sync §3.7](sync-protocol.md)) and disjoint
   panels. Their only collision is the Trip screen shell, which is a layout

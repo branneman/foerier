@@ -67,9 +67,12 @@ Acceptance criteria:
   this Device in. My Login is mine alone; there is no shared household account.
 - An Invite is single-use and expires. A used, expired, or unrecognised Invite
   says so plainly and tells me to ask for a new one.
-- If this Device cannot hold a Passkey, I can still complete the join and use the
-  app on it (story 29); the app tells me I will need a Household member's help to
-  sign in on any further Device until I add a Passkey somewhere.
+- If this Device cannot hold a Passkey — or can only offer to keep one somewhere
+  I am not willing to keep it — I can still complete the join and use the app on
+  it (story 29). Choosing not to make a Passkey here is a plain choice offered
+  alongside making one, not a failure I have to provoke. The app tells me I will
+  need a Household member's help to sign in on any further Device until I add a
+  Passkey somewhere.
 
 ### 28. Bring another Person in
 
@@ -106,10 +109,12 @@ Acceptance criteria:
   myself and open it on the new Device to sign that one in.
 - The new Device offers to remember me with its own Passkey, so that the next
   sign-in there is local and immediate.
-- **A Device that cannot hold a Passkey at all is still fully supported.** Older
-  phones, browsers, and locked-down machines exist; on those, the Device link
-  signs me in and the Device then stays signed in like any other (story 26).
-  Nothing about the app is degraded there.
+- **A Device that cannot hold a Passkey is still fully supported.** Older phones,
+  browsers, and locked-down machines exist; so do Devices that can only keep a
+  Passkey somewhere I have deliberately chosen not to keep my credentials, which
+  for me is the same problem. On any of them the Device link signs me in and the
+  Device then stays signed in like any other (story 26). Nothing about the app is
+  degraded there, and nothing about that Device is marked as lesser.
 - If I have lost access to all of my own Devices, another Quartermaster in the
   Household can issue me a Device link, and I am back — no reset mail, no
   support request. In a Household with no other Login, this is the one case that
