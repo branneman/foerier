@@ -42,6 +42,37 @@
     gap: var(--space-12);
   }
 
+  /**
+   * The ≥52em treatment the slice-bar pickers carried before the conversion:
+   * centred, unscrimmed, a bordered card with a shadow and no grabber.
+   *
+   * It is opt-in rather than the sheet's general desktop form, because it is
+   * not really a sheet decision — it is `docs/design/README.md` §4a's
+   * "popover on desktop, same sheet on phone", approximated until `Popover`
+   * exists. Split (52em) is where the two-pane layout arrives, so it is where
+   * a sheet stops being the right shape. The two callers that had it disagreed
+   * about width (22rem and 20rem); 22rem wins, as drift rather than intent.
+   */
+  @media (min-width: 52em) {
+    .scrimAtSplit {
+      background: none;
+    }
+
+    .cardAtSplit {
+      top: 50%;
+      bottom: auto;
+      transform: translate(-50%, -50%);
+      max-width: 22rem;
+      border: var(--stroke-rule) solid var(--color-rule);
+      border-radius: var(--radius-card);
+      box-shadow: 0 12px 32px rgb(0 0 0 / 0.32);
+    }
+
+    .cardAtSplit .grabber {
+      display: none;
+    }
+  }
+
   .card {
     position: fixed;
     top: 50%;

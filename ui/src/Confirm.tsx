@@ -35,7 +35,17 @@ export interface ConfirmProps {
   description: ReactNode
   /** Escape, or {@link Confirm.Cancel}. Never the scrim. */
   onClose: () => void
-  /** The actions row: a {@link Confirm.Cancel} and one {@link Confirm.Action}. */
+  /**
+   * The actions row: a {@link Confirm.Cancel} and, normally, one
+   * {@link Confirm.Action}.
+   *
+   * "Normally", because `Confirm.Action` closes on click — which is right for
+   * a decision that is over the moment it is taken, and wrong for the one
+   * that is not. `SignOutThisDeviceSheet` has to outlive its own action to
+   * say `▲ Another tab has this open`, so its confirm is a plain button and
+   * the sheet closes when the sequence finishes. A `Cancel` is not optional
+   * either way: it is what Radix gives initial focus to.
+   */
   actions: ReactNode
   /** `card` is the centred card; `sheet` is the bottom-sheet anatomy. */
   variant?: 'card' | 'sheet'

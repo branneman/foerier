@@ -31,10 +31,28 @@ export interface SheetProps {
   onClose: () => void
   /** Sits opposite the title. Only `HomePicker`'s EDIT/DONE toggle uses it. */
   titleAction?: ReactNode
+  /**
+   * From Split (52em) up, draw a centred bordered card with no scrim and no
+   * grabber instead of a bottom sheet.
+   *
+   * The slice-bar pickers — `TagPicker` and `ValueMenu` — are the callers that
+   * had this before the Radix conversion, and it is theirs for a reason:
+   * `docs/design/README.md` §4a draws them as *"popover on desktop, same sheet
+   * on phone"*, and this is that popover approximated until `Popover` itself
+   * lands. It is opt-in rather than every sheet's desktop form because a Home
+   * picker or a sign-out confirm is not a popover on any board.
+   */
+  desktopCard?: boolean
   children: ReactNode
 }
 
-function SheetRoot({ title, onClose, titleAction, children }: SheetProps) {
+function SheetRoot({
+  title,
+  onClose,
+  titleAction,
+  desktopCard = false,
+  children,
+}: SheetProps) {
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Radix's modal `Dialog` restores focus to its `Dialog.Trigger` and to
@@ -54,10 +72,20 @@ function SheetRoot({ title, onClose, titleAction, children }: SheetProps) {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className={styles['scrim']} />
+        <Dialog.Overlay
+          className={
+            desktopCard
+              ? `${styles['scrim']} ${styles['scrimAtSplit']}`
+              : styles['scrim']
+          }
+        />
         <Dialog.Content
           ref={contentRef}
-          className={styles['sheet']}
+          className={
+            desktopCard
+              ? `${styles['sheet']} ${styles['cardAtSplit']}`
+              : styles['sheet']
+          }
           tabIndex={-1}
           // Our pickers have no single describing paragraph, and Radix warns
           // about a missing `Description` unless it is told so explicitly.
