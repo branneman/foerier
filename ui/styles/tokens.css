@@ -28,6 +28,13 @@
     --stroke-rule: 1px;
     --stroke-chip: 1.5px;
 
+    /* ---- Primitive: stacking ---- */
+    /* Two layers, and only two: an overlay, and a decision taken on top of
+       one. Six modules carried the bare literals `10` and `20` before the
+       Radix conversion, and one overlay carried no `z-index` at all. */
+    --layer-sheet: 10;
+    --layer-confirm: 20;
+
     /* ---- Primitive: type ---- */
     --font-display:
       'Bricolage Grotesque', 'Bricolage Grotesque fallback', Georgia, serif;

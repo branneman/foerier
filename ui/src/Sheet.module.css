@@ -1,0 +1,120 @@
+/**
+ * One anatomy family, one module: `Sheet` and `Confirm` both import this.
+ *
+ * Splitting it would force a `composes … from` across modules from inside
+ * `@layer components`, for two components that draw the same scrim, the same
+ * grabber and the same title.
+ *
+ * The board is `docs/design/README.md` §15 for the sheet — "radius 16 top,
+ * bg/surface, 1px rule top edge, 36×4 grabber, padding 10/20/24" — and §12 for
+ * the confirm sheets. The eight overlay blocks that preceded this file
+ * disagreed about padding, gap and whether a sheet had a `max-height` at all;
+ * the drift is resolved here rather than carried.
+ */
+@layer components {
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--color-scrim);
+    z-index: var(--layer-sheet);
+  }
+
+  /* Radix renders the overlay and the content as siblings, so the surface
+     positions itself rather than being centred by a flex parent. */
+  .sheet {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--layer-sheet);
+    width: 100%;
+    max-width: 32rem;
+    /* Every sheet, not four of six: without it a tall picker on a 568px-high
+       screen, or at a large text size, runs off the top with no way back. */
+    max-height: 85svh;
+    overflow-y: auto;
+    background: var(--color-bg-surface);
+    border-top: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    padding: 0.625rem var(--space-20) var(--space-24);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+  }
+
+  .card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: var(--layer-confirm);
+    width: calc(100% - 2 * var(--space-16));
+    max-width: 24rem;
+    max-height: 85svh;
+    overflow-y: auto;
+    background: var(--color-bg-surface);
+    border: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-card);
+    padding: var(--space-20);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+  }
+
+  /* A confirm always sits above the sheet that opened it. Portal order
+     already does this; the token says so rather than leaving it incidental. */
+  .raised {
+    z-index: var(--layer-confirm);
+  }
+
+  .grabber {
+    width: 2.25rem;
+    height: 0.25rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-rule-control);
+    margin: 0 auto var(--space-8);
+  }
+
+  .title {
+    font: var(--text-title) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  /* Only `HomePicker` uses it: the quiet EDIT/DONE toggle beside the title. */
+  .titleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  /* The two registers differ by variant, and deliberately. A card states the
+     consequence in the attention register; a confirm sheet keeps amber for
+     its `▲` lines alone (boards §12: the remote sheet carries no ▲). */
+  .descriptionCard {
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-status-attention);
+  }
+
+  .descriptionSheet {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    font-family: var(--font-ui);
+    color: var(--color-ink-muted);
+    margin-top: var(--space-4);
+  }
+
+  .actionsCard {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-12);
+    margin-top: var(--space-8);
+  }
+
+  .actionsSheet {
+    display: flex;
+    gap: var(--space-8);
+    margin-top: var(--space-16);
+  }
+}

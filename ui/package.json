@@ -25,6 +25,8 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.23",
+    "@radix-ui/react-dialog": "^1.1.23",
     "uqr": "^0.1.3"
   }
 }
