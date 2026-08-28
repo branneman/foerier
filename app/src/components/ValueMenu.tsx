@@ -1,5 +1,10 @@
 import type { DimensionValue } from '@foerier/shared'
+import { Sheet } from '@foerier/ui'
 
+// Shared with `SortGroupSheet` on purpose, and more honestly so now that the
+// scrim, sheet, grabber and title have moved to `ui/`: what is left in that
+// module is exactly the row vocabulary the two have always drawn the same
+// way — the 40+ row, its `● NOW`/count trailing slot, and the empty line.
 import styles from './SortGroupSheet.module.css'
 
 /**
@@ -17,7 +22,7 @@ import styles from './SortGroupSheet.module.css'
  * anyone to have forgotten to update.
  */
 export interface ValueMenuProps {
-  /** `KIND` — the dimension's own chip label. */
+  /** `KIND` — the dimension's own chip label, and the sheet's title. */
   title: string
   values: readonly DimensionValue[]
   format: (value: string) => string
@@ -35,41 +40,26 @@ export function ValueMenu({
   onClose,
 }: ValueMenuProps) {
   return (
-    <div
-      className={styles['scrim']}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <div
-        className={styles['sheet']}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
-        <span className={styles['grabber']} aria-hidden="true" />
-        <h2 className={styles['title']}>{title}</h2>
-
-        {values.length === 0 ? (
-          <p className={styles['none']}>Nothing to narrow by yet.</p>
-        ) : (
-          <ul className={styles['rows']}>
-            {values.map((entry) => (
-              <li key={entry.value}>
-                <button
-                  type="button"
-                  className={styles['row']}
-                  aria-pressed={selected.includes(entry.value)}
-                  onClick={() => onPick(entry.value)}
-                >
-                  <span>{format(entry.value)}</span>
-                  <span className={styles['count']}>{entry.count}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+    <Sheet title={title} onClose={onClose} desktopCard>
+      {values.length === 0 ? (
+        <p className={styles['none']}>Nothing to narrow by yet.</p>
+      ) : (
+        <ul className={styles['rows']}>
+          {values.map((entry) => (
+            <li key={entry.value}>
+              <button
+                type="button"
+                className={styles['row']}
+                aria-pressed={selected.includes(entry.value)}
+                onClick={() => onPick(entry.value)}
+              >
+                <span>{format(entry.value)}</span>
+                <span className={styles['count']}>{entry.count}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Sheet>
   )
 }

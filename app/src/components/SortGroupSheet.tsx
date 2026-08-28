@@ -1,4 +1,5 @@
 import type { GroupKey, SliceSpec, SortKey } from '@foerier/shared'
+import { Sheet } from '@foerier/ui'
 
 import styles from './SortGroupSheet.module.css'
 
@@ -15,13 +16,32 @@ import styles from './SortGroupSheet.module.css'
  * rather than a UI preference: tags are multi-valued, so a three-tag piece of
  * gear would land in three groups and the groups would not partition the
  * list. Slicing by tag is the filter's job.
+ *
+ * ## Why this file exports two components
+ *
+ * The options are drawn twice and only one of them is a dialog: the expanded
+ * arrange row is **in-page content**, not an overlay, so it must not carry a
+ * `role="dialog"` and has nothing to close. That used to be an `inline` prop
+ * on the sheet, which meant the inline caller had to pass an `onClose` that
+ * did nothing. {@link SortGroupOptions} is the body on its own and
+ * {@link SortGroupSheet} is that body inside `ui/`'s `Sheet` — so the dummy
+ * `onClose` has no reason to exist and is gone.
  */
+export interface SortGroupOptionsProps {
+  spec: SliceSpec
+  onChange: (spec: SliceSpec) => void
+  /**
+   * The expanded arrange row: laid out as a wrapping row in place, rather
+   * than as the sheet's stacked column. Layout only — the controls, their
+   * labels and their test ids are the same either way.
+   */
+  inline?: boolean
+}
+
 export interface SortGroupSheetProps {
   spec: SliceSpec
   onChange: (spec: SliceSpec) => void
   onClose: () => void
-  /** Rendered in place rather than over a scrim — the expanded arrange row. */
-  inline?: boolean
 }
 
 const SORTS: readonly { key: SortKey; label: string }[] = [
@@ -72,14 +92,14 @@ function Options<T extends string>({
   )
 }
 
-export function SortGroupSheet({
+/** SORT and GROUP BY, with no dialog around them. */
+export function SortGroupOptions({
   spec,
   onChange,
-  onClose,
   inline = false,
-}: SortGroupSheetProps) {
-  const body = (
-    <>
+}: SortGroupOptionsProps) {
+  return (
+    <div className={inline ? styles['inline'] : styles['body']}>
       <Options
         label="SORT"
         testId="sort-options"
@@ -94,28 +114,19 @@ export function SortGroupSheet({
         current={spec.group}
         onPick={(group) => onChange({ ...spec, group })}
       />
-    </>
-  )
-
-  if (inline) return <div className={styles['inline']}>{body}</div>
-
-  return (
-    <div
-      className={styles['scrim']}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <div
-        className={styles['sheet']}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Sort and group"
-      >
-        <span className={styles['grabber']} aria-hidden="true" />
-        <h2 className={styles['title']}>Sort and group</h2>
-        {body}
-      </div>
     </div>
+  )
+}
+
+/** The same options behind the count line's arrange readout, on phone. */
+export function SortGroupSheet({
+  spec,
+  onChange,
+  onClose,
+}: SortGroupSheetProps) {
+  return (
+    <Sheet title="Sort and group" onClose={onClose} desktopCard>
+      <SortGroupOptions spec={spec} onChange={onChange} />
+    </Sheet>
   )
 }

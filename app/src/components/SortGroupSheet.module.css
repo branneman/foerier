@@ -1,28 +1,18 @@
+/* The scrim, the sheet, the grabber and the title now come from `ui/`'s
+   `Sheet`. What is left is the row vocabulary `SortGroupSheet` and
+   `ValueMenu` share, plus the two layouts the options themselves take. */
 @layer components {
-  .scrim {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    background: var(--color-scrim);
-    z-index: 20;
-  }
-
-  .sheet {
+  /* Inside the sheet. The primitive's own `gap: 12` is the anatomy's rhythm
+     between title and body; the two option groups have always wanted 16
+     between each other, so the body brings its own column rather than the
+     sheet bending for one caller. */
+  .body {
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
-    width: 100%;
-    max-width: 32rem;
-    max-height: 85svh;
-    overflow-y: auto;
-    padding: var(--space-12) var(--space-16) var(--space-24);
-    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-    background: var(--color-bg-surface);
   }
 
-  /* The expanded arrange row: the same options, in place, no scrim. */
+  /* The expanded arrange row: the same options, in place, no dialog. */
   .inline {
     display: flex;
     flex-wrap: wrap;
@@ -55,20 +45,6 @@
 
   .inline .now {
     display: none;
-  }
-
-  .grabber {
-    align-self: center;
-    width: 2.25rem;
-    height: 0.25rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-rule);
-  }
-
-  .title {
-    font: var(--text-title) var(--font-display);
-    font-weight: 700;
-    color: var(--color-ink-primary);
   }
 
   .group {
@@ -125,23 +101,5 @@
   .none {
     font: var(--text-secondary) var(--font-ui);
     color: var(--color-ink-muted);
-  }
-
-  @media (min-width: 52em) {
-    .scrim {
-      align-items: center;
-      background: none;
-    }
-
-    .sheet {
-      max-width: 20rem;
-      border: var(--stroke-rule) solid var(--color-rule);
-      border-radius: var(--radius-card);
-      box-shadow: 0 12px 32px rgb(0 0 0 / 0.32);
-    }
-
-    .grabber {
-      display: none;
-    }
   }
 }

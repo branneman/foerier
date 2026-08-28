@@ -11,7 +11,7 @@ import {
 import { Chip } from '@foerier/ui'
 import { useState } from 'react'
 
-import { SortGroupSheet } from './SortGroupSheet'
+import { SortGroupOptions, SortGroupSheet } from './SortGroupSheet'
 import { TagPicker } from './TagPicker'
 import { ValueMenu } from './ValueMenu'
 import styles from './SliceBar.module.css'
@@ -184,12 +184,7 @@ export function SliceBar({
 
       {layout === 'expanded' && (
         <div className={styles['arrangeRow']}>
-          <SortGroupSheet
-            inline
-            spec={spec}
-            onChange={onChange}
-            onClose={() => {}}
-          />
+          <SortGroupOptions inline spec={spec} onChange={onChange} />
           <span className={styles['hint']}>
             SEARCH + FILTERS COMBINE WITH AND
           </span>
