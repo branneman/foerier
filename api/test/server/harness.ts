@@ -4,8 +4,10 @@ import { systemIdSource, type Clock } from '@foerier/shared'
 import { fakeClock, type FakeClock } from '@foerier/shared/testUtils'
 
 import { buildApp } from '../../src/app.ts'
+import { createAuthService, type AuthService } from '../../src/auth/service.ts'
 import { generateInviteSecret } from '../../src/auth/tokens.ts'
 import { inviteExpiry } from '../../src/auth/invite.ts'
+import { rpConfig } from '../../src/auth/rp.ts'
 import type { Database, InvitePurpose } from '../../src/db/schema.ts'
 import { testDb } from './testDb.ts'
 
@@ -32,6 +34,12 @@ export interface Harness {
   db: Kysely<Database>
   app: ReturnType<typeof buildApp>
   clock: FakeClock
+  /**
+   * The same service the app is built over, for the handful of operations that
+   * have no HTTP surface — the Maintainer scripts. Sharing the instance keeps
+   * one clock across both.
+   */
+  service: AuthService
 }
 
 export async function createHarness(
@@ -63,7 +71,17 @@ export async function createHarness(
     },
   })
 
-  return { db, app, clock }
+  return {
+    db,
+    app,
+    clock,
+    service: createAuthService({
+      db,
+      clock,
+      ids: systemIdSource,
+      rp: rpConfig('test'),
+    }),
+  }
 }
 
 /**

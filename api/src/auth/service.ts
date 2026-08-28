@@ -17,7 +17,7 @@ import type { Kysely } from 'kysely'
 import type { Clock, IdSource } from '@foerier/shared'
 
 import type { Database, InvitePurpose } from '../db/schema.ts'
-import { isRedeemable } from './invite.ts'
+import { inviteExpiry, isRedeemable } from './invite.ts'
 import type { RpConfig } from './rp.ts'
 import {
   deviceLabelFrom,
@@ -652,6 +652,151 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
       })
 
       return { householdId, personId, secret, expiresAt }
+    },
+
+    /**
+     * A join Invite into a Household that already exists.
+     *
+     * `auth-design.md` §3.4 puts only a Household's *first* Login out of band,
+     * and every later Invite is meant to be issued in-app against a Person the
+     * inviter picked. Until S5 builds that picker there is no route at all for
+     * a second Login, so this is the Maintainer's stand-in: it pre-binds a
+     * fresh Person id exactly as the bootstrap does, and the joiner names
+     * themselves.
+     */
+    async mintJoinInvite({ householdId }: { householdId: string }): Promise<{
+      personId: string
+      secret: string
+      expiresAt: Date
+    }> {
+      const household = await db
+        .selectFrom('household')
+        .select('id')
+        .where('id', '=', householdId)
+        .executeTakeFirst()
+      if (household === undefined) throw new AuthError('household unknown')
+
+      const personId = ids.next()
+      const { secret, secretHash } = generateInviteSecret()
+      const expiresAt = inviteExpiry('join', clock)
+
+      await db
+        .insertInto('invite')
+        .values({
+          id: ids.next(),
+          household_id: householdId,
+          person_id: personId,
+          purpose: 'join',
+          secret_hash: secretHash,
+          login_id: null,
+          created_by_login: null,
+          person_recorded: false,
+          expires_at: expiresAt,
+        })
+        .execute()
+
+      return { personId, secret, expiresAt }
+    },
+
+    /**
+     * A device link for an existing Login, minted with server access.
+     *
+     * `auth-design.md` §5 names the case this exists for — a Household with one
+     * Login and no passkey, signed in nowhere — as "the single case in this
+     * design that leaves the product". Until now it had a sentence and no
+     * mechanism.
+     */
+    async mintDeviceLink({ loginId }: { loginId: string }): Promise<{
+      householdId: string
+      secret: string
+      expiresAt: Date
+    }> {
+      const login = await db
+        .selectFrom('login')
+        .select(['id', 'household_id', 'person_id', 'disabled_at'])
+        .where('id', '=', loginId)
+        .executeTakeFirst()
+
+      if (login === undefined) throw new AuthError('login unknown')
+      if (login.disabled_at !== null) throw new AuthError('login disabled')
+
+      const { secret, secretHash } = generateInviteSecret()
+      const expiresAt = inviteExpiry('device', clock)
+
+      await db
+        .insertInto('invite')
+        .values({
+          id: ids.next(),
+          household_id: login.household_id,
+          person_id: login.person_id,
+          purpose: 'device',
+          secret_hash: secretHash,
+          login_id: loginId,
+          created_by_login: null,
+          // A device link never creates a Person; the value is inert here and
+          // stated only because the column has no default.
+          person_recorded: true,
+          expires_at: expiresAt,
+        })
+        .execute()
+
+      return { householdId: login.household_id, secret, expiresAt }
+    },
+
+    /** The Maintainer's only window onto who exists. Reads nothing secret. */
+    async listHouseholds(): Promise<
+      Array<{
+        id: string
+        name: string
+        logins: Array<{
+          id: string
+          personId: string
+          createdAt: Date
+          devices: number
+        }>
+      }>
+    > {
+      const households = await db
+        .selectFrom('household')
+        .select(['id', 'name'])
+        .orderBy('name')
+        .execute()
+
+      const logins = await db
+        .selectFrom('login')
+        .leftJoin('device', (join) =>
+          join
+            .onRef('device.login_id', '=', 'login.id')
+            .on('device.revoked_at', 'is', null),
+        )
+        .select(({ fn }) => [
+          'login.id as id',
+          'login.household_id as household_id',
+          'login.person_id as person_id',
+          'login.created_at as created_at',
+          fn.count<string>('device.id').as('devices'),
+        ])
+        .groupBy([
+          'login.id',
+          'login.household_id',
+          'login.person_id',
+          'login.created_at',
+        ])
+        .execute()
+
+      return households.map((household) => ({
+        id: household.id,
+        name: household.name,
+        logins: logins
+          .filter((login) => login.household_id === household.id)
+          .map((login) => ({
+            id: login.id,
+            personId: login.person_id,
+            createdAt: login.created_at,
+            // `count` reaches the driver as a string; see `db/index.ts`.
+            devices: Number(login.devices),
+          })),
+      }))
     },
   }
 }

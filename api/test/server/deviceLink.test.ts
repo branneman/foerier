@@ -243,4 +243,62 @@ describe('device links', () => {
       expect(res.status).toBe(400)
     })
   })
+
+  describe('the Maintainer scripts', () => {
+    const LOGIN = '0f000009-0000-4000-8000-0000000090c1'
+    const PERSON = '0f000009-0000-4000-8000-0000000090c2'
+
+    it('mints a join Invite into an existing Household, with person_recorded false', async () => {
+      const service = h.service
+      const { secret, personId } = await service.mintJoinInvite({
+        householdId: HOUSEHOLD,
+      })
+
+      expect(personId).toMatch(/^[0-9a-f-]{36}$/)
+
+      const res = await h.app.request('/api/v1/auth/join/preview', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+      expect(await jsonOf(res)).toMatchObject({
+        household_name: 'Veldkamp',
+        person_recorded: false,
+        purpose: 'join',
+      })
+    })
+
+    it('mints a device link for an existing Login', async () => {
+      await db
+        .insertInto('login')
+        .values({ id: LOGIN, household_id: HOUSEHOLD, person_id: PERSON })
+        .execute()
+
+      const { secret, householdId } = await h.service.mintDeviceLink({
+        loginId: LOGIN,
+      })
+      expect(householdId).toBe(HOUSEHOLD)
+
+      const res = await h.app.request('/api/v1/auth/device/claim', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+      expect(await jsonOf(res)).toMatchObject({ login_id: LOGIN })
+    })
+
+    it('lists Households with their Logins and Device counts', async () => {
+      await db
+        .insertInto('login')
+        .values({ id: LOGIN, household_id: HOUSEHOLD, person_id: PERSON })
+        .execute()
+
+      const households = await h.service.listHouseholds()
+      const mine = households.find((row) => row.id === HOUSEHOLD)
+      expect(mine?.name).toBe('Veldkamp')
+      expect(mine?.logins).toEqual([
+        expect.objectContaining({ id: LOGIN, personId: PERSON, devices: 0 }),
+      ])
+    })
+  })
 })

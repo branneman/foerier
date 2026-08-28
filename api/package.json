@@ -8,7 +8,9 @@
     "dev": "node --watch src/index.ts",
     "build": "node scripts/build.js",
     "migrate": "node src/db/migrateCli.ts",
-    "admin:bootstrap": "node src/admin/bootstrap.ts"
+    "admin:bootstrap": "node src/admin/bootstrap.ts",
+    "admin:invite": "node src/admin/invite.ts",
+    "admin:list": "node src/admin/list.ts"
   },
   "dependencies": {
     "@foerier/shared": "*",
