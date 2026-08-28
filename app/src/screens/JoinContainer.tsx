@@ -8,7 +8,7 @@ import type { PendingStore } from '../auth/pendingFirstPerson'
 import type { Session } from '../auth/sessionStore'
 import { DepotProvider, type DepotStoreState } from '../depot/store'
 import { Join, type DeadEndReason } from './Join'
-import { NoPasskey } from './NoPasskey'
+import { FAILURE_MESSAGE, NoPasskey } from './NoPasskey'
 
 export interface JoinContainerProps {
   api: AuthApi
@@ -108,6 +108,25 @@ function clearRetainedSecret(): void {
   window.history.replaceState(null, '', '/join')
 }
 
+/**
+ * Whether an error out of the register ceremony (`confirm`) represents the
+ * person declining the OS sheet, or it timing out, rather than a genuine
+ * failure. `startRegistration` reports both as `NotAllowedError`
+ * (`identifyRegistrationError` in `@simplewebauthn/browser`'s own passthrough
+ * branch); no `AbortSignal` is passed here, so nothing else produces it.
+ * Everything else — an expired or spent secret from `registerVerify`, a
+ * network failure from either call — is a real failure, and `NoPasskey`
+ * needs to say so rather than land silently (`final-review.md` finding 1).
+ */
+function isDeclined(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name: unknown }).name === 'NotAllowedError'
+  )
+}
+
 export function JoinContainer({
   api,
   pending,
@@ -124,6 +143,12 @@ export function JoinContainer({
   const [preview, setPreview] = useState<InvitePreview | null>(null)
   const [deadEnd, setDeadEnd] = useState<DeadEndReason | null>(null)
   const [noPasskey, setNoPasskey] = useState(false)
+  // Set only when `confirmOrFallThrough` already knows the ceremony failed
+  // for a real reason rather than a decline — read once, at the moment
+  // `NoPasskey` mounts (`NoPasskey`'s own `initialError` prop). A retry from
+  // `NoPasskey` itself (the `claim` path, which has nothing to decline) sets
+  // its own error state internally and does not come back through here.
+  const [noPasskeyError, setNoPasskeyError] = useState<string | null>(null)
   // The joiner's typed name, hoisted out of `Join` so it survives the swap to
   // `NoPasskey` when the ceremony falls through. Held here rather than in
   // `Join` because `Join` unmounts the moment this container swaps it out.
@@ -252,14 +277,21 @@ export function JoinContainer({
     // `auth-design.md` §5: absent API, no usable authenticator, or a plain
     // refusal all land in the same place. The ghost door reaches it too, for
     // the device that *can* make a credential in a store its owner declined.
+    // None of these three is a failure — there is nothing to say.
     if (typeof window.PublicKeyCredential !== 'function') {
       setNoPasskey(true)
+      setNoPasskeyError(null)
       return
     }
     try {
       await confirm(name)
-    } catch {
+    } catch (error) {
+      // A decline stays exactly as silent as before. Anything else — a dead
+      // secret, a network failure, a 401 — is a real failure, and arrives on
+      // `NoPasskey` already saying so rather than leaving it to a retry that
+      // fails again with nothing on screen (`final-review.md` finding 1).
       setNoPasskey(true)
+      setNoPasskeyError(isDeclined(error) ? null : FAILURE_MESSAGE)
     }
   }
 
@@ -277,6 +309,10 @@ export function JoinContainer({
         // their name lives in a fold this Device has not built yet.
         personName={isDeviceLink ? null : pendingName}
         onContinue={() => claim(isDeviceLink ? null : pendingName)}
+        // Null on the device-link path (nothing attempted yet) and on a
+        // decline — set only when `confirmOrFallThrough` already knows the
+        // ceremony failed for a real reason.
+        initialError={noPasskeyError}
       />
     )
   }
@@ -287,7 +323,10 @@ export function JoinContainer({
       deadEnd={deadEnd}
       onConfirm={confirmOrFallThrough}
       onOpenSignIn={() => navigate('/signin')}
-      onNoPasskey={() => setNoPasskey(true)}
+      onNoPasskey={() => {
+        setNoPasskey(true)
+        setNoPasskeyError(null)
+      }}
       onNameChange={setPendingName}
       signedIn={justJoined}
       passkeySaved={passkeySaved}

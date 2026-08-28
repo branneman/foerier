@@ -64,4 +64,75 @@ describe('Continue without a passkey', () => {
     await userEvent.click(button)
     expect(onContinue).toHaveBeenCalledTimes(2)
   })
+
+  // `final-review.md` finding 1: a bare catch used to leave a failed claim
+  // showing nothing at all — the person's only feedback on the device-link
+  // path, where this screen is the only one they ever see.
+  it('says a failed claim failed, in the same plain-fact register as the rest of the screen', async () => {
+    const onContinue = vi.fn().mockRejectedValue(new Error('device/claim: 401'))
+    render(<NoPasskey personName="Els" onContinue={onContinue} />)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Continue as Els' }),
+    )
+
+    expect(
+      await screen.findByText('Something went wrong. Ask for a new link.'),
+    ).toBeInTheDocument()
+  })
+
+  it('carries no warning affordance on a failed claim either — same discipline as the happy path', async () => {
+    const onContinue = vi.fn().mockRejectedValue(new Error('offline'))
+    const { container } = render(
+      <NoPasskey personName="Els" onContinue={onContinue} />,
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Continue as Els' }),
+    )
+    await screen.findByText('Something went wrong. Ask for a new link.')
+
+    expect(container.textContent).not.toContain('▲')
+    expect(container.textContent).not.toMatch(/however|instead|unfortunately/i)
+  })
+
+  it('clears a stale error once a retry is under way', async () => {
+    const onContinue = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('device/claim: 401'))
+      .mockResolvedValueOnce(undefined)
+    render(<NoPasskey personName="Els" onContinue={onContinue} />)
+
+    const button = screen.getByRole('button', { name: 'Continue as Els' })
+    await userEvent.click(button)
+    await screen.findByText('Something went wrong. Ask for a new link.')
+
+    await userEvent.click(button)
+
+    expect(
+      screen.queryByText('Something went wrong. Ask for a new link.'),
+    ).toBeNull()
+  })
+
+  it('arrives already saying so when the caller already knows the attempt failed', async () => {
+    render(
+      <NoPasskey
+        personName="Els"
+        onContinue={vi.fn()}
+        initialError="Something went wrong. Ask for a new link."
+      />,
+    )
+
+    expect(
+      screen.getByText('Something went wrong. Ask for a new link.'),
+    ).toBeInTheDocument()
+  })
+
+  it('stays silent when the caller reached here without any error to report', () => {
+    const { container } = render(
+      <NoPasskey personName="Els" onContinue={vi.fn()} initialError={null} />,
+    )
+
+    expect(container.textContent).not.toContain('Something went wrong')
+  })
 })

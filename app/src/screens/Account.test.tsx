@@ -169,6 +169,11 @@ async function renderAccount(
     desktop?: boolean
     signOutFails?: boolean
     clearLocalData?: () => Promise<void>
+    /** Fails `GET /auth/passkeys` — `final-review.md` finding 2: a failed
+     * fetch must not read as "None on this login." */
+    passkeysFail?: boolean
+    /** Fails `GET /auth/devices` — same finding, for the DEVICES card. */
+    devicesFail?: boolean
   } = {},
 ) {
   const {
@@ -180,6 +185,8 @@ async function renderAccount(
     desktop = false,
     signOutFails = false,
     clearLocalData,
+    passkeysFail = false,
+    devicesFail = false,
   } = options
 
   stubPlatformAuthenticator(platformAuthenticator)
@@ -209,20 +216,24 @@ async function renderAccount(
       {
         method: 'GET',
         path: '/auth/passkeys',
-        respond: () =>
-          jsonResponse({
+        respond: () => {
+          if (passkeysFail) throw new Error('offline')
+          return jsonResponse({
             passkeys: passkeys.filter(
               (passkey) => !removedPasskeys.has(passkey.id),
             ),
-          }),
+          })
+        },
       },
       {
         method: 'GET',
         path: '/auth/devices',
-        respond: () =>
-          jsonResponse({
+        respond: () => {
+          if (devicesFail) throw new Error('offline')
+          return jsonResponse({
             devices: devices.filter((device) => !revokedDevices.has(device.id)),
-          }),
+          })
+        },
       },
       {
         method: 'POST',
@@ -347,6 +358,44 @@ describe('Account', () => {
     )
   })
 
+  // `final-review.md` finding 2: `devices`/`passkeys` initialise to `[]`, so
+  // a fetch that fails — the ordinary case offline, not the exception — used
+  // to read as a confident, wrong "0 devices signed in." / "None on this
+  // login." These pin the honest failure state instead.
+  describe('when a load fails', () => {
+    it('says passkeys could not be loaded, rather than claiming there are none', async () => {
+      await renderAccount({ passkeysFail: true, platformAuthenticator: true })
+
+      expect(
+        await screen.findByText(
+          'Passkeys could not be loaded. Check your connection.',
+        ),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('None on this login.')).toBeNull()
+    })
+
+    it('says devices could not be loaded, rather than a count, below Desktop', async () => {
+      await renderAccount({ devicesFail: true })
+
+      expect(
+        await screen.findByText(
+          'Devices could not be loaded. Check your connection.',
+        ),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/devices signed in\./)).toBeNull()
+    })
+
+    it('says devices could not be loaded, rather than an empty list, at Desktop', async () => {
+      await renderAccount({ devicesFail: true, desktop: true })
+
+      expect(
+        await screen.findByText(
+          'Devices could not be loaded. Check your connection.',
+        ),
+      ).toBeInTheDocument()
+    })
+  })
+
   describe('at Desktop', () => {
     it('unfolds the full device list inline, with a per-row SIGN OUT except on THIS DEVICE', async () => {
       await renderAccount({ devices: threeDevices(), desktop: true })
@@ -413,6 +462,34 @@ describe('Account', () => {
 
       expect(clearLocalData).toHaveBeenCalledTimes(1)
       expect(onSignOut).toHaveBeenCalledTimes(1)
+    })
+
+    // `final-review.md` finding 4: a rejecting `clearLocalData` used to
+    // close the sheet silently, with `stopSync()` already called and
+    // `onSignOut` never invoked — this pins that Account, not only
+    // `Devices`, surfaces it.
+    it('says sign-out did not finish, and keeps the sheet open, when clearing local data fails', async () => {
+      const clearLocalData = vi.fn().mockRejectedValue(new Error('IDB error'))
+      const { onSignOut } = await renderAccount({
+        devices: threeDevices(),
+        desktop: true,
+        clearLocalData,
+      })
+
+      await userEvent.click(screen.getByRole('button', { name: 'SIGN OUT' }))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Sign out and clear' }),
+      )
+
+      expect(
+        await screen.findByText(
+          '▲ Sign-out did not finish. Sync is stopped on this device — try again.',
+        ),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('alertdialog', { name: 'Sign out this device?' }),
+      ).toBeInTheDocument()
+      expect(onSignOut).not.toHaveBeenCalled()
     })
   })
 })

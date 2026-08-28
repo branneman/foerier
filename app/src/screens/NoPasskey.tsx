@@ -2,10 +2,28 @@ import { useRef, useState } from 'react'
 
 import styles from './NoPasskey.module.css'
 
+/**
+ * The only copy this screen ever shows for a failed attempt — never a raw
+ * error message, and never the reason (spent secret, expired invite,
+ * offline, a 401) because none of those are the person's to sort out; "ask
+ * for a new link" is the one action that always applies (`final-review.md`
+ * finding 1).
+ */
+export const FAILURE_MESSAGE = 'Something went wrong. Ask for a new link.'
+
 export interface NoPasskeyProps {
   /** Null while the Person exists only as a pre-bound id (`auth-design.md` §2.1). */
   personName: string | null
   onContinue: () => Promise<void>
+  /**
+   * Set by `JoinContainer` when it already knows this screen was reached
+   * because the register ceremony genuinely failed — an expired or spent
+   * secret, a network error — rather than because the person declined the OS
+   * sheet. Null for a decline, and for the device-link path, where nothing
+   * has been attempted yet: both leave this screen exactly as silent as
+   * before.
+   */
+  initialError?: string | null
 }
 
 /**
@@ -19,8 +37,13 @@ export interface NoPasskeyProps {
  * make one in the credential store the household chose. A line that is
  * sometimes false fails this screen's whole discipline of stating plain facts.
  */
-export function NoPasskey({ personName, onContinue }: NoPasskeyProps) {
+export function NoPasskey({
+  personName,
+  onContinue,
+  initialError = null,
+}: NoPasskeyProps) {
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(initialError)
   // A ref rather than `busy` alone: `onContinue` normally navigates the app
   // away once it resolves, but in isolation (and on a genuine double tap
   // faster than a render) `busy` can already be back to `false` by the time a
@@ -34,15 +57,18 @@ export function NoPasskey({ personName, onContinue }: NoPasskeyProps) {
     if (started.current) return
     started.current = true
     setBusy(true)
+    setError(null)
     try {
       await onContinue()
     } catch {
       // Nothing was spent by a failed claim, so the guard resets — unlike the
       // success path, where it must stay set forever because the secret was.
-      // Swallowed rather than rethrown: `onClick={() => void go()}` discards
-      // the promise, and there is no error surface on this screen yet to
-      // hand a rethrow to.
+      // Unlike before, the failure is no longer swallowed: this screen is
+      // the person's only feedback on the device-link path, and a dead
+      // secret retried here would otherwise show nothing at all
+      // (`final-review.md` finding 1).
       started.current = false
+      setError(FAILURE_MESSAGE)
     } finally {
       setBusy(false)
     }
@@ -59,6 +85,10 @@ export function NoPasskey({ personName, onContinue }: NoPasskeyProps) {
         sign-ins self-service.
       </p>
       <p className={styles['fact']}>You stay signed in until you sign out.</p>
+      {/* Same mono `fact` register as everything else here — no `▲`, no
+          amber: a spent link or an offline device is not the user's mistake
+          (`docs/design/README.md` §9's dead-end frame). */}
+      {error !== null && <p className={styles['fact']}>{error}</p>}
 
       <div className={styles['spacer']} />
 

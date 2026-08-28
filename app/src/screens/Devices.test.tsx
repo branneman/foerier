@@ -208,6 +208,30 @@ async function renderDevices(
 }
 
 describe('Devices', () => {
+  // `final-review.md` finding 2: `devices` initialises to `[]`, so a fetch
+  // that fails — offline, the ordinary case in this app — used to read as a
+  // confident, wrong "0 signed in with this login."
+  it('says devices could not be loaded, rather than 0 signed in, when the fetch fails', async () => {
+    const api = createAuthApi(() => Promise.reject(new Error('offline')))
+    const store = await aStore(0)
+    const location = memoryLocation({ path: '/account/devices' })
+
+    render(
+      <Router hook={location.hook} searchHook={location.searchHook}>
+        <DepotProvider value={store}>
+          <Devices api={api} token={TOKEN} onSignedOut={vi.fn()} />
+        </DepotProvider>
+      </Router>,
+    )
+
+    expect(
+      await screen.findByText(
+        'Devices could not be loaded. Check your connection.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/signed in with this login/)).toBeNull()
+  })
+
   it('lists every signed-in Device with a coarse label and a meta line', async () => {
     await renderDevices({ devices: threeDevices() })
 
@@ -334,6 +358,57 @@ describe('Devices', () => {
     // The other tab closes; the delete that was genuinely blocked resolves
     // for real, and sign-out finishes exactly like the happy path.
     release()
+
+    expect(await screen.findByText('Sign-in screen')).toBeInTheDocument()
+    expect(onSignedOut).toHaveBeenCalledTimes(1)
+  })
+
+  // `final-review.md` finding 4: `confirmThisDevice` had no `catch`. A
+  // rejecting `clearLocalData` used to close the sheet anyway, in the
+  // `finally`, with `stopSync()` already called and nothing on screen to say
+  // what happened — worse than the action having done nothing, and silent.
+  it('says sign-out did not finish, and keeps the sheet open, when clearing local data fails', async () => {
+    const clearLocalData = vi.fn().mockRejectedValue(new Error('IDB error'))
+    const { onSignedOut } = await renderDevices({ clearLocalData })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Sign out/ }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out and clear' }),
+    )
+
+    expect(
+      await screen.findByText(
+        '▲ Sign-out did not finish. Sync is stopped on this device — try again.',
+      ),
+    ).toBeInTheDocument()
+    // Not closed over the failure: still this Device's own confirm sheet,
+    // still up, and the session has not ended.
+    expect(
+      screen.getByRole('alertdialog', { name: 'Sign out this device?' }),
+    ).toBeInTheDocument()
+    expect(onSignedOut).not.toHaveBeenCalled()
+  })
+
+  it('lets sign-out be retried after it failed', async () => {
+    const clearLocalData = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('IDB error'))
+      .mockResolvedValueOnce(undefined)
+    const { onSignedOut } = await renderDevices({ clearLocalData })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Sign out/ }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out and clear' }),
+    )
+    await screen.findByText(/Sign-out did not finish/)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out and clear' }),
+    )
 
     expect(await screen.findByText('Sign-in screen')).toBeInTheDocument()
     expect(onSignedOut).toHaveBeenCalledTimes(1)

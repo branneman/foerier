@@ -11,6 +11,29 @@ import {
 } from '../auth/pendingFirstPerson'
 import { JoinContainer } from './JoinContainer'
 
+// The OS passkey sheet is an external surface with no in-process equivalent
+// (`docs/testing.md`'s in-memory-fake preference does not reach a browser
+// ceremony) — mocked only in the two tests below that need to drive
+// `confirm`'s catch with a specific error shape. Every other test in this
+// file relies on jsdom's real, ambient absence of `window.PublicKeyCredential`
+// to take the `confirmOrFallThrough` early-return branch instead, so this
+// mock is never exercised there.
+const startRegistration = vi.fn()
+vi.mock('@simplewebauthn/browser', () => ({
+  startRegistration: (...args: unknown[]) => startRegistration(...args),
+}))
+
+/** Makes `confirmOrFallThrough` skip its early return and actually call
+ * `confirm`, without pretending jsdom can run a real WebAuthn ceremony. */
+function stubWebAuthnAvailable(): void {
+  Object.defineProperty(window, 'PublicKeyCredential', {
+    value: function PublicKeyCredential() {
+      // A dummy constructor — only `typeof` is ever checked.
+    },
+    configurable: true,
+  })
+}
+
 /**
  * `JoinContainer` reads its secret out of `window.location.hash` directly
  * (`takeSecretFromFragment`), so these tests drive that real browser API
@@ -94,6 +117,10 @@ afterEach(() => {
   // Only ever defined by the tests below, which stub it per-case; jsdom has
   // no `serviceWorker` of its own to restore.
   Reflect.deleteProperty(navigator, 'serviceWorker')
+  // Only ever defined by `stubWebAuthnAvailable`; jsdom has no
+  // `PublicKeyCredential` of its own to restore.
+  Reflect.deleteProperty(window, 'PublicKeyCredential')
+  startRegistration.mockReset()
 })
 
 /** Stubs `navigator.serviceWorker` with a fake single-registration container. */
@@ -183,6 +210,75 @@ describe('JoinContainer', () => {
       householdId: CLAIMED.household_id,
       name: 'Bran',
     })
+  })
+})
+
+// `final-review.md` finding 1: `confirmOrFallThrough`'s bare catch used to
+// funnel a decline and a genuine failure (dead secret, offline, a 401) into
+// the same silent `NoPasskey`. These pin the split.
+describe('JoinContainer — decline vs. a real failure', () => {
+  it('stays silent when the person declines the OS sheet', async () => {
+    stubWebAuthnAvailable()
+    startRegistration.mockRejectedValue(
+      new DOMException(
+        'The operation either timed out or was not allowed',
+        'NotAllowedError',
+      ),
+    )
+    const user = userEvent.setup()
+    renderJoinContainer({
+      responses: {
+        '/auth/join/preview': JOIN_PREVIEW,
+        '/auth/register/options': { challenge: 'x', rp: {}, user: {} },
+      },
+    })
+
+    await user.type(await screen.findByRole('textbox'), 'Bran')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Continue without a passkey',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Something went wrong/)).toBeNull()
+  })
+
+  it('says so when the register ceremony fails for a real reason', async () => {
+    stubWebAuthnAvailable()
+    startRegistration.mockRejectedValue(new Error('network error'))
+    const user = userEvent.setup()
+    renderJoinContainer({
+      responses: {
+        '/auth/join/preview': JOIN_PREVIEW,
+        '/auth/register/options': { challenge: 'x', rp: {}, user: {} },
+      },
+    })
+
+    await user.type(await screen.findByRole('textbox'), 'Bran')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await screen.findByRole('heading', { name: 'Continue without a passkey' })
+    expect(
+      await screen.findByText('Something went wrong. Ask for a new link.'),
+    ).toBeInTheDocument()
+  })
+
+  it('says so on the device-link path too, once the token-only claim itself fails', async () => {
+    // No confirm frame exists on this path at all — `NoPasskey` is the only
+    // screen, so its own silence used to be the entire journey's feedback.
+    renderJoinContainer({
+      responses: { '/auth/join/preview': DEVICE_PREVIEW },
+      // `/auth/device/claim` deliberately unmocked — `claim` throws.
+    })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Continue' }),
+    )
+
+    expect(
+      await screen.findByText('Something went wrong. Ask for a new link.'),
+    ).toBeInTheDocument()
   })
 })
 

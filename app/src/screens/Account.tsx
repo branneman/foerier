@@ -24,7 +24,7 @@ export interface AccountProps {
    * through `App.tsx`. Account's own DEVICES card unfolds the same rows and
    * sheets `Devices.tsx` builds (boards §11/§12), so it needs the same
    * callback `Devices` takes as `onSignedOut`. */
-  onSignOut: () => void
+  onSignOut: () => void | Promise<void>
   /** Injectable for tests; defaults to the real IndexedDB wipe — see
    * `useDeviceSignOut`'s own doc comment in `Devices.tsx`. */
   clearLocalData?: (onBlocked: () => void) => Promise<void>
@@ -89,6 +89,15 @@ function lastUsedLabel(iso: string | null): string {
   if (iso === null) return 'NEVER'
   return isToday(iso) ? 'TODAY' : formatDate(iso)
 }
+
+/**
+ * Three states, not a boolean: `devices`/`passkeys` initialise to `[]`, and
+ * an app whose defining property is that the network is often absent must
+ * not read a failed fetch as "0 signed in" — that is a confident, specific,
+ * *wrong* statement about the household's security posture, not an empty
+ * state (`final-review.md` finding 2). Only `'loaded'` may say "none".
+ */
+type LoadStatus = 'loading' | 'loaded' | 'failed'
 
 /**
  * Whether this device can hold a platform passkey at all
@@ -188,7 +197,9 @@ export function Account({
 
   const [householdName, setHouseholdName] = useState<string | null>(null)
   const [passkeys, setPasskeys] = useState<readonly PasskeyRow[]>([])
+  const [passkeysStatus, setPasskeysStatus] = useState<LoadStatus>('loading')
   const [devices, setDevices] = useState<readonly DeviceRow[]>([])
+  const [devicesStatus, setDevicesStatus] = useState<LoadStatus>('loading')
   const [addingPasskey, setAddingPasskey] = useState(false)
   const [passkeyLabel, setPasskeyLabel] = useState('')
   const [busy, setBusy] = useState(false)
@@ -198,6 +209,7 @@ export function Account({
     thisDeviceOpen,
     unsynced,
     blocked,
+    error: signOutError,
     busy: signOutBusy,
     select: selectDevice,
     openThisDeviceConfirm,
@@ -233,8 +245,10 @@ export function Account({
     try {
       const { passkeys: rows } = await api.listPasskeys(token)
       setPasskeys(rows)
+      setPasskeysStatus('loaded')
     } catch (error) {
       console.error('account: could not load passkeys', error)
+      setPasskeysStatus('failed')
     }
   }, [api, token])
 
@@ -247,10 +261,14 @@ export function Account({
     void api
       .listDevices(token)
       .then(({ devices: rows }) => {
-        if (!cancelled) setDevices(rows)
+        if (!cancelled) {
+          setDevices(rows)
+          setDevicesStatus('loaded')
+        }
       })
       .catch((error: unknown) => {
         console.error('account: could not load devices', error)
+        if (!cancelled) setDevicesStatus('failed')
       })
     return () => {
       cancelled = true
@@ -346,7 +364,15 @@ export function Account({
             )}
           </div>
 
-          {passkeys.length === 0 ? (
+          {passkeysStatus === 'loading' ? (
+            // Not "None on this login" — that is a fact this screen does
+            // not have yet (`final-review.md` finding 2).
+            <p className={styles['nudgeLine']}>Loading…</p>
+          ) : passkeysStatus === 'failed' ? (
+            <p className={styles['nudgeLine']}>
+              Passkeys could not be loaded. Check your connection.
+            </p>
+          ) : passkeys.length === 0 ? (
             <>
               <p className={styles['nudgeLine']}>None on this login.</p>
               <p className={styles['nudgeBody']}>
@@ -432,20 +458,30 @@ export function Account({
           </div>
 
           {isDesktop ? (
-            // The current Device's own row carries no per-row `SIGN OUT`
-            // here — boards §11's desktop frame draws none, because the
-            // footer below already reaches it (`showSignOutOnCurrent`
-            // false is the one anatomy difference the boards draw between
-            // this card and the pushed Devices screen).
-            <DeviceList
-              devices={devices}
-              onSelect={selectDevice}
-              showSignOutOnCurrent={false}
-            />
+            devicesStatus === 'failed' ? (
+              <p className={styles['nudgeLine']}>
+                Devices could not be loaded. Check your connection.
+              </p>
+            ) : (
+              // The current Device's own row carries no per-row `SIGN OUT`
+              // here — boards §11's desktop frame draws none, because the
+              // footer below already reaches it (`showSignOutOnCurrent`
+              // false is the one anatomy difference the boards draw between
+              // this card and the pushed Devices screen).
+              <DeviceList
+                devices={devices}
+                onSelect={selectDevice}
+                showSignOutOnCurrent={false}
+              />
+            )
           ) : (
             <>
               <p className={styles['summaryLine']}>
-                {devices.length} devices signed in.
+                {devicesStatus === 'loading'
+                  ? 'Loading…'
+                  : devicesStatus === 'failed'
+                    ? 'Devices could not be loaded. Check your connection.'
+                    : `${devices.length} devices signed in.`}
               </p>
               <Link href="/account/devices" className={styles['row']}>
                 <div>
@@ -506,6 +542,7 @@ export function Account({
         open={thisDeviceOpen}
         unsyncedCount={unsynced}
         blocked={blocked}
+        error={signOutError}
         busy={signOutBusy}
         onCancel={cancelThisDevice}
         onConfirm={confirmThisDevice}

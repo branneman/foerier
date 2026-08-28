@@ -18,6 +18,14 @@ function formatDateTime(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`
 }
 
+/**
+ * Three states, not a boolean — same reasoning as `Account.tsx`'s own
+ * `LoadStatus`: `devices` initialises to `[]`, and a failed fetch must not
+ * read as "0 signed in with this login", a confident and wrong statement
+ * about the household's security posture (`final-review.md` finding 2).
+ */
+type LoadStatus = 'loading' | 'loaded' | 'failed'
+
 function deviceMeta(device: DeviceRow): string {
   if (device.current) {
     // A passkey-less current Device is a plain fact, not a warning — boards
@@ -171,6 +179,7 @@ export function SignOutThisDeviceSheet({
   open,
   unsyncedCount,
   blocked,
+  error,
   busy,
   onCancel,
   onConfirm,
@@ -182,6 +191,12 @@ export function SignOutThisDeviceSheet({
    * but silent otherwise: the confirm button would sit disabled with
    * nothing to explain why. */
   blocked: boolean
+  /** `clearLocalData` or `onSignedOut` rejected — genuinely rare, and
+   * distinct from `blocked`: this is not waiting on anything, it failed.
+   * Silent otherwise: the sheet used to close anyway, leaving `stopSync()`
+   * already called with nothing on screen to say so (`final-review.md`
+   * finding 4). */
+  error: boolean
   busy: boolean
   onCancel: () => void
   onConfirm: () => void
@@ -211,6 +226,12 @@ export function SignOutThisDeviceSheet({
         {blocked && (
           <p className={styles['attentionLine']}>
             ▲ Another tab has this open. Close it to finish signing out.
+          </p>
+        )}
+        {error && (
+          <p className={styles['attentionLine']}>
+            ▲ Sign-out did not finish. Sync is stopped on this device — try
+            again.
           </p>
         )}
         <p className={styles['body']}>
@@ -246,8 +267,13 @@ export interface UseDeviceSignOutArgs {
   /** Ends the App-level session once local data is gone — `useSession`'s
    * `signOut`, threaded down through `App.tsx`. Distinct from
    * `handleUnauthorized`: this path is a deliberate, local choice, not a
-   * 401, and it is the one auth action allowed to clear the log. */
-  onSignedOut: () => void
+   * 401, and it is the one auth action allowed to clear the log.
+   *
+   * `useSession.signOut` is `async` — typed to allow (not require) a
+   * `Promise` and awaited below, so `navigate('/signin')` cannot run before
+   * its state update lands (`final-review.md` finding 4: `App.tsx` would
+   * otherwise read a stale `session !== null` and bounce straight back). */
+  onSignedOut: () => void | Promise<void>
   /** Called once a remote Device is actually revoked, so the caller's own
    * list drops it. */
   onRevoked: (deviceId: string) => void
@@ -282,6 +308,12 @@ export function useDeviceSignOut({
    * `clearLocalData` call is genuinely stuck waiting rather than merely
    * slow (fix round 1). */
   const [blocked, setBlocked] = useState(false)
+  /** `confirmThisDevice` rejected — a genuine `clearLocalData` or
+   * `onSignedOut` failure, not the `blocked` case above, which is handled
+   * separately. `stopSync()` has already run by the time this can be set, so
+   * the sheet stays open saying so rather than closing over a state the
+   * person was never told about (`final-review.md` finding 4). */
+  const [error, setError] = useState(false)
 
   /**
    * Read the count **before** anything that could end the session — the
@@ -295,9 +327,10 @@ export function useDeviceSignOut({
       return 0
     })
     setUnsynced(count)
-    // A fresh sheet never opens already showing a stale block left over
-    // from a previous, cancelled attempt.
+    // A fresh sheet never opens already showing a stale block or error left
+    // over from a previous, cancelled or failed attempt.
     setBlocked(false)
+    setError(false)
     setThisDeviceOpen(true)
   }, [readUnsyncedCount])
 
@@ -335,6 +368,7 @@ export function useDeviceSignOut({
   async function confirmThisDevice() {
     setBusy(true)
     setBlocked(false)
+    setError(false)
     try {
       // Best effort: revocation needs the network and clearing does not.
       // The app works offline everywhere else; a sign-out that failed for
@@ -350,12 +384,25 @@ export function useDeviceSignOut({
       // nothing below this line runs — and the session does not end — on a
       // guess (fix round 1: no timeout, no pretending it finished).
       await clearLocalData(() => setBlocked(true))
-      onSignedOut()
+      // Awaited, not fired-and-forgotten: `useSession.signOut` sets its
+      // `session` state only after its own `await store.clear()`, so
+      // navigating before this resolves could land `/signin` while
+      // `App.tsx` still reads a signed-in session and bounces straight back
+      // over a just-deleted database (`final-review.md` finding 4).
+      await onSignedOut()
+      setThisDeviceOpen(false)
       navigate('/signin')
+    } catch (caught) {
+      // `stopSync()` above has already run and the server token may already
+      // be revoked, so there is nothing left to roll back — only something
+      // to say. The sheet stays open, busy clears, and `error` below lets
+      // the person retry rather than the finally block silently closing it
+      // over an unhandled rejection (`final-review.md` finding 4).
+      console.error('devices: could not finish signing out this device', caught)
+      setError(true)
     } finally {
       setBusy(false)
       setBlocked(false)
-      setThisDeviceOpen(false)
     }
   }
 
@@ -364,6 +411,7 @@ export function useDeviceSignOut({
     thisDeviceOpen,
     unsynced,
     blocked,
+    error,
     busy,
     select,
     openThisDeviceConfirm,
@@ -377,7 +425,7 @@ export function useDeviceSignOut({
 export interface DevicesProps {
   api: AuthApi
   token: string
-  onSignedOut: () => void
+  onSignedOut: () => void | Promise<void>
   /** Injectable for tests; defaults to the real IndexedDB wipe. */
   clearLocalData?: (onBlocked: () => void) => Promise<void>
 }
@@ -396,6 +444,7 @@ export function Devices({
 }: DevicesProps) {
   const sync = useDepot((depot) => depot.sync)
   const [devices, setDevices] = useState<readonly DeviceRow[]>([])
+  const [devicesStatus, setDevicesStatus] = useState<LoadStatus>('loading')
   const search = useSearch()
   const autoOpenedRef = useRef(false)
 
@@ -403,8 +452,10 @@ export function Devices({
     try {
       const { devices: rows } = await api.listDevices(token)
       setDevices(rows)
+      setDevicesStatus('loaded')
     } catch (error) {
       console.error('devices: could not load devices', error)
+      setDevicesStatus('failed')
     }
   }, [api, token])
 
@@ -417,6 +468,7 @@ export function Devices({
     thisDeviceOpen,
     unsynced,
     blocked,
+    error,
     busy,
     select,
     openThisDeviceConfirm,
@@ -466,7 +518,11 @@ export function Devices({
 
       <h1 className={styles['title']}>Devices</h1>
       <p className={styles['count']}>
-        {devices.length} signed in with this login.
+        {devicesStatus === 'loading'
+          ? 'Loading…'
+          : devicesStatus === 'failed'
+            ? 'Devices could not be loaded. Check your connection.'
+            : `${devices.length} signed in with this login.`}
       </p>
 
       <DeviceList devices={devices} onSelect={select} />
@@ -485,6 +541,7 @@ export function Devices({
         open={thisDeviceOpen}
         unsyncedCount={unsynced}
         blocked={blocked}
+        error={error}
         busy={busy}
         onCancel={cancelThisDevice}
         onConfirm={confirmThisDevice}
