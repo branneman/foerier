@@ -893,6 +893,147 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
         .execute()
     },
 
+    /**
+     * Creation options for an additional Passkey on an already-signed-in
+     * Login. The same ceremony as joining (§3.5), authenticated, appending
+     * rather than creating.
+     */
+    async beginAddPasskey(
+      context: AuthContext,
+    ): Promise<PublicKeyCredentialCreationOptionsJSON> {
+      const existing = await db
+        .selectFrom('passkey')
+        .select('credential_id')
+        .where('login_id', '=', context.loginId)
+        .execute()
+
+      const options = await generateRegistrationOptions({
+        rpName: rp.rpName,
+        rpID: rp.rpId,
+        userID: randomBytes(32),
+        // Never the Person's name or any household data: user handles are
+        // stored by the authenticator and may be displayed by password
+        // managers (auth-design.md §3.5).
+        userName: context.loginId,
+        attestationType: 'none',
+        // Offering to make a second credential for one already present is a
+        // confusing prompt, not a security hole — but the authenticator can
+        // refuse cleanly if we say so.
+        excludeCredentials: existing.map((row) => ({
+          id: toBase64Url(row.credential_id),
+        })),
+        authenticatorSelection: {
+          residentKey: 'required',
+          userVerification: 'preferred',
+        },
+      })
+
+      await storeChallenge(options.challenge, 'add-passkey', context.loginId)
+      return options
+    },
+
+    async finishAddPasskey({
+      context,
+      response,
+      label,
+      userAgent,
+    }: {
+      context: AuthContext
+      response: RegistrationResponseJSON
+      label: string | null
+      userAgent: string | undefined
+    }): Promise<{ passkeyId: string }> {
+      const challenge = challengeFromClientData(
+        response.response.clientDataJSON,
+      )
+      await consumeChallenge(challenge, 'add-passkey')
+
+      let verification
+      try {
+        verification = await verifyRegistrationResponse({
+          response,
+          expectedChallenge: challenge,
+          expectedOrigin: rp.allowedOrigins,
+          expectedRPID: rp.rpId,
+          requireUserVerification: false,
+        })
+      } catch (cause) {
+        throw new AuthError(`add-passkey did not verify: ${String(cause)}`)
+      }
+
+      if (!verification.verified) throw new AuthError('add-passkey unverified')
+      const { credential, aaguid, userVerified } = verification.registrationInfo
+
+      const passkeyId = ids.next()
+      const trimmed = label?.trim()
+
+      await db
+        .insertInto('passkey')
+        .values({
+          id: passkeyId,
+          login_id: context.loginId,
+          credential_id: fromBase64Url(credential.id),
+          public_key: credential.publicKey,
+          sign_count: credential.counter,
+          transports:
+            credential.transports === undefined
+              ? null
+              : JSON.stringify(credential.transports),
+          aaguid,
+          uv_seen: userVerified,
+          // Named at the moment of adding, which is the only moment the person
+          // reliably knows what the thing is (spec §6.5). An empty field still
+          // produces a useful row. Renaming later is story 37, Later.
+          label:
+            trimmed === undefined || trimmed === ''
+              ? deviceLabelFrom(userAgent)
+              : trimmed.slice(0, 60),
+          created_on_device: context.deviceId,
+        })
+        .execute()
+
+      return { passkeyId }
+    },
+
+    async listPasskeys(context: AuthContext): Promise<
+      Array<{
+        id: string
+        label: string | null
+        createdAt: Date
+        lastUsedAt: Date | null
+      }>
+    > {
+      const rows = await db
+        .selectFrom('passkey')
+        .select(['id', 'label', 'created_at', 'last_used_at'])
+        .where('login_id', '=', context.loginId)
+        .orderBy('created_at')
+        .execute()
+
+      return rows.map((row) => ({
+        id: row.id,
+        label: row.label,
+        createdAt: row.created_at,
+        lastUsedAt: row.last_used_at,
+      }))
+    },
+
+    /**
+     * Removing the **last** one is allowed and warned about in the UI, not
+     * blocked: it drops the Login to the device-link-only mode of §5 rather
+     * than locking it out.
+     */
+    async removePasskey(
+      context: AuthContext,
+      passkeyId: string,
+    ): Promise<void> {
+      await db
+        .deleteFrom('passkey')
+        .where('id', '=', passkeyId)
+        .where('login_id', '=', context.loginId)
+        .execute()
+    },
+
     /** The household's name, which unlike the Person's is a server fact. */
     async me(context: AuthContext): Promise<{ householdName: string }> {
       const household = await db

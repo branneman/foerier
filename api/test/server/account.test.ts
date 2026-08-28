@@ -7,13 +7,17 @@ import type { Database } from '../../src/db/schema.ts'
 import { issueDeviceToken } from '../../src/auth/tokens.ts'
 import { nextExpiry } from '../../src/auth/session.ts'
 import { AuthError } from '../../src/auth/service.ts'
+import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/server'
 import {
   createHarness,
   jsonOf,
   resetHouseholds,
   seedHousehold,
+  TEST_ORIGIN,
+  TEST_RP_ID,
   type Harness,
 } from './harness.ts'
+import { SoftwareAuthenticator } from './softwareAuthenticator.ts'
 
 /**
  * Tier 2s — a signed-in Device managing its own account: `POST · GET ·
@@ -209,6 +213,40 @@ describe('account', () => {
       })
       expect(claim.status).toBe(401)
     })
+
+    it('never revokes another Login’s invite', async () => {
+      // `revokeInvite` scopes on `created_by_login`, not just `household_id`
+      // — both Logins here share HOUSEHOLD, so this is the case a regression
+      // dropping that clause would still pass the cross-Household suite.
+      const mine = await signedInDevice()
+      const theirs = await signedInDevice({ suffix: 'b' })
+
+      const issued = await jsonOf<{ id: string }>(
+        await h.app.request('/api/v1/auth/invites', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${theirs.token}`,
+          },
+          body: JSON.stringify({ purpose: 'device' }),
+        }),
+      )
+
+      const del = await h.app.request(`/api/v1/auth/invites/${issued.id}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${mine.token}` },
+      })
+      // "Not yours" and "does not exist" stay the same 204 as every other
+      // revoke route.
+      expect(del.status).toBe(204)
+
+      const row = await db
+        .selectFrom('invite')
+        .select('revoked_at')
+        .where('id', '=', issued.id)
+        .executeTakeFirstOrThrow()
+      expect(row.revoked_at).toBeNull()
+    })
   })
 
   describe('GET /auth/devices', () => {
@@ -330,6 +368,148 @@ describe('account', () => {
           deviceId: systemIdSource.next(),
         }),
       ).rejects.toThrow(AuthError)
+    })
+  })
+
+  describe('passkeys', () => {
+    it('adds one to an existing Login, with the name the person gave it', async () => {
+      const { token, loginId, deviceId } = await signedInDevice()
+      const authenticator = new SoftwareAuthenticator({
+        origin: TEST_ORIGIN,
+        rpId: TEST_RP_ID,
+      })
+
+      const options = await jsonOf<PublicKeyCredentialCreationOptionsJSON>(
+        await h.app.request('/api/v1/auth/passkeys/options', {
+          method: 'POST',
+          headers: { authorization: `Bearer ${token}` },
+        }),
+      )
+
+      const res = await h.app.request('/api/v1/auth/passkeys/verify', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          response: authenticator.create(options),
+          label: 'YubiKey, desk drawer',
+        }),
+      })
+      expect(res.status).toBe(200)
+
+      const rows = await db
+        .selectFrom('passkey')
+        .selectAll()
+        .where('login_id', '=', loginId)
+        .execute()
+      expect(rows).toHaveLength(1)
+      expect(rows[0]?.label).toBe('YubiKey, desk drawer')
+      // Which Device enrolled it — what makes `NO PASSKEY HERE` renderable.
+      expect(rows[0]?.created_on_device).toBe(deviceId)
+    })
+
+    it('falls back to the derived Device label when none is given', async () => {
+      const { token, loginId } = await signedInDevice()
+      const authenticator = new SoftwareAuthenticator({
+        origin: TEST_ORIGIN,
+        rpId: TEST_RP_ID,
+      })
+
+      const options = await jsonOf<PublicKeyCredentialCreationOptionsJSON>(
+        await h.app.request('/api/v1/auth/passkeys/options', {
+          method: 'POST',
+          headers: { authorization: `Bearer ${token}` },
+        }),
+      )
+      await h.app.request('/api/v1/auth/passkeys/verify', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${token}`,
+          'user-agent':
+            'Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0',
+        },
+        body: JSON.stringify({ response: authenticator.create(options) }),
+      })
+
+      const rows = await db
+        .selectFrom('passkey')
+        .selectAll()
+        .where('login_id', '=', loginId)
+        .execute()
+      expect(rows[0]?.label).toBe('Firefox on Android')
+    })
+
+    it('allows removing the last passkey, leaving a device-link-only Login', async () => {
+      const { token, loginId } = await signedInDevice()
+      await db
+        .insertInto('passkey')
+        .values({
+          id: '0f00000a-0000-4000-8000-0000000000f1',
+          login_id: loginId,
+          credential_id: Buffer.from('only-one'),
+          public_key: Buffer.from('key'),
+          sign_count: 0,
+          transports: null,
+          aaguid: null,
+          uv_seen: true,
+          label: 'The only one',
+          created_on_device: null,
+        })
+        .execute()
+
+      const res = await h.app.request(
+        '/api/v1/auth/passkeys/0f00000a-0000-4000-8000-0000000000f1',
+        { method: 'DELETE', headers: { authorization: `Bearer ${token}` } },
+      )
+      expect(res.status).toBe(204)
+
+      // Dropping to zero is legal (`auth-design.md` §2, §5) — the Login is
+      // device-link-only, not locked out. The Device keeps working.
+      expect(
+        (
+          await h.app.request('/api/v1/auth/me', {
+            headers: { authorization: `Bearer ${token}` },
+          })
+        ).status,
+      ).toBe(200)
+    })
+
+    it('never removes another Login’s passkey', async () => {
+      const mine = await signedInDevice()
+      const theirs = await signedInDevice({ suffix: 'b' })
+      await db
+        .insertInto('passkey')
+        .values({
+          id: '0f00000a-0000-4000-8000-0000000000f2',
+          login_id: theirs.loginId,
+          credential_id: Buffer.from('theirs'),
+          public_key: Buffer.from('key'),
+          sign_count: 0,
+          transports: null,
+          aaguid: null,
+          uv_seen: true,
+          label: null,
+          created_on_device: null,
+        })
+        .execute()
+
+      await h.app.request(
+        '/api/v1/auth/passkeys/0f00000a-0000-4000-8000-0000000000f2',
+        {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${mine.token}` },
+        },
+      )
+
+      const still = await db
+        .selectFrom('passkey')
+        .selectAll()
+        .where('id', '=', '0f00000a-0000-4000-8000-0000000000f2')
+        .execute()
+      expect(still).toHaveLength(1)
     })
   })
 })

@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 
+import type { RegistrationResponseJSON } from '@simplewebauthn/server'
+
 import type { RateLimiter } from './rateLimiter.ts'
 import { AuthError, type AuthService } from './service.ts'
 import type { AuthVariables } from './middleware.ts'
@@ -245,6 +247,46 @@ export function createAuthRoutes({
     await service.revokeDevice(c.get('auth'), c.req.param('id'))
     // 204 whether or not a row matched: "not mine" and "does not exist" are
     // the same answer to the caller (`docs/testing.md` cross-Login case).
+    return c.body(null, 204)
+  })
+
+  auth.post('/passkeys/options', requireAuth, async (c) => {
+    return c.json(await service.beginAddPasskey(c.get('auth')))
+  })
+
+  auth.post('/passkeys/verify', requireAuth, async (c) => {
+    const body = await readJson<{ response: unknown; label: unknown }>(c)
+    if (typeof body.response !== 'object' || body.response === null) {
+      return c.json(VAGUE_FAILURE, 400)
+    }
+
+    try {
+      const { passkeyId } = await service.finishAddPasskey({
+        context: c.get('auth'),
+        response: body.response as RegistrationResponseJSON,
+        label: typeof body.label === 'string' ? body.label : null,
+        userAgent: c.req.header('user-agent'),
+      })
+      return c.json({ id: passkeyId })
+    } catch (error) {
+      return failure(c, error)
+    }
+  })
+
+  auth.get('/passkeys', requireAuth, async (c) => {
+    const passkeys = await service.listPasskeys(c.get('auth'))
+    return c.json({
+      passkeys: passkeys.map((passkey) => ({
+        id: passkey.id,
+        label: passkey.label,
+        created_at: passkey.createdAt.toISOString(),
+        last_used_at: passkey.lastUsedAt?.toISOString() ?? null,
+      })),
+    })
+  })
+
+  auth.delete('/passkeys/:id', requireAuth, async (c) => {
+    await service.removePasskey(c.get('auth'), c.req.param('id'))
     return c.body(null, 204)
   })
 

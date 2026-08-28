@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { systemIdSource, type OpEnvelope } from '@foerier/shared'
+import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/server'
 
 import type { Database } from '../../src/db/schema.ts'
 import {
@@ -85,6 +86,7 @@ describe('household isolation', () => {
         household_id: string
         person_id: string
         login_id: string
+        device_id: string
       }),
       device,
       personId: invite.personId,
@@ -442,5 +444,122 @@ describe('household isolation', () => {
     }>(res)
     expect(body.ops.map((op) => op.id)).toEqual([aOp.id])
     expect(body.ops.every((op) => op.household_id === HOUSEHOLD_A)).toBe(true)
+  })
+
+  // Nine authenticated routes landed after the property above was last
+  // extended: `POST · GET · DELETE /auth/invites`, `GET · DELETE
+  // /auth/devices`, and `POST /auth/passkeys/options`, `POST
+  // /auth/passkeys/verify`, `GET · DELETE /auth/passkeys`. Each is a fresh
+  // chance to read an id from the wrong place, so each gets its own case
+  // here rather than trusting the pattern above to generalise.
+
+  it("never lists another household's invites, and never revokes one", async () => {
+    const a = await joinHousehold(HOUSEHOLD_A)
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    const issued = await jsonOf<{ id: string }>(
+      await post('/api/v1/auth/invites', { purpose: 'device' }, a.token),
+    )
+
+    const listedByB = await jsonOf<{ invites: Array<{ id: string }> }>(
+      await h.app.request('/api/v1/auth/invites', {
+        headers: { authorization: `Bearer ${b.token}` },
+      }),
+    )
+    expect(listedByB.invites.map((invite) => invite.id)).not.toContain(
+      issued.id,
+    )
+
+    const del = await h.app.request(`/api/v1/auth/invites/${issued.id}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${b.token}` },
+    })
+    // "Not yours" and "does not exist" are the same 204 to the caller —
+    // the property is that the row itself is untouched.
+    expect(del.status).toBe(204)
+
+    const row = await db
+      .selectFrom('invite')
+      .select('revoked_at')
+      .where('id', '=', issued.id)
+      .executeTakeFirstOrThrow()
+    expect(row.revoked_at).toBeNull()
+  })
+
+  it("never lists another household's devices, and never revokes one", async () => {
+    const a = await joinHousehold(HOUSEHOLD_A)
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    const listedByB = await jsonOf<{ devices: Array<{ id: string }> }>(
+      await h.app.request('/api/v1/auth/devices', {
+        headers: { authorization: `Bearer ${b.token}` },
+      }),
+    )
+    expect(listedByB.devices.map((device) => device.id)).not.toContain(
+      a.device_id,
+    )
+
+    const del = await h.app.request(`/api/v1/auth/devices/${a.device_id}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${b.token}` },
+    })
+    expect(del.status).toBe(204)
+
+    const stillA = await h.app.request('/api/v1/auth/me', {
+      headers: { authorization: `Bearer ${a.token}` },
+    })
+    expect(stillA.status).toBe(200)
+  })
+
+  it("adds, lists and removes a Passkey scoped to the caller's own household", async () => {
+    const a = await joinHousehold(HOUSEHOLD_A)
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    const options = await jsonOf<PublicKeyCredentialCreationOptionsJSON>(
+      await post('/api/v1/auth/passkeys/options', undefined, a.token),
+    )
+    const authenticator = new SoftwareAuthenticator({
+      origin: TEST_ORIGIN,
+      rpId: TEST_RP_ID,
+    })
+    const verify = await post(
+      '/api/v1/auth/passkeys/verify',
+      { response: authenticator.create(options) },
+      a.token,
+    )
+    expect(verify.status).toBe(200)
+    const { id: passkeyId } = await jsonOf<{ id: string }>(verify)
+
+    // The write path: the row lands under A's own Login, never anything B
+    // could have supplied — there is no household or login field in the
+    // request body to begin with, but the context is what actually decided.
+    const row = await db
+      .selectFrom('passkey')
+      .select('login_id')
+      .where('id', '=', passkeyId)
+      .executeTakeFirstOrThrow()
+    expect(row.login_id).toBe(a.login_id)
+
+    const listedByB = await jsonOf<{ passkeys: Array<{ id: string }> }>(
+      await h.app.request('/api/v1/auth/passkeys', {
+        headers: { authorization: `Bearer ${b.token}` },
+      }),
+    )
+    expect(listedByB.passkeys.map((passkey) => passkey.id)).not.toContain(
+      passkeyId,
+    )
+
+    const del = await h.app.request(`/api/v1/auth/passkeys/${passkeyId}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${b.token}` },
+    })
+    expect(del.status).toBe(204)
+
+    const stillThere = await db
+      .selectFrom('passkey')
+      .select('id')
+      .where('id', '=', passkeyId)
+      .execute()
+    expect(stillThere).toHaveLength(1)
   })
 })
