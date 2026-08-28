@@ -83,9 +83,20 @@ function NavItem({
         <>
           <span>{label}</span>
           {/* Desktop only, and only where a count exists: `FIND` never has
-              one, and `TRIPS` has none until trips do. */}
+              one, and `TRIPS` has none until trips do.
+
+              `aria-hidden`, deliberately: a destination is called Depot
+              whether it holds nothing or two hundred things, and folding the
+              count in made the link's accessible name change as gear was
+              recorded — "Depot 0", then "Depot 1". Announced, that is as
+              easily a room number as a tally. The count is a glance
+              affordance; the Depot screen's own `128 GEAR · 214 PIECES`
+              headline is where the fact is actually stated, and stated
+              unambiguously. */}
           {mode === 'sidebar' && count !== undefined && (
-            <span className={styles['count']}>{count}</span>
+            <span className={styles['count']} aria-hidden="true">
+              {count}
+            </span>
           )}
         </>
       )}

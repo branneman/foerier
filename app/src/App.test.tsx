@@ -177,7 +177,7 @@ describe('the desktop sidebar counts', () => {
     renderAt('/', { log: await aDepotOf(['Zeltbahn', 'Feldflasche']) })
 
     const nav = await screen.findByRole('navigation', { name: 'Sections' })
-    expect(within(nav).getByRole('link', { name: /Depot/ })).toHaveTextContent(
+    expect(within(nav).getByRole('link', { name: 'Depot' })).toHaveTextContent(
       '2',
     )
   })
@@ -190,7 +190,7 @@ describe('the desktop sidebar counts', () => {
     // A zero nobody asked about would be worse than nothing: S6 brings the
     // count with the feature.
     expect(
-      within(nav).getByRole('link', { name: /Trips/ }),
+      within(nav).getByRole('link', { name: 'Trips' }),
     ).not.toHaveTextContent(/\d/)
   })
 })

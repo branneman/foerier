@@ -1326,6 +1326,13 @@ retired outright.
   twice" beside the wordmark, while `title` was passed straight through. Three
   call sites were doing exactly that. The rule now lives in `Logo`: a `title`
   reaches the mark only when the mark stands alone.
+- **A nav link's accessible name must not carry its count.** Folding `128`
+  into the sidebar link made the name change as gear was recorded — `Depot 0`,
+  then `Depot 1` — and announced, that is as easily a room number as a tally.
+  The count is `aria-hidden`; the Depot screen's own `128 GEAR · 214 PIECES`
+  headline is where the fact is stated unambiguously. **Found by Tier 5**,
+  which had been asking for the link by name and stopped finding it — the
+  first defect in this codebase that only the golden path caught.
 - **`ui/` gained the `Icon` set** ([frontend-design §5](frontend-design.md)'s
   assignment) — three inline SVGs transcribed from the rail, `currentColor`
   throughout so the active state is expressed once by the row rather than

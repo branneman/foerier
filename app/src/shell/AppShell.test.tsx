@@ -118,13 +118,32 @@ describe('AppShell — the sidebar at Desktop', () => {
     setViewport(SPLIT, DESKTOP)
     const nav = renderShell('/', { counts: { '/': 128 } })
 
-    expect(within(nav).getByRole('link', { name: /Depot/ })).toHaveTextContent(
+    expect(within(nav).getByRole('link', { name: 'Depot' })).toHaveTextContent(
       '128',
     )
     // Trips has no count until trips exist; Find never has one.
     expect(
-      within(nav).getByRole('link', { name: /Trips/ }),
+      within(nav).getByRole('link', { name: 'Trips' }),
     ).not.toHaveTextContent(/\d/)
+  })
+
+  /**
+   * A destination is called Depot whether it holds nothing or two hundred
+   * things. Folding the count into the link's accessible name made the name
+   * change as gear was recorded — and "Depot 128", announced, is as easily a
+   * room number as a tally. The count is a glance affordance; the Depot
+   * screen's own `128 GEAR · 214 PIECES` headline is where that fact is
+   * actually stated.
+   *
+   * Found by the Tier 5 golden path, which had been asking for the link by
+   * its name and stopped finding it.
+   */
+  it('keeps the destination name stable as the count moves', () => {
+    setViewport(SPLIT, DESKTOP)
+    const nav = renderShell('/', { counts: { '/': 0 } })
+
+    expect(within(nav).getByRole('link', { name: 'Depot' })).toBeInTheDocument()
+    expect(within(nav).getByText('0')).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('moves the sync line into the sidebar, out of the main column', () => {
