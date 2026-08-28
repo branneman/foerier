@@ -17,7 +17,7 @@ import {
   type PathSegment,
   type WhereaboutsSlice,
 } from '@foerier/shared'
-import { Chip } from '@foerier/ui'
+import { Chip, Confirm, Sheet } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
@@ -321,20 +321,11 @@ export function GearDetail() {
       )}
 
       {editOpen && (
-        <div
-          className={styles['scrim']}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setEditOpen(false)
-          }}
-        >
-          <div
-            className={styles['sheet']}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Edit gear"
-          >
-            <h2 className={styles['sheetTitle']}>Edit gear</h2>
-
+        <Sheet title="Edit gear" onClose={() => setEditOpen(false)}>
+          {/* The sheet's own rhythm is 12; this form was drawn at 16 and
+              stays there, in a column of its own rather than by bending the
+              primitive every other sheet shares. */}
+          <div className={styles['sheetBody']}>
             <label className={styles['field']}>
               <span className={styles['label']}>Name</span>
               <input
@@ -377,13 +368,11 @@ export function GearDetail() {
             )}
 
             <div className={styles['sheetActions']}>
-              <button
-                type="button"
-                className={styles['ghost']}
-                onClick={() => setEditOpen(false)}
-              >
-                Cancel
-              </button>
+              <Sheet.Close>
+                <button type="button" className={styles['ghost']}>
+                  Cancel
+                </button>
+              </Sheet.Close>
               <button
                 type="button"
                 className={styles['primary']}
@@ -393,42 +382,33 @@ export function GearDetail() {
               </button>
             </div>
           </div>
-        </div>
+        </Sheet>
       )}
 
       {retireOpen && (
-        <div className={styles['confirmScrim']}>
-          <div
-            className={styles['confirmSheet']}
-            role="alertdialog"
-            aria-modal="true"
-            aria-label={`Retire ${name}?`}
-          >
-            <h3 className={styles['confirmTitle']}>Retire {name}?</h3>
-            <p className={styles['confirmBody']}>
-              Kept in the ledger. Not offered as a home, not listed on a trip.
-            </p>
-            <div className={styles['confirmActions']}>
-              <button
-                type="button"
-                className={styles['ghost']}
-                onClick={() => setRetireOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles['confirmRetire']}
-                onClick={() => {
-                  emit(gearRetired(gearId))
-                  setRetireOpen(false)
-                }}
-              >
-                Retire gear
-              </button>
-            </div>
-          </div>
-        </div>
+        <Confirm
+          title={`Retire ${name}?`}
+          description="Kept in the ledger. Not offered as a home, not listed on a trip."
+          onClose={() => setRetireOpen(false)}
+          actions={
+            <>
+              <Confirm.Cancel>
+                <button type="button" className={styles['ghost']}>
+                  Cancel
+                </button>
+              </Confirm.Cancel>
+              <Confirm.Action>
+                <button
+                  type="button"
+                  className={styles['confirmRetire']}
+                  onClick={() => emit(gearRetired(gearId))}
+                >
+                  Retire gear
+                </button>
+              </Confirm.Action>
+            </>
+          }
+        />
       )}
     </div>
   )
