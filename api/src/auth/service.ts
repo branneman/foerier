@@ -144,6 +144,51 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
     if (consumed === undefined) throw new AuthError('challenge not valid')
   }
 
+  /**
+   * The one insert a device-link Invite ever needs, shared by the two ways
+   * of asking for one: {@link mintDeviceLink} (Maintainer script, no signed-in
+   * caller, `created_by_login` null) and `issueDeviceLink` (a signed-in
+   * Device issuing one for itself, `created_by_login` its own Login).
+   *
+   * Everything about the row is identical between the two callers except
+   * whose Login vouches for it — so they share this insert rather than each
+   * repeating the six-field shape and risking one drifting from the other.
+   */
+  async function insertDeviceLinkInvite({
+    householdId,
+    personId,
+    loginId,
+    createdByLogin,
+  }: {
+    householdId: string
+    personId: string
+    loginId: string
+    createdByLogin: string | null
+  }): Promise<{ inviteId: string; secret: string; expiresAt: Date }> {
+    const inviteId = ids.next()
+    const { secret, secretHash } = generateInviteSecret()
+    const expiresAt = inviteExpiry('device', clock)
+
+    await db
+      .insertInto('invite')
+      .values({
+        id: inviteId,
+        household_id: householdId,
+        person_id: personId,
+        purpose: 'device',
+        secret_hash: secretHash,
+        login_id: loginId,
+        created_by_login: createdByLogin,
+        // A device link never creates a Person; the value is inert here and
+        // stated only because the column has no default.
+        person_recorded: true,
+        expires_at: expiresAt,
+      })
+      .execute()
+
+    return { inviteId, secret, expiresAt }
+  }
+
   async function findRedeemableInvite(secret: string) {
     const invite = await db
       .selectFrom('invite')
@@ -720,27 +765,71 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
       if (login === undefined) throw new AuthError('login unknown')
       if (login.disabled_at !== null) throw new AuthError('login disabled')
 
-      const { secret, secretHash } = generateInviteSecret()
-      const expiresAt = inviteExpiry('device', clock)
-
-      await db
-        .insertInto('invite')
-        .values({
-          id: ids.next(),
-          household_id: login.household_id,
-          person_id: login.person_id,
-          purpose: 'device',
-          secret_hash: secretHash,
-          login_id: loginId,
-          created_by_login: null,
-          // A device link never creates a Person; the value is inert here and
-          // stated only because the column has no default.
-          person_recorded: true,
-          expires_at: expiresAt,
-        })
-        .execute()
+      const { secret, expiresAt } = await insertDeviceLinkInvite({
+        householdId: login.household_id,
+        personId: login.person_id,
+        loginId,
+        createdByLogin: null,
+      })
 
       return { householdId: login.household_id, secret, expiresAt }
+    },
+
+    /**
+     * A device link for the *caller's own* Login, issued from a signed-in
+     * Device — the in-app counterpart to {@link mintDeviceLink}'s Maintainer
+     * script. Everything comes from the auth context, never a request body:
+     * `household_id`, `person_id` and `login_id` are all attested by the
+     * bearer token the middleware already verified, so there is no lookup
+     * to repeat and no tenancy check to get wrong.
+     */
+    async issueDeviceLink(context: AuthContext): Promise<{
+      inviteId: string
+      secret: string
+      expiresAt: Date
+    }> {
+      return insertDeviceLinkInvite({
+        householdId: context.householdId,
+        personId: context.personId,
+        loginId: context.loginId,
+        createdByLogin: context.loginId,
+      })
+    },
+
+    /**
+     * Invites this Login issued and has not spent. Never returns the secret:
+     * it exists only in the link, and the row holds a hash (§3.1).
+     */
+    async listInvites(
+      context: AuthContext,
+    ): Promise<Array<{ id: string; purpose: InvitePurpose; expiresAt: Date }>> {
+      const rows = await db
+        .selectFrom('invite')
+        .select(['id', 'purpose', 'expires_at'])
+        .where('household_id', '=', context.householdId)
+        .where('created_by_login', '=', context.loginId)
+        .where('used_at', 'is', null)
+        .where('revoked_at', 'is', null)
+        .where('expires_at', '>', new Date(clock.now()))
+        .orderBy('expires_at')
+        .execute()
+
+      return rows.map((row) => ({
+        id: row.id,
+        purpose: row.purpose,
+        expiresAt: row.expires_at,
+      }))
+    },
+
+    /** Kills the link, never any data. Scoped to the caller's own Household. */
+    async revokeInvite(context: AuthContext, inviteId: string): Promise<void> {
+      await db
+        .updateTable('invite')
+        .set({ revoked_at: new Date(clock.now()) })
+        .where('id', '=', inviteId)
+        .where('household_id', '=', context.householdId)
+        .where('created_by_login', '=', context.loginId)
+        .execute()
     },
 
     /** The Maintainer's only window onto who exists. Reads nothing secret. */

@@ -149,6 +149,7 @@ registry** below so a persistent `foerier_test` DB never collides across classes
 | 7 | `0f000007-…-000000000007` | `sync.test.ts` — the other household |
 | 8 | none | `rateLimit.test.ts` — claims no household UUID, so nothing can collide |
 | 9 | `0f000009-…-000000000009` | `deviceLink.test.ts` — `person_recorded`, `device/claim` |
+| 10 | `0f00000a-…-00000000000a` | `account.test.ts` — invites, devices, passkeys, `/auth/me` |
 | _(claim the next free slot when adding a server-integration class)_ | | |
 
 Two rules the suite learned the hard way and that a new class must follow:

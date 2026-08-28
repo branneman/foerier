@@ -181,6 +181,46 @@ export function createAuthRoutes({
     return c.body(null, 204)
   })
 
+  auth.post('/invites', requireAuth, async (c) => {
+    const body = await readJson<{ purpose: unknown }>(c)
+
+    // Only `device` until S5. A join Invite must name a Person, and there is
+    // no way to pick one before S4 records People — accepting one here would
+    // produce exactly the unnamed-Quartermaster defect 0004 exists to prevent.
+    // A plain 400 rather than the vague failure: there is no secret to protect
+    // and no enumeration surface, so being precise costs nothing.
+    if (body.purpose !== 'device') {
+      return c.json({ error: 'unsupported_purpose' }, 400)
+    }
+
+    const { inviteId, secret, expiresAt } = await service.issueDeviceLink(
+      c.get('auth'),
+    )
+    return c.json({
+      id: inviteId,
+      secret,
+      expires_at: expiresAt.toISOString(),
+    })
+  })
+
+  auth.get('/invites', requireAuth, async (c) => {
+    const invites = await service.listInvites(c.get('auth'))
+    return c.json({
+      invites: invites.map((invite) => ({
+        id: invite.id,
+        purpose: invite.purpose,
+        expires_at: invite.expiresAt.toISOString(),
+      })),
+    })
+  })
+
+  auth.delete('/invites/:id', requireAuth, async (c) => {
+    await service.revokeInvite(c.get('auth'), c.req.param('id'))
+    // 204 whether or not a row matched: "not yours" and "does not exist" are
+    // the same answer, and the caller's next GET is the source of truth.
+    return c.body(null, 204)
+  })
+
   return auth
 }
 
