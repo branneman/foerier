@@ -8,12 +8,26 @@ import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Account.module.css'
+import {
+  DeviceList,
+  SignOutRemoteSheet,
+  SignOutThisDeviceSheet,
+  useDeviceSignOut,
+} from './Devices'
 
 export interface AccountProps {
   api: AuthApi
   token: string
   /** The Login's `person_id` — the key `useDepot` reads the name through. */
   personId: string
+  /** Ends the App-level session — `useSession`'s `signOut`, threaded down
+   * through `App.tsx`. Account's own DEVICES card unfolds the same rows and
+   * sheets `Devices.tsx` builds (boards §11/§12), so it needs the same
+   * callback `Devices` takes as `onSignedOut`. */
+  onSignOut: () => void
+  /** Injectable for tests; defaults to the real IndexedDB wipe — see
+   * `useDeviceSignOut`'s own doc comment in `Devices.tsx`. */
+  clearLocalData?: () => Promise<void>
 }
 
 /* ---- a client-side guess at this device's label (spec §6.5) ---- */
@@ -146,16 +160,25 @@ function usePlatformAuthenticatorAvailable(): boolean {
  * not a container query — the same rule the shell's own three nav treatments
  * already follow.
  *
- * **`SIGN OUT` in the footer is a doorway, not a second copy of the confirm
- * sheet.** Boards §12 draw the "sign out this device" sheet — the one
- * carrying `▲` — as an overlay on the *Devices* screen, triggered from THIS
- * DEVICE's own row, and `docs/specs/2026-08-28-auth-device-links-plan.md`'s
- * Task 10 is what builds it (`api.signOut`, `clearLocalData`,
- * `unsyncedCount` all live there, not here). So this footer link takes a
- * Quartermaster to where signing out actually happens rather than
- * duplicating that flow.
+ * **`SIGN OUT` in the footer, and the DEVICES card's own rows, are built
+ * once and reused, not redrawn here.** `Devices.tsx` (Task 10) owns the two
+ * confirm sheets, the per-row `SIGN OUT`, and the sign-out sequence
+ * (`api.signOut`, `clearLocalData`, `unsyncedCount`) as
+ * {@link useDeviceSignOut} and {@link DeviceList}; this screen only renders
+ * them. Below Desktop, the footer stays a doorway to the pushed Devices
+ * screen — boards §12 draws both sheets there, over the full list. At
+ * Desktop that screen is a dead end (`App.tsx` redirects `/account/devices`
+ * straight back here), so boards §11's unfolded DEVICES card renders the
+ * same sheets inline instead, and the footer opens "sign out this device"
+ * directly rather than navigating anywhere.
  */
-export function Account({ api, token, personId }: AccountProps) {
+export function Account({
+  api,
+  token,
+  personId,
+  onSignOut,
+  clearLocalData,
+}: AccountProps) {
   const personName = useDepot(
     (depot) => depot.state.people[personId]?.name?.value ?? null,
   )
@@ -169,6 +192,26 @@ export function Account({ api, token, personId }: AccountProps) {
   const [addingPasskey, setAddingPasskey] = useState(false)
   const [passkeyLabel, setPasskeyLabel] = useState('')
   const [busy, setBusy] = useState(false)
+
+  const {
+    remoteTarget,
+    thisDeviceOpen,
+    unsynced,
+    busy: signOutBusy,
+    select: selectDevice,
+    openThisDeviceConfirm,
+    cancelRemote,
+    confirmRemote,
+    cancelThisDevice,
+    confirmThisDevice,
+  } = useDeviceSignOut({
+    api,
+    token,
+    onSignedOut: onSignOut,
+    onRevoked: (id) =>
+      setDevices((rows) => rows.filter((row) => row.id !== id)),
+    ...(clearLocalData === undefined ? {} : { clearLocalData }),
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -388,27 +431,16 @@ export function Account({ api, token, personId }: AccountProps) {
           </div>
 
           {isDesktop ? (
-            <ul className={styles['rows']}>
-              {devices.map((device) => (
-                <li key={device.id} className={styles['row']}>
-                  <div>
-                    <div className={styles['rowTitleGroup']}>
-                      <span className={styles['rowTitle']}>
-                        {device.label ?? 'Unknown device'}
-                      </span>
-                      {device.current && (
-                        <span className={styles['badge']}>THIS DEVICE</span>
-                      )}
-                    </div>
-                    <div className={styles['rowMeta']}>
-                      {device.current
-                        ? `SIGNED IN ${formatDate(device.created_at)}`
-                        : `LAST SEEN ${formatDate(device.last_seen_at)}`}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            // The current Device's own row carries no per-row `SIGN OUT`
+            // here — boards §11's desktop frame draws none, because the
+            // footer below already reaches it (`showSignOutOnCurrent`
+            // false is the one anatomy difference the boards draw between
+            // this card and the pushed Devices screen).
+            <DeviceList
+              devices={devices}
+              onSelect={selectDevice}
+              showSignOutOnCurrent={false}
+            />
           ) : (
             <>
               <p className={styles['summaryLine']}>
@@ -439,13 +471,43 @@ export function Account({ api, token, personId }: AccountProps) {
           comment above `Account`. */}
 
       <footer className={styles['footer']}>
-        <Link href="/account/devices" className={styles['signOut']}>
-          SIGN OUT
-        </Link>
+        {isDesktop ? (
+          // `/account/devices` redirects straight back here at Desktop
+          // (`App.tsx`), so this opens "sign out this device" in place
+          // rather than navigating anywhere.
+          <button
+            type="button"
+            className={styles['signOut']}
+            onClick={() => void openThisDeviceConfirm()}
+          >
+            SIGN OUT
+          </button>
+        ) : (
+          // `?signout` (read by `Devices.tsx`) lands directly on this
+          // Device's own confirm sheet, rather than sharing a plain href
+          // with the `All devices ›` row above and costing an extra tap.
+          <Link href="/account/devices?signout" className={styles['signOut']}>
+            SIGN OUT
+          </Link>
+        )}
         <span className={styles['build']}>
           BUILD {BUILD_SHA.slice(0, 7).toUpperCase()}
         </span>
       </footer>
+
+      <SignOutRemoteSheet
+        device={remoteTarget}
+        busy={signOutBusy}
+        onCancel={cancelRemote}
+        onConfirm={confirmRemote}
+      />
+      <SignOutThisDeviceSheet
+        open={thisDeviceOpen}
+        unsyncedCount={unsynced}
+        busy={signOutBusy}
+        onCancel={cancelThisDevice}
+        onConfirm={confirmThisDevice}
+      />
     </div>
   )
 }

@@ -8,7 +8,7 @@ import {
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
@@ -21,6 +21,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { setViewport } from '../testSetup'
+import { DESKTOP } from '../shell/useMediaQuery'
 import { Account } from './Account'
 
 /**
@@ -164,6 +166,9 @@ async function renderAccount(
     passkeys?: PasskeyRow[]
     devices?: DeviceRow[]
     platformAuthenticator?: boolean
+    desktop?: boolean
+    signOutFails?: boolean
+    clearLocalData?: () => Promise<void>
   } = {},
 ) {
   const {
@@ -172,15 +177,20 @@ async function renderAccount(
     passkeys = [],
     devices = [],
     platformAuthenticator,
+    desktop = false,
+    signOutFails = false,
+    clearLocalData,
   } = options
 
   stubPlatformAuthenticator(platformAuthenticator)
+  if (desktop) setViewport(DESKTOP)
 
   const specs: OpSpec[] =
     personName === null ? [] : [personRecorded(PERSON_ID, personName)]
   const store = await seededStore(specs)
 
-  const removed = new Set<string>()
+  const removedPasskeys = new Set<string>()
+  const revokedDevices = new Set<string>()
 
   const api = createAuthApi(
     fetchFrom([
@@ -201,13 +211,26 @@ async function renderAccount(
         path: '/auth/passkeys',
         respond: () =>
           jsonResponse({
-            passkeys: passkeys.filter((passkey) => !removed.has(passkey.id)),
+            passkeys: passkeys.filter(
+              (passkey) => !removedPasskeys.has(passkey.id),
+            ),
           }),
       },
       {
         method: 'GET',
         path: '/auth/devices',
-        respond: () => jsonResponse({ devices }),
+        respond: () =>
+          jsonResponse({
+            devices: devices.filter((device) => !revokedDevices.has(device.id)),
+          }),
+      },
+      {
+        method: 'POST',
+        path: '/auth/signout',
+        respond: () => {
+          if (signOutFails) throw new Error('offline')
+          return noContent()
+        },
       },
       // A generic handler for any `DELETE /auth/passkeys/:id` — records the
       // id so the next `GET /auth/passkeys` reflects the removal.
@@ -215,22 +238,39 @@ async function renderAccount(
         method: 'DELETE',
         path: `/auth/passkeys/${passkey.id}`,
         respond: () => {
-          removed.add(passkey.id)
+          removedPasskeys.add(passkey.id)
+          return noContent()
+        },
+      })),
+      ...devices.map((device) => ({
+        method: 'DELETE',
+        path: `/auth/devices/${device.id}`,
+        respond: () => {
+          revokedDevices.add(device.id)
           return noContent()
         },
       })),
     ]),
   )
 
-  const { hook } = memoryLocation({ path: '/account' })
+  const onSignOut = vi.fn()
+  const location = memoryLocation({ path: '/account', record: true })
 
   render(
-    <Router hook={hook}>
+    <Router hook={location.hook}>
       <DepotProvider value={store}>
-        <Account api={api} token={TOKEN} personId={PERSON_ID} />
+        <Account
+          api={api}
+          token={TOKEN}
+          personId={PERSON_ID}
+          onSignOut={onSignOut}
+          {...(clearLocalData === undefined ? {} : { clearLocalData })}
+        />
       </DepotProvider>
     </Router>,
   )
+
+  return { onSignOut, location }
 }
 
 describe('Account', () => {
@@ -294,13 +334,85 @@ describe('Account', () => {
     expect(
       await screen.findByRole('link', { name: /Sign in on another device/ }),
     ).toHaveAttribute('href', '/account/device-link')
+    // `?signout` disambiguates the footer from the `All devices ›` row
+    // below, which shares the same destination but not the same intent
+    // (Task 10 brief's deferred Minor from Task 9's review).
     expect(screen.getByRole('link', { name: 'SIGN OUT' })).toHaveAttribute(
       'href',
-      '/account/devices',
+      '/account/devices?signout',
     )
     expect(screen.getByRole('link', { name: /All devices/ })).toHaveAttribute(
       'href',
       '/account/devices',
     )
+  })
+
+  describe('at Desktop', () => {
+    it('unfolds the full device list inline, with a per-row SIGN OUT except on THIS DEVICE', async () => {
+      await renderAccount({ devices: threeDevices(), desktop: true })
+
+      expect(await screen.findByText('Edge on Windows')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Sign out Edge on Windows' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Sign out Safari on iPad' }),
+      ).toBeInTheDocument()
+      // Boards §11's desktop frame draws no per-row action on THIS DEVICE —
+      // its sign-out is the footer's job here, not a second row action.
+      expect(
+        screen.queryByRole('button', { name: 'Sign out this device' }),
+      ).toBeNull()
+    })
+
+    it('revokes a remote Device from its own row', async () => {
+      await renderAccount({ devices: threeDevices(), desktop: true })
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Sign out Edge on Windows' }),
+      )
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Sign out device' }),
+      )
+
+      expect(await screen.findByText('Firefox on Android')).toBeInTheDocument()
+      expect(screen.queryByText('Edge on Windows')).toBeNull()
+    })
+
+    it("the footer's SIGN OUT is a button that opens the sheet in place, not a Link to a dead end", async () => {
+      await renderAccount({ devices: threeDevices(), desktop: true })
+
+      // `/account/devices` redirects straight back to `/account` at
+      // Desktop (`App.tsx`) — a Link here would be a dead end, which is
+      // exactly the defect Task 9's review caught in this task's plan.
+      const signOut = screen.getByRole('button', { name: 'SIGN OUT' })
+      expect(signOut.tagName).toBe('BUTTON')
+
+      await userEvent.click(signOut)
+
+      expect(
+        await screen.findByRole('alertdialog', {
+          name: 'Sign out this device?',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('clears local data and ends the session from the footer, even offline', async () => {
+      const clearLocalData = vi.fn().mockResolvedValue(undefined)
+      const { onSignOut } = await renderAccount({
+        devices: threeDevices(),
+        desktop: true,
+        signOutFails: true,
+        clearLocalData,
+      })
+
+      await userEvent.click(screen.getByRole('button', { name: 'SIGN OUT' }))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Sign out and clear' }),
+      )
+
+      expect(clearLocalData).toHaveBeenCalledTimes(1)
+      expect(onSignOut).toHaveBeenCalledTimes(1)
+    })
   })
 })

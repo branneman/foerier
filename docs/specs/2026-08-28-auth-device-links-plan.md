@@ -2788,6 +2788,15 @@ Sign-out sequence:
 
 At Desktop, redirect `/account/devices` to `/account` — the board unfolds the full list inline there. Use the existing `useMediaQuery(DESKTOP)` hook from `app/src/shell/useMediaQuery`.
 
+**And that redirect creates a dead end unless this task also makes Account's Desktop DEVICES card interactive.** Task 9 shipped that card read-only, and its footer `SIGN OUT` navigates to `/account/devices` — which the line above sends straight back to `/account`. Landed as originally written, a Desktop Quartermaster would have **no reachable way to sign out this Device or revoke a remote one, ever**. Found by Task 9's review; the defect is in this plan, not in Task 9.
+
+Boards §11 is explicit that at Desktop "the phone's summary rows unfold — full device list … inline", so the actions unfold with them. This task therefore owns **two surfaces, not one**:
+
+1. `/account/devices`, the pushed screen, below Desktop.
+2. Account's Desktop DEVICES card, carrying the same per-row `SIGN OUT`, the same two confirm sheets, and the same footer sign-out.
+
+Build the rows, the sheets and the sign-out sequence **once** and render them in both places. Two copies is how the copy on one of them drifts — which is exactly the failure Task 4 hit when `confirm()` and `claim()` each carried their own completion block and only one of them told the truth.
+
 - [ ] **Step 5: Run the tests**
 
 Run: `npx vitest run app/src`

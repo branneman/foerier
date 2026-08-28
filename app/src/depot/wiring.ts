@@ -237,8 +237,11 @@ function firstSync(engine: SyncEngine | null): void {
  * frozen, and the header says `SIGNED OUT · SAVED ON DEVICE` (story 26).
  *
  * The confirm sheet that states the unsynced count before this runs belongs
- * to the Account screen, which S2a does not build; the count behind it is the
- * store's `deadLetterCount` plus the length of `log.outbox(…)`.
+ * to the Devices screen (`screens/Devices.tsx`, S3.5's Task 10), which is
+ * this function's one caller; the count behind it is the store's own
+ * `unsyncedCount()` (`depot/store.ts`) — `deadLetterCount` plus the length of
+ * `log.outbox(…)` — read while the store is still alive, before the sheet's
+ * confirm button ever runs this.
  */
 export async function clearLocalData(): Promise<void> {
   await deleteDB(DB_NAME, {

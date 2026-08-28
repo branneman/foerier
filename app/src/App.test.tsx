@@ -322,3 +322,30 @@ describe('when signed out', () => {
     ).toBeVisible()
   })
 })
+
+describe('the Devices route', () => {
+  // Task 10's brief: without this redirect, `Devices` would be unreachable
+  // below Desktop *and* the pushed screen would be a second, competing copy
+  // of the DEVICES card above it.
+  it('is the pushed screen below Desktop', async () => {
+    renderAt('/account/devices')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Devices' }),
+    ).toBeInTheDocument()
+  })
+
+  // Task 9's review caught this: without the redirect, Account's own
+  // Desktop DEVICES card and this pushed screen would both exist at once,
+  // and the footer `SIGN OUT` link Task 9 shipped would lead to a route
+  // that immediately sends it right back — a dead end, not a redirect.
+  it('redirects to Account at Desktop, where the same rows unfold inline', async () => {
+    setViewport(DESKTOP)
+    renderAt('/account/devices')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Account' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Devices' })).toBeNull()
+  })
+})

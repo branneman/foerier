@@ -27,11 +27,13 @@ import { createSessionDepot, type DepotFactory } from './depot/wiring'
 import { DepotView } from './shell/DepotView'
 import { Account } from './screens/Account'
 import { AddGear } from './screens/AddGear'
+import { Devices } from './screens/Devices'
 import { Find } from './screens/Find'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
 import { AppShell } from './shell/AppShell'
 import styles from './shell/AppShell.module.css'
+import { DESKTOP, useMediaQuery } from './shell/useMediaQuery'
 
 /**
  * Ask the browser not to evict us.
@@ -175,10 +177,11 @@ export function App({
   pendingStore = defaultPendingStore,
   createDepot = createSessionDepot,
 }: AppProps = {}) {
-  const { session, loading, sessionLost, signIn, handleUnauthorized } =
+  const { session, loading, sessionLost, signIn, signOut, handleUnauthorized } =
     useSession(sessionStore)
   const [, navigate] = useLocation()
   const online = useOnline()
+  const isDesktop = useMediaQuery(DESKTOP)
   const [depotStore, setDepotStore] =
     useState<StoreApi<DepotStoreState> | null>(null)
   const [unsyncedCount, setUnsyncedCount] = useState(0)
@@ -213,8 +216,9 @@ export function App({
    * resumed" rule.
    *
    * Signing out does not clear the local log from here. That is
-   * `clearLocalData()`'s job, reached from the Account screen's confirm
-   * sheet, and it is deliberately not on the path a 401 takes.
+   * `clearLocalData()`'s job, reached from the Devices screen's "sign out
+   * this device" confirm sheet (boards §12), and it is deliberately not on
+   * the path a 401 takes.
    */
   useEffect(() => {
     if (session === null) {
@@ -332,7 +336,22 @@ export function App({
                   api={api}
                   token={session.token}
                   personId={session.personId}
+                  onSignOut={signOut}
                 />
+              </Route>
+              <Route path="/account/devices">
+                {isDesktop ? (
+                  // The board unfolds the full list inline into Account's
+                  // own DEVICES card at Desktop (§11) — the same rows, the
+                  // same sheets, reached from there instead.
+                  <Redirect to="/account" />
+                ) : (
+                  <Devices
+                    api={api}
+                    token={session.token}
+                    onSignedOut={signOut}
+                  />
+                )}
               </Route>
               <Route>
                 <EmptyState title="Not found." line="No such page." />

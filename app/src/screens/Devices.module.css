@@ -1,0 +1,236 @@
+@layer components {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    max-width: 64rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  /* ---- header (pushed screen off Account) ---- */
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .sync {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .syncDot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+  }
+
+  /* Amber, not red: unreachable is a fact about the network, never an error
+     about the Quartermaster's work (the same rule `AppShell`'s own marker
+     follows). */
+  .syncDotUnreachable {
+    background: var(--color-brand-amber);
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .count {
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-ink-muted);
+  }
+
+  /* ---- rows ---- */
+
+  .rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border-top: var(--stroke-rule) solid var(--color-rule);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    min-height: max(2.75rem, 44px);
+    padding-block: var(--space-12);
+    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .rows > .row:last-child {
+    border-bottom: none;
+  }
+
+  .rowTitleGroup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+  }
+
+  .rowTitle {
+    font-size: 1rem;
+    line-height: 1.375rem;
+    font-weight: 600;
+    color: var(--color-ink-primary);
+    font-family: var(--font-ui);
+  }
+
+  .rowMeta {
+    font: var(--text-label) var(--font-mono);
+    color: var(--color-ink-muted);
+    margin-top: 0.125rem;
+  }
+
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 50%, transparent);
+    border-radius: 3px;
+    padding: 2px 5px;
+  }
+
+  /* RETIRE rule (`docs/design/README.md` §4, Voice): attention-coloured
+     text, never a filled button — applied here to the per-row SIGN OUT. */
+  .signOut {
+    flex-shrink: 0;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--color-status-attention);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  /* ---- footer hint ---- */
+
+  .hint {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-dim);
+    line-height: 1.7;
+  }
+
+  /* ---- the two confirm sheets (bottom sheet primitive, boards §12) ---- */
+
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--color-scrim);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .sheet {
+    width: 100%;
+    max-width: 32rem;
+    background: var(--color-bg-surface);
+    border-top: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    padding: 0.625rem var(--space-20) var(--space-24);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .grabber {
+    width: 2.25rem;
+    height: 0.25rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-rule-control);
+    margin: 0 auto var(--space-8);
+  }
+
+  /* The sheet's own title reuses `.title`'s class name at the sheet's
+     smaller size, rather than a second class. */
+  .sheet .title {
+    font: var(--text-title) var(--font-display);
+    font-weight: 700;
+  }
+
+  .attentionLine {
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-status-attention);
+    margin-top: var(--space-4);
+  }
+
+  .body {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+    font-family: var(--font-ui);
+    margin-top: var(--space-4);
+  }
+
+  .actions {
+    display: flex;
+    gap: var(--space-8);
+    margin-top: var(--space-16);
+  }
+
+  /* RETIRE rule, repeated for the confirm sheets' own primary action:
+     attention border and text, never a filled red button. */
+  .confirmAttention {
+    flex: 1;
+    min-height: max(3rem, 48px);
+    border: var(--stroke-chip) solid var(--color-status-attention);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-status-attention);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .confirmAttention:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-accent);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .ghost:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
