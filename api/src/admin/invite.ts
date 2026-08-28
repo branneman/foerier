@@ -33,8 +33,11 @@ async function main(): Promise<void> {
       ? 'usage: node dist/invite.js (--household <id> | --login <id>)'
       : 'usage: npm run admin:invite -- (--household <id> | --login <id>)'
 
-  const household = values.household?.trim()
-  const login = values.login?.trim()
+  const householdArg = values.household?.trim()
+  const loginArg = values.login?.trim()
+  const household =
+    householdArg === undefined || householdArg === '' ? undefined : householdArg
+  const login = loginArg === undefined || loginArg === '' ? undefined : loginArg
 
   if ((household === undefined) === (login === undefined)) {
     console.error(usage)

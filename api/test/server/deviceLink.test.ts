@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import type { Database } from '../../src/db/schema.ts'
+import { AuthError } from '../../src/auth/service.ts'
 import {
   createHarness,
   jsonOf,
@@ -299,6 +300,52 @@ describe('device links', () => {
       expect(mine?.logins).toEqual([
         expect.objectContaining({ id: LOGIN, personId: PERSON, devices: 0 }),
       ])
+    })
+
+    it('refuses to mint a join Invite into an unknown Household', async () => {
+      await expect(
+        h.service.mintJoinInvite({
+          householdId: '0f000009-0000-4000-8000-0000000090c8',
+        }),
+      ).rejects.toThrow(AuthError)
+    })
+
+    it('refuses to mint a device link for an unknown Login', async () => {
+      await expect(
+        h.service.mintDeviceLink({
+          loginId: '0f000009-0000-4000-8000-0000000090c9',
+        }),
+      ).rejects.toThrow(AuthError)
+    })
+
+    /**
+     * The case that carries real weight: a link minted for a disabled Login
+     * looks fine and then 401s on first use, which reads to the operator as
+     * "claim is broken" rather than "Login is disabled". Refusing at mint
+     * time, and leaving no Invite row behind for it, is what makes that
+     * failure legible instead.
+     */
+    it('refuses to mint a device link for a disabled Login, and writes no invite row', async () => {
+      await db
+        .insertInto('login')
+        .values({ id: LOGIN, household_id: HOUSEHOLD, person_id: PERSON })
+        .execute()
+      await db
+        .updateTable('login')
+        .set({ disabled_at: new Date(h.clock.now()) })
+        .where('id', '=', LOGIN)
+        .execute()
+
+      await expect(
+        h.service.mintDeviceLink({ loginId: LOGIN }),
+      ).rejects.toThrow(AuthError)
+
+      const invites = await db
+        .selectFrom('invite')
+        .selectAll()
+        .where('login_id', '=', LOGIN)
+        .execute()
+      expect(invites).toHaveLength(0)
     })
   })
 })
