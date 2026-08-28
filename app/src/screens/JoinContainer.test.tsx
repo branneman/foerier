@@ -1,3 +1,4 @@
+import type { RegistrationResponseJSON } from '@simplewebauthn/browser'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -11,17 +12,27 @@ import {
 } from '../auth/pendingFirstPerson'
 import { JoinContainer } from './JoinContainer'
 
-// The OS passkey sheet is an external surface with no in-process equivalent
-// (`docs/testing.md`'s in-memory-fake preference does not reach a browser
-// ceremony) — mocked only in the two tests below that need to drive
-// `confirm`'s catch with a specific error shape. Every other test in this
-// file relies on jsdom's real, ambient absence of `window.PublicKeyCredential`
-// to take the `confirmOrFallThrough` early-return branch instead, so this
-// mock is never exercised there.
-const startRegistration = vi.fn()
-vi.mock('@simplewebauthn/browser', () => ({
-  startRegistration: (...args: unknown[]) => startRegistration(...args),
-}))
+/**
+ * The OS passkey sheet has no in-process fake to hand it, so the two tests
+ * below that need to drive `confirm`'s catch with a specific error shape
+ * inject a plain function through `JoinContainer`'s own `startRegistration`
+ * prop — the same pattern `app/src/auth/api.ts` uses for `fetch` — rather
+ * than `vi.mock`ing the module. A mocked ceremony would only assert that our
+ * code calls a library, which is worth nothing
+ * (`api/test/server/softwareAuthenticator.ts`'s own doc comment).
+ */
+function declines(): Promise<RegistrationResponseJSON> {
+  return Promise.reject(
+    new DOMException(
+      'The operation either timed out or was not allowed',
+      'NotAllowedError',
+    ),
+  )
+}
+
+function ceremonyFails(): Promise<RegistrationResponseJSON> {
+  return Promise.reject(new Error('network error'))
+}
 
 /** Makes `confirmOrFallThrough` skip its early return and actually call
  * `confirm`, without pretending jsdom can run a real WebAuthn ceremony. */
@@ -90,6 +101,11 @@ function renderJoinContainer(options: {
   skipHash?: boolean
   pending?: PendingStore
   onSignedIn?: (session: unknown) => Promise<void>
+  /** Injected in place of the real `@simplewebauthn/browser` ceremony —
+   * `declines` or `ceremonyFails` above, or left unset so the ambient
+   * absence of `window.PublicKeyCredential` takes `confirmOrFallThrough`'s
+   * early-return branch instead and this is never called. */
+  startRegistration?: (options: unknown) => Promise<RegistrationResponseJSON>
 }) {
   if (!options.skipHash) {
     window.location.hash = options.hash ?? '#a-secret'
@@ -101,7 +117,14 @@ function renderJoinContainer(options: {
 
   const { unmount } = render(
     <Router hook={hook}>
-      <JoinContainer api={api} pending={pending} onSignedIn={onSignedIn} />
+      <JoinContainer
+        api={api}
+        pending={pending}
+        onSignedIn={onSignedIn}
+        {...(options.startRegistration === undefined
+          ? {}
+          : { startRegistration: options.startRegistration })}
+      />
     </Router>,
   )
 
@@ -120,7 +143,6 @@ afterEach(() => {
   // Only ever defined by `stubWebAuthnAvailable`; jsdom has no
   // `PublicKeyCredential` of its own to restore.
   Reflect.deleteProperty(window, 'PublicKeyCredential')
-  startRegistration.mockReset()
 })
 
 /** Stubs `navigator.serviceWorker` with a fake single-registration container. */
@@ -219,18 +241,13 @@ describe('JoinContainer', () => {
 describe('JoinContainer — decline vs. a real failure', () => {
   it('stays silent when the person declines the OS sheet', async () => {
     stubWebAuthnAvailable()
-    startRegistration.mockRejectedValue(
-      new DOMException(
-        'The operation either timed out or was not allowed',
-        'NotAllowedError',
-      ),
-    )
     const user = userEvent.setup()
     renderJoinContainer({
       responses: {
         '/auth/join/preview': JOIN_PREVIEW,
         '/auth/register/options': { challenge: 'x', rp: {}, user: {} },
       },
+      startRegistration: declines,
     })
 
     await user.type(await screen.findByRole('textbox'), 'Bran')
@@ -246,13 +263,13 @@ describe('JoinContainer — decline vs. a real failure', () => {
 
   it('says so when the register ceremony fails for a real reason', async () => {
     stubWebAuthnAvailable()
-    startRegistration.mockRejectedValue(new Error('network error'))
     const user = userEvent.setup()
     renderJoinContainer({
       responses: {
         '/auth/join/preview': JOIN_PREVIEW,
         '/auth/register/options': { challenge: 'x', rp: {}, user: {} },
       },
+      startRegistration: ceremonyFails,
     })
 
     await user.type(await screen.findByRole('textbox'), 'Bran')

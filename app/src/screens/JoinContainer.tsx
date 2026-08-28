@@ -1,4 +1,4 @@
-import { startRegistration } from '@simplewebauthn/browser'
+import { startRegistration as performRegistration } from '@simplewebauthn/browser'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'wouter'
 import type { StoreApi } from 'zustand/vanilla'
@@ -21,6 +21,18 @@ export interface JoinContainerProps {
    * than required.
    */
   depot?: StoreApi<DepotStoreState> | null
+  /**
+   * The register ceremony — `@simplewebauthn/browser`'s `startRegistration`
+   * by default. Injectable for the same reason `app/src/auth/api.ts` injects
+   * `fetch` rather than reaching for it globally: a test hands this a small
+   * fake instead of mocking the module. The OS passkey sheet has no
+   * in-process fake to hand it, so tests here write a plain function that
+   * resolves, throws a decline (`NotAllowedError`), or throws a real
+   * failure — never `vi.mock` (`api/test/server/softwareAuthenticator.ts`'s
+   * own doc comment: "a mocked ceremony would assert that our code calls a
+   * library, which is worth nothing").
+   */
+  startRegistration?: typeof performRegistration
 }
 
 /**
@@ -132,6 +144,7 @@ export function JoinContainer({
   pending,
   onSignedIn,
   depot = null,
+  startRegistration = performRegistration,
 }: JoinContainerProps) {
   const [, navigate] = useLocation()
   // Whether THIS flow completed the join — not merely whether a session

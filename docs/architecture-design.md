@@ -1465,14 +1465,28 @@ running code could teach.
   component tests existed across the three screens and not one of them
   made an API call fail — the absence of error state and the absence of a
   test that would have noticed were the same gap, seen from two sides.
-  **Two of these were caught only by this slice's final whole-branch
-  review, after five separate per-task reviews had each passed the commit
-  that introduced them.** That is not a coincidence of diligence: a
-  per-task review is scoped to the screen its own commit touches, and each
-  of those screens' failure paths looked locally reasonable — a `catch`
-  that did *something* (logged, swallowed, moved on) reads as handled
-  until it is read against the app's own premise, that offline is the
-  ordinary case and not the exception. The generalisable lesson is that a
+  **Two of these were genuinely new at the final whole-branch review; the
+  third was not, and that half is the more instructive one.** The
+  Account/Devices load-state lies and `confirmThisDevice`'s missing catch
+  surfaced for the first time there, after five separate per-task reviews
+  had each passed the commit that introduced them — a per-task review is
+  scoped to the screen its own commit touches, and each of those screens'
+  failure paths looked locally reasonable, a `catch` that did *something*
+  (logged, swallowed, moved on) reading as handled until it is read against
+  the app's own premise that offline is the ordinary case, not the
+  exception. `NoPasskey`'s silence is different: Task 4's own review caught
+  it and named it — "retryable but silent … a claim that fails for a spent
+  or expired link currently just does nothing visible, which on the
+  compatibility path is the wrong kind of quiet" — and the controller
+  deferred it rather than fixing it, on the judgement that a screen-local
+  gap could ride to the next round. The final review's addition was that the
+  deferral had understated its own finding: every register failure funnels
+  there, not only a decline, and on the device-link path it is the *only*
+  screen the person ever sees, so its silence was 100% of that journey's
+  feedback rather than one screen's rough edge. Two lessons, not one: a
   slice's error-handling discipline is not a per-screen property checkable
-  one task at a time; it is a property of the slice as a whole, and needs
-  a pass that reads the whole diff looking for exactly this shape of gap.
+  one task at a time, it is a property of the slice as a whole and needs a
+  pass that reads the whole diff looking for exactly this shape of gap —
+  and separately, a deferral is a bet on a finding's blast radius, and that
+  bet needs to be re-priced against the whole journey the screen sits on,
+  not just the screen in front of the reviewer when it was made.
