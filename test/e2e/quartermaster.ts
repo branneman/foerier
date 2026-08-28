@@ -5,15 +5,19 @@ import {
   type Page,
 } from '@playwright/test'
 
-import { resetHousehold } from '../contract/reset'
-import { mintInvite } from './mintInvite'
+// Explicit `.ts`, unlike the rest of `test/e2e`: `captureCredential.ts` is run
+// by plain `node`, which strips types but does not guess extensions, so every
+// specifier on the path to it has to resolve as written. Playwright and Vitest
+// take either form.
+import { resetHousehold } from '../contract/reset.ts'
+import { mintInvite } from './mintInvite.ts'
 import {
   API_BASE,
   appUrl,
   deviceToken,
   isProduction,
   STORAGE_STATE,
-} from './production'
+} from './production.ts'
 
 /**
  * Getting a real, signed-in Quartermaster into a real browser — the setup
