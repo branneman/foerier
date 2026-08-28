@@ -6,6 +6,7 @@ import { systemIdSource } from '@foerier/shared'
 import type { Database } from '../../src/db/schema.ts'
 import { issueDeviceToken } from '../../src/auth/tokens.ts'
 import { nextExpiry } from '../../src/auth/session.ts'
+import { AuthError } from '../../src/auth/service.ts'
 import {
   createHarness,
   jsonOf,
@@ -264,19 +265,39 @@ describe('account', () => {
       expect(after.status).toBe(401)
     })
 
-    it('leaves another Login’s Device working', async () => {
+    it('leaves another Login’s Device working, and answers 204 exactly as if it were mine', async () => {
       const mine = await signedInDevice()
       const theirs = await signedInDevice({ suffix: 'b' })
 
-      await h.app.request(`/api/v1/auth/devices/${theirs.deviceId}`, {
-        method: 'DELETE',
-        headers: { authorization: `Bearer ${mine.token}` },
-      })
+      const del = await h.app.request(
+        `/api/v1/auth/devices/${theirs.deviceId}`,
+        {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${mine.token}` },
+        },
+      )
+      // The half that actually matters for tenancy: "not yours" must not be
+      // distinguishable from "does not exist" (below), or the response code
+      // alone lets a caller probe which Device ids exist in other Logins.
+      expect(del.status).toBe(204)
 
       const after = await h.app.request('/api/v1/auth/me', {
         headers: { authorization: `Bearer ${theirs.token}` },
       })
       expect(after.status).toBe(200)
+    })
+
+    it('answers a Device id that exists nowhere with the same 204', async () => {
+      const mine = await signedInDevice()
+
+      const del = await h.app.request(
+        `/api/v1/auth/devices/${systemIdSource.next()}`,
+        {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${mine.token}` },
+        },
+      )
+      expect(del.status).toBe(204)
     })
   })
 
@@ -287,6 +308,28 @@ describe('account', () => {
         headers: { authorization: `Bearer ${token}` },
       })
       expect(await jsonOf(res)).toMatchObject({ household_name: 'Veldkamp' })
+    })
+
+    it('throws the same AuthError as every other auth failure when its Household row is gone', async () => {
+      // Not reachable through `/api/v1/auth/me`: `login.household_id` and
+      // `device.household_id` are both NOT NULL FKs with `ON DELETE CASCADE`
+      // (`api/migrations/0002_auth.ts`), so a Login or Device cannot outlive
+      // its Household — there is no way to seed a signed-in Device whose
+      // context names a Household row that does not exist. Covered here at
+      // the service level instead: `me()` is called directly with a context
+      // shaped the way it would be if that state were ever reachable, and it
+      // must fail the same way every other `AuthError` site does — not with
+      // whatever a raw throw happens to produce — so that `/auth/me`'s route
+      // handler (which now wraps this call in the same `try/catch` →
+      // `failure()` every other route uses) has something to catch.
+      await expect(
+        h.service.me({
+          loginId: systemIdSource.next(),
+          householdId: systemIdSource.next(),
+          personId: systemIdSource.next(),
+          deviceId: systemIdSource.next(),
+        }),
+      ).rejects.toThrow(AuthError)
     })
   })
 })

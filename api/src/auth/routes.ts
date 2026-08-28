@@ -168,14 +168,18 @@ export function createAuthRoutes({
 
   auth.get('/me', requireAuth, async (c) => {
     const context = c.get('auth')
-    const { householdName } = await service.me(context)
-    return c.json({
-      login_id: context.loginId,
-      person_id: context.personId,
-      household_id: context.householdId,
-      household_name: householdName,
-      device_id: context.deviceId,
-    })
+    try {
+      const { householdName } = await service.me(context)
+      return c.json({
+        login_id: context.loginId,
+        person_id: context.personId,
+        household_id: context.householdId,
+        household_name: householdName,
+        device_id: context.deviceId,
+      })
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.post('/signout', requireAuth, async (c) => {
