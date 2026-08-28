@@ -1,3 +1,4 @@
+import { Confirm } from '@foerier/ui'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useSearch } from 'wouter'
 
@@ -108,53 +109,42 @@ export function SignOutRemoteSheet({
   onCancel,
   onConfirm,
 }: {
-  device: DeviceRow | null
+  device: DeviceRow
   busy: boolean
   onCancel: () => void
   onConfirm: () => void
 }) {
-  if (device === null) return null
   const label = device.label ?? 'Unknown device'
 
   return (
-    <div
-      className={styles['scrim']}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onCancel()
-      }}
-    >
-      <div
-        className={styles['sheet']}
-        role="alertdialog"
-        aria-modal="true"
-        aria-label={`Sign out ${label}?`}
-      >
-        <span className={styles['grabber']} aria-hidden="true" />
-        <h2 className={styles['title']}>Sign out {label}?</h2>
-        <p className={styles['body']}>
-          It loses access at its next sync. Everything already synced stays with
-          the household.
-        </p>
-        <div className={styles['actions']}>
-          <button
-            type="button"
-            className={styles['confirmAttention']}
-            onClick={onConfirm}
-            disabled={busy}
-          >
-            Sign out device
-          </button>
-          <button
-            type="button"
-            className={styles['ghost']}
-            onClick={onCancel}
-            disabled={busy}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+    <Confirm
+      variant="sheet"
+      title={`Sign out ${label}?`}
+      description="It loses access at its next sync. Everything already synced stays with the household."
+      onClose={onCancel}
+      actions={
+        <>
+          {/* Action before Cancel is the boards' own order (§12: "bordered-
+              attention 48 `Sign out device` + ghost Cancel"), and Radix gives
+              initial focus to the Cancel wherever it sits in the DOM. */}
+          <Confirm.Action>
+            <button
+              type="button"
+              className={styles['confirmAttention']}
+              onClick={onConfirm}
+              disabled={busy}
+            >
+              Sign out device
+            </button>
+          </Confirm.Action>
+          <Confirm.Cancel>
+            <button type="button" className={styles['ghost']} disabled={busy}>
+              Cancel
+            </button>
+          </Confirm.Cancel>
+        </>
+      }
+    />
   )
 }
 
@@ -176,7 +166,6 @@ export function SignOutRemoteSheet({
  * blocked delete left it in place.
  */
 export function SignOutThisDeviceSheet({
-  open,
   unsyncedCount,
   blocked,
   error,
@@ -184,7 +173,6 @@ export function SignOutThisDeviceSheet({
   onCancel,
   onConfirm,
 }: {
-  open: boolean
   unsyncedCount: number
   /** A second tab of the app is holding `foerier` open, so the delete this
    * sheet is waiting on cannot complete yet — genuinely rare (fix round 1),
@@ -201,44 +189,20 @@ export function SignOutThisDeviceSheet({
   onCancel: () => void
   onConfirm: () => void
 }) {
-  if (!open) return null
-
   return (
-    <div
-      className={styles['scrim']}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onCancel()
-      }}
-    >
-      <div
-        className={styles['sheet']}
-        role="alertdialog"
-        aria-modal="true"
-        aria-label="Sign out this device?"
-      >
-        <span className={styles['grabber']} aria-hidden="true" />
-        <h2 className={styles['title']}>Sign out this device?</h2>
-        {unsyncedCount > 0 && (
-          <p className={styles['attentionLine']}>
-            ▲ {unsyncedCount} changes not yet synced. Signing out clears them.
-          </p>
-        )}
-        {blocked && (
-          <p className={styles['attentionLine']}>
-            ▲ Another tab has this open. Close it to finish signing out.
-          </p>
-        )}
-        {error && (
-          <p className={styles['attentionLine']}>
-            ▲ Sign-out did not finish. Sync is stopped on this device — try
-            again.
-          </p>
-        )}
-        <p className={styles['body']}>
-          Local data is removed from this device. Synced work stays with the
-          household.
-        </p>
-        <div className={styles['actions']}>
+    <Confirm
+      variant="sheet"
+      title="Sign out this device?"
+      description="Local data is removed from this device. Synced work stays with the household."
+      onClose={onCancel}
+      actions={
+        <>
+          {/* Deliberately **not** a `Confirm.Action`: that part closes the
+              confirm on click, and this is the one confirm in the app that
+              has to outlive its own action. `blocked` and `error` are only
+              ever readable because the sheet is still up saying them
+              (`final-review.md` finding 4). It closes when the sequence
+              finishes, from `confirmThisDevice`, or from the Cancel. */}
           <button
             type="button"
             className={styles['confirmAttention']}
@@ -247,17 +211,30 @@ export function SignOutThisDeviceSheet({
           >
             Sign out and clear
           </button>
-          <button
-            type="button"
-            className={styles['ghost']}
-            onClick={onCancel}
-            disabled={busy}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+          <Confirm.Cancel>
+            <button type="button" className={styles['ghost']} disabled={busy}>
+              Cancel
+            </button>
+          </Confirm.Cancel>
+        </>
+      }
+    >
+      {unsyncedCount > 0 && (
+        <p className={styles['attentionLine']}>
+          ▲ {unsyncedCount} changes not yet synced. Signing out clears them.
+        </p>
+      )}
+      {blocked && (
+        <p className={styles['attentionLine']}>
+          ▲ Another tab has this open. Close it to finish signing out.
+        </p>
+      )}
+      {error && (
+        <p className={styles['attentionLine']}>
+          ▲ Sign-out did not finish. Sync is stopped on this device — try again.
+        </p>
+      )}
+    </Confirm>
   )
 }
 
@@ -531,21 +508,24 @@ export function Devices({
         SIGNING OUT A DEVICE REACHES IT AT ITS NEXT SYNC.
       </p>
 
-      <SignOutRemoteSheet
-        device={remoteTarget}
-        busy={busy}
-        onCancel={cancelRemote}
-        onConfirm={confirmRemote}
-      />
-      <SignOutThisDeviceSheet
-        open={thisDeviceOpen}
-        unsyncedCount={unsynced}
-        blocked={blocked}
-        error={error}
-        busy={busy}
-        onCancel={cancelThisDevice}
-        onConfirm={confirmThisDevice}
-      />
+      {remoteTarget !== null && (
+        <SignOutRemoteSheet
+          device={remoteTarget}
+          busy={busy}
+          onCancel={cancelRemote}
+          onConfirm={confirmRemote}
+        />
+      )}
+      {thisDeviceOpen && (
+        <SignOutThisDeviceSheet
+          unsyncedCount={unsynced}
+          blocked={blocked}
+          error={error}
+          busy={busy}
+          onCancel={cancelThisDevice}
+          onConfirm={confirmThisDevice}
+        />
+      )}
     </div>
   )
 }

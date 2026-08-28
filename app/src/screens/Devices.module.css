@@ -140,63 +140,20 @@
     line-height: 1.7;
   }
 
-  /* ---- the two confirm sheets (bottom sheet primitive, boards §12) ---- */
+  /* ---- the two confirm sheets (boards §12) ----
 
-  .scrim {
-    position: fixed;
-    inset: 0;
-    background: var(--color-scrim);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    z-index: 10;
-  }
-
-  .sheet {
-    width: 100%;
-    max-width: 32rem;
-    background: var(--color-bg-surface);
-    border-top: var(--stroke-rule) solid var(--color-rule);
-    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-    padding: 0.625rem var(--space-20) var(--space-24);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-  }
-
-  .grabber {
-    width: 2.25rem;
-    height: 0.25rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-rule-control);
-    margin: 0 auto var(--space-8);
-  }
-
-  /* The sheet's own title reuses `.title`'s class name at the sheet's
-     smaller size, rather than a second class. */
-  .sheet .title {
-    font: var(--text-title) var(--font-display);
-    font-weight: 700;
-  }
+     The scrim, the sheet surface, the grabber, the title, the body
+     paragraph and the actions row all come from `ui/`'s `Confirm`
+     (`variant="sheet"`); the body's register survives verbatim as
+     `.descriptionSheet` there. What is left here is what is genuinely these
+     sheets' own: the `▲` lines and the two buttons — kept because "attention
+     border, never a filled red button" is design intent, not primitive
+     behaviour. */
 
   .attentionLine {
     font: var(--text-data) var(--font-mono);
     color: var(--color-status-attention);
     margin-top: var(--space-4);
-  }
-
-  .body {
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    color: var(--color-ink-muted);
-    font-family: var(--font-ui);
-    margin-top: var(--space-4);
-  }
-
-  .actions {
-    display: flex;
-    gap: var(--space-8);
-    margin-top: var(--space-16);
   }
 
   /* RETIRE rule, repeated for the confirm sheets' own primary action:

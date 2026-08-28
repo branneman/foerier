@@ -507,21 +507,24 @@ export function Account({
         </span>
       </footer>
 
-      <SignOutRemoteSheet
-        device={remoteTarget}
-        busy={signOutBusy}
-        onCancel={cancelRemote}
-        onConfirm={confirmRemote}
-      />
-      <SignOutThisDeviceSheet
-        open={thisDeviceOpen}
-        unsyncedCount={unsynced}
-        blocked={blocked}
-        error={signOutError}
-        busy={signOutBusy}
-        onCancel={cancelThisDevice}
-        onConfirm={confirmThisDevice}
-      />
+      {remoteTarget !== null && (
+        <SignOutRemoteSheet
+          device={remoteTarget}
+          busy={signOutBusy}
+          onCancel={cancelRemote}
+          onConfirm={confirmRemote}
+        />
+      )}
+      {thisDeviceOpen && (
+        <SignOutThisDeviceSheet
+          unsyncedCount={unsynced}
+          blocked={blocked}
+          error={signOutError}
+          busy={signOutBusy}
+          onCancel={cancelThisDevice}
+          onConfirm={confirmThisDevice}
+        />
+      )}
     </div>
   )
 }
