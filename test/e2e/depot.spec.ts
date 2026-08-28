@@ -1,7 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
-import { mintInvite } from './mintInvite'
-import { attachAuthenticator, joinAs } from './quartermaster'
+import { test } from './quartermaster'
 
 /**
  * S2's golden path, end to end: join → add gear → see it in the Depot, with
@@ -80,19 +79,17 @@ async function addGear(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'Depot' })).toBeVisible()
 }
 
-test('gear recorded offline reaches the depot, survives a reload, and syncs', async ({
-  page,
-  context,
+test('gear recorded offline reaches the depot, survives a reload, and syncs @production', async ({
+  quartermaster,
 }) => {
-  const { secret } = await mintInvite()
-  await attachAuthenticator(page)
+  // Signed in and standing on the Depot — by joining locally, or from
+  // `globalSetup`'s storage state against production (`quartermaster.ts`).
+  const { page, context } = quartermaster
 
-  await joinAs(page, secret, 'Els')
-  await page.getByRole('button', { name: 'Open the depot' }).click()
-  await expect(page.getByRole('heading', { name: 'Depot' })).toBeVisible()
-
-  // The join screen's pending first Person is flushed into the log as the
-  // household's first op, and the first sync carries it away.
+  // Locally, the join screen's pending first Person is flushed into the log as
+  // the household's first op, and the first sync carries it away. Against
+  // production there is nothing owed at all — either way the device starts
+  // level with the server.
   await expect(page.getByText('SYNCED')).toBeVisible()
   await expect.poll(() => unsyncedCount(page)).toBe(0)
 

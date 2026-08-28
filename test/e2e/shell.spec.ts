@@ -8,9 +8,18 @@ import { expect, test } from '@playwright/test'
  * survive a cold, offline start is the **signed-out shell**: the navigation
  * fallback has to resolve `/signin` and `/join` from the precache, or a
  * freshly-installed client is a blank page (`auth-design.md` §8.4).
+ *
+ * All three carry `@production` and none takes the `quartermaster` fixture:
+ * what they need is a **signed-out visitor**, which is what an unmodified
+ * browser context already is. That is why the production storage state is
+ * applied inside the fixture rather than as a project-wide `use.storageState`
+ * (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §6.2) — the
+ * latter would sign this visitor in and quietly empty these tests out.
  */
 
-test('a signed-out visitor lands on the sign-in shell', async ({ page }) => {
+test('a signed-out visitor lands on the sign-in shell @production', async ({
+  page,
+}) => {
   await page.goto('/')
 
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
@@ -20,7 +29,7 @@ test('a signed-out visitor lands on the sign-in shell', async ({ page }) => {
   )
 })
 
-test('the shell still loads with the network cut', async ({
+test('the shell still loads with the network cut @production', async ({
   page,
   context,
 }) => {
@@ -67,7 +76,7 @@ test('the shell still loads with the network cut', async ({
   ).toBeEnabled()
 })
 
-test('a cold offline client can still resolve /signin directly', async ({
+test('a cold offline client can still resolve /signin directly @production', async ({
   page,
   context,
 }) => {

@@ -1,7 +1,7 @@
 import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server'
 
 import { SoftwareAuthenticator } from '../../api/test/server/softwareAuthenticator.ts'
-import { credential, monotonicSignCount } from './credential'
+import { credential, monotonicSignCount, rpIdFor } from './credential'
 import { mask } from './reset'
 
 /**
@@ -32,22 +32,6 @@ export interface SignInOptions {
    * being ignored.
    */
   appOrigin?: string
-}
-
-/**
- * The RP ID for an origin, by the same rule the browser applies: a registrable
- * suffix of the origin's domain.
- *
- * `localhost` is not a subdomain of `foerier.app`, so local development and
- * Tier 5 use `localhost` as the RP ID and produce credentials that are —
- * correctly — useless anywhere else. Production uses the registrable parent
- * `foerier.app`, so one credential stays valid across `app.`, `api.`, and any
- * future subdomain. Derived rather than passed in, so the two secrets a run
- * holds cannot be pointed at the wrong relying party by a third env var.
- */
-export function rpIdFor(appOrigin: string): string {
-  const { hostname } = new URL(appOrigin)
-  return hostname === 'localhost' ? hostname : hostname.replace(/^app\./, '')
 }
 
 export async function signIn({

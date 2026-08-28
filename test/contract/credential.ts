@@ -47,6 +47,30 @@ export function credential(): ExportedCredential {
 }
 
 /**
+ * The RP ID for an origin, by the same rule the browser applies: a registrable
+ * suffix of the origin's domain.
+ *
+ * `localhost` is not a subdomain of `foerier.app`, so local development and a
+ * local Tier 5 rehearsal use `localhost` as the RP ID and produce credentials
+ * that are — correctly — useless anywhere else. Production uses the
+ * registrable parent `foerier.app`, so one credential stays valid across
+ * `app.`, `api.`, and any future subdomain. Derived rather than passed in, so
+ * the two secrets a run holds cannot be pointed at the wrong relying party by
+ * a third env var.
+ *
+ * It lives here, beside the credential itself, because both consumers need it
+ * and only one of them has an authenticator: Tier 4 signs in Node
+ * (`signIn.ts`), Tier 5 hands the value to Chrome's virtual authenticator
+ * (`test/e2e/globalSetup.production.ts`). Two copies of this rule is exactly
+ * how a credential ends up seeded against a relying party the server will not
+ * accept.
+ */
+export function rpIdFor(appOrigin: string): string {
+  const { hostname } = new URL(appOrigin)
+  return hostname === 'localhost' ? hostname : hostname.replace(/^app\./, '')
+}
+
+/**
  * The sign count to seed the authenticator with (§5.2).
  *
  * The server requires `received > stored` (`isSignCountAcceptable`), and that

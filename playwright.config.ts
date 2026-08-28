@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
+import { isProduction } from './test/e2e/production'
+
 /**
  * Tier 5 — the real app in a real browser, exercising one core journey
  * (`docs/testing.md`). Deliberately small: edge cases belong in lower tiers.
@@ -12,9 +14,26 @@ import { defineConfig, devices } from '@playwright/test'
  * Requires the local Postgres:
  *   docker compose -f docker-compose.dev.yml up -d
  *
- * Once the deployment pipeline exists, the post-deploy CI job points
- * `PLAYWRIGHT_BASE_URL` at `app.foerier.app` and the same specs run against
- * production — retargeting is one variable, not a rewrite.
+ * The post-deploy CI job points `PLAYWRIGHT_BASE_URL` at `app.foerier.app` and
+ * the same specs run against production — retargeting is one variable, not a
+ * rewrite (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §6.2).
+ * That one variable switches four things on, and each is load-bearing:
+ *
+ * - **`globalSetup`** signs in from the exported credential and resets the
+ *   Household. It is the main process, which is the only place `::add-mask::`
+ *   is honoured, so the Device token is masked where the mask actually fires
+ *   (§5.1 point 4).
+ * - **`grep: /@production/`** — three kinds of spec cannot run against the
+ *   box: one that mints an Invite by Maintainer script (it needs
+ *   `DATABASE_URL`), one that proves joining itself, and one that signs the
+ *   run's own Device out from under every later spec. The local project has no
+ *   grep, so a local run is unchanged.
+ * - **`trace: 'off'`** — a trace records request headers, so
+ *   `Authorization: Bearer foe_…` would be inside the zip. Off, rather than
+ *   merely not uploaded, so the guard does not depend on nobody ever adding an
+ *   `upload-artifact` step (§5.1 point 3). The `list` reporter is there for
+ *   the same reason: no HTML report is written, so none can be uploaded.
+ * - **`workers: 1`** — one Household, one writer (§6.3).
  */
 const PREVIEW_PORT = 4173
 const API_PORT = 8080
@@ -23,7 +42,7 @@ const API_BASE = `http://localhost:${API_PORT}/api/v1`
 const baseURL =
   process.env['PLAYWRIGHT_BASE_URL'] ?? `http://localhost:${PREVIEW_PORT}`
 
-const local = process.env['PLAYWRIGHT_BASE_URL'] === undefined
+const local = !isProduction
 
 const DATABASE_URL =
   process.env['TEST_DATABASE_URL'] ??
@@ -75,5 +94,11 @@ export default defineConfig({
           },
         ],
       }
-    : {}),
+    : {
+        globalSetup: './test/e2e/globalSetup.production.ts',
+        grep: /@production/,
+        workers: 1,
+        reporter: 'list',
+        use: { baseURL, trace: 'off' },
+      }),
 })

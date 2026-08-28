@@ -18,5 +18,11 @@ coverage/
 playwright-report/
 test-results/
 
+# Tier 5's saved browser state against production: it holds a **live Device
+# token** for the E2E Household, not a fixture (see
+# docs/specs/2026-08-28-tier-4-and-5-against-production.md §5.1). Never
+# committed, and never uploaded as an artifact either.
+test/e2e/.auth/
+
 # Claude Code local state: personal settings and nested worktrees
 .claude/
