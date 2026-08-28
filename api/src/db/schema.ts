@@ -23,6 +23,8 @@ export interface HouseholdTable {
   created_at: CreatedAt
   /** `bigint` reaches the driver as a string; see `db/index.ts`. */
   op_seq: ColumnType<number, number | undefined, number>
+  /** `/test/reset`'s third gate; set only by `admin:bootstrap --disposable`. */
+  disposable: ColumnType<boolean, boolean | undefined, boolean>
 }
 
 export interface LoginTable {
@@ -61,6 +63,12 @@ export interface DeviceTable {
   last_seen_at: Timestamp
   expires_at: Date
   revoked_at: Date | null
+  /** Which Passkey signed this Device in; null for a device-link Device. */
+  passkey_id: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null
+  >
 }
 
 export type InvitePurpose = 'join' | 'device'

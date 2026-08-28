@@ -5,6 +5,7 @@ import { migrateToLatest } from '../../src/db/index.ts'
 import type { Database } from '../../src/db/schema.ts'
 import * as m0003 from '../../migrations/0003_op.ts'
 import * as m0004 from '../../migrations/0004_device_links.ts'
+import * as m0005 from '../../migrations/0005_disposable_household.ts'
 import { resetHouseholds, seedHousehold } from './harness.ts'
 import { testDb } from './testDb.ts'
 
@@ -40,12 +41,14 @@ describe('migrations', () => {
 
     expect([...byName.keys()].sort()).toEqual([
       'created_at',
+      'disposable',
       'id',
       'name',
       'op_seq',
     ])
     expect(byName.get('name')).toBe('NO')
     expect(byName.get('created_at')).toBe('NO')
+    expect(byName.get('disposable')).toBe('NO')
   })
 
   it('is a no-op when every migration has already run', async () => {
@@ -285,6 +288,72 @@ describe('the op table and the household counter', () => {
     // it) so the schema this class leaves behind matches what every other
     // class — and the next run of this file — expects to find.
     await m0003.up(rawDb)
+  })
+})
+
+/**
+ * `0005` — `household.disposable` and `device.passkey_id`
+ * (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §12). Both
+ * columns are purely additive against empty tables, so — unlike `0004`'s
+ * backfill above — this only has to prove the shape: the default, the
+ * nullability, and the `on delete set null` behaviour the reset endpoint
+ * relies on to tolerate a Device that signed in before this migration ran.
+ */
+describe('0005 (household.disposable and device.passkey_id)', () => {
+  let db: Kysely<Database>
+
+  beforeAll(async () => {
+    db = await testDb()
+  })
+
+  afterAll(async () => {
+    await db.destroy()
+  })
+
+  it('0005 adds household.disposable (default false) and device.passkey_id (nullable, set null on delete)', async () => {
+    await migrateToLatest(db)
+    const cols = await sql<{
+      table_name: string
+      column_name: string
+      column_default: string | null
+      is_nullable: string
+    }>`
+      select table_name, column_name, column_default, is_nullable
+        from information_schema.columns
+       where (table_name, column_name) in (('household','disposable'), ('device','passkey_id'))
+    `.execute(db)
+    expect(cols.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          table_name: 'household',
+          column_name: 'disposable',
+          column_default: 'false',
+          is_nullable: 'NO',
+        }),
+        expect.objectContaining({
+          table_name: 'device',
+          column_name: 'passkey_id',
+          is_nullable: 'YES',
+        }),
+      ]),
+    )
+    const fk = await sql<{ delete_rule: string }>`
+      select rc.delete_rule from information_schema.referential_constraints rc
+        join information_schema.table_constraints tc on tc.constraint_name = rc.constraint_name
+       where tc.table_name = 'device' and tc.constraint_name like '%passkey_id%'
+    `.execute(db)
+    expect(fk.rows[0]?.delete_rule).toBe('SET NULL')
+  })
+
+  it('0005 rolls back cleanly', async () => {
+    await migrateToLatest(db)
+    await m0005.down(db as unknown as Kysely<unknown>)
+    const cols = await sql<{ column_name: string }>`
+      select column_name from information_schema.columns
+       where (table_name, column_name) in (('household','disposable'), ('device','passkey_id'))
+    `.execute(db)
+    expect(cols.rows).toEqual([])
+    await m0005.up(db as unknown as Kysely<unknown>)
   })
 })
 
