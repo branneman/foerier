@@ -334,6 +334,7 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
       const { token, tokenHash } = issueDeviceToken()
       const loginId = ids.next()
       const deviceId = ids.next()
+      const passkeyId = ids.next()
 
       await db.transaction().execute(async (trx) => {
         // Re-check inside the transaction and claim the Invite with the same
@@ -383,7 +384,7 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
         await trx
           .insertInto('passkey')
           .values({
-            id: ids.next(),
+            id: passkeyId,
             login_id: loginId,
             credential_id: fromBase64Url(credential.id),
             public_key: credential.publicKey,
@@ -397,6 +398,19 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
             label: deviceLabelFrom(userAgent),
             created_on_device: deviceId,
           })
+          .execute()
+
+        // Recorded by an update rather than in the insert above, because the
+        // Passkey does not exist yet when the Device row is written. The two
+        // FKs end up pointing at each other, which is legal precisely because
+        // both are nullable — and they are two different facts:
+        // `created_on_device` is which Device enrolled this Passkey,
+        // `passkey_id` is which Passkey signed this Device in
+        // (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3).
+        await trx
+          .updateTable('device')
+          .set({ passkey_id: passkeyId })
+          .where('id', '=', deviceId)
           .execute()
       })
 
@@ -632,6 +646,10 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
             id: deviceId,
             login_id: row.login_id,
             household_id: row.household_id,
+            // Which Passkey signed this Device in. `/test/reset` spares it
+            // when it wipes a disposable Household's credentials
+            // (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3).
+            passkey_id: row.passkey_id,
             token_hash: tokenHash,
             label: deviceLabelFrom(userAgent),
             expires_at: nextExpiry(clock),
@@ -667,8 +685,20 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
     /**
      * Mints a Household and its first join Invite. Used only by the Maintainer
      * bootstrap script (`auth-design.md` §3.4).
+     *
+     * `disposable` marks the Household as one `/test/reset` may wipe. It is
+     * the third of that route's three gates, and this is the only code path
+     * that can set it — which is what stops a typo in an environment variable
+     * from pointing the wipe at a real Household
+     * (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3.1).
      */
-    async bootstrapHousehold({ name }: { name: string }): Promise<{
+    async bootstrapHousehold({
+      name,
+      disposable = false,
+    }: {
+      name: string
+      disposable?: boolean
+    }): Promise<{
       householdId: string
       personId: string
       secret: string
@@ -687,7 +717,7 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
       await db.transaction().execute(async (trx) => {
         await trx
           .insertInto('household')
-          .values({ id: householdId, name })
+          .values({ id: householdId, name, disposable })
           .execute()
 
         await trx

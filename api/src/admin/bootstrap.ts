@@ -21,6 +21,13 @@ import { parseOriginArg, printOriginNote } from './originArg.ts'
  * household member's device joining is being handed to is not this machine
  * either; see `originArg.ts` for what is accepted.
  *
+ * `--disposable` marks the Household as one `POST /test/reset` is allowed to
+ * wipe. It exists for the single E2E Household the CI suites run against, is
+ * the third of that route's three gates, and is set nowhere else — so a real
+ * Household cannot be reached by a mistyped environment variable
+ * (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3.1). Leave it
+ * off for every Household a person actually uses.
+ *
  * Only the **first** Login of a brand-new Household is arranged out of band.
  * Every Invite after that is issued by a Quartermaster from inside the app,
  * which is what keeps account management out of the Maintainer's inbox.
@@ -32,15 +39,19 @@ import { parseOriginArg, printOriginNote } from './originArg.ts'
  */
 async function main(): Promise<void> {
   const { values } = parseArgs({
-    options: { name: { type: 'string' }, origin: { type: 'string' } },
+    options: {
+      name: { type: 'string' },
+      origin: { type: 'string' },
+      disposable: { type: 'boolean' },
+    },
   })
 
   const mode =
     process.env['NODE_ENV'] === 'production' ? 'production' : 'development'
   const usage =
     mode === 'production'
-      ? 'usage: node dist/bootstrap.js --name "Veldkamp" [--origin <url>]'
-      : 'usage: npm run admin:bootstrap -- --name "Veldkamp" [--origin <url>]'
+      ? 'usage: node dist/bootstrap.js --name "Veldkamp" [--origin <url>] [--disposable]'
+      : 'usage: npm run admin:bootstrap -- --name "Veldkamp" [--origin <url>] [--disposable]'
 
   const name = values.name?.trim()
   if (name === undefined || name === '') {
@@ -67,6 +78,8 @@ async function main(): Promise<void> {
     }
   }
 
+  const disposable = values.disposable ?? false
+
   const config = loadConfig()
   const db = createDb(config.databaseUrl)
 
@@ -79,7 +92,7 @@ async function main(): Promise<void> {
     })
 
     const { householdId, personId, secret, expiresAt } =
-      await service.bootstrapHousehold({ name })
+      await service.bootstrapHousehold({ name, disposable })
 
     // The secret lives in the URL **fragment**: a fragment is never sent to a
     // server, so it stays out of Caddy's access log, out of any intermediary's
@@ -87,6 +100,14 @@ async function main(): Promise<void> {
     console.log('')
     console.log(`Household "${name}" created.`)
     console.log(`  household_id  ${householdId}`)
+    // Printed only when set: its absence is the normal case and says nothing,
+    // while its presence is the one line a Maintainer must notice on a
+    // Household that was not meant to be wipeable.
+    if (disposable) {
+      console.log(
+        '  disposable    yes — POST /test/reset may wipe this Household',
+      )
+    }
     console.log(
       `  person_id     ${personId}   (pre-bound; the joiner names themselves)`,
     )

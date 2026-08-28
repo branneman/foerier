@@ -162,6 +162,16 @@ describe('device links', () => {
         .where('login_id', '=', LOGIN)
         .execute()
       expect(passkeys).toHaveLength(0)
+
+      // No Passkey verified this Device, so there is none to record — and
+      // none for `/test/reset` to spare
+      // (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3).
+      const claimed = await db
+        .selectFrom('device')
+        .select('passkey_id')
+        .where('id', '=', body.device_id)
+        .executeTakeFirstOrThrow()
+      expect(claimed.passkey_id).toBeNull()
     })
 
     it('creates the Login first when the Invite is a join, still with no Passkey', async () => {

@@ -155,6 +155,50 @@ describe('the join and sign-in ceremonies', () => {
     )
   })
 
+  it('records which Passkey signed the Device in, on both ceremonies', async () => {
+    // `/test/reset` spares the calling Device's Passkey, and this column is
+    // the only way it can know which one that is
+    // (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3).
+    const invite = await seedInvite(db, {
+      householdId: HOUSEHOLD,
+      clock: h.clock,
+    })
+
+    const { verifyRes, device } = await join(invite.secret)
+    const joined = await jsonOf<{ login_id: string; device_id: string }>(
+      verifyRes,
+    )
+
+    const passkey = await db
+      .selectFrom('passkey')
+      .select('id')
+      .where('login_id', '=', joined.login_id)
+      .executeTakeFirstOrThrow()
+
+    const registered = await db
+      .selectFrom('device')
+      .select('passkey_id')
+      .where('id', '=', joined.device_id)
+      .executeTakeFirstOrThrow()
+    expect(registered.passkey_id).toBe(passkey.id)
+
+    const options = await jsonOf<never>(
+      await post('/api/v1/auth/login/options'),
+    )
+    const signedIn = await jsonOf<{ device_id: string }>(
+      await post('/api/v1/auth/login/verify', {
+        response: device.get(options),
+      }),
+    )
+
+    const row = await db
+      .selectFrom('device')
+      .select('passkey_id')
+      .where('id', '=', signedIn.device_id)
+      .executeTakeFirstOrThrow()
+    expect(row.passkey_id).toBe(passkey.id)
+  })
+
   it('refuses an invite its second time', async () => {
     // Single-use is the whole bound on a stolen link (story 31).
     const invite = await seedInvite(db, {
@@ -483,6 +527,34 @@ describe('the join and sign-in ceremonies', () => {
         .executeTakeFirst()
 
       expect(after!.last_seen_at.getTime()).toBe(h.clock.now())
+    })
+  })
+
+  describe('the maintainer bootstrap', () => {
+    it('writes disposable only when told to', async () => {
+      // The third gate on `/test/reset` is a column no code path but this one
+      // can set, so the default must stay false without the caller saying so.
+      const a = await h.service.bootstrapHousehold({ name: 'Real' })
+      const b = await h.service.bootstrapHousehold({
+        name: 'E2E',
+        disposable: true,
+      })
+
+      const ids = [a.householdId, b.householdId]
+      try {
+        const rows = await db
+          .selectFrom('household')
+          .select(['id', 'disposable'])
+          .where('id', 'in', ids)
+          .execute()
+
+        expect(rows.find((r) => r.id === a.householdId)?.disposable).toBe(false)
+        expect(rows.find((r) => r.id === b.householdId)?.disposable).toBe(true)
+      } finally {
+        // These two are not this class's registry-slot Household, so
+        // `resetHouseholds` will never collect them.
+        await db.deleteFrom('household').where('id', 'in', ids).execute()
+      }
     })
   })
 

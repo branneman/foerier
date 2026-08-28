@@ -107,9 +107,13 @@ export async function resetHouseholds(
 
 export async function seedHousehold(
   db: Kysely<Database>,
-  { id, name }: { id: string; name: string },
+  {
+    id,
+    name,
+    disposable = false,
+  }: { id: string; name: string; disposable?: boolean },
 ): Promise<void> {
-  await db.insertInto('household').values({ id, name }).execute()
+  await db.insertInto('household').values({ id, name, disposable }).execute()
 }
 
 export interface SeededInvite {
