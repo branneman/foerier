@@ -27,6 +27,8 @@
     "dev:api": "npm run dev --workspace api",
     "migrate": "npm run migrate --workspace api",
     "admin:bootstrap": "npm run admin:bootstrap --workspace api --",
+    "admin:invite": "npm run admin:invite --workspace api --",
+    "admin:list": "npm run admin:list --workspace api --",
     "prepare": "husky"
   },
   "devDependencies": {
