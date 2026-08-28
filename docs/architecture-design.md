@@ -1345,13 +1345,19 @@ retired outright.
   map keyed by href. `/trips` has no entry until S6 and `/find` never gets
   one; a destination with no entry simply draws no count, which is how the
   board reads it.
-- **The `ACCOUNT` affordance is settled and unbuilt, in all three modes.** R3
-  draws a sidebar row pinned bottom, a rail avatar, and a phone header avatar.
-  None is built, and all three are blocked on the same thing: **there is no
-  Account screen** — auth slice 4's (story 30), specified as a whole screen in
-  `docs/design/README.md` §11. An affordance that leads nowhere is worse than
-  a missing one, so the anatomy landed now and its entry points land with the
-  screen they open. The sidebar's `margin-top: auto` group is already the slot.
+- **The `ACCOUNT` affordance was settled and left unbuilt, in all three
+  modes — and built at S3.5.** R3 draws a sidebar row pinned bottom, a rail
+  avatar, and a phone header avatar; all three were blocked on the same
+  thing, **there is no Account screen**, and an affordance that leads
+  nowhere is worse than a missing one, so the anatomy landed at R3 and its
+  entry points waited for the screen they open. S3.5 built that screen
+  (auth slice 4, story 30, `docs/design/README.md` §11) and opened all three
+  doors in the same slice: the sidebar's `margin-top: auto` group holds the
+  labelled row, the rail gets a 22px avatar above the sync dot, the phone
+  header gets one beside the sync line. The initial is `aria-hidden` for the
+  same reason the sidebar count is two bullets up, and `null` — a Login can
+  point at a `person_id` no op has created yet, `auth-design.md` §2.1 —
+  draws an empty circle rather than an invented letter.
 - **`Logo` had been announcing "foerier" twice** wherever it was given a
   `title` — its own doc said the mark "would make a screen reader say foerier
   twice" beside the wordmark, while `title` was passed straight through. Three

@@ -77,16 +77,19 @@ function EmptyState({ title, line }: { title: string; line: string }) {
  */
 function SignedInShell({
   store,
+  personId,
   onSignedOut,
   children,
 }: {
   store: StoreApi<DepotStoreState>
+  personId: string
   onSignedOut: (store: StoreApi<DepotStoreState>) => void
   children: ReactNode
 }) {
   const sync = useStore(store, (depot) => depot.sync)
   const bootstrap = useStore(store, (depot) => depot.bootstrap)
   const counts = useDestinationCounts(store)
+  const accountInitial = useAccountInitial(store, personId)
 
   useEffect(() => {
     if (sync === 'signed-out') onSignedOut(store)
@@ -110,6 +113,7 @@ function SignedInShell({
       syncLine={syncLine(sync)}
       syncTone={syncTone(sync)}
       counts={counts}
+      accountInitial={accountInitial}
     >
       <DepotProvider value={store}>{children}</DepotProvider>
     </AppShell>
@@ -137,6 +141,28 @@ function useDestinationCounts(
   // than recomputed on every sync tick.
   const gear = useMemo(() => depotCounts(state).gear, [state])
   return { '/': gear }
+}
+
+/**
+ * The letter in the avatar (`docs/design/README.md` §11).
+ *
+ * Read here rather than inside `AppShell` for the same reason the counts are:
+ * the shell renders *outside* `DepotProvider`, deliberately, so the nav never
+ * depends on a store the signed-out shell has never had.
+ *
+ * Null rather than a placeholder when the Person is not folded yet — a Login
+ * can point at a `person_id` no op has created (`auth-design.md` §2.1), and an
+ * invented letter is worse than an empty circle.
+ */
+function useAccountInitial(
+  store: StoreApi<DepotStoreState>,
+  personId: string,
+): string | null {
+  const state = useStore(store, (depot) => depot.state)
+  const name = state.people[personId]?.name?.value
+  return name === undefined || name === null || name === ''
+    ? null
+    : name.trim().charAt(0).toUpperCase()
 }
 
 /** Offline is normal, and surfaced as one quiet line rather than a dialog.
@@ -312,7 +338,11 @@ export function App({
         {session === null ? (
           <Redirect to="/signin" />
         ) : depotStore === null ? null : (
-          <SignedInShell store={depotStore} onSignedOut={onSignedOut}>
+          <SignedInShell
+            store={depotStore}
+            personId={session.personId}
+            onSignedOut={onSignedOut}
+          >
             <Switch>
               {/* One view for both routes: below Split it renders whichever
                   screen the route names, and at Split it renders the list and

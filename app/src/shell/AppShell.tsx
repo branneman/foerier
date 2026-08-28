@@ -27,16 +27,14 @@ import { DESKTOP, SPLIT, useMediaQuery } from './useMediaQuery'
  * which elements *exist*, a container query decides how what exists *lays
  * out*.
  *
- * ## The account affordance is deliberately absent
+ * ## The account affordance
  *
  * R3 settles an `ACCOUNT` row pinned to the sidebar's bottom, a matching
- * avatar on the Split rail, and an avatar in the phone header. None is built,
- * and all three are blocked on one thing: **there is no Account screen** —
- * it is auth slice 4's (story 30), and `docs/design/README.md` §11 specifies
- * a whole screen for it. An affordance that leads nowhere is worse than a
- * missing one, so the anatomy lands now and its entry points land with the
- * screen they open. The sidebar's `margin-top: auto` group is already where
- * that row goes.
+ * avatar on the Split rail, and an avatar in the phone header. All three were
+ * left unbuilt until the Account screen existed to open — an affordance that
+ * leads nowhere is worse than a missing one — and now that it does (auth
+ * slice 4, story 30; `docs/design/README.md` §11), all three land here. The
+ * sidebar's `margin-top: auto` group is where the row goes, same as always.
  */
 
 /**
@@ -104,6 +102,86 @@ function NavItem({
   )
 }
 
+/**
+ * The `ACCOUNT` row's avatar, in all three modes.
+ *
+ * `initial` is `aria-hidden` — the same rule the sidebar's count already
+ * follows (`NavItem` above): a name that changes as the Person folds in
+ * reads as data, and "Account M" announced is as easily an initial as it is
+ * a stray letter. The circle carries no accessible content of its own; the
+ * link around it supplies the name.
+ *
+ * `null` draws an empty circle rather than a placeholder letter. A Login can
+ * point at a `person_id` no op has ever created yet — a half-finished
+ * bootstrap, or a Person op still queued on someone else's phone
+ * (`auth-design.md` §2.1) — and there is then no initial to draw. Inventing
+ * one would be a fact the app does not have.
+ */
+function AccountAvatar({ initial }: { initial: string | null }) {
+  return (
+    <span className={styles['avatar']}>
+      {initial !== null && <span aria-hidden="true">{initial}</span>}
+    </span>
+  )
+}
+
+/**
+ * The door: a labelled row in the sidebar, an avatar above the sync dot on
+ * the rail, an avatar beside the sync line in the phone header. The rail and
+ * the header draw no label, so without `aria-label` the link would have no
+ * accessible name at all — a link nobody can follow, same reasoning as
+ * `NavItem`'s rail branch above.
+ */
+function AccountLink({
+  mode,
+  initial,
+}: {
+  mode: NavMode
+  initial: string | null
+}) {
+  const [isActive] = useRoute('/account')
+  const current = isActive ? { 'aria-current': 'page' as const } : {}
+
+  if (mode === 'sidebar') {
+    return (
+      <Link
+        href="/account"
+        className={`${styles['navItem']} ${styles['sidebar']} ${styles['accountRow']}`}
+        {...current}
+      >
+        <AccountAvatar initial={initial} />
+        <span>Account</span>
+      </Link>
+    )
+  }
+
+  if (mode === 'rail') {
+    return (
+      <Link
+        href="/account"
+        className={`${styles['navItem']} ${styles['rail']}`}
+        aria-label="Account"
+        {...current}
+      >
+        <span className={styles['railSquare']}>
+          <AccountAvatar initial={initial} />
+        </span>
+      </Link>
+    )
+  }
+
+  return (
+    <Link
+      href="/account"
+      className={styles['headerAccount']}
+      aria-label="Account"
+      {...current}
+    >
+      <AccountAvatar initial={initial} />
+    </Link>
+  )
+}
+
 function SyncMarker({
   line,
   tone,
@@ -154,6 +232,13 @@ export interface AppShellProps {
    * reads today and `TRIPS` reads until S6.
    */
   counts?: Readonly<Partial<Record<string, number>>>
+  /**
+   * The letter the avatar draws, or `null` for an empty circle
+   * (`docs/design/README.md` §11). `AppShell` renders outside
+   * `DepotProvider`, deliberately, so this is handed in rather than read
+   * here — see `useAccountInitial` in `App.tsx`.
+   */
+  accountInitial?: string | null
 }
 
 export function AppShell({
@@ -161,6 +246,7 @@ export function AppShell({
   syncLine = 'OFFLINE',
   syncTone = 'unreachable',
   counts = {},
+  accountInitial = null,
 }: AppShellProps) {
   const isSplit = useMediaQuery(SPLIT)
   const isDesktop = useMediaQuery(DESKTOP)
@@ -174,6 +260,7 @@ export function AppShell({
       {mode === 'tabs' && (
         <header className={styles['header']}>
           <SyncMarker line={syncLine} tone={syncTone} mode={mode} />
+          <AccountLink mode={mode} initial={accountInitial} />
         </header>
       )}
 
@@ -205,10 +292,12 @@ export function AppShell({
           />
         ))}
 
-        {/* `margin-top: auto` pins this group to the bottom — and is where
-            the ACCOUNT row goes when the Account screen exists. */}
+        {/* `margin-top: auto` pins this group to the bottom — ACCOUNT above
+            the sync marker, as the sidebar anatomy and the Split rail both
+            settle it. */}
         {mode !== 'tabs' && (
           <span className={styles['navFoot']}>
+            <AccountLink mode={mode} initial={accountInitial} />
             <SyncMarker line={syncLine} tone={syncTone} mode={mode} />
           </span>
         )}

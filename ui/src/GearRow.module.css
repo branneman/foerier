@@ -111,7 +111,10 @@
   /* Split 900: the selection stays visible while the detail is read — a
      tint plus a 2px accent inset edge, never tint alone. */
   .selected {
-    background: rgb(147 188 159 / 0.05);
+    /* `color-mix` rather than a literal alpha value, so the tint tracks
+       `--color-accent` through both theme blocks instead of going two-tone in
+       light mode (Task 9's own finding on this exact pattern). */
+    background: color-mix(in srgb, var(--color-accent) 5%, transparent);
     box-shadow: inset 2px 0 0 var(--color-accent);
   }
 

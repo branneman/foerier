@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -171,20 +171,50 @@ describe('AppShell — the sidebar at Desktop', () => {
 
 /**
  * The design settles an `ACCOUNT` row pinned to the bottom of the sidebar, a
- * matching avatar on the Split rail, and an avatar in the phone header. None
- * is built, and all three are blocked on the same thing: **there is no Account
- * screen** — it belongs to auth slice 4 (story 30). An affordance that leads
- * nowhere is worse than a missing one, so the anatomy lands now and its entry
- * points land with the screen they open.
+ * matching avatar on the Split rail, and an avatar in the phone header. All
+ * three were blocked on the same thing — there was no Account screen to open
+ * — until Task 11 built it (auth slice 4, story 30). An affordance that leads
+ * nowhere is worse than a missing one, which is why this asserted absence
+ * until now; it asserts presence in the same three modes, in the same loop,
+ * because that diff is the record that the debt was discharged rather than
+ * dropped.
  */
 describe('AppShell — the account affordance', () => {
-  it('offers none, in any mode, while there is no Account screen', () => {
+  it('offers one in every mode, now that the Account screen exists', () => {
     for (const viewport of [[], [SPLIT], [SPLIT, DESKTOP]]) {
       setViewport(...viewport)
-      const nav = renderShell()
-      expect(within(nav).queryByRole('link', { name: /account/i })).toBeNull()
-      expect(within(nav).queryByTestId('account-avatar')).toBeNull()
-      screen.getByRole('navigation', { name: 'Sections' }).remove()
+      renderShell('/', { accountInitial: 'M' })
+      // The sidebar draws a labelled row; the rail and the phone header draw
+      // an avatar with no label, so both need an accessible name or the
+      // affordance is a link nobody can follow. Below `nav`, deliberately:
+      // the phone header's avatar sits outside it.
+      expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument()
+      // A full unmount, not just the nav removed: the phone header (tabs
+      // mode) sits outside `nav` too, and would otherwise survive into the
+      // next iteration and leave two links named "Account" in the document.
+      cleanup()
     }
+  })
+
+  it('keeps the tab bar at three destinations', () => {
+    setViewport()
+    const nav = renderShell('/', { accountInitial: 'M' })
+    // Account is reached from the avatar, not a fourth tab.
+    expect(within(nav).getAllByRole('link')).toHaveLength(3)
+  })
+
+  it('draws an empty circle when no Person is folded yet', () => {
+    setViewport()
+    renderShell('/', { accountInitial: null })
+    const link = screen.getByRole('link', { name: 'Account' })
+    // A half-finished bootstrap has a person_id and no Person
+    // (`auth-design.md` §2.1); a placeholder letter would be a fact invented.
+    expect(link.textContent).toBe('')
+  })
+
+  it('never folds the initial into the accessible name', () => {
+    setViewport(SPLIT)
+    renderShell('/', { accountInitial: 'M' })
+    expect(screen.queryByRole('link', { name: /^Account M$/ })).toBeNull()
   })
 })

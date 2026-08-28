@@ -63,7 +63,10 @@
   /* Under an hour the expiry chip goes amber (docs/design/README.md §14). */
   .chip[data-urgent='true'] {
     border-color: var(--color-brand-amber);
-    background: rgb(226 166 91 / 0.08);
+    /* `color-mix` rather than a literal alpha value, so the tint tracks
+       `--color-brand-amber` through both theme blocks instead of going
+       two-tone in light mode (Task 9's own finding on this exact pattern). */
+    background: color-mix(in srgb, var(--color-brand-amber) 8%, transparent);
     color: var(--color-brand-amber);
   }
 

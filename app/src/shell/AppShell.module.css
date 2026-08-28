@@ -75,8 +75,7 @@
     justify-content: center;
   }
 
-  /* The 40px square the icon sits in — and the same square the ACCOUNT
-     avatar will take when the Account screen exists. */
+  /* The 40px square an icon or the ACCOUNT avatar sits in. */
   .railSquare {
     display: inline-flex;
     align-items: center;
@@ -84,6 +83,30 @@
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 0.625rem;
+  }
+
+  /* The 22px avatar circle (`docs/design/README.md` §11 / §3a): muted border
+     and ink until the route is active, then accent — same treatment as
+     `.rail[aria-current='page'] .railSquare` gives the icon squares beside
+     it. Empty when `initial` is `null` — no placeholder letter is drawn. */
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    flex: none;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 600;
+  }
+
+  [aria-current='page'] .avatar {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
   }
 
   /* Sidebar row: padding 8/10, radius 8, label mono 10.5, count right. */
@@ -104,6 +127,12 @@
     font-size: 0.625rem;
     color: var(--color-ink-faint);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The ACCOUNT row: avatar then label, tight together — `.sidebar`'s own
+     `space-between` is for a label against a count, not this. */
+  .accountRow {
+    justify-content: flex-start;
   }
 
   .navItem:hover {
@@ -142,8 +171,7 @@
     color: var(--color-ink-muted);
   }
 
-  /* Pinned to the bottom — and where the ACCOUNT row goes once the Account
-     screen exists (auth slice 4, story 30). */
+  /* Pinned to the bottom, ACCOUNT above the sync marker (SIDEBAR ANATOMY). */
   .navFoot {
     display: flex;
     flex-direction: column;
@@ -166,7 +194,12 @@
   }
 
   .header {
+    justify-content: space-between;
     padding: var(--space-8) var(--gutter);
+  }
+
+  .headerAccount {
+    display: inline-flex;
   }
 
   .syncLine {
