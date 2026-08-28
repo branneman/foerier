@@ -3,6 +3,7 @@ import {
   normalizeTagInput,
   type DimensionValue,
 } from '@foerier/shared'
+import { Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
 import styles from './TagPicker.module.css'
@@ -84,21 +85,11 @@ export function TagPicker({
     !vocabulary.some((entry) => entry.value === candidate)
 
   return (
-    <div
-      className={styles['scrim']}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <div
-        className={styles['sheet']}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Tags"
-      >
-        <span className={styles['grabber']} aria-hidden="true" />
-        <h2 className={styles['title']}>Tags</h2>
-
+    <Sheet title="Tags" onClose={onClose} desktopCard>
+      {/* The sheet's own rhythm is 12; this picker's blocks were drawn at 16
+          and stay there, in a column of their own rather than by bending the
+          primitive every other sheet shares. */}
+      <div className={styles['body']}>
         {mode === 'gear' && (
           <div className={styles['group']} data-testid="on-this-gear">
             <span className={styles['groupLabel']}>ON THIS GEAR</span>
@@ -198,10 +189,12 @@ export function TagPicker({
           }
         </p>
 
-        <button type="button" className={styles['close']} onClick={onClose}>
-          Close
-        </button>
+        <Sheet.Close>
+          <button type="button" className={styles['close']}>
+            Close
+          </button>
+        </Sheet.Close>
       </div>
-    </div>
+    </Sheet>
   )
 }

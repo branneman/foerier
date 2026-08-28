@@ -1,39 +1,14 @@
+/* The scrim, the sheet, the grabber and the title now come from `ui/`'s
+   `Sheet`. What is left is this picker's own vocabulary: the two groups, the
+   chips, the field, the depot rows, the create row and the fact line. */
 @layer components {
-  .scrim {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    background: var(--color-scrim);
-    z-index: 20;
-  }
-
-  .sheet {
+  /* The sheet's rhythm is 12 (`ui/src/Sheet.module.css`); this picker's
+     blocks were drawn at 16 and keep it in a column of their own, rather
+     than bending the anatomy every other sheet shares. */
+  .body {
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
-    width: 100%;
-    max-width: 32rem;
-    max-height: 85svh;
-    overflow-y: auto;
-    padding: var(--space-12) var(--space-16) var(--space-24);
-    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-    background: var(--color-bg-surface);
-  }
-
-  .grabber {
-    align-self: center;
-    width: 2.25rem;
-    height: 0.25rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-rule);
-  }
-
-  .title {
-    font: var(--text-title) var(--font-display);
-    font-weight: 700;
-    color: var(--color-ink-primary);
   }
 
   .group {
@@ -213,27 +188,11 @@
     cursor: pointer;
   }
 
-  /*
-   * A popover, not a sheet, once there is room for one beside the chip that
-   * opened it — `docs/design/README.md` §4a: "popover on desktop, same sheet
-   * ... on phone". Split (52em) is where the two-pane layout arrives, so it
-   * is where a sheet stops being the right shape.
-   */
-  @media (min-width: 52em) {
-    .scrim {
-      align-items: center;
-      background: none;
-    }
-
-    .sheet {
-      max-width: 22rem;
-      border: var(--stroke-rule) solid var(--color-rule);
-      border-radius: var(--radius-card);
-      box-shadow: 0 12px 32px rgb(0 0 0 / 0.32);
-    }
-
-    .grabber {
-      display: none;
-    }
-  }
+  /* The ≥52em treatment that used to sit here — centred, unscrimmed, no
+     grabber — targeted `.scrim`, `.sheet` and `.grabber`, all of which now
+     belong to `ui/`. It moved with them: `Sheet`'s `desktopCard` prop, which
+     this picker passes. `docs/design/README.md` §4a wants a real *popover*
+     beside the chip that opened it, and the spec's §8 puts that behind a
+     `Popover` primitive this slice does not build — so the card stays the
+     stand-in it already was. */
 }
