@@ -33,6 +33,8 @@ this spec and the boards disagree, **the boards win and this spec is wrong**.
 | Shell | The `ACCOUNT` affordance lands in **all three nav modes** at once; `AppShell.test.tsx`'s absence assertion inverts |
 | Local sign-out | Clears local data unconditionally, online or off. The token dies with the database, so an unreachable server costs nothing (§7.3) |
 | Storage | `navigator.storage.persist()` on every session establishment — a token-only Device cannot self-recover (§9) |
+| QR code | **`uqr`** — 4.3 KB gzip, zero runtime deps, ESM, renders SVG directly. Wrapped as `ui/src/QrCode.tsx` (§6.4) |
+| Passkey names | **Named when added**, one prefilled field. Renaming later is **story 37**, Later |
 | Radix | **Deferred a third time**, with a named condition that ends it (§10) |
 | Not built | People & logins (§13 of the boards), in-app *join* Invites, disabling another Login — all S5, all behind S4 |
 
@@ -324,12 +326,78 @@ follow — the same rule `NavItem` already applies at rail mode. `Account` is th
 name; it does not carry the Person's name, for the reason the sidebar's count is
 `aria-hidden`: a name that changes as data loads is a name that reads as data.
 
-**The avatar takes its counts from nowhere.** `AppShell` renders *outside*
-`DepotProvider` ([§12.6](../architecture-design.md#126-consequences-of-the-r3-shell-round)),
+**The avatar carries an initial, and the chrome cannot read it.** The boards
+draw `M` inside the circle for Mark — folded state, from the Person the Login
+points at. But `AppShell` renders *outside* `DepotProvider`
+([§12.6](../architecture-design.md#126-consequences-of-the-r3-shell-round)),
 deliberately, so the nav never depends on a store the signed-out shell has never
-had. The avatar is a circle and an accessible name, both static. Account itself
-is a screen, renders inside the provider, and uses `useDepot()` normally to
-resolve the Person's name.
+had.
+
+The pattern for this is already set by the same section: **counts are handed in,
+not read.** `App` resolves the initial exactly where it resolves `depotCounts`
+and passes it to `AppShell` as a prop. A Login whose `person_id` matches no
+folded Person has no initial to draw — the half-finished bootstrap of
+[§2.1](../auth-design.md) — so the circle renders empty rather than with a
+placeholder letter, and the accessible name stays `Account` either way. Account
+*itself* is a screen, renders inside the provider, and uses `useDepot()`
+normally.
+
+### 6.4 The QR code needs a dependency, and which one was measured
+
+Boards §14 draw a real QR on a light tile — 126px including a 10px quiet zone —
+and it is not decoration. The whole point of a device link is reaching a phone
+that cannot be handed a 43-character base64url secret by any other means, so
+scanning is the primary path and typing is not a path at all.
+
+Nothing in the repo encodes QR, and hand-rolling one is not the trade it looks
+like: byte-mode encoding, Reed–Solomon error correction over GF(256), mask
+selection with penalty scoring and format bits, whose failure mode is a code
+that scans on the author's phone and not on anyone else's. So a dependency —
+chosen by measuring rather than by reputation. Minified and gzipped through
+`esbuild`, bundling only the SVG path each library actually needs:
+
+| Package | min | **gzip** | Runtime deps | Notes |
+| --- | --- | --- | --- | --- |
+| **`uqr`** | 11.0 KB | **4.3 KB** | **none** | ESM, TypeScript, SVG out, MIT, `unjs` |
+| `@nuintun/qrcode` | 26.0 KB | 8.5 KB | `tslib` | |
+| `qrcode` | 24.9 KB | 9.7 KB | `pngjs`, `dijkstrajs`, `yargs` | CJS; the CLI and PNG paths resist tree-shaking |
+
+`uqr` is under half the nearest alternative and the only candidate with no
+runtime dependencies. It returns an SVG **string** with a `viewBox`, so it
+scales to the board's 126px without a canvas, without a `data:` URI, and
+without anything the CSP has to be widened for. `renderSVG(link, { border: 1,
+whiteColor: '#F0EBDD', blackColor: '#151A15' })` produces exactly the drawn
+tile — verified against a real 43-character secret in a full join URL.
+
+**The honest caveat: it is pre-1.0** (0.1.3). Three things make that a small
+risk rather than a live one — it has no dependencies to rot, the QR
+specification is frozen so there is nothing to keep up with, and the encoder is
+self-contained enough to vendor into `ui/` if it were ever abandoned. The
+dependency lands in **`ui/`**, behind `ui/src/QrCode.tsx`, per
+[frontend-design §5](../frontend-design.md)'s rule that a primitive is reached
+through a wrapper rather than imported at each call site.
+
+### 6.5 A passkey is named when it is added
+
+Boards §11 show rows reading `Pixel 9` and `YubiKey, desk drawer`. The second
+cannot be derived — no authenticator reports which drawer it lives in — so a
+label is user-authored. But [§6.3](../auth-design.md) offers "rename or remove"
+while the boards draw only `REMOVE`, which leaves the label with no origin at
+all: every row would render null.
+
+Resolved by naming at the moment of adding, which is also the only moment the
+person reliably knows what the thing is. The add-a-passkey flow carries **one
+field, prefilled with `deviceLabelFrom(userAgent)`** — already implemented in
+`api/src/auth/session.ts`, already yielding `Firefox on Android` — and editable
+before the ceremony's result is saved. A field left as it came still produces a
+useful row.
+
+**Renaming later is story 37, Later, and out of this slice.** It matters only
+once a list has gone stale, which needs several passkeys to happen at all; a
+prefilled field at the moment of creation covers the case that actually recurs.
+So `DELETE /auth/passkeys/:id` is in S3.5 and there is no `PATCH`. A board
+departure in the same direction as §8's: the boards draw a label with no way to
+set one, and this slice gives it exactly one way rather than two.
 
 ## 7. Sign out this device — the one auth action that can discard work
 
@@ -476,9 +544,9 @@ is the last moment the count is small enough that one commit can carry it.
   of them, the case is not reachable. §11 of the auth design now records the
   shape so the household that first reaches it raises a story rather than
   re-deriving the design.
-- **A passkey label taxonomy.** `passkey.label` exists and stays user-set or
-  null; deriving `YubiKey, desk drawer` from an AAGUID is [§14](../auth-design.md)'s
-  open question and not this slice's.
+- **Renaming a passkey.** Now **story 37**, Later — see §6.5. Naming happens
+  once, when the passkey is added. Deriving a label from an AAGUID stays
+  [§14](../auth-design.md)'s open question and is not this slice's either.
 - **Step-up auth** before a destructive act. [§11](../auth-design.md) defers it
   and nothing here changes the argument.
 
@@ -571,12 +639,14 @@ The durable docs this slice changes, and the one it must not.
   committing the drop**: R3's boards came back generated from a pre-S3 base and
   silently reverted four annotations recording what had already shipped. The
   boards cannot know what the code did after they were last drawn.
-- **`user-stories.md`** — stories **27** and **29** are amended. Both frame the
+- **`user-stories.md`** — story **37** (name a Passkey after the fact) is added,
+  Later, placed late in that section's want-order because renaming needs a list
+  that has already gone stale. Stories **27** and **29** are amended. Both frame the
   fallback purely as a Device that *cannot* hold a Passkey, and §2 shows the
   need is also a Device that can only offer to keep one somewhere its owner has
   chosen not to. Story 27 additionally gains the §8 door: declining is "a plain
   choice offered alongside making one, not a failure I have to provoke."
   Problem-level throughout, naming no platform and no vendor. Stories 28, 30 and
-  31 are unchanged and no new story is added — the recovery code of §11 is
-  recorded in `auth-design.md` §11 instead, unnumbered, because it is not what
-  this slice builds.
+  31 are unchanged. The **recovery code** of §11 stays unnumbered, recorded in
+  `auth-design.md` §11 rather than as a story, because unlike the rename it is
+  not a thing anyone has yet needed.

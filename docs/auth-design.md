@@ -339,9 +339,13 @@ browser profile in a kiosk.
 
 Under Account, a Login can: add a passkey on the current Device
 (`/auth/passkeys/options` + `/verify`, same ceremony as §3.5 but authenticated
-and appending to an existing Login); rename or remove a passkey — removing the
+and appending to an existing Login), **naming it as it is added** — one field
+prefilled with the derived Device label, which is the only moment the person
+reliably knows what the credential is; remove a passkey — removing the
 last one is allowed but warned about, since it drops the Login to the
-device-link-only mode of §5 rather than locking it out; see all
+device-link-only mode of §5 rather than locking it out; (**renaming one
+afterwards is story 37, Later** — it matters only once a list has gone stale,
+which needs several passkeys to happen at all, so S3.5 ships no `PATCH`); see all
 Devices with a coarse label derived from the User-Agent (`Firefox on Android`)
 and a `last seen`; sign out any of them; issue a device link for itself; and
 issue or revoke Invites for other People.

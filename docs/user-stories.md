@@ -736,6 +736,27 @@ Acceptance criteria:
     packed; Home and storage locations (of Gear and of Containers); Participant
     names and Ownership; Pre-trip tasks; Trip notes; and any other free-text.
 
+### 37. Name a Passkey after the fact
+
+As a Quartermaster, whenever my Passkeys list stops telling me which is which, I
+want to rename one, so that revoking the right credential is a decision I can
+make from the list rather than by trial and error.
+
+Acceptance criteria:
+
+- I can rename any Passkey on my Login, at any time, to whatever tells me what
+  it is — `YubiKey, desk drawer`, not `Chrome on Windows` for the third time.
+- The name it starts with is the one I gave it when I added it (story 29); this
+  story is only about changing that name later.
+- A rename changes nothing about the credential itself: the same Passkey keeps
+  signing me in, on the same Devices, and nothing needs re-enrolling.
+- The name is mine to see. It is never shown outside my Login and never
+  identifies a Device to anyone else in the Household.
+
+Scope note: **Later.** Naming at the moment of adding covers the case that
+matters, because that is the moment you know what the thing is. Renaming is for
+the list that has gone stale, which needs several Passkeys to happen at all.
+
 ### 25. Rich Weight analysis
 
 As a Quartermaster, during planning of weight-critical Trips, I want the full
