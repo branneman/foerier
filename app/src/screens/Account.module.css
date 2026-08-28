@@ -224,7 +224,7 @@
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
-    border: 1px solid rgb(147 188 159 / 0.5);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 50%, transparent);
     border-radius: 3px;
     padding: 2px 5px;
   }
