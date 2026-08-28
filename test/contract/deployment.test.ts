@@ -9,10 +9,12 @@ import { describe, expect, it } from 'vitest'
  * API needs, that the relying party and the CORS allowlist are the production
  * ones, and that both images are actually serving.
  *
- * **No household, no credentials.** The charter's household-scoped suite waits
- * for domain behaviour to exist (S2); everything here is reachable
- * unauthenticated, which is what lets this tier run from the first deploy
- * rather than from the first feature.
+ * **Everything in this file is reachable unauthenticated**, which is what lets
+ * it run from the first deploy rather than from the first feature — and still
+ * run on a fork's pull request, which has no secrets. The household-scoped
+ * suite it once said it was waiting for now exists next door, in
+ * `household.test.ts`: it signs in with CI's one credential and skips itself
+ * without it.
  */
 
 const API = process.env.CONTRACT_API_URL ?? 'https://api.foerier.app'
