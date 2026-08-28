@@ -3,6 +3,29 @@ import { describe, expect, it } from 'vitest'
 
 import { Logo, Mark } from './Logo'
 
+describe('Logo', () => {
+  /**
+   * The mark's own doc has always said announcing it beside the wordmark
+   * "would make a screen reader say foerier twice" — but `title` was passed
+   * straight through, so every caller that wanted a named logo got exactly
+   * that. The rule belongs here, where it cannot be got wrong per call site.
+   */
+  it('never announces the mark while the wordmark is visible', () => {
+    render(<Logo title="foerier" />)
+    expect(screen.getByTestId('foerier-mark')).toHaveAttribute(
+      'role',
+      'presentation',
+    )
+    // The wordmark is the accessible name, and there is exactly one of it.
+    expect(screen.getAllByText('foerier')).toHaveLength(1)
+  })
+
+  it('lets the mark carry the name when it stands alone', () => {
+    render(<Logo markOnly title="foerier" />)
+    expect(screen.getByTestId('foerier-mark')).toHaveAttribute('role', 'img')
+  })
+})
+
 describe('Mark', () => {
   it('drops the seams at small sizes', () => {
     // The design boards make this a rule rather than a preference: below ~20px

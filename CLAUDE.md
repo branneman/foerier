@@ -73,8 +73,12 @@ three worth knowing before touching this area:
 **Person and Ownership as two more rows in S3's dimension table**, which is
 how story 4's narrowing is delivered rather than as a second, private filter.
 
-**Two debts ride along.** There is no Account screen, so `sign out this
-device` has no button. `unsyncedCount()` already has a caller —
+**Two debts ride along.** There is no Account screen — which is now three
+missing affordances rather than one, since the R3 shell round settled an
+`ACCOUNT` row in the desktop sidebar, an avatar on the Split rail, and an
+avatar in the phone header, and all three wait on the same screen
+([§12.6](docs/architecture-design.md#126-consequences-of-the-r3-shell-round)).
+`sign out this device` has no button for the same reason. `unsyncedCount()` already has a caller —
 `app/src/App.tsx:145` feeds it to the sign-in screen's session-lost line
 (§12.3) — but `clearLocalData()` (`app/src/depot/wiring.ts:243`), the action
 that button would trigger, is genuinely uncalled. The **401 contract

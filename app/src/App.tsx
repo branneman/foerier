@@ -1,5 +1,12 @@
 import { startAuthentication } from '@simplewebauthn/browser'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { depotCounts } from '@foerier/shared'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { Redirect, Route, Switch, useLocation } from 'wouter'
 import { useStore } from 'zustand'
 import type { StoreApi } from 'zustand/vanilla'
@@ -59,6 +66,7 @@ function SignedInShell({
 }) {
   const sync = useStore(store, (depot) => depot.sync)
   const bootstrap = useStore(store, (depot) => depot.bootstrap)
+  const counts = useDestinationCounts(store)
 
   useEffect(() => {
     if (sync === 'signed-out') onSignedOut(store)
@@ -78,10 +86,37 @@ function SignedInShell({
   }
 
   return (
-    <AppShell syncLine={syncLine(sync)} syncTone={syncTone(sync)}>
+    <AppShell
+      syncLine={syncLine(sync)}
+      syncTone={syncTone(sync)}
+      counts={counts}
+    >
       <DepotProvider value={store}>{children}</DepotProvider>
     </AppShell>
   )
+}
+
+/**
+ * The counts the desktop sidebar draws beside each destination
+ * (`Screens A` §02's SIDEBAR ANATOMY: `DEPOT 128 · TRIPS 3 · FIND` none).
+ *
+ * `/trips` has no entry, and that is the honest state rather than an
+ * oversight — there are no Trips until S6, so a count would be a zero nobody
+ * asked about. `/find` never carries one: it answers a question, it does not
+ * hold a collection.
+ *
+ * Read here rather than inside `AppShell` because the shell is rendered
+ * *outside* the `DepotProvider` — deliberately, so the nav does not depend on
+ * a store the signed-out shell has never had.
+ */
+function useDestinationCounts(
+  store: StoreApi<DepotStoreState>,
+): Readonly<Partial<Record<string, number>>> {
+  const state = useStore(store, (depot) => depot.state)
+  // `depotCounts` sorts the whole depot, so it is memoed on the fold rather
+  // than recomputed on every sync tick.
+  const gear = useMemo(() => depotCounts(state).gear, [state])
+  return { '/': gear }
 }
 
 /** Offline is normal, and surfaced as one quiet line rather than a dialog.

@@ -1,0 +1,8 @@
+@layer components {
+  /* Colour comes from the row, never from the icon: the active state is
+     expressed once by the parent rather than once per icon. */
+  .icon {
+    color: inherit;
+    flex: none;
+  }
+}

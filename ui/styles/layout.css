@@ -52,7 +52,11 @@
   @media (min-width: 52em) {
     .shell {
       --nav-size: 3.5rem; /* 56px icon rail */
-      grid-template-rows: auto 1fr;
+      /* One row, not two: from Split up the sync line moves into the nav
+         column, so there is no header band left above the main pane
+         (`docs/design/README.md` §2's SIDEBAR ANATOMY — "never in the main
+         column at desktop"). */
+      grid-template-rows: 1fr;
       grid-template-columns: var(--nav-size) 1fr;
     }
   }

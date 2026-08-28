@@ -1,0 +1,171 @@
+import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { Router } from 'wouter'
+import { memoryLocation } from 'wouter/memory-location'
+
+import { setViewport } from '../testSetup'
+import { AppShell } from './AppShell'
+import { DESKTOP, SPLIT } from './useMediaQuery'
+
+/**
+ * The shell's three nav treatments (`frontend-design.md` §3.1, and the
+ * **SIDEBAR ANATOMY** card on `Screens A` §02 as settled in R3):
+ *
+ * | Mode | Nav | Sync |
+ * | --- | --- | --- |
+ * | below Split | bottom tabs, three labels | header line |
+ * | Split 52–64em | 56px icon rail, logo mark on top | **dot only**, in the rail |
+ * | Desktop ≥64em | 216px sidebar, logo + wordmark, counts | **line**, in the sidebar |
+ *
+ * Which *elements exist* differs per mode — icons versus labels, count versus
+ * no count — so the mode comes from a media query rather than from CSS.
+ * Hiding a count with `display: none` at phone width would leave it in the
+ * accessibility tree on a board that does not draw it (`frontend-design.md`
+ * §3.2's own rule).
+ */
+
+function renderShell(
+  path = '/',
+  props: Partial<Parameters<typeof AppShell>[0]> = {},
+) {
+  const location = memoryLocation({ path, record: true })
+  render(
+    <Router hook={location.hook}>
+      <AppShell syncLine="SYNCED 14:32" syncTone="reachable" {...props}>
+        <p>screen</p>
+      </AppShell>
+    </Router>,
+  )
+  return screen.getByRole('navigation', { name: 'Sections' })
+}
+
+describe('AppShell — bottom tabs, below Split', () => {
+  it('offers exactly the three destinations, as labels', () => {
+    // Three, not four: Account is reached from the avatar rather than the tab
+    // bar (`docs/design/README.md` §11).
+    const nav = renderShell()
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Depot', 'Trips', 'Find'])
+  })
+
+  it('draws no icons and no logo in the tab bar', () => {
+    const nav = renderShell()
+    expect(within(nav).queryByTestId('icon-depot')).toBeNull()
+    expect(within(nav).queryByTestId('foerier-mark')).toBeNull()
+  })
+
+  it('keeps the sync line in the header, not in the nav', () => {
+    const nav = renderShell()
+    expect(screen.getByText('SYNCED 14:32')).toBeInTheDocument()
+    expect(within(nav).queryByText('SYNCED 14:32')).toBeNull()
+  })
+
+  it('shows no counts, because the tab bar draws none', () => {
+    const nav = renderShell('/', { counts: { '/': 128 } })
+    expect(within(nav).queryByText('128')).toBeNull()
+  })
+})
+
+describe('AppShell — the icon rail at Split', () => {
+  it('draws the mark and an icon per destination', () => {
+    setViewport(SPLIT)
+    const nav = renderShell()
+
+    expect(within(nav).getByTestId('foerier-mark')).toBeInTheDocument()
+    expect(within(nav).getByTestId('icon-depot')).toBeInTheDocument()
+    expect(within(nav).getByTestId('icon-trips')).toBeInTheDocument()
+    expect(within(nav).getByTestId('icon-find')).toBeInTheDocument()
+  })
+
+  it('keeps each destination reachable by name, though the label is not drawn', () => {
+    setViewport(SPLIT)
+    const nav = renderShell()
+    // A 56px rail has no room for a label, but a link with no accessible name
+    // is a link nobody can follow.
+    expect(within(nav).getByRole('link', { name: 'Depot' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Trips' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Find' })).toBeInTheDocument()
+  })
+
+  // 56px is too narrow for `SYNCED 14:32`, so the rail carries the dot alone —
+  // the state, without the timestamp.
+  it('carries the sync dot alone, with the state still announced', () => {
+    setViewport(SPLIT)
+    const nav = renderShell()
+
+    expect(within(nav).getByTestId('sync-dot')).toBeInTheDocument()
+    expect(screen.queryByText('SYNCED 14:32')).toBeNull()
+    expect(within(nav).getByTestId('sync-dot')).toHaveAccessibleName(
+      'SYNCED 14:32',
+    )
+  })
+})
+
+describe('AppShell — the sidebar at Desktop', () => {
+  it('draws the full wordmark and labelled rows', () => {
+    setViewport(SPLIT, DESKTOP)
+    const nav = renderShell()
+
+    expect(within(nav).getByText('foerier')).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /Depot/ })).toBeInTheDocument()
+    expect(within(nav).queryByTestId('icon-depot')).toBeNull()
+  })
+
+  it('shows a count where one is handed to it, and nothing where none is', () => {
+    setViewport(SPLIT, DESKTOP)
+    const nav = renderShell('/', { counts: { '/': 128 } })
+
+    expect(within(nav).getByRole('link', { name: /Depot/ })).toHaveTextContent(
+      '128',
+    )
+    // Trips has no count until trips exist; Find never has one.
+    expect(
+      within(nav).getByRole('link', { name: /Trips/ }),
+    ).not.toHaveTextContent(/\d/)
+  })
+
+  it('moves the sync line into the sidebar, out of the main column', () => {
+    setViewport(SPLIT, DESKTOP)
+    const nav = renderShell()
+    // "The sync line lives in the sidebar beneath ACCOUNT — never in the main
+    // column at desktop" (SIDEBAR ANATOMY, Screens A §02).
+    expect(within(nav).getByText('SYNCED 14:32')).toBeInTheDocument()
+    expect(screen.getAllByText('SYNCED 14:32')).toHaveLength(1)
+  })
+
+  it('marks the current destination', () => {
+    setViewport(SPLIT, DESKTOP)
+    const nav = renderShell('/trips')
+
+    expect(within(nav).getByRole('link', { name: /Trips/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(
+      within(nav).getByRole('link', { name: /Depot/ }),
+    ).not.toHaveAttribute('aria-current')
+  })
+})
+
+/**
+ * The design settles an `ACCOUNT` row pinned to the bottom of the sidebar, a
+ * matching avatar on the Split rail, and an avatar in the phone header. None
+ * is built, and all three are blocked on the same thing: **there is no Account
+ * screen** — it belongs to auth slice 4 (story 30). An affordance that leads
+ * nowhere is worse than a missing one, so the anatomy lands now and its entry
+ * points land with the screen they open.
+ */
+describe('AppShell — the account affordance', () => {
+  it('offers none, in any mode, while there is no Account screen', () => {
+    for (const viewport of [[], [SPLIT], [SPLIT, DESKTOP]]) {
+      setViewport(...viewport)
+      const nav = renderShell()
+      expect(within(nav).queryByRole('link', { name: /account/i })).toBeNull()
+      expect(within(nav).queryByTestId('account-avatar')).toBeNull()
+      screen.getByRole('navigation', { name: 'Sections' }).remove()
+    }
+  })
+})

@@ -1,42 +1,184 @@
 @layer components {
   .nav {
-    grid-row: 3;
     display: flex;
-    border-top: var(--stroke-rule) solid var(--color-rule);
     background: var(--color-bg-surface);
   }
 
-  .navItem {
-    flex: 1;
-    display: flex;
+  /* ---- Bottom tabs, below Split ---- */
+  .nav-tabs {
+    grid-row: 3;
+    border-top: var(--stroke-rule) solid var(--color-rule);
+  }
+
+  /*
+   * From Split up the nav is a column on the left, and the sync marker moves
+   * into it — "never in the main column at desktop" (SIDEBAR ANATOMY,
+   * Screens A §02).
+   */
+  .nav-rail,
+  .nav-sidebar {
+    grid-row: 1 / -1;
+    grid-column: 1;
     flex-direction: column;
+    border-right: var(--stroke-rule) solid var(--color-rule);
+  }
+
+  /* 56px rail: 40px squares, nothing wider fits. */
+  .nav-rail {
     align-items: center;
+    gap: var(--space-4);
+    padding-block: var(--space-16);
+  }
+
+  /* 216px sidebar: padding 18/14, row gap 4 (SIDEBAR ANATOMY). */
+  .nav-sidebar {
+    gap: var(--space-4);
+    padding: 1.125rem 0.875rem;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    /* 14 below the logo, per the anatomy card. */
+    padding: 0 var(--space-8) 0.875rem;
+    color: var(--color-ink-primary);
+  }
+
+  .nav-rail .brand {
+    padding-inline: 0;
+  }
+
+  .navItem {
+    display: flex;
+    align-items: center;
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    text-decoration: none;
+  }
+
+  /* Tabs: the shipped treatment, unchanged — label above the thumb, 56px
+     minimum target. */
+  .tabs {
+    flex: 1;
+    flex-direction: column;
     justify-content: center;
     gap: var(--space-4);
     min-height: max(3.5rem, 56px);
     padding-block: var(--space-8);
-    border: 0;
-    background: none;
-    color: var(--color-ink-muted);
     font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
-    text-decoration: none;
   }
 
-  .navItem[aria-current='page'] {
+  .rail {
+    justify-content: center;
+  }
+
+  /* The 40px square the icon sits in — and the same square the ACCOUNT
+     avatar will take when the Account screen exists. */
+  .railSquare {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+  }
+
+  /* Sidebar row: padding 8/10, radius 8, label mono 10.5, count right. */
+  .sidebar {
+    justify-content: space-between;
+    gap: var(--space-8);
+    min-height: 2.25rem;
+    padding: var(--space-8) 0.625rem;
+    border-radius: var(--radius-control);
+    font-family: var(--font-mono);
+    font-size: 0.65625rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-primary);
+  }
+
+  .count {
+    font-size: 0.625rem;
+    color: var(--color-ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .navItem:hover {
+    background: var(--color-bg-surface);
+  }
+
+  .nav-sidebar .navItem:hover {
+    background: var(--color-bg-base);
+  }
+
+  /* ---- Active, per treatment ---- */
+  .tabs[aria-current='page'] {
+    color: var(--color-accent);
+    box-shadow: inset 0 2px 0 var(--color-accent);
+  }
+
+  /* The raised square, not a colour swap: at 56px there is no label to
+     recolour. */
+  .rail[aria-current='page'] .railSquare {
+    background: var(--color-bg-raised);
     color: var(--color-accent);
   }
 
+  /* Active row: padding 9/10, bg #28312A, label 10/600 ls .1em accent, count
+     muted (SIDEBAR ANATOMY). */
+  .sidebar[aria-current='page'] {
+    padding-block: 0.5625rem;
+    background: var(--color-bg-raised);
+    color: var(--color-accent);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+  }
+
+  .sidebar[aria-current='page'] .count {
+    color: var(--color-ink-muted);
+  }
+
+  /* Pinned to the bottom — and where the ACCOUNT row goes once the Account
+     screen exists (auth slice 4, story 30). */
+  .navFoot {
+    display: flex;
+    flex-direction: column;
+    margin-top: auto;
+  }
+
+  .nav-sidebar .navFoot {
+    padding: 0.75rem 0.625rem 0;
+  }
+
+  .header,
   .syncLine {
     display: flex;
     align-items: center;
     gap: var(--space-8);
-    padding: var(--space-8) var(--gutter);
     color: var(--color-ink-faint);
     font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
+  }
+
+  .header {
+    padding: var(--space-8) var(--gutter);
+  }
+
+  .syncLine {
+    font-size: 0.5625rem;
+    color: var(--color-ink-muted);
+    letter-spacing: 0.06em;
+  }
+
+  .railSync {
+    display: flex;
+    justify-content: center;
+    padding-block: var(--space-8);
   }
 
   .syncDot {
@@ -44,6 +186,7 @@
     height: 0.375rem;
     border-radius: var(--radius-pill);
     background: var(--color-accent);
+    flex: none;
   }
 
   /* Amber, not red: unreachable is a fact about the network, never an error
@@ -64,23 +207,5 @@
     font: var(--text-display) var(--font-display);
     font-weight: 700;
     color: var(--color-ink-primary);
-  }
-
-  /*
-   * Split (52em) and Desktop (64em): the bottom tab bar becomes a side rail,
-   * then a labeled sidebar (frontend-design.md §3.1).
-   */
-  @media (min-width: 52em) {
-    .nav {
-      grid-row: 1 / -1;
-      grid-column: 1;
-      flex-direction: column;
-      border-top: 0;
-      border-right: var(--stroke-rule) solid var(--color-rule);
-    }
-
-    .navItem {
-      flex: 0 0 auto;
-    }
   }
 }

@@ -1244,16 +1244,17 @@ byte-exact.
   which panes or elements *exist*, a **container** query decides how what
   exists *lays out*. Desktop deliberately keeps no detail pane; the board's
   1024 frame spends that width on the table.
-- **The Depot's desktop `PLACES` sidebar is deferred, and the reason is a
-  design gap rather than scope.** §2's desktop frame draws a 216px sidebar
-  holding logo · ALL GEAR · PLACES · sync line, and draws no nav at all — but
-  [frontend-design §3.1](frontend-design.md) gives Desktop a **labeled nav
-  sidebar** at that exact width, so building both put two 216px rails side by
-  side. It was built, seen to be wrong at a real viewport, and removed. The
-  deciding argument is that a `PLACES` list has nothing to do: **Place is not
-  a dimension** — not in S3 and not anywhere in §8.5's ladder — so the list
-  could only ever have been decorative. It should return with a Place
-  dimension, and the board's desktop frame owes a nav treatment either way.
+- **The Depot's desktop `PLACES` sidebar was built, seen to be wrong at a real
+  viewport, and removed — and the design round that followed agreed.** §2's
+  desktop frame drew a 216px sidebar holding logo · ALL GEAR · PLACES · sync
+  line and no nav at all, while [frontend-design §3.1](frontend-design.md)
+  gives Desktop a **labeled nav sidebar** at that exact width, so building both
+  put two 216px rails side by side. The deciding argument was never layout:
+  **Place is not a dimension** — not in S3 and not anywhere in §8.5's ladder —
+  so a `PLACES` list could only ever have been decorative. Design round 3
+  settled it the same way ([§12.6](#126-consequences-of-the-r3-shell-round)):
+  the sidebar is the app nav, `PLACES` is retired outright, and Components
+  §05's containment tree is tagged retired with it for want of an entry point.
 - **Two board elements ship changed, both because story 36 (Undo) is Later.**
   Add gear's confirmation line has no `UNDO` — the board specifies "removes
   the op", which an append-only log that may already have pushed cannot do,
@@ -1272,3 +1273,47 @@ byte-exact.
   persist per device; `localStorage` because it is **synchronous**, and an
   async `META_STORE` read would paint the default sort on the most-visited
   screen and then flip it. It holds no household data and must not.
+
+### 12.6 Consequences of the R3 shell round
+
+The design round that answered S3's open question, and the code that followed
+it. The question was which of two boards owned the 216px Desktop slot; the
+answer is **the app nav, one spec on every desktop screen**, with `PLACES`
+retired outright.
+
+- **The shell now has three nav treatments, and picks between them in JS.**
+  Bottom tabs below Split; a 56px **icon** rail at Split; a 216px labeled
+  sidebar at Desktop. A media query and not CSS, because the treatments differ
+  in **which elements exist** — icons versus labels, a count versus none — and
+  hiding the surplus with `display: none` would leave a count in the
+  accessibility tree at phone width, on a board that draws none there. This is
+  [frontend-design §3.2](frontend-design.md)'s own rule, applied a second time
+  and for the same reason `GearRow`'s table variant is a prop.
+- **The sync line moved into the nav from Split up**, and the shell grid lost
+  the header row with it. The SIDEBAR ANATOMY card is explicit — "never in the
+  main column at desktop" — and at Split the 56px rail carries the **dot
+  alone**, which is then the element that has to announce the state, since no
+  text sits beside it.
+- **Counts are handed in, not read.** `AppShell` renders *outside* the
+  `DepotProvider` — deliberately, so the nav never depends on a store the
+  signed-out shell has never had — so `App` reads `depotCounts` and passes a
+  map keyed by href. `/trips` has no entry until S6 and `/find` never gets
+  one; a destination with no entry simply draws no count, which is how the
+  board reads it.
+- **The `ACCOUNT` affordance is settled and unbuilt, in all three modes.** R3
+  draws a sidebar row pinned bottom, a rail avatar, and a phone header avatar.
+  None is built, and all three are blocked on the same thing: **there is no
+  Account screen** — auth slice 4's (story 30), specified as a whole screen in
+  `docs/design/README.md` §11. An affordance that leads nowhere is worse than
+  a missing one, so the anatomy landed now and its entry points land with the
+  screen they open. The sidebar's `margin-top: auto` group is already the slot.
+- **`Logo` had been announcing "foerier" twice** wherever it was given a
+  `title` — its own doc said the mark "would make a screen reader say foerier
+  twice" beside the wordmark, while `title` was passed straight through. Three
+  call sites were doing exactly that. The rule now lives in `Logo`: a `title`
+  reaches the mark only when the mark stands alone.
+- **`ui/` gained the `Icon` set** ([frontend-design §5](frontend-design.md)'s
+  assignment) — three inline SVGs transcribed from the rail, `currentColor`
+  throughout so the active state is expressed once by the row rather than
+  twice per icon, and decorative by default because the link beside them
+  already carries the name.

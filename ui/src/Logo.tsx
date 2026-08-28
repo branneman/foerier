@@ -65,9 +65,16 @@ export interface LogoProps extends MarkProps {
 }
 
 export function Logo({ size = 28, markOnly = false, title }: LogoProps) {
+  // `title` reaches the mark **only when the mark is alone**. Beside the
+  // wordmark it is decoration, and naming it would make a screen reader say
+  // "foerier" twice — which `Mark`'s own doc has always said, while `title`
+  // was passed straight through and every caller wanting a named logo got
+  // exactly that. The rule lives here rather than at each call site, where it
+  // was already wrong in three of them.
+  const named = markOnly && title !== undefined
   return (
     <span className={styles['logo']} data-testid="foerier-logo">
-      <Mark size={size} {...(title === undefined ? {} : { title })} />
+      <Mark size={size} {...(named ? { title } : {})} />
       {!markOnly && <span className={styles['wordmark']}>foerier</span>}
     </span>
   )

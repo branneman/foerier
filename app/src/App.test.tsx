@@ -20,6 +20,8 @@ import {
   type FakeServer,
 } from './depot/transport'
 import { createSessionDepot, type DepotFactory } from './depot/wiring'
+import { DESKTOP, SPLIT } from './shell/useMediaQuery'
+import { setViewport } from './testSetup'
 
 const A_SESSION: Session = {
   token: 'foe_test',
@@ -131,6 +133,65 @@ describe('the sync line', () => {
     renderAt('/')
 
     expect(await screen.findByText('SYNCED')).toBeVisible()
+  })
+
+  /**
+   * "The sync line lives in the sidebar beneath ACCOUNT — never in the main
+   * column at desktop" (SIDEBAR ANATOMY, `Screens A` §02, R3).
+   */
+  it('moves into the sidebar at desktop rather than sitting above the screen', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderAt('/')
+
+    const nav = await screen.findByRole('navigation', { name: 'Sections' })
+    expect(within(nav).getByText('SYNCED')).toBeVisible()
+    expect(screen.getAllByText('SYNCED')).toHaveLength(1)
+  })
+})
+
+/**
+ * The desktop sidebar's counts (`Screens A` §02): `DEPOT 128 · TRIPS 3 ·
+ * FIND` none. Only the Depot count exists today — Trips arrive at S6, and
+ * Find never carries one.
+ */
+describe('the desktop sidebar counts', () => {
+  async function aDepotOf(names: readonly string[]): Promise<OpLog> {
+    const log = inMemoryOpLog()
+    for (const [index, name] of names.entries()) {
+      await log.append({
+        id: `eeeeeeee-0000-7000-8000-00000000010${index}`,
+        household_id: A_SESSION.householdId,
+        aggregate: 'gear',
+        aggregate_id: `eeeeeeee-0000-7000-8000-00000000020${index}`,
+        type: 'gear.recorded',
+        hlc: `2026-08-25T10:00:0${index}.000Z-0001`,
+        device_id: A_SESSION.deviceId,
+        payload: { name, container: false, kind: 'single' },
+      })
+    }
+    return log
+  }
+
+  it('counts the depot beside DEPOT', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderAt('/', { log: await aDepotOf(['Zeltbahn', 'Feldflasche']) })
+
+    const nav = await screen.findByRole('navigation', { name: 'Sections' })
+    expect(within(nav).getByRole('link', { name: /Depot/ })).toHaveTextContent(
+      '2',
+    )
+  })
+
+  it('gives Trips no count, because there are no trips yet', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderAt('/', { log: await aDepotOf(['Zeltbahn']) })
+
+    const nav = await screen.findByRole('navigation', { name: 'Sections' })
+    // A zero nobody asked about would be worse than nothing: S6 brings the
+    // count with the feature.
+    expect(
+      within(nav).getByRole('link', { name: /Trips/ }),
+    ).not.toHaveTextContent(/\d/)
   })
 })
 
