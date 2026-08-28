@@ -8,7 +8,8 @@ import { createDb } from '../db/index.ts'
 /**
  * Households and their Logins (`auth-design.md` §5).
  *
- *   npm run admin:list
+ *   npm run admin:list   (local)
+ *   node dist/list.js    (in the api image)
  *
  * Load-bearing rather than a convenience: `admin:invite --login <id>` cannot
  * be used without a way to find the id, and the alternative is the Maintainer
@@ -34,7 +35,14 @@ async function main(): Promise<void> {
 
     const households = await service.listHouseholds()
     if (households.length === 0) {
-      console.log('No households. Run admin:bootstrap to create one.')
+      // Named for the environment this run is actually in — the local form
+      // is not a runnable command inside the container (`build.js`'s comment
+      // on why all three scripts ship there).
+      const bootstrapHint =
+        mode === 'production'
+          ? 'node dist/bootstrap.js --name "..."'
+          : 'npm run admin:bootstrap -- --name "..."'
+      console.log(`No households. Run ${bootstrapHint} to create one.`)
       return
     }
 

@@ -32,22 +32,30 @@ await esbuild.build({
 })
 
 /**
- * The Maintainer bootstrap, as a second entrypoint.
+ * The three Maintainer scripts, as further entrypoints.
  *
- * It ships in the image because the database it writes to is reachable only
+ * They ship in the image because the database they act on is reachable only
  * from inside the deployment — there is no public port and no intent to open
  * one. `auth-design.md` §3.4 defines the Maintainer as whoever has server
- * access, so the script belongs where the server is; without this it could
- * only ever create Households in a developer's local Postgres.
+ * access, so the scripts belong where the server is; without this they could
+ * only ever run against a developer's local Postgres, and in production
+ * there would be no way to mint the first Login of a Household, find an
+ * existing one's id, or issue the one break-glass device link that gets a
+ * locked-out Maintainer back in.
  *
- * Running it in the image is also what makes the join link correct by
- * construction: the image sets NODE_ENV=production, and that is the flag the
- * script reads to decide which origin to print. A link printed against the
- * wrong origin fails as a passkey ceremony the browser refuses for an RP ID
- * mismatch, which reads as a bug rather than as a wrong URL.
+ * Running them in the image is also what makes each one correct by
+ * construction rather than merely present: the image sets NODE_ENV=production,
+ * and that is the flag every script reads both to decide which origin a
+ * printed link defaults to and to choose its own usage string. A link printed
+ * against the wrong origin fails as a passkey ceremony the browser refuses
+ * for an RP ID mismatch, which reads as a bug rather than as a wrong URL; a
+ * usage string naming the local `npm run` invocation, printed to someone who
+ * only has a shell inside the container, is a dead end.
  */
-await esbuild.build({
-  ...shared,
-  entryPoints: ['src/admin/bootstrap.ts'],
-  outfile: 'dist/bootstrap.js',
-})
+for (const [entryPoint, outfile] of Object.entries({
+  'src/admin/bootstrap.ts': 'dist/bootstrap.js',
+  'src/admin/invite.ts': 'dist/invite.js',
+  'src/admin/list.ts': 'dist/list.js',
+})) {
+  await esbuild.build({ ...shared, entryPoints: [entryPoint], outfile })
+}
