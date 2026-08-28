@@ -45,6 +45,8 @@ export interface PasskeyTable {
   aaguid: string | null
   uv_seen: ColumnType<boolean, boolean | undefined, boolean>
   label: string | null
+  /** The Device that enrolled this Passkey; null for rows predating 0004. */
+  created_on_device: ColumnType<string | null, string | null, string | null>
   created_at: CreatedAt
   last_used_at: Date | null
 }
@@ -68,6 +70,16 @@ export interface InviteTable {
   household_id: string
   person_id: string
   purpose: InvitePurpose
+  /**
+   * Whether the Person this Invite names is already in the op log.
+   *
+   * `false` means the joiner names themselves and the client emits
+   * `person.recorded` with this row's `person_id`. Written by whoever issues
+   * the Invite — never derived, which is the whole point of the column.
+   * `ColumnType` with a required insert: there is no default, so forgetting it
+   * is a compile error rather than a silent `true`.
+   */
+  person_recorded: ColumnType<boolean, boolean, boolean>
   secret_hash: Uint8Array
   login_id: string | null
   created_by_login: string | null

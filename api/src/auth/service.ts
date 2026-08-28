@@ -175,8 +175,9 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
       expiresAt: Date
       personId: string
       /**
-       * False for a brand-new Household's first Invite, which is what sends
-       * the client down the "name yourself" path (`docs/design/README.md` §9).
+       * False when the joiner names themselves — the client then emits
+       * `person.recorded` with this Invite's `person_id`
+       * (`docs/design/README.md` §9, "Name yourself").
        */
       personRecorded: boolean
     }> {
@@ -190,22 +191,13 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
 
       if (household === undefined) throw new AuthError('household missing')
 
-      // A Person exists only as the fold of an op log, so the server can never
-      // answer "is this Person recorded" directly. What it can say is whether
-      // this Household has any Login yet — and a Household with none is
-      // necessarily one whose first Person is created as they join.
-      const anyLogin = await db
-        .selectFrom('login')
-        .select('id')
-        .where('household_id', '=', invite.household_id)
-        .executeTakeFirst()
-
       return {
         householdName: household.name,
         purpose: invite.purpose,
         expiresAt: invite.expires_at,
         personId: invite.person_id,
-        personRecorded: anyLogin !== undefined,
+        // Read, not derived. The issuer knew; the row remembers.
+        personRecorded: invite.person_recorded,
       }
     },
 
@@ -323,6 +315,26 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
           })
           .execute()
 
+        // Inserted before the passkey row: `passkey.created_on_device` is a
+        // non-deferred FK against `device.id`, so the Device must already
+        // exist in this transaction by the time the Passkey references it.
+        await trx
+          .insertInto('device')
+          .values({
+            id: deviceId,
+            login_id: loginId,
+            household_id: invite.household_id,
+            token_hash: tokenHash,
+            label: deviceLabelFrom(userAgent),
+            expires_at: nextExpiry(clock),
+            // Explicit rather than left to the column's `now()` default: this
+            // value is later compared against the injected clock by
+            // `shouldRefreshLastSeen`, so a row stamped by Postgres instead
+            // mixes two clocks in one comparison.
+            last_seen_at: new Date(clock.now()),
+          })
+          .execute()
+
         await trx
           .insertInto('passkey')
           .values({
@@ -338,23 +350,7 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
             aaguid,
             uv_seen: userVerified,
             label: deviceLabelFrom(userAgent),
-          })
-          .execute()
-
-        await trx
-          .insertInto('device')
-          .values({
-            id: deviceId,
-            login_id: loginId,
-            household_id: invite.household_id,
-            token_hash: tokenHash,
-            label: deviceLabelFrom(userAgent),
-            expires_at: nextExpiry(clock),
-            // Explicit rather than left to the column's `now()` default: this
-            // value is later compared against the injected clock by
-            // `shouldRefreshLastSeen`, so a row stamped by Postgres instead
-            // mixes two clocks in one comparison.
-            last_seen_at: new Date(clock.now()),
+            created_on_device: deviceId,
           })
           .execute()
       })
@@ -545,6 +541,9 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
             secret_hash: secretHash,
             login_id: null,
             created_by_login: null,
+            // A brand-new Household has no ops, so its first Person is
+            // created as they join.
+            person_recorded: false,
             expires_at: expiresAt,
           })
           .execute()

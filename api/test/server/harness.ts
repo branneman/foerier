@@ -108,11 +108,21 @@ export async function seedInvite(
     purpose = 'join',
     clock,
     expiresAt,
+    personRecorded = true,
+    loginId = null,
   }: {
     householdId: string
     purpose?: InvitePurpose
     clock: Clock
     expiresAt?: Date
+    /**
+     * Defaults to `true` — the ordinary case of an Invite issued for a Person
+     * who already exists. The first-joiner case is the exception and states
+     * itself.
+     */
+    personRecorded?: boolean
+    /** Required for a device Invite; a join Invite has no Login yet. */
+    loginId?: string | null
   },
 ): Promise<SeededInvite> {
   const { secret, secretHash } = generateInviteSecret()
@@ -127,8 +137,9 @@ export async function seedInvite(
       person_id: personId,
       purpose,
       secret_hash: secretHash,
-      login_id: null,
+      login_id: loginId,
       created_by_login: null,
+      person_recorded: personRecorded,
       expires_at: expiresAt ?? inviteExpiry(purpose, clock),
     })
     .execute()
