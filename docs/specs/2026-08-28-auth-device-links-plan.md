@@ -1442,20 +1442,41 @@ Then wrap `confirm` so a ceremony that cannot run falls through rather than dead
   }
 ```
 
-Render `NoPasskey` when the flag is set, resolving the name from the preview when there is one:
+Render `NoPasskey` when the flag is set, **or whenever the Invite is a device link**:
 
 ```tsx
-  if (noPasskey && preview !== null) {
+  // A device link never runs a ceremony — `device/claim` issues a token and
+  // creates no credential, always (`auth-design.md` §5). So there is nothing
+  // for a confirm frame to confirm, and "Join Veldkamp?" is the wrong question
+  // to ask someone who is already a member signing in a second Device. Boards
+  // §14 describe the link as signing that device in directly.
+  const isDeviceLink = preview?.purpose === 'device'
+
+  if (preview !== null && (noPasskey || isDeviceLink)) {
     return (
       <NoPasskey
-        personName={null}
-        onContinue={() => claim(pendingName)}
+        // Null on the device-link path: the Person is already recorded, and
+        // their name lives in a fold this Device has not built yet.
+        personName={isDeviceLink ? null : pendingName}
+        onContinue={() => claim(isDeviceLink ? null : pendingName)}
       />
     )
   }
 ```
 
 `pendingName` is the name the joiner typed on the "name yourself" frame; hold it in `JoinContainer` state (`const [pendingName, setPendingName] = useState<string | null>(null)`) and set it from `Join`'s existing name field via a new `onNameChange` prop, so the value survives the swap to `NoPasskey`. Pass `onNoPasskey={() => setNoPasskey(true)}` down to `Join`.
+
+**Wire the fall-through, or it is dead code.** `Join` is currently rendered with `onConfirm={confirm}`; change it to `onConfirm={confirmOrFallThrough}`. Without this the new function is never called and the passkey-less path is reachable only by the ghost door.
+
+Add one more test to `app/src/screens/Join.test.tsx` for the device-link case, since it is the path the whole slice exists for:
+
+```tsx
+  it('skips the confirm frame entirely for a device link', async () => {
+    renderJoinContainer({ preview: { purpose: 'device' } })
+    expect(await screen.findByRole('heading', { name: 'Continue without a passkey' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^Join / })).toBeNull()
+  })
+```
 
 - [ ] **Step 9: Ask for persistent storage**
 
@@ -2031,7 +2052,10 @@ Append to `api/test/server/account.test.ts`. Use `SoftwareAuthenticator` exactly
   describe('passkeys', () => {
     it('adds one to an existing Login, with the name the person gave it', async () => {
       const { token, loginId, deviceId } = await signedInDevice()
-      const authenticator = new SoftwareAuthenticator(TEST_RP_ID, TEST_ORIGIN)
+      const authenticator = new SoftwareAuthenticator({
+        origin: TEST_ORIGIN,
+        rpId: TEST_RP_ID,
+      })
 
       const options = await jsonOf<PublicKeyCredentialCreationOptionsJSON>(
         await h.app.request('/api/v1/auth/passkeys/options', {
@@ -2047,7 +2071,7 @@ Append to `api/test/server/account.test.ts`. Use `SoftwareAuthenticator` exactly
           authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          response: await authenticator.create(options),
+          response: authenticator.create(options),
           label: 'YubiKey, desk drawer',
         }),
       })
@@ -2066,7 +2090,10 @@ Append to `api/test/server/account.test.ts`. Use `SoftwareAuthenticator` exactly
 
     it('falls back to the derived Device label when none is given', async () => {
       const { token, loginId } = await signedInDevice()
-      const authenticator = new SoftwareAuthenticator(TEST_RP_ID, TEST_ORIGIN)
+      const authenticator = new SoftwareAuthenticator({
+        origin: TEST_ORIGIN,
+        rpId: TEST_RP_ID,
+      })
 
       const options = await jsonOf<PublicKeyCredentialCreationOptionsJSON>(
         await h.app.request('/api/v1/auth/passkeys/options', {
@@ -2082,7 +2109,7 @@ Append to `api/test/server/account.test.ts`. Use `SoftwareAuthenticator` exactly
           'user-agent':
             'Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0',
         },
-        body: JSON.stringify({ response: await authenticator.create(options) }),
+        body: JSON.stringify({ response: authenticator.create(options) }),
       })
 
       const rows = await db
