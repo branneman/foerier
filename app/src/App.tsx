@@ -27,6 +27,7 @@ import { createSessionDepot, type DepotFactory } from './depot/wiring'
 import { DepotView } from './shell/DepotView'
 import { Account } from './screens/Account'
 import { AddGear } from './screens/AddGear'
+import { DeviceLink } from './screens/DeviceLink'
 import { Devices } from './screens/Devices'
 import { Find } from './screens/Find'
 import { JoinContainer } from './screens/JoinContainer'
@@ -337,6 +338,13 @@ export function App({
                   token={session.token}
                   personId={session.personId}
                   onSignOut={signOut}
+                />
+              </Route>
+              <Route path="/account/device-link">
+                <DeviceLink
+                  api={api}
+                  token={session.token}
+                  personId={session.personId}
                 />
               </Route>
               <Route path="/account/devices">

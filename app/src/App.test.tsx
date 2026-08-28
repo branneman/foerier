@@ -349,3 +349,28 @@ describe('the Devices route', () => {
     expect(screen.queryByRole('heading', { name: 'Devices' })).toBeNull()
   })
 })
+
+describe('the device-link route', () => {
+  // Task 9's report flagged `/account/device-link` reaching the shell's
+  // catch-all as the entry point's one gap until this screen existed
+  // (`docs/design/README.md` §14). `noNetwork` means the Invite itself
+  // never loads here — `issueDeviceLink`'s own contract is `DeviceLink.
+  // test.tsx`'s business — this is only proving `App` routes here at all,
+  // at every width, rather than to "Not found.".
+  it('is reachable rather than falling through to the shell catch-all', async () => {
+    renderAt('/account/device-link')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in on another device' }),
+    ).toBeInTheDocument()
+  })
+
+  it('stays reachable at Desktop, unlike the Devices route', async () => {
+    setViewport(DESKTOP)
+    renderAt('/account/device-link')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in on another device' }),
+    ).toBeInTheDocument()
+  })
+})

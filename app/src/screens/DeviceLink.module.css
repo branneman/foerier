@@ -1,0 +1,155 @@
+@layer components {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    max-width: 28rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .lead {
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    color: var(--color-ink-muted);
+    margin-top: -0.5rem;
+  }
+
+  /* ---- the invite card (boards §14) ---- */
+
+  .card {
+    background: var(--color-bg-surface);
+    border: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-card);
+    padding: var(--space-16);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-12);
+  }
+
+  /* The mono `user-select: all` well the link sits in — one tap/click
+     selects the whole thing for a manual copy alongside the button. */
+  .well {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--color-well);
+    border: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-control);
+    padding: 0.625rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.71875rem; /* 11.5px, boards §14 */
+    line-height: 1.6;
+    color: var(--color-ink-primary);
+    word-break: break-all;
+    user-select: all;
+  }
+
+  .copy {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    background: none;
+    color: var(--color-ink-primary);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .chips {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+  }
+
+  /* The expiry chip — existing chip anatomy (boards §14: radius 999, 1.5px
+     stroke, mono 10/600). Muted while an hour or more remains; a device
+     link's whole lifetime is one hour, so in this screen `data-urgent` is
+     always true — deliberate, not a bug (see `DeviceLink.tsx`). */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--color-ink-muted);
+  }
+
+  .chip[data-urgent='true'] {
+    border-color: var(--color-brand-amber);
+    /* `color-mix` rather than a literal alpha value, so the tint tracks
+       `--color-brand-amber` through both theme blocks instead of going
+       two-tone in light mode (Task 9's own finding on this exact pattern). */
+    background: color-mix(in srgb, var(--color-brand-amber) 8%, transparent);
+    color: var(--color-brand-amber);
+  }
+
+  .singleUse {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    color: var(--color-ink-faint);
+  }
+
+  /* ---- the fact line — the screen's whole security story ---- */
+
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+  }
+
+  /* ---- REVOKE — attention text, never a filled button (the RETIRE rule,
+     docs/design/README.md §4) ---- */
+
+  .revokeRow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: max(3rem, 48px);
+  }
+
+  .revoke {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--color-status-attention);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+
+  .revoke:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
