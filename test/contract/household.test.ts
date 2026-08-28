@@ -1,10 +1,9 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, inject, it } from 'vitest'
 
 import { systemIdSource, type OpEnvelope } from '@foerier/shared'
 
 import { hasCredential } from './credential'
-import { assertTripwire, resetHousehold } from './reset'
-import { signIn } from './signIn'
+import { resetHousehold } from './reset'
 
 /**
  * Tier 4, the half that needed a Household
@@ -15,6 +14,10 @@ import { signIn } from './signIn'
  * process, into the box's Postgres and back out of it — which is the one thing
  * no local tier can show: Tier 2s runs the same code against a local database
  * with no proxy in front of it.
+ *
+ * The Device token is minted, masked and spent on a first reset by
+ * `globalSetup.ts`, in the main process; this file only `inject`s it. That is
+ * §5.1 point 4, and it is why nothing here calls `signIn`.
  *
  * **Skipped without the credential secrets**, so a fork's pull request and a
  * developer's laptop still run the unauthenticated file. Nothing here creates a
@@ -32,10 +35,10 @@ const API =
 
 describe.skipIf(!hasCredential())('the deployed household', () => {
   /**
-   * One token for the whole file: minted once, masked once, never asserted on.
-   * Every sign-in mints a Device row, and the reset below is what bounds how
-   * many of those are ever live (§3.5) — so signing in per test would defeat
-   * the tripwire it feeds.
+   * One token for the whole run, and never asserted on. Every sign-in mints a
+   * Device row, and the reset in `globalSetup` is what bounds how many of those
+   * are ever live (§3.5) — so signing in again here would defeat the tripwire
+   * it feeds.
    */
   let token: string
   /**
@@ -46,19 +49,13 @@ describe.skipIf(!hasCredential())('the deployed household', () => {
   let householdId: string
 
   beforeAll(async () => {
-    token = await signIn({ apiBase: API })
+    token = inject('deviceToken')
 
     const me = await fetch(`${API}/auth/me`, {
       headers: { authorization: `Bearer ${token}` },
     })
     expect(me.status).toBe(200)
     householdId = ((await me.json()) as { household_id: string }).household_id
-
-    // Reset **at the start**, never as teardown: a cancelled or crashed run
-    // leaves the Household dirty, and the next run's first act is what fixes
-    // it. The tripwire runs on this first reset only — it is an oracle about
-    // what the *previous* run left behind (§3.5).
-    assertTripwire(await resetHousehold(API, token))
   })
 
   it('accepts a pushed op and serves it back', async () => {
@@ -104,8 +101,8 @@ describe.skipIf(!hasCredential())('the deployed household', () => {
   it('answers reset with exact counts the second time', async () => {
     // The one op the test above pushed, and nothing else: no second Device
     // signed in, no Passkey was added, no Invite was minted. This is the same
-    // oracle the tripwire applies, stated as an equality — it is only this
-    // exact against a Household this run has already reset once.
+    // oracle `globalSetup`'s tripwire applies, stated as an equality — it is
+    // only this exact against a Household this run has already reset once.
     expect(await resetHousehold(API, token)).toEqual({
       deleted: 1,
       revoked: 0,

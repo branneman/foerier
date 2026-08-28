@@ -27,10 +27,10 @@ export default defineConfig({
     // wipe and the counts alike
     // (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §6.3).
     fileParallelism: false,
-    // `::add-mask::` is a workflow command GitHub honours only on a line of the
-    // step's own stdout. Vitest otherwise buffers worker output and reprints it
-    // under a `stdout | …` header, which is fragile for a line-anchored
-    // command; this writes it straight through (spec §5.1).
-    disableConsoleIntercept: true,
+    // Signs in once, masks the token on the main process's real stdout — where
+    // `::add-mask::` is known to fire — resets the Household, and hands the
+    // token to tests by `provide`. No test file mints or masks a token of its
+    // own (spec §5.1 point 4). Without the credential secrets it no-ops.
+    globalSetup: ['test/contract/globalSetup.ts'],
   },
 })

@@ -29,9 +29,10 @@ export interface ResetCounts {
  * used for anything.
  *
  * `::add-mask::` is a workflow command: the runner honours it only when it
- * occupies a line of the step's own stdout. `vitest.contract.config.ts` sets
- * `disableConsoleIntercept` so that this line is written through unwrapped
- * rather than folded into a reporter's `stdout | …` block.
+ * occupies a line of the step's own stdout. That is why every caller of this
+ * function runs in a main process — Vitest's `globalSetup` (`globalSetup.ts`)
+ * and Playwright's — and never in a test worker, whose output Vitest and
+ * Playwright both buffer and reprint (§5.1 point 4).
  *
  * Outside Actions it prints a harmless line — deliberately not suppressed, so
  * a local run exercises the same path CI takes.
