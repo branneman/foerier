@@ -8,3 +8,6 @@ export type { ChipProps } from './Chip'
 
 export { GearRow } from './GearRow'
 export type { GearRowProps } from './GearRow'
+
+export { QrCode } from './QrCode'
+export type { QrCodeProps } from './QrCode'
