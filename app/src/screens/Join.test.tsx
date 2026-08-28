@@ -22,6 +22,8 @@ const defaults = {
   deadEnd: null,
   onConfirm: () => Promise.resolve(),
   onOpenSignIn: () => {},
+  onNoPasskey: () => {},
+  onNameChange: () => {},
   signedIn: false,
   onOpenDepot: () => {},
 }
@@ -111,6 +113,27 @@ describe('the join screen', () => {
       await user.click(screen.getByRole('button', { name: 'Join Veldkamp' }))
 
       expect(onConfirm).toHaveBeenCalledWith(null)
+    })
+
+    it('offers the passkey-less path as a deliberate choice, not only a fallback', async () => {
+      const onNoPasskey = vi.fn()
+      render(
+        <Join
+          preview={aPreview()}
+          deadEnd={null}
+          onConfirm={vi.fn()}
+          onOpenSignIn={vi.fn()}
+          onNoPasskey={onNoPasskey}
+          onNameChange={vi.fn()}
+          signedIn={false}
+          onOpenDepot={vi.fn()}
+        />,
+      )
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'No passkey on this device?' }),
+      )
+      expect(onNoPasskey).toHaveBeenCalledTimes(1)
     })
   })
 

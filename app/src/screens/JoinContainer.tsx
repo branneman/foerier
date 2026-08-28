@@ -8,6 +8,7 @@ import type { PendingStore } from '../auth/pendingFirstPerson'
 import type { Session } from '../auth/sessionStore'
 import { DepotProvider, type DepotStoreState } from '../depot/store'
 import { Join, type DeadEndReason } from './Join'
+import { NoPasskey } from './NoPasskey'
 
 export interface JoinContainerProps {
   api: AuthApi
@@ -56,6 +57,11 @@ export function JoinContainer({
   const [secret, setSecret] = useState<string | null>(null)
   const [preview, setPreview] = useState<InvitePreview | null>(null)
   const [deadEnd, setDeadEnd] = useState<DeadEndReason | null>(null)
+  const [noPasskey, setNoPasskey] = useState(false)
+  // The joiner's typed name, hoisted out of `Join` so it survives the swap to
+  // `NoPasskey` when the ceremony falls through. Held here rather than in
+  // `Join` because `Join` unmounts the moment this container swaps it out.
+  const [pendingName, setPendingName] = useState<string | null>(null)
 
   useEffect(() => {
     function load() {
@@ -87,8 +93,18 @@ export function JoinContainer({
     // the browser changes the URL without reloading, so nothing would react
     // without this. Easy to miss, because opening a link from a chat app
     // always loads a fresh document and works either way.
-    window.addEventListener('hashchange', load)
-    return () => window.removeEventListener('hashchange', load)
+    //
+    // Guarded to a non-empty hash: `load()` itself clears the fragment via
+    // `replaceState` the instant it reads a secret, and — although the spec
+    // says `replaceState` must never fire `hashchange` — jsdom fires it
+    // anyway, which would otherwise re-run `load()` against the
+    // now-empty hash it just cleared and dead-end a page that had just
+    // loaded correctly. A legitimate second link always carries a secret.
+    function onHashChange() {
+      if (window.location.hash !== '') load()
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
   }, [api])
 
   async function confirm(name: string | null) {
@@ -120,12 +136,76 @@ export function JoinContainer({
     setJustJoined(true)
   }
 
+  /**
+   * The token-only path. No ceremony runs at all, so there is nothing to
+   * detect and nothing that can be declined — which is exactly why it is also
+   * reachable from the confirm frame's ghost, not only from a failure.
+   */
+  async function claim(name: string | null) {
+    if (secret === null) return
+
+    const result = await api.claimDevice(secret)
+
+    if (name !== null && name !== '') {
+      await pending.save({
+        personId: result.person_id,
+        householdId: result.household_id,
+        name,
+      })
+    }
+
+    await onSignedIn({
+      token: result.token,
+      loginId: result.login_id,
+      personId: result.person_id,
+      householdId: result.household_id,
+      deviceId: result.device_id,
+    })
+    setJustJoined(true)
+    setNoPasskey(false)
+  }
+
+  async function confirmOrFallThrough(name: string | null) {
+    // `auth-design.md` §5: absent API, no usable authenticator, or a plain
+    // refusal all land in the same place. The ghost door reaches it too, for
+    // the device that *can* make a credential in a store its owner declined.
+    if (typeof window.PublicKeyCredential !== 'function') {
+      setNoPasskey(true)
+      return
+    }
+    try {
+      await confirm(name)
+    } catch {
+      setNoPasskey(true)
+    }
+  }
+
+  // A device link never runs a ceremony — `device/claim` issues a token and
+  // creates no credential, always (`auth-design.md` §5). So there is nothing
+  // for a confirm frame to confirm, and "Join Veldkamp?" is the wrong question
+  // to ask someone who is already a member signing in a second Device. Boards
+  // §14 describe the link as signing that device in directly.
+  const isDeviceLink = preview?.purpose === 'device'
+
+  if (preview !== null && !justJoined && (noPasskey || isDeviceLink)) {
+    return (
+      <NoPasskey
+        // Null on the device-link path: the Person is already recorded, and
+        // their name lives in a fold this Device has not built yet.
+        personName={isDeviceLink ? null : pendingName}
+        onContinue={() => claim(isDeviceLink ? null : pendingName)}
+      />
+    )
+  }
+
   const join = (
     <Join
       preview={preview}
       deadEnd={deadEnd}
-      onConfirm={confirm}
+      onConfirm={confirmOrFallThrough}
       onOpenSignIn={() => navigate('/signin')}
+      onNoPasskey={() => setNoPasskey(true)}
+      onNameChange={setPendingName}
       signedIn={justJoined}
       onOpenDepot={() => navigate('/')}
     />

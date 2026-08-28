@@ -1,0 +1,52 @@
+@layer components {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    min-height: 100svh;
+    padding: var(--space-16);
+    max-width: 28rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .body {
+    font-size: 15px;
+    line-height: 22px;
+    margin-top: 12px;
+    color: var(--color-ink-muted);
+    font-family: var(--font-ui);
+  }
+
+  .fact {
+    font: var(--text-secondary) var(--font-mono);
+    color: var(--color-ink-muted);
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .primary {
+    min-height: max(3rem, 48px);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .primary:disabled {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-dim);
+    cursor: default;
+  }
+}

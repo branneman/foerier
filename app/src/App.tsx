@@ -32,6 +32,22 @@ import { SignIn } from './screens/SignIn'
 import { AppShell } from './shell/AppShell'
 import styles from './shell/AppShell.module.css'
 
+/**
+ * Ask the browser not to evict us.
+ *
+ * It matters more from S3.5 on than it did before: a Device with no passkey
+ * **cannot re-sign-in by itself** — lose the database and you lose the token,
+ * and the way back is another Device's link. It protects the op log too, which
+ * is the larger prize; the same eviction takes unsynced work with it.
+ *
+ * Best effort by design. An installed PWA on Android is generally granted this
+ * automatically and a plain tab generally is not, and there is nothing useful
+ * to tell the user either way.
+ */
+function requestPersistentStorage(): void {
+  void navigator.storage?.persist?.().catch(() => undefined)
+}
+
 function EmptyState({ title, line }: { title: string; line: string }) {
   return (
     <div className={styles['emptyState']}>
@@ -207,6 +223,8 @@ export function App({
 
     let cancelled = false
     let built: StoreApi<DepotStoreState> | null = null
+
+    requestPersistentStorage()
 
     void createDepot(session)
       .then(async (store) => {

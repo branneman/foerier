@@ -12,6 +12,14 @@ export interface JoinProps {
   deadEnd: DeadEndReason | null
   onConfirm: (name: string | null) => Promise<void>
   onOpenSignIn: () => void
+  /** The S3.5 door (`docs/design/README.md` §10) — a deliberate choice, not only a fallback. */
+  onNoPasskey: () => void
+  /**
+   * Mirrors the typed name up to `JoinContainer` as it is typed, so it
+   * survives the swap to `NoPasskey` if the ceremony falls through — this
+   * component unmounts at that point, and its own `name` state goes with it.
+   */
+  onNameChange: (name: string) => void
   signedIn: boolean
   onOpenDepot: () => void
 }
@@ -44,6 +52,8 @@ export function Join({
   deadEnd,
   onConfirm,
   onOpenSignIn,
+  onNoPasskey,
+  onNameChange,
   signedIn,
   onOpenDepot,
 }: JoinProps) {
@@ -148,7 +158,10 @@ export function Join({
             <input
               className={styles['input']}
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value)
+                onNameChange(event.target.value)
+              }}
               autoComplete="name"
             />
           </label>
@@ -168,6 +181,14 @@ export function Join({
         disabled={busy || (namesThemselves && name.trim() === '')}
       >
         {namesThemselves ? 'Continue' : `Join ${preview.household_name}`}
+      </button>
+
+      {/* The S3.5 door (`docs/design/README.md` §10). The sign-in screen uses
+          these exact words for its explainer sheet; here a secret is in hand,
+          so they lead to the screen itself. Two destinations, deliberately —
+          wiring both to one makes one of them a dead end. */}
+      <button type="button" className={styles['ghost']} onClick={onNoPasskey}>
+        No passkey on this device?
       </button>
     </div>
   )

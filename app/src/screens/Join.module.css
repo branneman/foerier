@@ -110,6 +110,17 @@
     cursor: default;
   }
 
+  .ghost {
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
   .bordered {
     min-height: max(3rem, 48px);
     border: var(--stroke-rule) solid var(--color-rule-control);

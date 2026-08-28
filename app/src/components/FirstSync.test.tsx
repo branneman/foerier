@@ -231,6 +231,8 @@ function renderJoinSuccess(store: StoreApi<DepotStoreState>): string[] {
         signedIn
         onConfirm={() => Promise.resolve()}
         onOpenSignIn={() => undefined}
+        onNoPasskey={() => undefined}
+        onNameChange={() => undefined}
         onOpenDepot={() => opened.push('depot')}
       />
     </DepotProvider>,

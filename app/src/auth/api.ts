@@ -83,6 +83,14 @@ export function createAuthApi(
     registerVerify: (secret: string, response: RegistrationResponseJSON) =>
       post<SignedIn>('/auth/register/verify', { secret, response }),
 
+    /**
+     * Redeems either Invite kind for a token with **no credential**
+     * (`auth-design.md` §5). The same response shape as `registerVerify`,
+     * because the Device it produces is the same kind of Device.
+     */
+    claimDevice: (secret: string) =>
+      post<SignedIn>('/auth/device/claim', { secret }),
+
     loginOptions: () =>
       post<PublicKeyCredentialRequestOptionsJSON>('/auth/login/options'),
 
