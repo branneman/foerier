@@ -533,7 +533,7 @@ describe('convergence', () => {
       aggregate: 'person',
       aggregate_id: unknown,
       type: 'person.renamed',
-      payload: { name: 'Wife' },
+      payload: { name: 'Ada' },
     }
 
     a.emit(personRecorded(known, 'Bran'))

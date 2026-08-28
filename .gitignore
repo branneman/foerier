@@ -1,6 +1,9 @@
 # Private spreadsheet exports — real personal packing data, not for the public repo
 examples/
 
+# Design-board exports: a zip of docs/design/, redundant with the directory itself
+*.zip
+
 # macOS
 .DS_Store
 
