@@ -1,0 +1,306 @@
+import {
+  createHlcClock,
+  personRecorded,
+  type Clock,
+  type IdSource,
+  type OpAuthor,
+  type OpSpec,
+} from '@foerier/shared'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it } from 'vitest'
+import { Router } from 'wouter'
+import { memoryLocation } from 'wouter/memory-location'
+import type { StoreApi } from 'zustand/vanilla'
+
+import { createAuthApi, type DeviceRow, type PasskeyRow } from '../auth/api'
+import { inMemoryOpLog } from '../depot/opLog'
+import {
+  createDepotStore,
+  DepotProvider,
+  type DepotStoreState,
+  type EngineFactory,
+} from '../depot/store'
+import { Account } from './Account'
+
+/**
+ * Every test seeds a **real** store, exactly as `GearDetail.test.tsx` and
+ * `AddGear.test.tsx` do — never a hand-shaped `DepotState`.
+ */
+
+const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
+const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
+const PERSON_ID = '0f0000aa-0000-4000-8000-0000000000aa'
+const TOKEN = 'foe_test_token'
+
+let nextId = 0
+
+function anId(): string {
+  const suffix = (nextId++).toString(16).padStart(12, '0')
+  return `eeeeeeee-0000-7000-8000-${suffix}`
+}
+
+const ids: IdSource = { next: anId }
+
+function fixedClock(): Clock {
+  return { now: () => 1_700_000_000_000 }
+}
+
+function anAuthor(): OpAuthor {
+  return {
+    household_id: HOUSEHOLD,
+    device_id: DEVICE,
+    ids,
+    hlc: createHlcClock(fixedClock()),
+  }
+}
+
+const noopEngine: EngineFactory = () => ({
+  start() {},
+  stop() {},
+  flush: () => Promise.resolve(),
+  pull: () => Promise.resolve(),
+  status: () => 'idle',
+  bootstrap: () => null,
+})
+
+async function seededStore(
+  specs: readonly OpSpec[] = [],
+): Promise<StoreApi<DepotStoreState>> {
+  const store = createDepotStore({
+    log: inMemoryOpLog(),
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  for (const spec of specs) store.getState().emit(spec)
+  await store.getState().drained()
+  return store
+}
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), { status: 200 })
+}
+
+function noContent(): Response {
+  return new Response(null, { status: 204 })
+}
+
+interface Handler {
+  method: string
+  path: string
+  respond: () => Response
+}
+
+/** A fetch stub keyed on method + path suffix, standing in for the real
+ * HTTP transport (`docs/testing.md`: an in-memory fake, never a mocking
+ * framework). */
+function fetchFrom(handlers: readonly Handler[]): typeof fetch {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+    const method = (init?.method ?? 'GET').toUpperCase()
+    const handler = handlers.find(
+      (candidate) =>
+        candidate.method === method && url.endsWith(candidate.path),
+    )
+    if (handler === undefined) {
+      throw new Error(`unmocked request: ${method} ${url}`)
+    }
+    return Promise.resolve(handler.respond())
+  }
+}
+
+function aPasskey(overrides: Partial<PasskeyRow> = {}): PasskeyRow {
+  return {
+    id: anId(),
+    label: 'Pixel 9',
+    created_at: '2026-03-02T10:00:00.000Z',
+    last_used_at: '2026-07-14T10:00:00.000Z',
+    ...overrides,
+  }
+}
+
+function aDevice(overrides: Partial<DeviceRow> = {}): DeviceRow {
+  return {
+    id: anId(),
+    label: 'Firefox on Android',
+    created_at: '2026-03-02T10:00:00.000Z',
+    last_seen_at: '2026-08-19T14:32:00.000Z',
+    current: false,
+    enrolled_passkey_here: false,
+    ...overrides,
+  }
+}
+
+function threeDevices(): DeviceRow[] {
+  return [
+    aDevice({ label: 'Firefox on Android', current: true }),
+    aDevice({ label: 'Edge on Windows' }),
+    aDevice({ label: 'Safari on iPad' }),
+  ]
+}
+
+function stubPlatformAuthenticator(available: boolean | undefined): void {
+  if (available === undefined) {
+    Reflect.deleteProperty(window, 'PublicKeyCredential')
+    return
+  }
+  Object.defineProperty(window, 'PublicKeyCredential', {
+    value: {
+      isUserVerifyingPlatformAuthenticatorAvailable: () =>
+        Promise.resolve(available),
+    },
+    configurable: true,
+  })
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(window, 'PublicKeyCredential')
+})
+
+async function renderAccount(
+  options: {
+    personName?: string | null
+    householdName?: string
+    passkeys?: PasskeyRow[]
+    devices?: DeviceRow[]
+    platformAuthenticator?: boolean
+  } = {},
+) {
+  const {
+    personName = null,
+    householdName = 'Veldkamp',
+    passkeys = [],
+    devices = [],
+    platformAuthenticator,
+  } = options
+
+  stubPlatformAuthenticator(platformAuthenticator)
+
+  const specs: OpSpec[] =
+    personName === null ? [] : [personRecorded(PERSON_ID, personName)]
+  const store = await seededStore(specs)
+
+  const removed = new Set<string>()
+
+  const api = createAuthApi(
+    fetchFrom([
+      {
+        method: 'GET',
+        path: '/auth/me',
+        respond: () =>
+          jsonResponse({
+            login_id: anId(),
+            person_id: PERSON_ID,
+            household_id: HOUSEHOLD,
+            household_name: householdName,
+            device_id: DEVICE,
+          }),
+      },
+      {
+        method: 'GET',
+        path: '/auth/passkeys',
+        respond: () =>
+          jsonResponse({
+            passkeys: passkeys.filter((passkey) => !removed.has(passkey.id)),
+          }),
+      },
+      {
+        method: 'GET',
+        path: '/auth/devices',
+        respond: () => jsonResponse({ devices }),
+      },
+      // A generic handler for any `DELETE /auth/passkeys/:id` — records the
+      // id so the next `GET /auth/passkeys` reflects the removal.
+      ...passkeys.map((passkey) => ({
+        method: 'DELETE',
+        path: `/auth/passkeys/${passkey.id}`,
+        respond: () => {
+          removed.add(passkey.id)
+          return noContent()
+        },
+      })),
+    ]),
+  )
+
+  const { hook } = memoryLocation({ path: '/account' })
+
+  render(
+    <Router hook={hook}>
+      <DepotProvider value={store}>
+        <Account api={api} token={TOKEN} personId={PERSON_ID} />
+      </DepotProvider>
+    </Router>,
+  )
+}
+
+describe('Account', () => {
+  it('names the person from folded state and the household from the API', async () => {
+    await renderAccount({ personName: 'Mark', householdName: 'Veldkamp' })
+
+    expect(await screen.findByText('Mark')).toBeInTheDocument()
+    expect(screen.getByText('VELDKAMP HOUSEHOLD')).toBeInTheDocument()
+  })
+
+  it('offers to add a passkey only where the device can make one', async () => {
+    await renderAccount({ passkeys: [], platformAuthenticator: false })
+
+    // jsdom implements no WebAuthn, so `window.PublicKeyCredential` is
+    // already absent unless a test opts in — `platformAuthenticator: false`
+    // makes that explicit rather than relying on the ambient absence.
+    await screen.findByText('None on this login.')
+    expect(
+      screen.queryByRole('button', { name: 'Add a passkey on this device' }),
+    ).toBeNull()
+  })
+
+  it('shows the standing nudge as a quiet section state on a login with none', async () => {
+    await renderAccount({ passkeys: [], platformAuthenticator: true })
+
+    expect(await screen.findByText('None on this login.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+    // The add button DOES appear here — the device can make one.
+    expect(
+      await screen.findByRole('button', {
+        name: 'Add a passkey on this device',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('summarises devices rather than listing them, below Desktop', async () => {
+    await renderAccount({ devices: threeDevices() })
+
+    expect(await screen.findByText('3 devices signed in.')).toBeInTheDocument()
+    // The per-device rows themselves are Devices' job (`/account/devices`),
+    // not drawn here.
+    expect(screen.queryByText('Edge on Windows')).toBeNull()
+  })
+
+  it('removes a passkey and drops it from the list', async () => {
+    const user = userEvent.setup()
+    const passkey = aPasskey({ label: 'YubiKey, desk drawer' })
+    await renderAccount({ passkeys: [passkey], platformAuthenticator: true })
+
+    expect(await screen.findByText('YubiKey, desk drawer')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'REMOVE' }))
+
+    expect(await screen.findByText('None on this login.')).toBeInTheDocument()
+    expect(screen.queryByText('YubiKey, desk drawer')).toBeNull()
+  })
+
+  it('routes the entry points to where they are actually handled', async () => {
+    await renderAccount({ devices: threeDevices() })
+
+    expect(
+      await screen.findByRole('link', { name: /Sign in on another device/ }),
+    ).toHaveAttribute('href', '/account/device-link')
+    expect(screen.getByRole('link', { name: 'SIGN OUT' })).toHaveAttribute(
+      'href',
+      '/account/devices',
+    )
+    expect(screen.getByRole('link', { name: /All devices/ })).toHaveAttribute(
+      'href',
+      '/account/devices',
+    )
+  })
+})

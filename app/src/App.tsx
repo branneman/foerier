@@ -25,6 +25,7 @@ import { DepotProvider, type DepotStoreState } from './depot/store'
 import { syncLine, syncTone } from './depot/syncLabel'
 import { createSessionDepot, type DepotFactory } from './depot/wiring'
 import { DepotView } from './shell/DepotView'
+import { Account } from './screens/Account'
 import { AddGear } from './screens/AddGear'
 import { Find } from './screens/Find'
 import { JoinContainer } from './screens/JoinContainer'
@@ -325,6 +326,13 @@ export function App({
               </Route>
               <Route path="/find">
                 <Find />
+              </Route>
+              <Route path="/account">
+                <Account
+                  api={api}
+                  token={session.token}
+                  personId={session.personId}
+                />
               </Route>
               <Route>
                 <EmptyState title="Not found." line="No such page." />
