@@ -121,10 +121,9 @@ export function SignIn({
         </p>
       </div>
 
-      <ExplainerSheet
-        open={explainerOpen}
-        onClose={() => setExplainerOpen(false)}
-      />
+      {explainerOpen && (
+        <ExplainerSheet onClose={() => setExplainerOpen(false)} />
+      )}
     </div>
   )
 }
