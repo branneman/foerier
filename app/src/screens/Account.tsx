@@ -1,3 +1,4 @@
+import { guessDeviceLabel as deviceLabelFromUserAgent } from '@foerier/shared'
 import { startRegistration } from '@simplewebauthn/browser'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'wouter'
@@ -32,49 +33,23 @@ export interface AccountProps {
 
 /* ---- a client-side guess at this device's label (spec §6.5) ---- */
 
-const BROWSERS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/Edg\//, 'Edge'],
-  [/OPR\//, 'Opera'],
-  [/Firefox\//, 'Firefox'],
-  [/Chrome\//, 'Chrome'],
-  [/Safari\//, 'Safari'],
-]
-
-const PLATFORMS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/iPhone/, 'iPhone'],
-  [/iPad/, 'iPad'],
-  [/Android/, 'Android'],
-  [/Windows/, 'Windows'],
-  [/Mac OS X/, 'macOS'],
-  [/CrOS/, 'ChromeOS'],
-  [/Linux/, 'Linux'],
-]
-
-function firstMatch(
-  table: ReadonlyArray<readonly [RegExp, string]>,
-  ua: string,
-): string | null {
-  for (const [pattern, name] of table) {
-    if (pattern.test(ua)) return name
-  }
-  return null
-}
-
 /**
  * A client-side guess like `Firefox on Android`, prefilled into the
  * add-a-passkey name field and editable before the ceremony's result is saved
  * (`docs/specs/2026-08-28-auth-device-links.md` §6.5). Never authoritative —
  * an empty or whitespace label falls back server-side to the real derivation,
- * `deviceLabelFrom` in `api/src/auth/session.ts`, which reads the `User-Agent`
- * header rather than this best-effort read of `navigator.userAgent`.
+ * `deviceLabelFrom` in `api/src/auth/session.ts`.
+ *
+ * The actual browser/platform table lives in `@foerier/shared`'s
+ * `guessDeviceLabel` (imported here as `deviceLabelFromUserAgent`), shared
+ * with that server-side derivation so the two surfaces cannot drift apart
+ * again the way they already had (`final-review.md` finding 10). This
+ * function is only the client's own read of `navigator.userAgent` and its
+ * own fallback — an empty string, so the field starts blank rather than
+ * claiming a guess it does not have.
  */
 function guessDeviceLabel(): string {
-  const ua = navigator.userAgent
-  const browser = firstMatch(BROWSERS, ua)
-  const platform = firstMatch(PLATFORMS, ua)
-  return browser === null || platform === null
-    ? ''
-    : `${browser} on ${platform}`
+  return deviceLabelFromUserAgent(navigator.userAgent) ?? ''
 }
 
 function formatDate(iso: string): string {

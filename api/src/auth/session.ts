@@ -1,4 +1,5 @@
 import type { Clock } from '@foerier/shared'
+import { guessDeviceLabel } from '@foerier/shared'
 
 /**
  * Session rules (`auth-design.md` §6.2) — pure, so they are unit-testable
@@ -45,49 +46,19 @@ export function isSignCountAcceptable({
   return received > stored
 }
 
-const BROWSERS: ReadonlyArray<readonly [RegExp, string]> = [
-  // Order matters: Edge and Opera both also claim to be Chrome, and Chrome
-  // claims to be Safari.
-  [/\bEdg[A-Z]?\//, 'Edge'],
-  [/\bOPR\//, 'Opera'],
-  [/\bFirefox\//, 'Firefox'],
-  [/\bChrome\//, 'Chrome'],
-  [/\bSafari\//, 'Safari'],
-]
-
-const PLATFORMS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/\biPad\b/, 'iPad'],
-  [/\biPhone\b/, 'iPhone'],
-  [/\bAndroid\b/, 'Android'],
-  [/\bWindows\b/, 'Windows'],
-  [/\bMac OS X\b/, 'macOS'],
-  [/\bCrOS\b/, 'ChromeOS'],
-  [/\bLinux\b/, 'Linux'],
-]
-
-function firstMatch(
-  table: ReadonlyArray<readonly [RegExp, string]>,
-  ua: string,
-): string | null {
-  for (const [pattern, name] of table) {
-    if (pattern.test(ua)) return name
-  }
-  return null
-}
-
 /**
  * A coarse label like `Firefox on Android`, for the Devices list.
  *
  * Deliberately imprecise. Story 30 asks for "what it is, roughly" — no IP, no
  * version, nothing that identifies a machine rather than describing it. When
  * it cannot tell, it says so instead of guessing.
+ *
+ * The actual browser/platform table lives in `@foerier/shared`'s
+ * `guessDeviceLabel`, shared with the client's own prefill guess
+ * (`app/src/screens/Account.tsx`) so the two surfaces cannot drift apart
+ * again the way they already had (`final-review.md` finding 10). This
+ * function is only the server's own fallback text for what that returns.
  */
 export function deviceLabelFrom(userAgent: string | undefined | null): string {
-  if (typeof userAgent !== 'string' || userAgent === '') return 'Unknown device'
-
-  const browser = firstMatch(BROWSERS, userAgent)
-  const platform = firstMatch(PLATFORMS, userAgent)
-
-  if (browser === null || platform === null) return 'Unknown device'
-  return `${browser} on ${platform}`
+  return guessDeviceLabel(userAgent) ?? 'Unknown device'
 }

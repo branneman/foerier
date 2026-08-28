@@ -281,6 +281,35 @@ describe('account', () => {
         theirs.deviceId,
       )
     })
+
+    // `final-review.md` finding 8: correct today only because nothing in this
+    // database is a year old yet — a Device past the sliding expiry is
+    // already 401'd by `requireAuth` (`middleware.ts:68-70`), yet without
+    // this filter it would still be rendered here as signed in.
+    it('omits a Device past its own sliding expiry, though nothing revoked it', async () => {
+      const mine = await signedInDevice()
+      const stale = systemIdSource.next()
+      await db
+        .insertInto('device')
+        .values({
+          id: stale,
+          login_id: mine.loginId,
+          household_id: HOUSEHOLD,
+          token_hash: issueDeviceToken().tokenHash,
+          label: 'A year-old Device',
+          // In the past relative to the harness clock — never revoked, only
+          // aged out.
+          expires_at: new Date(h.clock.now() - 1),
+          last_seen_at: new Date(h.clock.now() - 400 * 24 * 60 * 60 * 1000),
+        })
+        .execute()
+
+      const res = await h.app.request('/api/v1/auth/devices', {
+        headers: { authorization: `Bearer ${mine.token}` },
+      })
+      const body = await jsonOf<{ devices: Array<{ id: string }> }>(res)
+      expect(body.devices.map((device) => device.id)).not.toContain(stale)
+    })
   })
 
   describe('DELETE /auth/devices/:id', () => {
@@ -510,6 +539,39 @@ describe('account', () => {
         .where('id', '=', '0f00000a-0000-4000-8000-0000000000f2')
         .execute()
       expect(still).toHaveLength(1)
+    })
+  })
+
+  // `final-review.md` finding 7: `invite.id`, `device.id` and `passkey.id`
+  // are all `uuid` columns, so a non-UUID path param used to reach Postgres
+  // and come back as a plain-text 500 where every one of these routes
+  // documents 204 whether or not a row matched.
+  describe('a malformed :id on a DELETE route', () => {
+    it('answers 204, not a 500, for /auth/invites/:id', async () => {
+      const { token } = await signedInDevice()
+      const res = await h.app.request('/api/v1/auth/invites/not-a-uuid', {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${token}` },
+      })
+      expect(res.status).toBe(204)
+    })
+
+    it('answers 204, not a 500, for /auth/devices/:id', async () => {
+      const { token } = await signedInDevice()
+      const res = await h.app.request('/api/v1/auth/devices/not-a-uuid', {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${token}` },
+      })
+      expect(res.status).toBe(204)
+    })
+
+    it('answers 204, not a 500, for /auth/passkeys/:id', async () => {
+      const { token } = await signedInDevice()
+      const res = await h.app.request('/api/v1/auth/passkeys/not-a-uuid', {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${token}` },
+      })
+      expect(res.status).toBe(204)
     })
   })
 })

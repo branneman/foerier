@@ -39,6 +39,23 @@ function clientKey(headers: Headers): string {
   return headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * `invite.id`, `device.id` and `passkey.id` are all `uuid` columns
+ * (`api/migrations/0002_auth.ts`). Handing a non-UUID path param straight to
+ * Kysely makes Postgres raise `invalid input syntax for type uuid` — not an
+ * `AuthError`, so `failure()` below never sees it, and with no `app.onError`
+ * (`app.ts`) Hono answers a plain-text 500 where every one of these routes
+ * documents 204 whether or not a row matched. A malformed id trivially
+ * matches no row, so it gets exactly that answer (`final-review.md`
+ * finding 7).
+ */
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value)
+}
+
 export function createAuthRoutes({
   service,
   requireAuth,
@@ -185,8 +202,12 @@ export function createAuthRoutes({
   })
 
   auth.post('/signout', requireAuth, async (c) => {
-    await service.signOut(c.get('auth'))
-    return c.body(null, 204)
+    try {
+      await service.signOut(c.get('auth'))
+      return c.body(null, 204)
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.post('/invites', requireAuth, async (c) => {
@@ -201,57 +222,89 @@ export function createAuthRoutes({
       return c.json({ error: 'unsupported_purpose' }, 400)
     }
 
-    const { inviteId, secret, expiresAt } = await service.issueDeviceLink(
-      c.get('auth'),
-    )
-    return c.json({
-      id: inviteId,
-      secret,
-      expires_at: expiresAt.toISOString(),
-    })
+    try {
+      const { inviteId, secret, expiresAt } = await service.issueDeviceLink(
+        c.get('auth'),
+      )
+      return c.json({
+        id: inviteId,
+        secret,
+        expires_at: expiresAt.toISOString(),
+      })
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.get('/invites', requireAuth, async (c) => {
-    const invites = await service.listInvites(c.get('auth'))
-    return c.json({
-      invites: invites.map((invite) => ({
-        id: invite.id,
-        purpose: invite.purpose,
-        expires_at: invite.expiresAt.toISOString(),
-      })),
-    })
+    try {
+      const invites = await service.listInvites(c.get('auth'))
+      return c.json({
+        invites: invites.map((invite) => ({
+          id: invite.id,
+          purpose: invite.purpose,
+          expires_at: invite.expiresAt.toISOString(),
+        })),
+      })
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.delete('/invites/:id', requireAuth, async (c) => {
-    await service.revokeInvite(c.get('auth'), c.req.param('id'))
-    // 204 whether or not a row matched: "not yours" and "does not exist" are
-    // the same answer, and the caller's next GET is the source of truth.
-    return c.body(null, 204)
+    const id = c.req.param('id')
+    // 204 whether or not a row matched: "not yours", "does not exist" and
+    // "not even a UUID" are all the same answer to the caller — see
+    // `isUuid`'s own doc comment.
+    if (!isUuid(id)) return c.body(null, 204)
+
+    try {
+      await service.revokeInvite(c.get('auth'), id)
+      return c.body(null, 204)
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.get('/devices', requireAuth, async (c) => {
-    const devices = await service.listDevices(c.get('auth'))
-    return c.json({
-      devices: devices.map((device) => ({
-        id: device.id,
-        label: device.label,
-        created_at: device.createdAt.toISOString(),
-        last_seen_at: device.lastSeenAt.toISOString(),
-        current: device.current,
-        enrolled_passkey_here: device.enrolledPasskeyHere,
-      })),
-    })
+    try {
+      const devices = await service.listDevices(c.get('auth'))
+      return c.json({
+        devices: devices.map((device) => ({
+          id: device.id,
+          label: device.label,
+          created_at: device.createdAt.toISOString(),
+          last_seen_at: device.lastSeenAt.toISOString(),
+          current: device.current,
+          enrolled_passkey_here: device.enrolledPasskeyHere,
+        })),
+      })
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.delete('/devices/:id', requireAuth, async (c) => {
-    await service.revokeDevice(c.get('auth'), c.req.param('id'))
-    // 204 whether or not a row matched: "not mine" and "does not exist" are
-    // the same answer to the caller (`docs/testing.md` cross-Login case).
-    return c.body(null, 204)
+    const id = c.req.param('id')
+    // 204 whether or not a row matched: "not mine", "does not exist" and
+    // "not even a UUID" are the same answer to the caller (`docs/testing.md`
+    // cross-Login case; `isUuid`'s own doc comment).
+    if (!isUuid(id)) return c.body(null, 204)
+
+    try {
+      await service.revokeDevice(c.get('auth'), id)
+      return c.body(null, 204)
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.post('/passkeys/options', requireAuth, async (c) => {
-    return c.json(await service.beginAddPasskey(c.get('auth')))
+    try {
+      return c.json(await service.beginAddPasskey(c.get('auth')))
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.post('/passkeys/verify', requireAuth, async (c) => {
@@ -274,20 +327,33 @@ export function createAuthRoutes({
   })
 
   auth.get('/passkeys', requireAuth, async (c) => {
-    const passkeys = await service.listPasskeys(c.get('auth'))
-    return c.json({
-      passkeys: passkeys.map((passkey) => ({
-        id: passkey.id,
-        label: passkey.label,
-        created_at: passkey.createdAt.toISOString(),
-        last_used_at: passkey.lastUsedAt?.toISOString() ?? null,
-      })),
-    })
+    try {
+      const passkeys = await service.listPasskeys(c.get('auth'))
+      return c.json({
+        passkeys: passkeys.map((passkey) => ({
+          id: passkey.id,
+          label: passkey.label,
+          created_at: passkey.createdAt.toISOString(),
+          last_used_at: passkey.lastUsedAt?.toISOString() ?? null,
+        })),
+      })
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   auth.delete('/passkeys/:id', requireAuth, async (c) => {
-    await service.removePasskey(c.get('auth'), c.req.param('id'))
-    return c.body(null, 204)
+    const id = c.req.param('id')
+    // Same 204-regardless discipline as the other two `DELETE …/:id` routes
+    // above — see `isUuid`'s own doc comment.
+    if (!isUuid(id)) return c.body(null, 204)
+
+    try {
+      await service.removePasskey(c.get('auth'), id)
+      return c.body(null, 204)
+    } catch (error) {
+      return failure(c, error)
+    }
   })
 
   return auth

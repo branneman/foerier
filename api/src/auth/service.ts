@@ -477,10 +477,22 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
           // very first request; refusing here is the same answer, earlier and
           // truthfully. Read inside the transaction so a concurrent disable
           // cannot slip past the check.
+          //
+          // The `household_id` filter is not load-bearing today — both
+          // writers of a device Invite (`mintDeviceLink`, `issueDeviceLink`)
+          // source `household_id` and `login_id` from the same row, so the
+          // two can never disagree in practice. It is here so that stays
+          // true structurally rather than by accident: `requireAuth` reads
+          // `householdId` off `device` and `loginId`/`personId` off the
+          // joined `login` (`middleware.ts`), so an Invite whose household
+          // disagreed with its Login's would otherwise mint an auth context
+          // split across two households — tenancy's worst failure mode
+          // (`final-review.md` finding 9).
           const login = await trx
             .selectFrom('login')
-            .select(['id', 'person_id', 'disabled_at'])
+            .select(['id', 'person_id', 'disabled_at', 'household_id'])
             .where('id', '=', loginId)
+            .where('household_id', '=', invite.household_id)
             .executeTakeFirst()
 
           if (login === undefined) throw new AuthError('login unknown')
@@ -858,6 +870,12 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
         ])
         .where('device.login_id', '=', context.loginId)
         .where('device.revoked_at', 'is', null)
+        // The one-year sliding expiry (`session.ts`'s `nextExpiry`) is what
+        // `requireAuth` enforces (`middleware.ts:68-70`) — a Device past it
+        // is already 401'd there. Without this filter it would still be
+        // rendered as signed in and counted here: safe only because nothing
+        // in this database is a year old yet (`final-review.md` finding 8).
+        .where('device.expires_at', '>', new Date(clock.now()))
         .groupBy([
           'device.id',
           'device.label',

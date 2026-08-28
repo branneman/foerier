@@ -20,6 +20,13 @@ import {
  */
 const HOUSEHOLD = '0f000009-0000-4000-8000-000000000009'
 
+/**
+ * A second, unrelated Household — used only to construct a device Invite
+ * whose `household_id` disagrees with its Login's (`final-review.md` finding
+ * 9). UUID registry slot #11 (`docs/testing.md`).
+ */
+const OTHER_HOUSEHOLD = '0f00000b-0000-4000-8000-00000000000b'
+
 describe('device links', () => {
   let h: Harness
   let db: Kysely<Database>
@@ -34,8 +41,9 @@ describe('device links', () => {
   })
 
   beforeEach(async () => {
-    await resetHouseholds(db, [HOUSEHOLD])
+    await resetHouseholds(db, [HOUSEHOLD, OTHER_HOUSEHOLD])
     await seedHousehold(db, { id: HOUSEHOLD, name: 'Veldkamp' })
+    await seedHousehold(db, { id: OTHER_HOUSEHOLD, name: 'Bakker' })
     h.clock.set(Date.UTC(2026, 7, 25, 9, 0, 0))
   })
 
@@ -233,6 +241,31 @@ describe('device links', () => {
       })
 
       expect((await claim(secret)).status).toBe(401)
+    })
+
+    // `final-review.md` finding 9: nothing today mints an Invite whose
+    // `household_id` disagrees with its Login's, so this was safe only by
+    // accident — `requireAuth` reads `householdId` off `device` and
+    // `loginId`/`personId` off the joined `login` (`middleware.ts`), so a
+    // mismatched pair would otherwise mint an auth context split across two
+    // households.
+    it("refuses a device Invite whose household disagrees with its Login's", async () => {
+      await seedLoginHere()
+      const { secret } = await seedInvite(db, {
+        householdId: OTHER_HOUSEHOLD,
+        purpose: 'device',
+        clock: h.clock,
+        loginId: LOGIN,
+      })
+
+      expect((await claim(secret)).status).toBe(401)
+
+      const devices = await db
+        .selectFrom('device')
+        .selectAll()
+        .where('login_id', '=', LOGIN)
+        .execute()
+      expect(devices).toHaveLength(0)
     })
 
     it('answers 400 for a body with no secret, and consumes nothing', async () => {

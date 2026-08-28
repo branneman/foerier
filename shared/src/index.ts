@@ -109,3 +109,5 @@ export { whereabouts } from './selectors/whereabouts.ts'
 
 export type { Match } from './selectors/find.ts'
 export { findGear } from './selectors/find.ts'
+
+export { guessDeviceLabel } from './deviceLabel.ts'

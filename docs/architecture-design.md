@@ -1448,3 +1448,31 @@ running code could teach.
   `blocking` event says something else is waiting on it, and
   `pendingFirstPerson.ts` now opens and closes per call, matching `opLog.ts`
   exactly.
+- **Three new screens shipped eleven `console.error` calls and zero error
+  surfaces, in an app whose defining property is that the network is
+  usually absent.** `Account.tsx`, `Devices.tsx` and `DeviceLink.tsx`
+  between them caught every failure their own comments described — a spent
+  secret, a 401, being offline — and told nobody: the failure was logged to
+  a console no Quartermaster will ever open, and the screen carried on as
+  if nothing had happened. `NoPasskey`'s bare catch routed every one of
+  those failures onto the single screen the device-link path shows, silently;
+  `Account` and `Devices` initialised their device and passkey lists to
+  `[]` and let a failed fetch read as `0 devices signed in.` — a confident,
+  wrong statement about the household's security posture, not an empty
+  state; `confirmThisDevice` had no catch at all, so a rejecting
+  `clearLocalData` left `stopSync()` already called with an unhandled
+  promise rejection and the sign-out sheet closing over it. Thirty-four
+  component tests existed across the three screens and not one of them
+  made an API call fail — the absence of error state and the absence of a
+  test that would have noticed were the same gap, seen from two sides.
+  **Two of these were caught only by this slice's final whole-branch
+  review, after five separate per-task reviews had each passed the commit
+  that introduced them.** That is not a coincidence of diligence: a
+  per-task review is scoped to the screen its own commit touches, and each
+  of those screens' failure paths looked locally reasonable — a `catch`
+  that did *something* (logged, swallowed, moved on) reads as handled
+  until it is read against the app's own premise, that offline is the
+  ordinary case and not the exception. The generalisable lesson is that a
+  slice's error-handling discipline is not a per-screen property checkable
+  one task at a time; it is a property of the slice as a whole, and needs
+  a pass that reads the whole diff looking for exactly this shape of gap.
