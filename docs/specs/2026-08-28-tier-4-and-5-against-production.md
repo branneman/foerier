@@ -27,6 +27,8 @@ it.
 | Third gate | The Household row carries `disposable = true`, set only by `admin:bootstrap --disposable`. Env alone is not enough |
 | Seeding | **Client-side**, through the real `/sync/push`. The server grows no fixture generator |
 | Bootstrap | **By hand, once**, with the existing `admin:bootstrap` script plus a `--disposable` flag. Never automated |
+| Migration | **`0005_disposable_household`** — S3.5's `0004` landed without the two columns, so this spec ships its own (§12) |
+| Tier 5 subset | Only specs tagged **`@production`** run against the box — the golden path and the shell. Everything that mints an Invite by script, or signs out the run's own Device, stays local-only (§6.2) |
 | CI credential | One exported WebAuthn credential, replayed into Chrome's virtual authenticator each run — seeded with a **monotonic `signCount`** (§5.2), never with the exported one |
 | Tier 4's token | Minted **inside the job that uses it**, by signing the assertion in Node from the same exported key (§6.4). **A Device token never crosses a job boundary** |
 | The Device token | Masked the moment it exists, from `globalSetup` where the mask is known to fire; never in an assertion body; **no traces, HTML reports or artifacts uploaded** from the production project |
@@ -82,13 +84,25 @@ POST /auth/login/options     needs a Login that already exists
 POST /auth/login/verify      "
 GET  /auth/me                needs a token
 POST /auth/signout           "
+POST /auth/device/claim      redeem-side only; needs an Invite that already exists
+POST /auth/invites           needs a token; device Invites only until S5
+GET  /auth/invites           "
+DELETE /auth/invites/:id     "
+GET  /auth/devices           "
+DELETE /auth/devices/:id     "
+POST /auth/passkeys/options  "
+POST /auth/passkeys/verify   "
+GET  /auth/passkeys          "
+DELETE /auth/passkeys/:id    "
 POST /sync/push              needs a token
 GET  /sync/pull              "
 ```
 
-**Nothing mints a Household or an Invite.** Story 28 (invite another Person)
-would, at S5 — but it requires an already-signed-in Quartermaster, so it cannot
-bootstrap the first one either.
+**Nothing mints a Household, and nothing mints an Invite without a token.**
+S3.5's `POST /auth/invites` mints device links, and story 28 (invite another
+Person) will mint join Invites at S5 — but both require an already-signed-in
+Quartermaster, so neither can bootstrap the first one. `admin:invite` can,
+and like `admin:bootstrap` it needs the box's Postgres.
 
 So the question is not "how do we avoid a new route". It is **"what is the
 smallest, most tightly gated capability that closes this, and can it avoid
@@ -125,8 +139,16 @@ DELETE FROM passkey
 `$caller_passkey` is the Passkey that verified the calling Device's sign-in.
 `login/verify` already knows it (`row.passkey_id`, `api/src/auth/service.ts`)
 and today throws it away; it is recorded on the Device row as
-`device.passkey_id` (nullable FK — a device-link Device has none) in the same
-migration that carries `disposable` (§12). The `disposable` gate is read
+`device.passkey_id` (nullable FK, **`on delete set null`** — a device-link
+Device has none, and S3.5's `removePasskey` deletes Passkey rows, which must
+not fail on a Device that once signed in with one) in the same migration that
+carries `disposable` (§12). `register/verify` records it too, by an `update`
+after the Passkey row exists: S3.5 inserts the Device *before* the Passkey so
+that `passkey.created_on_device` can point at it, which makes the two FKs
+point at each other — legal because both ends are nullable. The two columns
+are different facts and neither replaces the other: `created_on_device` is
+*which Device enrolled this Passkey*; `passkey_id` is *which Passkey signed
+this Device in*. The `disposable` gate is read
 **under the lock**, in the same `SELECT` the wipe is scoped by, so the gate and
 the wipe see the same row rather than a row that a concurrent statement could
 change between them.
@@ -173,8 +195,8 @@ boot on garbage, exactly as it treats `DATABASE_URL` in production.
   only the Household that token belongs to, and only if that Household is the
   one the box was configured with.
 - **It cannot be pointed at a real Household by a typo.** `household.disposable`
-  (`boolean not null default false`, one column in the migration S3.5's
-  `0004` already opens) is set only by `admin:bootstrap --disposable`. The
+  (`boolean not null default false`, in this spec's own `0005` migration,
+  §12) is set only by `admin:bootstrap --disposable`. The
   route requires both the env var *and* the flag, so the operator writing the
   compose file and the person minting the Household both had to say so. Env
   alone pointed at a real Household would otherwise hand its members a
@@ -256,7 +278,10 @@ continue — the wipe has already happened, so the evidence is the count, and a
 green run after it would be the wrong signal. The "exactly one live token"
 invariant of §3 is what makes this an oracle rather than a heuristic; the
 one legitimate exception is the maintainer's capture session (§5), which the
-first reset after capture is expected to report as `revoked: 1`.
+first reset after capture is expected to report as `revoked: 1`. Two jobs each
+sign in exactly once per run (§6.4), and each resets first, so `contract`'s
+reset sees the previous run's `e2e-prod` Device and `e2e-prod`'s sees this
+run's `contract` Device — one each, never more.
 
 ## 4. Seeding is client-side, so the server needs none
 
@@ -279,8 +304,10 @@ is created once, by hand, and replayed every run.
 
 **One-time, out of band:**
 
-1. On the box: `npm run admin:bootstrap --workspace api -- --disposable --name "E2E"`.
-   Note the Household id → that is `E2E_HOUSEHOLD_ID` for the infra repo.
+1. On the box, inside the api container:
+   `node dist/bootstrap.js --disposable --name "E2E"`. Note the Household id
+   → that is `E2E_HOUSEHOLD_ID` for the infra repo (`admin:list` finds it
+   again later).
 2. Locally, against `https://app.foerier.app`: attach a virtual authenticator,
    redeem the join link, complete the ceremony.
 3. `WebAuthn.getCredentials` → export `credentialId`, `privateKey` (PKCS#8),
@@ -398,10 +425,24 @@ see [§9](#9-open-questions).
 `PLAYWRIGHT_BASE_URL=https://app.foerier.app` already drops the `webServer`
 block and points at production; the config was written for it. Two changes:
 
-- **`joinAs` becomes `signInAs`** for the production project. Joining consumes
-  an invite, and there is exactly one Household that is never re-created.
-- **Reset first.** Every spec's first act is `POST /test/reset`, so state comes
-  from the run rather than from whatever the last run left.
+- **A signed-in Quartermaster comes from a fixture, not from `joinAs`.**
+  Locally the fixture is what every spec does today — `mintInvite()` then
+  `joinAs()`; against production it is `globalSetup`'s storage state (§5.1,
+  point 4; saved with `indexedDB: true`, since that is where the token lives,
+  `auth-design.md` §7.4, and into a gitignored path that no step uploads).
+  Joining consumes an invite, and there is exactly one Household that is never
+  re-created.
+- **Only specs tagged `@production` run there**, selected by the production
+  project's `grep`. Three kinds of spec cannot: one that mints an Invite by
+  Maintainer script (`mintInvite`, `mintJoinInviteInto`, `mintDeviceLink` —
+  all need `DATABASE_URL`), one that proves joining itself, and one that signs
+  out the run's own Device — `deviceLink.spec.ts`'s sign-out test would kill
+  the token every later spec and reset depend on. So `auth.spec.ts` and
+  `deviceLink.spec.ts` stay local-only; `depot.spec.ts` (the golden path) and
+  `shell.spec.ts` carry the tag. Local runs are unchanged: the local project
+  has no `grep`.
+- **Reset first.** Every tagged spec's first act is `POST /test/reset`, so
+  state comes from the run rather than from whatever the last run left.
 
 **Reset-at-start, never teardown**, and that is the load-bearing choice: a
 cancelled or crashed run leaves the Household dirty, and the next run's first
@@ -545,37 +586,33 @@ Stated plainly rather than mitigated away.
 | --- | --- |
 | `testing.md` Tier 4 | The household-scoped suite exists; how it authenticates |
 | `testing.md` Tier 5 | Runs against production after deploy; reset-at-start; `workers: 1` |
-| `testing.md` UUID registry | Two slots for the reset route's Tier 2s test: **11 and 12**. S3.5's plan has already claimed 9 and 10 (`deviceLink.test.ts`, `account.test.ts`) |
-| `auth-design.md` | A note that `/test/reset` exists, is not part of the auth surface, and does not weaken §3.4; §3.4 gains `--disposable` |
-| S3.5 migration `0004` | `household.disposable boolean not null default false` and `device.passkey_id uuid null references passkey` — see §12 |
-| `api/src/auth/service.ts` | `login/verify` records `row.passkey_id` on the Device it mints (§3) |
+| `testing.md` UUID registry | Two slots for the reset route's Tier 2s test: **12 and 13**. S3.5 claimed 9, 10 and 11 as it landed (`deviceLink.test.ts` took a second slot for its mismatched-household Invite) |
+| `auth-design.md` | A note that `/test/reset` exists, is not part of the auth surface, and does not weaken §3.4; §3.4 gains `--disposable`; §9.1's "what exists as of S3.5" names the route as outside the table |
+| Migration `0005_disposable_household` | `household.disposable boolean not null default false` and `device.passkey_id uuid null references passkey on delete set null`; `db/schema.ts` follows — see §12 |
+| `api/src/auth/service.ts` | `login/verify` and `register/verify` record the Passkey on the Device they mint (§3) |
 | `api/test/server/auth.test.ts` | The §5.2 regression: a Passkey re-seeded with a counter at or below the stored one is rejected on sign-in |
 | `api/test/server/softwareAuthenticator.ts` | A constructor that takes an exported key instead of generating one (§6.4) |
 | `api/src/admin/bootstrap.ts` | The `--disposable` flag: sets the column; default false, so every existing invocation is unchanged |
 | `architecture-design.md` §12 | Consequences, once shipped |
 | `ci.yml` | The `e2e-prod` job; the credential secrets, SHA pinning and `permissions: {}` on **both** `contract` and `e2e-prod`; and the stale comment deferring Tier 5 |
-| `playwright.config.ts` | `globalSetup` for the production project; `trace: 'off'` there |
+| `playwright.config.ts` | `globalSetup` for the production project; `trace: 'off'` and `grep: /@production/` there |
+| `test/e2e/quartermaster.ts` | The signed-in-Quartermaster fixture with its two implementations (§6.2) |
 
-## 12. Dependency on S3.5, stated so it is not discovered in a rebase
+## 12. Dependency on S3.5, and how it actually resolved
 
 This spec was written free of `shared/` and of any migration. The third gate
 (§3.1's `household.disposable`) and the Passkey-scoped wipe (§3's
-`device.passkey_id`) end that: they need two columns, and the cheapest place
-for them is the `0004_device_links` migration that
-[S3.5's plan](2026-08-28-auth-device-links-plan.md) already opens in its
-task 1. So:
+`device.passkey_id`) end that: they need two columns. The first draft planned
+to borrow the `0004_device_links` migration S3.5 was about to open.
 
-- **S3.5 task 1 lands first**, carrying the column. That is the intended
-  order — S3.5 is the next slice and this one follows it — and it costs S3.5
-  two `addColumn` lines plus the `--disposable` flag on `bootstrap.ts`.
-- **If this spec is ever built ahead of S3.5**, it does not borrow `0004`: it
-  ships its own `0004_disposable_household.ts`, and S3.5's becomes `0005`.
-  Migration names sort lexicographically and are never renamed once deployed
-  (`api/src/db/migrations.ts`), so whichever lands second takes the next
-  number — never both claim `0004`.
+**S3.5 landed first, and `0004` shipped without them** — it carries
+`invite.person_recorded` and `passkey.created_on_device` and nothing else, and
+it has run on the box. Migration names sort lexicographically and are never
+renamed once deployed (`api/src/db/migrations.ts`), so this spec ships its own
+**`0005_disposable_household.ts`** with both columns, registered after `0004`.
 
-Either way both columns are purely additive — one defaulted, one nullable —
-so the expand-contract rule is satisfied trivially and no deployed image is
-affected by their presence. A Device minted before `passkey_id` existed reads
-as `null`, which the reset treats exactly like a device-link Device: its
+Both columns are purely additive — one defaulted, one nullable — so the
+expand-contract rule is satisfied trivially and no deployed image is affected
+by their presence. A Device minted before `passkey_id` existed reads as
+`null`, which the reset treats exactly like a device-link Device: its
 Passkeys are not the caller's, and the caller's own is the only one spared.
