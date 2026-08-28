@@ -7,6 +7,7 @@
 # GET /api/v1/version.
 #
 #   docker compose -f docker-compose.dev.yml up -d
+#   npm run db:setup
 #   npm run migrate --workspace api
 #   npm run test:server
 #
@@ -32,6 +33,14 @@ services:
       - '127.0.0.1:5433:5432'
     volumes:
       - foerier_pgdata_dev:/var/lib/postgresql/data
+      # Creates `foerier_dev`, the dev server's own database, separate from
+      # `foerier_test` above (`api/src/config.ts` explains why). Postgres only
+      # runs `/docker-entrypoint-initdb.d/` the **first** time a volume is
+      # created — an existing volume already has data on disk and this is
+      # silently skipped on every later start. A checkout with an existing
+      # volume (this repo's own dev database, before this change) needs
+      # `npm run db:setup` once instead; see that script.
+      - ./scripts/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U foerier -d foerier_test']
       interval: 10s

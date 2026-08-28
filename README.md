@@ -90,6 +90,7 @@ database.
 ```
 npm install
 docker compose -f docker-compose.dev.yml up -d   # Postgres on :5433
+npm run db:setup                                 # creates foerier_dev if needed
 npm run migrate
 ```
 

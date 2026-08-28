@@ -1,0 +1,12 @@
+-- Runs only when `docker-compose.dev.yml`'s named volume is created for the
+-- first time (Postgres's own `/docker-entrypoint-initdb.d/` convention). An
+-- existing volume already has data on disk and Postgres skips this directory
+-- entirely on every later start, so an existing checkout must instead run
+-- `npm run db:setup` once (`scripts/db-setup.mjs`) to get `foerier_dev`.
+--
+-- Kept a separate database from `foerier_test` (`POSTGRES_DB` above) because
+-- `api/test/server/migrations.test.ts` proves the `0003` migration by
+-- actually dropping and recreating the `op` table — sharing one database
+-- between the dev server and Tier 2s means every test run wipes the
+-- developer's own recorded gear.
+CREATE DATABASE foerier_dev OWNER foerier;

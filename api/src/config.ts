@@ -36,9 +36,20 @@ function required(name: string): string {
  * required and its absence is a loud failure to boot: a production server that
  * quietly fell back to a localhost database would come up healthy, serve
  * nothing, and look like a networking problem.
+ *
+ * **Deliberately its own database, `foerier_dev`, separate from the Tier 2s
+ * database (`foerier_test`, `api/test/server/testDb.ts`).**
+ * `api/test/server/migrations.test.ts` proves the `0003` migration by actually
+ * dropping and recreating the `op` table — that is the correct way to prove a
+ * migration, but it means every full test run against a shared database wipes
+ * every op in it. A developer's own gear is real data recorded through the
+ * dev server; it must not live in the database Tier 2s is allowed to destroy.
+ * A fresh `docker-compose.dev.yml` volume creates `foerier_dev` itself
+ * (`scripts/initdb/01-dev-database.sql`); an existing checkout needs
+ * `npm run db:setup` once.
  */
 export const DEV_DATABASE_URL =
-  'postgres://foerier:foerier@localhost:5433/foerier_test'
+  'postgres://foerier:foerier@localhost:5433/foerier_dev'
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const isProduction = env['NODE_ENV'] === 'production'

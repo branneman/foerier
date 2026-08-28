@@ -49,7 +49,17 @@ export default defineConfig({
           {
             command: 'npm run dev --workspace api',
             url: `${API_BASE}/version`,
-            reuseExistingServer: process.env['CI'] === undefined,
+            // Deliberately never reused, even locally. `API_PORT` (8080) is
+            // the same port a developer's own `npm run dev:api` listens on,
+            // and that server defaults to `foerier_dev`
+            // (`api/src/config.ts`), not this file's `foerier_test`. A
+            // reused dev server would answer on 8080 while `mintInvite`
+            // writes each test's Invite into `foerier_test` — every spec
+            // then fails with "invite unknown" against a server that, from
+            // the developer's side, looks perfectly healthy. A few seconds
+            // per run buys certainty that this server is the one this run's
+            // data actually landed in.
+            reuseExistingServer: false,
             timeout: 60_000,
             env: { DATABASE_URL, PORT: String(API_PORT) },
           },
