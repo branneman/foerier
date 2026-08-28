@@ -125,65 +125,72 @@ async function renderDeviceLink(
     personName === null ? [] : [personRecorded(PERSON_ID, personName)]
   const store = await seededStore(specs)
 
+  // Shared across every `api` object this test builds — including the
+  // fresh one `rerenderWithNewApi` swaps in — so "exactly one issue" is a
+  // fact about the screen, not an artefact of counting on one particular
+  // `AuthApi` instance.
   let issueCalls = 0
   const revokedIds: string[] = []
 
-  const api = createAuthApi(
-    fetchFrom([
-      {
-        method: 'POST',
-        path: '/auth/invites',
-        respond: () => {
-          issueCalls += 1
-          return jsonResponse({
-            id: inviteId,
-            secret,
-            expires_at: new Date(
-              Date.now() + expiresInMinutes * 60_000,
-            ).toISOString(),
-          })
+  function buildApi() {
+    return createAuthApi(
+      fetchFrom([
+        {
+          method: 'POST',
+          path: '/auth/invites',
+          respond: () => {
+            issueCalls += 1
+            return jsonResponse({
+              id: inviteId,
+              secret,
+              expires_at: new Date(
+                Date.now() + expiresInMinutes * 60_000,
+              ).toISOString(),
+            })
+          },
         },
-      },
-      {
-        method: 'DELETE',
-        path: `/auth/invites/${inviteId}`,
-        respond: () => {
-          revokedIds.push(inviteId)
-          return noContent()
+        {
+          method: 'DELETE',
+          path: `/auth/invites/${inviteId}`,
+          respond: () => {
+            revokedIds.push(inviteId)
+            return noContent()
+          },
         },
-      },
-    ]),
-  )
+      ]),
+    )
+  }
+
+  const api = buildApi()
 
   const location = memoryLocation({
     path: '/account/device-link',
     record: true,
   })
 
-  const view = render(
-    <StrictMode>
-      <Router hook={location.hook}>
-        <DepotProvider value={store}>
-          <DeviceLink api={api} token={TOKEN} personId={PERSON_ID} />
-        </DepotProvider>
-      </Router>
-    </StrictMode>,
-  )
+  function tree(currentApi: ReturnType<typeof buildApi>) {
+    return (
+      <StrictMode>
+        <Router hook={location.hook}>
+          <DepotProvider value={store}>
+            <DeviceLink api={currentApi} token={TOKEN} personId={PERSON_ID} />
+          </DepotProvider>
+        </Router>
+      </StrictMode>
+    )
+  }
+
+  const view = render(tree(api))
 
   return {
     issueCalls: () => issueCalls,
     revokedIds,
     location,
-    rerender: () =>
-      view.rerender(
-        <StrictMode>
-          <Router hook={location.hook}>
-            <DepotProvider value={store}>
-              <DeviceLink api={api} token={TOKEN} personId={PERSON_ID} />
-            </DepotProvider>
-          </Router>
-        </StrictMode>,
-      ),
+    rerender: () => view.rerender(tree(api)),
+    // A distinct `AuthApi` object — `token` and `personId` stay the same,
+    // only `api`'s identity changes, which is enough to change the mount
+    // effect's dependency array and force it to re-run.
+    rerenderWithNewApi: () => view.rerender(tree(buildApi())),
   }
 }
 
@@ -198,6 +205,20 @@ describe('the device-link screen', () => {
     expect(screen.getByText('SINGLE USE')).toBeInTheDocument()
 
     const chip = screen.getByText('EXPIRES IN 58 min')
+    expect(chip).toHaveAttribute('data-urgent', 'true')
+  })
+
+  // fix-round-1: a freshly issued link has ~3,600,000ms remaining, which
+  // `Math.round` turns into a *displayed* "60 min" — and a naive
+  // `minutes < 60` then reads that as not urgent, so the chip rendered
+  // muted for the first ~45 seconds of exactly the link boards §14 says
+  // should always read amber. `urgent` must be decided from the raw
+  // remaining milliseconds, never from the rounded display value.
+  it('reads urgent at the full hour, before rounding would pull the display to 60 min', async () => {
+    await renderDeviceLink({ expiresInMinutes: 60 })
+    await screen.findByRole('img', { name: /device link/i })
+
+    const chip = screen.getByText(/^EXPIRES IN \d+ min$/)
     expect(chip).toHaveAttribute('data-urgent', 'true')
   })
 
@@ -226,6 +247,23 @@ describe('the device-link screen', () => {
     // survive it once.
     rerender()
     rerender()
+
+    expect(issueCalls()).toBe(1)
+  })
+
+  // The test above only varies re-renders with a stable `api` reference,
+  // which the mount effect's `[api, token]` dependency array never reacts
+  // to — it proves nothing about a dependency actually changing. The
+  // `useRef` guard survives that too, but only because the ref is a
+  // property of the component instance, not of any one effect run: this
+  // is what actually establishes that, rather than assuming it.
+  it('does not re-issue when a re-render changes the api dependency', async () => {
+    const { issueCalls, rerenderWithNewApi } = await renderDeviceLink({
+      expiresInMinutes: 58,
+    })
+    await screen.findByRole('img', { name: /device link/i })
+
+    rerenderWithNewApi()
 
     expect(issueCalls()).toBe(1)
   })

@@ -22,30 +22,46 @@ export interface DeviceLinkProps {
   personId: string
 }
 
+/** A device link's whole lifetime (`auth-design.md` §5's TTL for
+ * `purpose: 'device'`), in milliseconds — the boundary `urgent` below
+ * compares the *raw* remaining time against. */
+const DEVICE_LINK_TTL_MS = 60 * 60_000
+
 /**
- * `EXPIRES IN 58 min` (boards §14). A device link's whole lifetime is one
- * hour (`auth-design.md` §5's TTL for `purpose: 'device'`), so this only
- * ever needs minute granularity — unlike `Join.tsx`'s own `expiryChip`,
- * which also prints hours and days for the week-long join invite. Kept
- * separate rather than shared for that reason: the two chips answer to
- * different-lived Invites and would otherwise carry a branch neither needs.
+ * `EXPIRES IN 58 min` (boards §14) — the **displayed** number only. Rounds
+ * for readability, and nothing else may read this value: fix-round-1 found
+ * that a freshly issued link (~3,599,900ms remaining) rounds up to a
+ * displayed "60 min", and a naive `minutes < 60` then reads that as *not*
+ * urgent — the chip renders muted for the first ~45 seconds of exactly the
+ * link boards §14 says should always read amber. `urgent` is computed from
+ * the raw millisecond figure instead, independently of this rounding — "how
+ * much time is left" is a fact, "what to print" is a presentation choice,
+ * and the second must never feed the first.
  */
-function minutesRemaining(expiresAt: string, now: number): number {
-  return Math.max(0, Math.round((new Date(expiresAt).getTime() - now) / 60_000))
+function minutesRemaining(remainingMs: number): number {
+  return Math.round(Math.max(0, remainingMs) / 60_000)
 }
 
-/** Ticks the chip live, at a resolution finer than the minute it displays
- * (boards §14: "live count, minute granularity") so a minute rolling over is
- * never more than half a minute late to appear. */
-function useNowTicking(intervalMs = 30_000): number {
-  const [now, setNow] = useState(() => Date.now())
+/**
+ * Forces a re-render every `intervalMs` so the expiry chip counts live
+ * (boards §14: "live count, minute granularity"). Deliberately a trigger
+ * only — it holds no time value of its own. `DeviceLink` reads `Date.now()`
+ * fresh at render time below rather than from a stored snapshot, so a
+ * render caused by anything else (the Invite arriving, a revoke) is never
+ * computed against a "now" left over from whenever this last ticked. That
+ * distinction matters here specifically: the Invite typically arrives a
+ * network round trip after mount, and comparing its `expires_at` against a
+ * `now` captured *before* that round trip would overstate the remaining
+ * time by exactly that round trip — the opposite direction of fix-round-1's
+ * rounding bug, but the same class of error.
+ */
+function useTick(intervalMs = 30_000): void {
+  const [, setTick] = useState(0)
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs)
+    const id = setInterval(() => setTick((count) => count + 1), intervalMs)
     return () => clearInterval(id)
   }, [intervalMs])
-
-  return now
 }
 
 /**
@@ -69,10 +85,11 @@ export function DeviceLink({ api, token, personId }: DeviceLinkProps) {
   )
   const [, navigate] = useLocation()
   const issuedRef = useRef(false)
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [invite, setInvite] = useState<IssuedInvite | null>(null)
   const [copied, setCopied] = useState(false)
   const [revoking, setRevoking] = useState(false)
-  const now = useNowTicking()
+  useTick()
 
   useEffect(() => {
     if (issuedRef.current) return
@@ -84,6 +101,18 @@ export function DeviceLink({ api, token, personId }: DeviceLinkProps) {
         console.error('device link: could not issue a link', error)
       })
   }, [api, token])
+
+  // The "Copied" swap on the button is transient — clear its timer on
+  // unmount so a leftover callback never fires against an unmounted
+  // component (harmless under React 18+'s own warning removal, but a
+  // dangling timer serves nothing once the screen is gone).
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current !== null) {
+        clearTimeout(copiedTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // The secret rides in the URL **fragment**, never sent to a server
   // (`auth-design.md` §3.2) — built from `window.location.origin` so the
@@ -99,7 +128,7 @@ export function DeviceLink({ api, token, personId }: DeviceLinkProps) {
     try {
       await navigator.clipboard.writeText(link)
       setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      copiedTimeoutRef.current = setTimeout(() => setCopied(false), 1500)
     } catch (error) {
       console.error('device link: could not copy the link', error)
     }
@@ -120,13 +149,20 @@ export function DeviceLink({ api, token, personId }: DeviceLinkProps) {
     }
   }
 
-  const minutes =
-    invite === null ? null : minutesRemaining(invite.expires_at, now)
+  // Raw milliseconds, read fresh at render time (see `useTick`'s own doc
+  // comment) — `urgent` below is decided from this, never from `minutes`,
+  // which only exists to be printed.
+  const remainingMs =
+    invite === null
+      ? null
+      : Math.max(0, new Date(invite.expires_at).getTime() - Date.now())
+  const minutes = remainingMs === null ? null : minutesRemaining(remainingMs)
   // Always true in practice — a device link's whole lifetime is one hour,
-  // so it is never *not* under an hour. Deliberate, not a bug to normalise
-  // away (Task 11's brief); the `< 60` test still names the real rule
-  // rather than hardcoding the outcome.
-  const urgent = minutes !== null && minutes < 60
+  // so it is never *not* within it. Deliberate, not a bug to normalise away
+  // (Task 11's brief); the `<= DEVICE_LINK_TTL_MS` test still names the
+  // real rule rather than hardcoding the outcome, and — unlike a check on
+  // the rounded `minutes` — actually holds at the moment a link is issued.
+  const urgent = remainingMs !== null && remainingMs <= DEVICE_LINK_TTL_MS
 
   return (
     <div className={styles['screen']}>
