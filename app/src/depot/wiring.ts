@@ -242,13 +242,26 @@ function firstSync(engine: SyncEngine | null): void {
  * `unsyncedCount()` (`depot/store.ts`) — `deadLetterCount` plus the length of
  * `log.outbox(…)` — read while the store is still alive, before the sheet's
  * confirm button ever runs this.
+ *
+ * `onBlocked`, fired if a second tab of the app is holding `foerier` open,
+ * exists so that same sheet can say so — "another tab has this open, close
+ * it to finish" — rather than sitting there with its buttons disabled and
+ * nothing to look at. `deleteDB` does not give up when this fires; it keeps
+ * waiting, and so does this function, and so does the caller: the delete
+ * either completes for real once the other connection closes, or it never
+ * does, but nothing here ever fakes the difference.
  */
-export async function clearLocalData(): Promise<void> {
+export async function clearLocalData(onBlocked?: () => void): Promise<void> {
   await deleteDB(DB_NAME, {
     blocked: () => {
-      // Another tab is holding the database open. Nothing to do but say so —
-      // the delete completes as soon as that connection closes.
+      // Another tab is holding the database open. This does not give up and
+      // it does not fake success — the delete completes for real as soon as
+      // that connection closes, however long that takes. `onBlocked` is how
+      // the confirm sheet (`screens/Devices.tsx`) learns to say so instead of
+      // sitting there with disabled buttons and no explanation, which is
+      // exactly what it did before this callback existed.
       console.warn('depot: another tab is holding the database open')
+      onBlocked?.()
     },
   })
 }

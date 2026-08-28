@@ -27,7 +27,7 @@ export interface AccountProps {
   onSignOut: () => void
   /** Injectable for tests; defaults to the real IndexedDB wipe — see
    * `useDeviceSignOut`'s own doc comment in `Devices.tsx`. */
-  clearLocalData?: () => Promise<void>
+  clearLocalData?: (onBlocked: () => void) => Promise<void>
 }
 
 /* ---- a client-side guess at this device's label (spec §6.5) ---- */
@@ -197,6 +197,7 @@ export function Account({
     remoteTarget,
     thisDeviceOpen,
     unsynced,
+    blocked,
     busy: signOutBusy,
     select: selectDevice,
     openThisDeviceConfirm,
@@ -504,6 +505,7 @@ export function Account({
       <SignOutThisDeviceSheet
         open={thisDeviceOpen}
         unsyncedCount={unsynced}
+        blocked={blocked}
         busy={signOutBusy}
         onCancel={cancelThisDevice}
         onConfirm={confirmThisDevice}

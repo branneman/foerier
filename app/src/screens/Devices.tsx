@@ -152,20 +152,36 @@ export function SignOutRemoteSheet({
 
 /**
  * **Sign out this Device** (boards §12) — the only auth action that can
- * discard work, and therefore the only one carrying `▲`. The line states
- * the exact unsynced count and is omitted entirely at zero: inventing a
+ * discard work, and therefore the only one carrying `▲`. The unsynced-count
+ * line states the exact count and is omitted entirely at zero: inventing a
  * warning where there is nothing to warn about is the one failure this
  * screen exists to avoid.
+ *
+ * **`blocked`** carries the same discipline for a second, rarer fact
+ * (fix round 1): a second tab of the app can be holding `foerier` open when
+ * someone confirms here, in which case the clear this sheet is waiting on
+ * cannot finish yet. Genuinely uncommon, but silent otherwise — the confirm
+ * button would sit disabled with nothing on screen to explain why, which
+ * is worse than the count being omitted at zero. No new register: it is the
+ * same `attentionLine`, the same `▲`, stating what is true and nothing more
+ * — never a timeout that gives up and claims the data is gone when a
+ * blocked delete left it in place.
  */
 export function SignOutThisDeviceSheet({
   open,
   unsyncedCount,
+  blocked,
   busy,
   onCancel,
   onConfirm,
 }: {
   open: boolean
   unsyncedCount: number
+  /** A second tab of the app is holding `foerier` open, so the delete this
+   * sheet is waiting on cannot complete yet — genuinely rare (fix round 1),
+   * but silent otherwise: the confirm button would sit disabled with
+   * nothing to explain why. */
+  blocked: boolean
   busy: boolean
   onCancel: () => void
   onConfirm: () => void
@@ -190,6 +206,11 @@ export function SignOutThisDeviceSheet({
         {unsyncedCount > 0 && (
           <p className={styles['attentionLine']}>
             ▲ {unsyncedCount} changes not yet synced. Signing out clears them.
+          </p>
+        )}
+        {blocked && (
+          <p className={styles['attentionLine']}>
+            ▲ Another tab has this open. Close it to finish signing out.
           </p>
         )}
         <p className={styles['body']}>
@@ -231,8 +252,10 @@ export interface UseDeviceSignOutArgs {
    * list drops it. */
   onRevoked: (deviceId: string) => void
   /** Injectable for tests; defaults to the real IndexedDB wipe
-   * (`depot/wiring.ts`). */
-  clearLocalData?: () => Promise<void>
+   * (`depot/wiring.ts`). Takes an `onBlocked` callback so a second tab
+   * holding `foerier` open can be surfaced rather than left silent
+   * (fix round 1). */
+  clearLocalData?: (onBlocked: () => void) => Promise<void>
 }
 
 /**
@@ -255,6 +278,10 @@ export function useDeviceSignOut({
   const [thisDeviceOpen, setThisDeviceOpen] = useState(false)
   const [unsynced, setUnsynced] = useState(0)
   const [busy, setBusy] = useState(false)
+  /** A second tab is holding `foerier` open, so `confirmThisDevice`'s
+   * `clearLocalData` call is genuinely stuck waiting rather than merely
+   * slow (fix round 1). */
+  const [blocked, setBlocked] = useState(false)
 
   /**
    * Read the count **before** anything that could end the session — the
@@ -268,6 +295,9 @@ export function useDeviceSignOut({
       return 0
     })
     setUnsynced(count)
+    // A fresh sheet never opens already showing a stale block left over
+    // from a previous, cancelled attempt.
+    setBlocked(false)
     setThisDeviceOpen(true)
   }, [readUnsyncedCount])
 
@@ -304,6 +334,7 @@ export function useDeviceSignOut({
 
   async function confirmThisDevice() {
     setBusy(true)
+    setBlocked(false)
     try {
       // Best effort: revocation needs the network and clearing does not.
       // The app works offline everywhere else; a sign-out that failed for
@@ -313,11 +344,17 @@ export function useDeviceSignOut({
       // one-year sliding expiry or from another Device's revoke.
       await api.signOut(token).catch(() => undefined)
       stopSync()
-      await clearLocalData()
+      // `onBlocked` only ever *reports*; it never resolves this call for
+      // it. `clearLocalData` still doesn't return until the delete
+      // genuinely completes, however long a second tab makes it wait, so
+      // nothing below this line runs — and the session does not end — on a
+      // guess (fix round 1: no timeout, no pretending it finished).
+      await clearLocalData(() => setBlocked(true))
       onSignedOut()
       navigate('/signin')
     } finally {
       setBusy(false)
+      setBlocked(false)
       setThisDeviceOpen(false)
     }
   }
@@ -326,6 +363,7 @@ export function useDeviceSignOut({
     remoteTarget,
     thisDeviceOpen,
     unsynced,
+    blocked,
     busy,
     select,
     openThisDeviceConfirm,
@@ -341,7 +379,7 @@ export interface DevicesProps {
   token: string
   onSignedOut: () => void
   /** Injectable for tests; defaults to the real IndexedDB wipe. */
-  clearLocalData?: () => Promise<void>
+  clearLocalData?: (onBlocked: () => void) => Promise<void>
 }
 
 /**
@@ -378,6 +416,7 @@ export function Devices({
     remoteTarget,
     thisDeviceOpen,
     unsynced,
+    blocked,
     busy,
     select,
     openThisDeviceConfirm,
@@ -445,6 +484,7 @@ export function Devices({
       <SignOutThisDeviceSheet
         open={thisDeviceOpen}
         unsyncedCount={unsynced}
+        blocked={blocked}
         busy={busy}
         onCancel={cancelThisDevice}
         onConfirm={confirmThisDevice}

@@ -137,7 +137,7 @@ async function renderDevices(
     devices?: DeviceRow[]
     unsyncedCount?: number
     signOutFails?: boolean
-    clearLocalData?: () => Promise<void>
+    clearLocalData?: (onBlocked: () => void) => Promise<void>
     path?: string
   } = {},
 ) {
@@ -287,6 +287,53 @@ describe('Devices', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Sign out and clear' }),
     )
+
+    expect(await screen.findByText('Sign-in screen')).toBeInTheDocument()
+    expect(onSignedOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces a blocked delete — a second tab holding the database open — and finishes once it releases', async () => {
+    // `clearLocalData`'s real implementation (`depot/wiring.ts`) never
+    // resolves this call until `deleteDB` genuinely completes, however long
+    // a second tab makes it wait — `onBlocked` only ever *reports*. This
+    // fake holds the promise open the same way, so the covering assertion
+    // below is against the actual blocked state rather than a mock that
+    // resolves instantly no matter what it was told (fix round 1).
+    let release: () => void = () => {
+      throw new Error('release called before it was assigned')
+    }
+    const blockedGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const clearLocalData = vi.fn(async (onBlocked: () => void) => {
+      onBlocked()
+      await blockedGate
+    })
+    const { onSignedOut } = await renderDevices({ clearLocalData })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Sign out/ }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out and clear' }),
+    )
+
+    expect(
+      await screen.findByText(
+        '▲ Another tab has this open. Close it to finish signing out.',
+      ),
+    ).toBeInTheDocument()
+    // Nothing gave up and nothing pretended the data was gone: the sheet is
+    // still this Device's own confirm, still up, and the session has not
+    // ended.
+    expect(
+      screen.getByRole('alertdialog', { name: 'Sign out this device?' }),
+    ).toBeInTheDocument()
+    expect(onSignedOut).not.toHaveBeenCalled()
+
+    // The other tab closes; the delete that was genuinely blocked resolves
+    // for real, and sign-out finishes exactly like the happy path.
+    release()
 
     expect(await screen.findByText('Sign-in screen')).toBeInTheDocument()
     expect(onSignedOut).toHaveBeenCalledTimes(1)
