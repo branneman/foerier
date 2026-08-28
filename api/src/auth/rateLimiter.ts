@@ -61,10 +61,13 @@ export function createRateLimiter({
       evictIdle(now)
 
       const bucket = buckets.get(key) ?? { tokens: capacity, updatedAt: now }
-      const refilled = Math.min(
-        capacity,
-        bucket.tokens + (now - bucket.updatedAt) * refillPerMs,
-      )
+      // Elapsed time floors at zero: a clock that reads earlier than the
+      // bucket's last update (a backward NTP step, or a test's fake clock
+      // reset between cases sharing one long-lived limiter) must never be
+      // read as tokens spent — that drives the bucket arbitrarily negative
+      // and locks the caller out far longer than any real burst would.
+      const elapsed = Math.max(0, now - bucket.updatedAt)
+      const refilled = Math.min(capacity, bucket.tokens + elapsed * refillPerMs)
 
       if (refilled < 1) {
         buckets.set(key, { tokens: refilled, updatedAt: now })
