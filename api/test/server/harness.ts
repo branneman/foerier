@@ -46,6 +46,11 @@ export async function createHarness(
   options: {
     rateLimit?: { capacity: number; refillPerMinute: number }
     syncRateLimit?: { capacity: number; refillPerMinute: number }
+    /**
+     * Left undefined by default, so every other suite gets a server with no
+     * `/test/reset` on it at all — which is exactly the production shape.
+     */
+    e2eHouseholdId?: string
   } = {},
 ): Promise<Harness> {
   const db = await testDb()
@@ -69,6 +74,7 @@ export async function createHarness(
       capacity: 10_000,
       refillPerMinute: 10_000,
     },
+    e2eHouseholdId: options.e2eHouseholdId,
   })
 
   return {

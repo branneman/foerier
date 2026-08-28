@@ -20,6 +20,9 @@ async function main(): Promise<void> {
     db,
     mode:
       process.env['NODE_ENV'] === 'production' ? 'production' : 'development',
+    // Undefined on every server but the e2e one, and that absence is what
+    // keeps `/test/reset` off the surface entirely.
+    e2eHouseholdId: config.e2eHouseholdId,
   })
 
   serve({ fetch: app.fetch, port: config.port }, ({ port }) => {

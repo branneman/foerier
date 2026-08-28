@@ -151,6 +151,8 @@ registry** below so a persistent `foerier_test` DB never collides across classes
 | 9 | `0f000009-…-000000000009` | `deviceLink.test.ts` — `person_recorded`, `device/claim` |
 | 10 | `0f00000a-…-00000000000a` | `account.test.ts` — invites, devices, passkeys, `/auth/me` |
 | 11 | `0f00000b-…-00000000000b` | `deviceLink.test.ts` — the mismatched-household Invite |
+| 12 | `0f00000c-…-00000000000c` | `testReset.test.ts` — the disposable E2E household |
+| 13 | `0f00000d-…-00000000000d` | `testReset.test.ts` — the household that must stay untouched |
 | _(claim the next free slot when adding a server-integration class)_ | | |
 
 Two rules the suite learned the hard way and that a new class must follow:

@@ -17,6 +17,8 @@ import { createAuthService } from './auth/service.ts'
 import type { Database } from './db/schema.ts'
 import { createSyncRoutes } from './sync/routes.ts'
 import { createSyncService } from './sync/service.ts'
+import { createTestRoutes } from './test/routes.ts'
+import { createTestResetService } from './test/service.ts'
 
 export interface AppDeps {
   gitSha: string
@@ -40,6 +42,14 @@ export interface AppDeps {
    * legitimately bursts after a long disconnection (sync-protocol.md §6.3).
    */
   syncRateLimit?: { capacity: number; refillPerMinute: number } | undefined
+  /**
+   * The Household `POST /test/reset` may wipe, from `E2E_HOUSEHOLD_ID`.
+   *
+   * Absent on every server but the e2e one, and absence is what makes the
+   * route not exist — see the mount below
+   * (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3).
+   */
+  e2eHouseholdId?: string | undefined
 }
 
 /**
@@ -64,6 +74,7 @@ export function buildApp(deps: AppDeps) {
     // auth bucket: a device catching up after days offline can legitimately
     // push and pull many batches in a row (sync-protocol.md §6.3).
     syncRateLimit = { capacity: 300, refillPerMinute: 600 },
+    e2eHouseholdId,
   } = deps
 
   const app = new Hono<{ Variables: AuthVariables }>()
@@ -120,14 +131,36 @@ export function buildApp(deps: AppDeps) {
       }),
     )
 
+    // One instance, deliberately shared with `/test` below: reset is an
+    // authenticated write like push and must spend from push's own per-Device
+    // budget rather than a bucket of its own
+    // (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3.3).
+    const syncLimiter = createRateLimiter({ ...syncRateLimit, clock })
+
     v1.route(
       '/sync',
       createSyncRoutes({
         service: createSyncService({ db, clock }),
         requireAuth,
-        limiter: createRateLimiter({ ...syncRateLimit, clock }),
+        limiter: syncLimiter,
       }),
     )
+
+    // Mounted conditionally rather than guarded inside a handler: with
+    // `E2E_HOUSEHOLD_ID` unset the route table simply has no `/test` in it, so
+    // "unset ⇒ 404" is true by construction and there is no early return for a
+    // later refactor to lose (§3, "Mount conditionally").
+    if (e2eHouseholdId !== undefined) {
+      v1.route(
+        '/test',
+        createTestRoutes({
+          service: createTestResetService({ db, clock }),
+          requireAuth,
+          limiter: syncLimiter,
+          e2eHouseholdId,
+        }),
+      )
+    }
   }
 
   return app
