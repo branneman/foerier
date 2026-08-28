@@ -250,6 +250,13 @@ describe('the op table and the household counter', () => {
   })
 
   it('down() drops the op table and the op_seq column', async () => {
+    // This is the one test in Tier 2s that touches a table it does not own,
+    // and it does not merely read it: for the length of this test the `op`
+    // table is gone for every class. That is safe only because the `server`
+    // project runs in a single fork — see `api/vitest.server.config.ts`, where
+    // the serialisation is enforced rather than left to a CLI flag. A class
+    // running beside this one fails with `relation "op" does not exist`.
+    //
     // Migration modules type their `db` parameter as `Kysely<unknown>` — see
     // `migrations/0003_op.ts` — because that is the type the migrator hands
     // them; calling one directly from a `Kysely<Database>`-typed test needs

@@ -157,10 +157,22 @@ Two rules the suite learned the hard way and that a new class must follow:
   rows and passes or fails for reasons that have nothing to do with the test.
 - **Never clear a table you do not own.** `webauthn_challenge` belongs to no
   household — challenges exist before a Login does — so wiping it in `beforeEach`
-  pulls the rug from under a ceremony running in another file. Tier 2s runs
-  single-threaded (`--no-file-parallelism`) for the same reason; note that
-  `fileParallelism` is a *root-level* Vitest option and is silently ignored
-  inside a project config.
+  pulls the rug from under a ceremony running in another file.
+
+**Tier 2s runs single-threaded, and the project config is what enforces it.**
+`api/vitest.server.config.ts` sets `pool: 'forks'` with
+`poolOptions.forks.singleFork`, so every invocation gets one worker and the
+five files run one after another. It is expressed there rather than as
+`--no-file-parallelism` in the `test:server` script because `fileParallelism`
+is a *root-level* Vitest option, silently ignored inside a project config and
+therefore only ever supplied by that one script — while `npx vitest run
+api/test/server/` is an entirely ordinary thing to type. Run in parallel, the
+five classes delete each other's rows mid-ceremony, and `migrations.test.ts`
+— which proves `0003_op.down()` by actually dropping the `op` table before
+re-creating it — makes a neighbour fail with `relation "op" does not exist`
+on whichever test was in flight. `poolOptions` *is* honoured per project, so
+the serialisation is now a property of the suite rather than of how it was
+invoked.
 
 ## Tier 3 — Component tests
 
