@@ -21,6 +21,16 @@ export interface JoinProps {
    */
   onNameChange: (name: string) => void
   signedIn: boolean
+  /**
+   * Whether *this* sign-in actually made a credential. The register path
+   * (`confirm`) does; the claim path (`claim`, both the device link and the
+   * S3.5 fallback) never does — `device/claim` issues a token and creates no
+   * credential, always (`auth-design.md` §5). Read only when `signedIn` is
+   * true, but not optional: a stale default here is exactly how the success
+   * frame told a passkey-less claim "Passkey saved on this device" in the
+   * first place.
+   */
+  passkeySaved: boolean
   onOpenDepot: () => void
 }
 
@@ -55,6 +65,7 @@ export function Join({
   onNoPasskey,
   onNameChange,
   signedIn,
+  passkeySaved,
   onOpenDepot,
 }: JoinProps) {
   const [name, setName] = useState('')
@@ -64,7 +75,16 @@ export function Join({
     return (
       <div className={styles['screen']}>
         <h1 className={styles['title']}>Signed in.</h1>
-        <p className={styles['fact']}>Passkey saved on this device.</p>
+        {/* The claim path (device link or S3.5 fallback) never makes a
+            credential, so it gets `NoPasskey`'s own settled fact line rather
+            than a claim the register path alone can make — the same
+            discipline that turned "This device cannot make one" into "No
+            passkey is made here" (`docs/design/README.md` §10). */}
+        <p className={styles['fact']}>
+          {passkeySaved
+            ? 'Passkey saved on this device.'
+            : 'You stay signed in until you sign out.'}
+        </p>
         {/* The one screen a Quartermaster cannot walk past: a Device that has
             never pulled folds the household's history before the depot can
             show anything, so the CTA is gated on that fold rather than on

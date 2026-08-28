@@ -24,9 +24,10 @@ export function NoPasskey({ personName, onContinue }: NoPasskeyProps) {
   // A ref rather than `busy` alone: `onContinue` normally navigates the app
   // away once it resolves, but in isolation (and on a genuine double tap
   // faster than a render) `busy` can already be back to `false` by the time a
-  // second click lands. This guard is permanent for the component's
-  // lifetime — once started, never again — where `busy` stays purely
-  // presentational.
+  // second click lands. This guard survives a *successful* run permanently —
+  // the secret it redeemed is spent, so a second run must never fire — but a
+  // *failed* run resets it: nothing was spent, and leaving it set would wedge
+  // the button forever with no way back short of a reload.
   const started = useRef(false)
 
   async function go() {
@@ -35,6 +36,13 @@ export function NoPasskey({ personName, onContinue }: NoPasskeyProps) {
     setBusy(true)
     try {
       await onContinue()
+    } catch {
+      // Nothing was spent by a failed claim, so the guard resets — unlike the
+      // success path, where it must stay set forever because the secret was.
+      // Swallowed rather than rethrown: `onClick={() => void go()}` discards
+      // the promise, and there is no error surface on this screen yet to
+      // hand a rethrow to.
+      started.current = false
     } finally {
       setBusy(false)
     }

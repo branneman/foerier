@@ -25,6 +25,7 @@ const defaults = {
   onNoPasskey: () => {},
   onNameChange: () => {},
   signedIn: false,
+  passkeySaved: true,
   onOpenDepot: () => {},
 }
 
@@ -126,6 +127,7 @@ describe('the join screen', () => {
           onNoPasskey={onNoPasskey}
           onNameChange={vi.fn()}
           signedIn={false}
+          passkeySaved={false}
           onOpenDepot={vi.fn()}
         />,
       )
@@ -198,6 +200,37 @@ describe('the join screen', () => {
 
       await user.click(screen.getByRole('button', { name: 'Open the depot' }))
       expect(onOpenDepot).toHaveBeenCalled()
+    })
+
+    it('never claims a passkey was saved on the claim path, which makes none', () => {
+      // The same discipline that turned "This device cannot make one" into
+      // "No passkey is made here" (`docs/design/README.md` §10): a Device
+      // that signed in via `device/claim` created no credential, ever, so
+      // the success frame right after must not say it did.
+      render(
+        <Join
+          {...defaults}
+          preview={aPreview()}
+          signedIn
+          passkeySaved={false}
+        />,
+      )
+
+      expect(
+        screen.getByRole('heading', { name: 'Signed in.' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('You stay signed in until you sign out.'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/Passkey/)).toBeNull()
+    })
+
+    it('still credits the register path with the passkey it actually made', () => {
+      render(<Join {...defaults} preview={aPreview()} signedIn passkeySaved />)
+
+      expect(
+        screen.getByText('Passkey saved on this device.'),
+      ).toBeInTheDocument()
     })
   })
 })

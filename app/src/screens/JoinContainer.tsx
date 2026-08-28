@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'wouter'
 import type { StoreApi } from 'zustand/vanilla'
 
-import type { AuthApi, InvitePreview } from '../auth/api'
+import type { AuthApi, InvitePreview, SignedIn } from '../auth/api'
 import type { PendingStore } from '../auth/pendingFirstPerson'
 import type { Session } from '../auth/sessionStore'
 import { DepotProvider, type DepotStoreState } from '../depot/store'
@@ -62,6 +62,12 @@ export function JoinContainer({
   // `NoPasskey` when the ceremony falls through. Held here rather than in
   // `Join` because `Join` unmounts the moment this container swaps it out.
   const [pendingName, setPendingName] = useState<string | null>(null)
+  // Which path produced the session `Join`'s success frame is about to show —
+  // read only once `justJoined` is true, but tracked from the start rather
+  // than defaulting to either value, since a stale default here is exactly
+  // how the success frame came to tell a passkey-less claim "Passkey saved on
+  // this device" in the first place.
+  const [passkeySaved, setPasskeySaved] = useState(false)
 
   useEffect(() => {
     function load() {
@@ -107,13 +113,20 @@ export function JoinContainer({
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [api])
 
-  async function confirm(name: string | null) {
-    if (secret === null) return
-
-    const options = await api.registerOptions(secret)
-    const attestation = await startRegistration({ optionsJSON: options })
-    const result = await api.registerVerify(secret, attestation)
-
+  /**
+   * The one completion path, shared by both ways in: the register ceremony
+   * and the token-only claim end with exactly the same steps — save the
+   * joiner's name if there is one, sign the session in, mark the join done.
+   * The only thing that differs between them is whether a credential was
+   * actually made, and that difference is a parameter rather than a second
+   * copy of this block — the second copy is what let the success frame tell
+   * a passkey-less Device "Passkey saved on this device" in the first place.
+   */
+  async function completeSignIn(
+    name: string | null,
+    result: SignedIn,
+    credentialCreated: boolean,
+  ) {
     // The joiner's name and the Invite's pre-bound person_id are captured
     // here rather than authored here: the op needs a depot store, which is
     // built from the session this flow has only just written.
@@ -133,7 +146,18 @@ export function JoinContainer({
       householdId: result.household_id,
       deviceId: result.device_id,
     })
+    setPasskeySaved(credentialCreated)
     setJustJoined(true)
+  }
+
+  async function confirm(name: string | null) {
+    if (secret === null) return
+
+    const options = await api.registerOptions(secret)
+    const attestation = await startRegistration({ optionsJSON: options })
+    const result = await api.registerVerify(secret, attestation)
+
+    await completeSignIn(name, result, true)
   }
 
   /**
@@ -146,22 +170,7 @@ export function JoinContainer({
 
     const result = await api.claimDevice(secret)
 
-    if (name !== null && name !== '') {
-      await pending.save({
-        personId: result.person_id,
-        householdId: result.household_id,
-        name,
-      })
-    }
-
-    await onSignedIn({
-      token: result.token,
-      loginId: result.login_id,
-      personId: result.person_id,
-      householdId: result.household_id,
-      deviceId: result.device_id,
-    })
-    setJustJoined(true)
+    await completeSignIn(name, result, false)
     setNoPasskey(false)
   }
 
@@ -207,6 +216,7 @@ export function JoinContainer({
       onNoPasskey={() => setNoPasskey(true)}
       onNameChange={setPendingName}
       signedIn={justJoined}
+      passkeySaved={passkeySaved}
       onOpenDepot={() => navigate('/')}
     />
   )

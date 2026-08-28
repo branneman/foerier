@@ -49,4 +49,19 @@ describe('Continue without a passkey', () => {
 
     expect(onContinue).toHaveBeenCalledTimes(1)
   })
+
+  it('lets a failed claim be retried, rather than wedging the button', async () => {
+    // The exact wedge the `busy`-state guard was replaced to avoid, arriving
+    // from the other direction: a permanent guard that never resets on
+    // failure leaves the button looking enabled but permanently inert.
+    const onContinue = vi.fn().mockRejectedValueOnce(new Error('claim failed'))
+    render(<NoPasskey personName="Els" onContinue={onContinue} />)
+
+    const button = screen.getByRole('button', { name: 'Continue as Els' })
+    await userEvent.click(button)
+    expect(onContinue).toHaveBeenCalledTimes(1)
+
+    await userEvent.click(button)
+    expect(onContinue).toHaveBeenCalledTimes(2)
+  })
 })
