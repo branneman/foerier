@@ -1,3 +1,4 @@
+import type { PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/server'
 import type { Kysely } from 'kysely'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
@@ -197,6 +198,23 @@ describe('the join and sign-in ceremonies', () => {
       .where('id', '=', signedIn.device_id)
       .executeTakeFirstOrThrow()
     expect(row.passkey_id).toBe(passkey.id)
+  })
+
+  it('offers ES256 first, so a created passkey is one both tiers can replay', async () => {
+    // An authenticator picks the first algorithm it supports, and the
+    // library's default order puts Ed25519 first — which silently yields a
+    // credential Tier 4's software authenticator cannot sign with
+    // (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §5, §6.4).
+    const invite = await seedInvite(db, {
+      householdId: HOUSEHOLD,
+      clock: h.clock,
+    })
+
+    const options = await jsonOf<PublicKeyCredentialCreationOptionsJSON>(
+      await post('/api/v1/auth/register/options', { secret: invite.secret }),
+    )
+
+    expect(options.pubKeyCredParams[0]?.alg).toBe(-7)
   })
 
   it('refuses an invite its second time', async () => {

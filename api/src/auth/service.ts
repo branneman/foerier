@@ -272,6 +272,12 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
         userName: 'foerier',
         userID: new Uint8Array(randomBytes(32)),
         attestationType: 'none',
+        // ES256 first. The library's default order offers Ed25519 first, and
+        // an authenticator takes the first algorithm it supports — which makes
+        // the one captured E2E credential an Ed25519 key that Tier 4's
+        // software authenticator cannot replay (spec §5, §6.4). Nothing is
+        // removed: a real device that prefers Ed25519 or RS256 still gets it.
+        supportedAlgorithmIDs: [-7, -8, -257],
         authenticatorSelection: {
           // Discoverable, so sign-in needs no username.
           residentKey: 'required',
@@ -964,6 +970,9 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
         // managers (auth-design.md §3.5).
         userName: context.loginId,
         attestationType: 'none',
+        // ES256 first, for the same reason as `beginRegistration`: the two
+        // ceremonies must not disagree about which algorithm a passkey gets.
+        supportedAlgorithmIDs: [-7, -8, -257],
         // Offering to make a second credential for one already present is a
         // confusing prompt, not a security hole — but the authenticator can
         // refuse cleanly if we say so.

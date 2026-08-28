@@ -414,6 +414,10 @@ describe('account', () => {
           headers: { authorization: `Bearer ${token}` },
         }),
       )
+      // ES256 first here too — the two registration ceremonies must not
+      // disagree about which algorithm a passkey gets (auth.test.ts pins the
+      // join side, and says why).
+      expect(options.pubKeyCredParams[0]?.alg).toBe(-7)
 
       const res = await h.app.request('/api/v1/auth/passkeys/verify', {
         method: 'POST',
