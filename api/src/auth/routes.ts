@@ -114,6 +114,30 @@ export function createAuthRoutes({
     }
   })
 
+  // The compatibility floor (auth-design.md §5). Unauthenticated and rate
+  // limited like the other redemption routes: the Invite secret is the whole
+  // credential.
+  auth.post('/device/claim', rateLimited, async (c) => {
+    const body = await readJson<{ secret: unknown }>(c)
+    if (typeof body.secret !== 'string') return c.json(VAGUE_FAILURE, 400)
+
+    try {
+      const { token, context } = await service.claimDevice({
+        secret: body.secret,
+        userAgent: c.req.header('user-agent'),
+      })
+      return c.json({
+        token,
+        login_id: context.loginId,
+        person_id: context.personId,
+        household_id: context.householdId,
+        device_id: context.deviceId,
+      })
+    } catch (error) {
+      return failure(c, error)
+    }
+  })
+
   auth.post('/login/options', rateLimited, async (c) => {
     // No body: an empty `allowCredentials` is what makes sign-in
     // username-less (auth-design.md §4).

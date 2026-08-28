@@ -103,4 +103,144 @@ describe('device links', () => {
       expect(await jsonOf(res)).toMatchObject({ person_recorded: true })
     })
   })
+
+  describe('POST /auth/device/claim', () => {
+    const LOGIN = '0f000009-0000-4000-8000-0000000090b1'
+    const PERSON = '0f000009-0000-4000-8000-0000000090b2'
+
+    async function seedLoginHere() {
+      await db
+        .insertInto('login')
+        .values({ id: LOGIN, household_id: HOUSEHOLD, person_id: PERSON })
+        .execute()
+    }
+
+    function claim(secret: string) {
+      return h.app.request('/api/v1/auth/device/claim', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+    }
+
+    it('signs an existing Login in on a new Device, creating no Passkey', async () => {
+      await seedLoginHere()
+      const { secret } = await seedInvite(db, {
+        householdId: HOUSEHOLD,
+        purpose: 'device',
+        clock: h.clock,
+        loginId: LOGIN,
+      })
+
+      const res = await claim(secret)
+      expect(res.status).toBe(200)
+
+      const body = await jsonOf<{
+        token: string
+        login_id: string
+        person_id: string
+        household_id: string
+        device_id: string
+      }>(res)
+      expect(body.login_id).toBe(LOGIN)
+      expect(body.person_id).toBe(PERSON)
+      expect(body.household_id).toBe(HOUSEHOLD)
+      expect(body.token.startsWith('foe_')).toBe(true)
+
+      const passkeys = await db
+        .selectFrom('passkey')
+        .selectAll()
+        .where('login_id', '=', LOGIN)
+        .execute()
+      expect(passkeys).toHaveLength(0)
+    })
+
+    it('creates the Login first when the Invite is a join, still with no Passkey', async () => {
+      const { secret, personId } = await seedInvite(db, {
+        householdId: HOUSEHOLD,
+        clock: h.clock,
+        personRecorded: false,
+      })
+
+      const res = await claim(secret)
+      expect(res.status).toBe(200)
+      expect(await jsonOf(res)).toMatchObject({ person_id: personId })
+
+      const logins = await db
+        .selectFrom('login')
+        .selectAll()
+        .where('household_id', '=', HOUSEHOLD)
+        .execute()
+      expect(logins).toHaveLength(1)
+
+      const passkeys = await db
+        .selectFrom('passkey')
+        .innerJoin('login', 'login.id', 'passkey.login_id')
+        .selectAll('passkey')
+        .where('login.household_id', '=', HOUSEHOLD)
+        .execute()
+      expect(passkeys).toHaveLength(0)
+    })
+
+    it('refuses a second use of the same link', async () => {
+      await seedLoginHere()
+      const { secret } = await seedInvite(db, {
+        householdId: HOUSEHOLD,
+        purpose: 'device',
+        clock: h.clock,
+        loginId: LOGIN,
+      })
+
+      expect((await claim(secret)).status).toBe(200)
+      expect((await claim(secret)).status).toBe(401)
+
+      const devices = await db
+        .selectFrom('device')
+        .selectAll()
+        .where('household_id', '=', HOUSEHOLD)
+        .execute()
+      expect(devices).toHaveLength(1)
+    })
+
+    it('refuses an expired link', async () => {
+      await seedLoginHere()
+      const { secret } = await seedInvite(db, {
+        householdId: HOUSEHOLD,
+        purpose: 'device',
+        clock: h.clock,
+        loginId: LOGIN,
+      })
+
+      // Device Invites last an hour (`auth-design.md` §3.1).
+      h.clock.advance(61 * 60 * 1000)
+      expect((await claim(secret)).status).toBe(401)
+    })
+
+    it('refuses a link whose Login has been disabled', async () => {
+      await seedLoginHere()
+      await db
+        .updateTable('login')
+        .set({ disabled_at: new Date(h.clock.now()) })
+        .where('id', '=', LOGIN)
+        .execute()
+
+      const { secret } = await seedInvite(db, {
+        householdId: HOUSEHOLD,
+        purpose: 'device',
+        clock: h.clock,
+        loginId: LOGIN,
+      })
+
+      expect((await claim(secret)).status).toBe(401)
+    })
+
+    it('answers 400 for a body with no secret, and consumes nothing', async () => {
+      const res = await h.app.request('/api/v1/auth/device/claim', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      expect(res.status).toBe(400)
+    })
+  })
 })

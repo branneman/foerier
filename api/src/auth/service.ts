@@ -368,6 +368,108 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
     },
 
     /**
+     * The compatibility floor (`auth-design.md` §5): a token for a Device that
+     * holds no credential and may never be able to hold one.
+     *
+     * Serves **both** Invite kinds. A device Invite signs its Login in; a join
+     * Invite creates the Login first, exactly as {@link finishRegistration}
+     * does, minus the Passkey — so a Person's very first Device can be one
+     * that cannot make a credential.
+     */
+    async claimDevice({
+      secret,
+      userAgent,
+    }: {
+      secret: string
+      response?: never
+      userAgent: string | undefined
+    }): Promise<{ token: string; context: AuthContext; personId: string }> {
+      const invite = await findRedeemableInvite(secret)
+
+      // A device Invite names its Login; a join Invite creates one. Anything
+      // else is a row we did not write.
+      if (invite.purpose === 'device' && invite.login_id === null) {
+        throw new AuthError('device invite has no login')
+      }
+
+      const { token, tokenHash } = issueDeviceToken()
+      const loginId = invite.login_id ?? ids.next()
+      const deviceId = ids.next()
+      // For a join Invite this is the Person minted alongside the new Login
+      // (`invite.person_id`, same as `finishRegistration`). For a device
+      // Invite it is overwritten below with the *existing* Login's own
+      // `person_id` — a device Invite's `person_id` column is not read as
+      // authoritative, because the Person who owns the Login being signed
+      // into is a fact of the Login row, not of the Invite that named it.
+      let personId = invite.person_id
+
+      await db.transaction().execute(async (trx) => {
+        // Claim the Invite with the same statement that checks it. `where
+        // used_at is null` is what enforces single-use: two simultaneous
+        // redemptions race here and exactly one updates a row.
+        const claimed = await trx
+          .updateTable('invite')
+          .set({ used_at: new Date(clock.now()) })
+          .where('id', '=', invite.id)
+          .where('used_at', 'is', null)
+          .where('revoked_at', 'is', null)
+          .returning('id')
+          .executeTakeFirst()
+
+        if (claimed === undefined) throw new AuthError('invite already used')
+
+        if (invite.purpose === 'join') {
+          await trx
+            .insertInto('login')
+            .values({
+              id: loginId,
+              household_id: invite.household_id,
+              person_id: invite.person_id,
+            })
+            .execute()
+        } else {
+          // A Device for a Login that has since been disabled would 401 on its
+          // very first request; refusing here is the same answer, earlier and
+          // truthfully. Read inside the transaction so a concurrent disable
+          // cannot slip past the check.
+          const login = await trx
+            .selectFrom('login')
+            .select(['id', 'person_id', 'disabled_at'])
+            .where('id', '=', loginId)
+            .executeTakeFirst()
+
+          if (login === undefined) throw new AuthError('login unknown')
+          if (login.disabled_at !== null) throw new AuthError('login disabled')
+          personId = login.person_id
+        }
+
+        await trx
+          .insertInto('device')
+          .values({
+            id: deviceId,
+            login_id: loginId,
+            household_id: invite.household_id,
+            token_hash: tokenHash,
+            label: deviceLabelFrom(userAgent),
+            expires_at: nextExpiry(clock),
+            last_seen_at: new Date(clock.now()),
+          })
+          .execute()
+      })
+
+      return {
+        token,
+        context: {
+          deviceId,
+          loginId,
+          householdId: invite.household_id,
+          personId,
+        },
+        personId,
+      }
+    },
+
+    /**
      * Username-less by construction: an empty `allowCredentials` is what lets
      * the authenticator pick the credential it already holds for
      * `foerier.app`, so the sign-in screen is one button and no text field.
