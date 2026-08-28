@@ -317,14 +317,15 @@ export function AddGear() {
         RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND
       </p>
 
-      <HomePicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onSelect={(residence) => {
-          setHome(residence.in === 'loose' ? undefined : residence)
-          setPickerOpen(false)
-        }}
-      />
+      {pickerOpen && (
+        <HomePicker
+          onClose={() => setPickerOpen(false)}
+          onSelect={(residence) => {
+            setHome(residence.in === 'loose' ? undefined : residence)
+            setPickerOpen(false)
+          }}
+        />
+      )}
     </div>
   )
 }

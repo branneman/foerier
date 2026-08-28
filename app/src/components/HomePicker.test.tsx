@@ -11,6 +11,7 @@ import {
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
@@ -88,7 +89,6 @@ function renderPicker(
   render(
     <DepotProvider value={store}>
       <HomePicker
-        open
         onClose={() => {}}
         onSelect={(residence) => selected.push(residence)}
         {...props}
@@ -645,5 +645,39 @@ describe('the Home picker — MOVE', () => {
 
     expect(selected).toHaveLength(1)
     expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+  /**
+   * **Mounted is open.** Before the Radix conversion this picker was mounted
+   * permanently by gear detail and early-returned `null`, so EDIT mode — and
+   * the drafts beside it — survived a close and came back on the next open.
+   * Reopening put the Quartermaster in a mode that suspends selection, with
+   * nothing on screen saying why.
+   */
+  it('opens in pick mode, even after a close that left it in EDIT', async () => {
+    const store = await seededStore([placeRecorded(anId(), 'Attic')])
+    const user = userEvent.setup()
+
+    function Harness() {
+      const [open, setOpen] = useState(true)
+      return (
+        <DepotProvider value={store}>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open the picker
+          </button>
+          {open && (
+            <HomePicker onClose={() => setOpen(false)} onSelect={() => {}} />
+          )}
+        </DepotProvider>
+      )
+    }
+    render(<Harness />)
+
+    await enterEditMode(user)
+    expect(screen.getByRole('button', { name: 'DONE' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await user.click(screen.getByRole('button', { name: 'Open the picker' }))
+
+    expect(screen.getByRole('button', { name: 'EDIT' })).toBeInTheDocument()
   })
 })

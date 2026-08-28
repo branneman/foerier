@@ -11,6 +11,7 @@ import {
   type PlaceState,
   type Residence,
 } from '@foerier/shared'
+import { Confirm, Sheet } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 
 import { useDepot } from '../depot/store'
@@ -53,9 +54,17 @@ import styles from './HomePicker.module.css'
  * nested picker is otherwise unrecoverable without re-navigating, so **MOVE
  * confirms**. Picking a home for gear that does not exist yet (Add Gear) does
  * not, because there is no prior state to lose.
+ *
+ * ## Mounted is open
+ *
+ * There is no `open` prop, and losing it was a fix rather than a tidy. This
+ * picker used to be mounted permanently by gear detail and early-return
+ * `null`, so every piece of state below — EDIT mode, the rename and new-place
+ * drafts, the pending remove and the pending move — **survived a close** and
+ * came back on the next open. Tap EDIT, close, reopen, and selection was
+ * still suspended with nothing on screen saying why. Mount is the reset.
  */
 export interface HomePickerProps {
-  open: boolean
   onClose: () => void
   onSelect: (residence: Residence) => void
   /**
@@ -183,7 +192,6 @@ function sameResidence(a: Residence | undefined, b: Residence): boolean {
 }
 
 export function HomePicker({
-  open,
   onClose,
   onSelect,
   excludeGearId,
@@ -210,8 +218,6 @@ export function HomePicker({
     [view, excludeGearId],
   )
   const places = useMemo(() => visiblePlaces(state), [state])
-
-  if (!open) return null
 
   const removingPlace: PlaceState | null =
     removingId === null ? null : (state.places[removingId] ?? null)
@@ -274,263 +280,240 @@ export function HomePicker({
   const nowMark = <span className={styles['now']}>● NOW</span>
 
   return (
-    <div
-      className={styles['scrim']}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
+    <Sheet
+      title="Home"
+      onClose={onClose}
+      titleAction={
+        <button
+          type="button"
+          className={styles['modeToggle']}
+          onClick={() => {
+            setEditing((on) => !on)
+            setRenamingId(null)
+          }}
+        >
+          {editing ? 'DONE' : 'EDIT'}
+        </button>
+      }
     >
-      <div
-        className={styles['sheet']}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Home"
-      >
-        <span className={styles['grabber']} aria-hidden="true" />
+      {moving !== undefined && (
+        <p className={styles['context']} data-testid="moving-context">
+          MOVING {moving.name} · {moving.insideCount} INSIDE RIDE ALONG
+        </p>
+      )}
 
-        <div className={styles['titleRow']}>
-          <h2 className={styles['title']}>Home</h2>
+      {/* The first thing a new Quartermaster meets: one body line that
+            teaches the model at the moment it matters. */}
+      {places.length === 0 && (
+        <p className={styles['teach']}>
+          {
+            'No places yet. Gear can stay loose, or live in a place — usually a room.'
+          }
+        </p>
+      )}
+
+      <ul className={styles['list']}>
+        <li>
           <button
             type="button"
-            className={styles['modeToggle']}
-            onClick={() => {
-              setEditing((on) => !on)
-              setRenamingId(null)
-            }}
+            className={`${styles['looseRow']} ${editing ? styles['dim'] : ''}`}
+            onClick={() => choose({ in: 'loose' }, 'Loose')}
           >
-            {editing ? 'DONE' : 'EDIT'}
-          </button>
-        </div>
-
-        {moving !== undefined && (
-          <p className={styles['context']} data-testid="moving-context">
-            MOVING {moving.name} · {moving.insideCount} INSIDE RIDE ALONG
-          </p>
-        )}
-
-        {/* The first thing a new Quartermaster meets: one body line that
-            teaches the model at the moment it matters. */}
-        {places.length === 0 && (
-          <p className={styles['teach']}>
-            {
-              'No places yet. Gear can stay loose, or live in a place — usually a room.'
-            }
-          </p>
-        )}
-
-        <ul className={styles['list']}>
-          <li>
-            <button
-              type="button"
-              className={`${styles['looseRow']} ${editing ? styles['dim'] : ''}`}
-              onClick={() => choose({ in: 'loose' }, 'Loose')}
-            >
-              <span className={styles['rowMain']}>
-                <span className={styles['rowName']}>Loose</span>
-                {/* The picker is where the glossary word LOOSE is taught. */}
-                <span className={styles['rowMeta']}>
-                  NO RESIDENCE — THE DEFAULT
-                </span>
+            <span className={styles['rowMain']}>
+              <span className={styles['rowName']}>Loose</span>
+              {/* The picker is where the glossary word LOOSE is taught. */}
+              <span className={styles['rowMeta']}>
+                NO RESIDENCE — THE DEFAULT
               </span>
-              {sameResidence(current, { in: 'loose' }) && nowMark}
-            </button>
-          </li>
+            </span>
+            {sameResidence(current, { in: 'loose' }) && nowMark}
+          </button>
+        </li>
 
-          {places.map((place) => {
-            const name = nameOf(place)
-            const containers = containerRowsUnder(
-              state,
-              view,
-              { kind: 'place', id: place.id },
-              excluded,
-              1,
-              [],
-            )
+        {places.map((place) => {
+          const name = nameOf(place)
+          const containers = containerRowsUnder(
+            state,
+            view,
+            { kind: 'place', id: place.id },
+            excluded,
+            1,
+            [],
+          )
 
-            return (
-              <li key={place.id}>
-                {renamingId === place.id ? (
-                  <div className={styles['renameRow']}>
-                    <input
-                      className={styles['renameInput']}
-                      aria-label={`Rename ${name}`}
-                      value={renameValue}
-                      onChange={(event) => setRenameValue(event.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className={styles['inlineSave']}
-                      onClick={submitRename}
-                      disabled={renameValue.trim() === ''}
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      className={styles['inlineCancel']}
-                      onClick={() => setRenamingId(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <div className={styles['placeRow']}>
-                    <button
-                      type="button"
-                      className={styles['placeSelect']}
-                      onClick={() =>
-                        choose({ in: 'place', id: place.id }, name)
-                      }
-                    >
-                      <span className={styles['rowName']}>
-                        {/* The glyph is the *world*, drawn — a screen reader
+          return (
+            <li key={place.id}>
+              {renamingId === place.id ? (
+                <div className={styles['renameRow']}>
+                  <input
+                    className={styles['renameInput']}
+                    aria-label={`Rename ${name}`}
+                    value={renameValue}
+                    onChange={(event) => setRenameValue(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className={styles['inlineSave']}
+                    onClick={submitRename}
+                    disabled={renameValue.trim() === ''}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className={styles['inlineCancel']}
+                    onClick={() => setRenamingId(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className={styles['placeRow']}>
+                  <button
+                    type="button"
+                    className={styles['placeSelect']}
+                    onClick={() => choose({ in: 'place', id: place.id }, name)}
+                  >
+                    <span className={styles['rowName']}>
+                      {/* The glyph is the *world*, drawn — a screen reader
                             saying "house Attic" gains nothing, so the row is
                             announced by its name alone. */}
-                        <span aria-hidden="true">⌂ </span>
-                        {name}
-                      </span>
-                      {sameResidence(current, { in: 'place', id: place.id }) &&
-                        nowMark}
-                    </button>
-                    {editing && (
-                      <>
-                        <button
-                          type="button"
-                          className={styles['minor']}
-                          aria-label={`Rename ${name}`}
-                          onClick={() => startRename(place.id, name)}
-                        >
-                          RENAME
-                        </button>
-                        <button
-                          type="button"
-                          className={styles['remove']}
-                          aria-label={`Remove ${name}`}
-                          onClick={() => setRemovingId(place.id)}
-                        >
-                          REMOVE
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {containers.length > 0 && (
-                  <ul className={styles['containers']}>
-                    {containers.map((row) => (
-                      <li
-                        key={row.id}
-                        style={{
-                          paddingLeft: `${Math.min(row.depth, INDENT_CAP)}rem`,
-                        }}
+                      <span aria-hidden="true">⌂ </span>
+                      {name}
+                    </span>
+                    {sameResidence(current, { in: 'place', id: place.id }) &&
+                      nowMark}
+                  </button>
+                  {editing && (
+                    <>
+                      <button
+                        type="button"
+                        className={styles['minor']}
+                        aria-label={`Rename ${name}`}
+                        onClick={() => startRename(place.id, name)}
                       >
-                        <button
-                          type="button"
-                          className={`${styles['containerSelect']} ${
-                            editing ? styles['dim'] : ''
-                          }`}
-                          onClick={() =>
-                            choose({ in: 'gear', id: row.id }, row.name)
-                          }
-                        >
-                          <span className={styles['rowMain']}>
-                            <span className={styles['rowName']}>
-                              {row.name}
+                        RENAME
+                      </button>
+                      <button
+                        type="button"
+                        className={styles['remove']}
+                        aria-label={`Remove ${name}`}
+                        onClick={() => setRemovingId(place.id)}
+                      >
+                        REMOVE
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {containers.length > 0 && (
+                <ul className={styles['containers']}>
+                  {containers.map((row) => (
+                    <li
+                      key={row.id}
+                      style={{
+                        paddingLeft: `${Math.min(row.depth, INDENT_CAP)}rem`,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className={`${styles['containerSelect']} ${
+                          editing ? styles['dim'] : ''
+                        }`}
+                        onClick={() =>
+                          choose({ in: 'gear', id: row.id }, row.name)
+                        }
+                      >
+                        <span className={styles['rowMain']}>
+                          <span className={styles['rowName']}>{row.name}</span>
+                          {row.skipped !== '' && (
+                            <span className={styles['rowMeta']}>
+                              {row.skipped}
                             </span>
-                            {row.skipped !== '' && (
-                              <span className={styles['rowMeta']}>
-                                {row.skipped}
-                              </span>
-                            )}
-                          </span>
-                          {sameResidence(current, {
-                            in: 'gear',
-                            id: row.id,
-                          }) && nowMark}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                          )}
+                        </span>
+                        {sameResidence(current, {
+                          in: 'gear',
+                          id: row.id,
+                        }) && nowMark}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-                {/* Containers are gear; their own EDIT renames them. Said
+              {/* Containers are gear; their own EDIT renames them. Said
                     once per Place rather than per row. */}
-                {editing && containers.length > 0 && (
-                  <p className={styles['gearNote']}>
-                    GEAR — EDIT FROM ITS DETAIL
-                  </p>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+              {editing && containers.length > 0 && (
+                <p className={styles['gearNote']}>
+                  GEAR — EDIT FROM ITS DETAIL
+                </p>
+              )}
+            </li>
+          )
+        })}
+      </ul>
 
-        {addingPlace ? (
-          <div className={styles['renameRow']}>
-            <input
-              className={styles['renameInput']}
-              aria-label="New place name"
-              value={newPlaceName}
-              onChange={(event) => setNewPlaceName(event.target.value)}
-            />
-            <button
-              type="button"
-              className={styles['inlineSave']}
-              onClick={submitNewPlace}
-              disabled={newPlaceName.trim() === ''}
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              className={styles['inlineCancel']}
-              onClick={() => setAddingPlace(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
+      {addingPlace ? (
+        <div className={styles['renameRow']}>
+          <input
+            className={styles['renameInput']}
+            aria-label="New place name"
+            value={newPlaceName}
+            onChange={(event) => setNewPlaceName(event.target.value)}
+          />
           <button
             type="button"
-            className={styles['addPlace']}
-            onClick={() => setAddingPlace(true)}
+            className={styles['inlineSave']}
+            onClick={submitNewPlace}
+            disabled={newPlaceName.trim() === ''}
           >
-            + New place
+            Add
           </button>
-        )}
+          <button
+            type="button"
+            className={styles['inlineCancel']}
+            onClick={() => setAddingPlace(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={styles['addPlace']}
+          onClick={() => setAddingPlace(true)}
+        >
+          + New place
+        </button>
+      )}
 
-        {moving !== undefined && (
-          <p className={styles['fact']} data-testid="moving-footer">
-            {moving.name} AND EVERYTHING INSIDE IT ARE NOT OFFERED.
-          </p>
-        )}
+      {moving !== undefined && (
+        <p className={styles['fact']} data-testid="moving-footer">
+          {moving.name} AND EVERYTHING INSIDE IT ARE NOT OFFERED.
+        </p>
+      )}
 
-        <button type="button" className={styles['close']} onClick={onClose}>
+      <Sheet.Close>
+        <button type="button" className={styles['close']}>
           Close
         </button>
+      </Sheet.Close>
 
-        {removingPlace !== null && (
-          <div className={styles['confirmScrim']}>
-            <div
-              className={styles['confirmSheet']}
-              role="alertdialog"
-              aria-modal="true"
-              aria-label={`Remove ${nameOf(removingPlace)}?`}
-            >
-              <h3 className={styles['confirmTitle']}>
-                Remove {nameOf(removingPlace)}?
-              </h3>
-              <p className={styles['confirmBody']}>
-                {looseLine(removingCount)}
-              </p>
-              <div className={styles['confirmActions']}>
-                <button
-                  type="button"
-                  className={styles['ghost']}
-                  onClick={() => setRemovingId(null)}
-                >
+      {removingPlace !== null && (
+        <Confirm
+          title={`Remove ${nameOf(removingPlace)}?`}
+          description={looseLine(removingCount)}
+          onClose={() => setRemovingId(null)}
+          actions={
+            <>
+              <Confirm.Cancel>
+                <button type="button" className={styles['ghost']}>
                   Cancel
                 </button>
+              </Confirm.Cancel>
+              <Confirm.Action>
                 <button
                   type="button"
                   className={styles['confirmRemove']}
@@ -538,38 +521,32 @@ export function HomePicker({
                 >
                   Remove place
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
+              </Confirm.Action>
+            </>
+          }
+        />
+      )}
 
-        {/* MOVE's confirmation. Not on the board — see this module's header
+      {/* MOVE's confirmation. Not on the board — see this module's header
             for why story 36 makes it necessary. The primary stays accent:
             nothing is being destroyed. */}
-        {pending !== null && moving !== undefined && (
-          <div className={styles['confirmScrim']}>
-            <div
-              className={styles['confirmSheet']}
-              role="alertdialog"
-              aria-modal="true"
-              aria-label={`Move ${moving.name} to ${pending.label}?`}
-            >
-              <h3 className={styles['confirmTitle']}>
-                Move {moving.name} to {pending.label}?
-              </h3>
-              <p className={styles['confirmBody']}>
-                {moving.insideCount === 1
-                  ? '1 piece of gear inside it moves too.'
-                  : `${moving.insideCount} pieces of gear inside it move too.`}
-              </p>
-              <div className={styles['confirmActions']}>
-                <button
-                  type="button"
-                  className={styles['ghost']}
-                  onClick={() => setPending(null)}
-                >
+      {pending !== null && moving !== undefined && (
+        <Confirm
+          title={`Move ${moving.name} to ${pending.label}?`}
+          description={
+            moving.insideCount === 1
+              ? '1 piece of gear inside it moves too.'
+              : `${moving.insideCount} pieces of gear inside it move too.`
+          }
+          onClose={() => setPending(null)}
+          actions={
+            <>
+              <Confirm.Cancel>
+                <button type="button" className={styles['ghost']}>
                   Cancel
                 </button>
+              </Confirm.Cancel>
+              <Confirm.Action>
                 <button
                   type="button"
                   className={styles['confirmMove']}
@@ -580,11 +557,11 @@ export function HomePicker({
                 >
                   Move gear
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+              </Confirm.Action>
+            </>
+          }
+        />
+      )}
+    </Sheet>
   )
 }

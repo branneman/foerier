@@ -272,35 +272,33 @@ export function GearDetail() {
         </div>
       )}
 
-      {/* Mounted unconditionally, not gated by `!retired`: `HomePicker`
-          itself renders nothing while `open` is false, and `moveOpen` can
-          only ever become true from the MOVE button above, which exists
-          solely inside that `!retired` branch. Retired gear's action bar
-          still offers nothing — this just leans on that instead of a second
-          `!retired` check, so a later refactor of the button doesn't leave
-          this picker reachable without also touching this comment. */}
-      <HomePicker
-        open={moveOpen}
-        onClose={() => setMoveOpen(false)}
-        onSelect={(residence) => {
-          emit(gearRehomed(gearId, residence))
-          setMoveOpen(false)
-        }}
-        excludeGearId={gearId}
-        {...(gear.residence?.value === undefined
-          ? {}
-          : { current: gear.residence.value })}
-        // MOVE, so the picker draws the context line and confirms before it
-        // moves anything (see `HomePicker`'s header for why story 36 makes
-        // that necessary).
-        moving={{
-          name,
-          insideCount: containmentView(state).childrenOf({
-            kind: 'gear',
-            id: gearId,
-          }).length,
-        }}
-      />
+      {/* Not gated by `!retired`: `moveOpen` can only ever become true from
+          the MOVE button above, which exists solely inside that `!retired`
+          branch. Retired gear's action bar still offers nothing — this leans
+          on that rather than repeating the check. */}
+      {moveOpen && (
+        <HomePicker
+          onClose={() => setMoveOpen(false)}
+          onSelect={(residence) => {
+            emit(gearRehomed(gearId, residence))
+            setMoveOpen(false)
+          }}
+          excludeGearId={gearId}
+          {...(gear.residence?.value === undefined
+            ? {}
+            : { current: gear.residence.value })}
+          // MOVE, so the picker draws the context line and confirms before it
+          // moves anything (see `HomePicker`'s header for why story 36 makes
+          // that necessary).
+          moving={{
+            name,
+            insideCount: containmentView(state).childrenOf({
+              kind: 'gear',
+              id: gearId,
+            }).length,
+          }}
+        />
+      )}
 
       {tagsOpen && (
         <TagPicker

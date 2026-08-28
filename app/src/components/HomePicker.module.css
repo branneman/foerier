@@ -1,11 +1,4 @@
 @layer components {
-  .titleRow {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-12);
-  }
-
   /* A quiet mono toggle, top right — not a button competing with the rows. */
   .modeToggle {
     min-height: max(2.75rem, 44px);
@@ -89,43 +82,9 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .scrim {
-    position: fixed;
-    inset: 0;
-    background: var(--color-scrim);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    z-index: 10;
-  }
-
-  .sheet {
-    width: 100%;
-    max-width: 32rem;
-    max-height: 85svh;
-    overflow-y: auto;
-    background: var(--color-bg-surface);
-    border-top: var(--stroke-rule) solid var(--color-rule);
-    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-    padding: 0.625rem var(--space-20) var(--space-24);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-  }
-
-  .grabber {
-    width: 2.25rem;
-    height: 0.25rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-rule-control);
-    margin: 0 auto var(--space-8);
-  }
-
-  .title {
-    font: var(--text-title) var(--font-display);
-    font-weight: 700;
-    color: var(--color-ink-primary);
-  }
+  /* The scrim, the sheet, the grabber and the title now come from `ui/`'s
+     `Sheet`; the two confirms' card, title, body and actions come from
+     `Confirm`. What is left below is this picker's own vocabulary. */
 
   .list {
     display: flex;
@@ -289,47 +248,6 @@
     color: var(--color-ink-muted);
     font: var(--text-body) var(--font-ui);
     cursor: pointer;
-  }
-
-  .confirmScrim {
-    position: fixed;
-    inset: 0;
-    background: var(--color-scrim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 20;
-    padding: var(--space-16);
-  }
-
-  .confirmSheet {
-    width: 100%;
-    max-width: 24rem;
-    background: var(--color-bg-surface);
-    border: var(--stroke-rule) solid var(--color-rule);
-    border-radius: var(--radius-card);
-    padding: var(--space-20);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-  }
-
-  .confirmTitle {
-    font: var(--text-title) var(--font-display);
-    font-weight: 700;
-    color: var(--color-ink-primary);
-  }
-
-  .confirmBody {
-    font: var(--text-data) var(--font-mono);
-    color: var(--color-status-attention);
-  }
-
-  .confirmActions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-12);
-    margin-top: var(--space-8);
   }
 
   .ghost {
