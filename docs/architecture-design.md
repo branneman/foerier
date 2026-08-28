@@ -1375,3 +1375,76 @@ retired outright.
   throughout so the active state is expressed once by the row rather than
   twice per icon, and decorative by default because the link beside them
   already carries the name.
+
+### 12.7 Consequences of S3.5
+
+Auth slices 3 and 4, delivered together
+([spec](specs/2026-08-28-auth-device-links.md), §8's float): device links,
+"Continue without a passkey", the Account screen, and both Maintainer
+scripts. Written after the slice, deliberately — these are the things only
+running code could teach.
+
+- **A server-side proxy for a domain fact is only ever right for one case,
+  and the second case is what finds the boundary.** `previewInvite` answered
+  "does the joiner name themselves" with "does this Household have any
+  Login" — sound for a brand-new Household, since one with no Login is
+  necessarily one whose first Person is created as they join, and wrong for
+  every Household after its first. The fix was not a better guess; it was to
+  stop guessing. `person_recorded` moved onto the Invite itself, stated by
+  whichever code mints it — the bootstrap script, `admin:invite
+  --household`, and S5's in-app issuer later — because the issuer is the one
+  place that actually knows which case it is. The lesson generalises past
+  this one field: a proxy computed from *other* state is a bet that the
+  cases it was fitted to are the only cases, and the domain model, not the
+  server, is what should be asked to state a fact it already owns.
+- **`passkey.created_on_device`, and enrolment is not reachability.** The
+  Devices list's `NO PASSKEY HERE` line needed a per-Device fact nothing
+  recorded: which Device enrolled which Passkey. A nullable FK on `passkey`
+  answers it — set once, in the same transaction that adds the credential —
+  but it is honest about what it is not: a credential synced through a
+  platform's own password manager is usable from a Device that never
+  enrolled it, and the server has no way to see that. The column, and the
+  line it feeds, say what happened *here*, never what is reachable *from*
+  here. Not in the original spec — added while mapping boards §12, and the
+  spec was amended to cover it rather than left behind by the code.
+- **`uqr` is the first dependency this repo chose by measurement rather than
+  reputation.** A device link's whole reason to exist is reaching a phone
+  that cannot be handed a 43-character secret by any other means, so the QR
+  in boards §14 is load-bearing, not decorative — and hand-rolling one trades
+  a small dependency for Reed–Solomon and mask-penalty scoring whose failure
+  mode is silent (a code that scans on the author's phone and not on
+  anyone else's). Three real candidates were minified and gzipped through
+  `esbuild`: `uqr` at 4.3 KB gzipped with zero runtime dependencies, against
+  8.5 KB and 9.7 KB for the nearest alternatives, one of which resists
+  tree-shaking entirely. It returns an SVG string rather than a canvas or a
+  `data:` URI, so nothing in the CSP had to widen. Landed behind
+  `ui/src/QrCode.tsx`, per [frontend-design §5](frontend-design.md)'s rule
+  that a primitive is reached through a wrapper — the one place a future
+  replacement, should `uqr`'s pre-1.0 status ever become a live risk rather
+  than a small one, would have to change.
+- **The `ACCOUNT` debt §12.6 recorded as "settled and left unbuilt" is now
+  discharged, in all three nav modes.** The sidebar row, the rail avatar, and
+  the phone header avatar all open the same screen; see §12.6's own bullet
+  for the anatomy. What that leaves the debt ledger (`CLAUDE.md`) shorter by:
+  the four affordances R3 drew with nowhere to go, and `clearLocalData()`,
+  which had a name and no caller until this slice gave "sign out this
+  device" a confirm sheet to call it from.
+- **A component test's injected `clearLocalData` had been standing in for a
+  real IndexedDB connection, and the stand-in was hiding a real hang.**
+  `sessionStore.ts` caches one long-lived connection to `foerier` for the
+  app's whole life — unlike `depot/opLog.ts`, which opens and closes per
+  call for exactly the reason given below — and `auth/pendingFirstPerson.ts`
+  was opening a fresh one per call and never closing it. Neither blocks
+  `deleteDB(DB_NAME)` in a Tier 3 test, because Tier 3 injects a fake
+  `clearLocalData` that never touches a real database at all. It blocks
+  forever in a real browser: IndexedDB will not grant a delete while any
+  same-origin connection is still open, so "sign out this device" hung on
+  its confirm sheet — buttons disabled, nothing to click, no way out short
+  of a reload — every single time, for every real Quartermaster. **Found by
+  Tier 5's sign-out journey**, the second defect in this codebase only a
+  real browser could catch (`§12.6`'s nav-link name was the first). The fix
+  is the pattern `opLog.ts` already carried a warning about in its own
+  comment: `sessionStore.ts` now closes its cached connection when a
+  `blocking` event says something else is waiting on it, and
+  `pendingFirstPerson.ts` now opens and closes per call, matching `opLog.ts`
+  exactly.

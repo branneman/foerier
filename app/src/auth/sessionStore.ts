@@ -40,8 +40,27 @@ let dbPromise: Promise<IDBPDatabase> | null = null
 // request the same version and pass the same idempotent upgrade, or
 // whichever one wins the race to cross the version boundary silently skips
 // the stores the others need (see that module's docstring).
+//
+// This connection is cached and kept open for the app's whole lifetime
+// (unlike `depot/opLog.ts`'s per-call `withDb`, which that file's own
+// comment explains is deliberate precisely to avoid this) — so it is also
+// the one thing standing between "sign out this device" and completing:
+// `clearLocalData()` (`depot/wiring.ts`) calls `deleteDB(DB_NAME)`, and
+// IndexedDB does not grant a delete while a same-origin connection is still
+// open, no matter which tab or which module holds it. Without `blocking`
+// here, that delete waits forever — discovered by Tier 5's real-browser
+// sign-out journey, which a component test's injected `clearLocalData`
+// never exercises. `blocking` fires on *this* connection when another
+// wants past it, so it closes and lets the delete through.
 function db(): Promise<IDBPDatabase> {
-  dbPromise ??= openDB(DB_NAME, DB_VERSION, { upgrade: upgradeFoerierDb })
+  dbPromise ??= openDB(DB_NAME, DB_VERSION, {
+    upgrade: upgradeFoerierDb,
+    blocking() {
+      const opened = dbPromise
+      dbPromise = null
+      void opened?.then((database) => database.close())
+    },
+  })
   return dbPromise
 }
 

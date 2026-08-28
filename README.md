@@ -111,8 +111,11 @@ absence is a refusal to boot.
 There is no public sign-up — deliberately, since that removes the abuse
 surface rather than mitigating it ([auth-design](docs/auth-design.md) §3). The
 first Login of a Household is minted out of band by the **Maintainer**, who is
-not a role in the product but simply whoever has server access (§3.4). Every
-Invite after that is issued by a Quartermaster from inside the app.
+not a role in the product but simply whoever has server access (§3.4). After
+that, a signed-in Quartermaster issues a **device link** for another Device of
+their own from Account, in-app. A second **Login** — another person joining
+the Household — is still the Maintainer's `admin:invite --household`, until S5
+builds the in-app picker it needs.
 
 **Locally** — writes to the `docker-compose.dev.yml` Postgres:
 
@@ -123,8 +126,8 @@ npm run admin:bootstrap -- --name "Veldkamp"
 It prints a single-use join link at `http://localhost:5173`. Open it, name
 yourself, and the browser's passkey prompt does the rest.
 
-**In production** — the same script, shipped in the `foerier-api` image as a
-second entrypoint and run *inside the deployed container*:
+**In production** — the same script, shipped in the `foerier-api` image as one
+of its entrypoints and run *inside the deployed container*:
 
 ```
 node dist/bootstrap.js --name "Veldkamp"
@@ -144,8 +147,12 @@ browser refuses for an RP ID mismatch, which reads like a bug in the app.
 
 Either way the link is single-use, and each run creates a **new** Household —
 so run it again for another rather than reusing one. Sign-out lives under
-Account, which is a later slice; to test signing in again, delete the `foerier`
-IndexedDB database in devtools and reload — the passkey stays in the browser.
+Account (the avatar in the nav): `SIGN OUT` clears this Device's local data
+along with the session, so the next join link above is the way back in. A
+Device with no passkey signs back in the same way another Device would get
+it one — a link, from Account's `Sign in on another device`, or from
+`npm run admin:invite -- --login <id>` if there is no other signed-in Device
+left to issue one from (`npm run admin:list` finds the id).
 
 The test tiers, from cheapest to most expensive
 ([strategy](docs/testing.md)). All but the last run entirely on your machine:
@@ -203,14 +210,16 @@ and answer `GET /api/v1/version` with the commit it was built from. Pushing to
 `main` does all of it; a commit touching only prose skips the build, since
 there is no new image in it.
 
-The `foerier-api` image carries two entrypoints:
+The `foerier-api` image carries four entrypoints:
 
 ```
 node dist/index.js       # the server (the image's default command)
-node dist/bootstrap.js   # the Maintainer bootstrap, run on demand
+node dist/bootstrap.js   # the Maintainer bootstrap: mint a Household's first Login
+node dist/invite.js      # a join Invite or a device link, for everything after the first
+node dist/list.js        # find a Household or Login id, for the other three
 ```
 
-Both read their configuration from the environment and nothing else.
+All four read their configuration from the environment and nothing else.
 
 ## Status
 

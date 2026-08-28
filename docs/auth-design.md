@@ -397,9 +397,18 @@ is worse *here*: `app.` → `api.` is cross-origin, so the cookie would need
 complexity to defend against a vector we close by other means. The mitigations we
 actually rely on are structural: a strict CSP with no inline script (§8.2), **no
 third-party JavaScript at all** (self-hosted fonts, no CDN, no analytics, no
-tag manager), React's default escaping with no `dangerouslySetInnerHTML`, and
-per-Device revocation to bound any theft that does happen. The trade is recorded
-here rather than left implicit.
+tag manager), React's default escaping, and per-Device revocation to bound any
+theft that does happen. The trade is recorded here rather than left implicit.
+
+**One exception to "no `dangerouslySetInnerHTML`"**, added in S3.5:
+`ui/src/QrCode.tsx` renders a device link's QR as inline SVG that way, because
+`uqr` ([auth-device-links spec](specs/2026-08-28-auth-device-links.md) §6.4)
+hands back a markup string rather than a canvas or a `data:` URI.
+It is not a hole in the claim above — the SVG is generated in-process from a
+bit matrix `uqr` computes over the value, never from user input or a network
+response, so there is no untrusted string anywhere in the path from input to
+`__html`. Still worth naming rather than leaving the older, broader claim
+standing unqualified.
 
 ## 8. The web surface
 

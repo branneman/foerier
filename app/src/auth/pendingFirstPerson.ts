@@ -74,21 +74,37 @@ export function indexedDbPendingStore(): PendingStore {
   // Same `DB_NAME`/`DB_VERSION`/upgrade as `sessionStore.ts` and
   // `depot/opLog.ts` — see `../db.ts`'s docstring for why every opener of
   // `foerier` must pass the identical, idempotent upgrade rather than its own.
-  const open = () => openDB(DB_NAME, DB_VERSION, { upgrade: upgradeFoerierDb })
+  //
+  // Opened and closed per call, same as `opLog.ts`'s own `withDb` and for
+  // the reason its comment gives: a connection left open here is exactly
+  // what would block `clearLocalData()`'s `deleteDB(DB_NAME)` (sign-out
+  // this device) from ever completing.
+  async function withDb<T>(
+    fn: (db: Awaited<ReturnType<typeof openDB>>) => Promise<T>,
+  ): Promise<T> {
+    const database = await openDB(DB_NAME, DB_VERSION, {
+      upgrade: upgradeFoerierDb,
+    })
+    try {
+      return await fn(database)
+    } finally {
+      database.close()
+    }
+  }
 
   return {
     async save(pending) {
-      await (await open()).put(AUTH_STORE, pending, KEY)
+      await withDb((db) => db.put(AUTH_STORE, pending, KEY))
     },
     async read() {
       try {
-        return (await (await open()).get(AUTH_STORE, KEY)) ?? null
+        return (await withDb((db) => db.get(AUTH_STORE, KEY))) ?? null
       } catch {
         return null
       }
     },
     async clear() {
-      await (await open()).delete(AUTH_STORE, KEY)
+      await withDb((db) => db.delete(AUTH_STORE, KEY))
     },
   }
 }

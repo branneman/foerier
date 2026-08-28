@@ -13,7 +13,7 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-**Code has started.** Five slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+**Code has started.** Six slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
 have landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
@@ -74,61 +74,59 @@ three worth knowing before touching this area:
   draw. Both are recorded in `docs/design/README.md` §3b/§3c and revisit when
   story 36's design phase lands.
 
-**The next slice is S3.5, Auth 3+4** — designed, not yet built. See
-[its spec](docs/specs/2026-08-28-auth-device-links.md). It delivers stories 29
-and 30: `POST /auth/device/claim` and the token-only path that needs nothing of
-a Device beyond a browser, in-app device links, the Devices list, add/remove
-passkey, and the **Account screen**. No ops and no `shared/`, so it was free to
-move ahead of S4 — [§8.6](docs/architecture-design.md#86-what-can-be-built-in-parallel)
-already granted the float. Three things about it are worth knowing before
-touching auth:
+**S3.5, auth slices 3+4** (stories 29, 30) — device links and the Account
+screen. See [its spec](docs/specs/2026-08-28-auth-device-links.md). It
+delivered `POST /auth/device/claim` and the token-only path that needs
+nothing of a Device beyond a browser, in-app device links, the Devices list,
+add/remove passkey with name-on-add, and the **Account screen** — the fourth
+destination, reached from the avatar in all three nav modes. No ops and no
+`shared/`, so it moved ahead of S4 on the float
+[§8.6](docs/architecture-design.md#86-what-can-be-built-in-parallel) granted
+it. See [§12.7](docs/architecture-design.md#127-consequences-of-s35) for what
+it settled.
+
+**Four things about S3.5 are worth knowing before touching auth:**
 
 - **The compatibility floor is wider than "cannot".** A phone can pass every
   capability check and still be unusable, because the only credential store it
   offers is one the household declined. So the token-only path is reachable
   **by choice**, not only by failure — a departure from the boards, recorded in
   `docs/design/README.md` §10, which also falsified one drawn line.
-- **`invite.person_recorded` replaces a guess.** The join screen learned whether
-  the joiner names themselves from *"does this Household have any Login"*, which
-  is right for the first Person and wrong for every one after — the second
-  joiner would get no name field and a Login pointing at a Person nobody
-  recorded. The fact now lives on the Invite. Spec §4.
+- **`invite.person_recorded` replaced a guess.** The join screen had learned
+  whether the joiner names themselves from *"does this Household have any
+  Login"*, which is right for the first Person and wrong for every one
+  after — the second joiner got no name field and a Login pointing at a
+  Person nobody recorded. The fact now lives on the Invite, stated by
+  whichever code mints it; [§12.7](docs/architecture-design.md#127-consequences-of-s35)
+  has the general lesson about server-side proxies for domain facts.
 - **Two Maintainer scripts, `admin:invite` and `admin:list`**, because
   [auth-design §3.4](docs/auth-design.md)'s "only the first Login is arranged out
   of band" left the *second* Login with no route at all until S5, and §5's named
   escape hatch had no mechanism.
+- **`clearLocalData()` finally has a caller.** The Devices screen's "sign out
+  this device" confirm sheet is what calls it — the action `unsyncedCount()`'s
+  own caller (`App.tsx:145`, the sign-in screen's session-lost line, §12.3)
+  had been waiting on since S2. Signing out is the only auth action allowed
+  to clear the op log; the **401 contract stays wired** for every other
+  case — the engine reporting `signed-out` calls `handleUnauthorized()`,
+  which routes to `/signin` and leaves the op log and outbox untouched
+  ([auth-design §7.2](docs/auth-design.md)). A frozen engine is never
+  resumed — re-signing in builds a new one — so `resumeSync()` stays for a
+  future recover-in-place flow.
+
+**The next slice is the Radix conversion.** Every sheet in the app is still a
+hand-rolled scrim, against
+[frontend-design §5](docs/frontend-design.md)'s assignment of every
+interactive primitive to a thin wrapper in `ui/`. Deferred deliberately at
+S2, at S3, and a third time at S3.5 — which took the count to roughly six
+sheets and so replaces the deferral with a condition: **converting all six at
+once**, immediately after S3.5 and before S4, rather than leaving two idioms
+in place. Pure `ui/` work; no ops, no endpoints, no `shared/`.
 
 **Then S4, People and ownership.** It adds `person.renamed` and
 `gear.ownership_set`, the People list, the owner on gear detail — and
 **Person and Ownership as two more rows in S3's dimension table**, which is
 how story 4's narrowing is delivered rather than as a second, private filter.
-
-**Two debts ride along, and S3.5 is what discharges the first.** There is no
-Account screen — four missing affordances rather than one, since the R3 shell
-round settled an `ACCOUNT` row in the desktop sidebar, an avatar on the Split
-rail, and an avatar in the phone header, and all three wait on the same screen
-as `sign out this device`
-([§12.6](docs/architecture-design.md#126-consequences-of-the-r3-shell-round)).
-Their absence is pinned by a test (`app/src/shell/AppShell.test.tsx`, "the
-account affordance") that S3.5 must **invert rather than delete**, so the diff
-records the discharge. `unsyncedCount()` already has a caller —
-`app/src/App.tsx:145` feeds it to the sign-in screen's session-lost line
-(§12.3) — but `clearLocalData()` (`app/src/depot/wiring.ts:243`), the action
-that button would trigger, is genuinely uncalled. The **401 contract
-is wired**: the engine reporting `signed-out` calls `handleUnauthorized()`,
-which routes to `/signin` and leaves the op log and outbox untouched
-([auth-design §7.2](docs/auth-design.md)). A frozen engine is never resumed —
-re-signing in builds a new one — so `resumeSync()` stays for a future
-recover-in-place flow.
-
-And **Radix is still not a dependency**, against
-[frontend-design §5](docs/frontend-design.md)'s assignment of every interactive
-primitive to a thin wrapper in `ui/`. Every sheet in the app is a hand-rolled
-scrim. Deferred deliberately at S2, at S3, and a third time at S3.5 — which
-takes the count to roughly six sheets and so replaces the deferral with a
-condition: **the conversion is its own slice, immediately after S3.5 and before
-S4**, converting all six at once rather than leaving two idioms in place. Pure
-`ui/` work; no ops, no endpoints, no `shared/`.
 
 Four conventions the code now carries that are easy to trip over:
 
