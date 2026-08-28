@@ -15,14 +15,15 @@ import {
 } from './harness.ts'
 
 /**
- * Tier 2s — invites issued from a signed-in Device: `POST · GET · DELETE
- * /auth/invites`.
+ * Tier 2s — a signed-in Device managing its own account: `POST · GET ·
+ * DELETE /auth/invites`, `GET /auth/devices`, `DELETE /auth/devices/:id`,
+ * and `GET /auth/me`.
  *
  * UUID registry slot #10 (`docs/testing.md`).
  */
 const HOUSEHOLD = '0f00000a-0000-4000-8000-00000000000a'
 
-describe('account: invites', () => {
+describe('account', () => {
   let h: Harness
   let db: Kysely<Database>
 
@@ -41,17 +42,31 @@ describe('account: invites', () => {
     h.clock.set(Date.UTC(2026, 7, 25, 9, 0, 0))
   })
 
-  /** Inserts a Login and a Device with a known token, both in HOUSEHOLD. */
-  async function signedInDevice(): Promise<{ token: string; loginId: string }> {
-    const loginId = systemIdSource.next()
-    const personId = systemIdSource.next()
+  /**
+   * Inserts a Device with a known token in HOUSEHOLD, and — unless
+   * `sameLoginAs` names an existing one — a fresh Login for it too.
+   */
+  async function signedInDevice(
+    options: {
+      suffix?: string
+      sameLoginAs?: { loginId: string }
+    } = {},
+  ): Promise<{ token: string; loginId: string; deviceId: string }> {
+    const { suffix, sameLoginAs } = options
     const deviceId = systemIdSource.next()
     const { token, tokenHash } = issueDeviceToken()
 
-    await db
-      .insertInto('login')
-      .values({ id: loginId, household_id: HOUSEHOLD, person_id: personId })
-      .execute()
+    let loginId: string
+    if (sameLoginAs !== undefined) {
+      loginId = sameLoginAs.loginId
+    } else {
+      loginId = systemIdSource.next()
+      const personId = systemIdSource.next()
+      await db
+        .insertInto('login')
+        .values({ id: loginId, household_id: HOUSEHOLD, person_id: personId })
+        .execute()
+    }
 
     await db
       .insertInto('device')
@@ -60,13 +75,13 @@ describe('account: invites', () => {
         login_id: loginId,
         household_id: HOUSEHOLD,
         token_hash: tokenHash,
-        label: 'Test device',
+        label: suffix === undefined ? 'Test device' : `Test device ${suffix}`,
         expires_at: nextExpiry(h.clock),
         last_seen_at: new Date(h.clock.now()),
       })
       .execute()
 
-    return { token, loginId }
+    return { token, loginId, deviceId }
   }
 
   describe('POST /auth/invites', () => {
@@ -192,6 +207,86 @@ describe('account: invites', () => {
         body: JSON.stringify({ secret: issued.secret }),
       })
       expect(claim.status).toBe(401)
+    })
+  })
+
+  describe('GET /auth/devices', () => {
+    it('marks the calling Device as the current one', async () => {
+      const { token, deviceId } = await signedInDevice()
+      const res = await h.app.request('/api/v1/auth/devices', {
+        headers: { authorization: `Bearer ${token}` },
+      })
+
+      const body = await jsonOf<{
+        devices: Array<{
+          id: string
+          current: boolean
+          enrolled_passkey_here: boolean
+        }>
+      }>(res)
+      const mine = body.devices.find((device) => device.id === deviceId)
+      expect(mine?.current).toBe(true)
+      // Seeded straight into the table, so no ceremony ever ran on it.
+      expect(mine?.enrolled_passkey_here).toBe(false)
+    })
+
+    it('never lists another Login’s Devices', async () => {
+      const mine = await signedInDevice()
+      const theirs = await signedInDevice({ suffix: 'b' })
+
+      const res = await h.app.request('/api/v1/auth/devices', {
+        headers: { authorization: `Bearer ${mine.token}` },
+      })
+      const body = await jsonOf<{ devices: Array<{ id: string }> }>(res)
+      expect(body.devices.map((device) => device.id)).not.toContain(
+        theirs.deviceId,
+      )
+    })
+  })
+
+  describe('DELETE /auth/devices/:id', () => {
+    it('revokes another of my Devices, which then 401s at its next request', async () => {
+      const first = await signedInDevice()
+      const second = await signedInDevice({ sameLoginAs: first })
+
+      const del = await h.app.request(
+        `/api/v1/auth/devices/${second.deviceId}`,
+        {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${first.token}` },
+        },
+      )
+      expect(del.status).toBe(204)
+
+      const after = await h.app.request('/api/v1/auth/me', {
+        headers: { authorization: `Bearer ${second.token}` },
+      })
+      expect(after.status).toBe(401)
+    })
+
+    it('leaves another Login’s Device working', async () => {
+      const mine = await signedInDevice()
+      const theirs = await signedInDevice({ suffix: 'b' })
+
+      await h.app.request(`/api/v1/auth/devices/${theirs.deviceId}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${mine.token}` },
+      })
+
+      const after = await h.app.request('/api/v1/auth/me', {
+        headers: { authorization: `Bearer ${theirs.token}` },
+      })
+      expect(after.status).toBe(200)
+    })
+  })
+
+  describe('GET /auth/me', () => {
+    it('carries the household name the Account screen has to print', async () => {
+      const { token } = await signedInDevice()
+      const res = await h.app.request('/api/v1/auth/me', {
+        headers: { authorization: `Bearer ${token}` },
+      })
+      expect(await jsonOf(res)).toMatchObject({ household_name: 'Veldkamp' })
     })
   })
 })

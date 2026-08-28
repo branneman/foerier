@@ -166,12 +166,14 @@ export function createAuthRoutes({
     }
   })
 
-  auth.get('/me', requireAuth, (c) => {
+  auth.get('/me', requireAuth, async (c) => {
     const context = c.get('auth')
+    const { householdName } = await service.me(context)
     return c.json({
       login_id: context.loginId,
       person_id: context.personId,
       household_id: context.householdId,
+      household_name: householdName,
       device_id: context.deviceId,
     })
   })
@@ -218,6 +220,27 @@ export function createAuthRoutes({
     await service.revokeInvite(c.get('auth'), c.req.param('id'))
     // 204 whether or not a row matched: "not yours" and "does not exist" are
     // the same answer, and the caller's next GET is the source of truth.
+    return c.body(null, 204)
+  })
+
+  auth.get('/devices', requireAuth, async (c) => {
+    const devices = await service.listDevices(c.get('auth'))
+    return c.json({
+      devices: devices.map((device) => ({
+        id: device.id,
+        label: device.label,
+        created_at: device.createdAt.toISOString(),
+        last_seen_at: device.lastSeenAt.toISOString(),
+        current: device.current,
+        enrolled_passkey_here: device.enrolledPasskeyHere,
+      })),
+    })
+  })
+
+  auth.delete('/devices/:id', requireAuth, async (c) => {
+    await service.revokeDevice(c.get('auth'), c.req.param('id'))
+    // 204 whether or not a row matched: "not mine" and "does not exist" are
+    // the same answer to the caller (`docs/testing.md` cross-Login case).
     return c.body(null, 204)
   })
 

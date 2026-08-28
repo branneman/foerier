@@ -832,6 +832,79 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
         .execute()
     },
 
+    /**
+     * Every Device signed in as this Login. Coarse labels only — no IPs, no
+     * fingerprinting (`docs/design/README.md` §12).
+     */
+    async listDevices(context: AuthContext): Promise<
+      Array<{
+        id: string
+        label: string | null
+        createdAt: Date
+        lastSeenAt: Date
+        current: boolean
+        enrolledPasskeyHere: boolean
+      }>
+    > {
+      const rows = await db
+        .selectFrom('device')
+        .leftJoin('passkey', 'passkey.created_on_device', 'device.id')
+        .select(({ fn }) => [
+          'device.id as id',
+          'device.label as label',
+          'device.created_at as created_at',
+          'device.last_seen_at as last_seen_at',
+          fn.count<string>('passkey.id').as('passkeys'),
+        ])
+        .where('device.login_id', '=', context.loginId)
+        .where('device.revoked_at', 'is', null)
+        .groupBy([
+          'device.id',
+          'device.label',
+          'device.created_at',
+          'device.last_seen_at',
+        ])
+        .orderBy('device.last_seen_at', 'desc')
+        .execute()
+
+      return rows.map((row) => ({
+        id: row.id,
+        label: row.label,
+        createdAt: row.created_at,
+        lastSeenAt: row.last_seen_at,
+        current: row.id === context.deviceId,
+        // Enrolment, not reachability: a credential synced through a password
+        // manager works on Devices that never enrolled it, and the server
+        // cannot see that. The board's line says what happened here.
+        enrolledPasskeyHere: Number(row.passkeys) > 0,
+      }))
+    },
+
+    /**
+     * Cuts a Device off. Scoped to the caller's own Login: cross-Login
+     * revocation is `DELETE /auth/logins/:id`, which is story 28's.
+     */
+    async revokeDevice(context: AuthContext, deviceId: string): Promise<void> {
+      await db
+        .updateTable('device')
+        .set({ revoked_at: new Date(clock.now()) })
+        .where('id', '=', deviceId)
+        .where('login_id', '=', context.loginId)
+        .execute()
+    },
+
+    /** The household's name, which unlike the Person's is a server fact. */
+    async me(context: AuthContext): Promise<{ householdName: string }> {
+      const household = await db
+        .selectFrom('household')
+        .select('name')
+        .where('id', '=', context.householdId)
+        .executeTakeFirst()
+
+      if (household === undefined) throw new AuthError('household missing')
+      return { householdName: household.name }
+    },
+
     /** The Maintainer's only window onto who exists. Reads nothing secret. */
     async listHouseholds(): Promise<
       Array<{
