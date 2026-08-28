@@ -144,14 +144,27 @@ tagged **`@production`** run against the box — anything that mints an Invite
 by Maintainer script, proves joining, or signs the run's own Device out stays
 local-only.
 
-**The next slice is the Radix conversion.** Every sheet in the app is still a
-hand-rolled scrim, against
-[frontend-design §5](docs/frontend-design.md)'s assignment of every
-interactive primitive to a thin wrapper in `ui/`. Deferred deliberately at
-S2, at S3, and a third time at S3.5 — which took the count to roughly six
-sheets and so replaces the deferral with a condition: **converting all six at
-once**, immediately after S3.5 and before S4, rather than leaving two idioms
-in place. Pure `ui/` work; no ops, no endpoints, no `shared/`.
+**The Radix conversion has landed**, discharging the condition S3.5 §10 set in
+place of a fourth deferral. Every hand-rolled scrim in the app is now
+`ui/`'s `Sheet` (Radix Dialog) or `Confirm` (Radix AlertDialog) — the first
+of [frontend-design §5](docs/frontend-design.md)'s primitives to exist. See
+[its spec](docs/specs/2026-08-29-radix-conversion.md) and
+[§12.9](docs/architecture-design.md#129-consequences-of-the-radix-conversion).
+It carries no §8 slice number on purpose: no story, no op, no endpoint, no
+`shared/`. **Three things about it are worth knowing before touching an
+overlay:**
+
+- **It was eleven surfaces, not the "roughly six" three deferrals had
+  counted** — the earlier count was of components, and three confirms nested
+  inside other sheets' JSX had never been counted at all.
+- **There is no `open` prop: mounted is open.** A caller writes
+  `{open && <Sheet …/>}`, and mount is what resets a picker's drafts —
+  `HomePicker` used to keep EDIT mode and four drafts across a close. An exit
+  animation would need the prop back.
+- **A picker dismisses on the scrim; a decision does not.** `Confirm`
+  withholds it, which is Radix's AlertDialog default and the right one:
+  `Sign out this device?` can be part-way through `clearLocalData()`. Escape
+  closes both.
 
 **Then S4, People and ownership.** It adds `person.renamed` and
 `gear.ownership_set`, the People list, the owner on gear detail — and

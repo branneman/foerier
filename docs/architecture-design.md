@@ -1577,3 +1577,67 @@ things the tiers above only stated in the abstract.
   a project-wide `use.storageState`, because `shell.spec.ts` needs a
   **signed-out** visitor and a project-wide setting would have signed it in and
   quietly emptied those tests out.
+
+### 12.9 Consequences of the Radix conversion
+
+The slice that discharged [S3.5 §10](specs/2026-08-28-auth-device-links.md)'s
+condition and made §5's `ui/` assignment true for the first time. No ops, no
+endpoints, no `shared/`; see its
+[spec](specs/2026-08-29-radix-conversion.md).
+
+- **It was eleven surfaces, not six.** Three deferrals had all counted
+  *components* — the census by `aria-modal` found eleven, because three
+  confirms were nested inside other sheets' JSX and had never been counted at
+  all. Those three were also the worst-behaved: no Escape, no dismissal but
+  their own Cancel, no focus trap. The lesson is small and repeatable: a debt
+  that gets re-counted at each deferral should be counted by the thing that
+  costs, not by the file it lives in.
+- **Two primitives, because the role is not the only difference.** `Sheet`
+  wraps Radix Dialog; `Confirm` wraps AlertDialog, which withholds
+  outside-click dismissal and focuses its Cancel. Passing
+  `role="alertdialog"` to a Dialog would have bought the announcement and none
+  of the behaviour. `Confirm` therefore joins §5's primitive list rather than
+  being a variant of `Sheet`.
+- **`open` is not a prop anywhere; mounted is open.** The reason is a live bug
+  it fixed rather than symmetry: `HomePicker` was mounted permanently by gear
+  detail and early-returned `null`, so EDIT mode and four drafts survived a
+  close and returned on the next open. Mount is the reset. The trade, recorded
+  in the spec: Radix's `Presence` needs an `open` transition to animate a sheet
+  *out*, so the first exit animation puts the prop back and moves draft state
+  below `Dialog.Content`.
+- **Radix restores focus to a `Trigger`, and we render none.** Its modal
+  Dialog `preventDefault()`s the focus scope's own restore and focuses
+  `Dialog.Trigger` instead — so a wrapper that is mounted *because* it is open
+  restores focus to nothing, leaving it on `<body>`. Both wrappers capture the
+  opener during first render and restore it from `onCloseAutoFocus`. Worth
+  knowing before wrapping any other Radix primitive the same way: a
+  trigger-less mount is not a shape Radix's defaults assume.
+- **A ≥52em treatment was nearly deleted in the move.** `TagPicker` and
+  `SortGroupSheet` each ended with a media block that redrew `.scrim`,
+  `.sheet` and `.grabber` as a centred, unscrimmed card — so the slice-bar
+  pickers were never bottom sheets at Split and above. Moving those three
+  classes to `ui/` would have taken the block with them, silently. It survives
+  as `Sheet`'s opt-in `desktopCard`, which is honest about what it is: §4a's
+  *"popover on desktop"* approximated until `Popover` lands, rather than every
+  sheet's desktop form. **The general point**: when a class moves out of a
+  module, what dies with it is every rule that *selected* on it, and a media
+  block at the bottom of a file is where that hides.
+- **The accessible name moved from `aria-label` to the visible title**, and
+  all eleven names already matched their headings — so sixteen existing
+  `getByRole(…, { name })` assertions across five test files passed unedited
+  and were the conversion's regression suite. A name that is the text on
+  screen cannot drift away from it.
+- **Measured cost: +13.45 kB gzip** on the app's one JS chunk (106.75 →
+  120.20), for both packages, against roughly 120 lines of hand-rolled JSX and
+  sixteen CSS blocks deleted. There is still no enforced bundle budget in CI.
+- **What every overlay gained**: a focus trap, focus return, Escape, the rest
+  of the app hidden from assistive tech, and a scroll lock — none of which any
+  of the eleven had. What five of them lost: scrim dismissal, which
+  `Confirm` withholds on purpose (a stray tap on the dim area is not a
+  decision, least of all on a sheet that is mid-`clearLocalData()`).
+- **One confirm cannot use `Confirm.Action`.** That part closes on click,
+  which is right for a decision that is over when it is taken and wrong for
+  sign-out-this-device, which has to outlive its own action to say `▲ Another
+  tab has this open`. It uses a plain button and closes when the sequence
+  finishes. `Confirm.Cancel` is still there, so Radix's focus target is
+  unaffected.

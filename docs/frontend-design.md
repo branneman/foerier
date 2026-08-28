@@ -218,13 +218,25 @@ ui/components/<Name>/<Name>.module.css → @layer components
 Three tiers, with one hard rule: **`ui/` never imports the store.**
 
 - **Primitives (`ui/`)** — `Button`, `Chip`, `StatusPill`, `SegmentedControl`,
-  `Stepper`, `PersonCircle`, `Row`, `Card`, `Field`, `Sheet`, `Popover`, `Menu`,
-  `Tabs`. The interactive ones are **thin wrappers around a Radix primitive**
-  (e.g. `Sheet` wraps Radix Dialog with our styling + a11y defaults). Radix is
-  wrapped **once**, here, so the rest of the app imports *our* component and we
-  keep a single point to restyle or replace it. Radix is tree-shakeable
-  per-primitive, respecting the app-shell JS budget. Pure props-in, no data
-  access.
+  `Stepper`, `PersonCircle`, `Row`, `Card`, `Field`, `Sheet`, `Confirm`,
+  `Popover`, `Menu`, `Tabs`. The interactive ones are **thin wrappers around a
+  Radix primitive** (`Sheet` wraps Radix Dialog with our styling + a11y
+  defaults; `Confirm` wraps AlertDialog). Radix is wrapped **once**, here, so
+  the rest of the app imports *our* component and we keep a single point to
+  restyle or replace it. Radix is tree-shakeable per-primitive, respecting the
+  app-shell JS budget. Pure props-in, no data access.
+
+  **Built so far: `Sheet` and `Confirm`** — every overlay in the app, converted
+  in one slice
+  ([its spec](specs/2026-08-29-radix-conversion.md)). Two primitives rather
+  than one because a picker is a `dialog` and a decision is an `alertdialog`,
+  and Radix's two packages differ in more than the role: an AlertDialog does
+  not dismiss on an outside pointer-down and gives initial focus to its
+  Cancel. Both are **mounted-is-open** — there is no `open` prop, so a caller
+  writes `{open && <Sheet …/>}` and mount is what resets a picker's draft
+  state. The rest of this list is unbuilt, and `Popover` is the one with a
+  waiting caller: §4a's desktop tag picker is approximated by `Sheet`'s
+  `desktopCard` until it lands.
 - **Composites (`ui/`)** — `GearRow`, `TripCard`, `JourneyRail`,
   `WhereaboutsCard`, `LedgerList`. Presentational; take domain data as **props**.
 - **Screens / containers (`app/`)** — read Zustand **selectors from `shared/`**,

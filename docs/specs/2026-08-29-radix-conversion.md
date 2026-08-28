@@ -309,6 +309,20 @@ anatomy single.
 The gear-edit sheet gains a grabber it does not have today. It is a bottom
 sheet on the same screen as one that has one; the omission is drift.
 
+**One thing this table missed, found during the conversion.** `TagPicker` and
+`SortGroupSheet` each ended with a `@media (min-width: 52em)` block that
+redrew `.scrim`, `.sheet` and `.grabber` — so the slice-bar pickers were never
+bottom sheets at Split and above: centred, unscrimmed, a bordered 22rem/20rem
+card with a shadow and no grabber. Moving those three classes to `ui/` would
+have deleted the block with them, silently, and §8's claim that the picker "is
+a sheet at every width" was simply wrong. It survives as `Sheet`'s opt-in
+`desktopCard`, at 22rem — opt-in rather than every sheet's desktop form,
+because it is `docs/design/README.md` §4a's *"popover on desktop, same sheet on
+phone"* approximated until `Popover` lands, and a Home picker is a popover on
+no board. **The general lesson**: when a class moves out of a module, every
+rule that *selected* on it dies too, and a media block at the foot of the file
+is where that hides.
+
 **Positioning changes shape.** Radix renders `Overlay` and `Content` as
 siblings, so the flex centring that today's scrim does for its child moves onto
 the surface itself: the sheet is `position: fixed; bottom: 0; left: 50%;
@@ -426,10 +440,12 @@ focus, portal and pointer behaviour.
   `create` keep their modules and their meaning (the "attention border, never
   filled red" rule is design intent, not primitive behaviour).
 - **The slice bar's desktop tag popover.** `docs/design/README.md` §4a draws
-  the slice-mode tag picker as *"popover on desktop, same sheet on phone"*;
-  today it is a sheet at every width. That needs `Popover`, a width rule and a
-  board reading — a separate piece of work, and the first thing the *next*
-  `ui/` slice should take.
+  the slice-mode tag picker as *"popover on desktop, same sheet on phone"*.
+  What exists is a centred card at ≥52em — carried over from the two modules
+  as `Sheet`'s `desktopCard` (§4) — not a popover anchored to the chip that
+  opened it. That needs `Popover`, a width rule and a board reading: a
+  separate piece of work, and the first thing the *next* `ui/` slice should
+  take.
 - **`ErrorBoundary`, `Icon` growth, `motion`.** Unrelated §5 entries.
 - **Exit animations.** §2.1 records what re-enabling them costs.
 - **`env(safe-area-inset-bottom)` on the sheet.** Not present today on any of
@@ -461,12 +477,23 @@ mechanical:
 
 Neither order is better. No coordination is needed beyond a rebase.
 
+**What actually happened.** Tier 4/5 landed on `main` first, in sixteen
+commits touching 42 files. The rebase produced conflicts in exactly two of
+the three predicted places and nowhere else: `architecture-design.md`, where
+both had appended a `### 12.8` after §12.7 (Tier 4/5 keeps it; this takes
+12.9), and `CLAUDE.md`, whose status section both edited — main's copy still
+described this conversion as the next slice. `package-lock.json` merged
+itself. The e2e specs did not collide: Tier 4/5 rewrote `depot.spec.ts`,
+`shell.spec.ts`, `quartermaster.ts` and `playwright.config.ts`, and this
+slice touches none of them. Nothing under `app/src` or `ui/src` appears in
+that branch at all.
+
 ## 10. Doc amendments
 
 | Doc | Amendment |
 | --- | --- |
 | `frontend-design.md` §5 | `Sheet` exists and wraps Radix Dialog; `Confirm` joins the primitive list and wraps AlertDialog; what remains unwrapped |
-| `architecture-design.md` §12 | A new `### 12.8 Consequences of the Radix conversion`. §12.5's "Radix is still not a dependency" bullet is left as written — it records what was true at S3 — and 12.8 supersedes it |
+| `architecture-design.md` §12 | A new `### 12.9 Consequences of the Radix conversion` — §9 predicted the collision and Tier 4/5 landed on main first, so it holds 12.8. §12.5's "Radix is still not a dependency" bullet is left as written — it records what was true at S3 — and 12.9 supersedes it |
 | `design/README.md` §15 | One line settling the sheet primitive's dismissal rule: a picker dismisses on the scrim, a confirm does not |
 | `CLAUDE.md` | The Radix conversion moves from "the next slice" to landed; S4 becomes next; the "every sheet is a hand-rolled scrim" paragraph goes |
 | `testing.md` | No change. `ui/` already runs at Tier 3 and the pyramid is unaffected — stated here so the omission reads as a decision |
