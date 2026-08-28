@@ -161,16 +161,29 @@ jobs:
   # the real Caddy, at the real origin. A different claim from Tier 2s, which
   # proves the code correct against a local Postgres; this proves the *box*.
   #
-  # Tier 5 against the deployed site is still absent — the golden path needs
-  # domain behaviour (trips, pack, close) that awaits S6-S10. It runs locally
-  # in the meantime: `npm run test:e2e`.
+  # It now also runs the household-scoped suite, which needs a Device token. It
+  # mints its own — in Node, from the exported credential, with no browser —
+  # because `e2e-prod` runs *after* this job and a token handed forwards would
+  # have to travel as a job output or an artifact, neither of which is masked
+  # and both of which are readable from the run page of a public repository. A
+  # Device token never crosses a job boundary
+  # (docs/specs/2026-08-28-tier-4-and-5-against-production.md §6.4).
+  #
+  # So this is one of the two jobs that hold the CI credential, and both obey
+  # the same rules: every third-party action pinned by SHA, no GITHUB_TOKEN
+  # scope of any kind, the secrets on the one step that reads them, and nothing
+  # — no trace, no report, no artifact — ever uploaded (§5.1, §7).
+  #
+  # Without the secrets — a fork's pull request, a local run — `household.test.ts`
+  # skips itself and `deployment.test.ts`'s unauthenticated assertions still run.
   contract:
     needs: [changes, build-push]
     if: needs.changes.outputs.deployable == 'true'
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -199,4 +212,46 @@ jobs:
           echo "::error::api.foerier.app never reported $EXPECTED within 300s"
           exit 1
 
+      # The credential secrets go on this step alone, not on the job: the
+      # checkout, the toolchain and `npm ci` have no business seeing them, and
+      # a step-level `env` is the difference between "one command holds the
+      # key" and "every command in the job does". `E2E_USER_HANDLE` is not
+      # here — Tier 4 signs in Node, where the handle is never read; only the
+      # browser's virtual authenticator needs it, so only `e2e-prod` gets it.
       - run: npm run test:contract
+        env:
+          E2E_CREDENTIAL_ID: ${{ secrets.E2E_CREDENTIAL_ID }}
+          E2E_PRIVATE_KEY: ${{ secrets.E2E_PRIVATE_KEY }}
+
+  # Tier 5 against production (docs/testing.md). Only specs tagged @production
+  # run here; everything that needs a Maintainer script, proves joining, or
+  # signs the run's own Device out stays local-only (§6.2). The job holds the
+  # CI credential, so: pinned actions, no GITHUB_TOKEN scope, and nothing — no
+  # trace, no report, no artifact — is ever uploaded from it. The production
+  # Playwright project sets `trace: 'off'` and the `list` reporter, so there is
+  # nothing to upload even if a step were added.
+  #
+  # `needs: contract` is not decoration: that job already polls /version until
+  # the pushed SHA is served, so the deploy-wait is written once and Tier 5
+  # inherits it. The `push` guard is repeated on this job rather than only
+  # inherited through `changes`, because a job holding a production credential
+  # should not lean on a guard that exists to skip prose-only deploys (§7).
+  e2e-prod:
+    needs: [changes, contract]
+    if: github.event_name == 'push' && needs.changes.outputs.deployable == 'true'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: https://app.foerier.app
+          E2E_CREDENTIAL_ID: ${{ secrets.E2E_CREDENTIAL_ID }}
+          E2E_PRIVATE_KEY: ${{ secrets.E2E_PRIVATE_KEY }}
+          E2E_USER_HANDLE: ${{ secrets.E2E_USER_HANDLE }}
