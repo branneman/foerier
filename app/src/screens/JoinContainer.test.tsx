@@ -58,26 +58,39 @@ function fetchFrom(responses: Record<string, unknown>): typeof fetch {
 function renderJoinContainer(options: {
   responses: Record<string, unknown>
   hash?: string
+  /**
+   * Skips setting `window.location.hash` at all, leaving whatever the
+   * previous step in the test left behind (and any `history.state` with
+   * it). Used to simulate a reload of an already-stripped `/join` — a real
+   * reload does not resend a fragment, but `history.state` survives it.
+   */
+  skipHash?: boolean
   pending?: PendingStore
   onSignedIn?: (session: unknown) => Promise<void>
 }) {
-  window.location.hash = options.hash ?? '#a-secret'
+  if (!options.skipHash) {
+    window.location.hash = options.hash ?? '#a-secret'
+  }
   const api = createAuthApi(fetchFrom(options.responses))
   const onSignedIn = options.onSignedIn ?? vi.fn().mockResolvedValue(undefined)
   const pending = options.pending ?? inMemoryPendingStore()
   const { hook } = memoryLocation({ path: '/join' })
 
-  render(
+  const { unmount } = render(
     <Router hook={hook}>
       <JoinContainer api={api} pending={pending} onSignedIn={onSignedIn} />
     </Router>,
   )
 
-  return { onSignedIn, pending }
+  return { onSignedIn, pending, unmount }
 }
 
 afterEach(() => {
   window.location.hash = ''
+  // `takeSecretFromFragment` retains the secret in `history.state`; without
+  // resetting it too, a test that leaves one behind would silently feed it
+  // to the next test's fresh mount.
+  window.history.replaceState(null, '', '/join')
   // Only ever defined by the tests below, which stub it per-case; jsdom has
   // no `serviceWorker` of its own to restore.
   Reflect.deleteProperty(navigator, 'serviceWorker')
@@ -240,5 +253,50 @@ describe('JoinContainer — stale service worker vs. the Invite secret', () => {
         name: 'Continue without a passkey',
       }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('JoinContainer — retaining the secret across a reload', () => {
+  it('recovers the secret from history.state on a fresh mount with no fragment', async () => {
+    const { unmount } = renderJoinContainer({
+      responses: { '/auth/join/preview': DEVICE_PREVIEW },
+    })
+
+    await screen.findByRole('heading', { name: 'Continue without a passkey' })
+    // The fragment is gone and the secret rides along in `history.state`.
+    expect(window.location.hash).toBe('')
+    expect(window.history.state).toEqual({ secret: 'a-secret' })
+
+    // A real reload starts this component from nothing, with no fragment to
+    // read (there is none left) but the same `history.state`.
+    unmount()
+    renderJoinContainer({
+      responses: { '/auth/join/preview': DEVICE_PREVIEW },
+      skipHash: true,
+    })
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Continue without a passkey',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('clears the retained secret once the join completes', async () => {
+    renderJoinContainer({
+      responses: {
+        '/auth/join/preview': DEVICE_PREVIEW,
+        '/auth/device/claim': CLAIMED,
+      },
+    })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Continue' }),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Signed in.' }),
+    ).toBeInTheDocument()
+    expect(window.history.state).toBeNull()
   })
 })

@@ -55,23 +55,57 @@ async function checkForServiceWorkerUpdate(): Promise<void> {
   }
 }
 
+/** The shape this file writes into `history.state` while a link is live. */
+interface RetainedSecretState {
+  secret: string
+}
+
+function readRetainedSecret(): string | null {
+  const state = window.history.state as RetainedSecretState | null
+  return typeof state?.secret === 'string' ? state.secret : null
+}
+
 /**
- * Reads the Invite secret out of the URL **fragment**.
+ * Reads the Invite secret out of the URL **fragment**, falling back to a
+ * copy retained in `history.state` from an earlier read of the same fragment
+ * on this history entry.
  *
- * The fragment is never sent to a server, so the secret stays out of Caddy's
- * access log, out of any intermediary's log, and out of the `Referer` header
- * on any later navigation (`auth-design.md` §3.2).
+ * The fallback matters because, once the fragment has been stripped below,
+ * the secret otherwise lives only in React state — and *any* reload (a
+ * phone's pull-to-refresh, the `autoUpdate` reload landing a beat later than
+ * expected despite `checkForServiceWorkerUpdate`) loses it. Since the Invite
+ * is single-use, that strands a link that is still perfectly valid.
  */
 function takeSecretFromFragment(): string | null {
-  const secret = window.location.hash.replace(/^#/, '')
-  if (secret === '') return null
+  const fromFragment = window.location.hash.replace(/^#/, '')
+  if (fromFragment === '') return readRetainedSecret()
 
   // Replace the history entry immediately with a bare `/join`, so a
   // screen-shared address bar and the back button do not carry the secret
   // around. Residual exposure — the chat app that delivered it, the clipboard
   // — is answered by single-use and a short lifetime, not by secrecy theatre.
+  //
+  // The secret rides along in the history *state* object rather than being
+  // dropped, so a later reload of this same entry recovers it instead of
+  // dead-ending an otherwise-still-valid link (see `readRetainedSecret`).
+  // This does not weaken `auth-design.md` §3.2: that section's concern is
+  // the address bar, server logs, and the `Referer` header, and none of
+  // those ever see `history.state` — the address bar itself is still a bare
+  // `/join` either way. `history.state` is same-origin script-readable,
+  // exactly like the fragment it replaces and like the Device token already
+  // sitting in IndexedDB, so retaining the secret here adds nothing to the
+  // residual XSS exposure `auth-design.md` §7.4 already accepts and bounds.
+  window.history.replaceState({ secret: fromFragment }, '', '/join')
+  return fromFragment
+}
+
+/**
+ * Drops a secret retained by `takeSecretFromFragment`, once its Invite is
+ * consumed or dead-ended, so a spent secret does not linger in the history
+ * entry indefinitely.
+ */
+function clearRetainedSecret(): void {
   window.history.replaceState(null, '', '/join')
-  return secret
 }
 
 export function JoinContainer({
@@ -126,6 +160,7 @@ export function JoinContainer({
           // The server answers unknown, expired, used and revoked
           // identically, on purpose (auth-design.md §9.4), so the dead end
           // shows the only thing actually known: the link does not work.
+          clearRetainedSecret()
           setDeadEnd('unknown')
         })
     }
@@ -183,6 +218,8 @@ export function JoinContainer({
       householdId: result.household_id,
       deviceId: result.device_id,
     })
+    // The Invite is consumed — nothing left to recover on a reload.
+    clearRetainedSecret()
     setPasskeySaved(credentialCreated)
     setJustJoined(true)
   }
