@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migrateToLatest } from '../../src/db/index.ts'
 import type { Database } from '../../src/db/schema.ts'
 import * as m0003 from '../../migrations/0003_op.ts'
+import * as m0004 from '../../migrations/0004_device_links.ts'
 import { resetHouseholds, seedHousehold } from './harness.ts'
 import { testDb } from './testDb.ts'
 
@@ -284,5 +285,133 @@ describe('the op table and the household counter', () => {
     // it) so the schema this class leaves behind matches what every other
     // class — and the next run of this file — expects to find.
     await m0003.up(rawDb)
+  })
+})
+
+/**
+ * `0004`'s `person_recorded` backfill, and its `up()`/`down()` round-trip.
+ *
+ * This is the one migration whose `up()` does real work against existing
+ * rows rather than merely shaping an empty table: the backfill runs exactly
+ * once, against whatever `invite` rows already exist, and reproduces the
+ * `anyLogin` derivation `previewInvite` used to compute inline. A test that
+ * runs `0004` fresh against an empty `invite` table (which is what simply
+ * relying on the migrator having already run would do) proves nothing — the
+ * backfill's `update ... where person_recorded is null` would match zero
+ * rows and pass vacuously either way. So this test seeds rows in the
+ * pre-`0004` shape by calling `down()` first, straddling the backfill's
+ * condition (one household with a Login, one without), and only then calls
+ * `up()` and inspects what it did.
+ *
+ * UUID registry slots #4 and #5 (`docs/testing.md`) — the same two
+ * households `the op table and the household counter` above uses; this
+ * describe block does not add a new slot.
+ */
+describe('the person_recorded backfill (0004)', () => {
+  const HOUSEHOLD_A = '0f000004-0000-4000-8000-000000000004'
+  const HOUSEHOLD_B = '0f000005-0000-4000-8000-000000000005'
+
+  let db: Kysely<Database>
+
+  beforeAll(async () => {
+    db = await testDb()
+  })
+
+  afterAll(async () => {
+    await db.destroy()
+  })
+
+  beforeEach(async () => {
+    await resetHouseholds(db, [HOUSEHOLD_A, HOUSEHOLD_B])
+    await seedHousehold(db, { id: HOUSEHOLD_A, name: 'Veldkamp' })
+    await seedHousehold(db, { id: HOUSEHOLD_B, name: 'Oosterhuis' })
+  })
+
+  it('reproduces the anyLogin derivation exactly, and down()/up() round-trip both columns', async () => {
+    // Widening to the type the migrator actually hands a migration module —
+    // see the `op` table's down()/up() test above for why.
+    const rawDb = db as unknown as Kysely<unknown>
+
+    // Household B has a Login already; household A does not. This is exactly
+    // the distinction the deleted `anyLogin` query in `previewInvite` used to
+    // read, and it is what the backfill has to reproduce.
+    await db
+      .insertInto('login')
+      .values({
+        id: crypto.randomUUID(),
+        household_id: HOUSEHOLD_B,
+        person_id: crypto.randomUUID(),
+      })
+      .execute()
+
+    // Drop 0004's columns so the invite rows below land in the pre-0004
+    // shape — the shape every Invite outstanding at a real deploy is in.
+    await m0004.down(rawDb)
+
+    const inviteA = crypto.randomUUID()
+    const inviteB = crypto.randomUUID()
+    const expiresAt = new Date(Date.UTC(2026, 8, 1))
+
+    // Raw SQL, not `db.insertInto('invite')`: the Kysely-typed schema still
+    // declares `person_recorded` as a required insert column, but the actual
+    // table — mid-`down()` — does not have it yet.
+    await sql`
+      insert into invite (id, household_id, person_id, purpose, secret_hash, expires_at)
+      values (${inviteA}, ${HOUSEHOLD_A}, ${crypto.randomUUID()}, 'join', ${Buffer.from(crypto.randomUUID())}, ${expiresAt})
+    `.execute(db)
+    await sql`
+      insert into invite (id, household_id, person_id, purpose, secret_hash, expires_at)
+      values (${inviteB}, ${HOUSEHOLD_B}, ${crypto.randomUUID()}, 'join', ${Buffer.from(crypto.randomUUID())}, ${expiresAt})
+    `.execute(db)
+
+    // The backfill under test.
+    await m0004.up(rawDb)
+
+    const rows = await db
+      .selectFrom('invite')
+      .select(['id', 'person_recorded'])
+      .where('id', 'in', [inviteA, inviteB])
+      .execute()
+    const recordedById = new Map(rows.map((r) => [r.id, r.person_recorded]))
+
+    expect(recordedById.get(inviteA)).toBe(false)
+    expect(recordedById.get(inviteB)).toBe(true)
+
+    // down() removes both columns...
+    await m0004.down(rawDb)
+
+    const afterDown = await sql<{
+      table_name: string
+      column_name: string
+    }>`
+      select table_name, column_name
+        from information_schema.columns
+       where (table_name = 'invite' and column_name = 'person_recorded')
+          or (table_name = 'passkey' and column_name = 'created_on_device')
+    `.execute(db)
+    expect(afterDown.rows).toHaveLength(0)
+
+    // ...and up() restores them — nullable then backfilled then NOT NULL for
+    // `invite.person_recorded`, nullable throughout for
+    // `passkey.created_on_device` — leaving the schema every other Tier 2s
+    // class, and the next run of this file, expects to find.
+    await m0004.up(rawDb)
+
+    const afterUp = await sql<{
+      table_name: string
+      column_name: string
+      is_nullable: string
+    }>`
+      select table_name, column_name, is_nullable
+        from information_schema.columns
+       where (table_name = 'invite' and column_name = 'person_recorded')
+          or (table_name = 'passkey' and column_name = 'created_on_device')
+    `.execute(db)
+    const nullableByColumn = new Map(
+      afterUp.rows.map((r) => [r.column_name, r.is_nullable]),
+    )
+
+    expect(nullableByColumn.get('person_recorded')).toBe('NO')
+    expect(nullableByColumn.get('created_on_device')).toBe('YES')
   })
 })
