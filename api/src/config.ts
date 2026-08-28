@@ -18,7 +18,20 @@ export interface Config {
    * pushed, which is how a deploy is known to have landed.
    */
   gitSha: string
+  /**
+   * The Household `POST /test/reset` is allowed to wipe, lowercased.
+   *
+   * Set only in the e2e environment, by the infrastructure repo
+   * (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3.3) — never
+   * in production. Its absence is *not* an error: `undefined` is how the
+   * route mount decides not to exist at all (§3, "Mount conditionally"), so a
+   * production server that never sets this variable never exposes a reset
+   * endpoint in the first place.
+   */
+  e2eHouseholdId: string | undefined
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function required(name: string): string {
   const value = process.env[name]
@@ -54,6 +67,15 @@ export const DEV_DATABASE_URL =
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const isProduction = env['NODE_ENV'] === 'production'
 
+  const e2eHouseholdId = env['E2E_HOUSEHOLD_ID']
+  if (
+    e2eHouseholdId !== undefined &&
+    e2eHouseholdId !== '' &&
+    !UUID.test(e2eHouseholdId)
+  ) {
+    throw new Error(`E2E_HOUSEHOLD_ID is not a UUID: ${e2eHouseholdId}`)
+  }
+
   return {
     databaseUrl:
       env['DATABASE_URL'] ??
@@ -62,5 +84,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     // `dev` rather than a throw: a local checkout has no commit baked in, and
     // refusing to boot over it would make the server unrunnable outside Docker.
     gitSha: env['GIT_SHA'] ?? 'dev',
+    e2eHouseholdId:
+      e2eHouseholdId === undefined || e2eHouseholdId === ''
+        ? undefined
+        : e2eHouseholdId.toLowerCase(),
   }
 }

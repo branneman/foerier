@@ -35,3 +35,26 @@ describe('loadConfig', () => {
     expect(loadConfig({ PORT: '9000' }).port).toBe(9000)
   })
 })
+
+describe('E2E_HOUSEHOLD_ID', () => {
+  const base = { NODE_ENV: 'test', DATABASE_URL: 'postgres://x' }
+  it('is undefined when unset or empty', () => {
+    expect(loadConfig({ ...base }).e2eHouseholdId).toBeUndefined()
+    expect(
+      loadConfig({ ...base, E2E_HOUSEHOLD_ID: '' }).e2eHouseholdId,
+    ).toBeUndefined()
+  })
+  it('lowercases a UUID — Postgres returns uuid lowercase, and a capitalised compose value would 403 forever', () => {
+    expect(
+      loadConfig({
+        ...base,
+        E2E_HOUSEHOLD_ID: '0F00000C-0000-4000-8000-00000000000C',
+      }).e2eHouseholdId,
+    ).toBe('0f00000c-0000-4000-8000-00000000000c')
+  })
+  it('refuses to boot on garbage', () => {
+    expect(() =>
+      loadConfig({ ...base, E2E_HOUSEHOLD_ID: 'not-a-uuid' }),
+    ).toThrow(/E2E_HOUSEHOLD_ID/)
+  })
+})
