@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--
+      The redirect. `content="0"` is a *replace* navigation per the HTML spec's
+      shared declarative refresh steps, so this leaves no history entry and the
+      back button does not trap the visitor here.
+
+      Declarative, not `location.replace()`, because a script would need
+      `script-src 'self'` and a second request; the meta refresh needs neither,
+      which is what lets the policy below say `default-src 'none'`.
+    -->
+    <meta http-equiv="refresh" content="0; url=https://app.foerier.app/" />
+
+    <!--
+      GitHub Pages cannot set response headers, so the policy travels in the
+      document (`auth-design.md` §8.2). It is the app's shape minus everything
+      this page does not do: no scripts, no images, no fonts, no API. Only the
+      one stylesheet.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+
+    <title>foerier</title>
+    <meta name="description" content="The household's gear ledger." />
+    <link rel="canonical" href="https://app.foerier.app/" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!--
+      A visible link, and the only content on the page. It is what a visitor
+      sees if the refresh is disabled or blocked, and what a crawler follows.
+      `.skip` parks it off-screen rather than hiding it, so the redirect stays
+      invisible in the ordinary case without becoming a dead end.
+    -->
+    <a class="skip" href="https://app.foerier.app/">Continue to foerier</a>
+  </body>
+</html>

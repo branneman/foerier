@@ -1,0 +1,47 @@
+# The landing site. Its own workflow rather than a job in `ci.yml`: a different
+# trigger, a different permission set, and a different deployment target from
+# everything else this repository ships. `ci.yml` publishes images to GHCR for
+# the Hetzner box; this publishes static files to GitHub Pages at `foerier.app`
+# (architecture §8.2 — acceptable in the US *here and only here*, because the
+# landing page carries no auth and no household data).
+#
+# There is no build step yet. `landing/` is a redirect stub of three static
+# files, so the directory is the artifact. When it grows into the live demo on
+# `ui/` components that §7 describes, this gains `npm ci && npm run build
+# --workspace landing` and the upload path becomes `landing/dist`.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    # Nothing else in the repository can change what this deploys, and a Pages
+    # deployment on every prose commit would be noise.
+    paths:
+      - 'landing/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel a deployment in flight: a half-applied Pages deploy is a live
+# site in an unknown state. Queue instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: landing
+      - id: deployment
+        uses: actions/deploy-pages@v4

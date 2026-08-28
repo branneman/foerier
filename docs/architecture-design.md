@@ -999,10 +999,24 @@ byte-exact.
 
 ### 12.1 Deviations from §8's S0, and why
 
-- **`landing/` is not scaffolded.** §7 lists five workspaces and S0 asks for the
-  GitHub Pages workflow. Four are built; `landing` waits until there is a `ui/`
-  worth showing off. Nothing depends on it — it carries no ops, no auth, and no
-  household data.
+- **`landing/` is a redirect stub, not a workspace.** §7 lists five workspaces
+  and S0 asks for the GitHub Pages workflow. Four workspaces are built; the
+  fifth is three static files — `index.html`, `styles.css`, `CNAME` — that send
+  `foerier.app` to `app.foerier.app` and nothing else. It was scaffolded ahead
+  of the marketing site because without it `foerier.app` resolves to Pages IPs
+  that serve no certificate, and `.app` is HSTS-preloaded, so the bare domain
+  is an error page with no http fallback. The workflow (`pages.yml`) is
+  therefore real and deployed; the Vite build and the live demo on `ui/`
+  components still wait until there is a `ui/` worth showing off. Nothing
+  depends on it — it carries no ops, no auth, and no household data.
+
+  Two consequences worth knowing before touching it. It **does not build**, so
+  it cannot import `ui/styles/tokens.css`; its two background colours are
+  copies of `--sage-bg-base` and `--parchment-bg-base`, and a token change does
+  not reach them. And the redirect is a **declarative `<meta http-equiv=
+  "refresh" content="0">`**, not `location.replace()` — which is what lets the
+  page's meta CSP (§8.2 of [auth-design](auth-design.md), since Pages cannot
+  set headers) tighten to `default-src 'none'` with no `script-src` at all.
 - **Deployment is not in this repository.** S0 asks for the Caddy site blocks,
   Watchtower, and the compose stack. Those moved to a separate infrastructure
   repository so that `health` and foerier never learn about each other. This

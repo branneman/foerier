@@ -18,7 +18,13 @@ have landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
   `ui`; `landing` deferred), the Tier 0 toolchain and pre-commit hook, the test
-  tiers, both container images, and `GET /api/v1/version`.
+  tiers, both container images, and `GET /api/v1/version`. S0's one remaining
+  gap has since been closed part-way: `landing/` exists as a **redirect stub**
+  (three static files, no build) deployed to GitHub Pages by `pages.yml`, so
+  `foerier.app` sends visitors to `app.foerier.app` instead of failing TLS. The
+  marketing site and the live demo on `ui/` are still deferred; see
+  [§12.1](docs/architecture-design.md#121-deviations-from-8s-s0-and-why) for
+  what the stub does and does not carry.
 - **S1, auth slice 1** (stories 26, 27) — the Maintainer bootstrap script, both
   WebAuthn ceremonies, device tokens, the auth middleware and tenancy rule, and
   the sign-in and join screens.

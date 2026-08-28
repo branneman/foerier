@@ -104,11 +104,16 @@ jobs:
           fi
           changed=$(git diff --name-only "$BEFORE" "$AFTER")
           echo "changed:"; printf '%s\n' "$changed" | sed 's/^/  /'
-          # Non-deployable: docs/, .claude/, and root-level *.md (README,
-          # CLAUDE). Everything else — source, Dockerfiles, the lockfile, this
-          # workflow — deploys.
+          # Non-deployable: docs/, .claude/, landing/, and root-level *.md
+          # (README, CLAUDE). Everything else — source, Dockerfiles, the
+          # lockfile, this workflow — deploys.
+          #
+          # `landing/` is here because it deploys, just not from this job:
+          # pages.yml ships it to GitHub Pages. Without the carve-out, editing
+          # a static redirect page would rebuild both images and restart
+          # production to change nothing.
           if printf '%s\n' "$changed" \
-            | grep -qvE '^(docs/|\.claude/|[^/]+\.md$)'; then
+            | grep -qvE '^(docs/|\.claude/|landing/|[^/]+\.md$)'; then
             echo "deployable=true" >>"$GITHUB_OUTPUT"
           else
             echo "prose only — not deploying"

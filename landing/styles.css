@@ -1,0 +1,42 @@
+/**
+ * The whole of the landing page's style, for as long as the landing page is a
+ * redirect stub.
+ *
+ * An external file rather than an inline `<style>`, because the document's own
+ * Content-Security-Policy says `style-src 'self'` — the same shape the app is
+ * held to (`auth-design.md` §8.2). It is render-blocking, which is the point:
+ * the browser paints the colour below or nothing at all, never a white frame
+ * first.
+ *
+ * The two colours are `--sage-bg-base` and `--parchment-bg-base` from
+ * `ui/styles/tokens.css`, copied rather than imported: this page does not
+ * build, so it has no way to reach the token file. They are the app's own
+ * default and its `prefers-color-scheme: light` value, so the redirect lands
+ * on a document that is already the colour this one was.
+ */
+
+html {
+  background: #151a15;
+}
+
+@media (prefers-color-scheme: light) {
+  html {
+    background: #f0ebdd;
+  }
+}
+
+/*
+ * Off-screen, not `display: none`: the fallback link stays reachable to a
+ * screen reader and to a crawler, and to anyone whose browser refuses the
+ * refresh.
+ */
+.skip {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
