@@ -8,6 +8,7 @@ import type {
 import {
   createHash,
   createPrivateKey,
+  createPublicKey,
   generateKeyPairSync,
   randomBytes,
   sign,
@@ -63,6 +64,22 @@ function uint16(value: number): Uint8Array<ArrayBuffer> {
   return out
 }
 
+/**
+ * One credential, in the two encodings a replay needs.
+ *
+ * Deliberately the encodings the *consumers* want rather than the ones this
+ * file finds convenient: the private key is base64 of PKCS#8 DER, which is
+ * exactly what Chrome's CDP `WebAuthn.addCredential` takes, so a single pair
+ * of CI secrets serves both the browser (Tier 5) and this class (Tier 4).
+ * See `docs/specs/2026-08-28-tier-4-and-5-against-production.md` §6.4.
+ */
+export interface ExportedCredential {
+  /** base64, standard alphabet — PKCS#8 DER. */
+  privateKey: string
+  /** base64url, as WebAuthn ids are everywhere else. */
+  credentialId: string
+}
+
 export interface SoftwareAuthenticatorOptions {
   origin: string
   rpId: string
@@ -73,10 +90,18 @@ export interface SoftwareAuthenticatorOptions {
    */
   userVerified?: boolean
   /**
-   * Synced passkeys legitimately report 0 forever. That is the default here on
-   * purpose — it is the configuration most real credentials will have.
+   * The count reported by the *first* assertion; `get()` advances it from
+   * there, as a real authenticator does. 0 is the default because that is
+   * what a synced passkey reports, and the configuration most real
+   * credentials will have.
    */
   signCount?: number
+  /**
+   * A credential from {@link SoftwareAuthenticator.export}, replayed instead
+   * of generating a fresh one. This is how Tier 4 signs in against the
+   * deployed box with no browser and no ceremony state — only two secrets.
+   */
+  credential?: ExportedCredential
 }
 
 export class SoftwareAuthenticator {
@@ -94,20 +119,40 @@ export class SoftwareAuthenticator {
     rpId,
     userVerified = true,
     signCount = 0,
+    credential,
   }: SoftwareAuthenticatorOptions) {
     this.origin = origin
     this.rpId = rpId
     this.userVerified = userVerified
     this.signCount = signCount
 
-    const { privateKey, publicKey } = generateKeyPairSync('ec', {
-      namedCurve: 'P-256',
-    })
-    this.privateKey = createPrivateKey(
-      privateKey.export({ format: 'pem', type: 'pkcs8' }),
-    )
+    if (credential === undefined) {
+      const generated = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+      this.privateKey = createPrivateKey(
+        generated.privateKey.export({ format: 'pem', type: 'pkcs8' }),
+      )
+      // Must be random, not derived: two authenticators in one test would
+      // otherwise collide on the `credential_id` unique index, and a real
+      // authenticator never reuses one either.
+      this.credentialId = new Uint8Array(randomBytes(32))
+    } else {
+      this.privateKey = createPrivateKey({
+        key: Buffer.from(credential.privateKey, 'base64'),
+        format: 'der',
+        type: 'pkcs8',
+      })
+      this.credentialId = new Uint8Array(
+        isoBase64URL.toBuffer(credential.credentialId),
+      )
+    }
 
-    const jwk = publicKey.export({ format: 'jwk' }) as { x: string; y: string }
+    // Derived from the private key rather than carried alongside it, so the
+    // replayed and the generated case cannot disagree about which public key
+    // belongs to the signature.
+    const jwk = createPublicKey(this.privateKey).export({ format: 'jwk' }) as {
+      x: string
+      y: string
+    }
 
     // COSE_Key for ES256 (RFC 8152): kty=EC2(2), alg=ES256(-7),
     // crv=P-256(1), plus the raw x and y coordinates.
@@ -120,15 +165,24 @@ export class SoftwareAuthenticator {
         [-3, isoBase64URL.toBuffer(jwk.y)],
       ]) as never,
     )
-
-    // Must be random, not derived: two authenticators in one test would
-    // otherwise collide on the `credential_id` unique index, and a real
-    // authenticator never reuses one either.
-    this.credentialId = new Uint8Array(randomBytes(32))
   }
 
   get credentialIdB64(): string {
     return isoBase64URL.fromBuffer(this.credentialId)
+  }
+
+  /**
+   * The credential, in a form another authenticator — or Chrome's virtual one
+   * — can be seeded with. The sign count is deliberately not part of it: it is
+   * per-run state (spec §5.2), not part of the credential.
+   */
+  export(): ExportedCredential {
+    return {
+      privateKey: this.privateKey
+        .export({ format: 'der', type: 'pkcs8' })
+        .toString('base64'),
+      credentialId: this.credentialIdB64,
+    }
   }
 
   private clientData(type: string, challenge: string): Uint8Array<ArrayBuffer> {
@@ -198,6 +252,12 @@ export class SoftwareAuthenticator {
       new Uint8Array([this.flags(false)]),
       uint32(this.signCount),
     )
+
+    // A real authenticator advances its counter per assertion, and the server
+    // requires it to (`isSignCountAcceptable`). Without this a second sign-in
+    // from one instance would replay the same count and be rejected — the
+    // case Tier 4 hits whenever a job signs in twice.
+    this.signCount += 1
 
     // WebAuthn signs authenticatorData || SHA-256(clientDataJSON). Node emits
     // DER-encoded ECDSA, which is exactly what ES256 expects here.

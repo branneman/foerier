@@ -327,6 +327,16 @@ describe('the join and sign-in ceremonies', () => {
   })
 
   describe('signing in again', () => {
+    /** `login/options` → `login/verify`, returning the raw response. */
+    async function signIn(device: SoftwareAuthenticator) {
+      const options = await jsonOf<never>(
+        await post('/api/v1/auth/login/options'),
+      )
+      return post('/api/v1/auth/login/verify', {
+        response: device.get(options),
+      })
+    }
+
     it('issues a second device token for the same login', async () => {
       const invite = await seedInvite(db, {
         householdId: HOUSEHOLD,
@@ -416,6 +426,88 @@ describe('the join and sign-in ceremonies', () => {
       })
 
       expect(res.status).toBe(200)
+    })
+
+    it('accepts a credential exported from another authenticator', async () => {
+      // Tier 4 has no browser and no ceremony state: it reconstructs the CI
+      // Passkey from two secrets and signs in over plain `fetch`
+      // (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §6.4).
+      const invite = await seedInvite(db, {
+        householdId: HOUSEHOLD,
+        clock: h.clock,
+      })
+      const { verifyRes, device } = await join(invite.secret)
+      const joined = await jsonOf(verifyRes)
+
+      const replica = new SoftwareAuthenticator({
+        origin: TEST_ORIGIN,
+        rpId: TEST_RP_ID,
+        credential: device.export(),
+        signCount: 100,
+      })
+
+      const res = await signIn(replica)
+
+      expect(res.status).toBe(200)
+      // The same Login, so the export really did carry both the key and the
+      // id — a freshly generated one would be an unknown credential.
+      await expect(res.json()).resolves.toMatchObject({
+        login_id: joined.login_id,
+      })
+    })
+
+    it('rejects a passkey re-seeded with a counter at or below the stored one', async () => {
+      // The regression that stops the counter check being relaxed under CI
+      // pressure (spec §5.2). A replayed export *is* the cloned-authenticator
+      // case the counter exists to catch, and the only signal a leaked CI key
+      // would trip; so the harness seeds a monotonic count instead, and the
+      // server-side check stays exactly as it is.
+      const invite = await seedInvite(db, {
+        householdId: HOUSEHOLD,
+        clock: h.clock,
+      })
+      const { device } = await join(invite.secret)
+      const credential = device.export()
+
+      const first = new SoftwareAuthenticator({
+        origin: TEST_ORIGIN,
+        rpId: TEST_RP_ID,
+        credential,
+        signCount: 50,
+      })
+      expect((await signIn(first)).status).toBe(200) // stores 50
+
+      const replayed = new SoftwareAuthenticator({
+        origin: TEST_ORIGIN,
+        rpId: TEST_RP_ID,
+        credential,
+        signCount: 50,
+      })
+      const res = await signIn(replayed)
+
+      expect(res.status).toBe(401)
+      await expect(res.json()).resolves.toEqual({ error: 'auth_failed' })
+    })
+
+    it('advances its own counter, so a second sign-in in one run is accepted', async () => {
+      // Why the seed only has to beat the stored count once per run: within a
+      // run the authenticator increments per assertion, as a real one does.
+      const invite = await seedInvite(db, {
+        householdId: HOUSEHOLD,
+        clock: h.clock,
+      })
+      const { device } = await join(invite.secret)
+
+      const replica = new SoftwareAuthenticator({
+        origin: TEST_ORIGIN,
+        rpId: TEST_RP_ID,
+        credential: device.export(),
+        signCount: 50,
+      })
+
+      expect((await signIn(replica)).status).toBe(200)
+      expect(replica.signCount).toBe(51)
+      expect((await signIn(replica)).status).toBe(200)
     })
   })
 
