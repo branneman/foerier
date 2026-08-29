@@ -5,6 +5,7 @@ import {
   fold,
   personRecorded,
   tripCreated,
+  tripDatesSet,
   tripParticipantAdded,
   tripParticipantRemoved,
   type DepotState,
@@ -14,7 +15,7 @@ import {
 } from '@foerier/shared'
 import { describe, expect, it } from 'vitest'
 
-import { tripParticipants } from './trips'
+import { tripDateRange, tripParticipants, tripStartMonth } from './trips'
 
 /**
  * Every fixture goes through the **real** reducer, never a hand-shaped
@@ -123,5 +124,92 @@ describe('tripParticipants', () => {
       tripCreated(TRIP, 'Alps 2026'),
     )
     expect(tripParticipants(state, theTrip(state))).toEqual([])
+  })
+})
+
+describe('tripDateRange', () => {
+  function dated(dates: { start?: string | null; end?: string | null }) {
+    return theTrip(
+      depot(tripCreated(TRIP, 'Alps 2026'), tripDatesSet(TRIP, dates)),
+    )
+  }
+
+  it('draws the boards line, span included and inclusive of both ends', () => {
+    // `AUG 14 → SEP 02 · 20 DAYS` is the board's own number: the days a Trip
+    // is away, not the difference between two dates.
+    expect(
+      tripDateRange(dated({ start: '2026-08-14', end: '2026-09-02' })),
+    ).toBe('AUG 14 → SEP 02 · 20 DAYS')
+  })
+
+  it('counts a one-day Trip in the singular', () => {
+    expect(
+      tripDateRange(dated({ start: '2026-08-14', end: '2026-08-14' })),
+    ).toBe('AUG 14 → AUG 14 · 1 DAY')
+  })
+
+  it('drops the line entirely when the Trip carries no dates', () => {
+    // The board's own variant — "dates are optional and a draft usually has
+    // none, the meta row simply drops". `null` and absent are different facts
+    // about the log and the same fact about the Trip.
+    expect(
+      tripDateRange(theTrip(depot(tripCreated(TRIP, 'Alps 2026')))),
+    ).toBeNull()
+    expect(tripDateRange(dated({ start: null, end: null }))).toBeNull()
+  })
+
+  it('keeps the arrow when only one end is known', () => {
+    // The arrow is what says which end is missing. A bare `SEP 02` would read
+    // as a start date, which is a fact the Trip does not hold.
+    expect(tripDateRange(dated({ start: '2026-08-14' }))).toBe('AUG 14 →')
+    expect(tripDateRange(dated({ end: '2026-09-02' }))).toBe('→ SEP 02')
+  })
+
+  it('draws a date it cannot read exactly as it arrived, and counts nothing', () => {
+    // The reducer gates no format (spec §1.4), so this is reachable from a
+    // peer that spells dates differently. Inventing a rendering would be
+    // coercion by another name, and there is no arithmetic to do.
+    expect(
+      tripDateRange(dated({ start: 'next summer', end: '2026-09-02' })),
+    ).toBe('next summer → SEP 02')
+    // A calendar that does not exist misses too, rather than drawing FEB 30.
+    expect(tripDateRange(dated({ start: '2026-02-30' }))).toBe('2026-02-30 →')
+  })
+
+  it('states no span when the end falls before the start', () => {
+    // Two independent registers with no end-before-start guard, so this is an
+    // ordinary state. A negative span is not a fact about anything.
+    expect(
+      tripDateRange(dated({ start: '2026-09-02', end: '2026-08-14' })),
+    ).toBe('SEP 02 → AUG 14')
+  })
+})
+
+describe('tripStartMonth', () => {
+  it('reads the closed rows meta off the start date', () => {
+    const state = depot(
+      tripCreated(TRIP, 'Tessin 2025'),
+      tripDatesSet(TRIP, { start: '2025-07-04', end: '2025-07-19' }),
+    )
+    expect(tripStartMonth(theTrip(state))).toBe('JUL 2025')
+  })
+
+  it('states nothing when there is no start date, and never guesses from the end', () => {
+    // The board draws `JUL 2025 · 54 PIECES · 1 LOST`; the counts are S7's and
+    // S10's, and a month derived from the end date would claim a month the
+    // Trip never said it started in.
+    const state = depot(
+      tripCreated(TRIP, 'Tessin 2025'),
+      tripDatesSet(TRIP, { end: '2025-07-19' }),
+    )
+    expect(tripStartMonth(theTrip(state))).toBeNull()
+  })
+
+  it('draws a start date it cannot read exactly as it arrived', () => {
+    const state = depot(
+      tripCreated(TRIP, 'Tessin 2025'),
+      tripDatesSet(TRIP, { start: 'summer' }),
+    )
+    expect(tripStartMonth(theTrip(state))).toBe('summer')
   })
 })

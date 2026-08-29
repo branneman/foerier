@@ -72,28 +72,4 @@
     font: var(--text-body) var(--font-ui);
     cursor: pointer;
   }
-
-  /* The reopen confirm's two buttons. Accent, not attention: nothing was
-     thrown away, and the board draws the primary that way. */
-  .ghost {
-    min-height: max(3rem, 48px);
-    padding-inline: var(--space-16);
-    border: 0;
-    background: none;
-    color: var(--color-ink-muted);
-    font: var(--text-body) var(--font-ui);
-    cursor: pointer;
-  }
-
-  .primary {
-    min-height: max(3rem, 48px);
-    padding-inline: var(--space-16);
-    border: 0;
-    border-radius: var(--radius-control);
-    background: var(--color-accent);
-    color: var(--color-bg-base);
-    font: var(--text-body) var(--font-ui);
-    font-weight: 600;
-    cursor: pointer;
-  }
 }

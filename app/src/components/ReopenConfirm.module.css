@@ -1,0 +1,28 @@
+@layer components {
+  /* The reopen confirm's two buttons, moved here whole from
+     `PhaseSheet.module.css` when the confirm gained its second caller.
+     Accent, not attention: nothing was thrown away, and the board draws the
+     primary that way (`Screens B` §02B — "REOPEN — DELIBERATE, NOT
+     ALARMING"). */
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .primary {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+}

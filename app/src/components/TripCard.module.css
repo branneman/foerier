@@ -1,0 +1,229 @@
+@layer components {
+  /*
+   * The card is its **own** container, so it folds against the width it is
+   * handed rather than against the viewport — `frontend-design.md` §3.2, and
+   * the board says it outright: "Same components as 393 — @container picks
+   * the layout, not the viewport."
+   *
+   * The direction is the interesting part. This card is **widest on a phone**
+   * (393 minus gutters ≈ 22.5rem, one column) and **narrowest at Roomy**
+   * (640 minus gutters, two columns and a gap ≈ 17rem), so the base rules
+   * here are the *narrow* ones and the query unfolds them. `20rem` sits
+   * between the two with room either side. With no container-query support
+   * the base rules stand and every card renders stacked, which is the
+   * fail-open §3.2 requires and which is legible at any width.
+   */
+  .card {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    border-radius: var(--radius-card);
+  }
+
+  /* Cards 12, surface fill, 1px rule (Foundations — shape). */
+  .active {
+    background: var(--color-bg-surface);
+    border: var(--stroke-rule) solid var(--color-rule);
+  }
+
+  /* "Drafts are dashed outlines — lists in progress, not commitments." No
+     fill: an outline is the whole encoding, and never colour alone. */
+  .planned {
+    border: var(--stroke-rule) dashed var(--color-rule-control);
+  }
+
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  .head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  .name {
+    font: var(--text-heading) var(--font-ui);
+    font-weight: 600;
+    color: var(--color-ink-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .planned .name {
+    /* A Draft is still the household's, not a spent row: primary ink, and the
+       dashed outline is what says it is not a commitment. */
+    color: var(--color-ink-primary);
+  }
+
+  .phaseLine {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 0;
+  }
+
+  /*
+   * The phase pill — amber, because a phase is the trip world's own fact, and
+   * the tinted fill plus the 1.5px stroke are the boards' chip anatomy
+   * (pills 999, chip strokes 1.5px).
+   *
+   * It is a **button**: tapping the phase chip opens SET PHASE, which is the
+   * board's own rule and the only control that moves a Trip in either
+   * direction. Its 48px touch target comes from the padding around a short
+   * label plus the card's own row spacing; the chip itself stays chip-sized,
+   * as drawn.
+   */
+  .chip {
+    flex: none;
+    padding: var(--space-4) var(--space-8);
+    border: var(--stroke-chip) solid var(--color-brand-amber);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--color-brand-amber) 14%, transparent);
+    color: var(--color-brand-amber);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  /*
+   * A Draft's chip is the quiet register: the board draws `DRAFT · 0 GEAR
+   * LISTED` as a plain mono line rather than as an amber pill, because amber
+   * is the trip world and a Draft is not on one. It stays the same control —
+   * same element, same sheet — drawn as what it is.
+   */
+  .planned .chip {
+    padding-inline: 0;
+    border-color: transparent;
+    background: none;
+    color: var(--color-ink-muted);
+  }
+
+  .listed {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  .dates {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .circles {
+    display: inline-flex;
+    gap: var(--space-4);
+    margin-left: auto;
+    flex: none;
+  }
+
+  /* 22px on the trip card, against the People screen's 30px rows
+     (`docs/design/README.md` — person circles). No login encoding and no
+     fill: fill belongs to packing. */
+  .circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 600;
+  }
+
+  /* Where the board's `● 48/61 PIECES · 13 LEFT` sits, in the same quiet mono
+     register — a statement, never a call to action. */
+  .next {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
+  .cta {
+    text-decoration: none;
+  }
+
+  /* The board's full-width 48px accent button, minus its verb (see the
+     component's header). */
+  .ctaActive {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(3rem, 48px);
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+  }
+
+  /* A Draft gets the quiet mono link the board gives `BUILD LIST ›`, and the
+     48px target the touch rule asks for. */
+  .ctaPlanned {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    min-height: max(3rem, 48px);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+
+  @container (min-width: 20rem) {
+    /*
+     * Wide enough for the phone's card: the active card's name and chip sit on
+     * one line, and the dashed card puts its `OPEN ›` beside the body instead
+     * of under it — which is exactly how `Screens B` §02 draws both at 393 and
+     * how `Screens A` §04 stops drawing them at Roomy.
+     */
+    .active .head {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .planned {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-16);
+    }
+
+    .planned .body {
+      flex: 1;
+    }
+
+    .planned .cta {
+      flex: none;
+    }
+  }
+}
