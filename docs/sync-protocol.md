@@ -498,8 +498,8 @@ trip. An absolute set is idempotent, LWW-safe, and matches story 11's requiremen
 that changing away from `consumed` **offers** the correction rather than silently
 re-applying it — the offer computes the new absolute value and waits for a human.
 
-**`name` is nullable; this was settled during the S2 slice, and finished at
-S4.**
+**`name` is nullable; this was settled during the S2 slice, extended at S4, and
+completed at S6.**
 `place.recorded`/`place.renamed`, `gear.recorded`/`gear.renamed` and
 `person.recorded` all type their `name` field `string｜null`: an explicit
 `null` clears the field, a write like any other, while an absent field
@@ -519,6 +519,14 @@ applied unchanged. It folds through the same `writeNullableIfPresent` path as
 the other four name registers, under the same handler as `person.recorded`,
 and its row above is typed accordingly.
 
+**The seventh and eighth rows are the Trip's, and S6 closed them the same way.**
+`trip.created` and `trip.renamed` were typed `{name}` in §4.4 until the slice
+that folded them. There was again no second question: `TripState.name` is
+`Register<string | null>` like every other name register, so the reducer's
+existing rule applied unchanged and both rows are typed `{name: string｜null}`
+above. Eight rows, one rule stated once in §1.3, three slices to reach all of
+them — and the catalogue's `name` fields are now settled entire.
+
 ### 4.4 Trip — 23 ops
 
 `aggregate_id` is the Trip in every row; entities inside it are addressed by ids
@@ -528,13 +536,35 @@ in the payload.
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |
 | --- | --- | --- | --- | --- |
-| `trip.created` | `{name, from_trip_id?}` | Creates the Trip; seeds `name`, `phase = "draft"`, and the template provenance | Trip created · Trip started from | 5, 14 |
-| `trip.renamed` | `{name}` | Sets `name` | *(implied by Trip created)* | 5 |
-| `trip.dates_set` | `{start?: date｜null, end?: date｜null}` | Sets either date; `null` clears. `YYYY-MM-DD`. Absent ≠ null (§1.3) | Trip dates set / cleared | 5 |
+| `trip.created` | `{name: string｜null, from_trip_id?}` | Creates the Trip; seeds `name`, `phase = "draft"` — the **reducer's** write, not a payload field (see below) — and the template provenance. `name`'s `null` clears; absent ≠ null (§1.3) | Trip created · Trip started from | 5, 14 |
+| `trip.renamed` | `{name: string｜null}` | Sets `name`. `null` clears; absent ≠ null (§1.3) | *(implied by Trip created)* | 5 |
+| `trip.dates_set` | `{start?: date｜null, end?: date｜null}` | Sets either date **independently**; `null` clears. `YYYY-MM-DD` by convention, not by enforcement. Absent ≠ null (§1.3) | Trip dates set / cleared | 5 |
 | `trip.phase_moved` | `{phase: "draft"｜"pack_out"｜"on_trip"｜"unpack"｜"closed"}` | Sets `phase`. Moves **in both directions**; reopening is this op with `phase = "unpack"` from `closed`. The close gate and the reopen confirmation are UI, not protocol | Trip phase moved · Trip reopened | 32 |
 | `trip.deleted` | `{}` | Sets the tombstone. The confirmation is UI (invariant 15) | Trip deleted | 14 |
 | `trip.participant_added` | `{person_id}` | Per-person-id register → present (§3.4) | Participant added | 5 |
 | `trip.participant_removed` | `{person_id}` | → absent | Participant removed | 5 |
+
+**`phase = "draft"` is the reducer's write, not a payload field.**
+`trip.created` seeds it, stamped with that op's own clock, and nothing on the
+wire can carry a phase. Three properties follow from the ordinary LWW rule with
+no special case, and all three are wanted: a `trip.phase_moved` delivered
+*before* its creation wins on its strictly later stamp (§8.2's out-of-order
+case, resolved by §3.2 alone); a re-delivered `trip.created` writes an identical
+value on an identical stamp and loses on `<= 0`, so replay is idempotent; and no
+client can create a Trip that arrives already `closed` — an absence rather than
+a guard. Settled at S6, which folded the Trip root.
+
+**`trip.dates_set`'s payload keys are `start` and `end`; the registers they set
+are `start_date` and `end_date`.** The catalogue names a payload for the field
+it sets without repeating the register's own name — the same split
+`gear.owned_count_set{count}` already has over `owned_count`. Recorded so that
+nobody later "fixes" one end to match the other. The two dates are independent
+registers under §1.3, so `{start: …}` moves the start and leaves the end alone
+and `{end: null}` clears the end and leaves the start alone; an authoring screen
+therefore emits only what changed. And **a reader does not check the shape** —
+§5.3 outranks the `YYYY-MM-DD` convention exactly as it outranks §4.3's
+`TagString` rule, so a date that does not conform is folded, stored and drawn
+verbatim rather than reported absent.
 
 **Gear list**
 

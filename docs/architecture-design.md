@@ -424,10 +424,13 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 ### 8.3 The slices
 
-**Landed so far: S0, S1, S2a, and S2b.** S2 was the first slice to need the op
-log, the reducer, and `/sync`, and it landed in **two halves rather than
-one** — see its entry below for why, and §12.3 and §12.4 for what each half
-settled. **S3, Tags and the slicing engine, is next.**
+**Landed so far: S0, S1, S2a, S2b, S3, S3.5, S4 and S6**, plus two pieces of
+work carrying no slice number (the Radix conversion, §12.9; Tier 4 and 5 against
+production, §12.8). S2 was the first slice to need the op log, the reducer, and
+`/sync`, and it landed in **two halves rather than one** — see its entry below
+for why, and §12.3 and §12.4 for what each half settled. **S5 is the one gap in
+the order**: it is an auth slice, it shares no file with the Trip, and S6 took
+the float §8.6 grants rather than idling behind it.
 
 Two properties hold across every slice below and are not repeated in each:
 
@@ -610,7 +613,8 @@ either side keep their names, for the same reason stories do.
 - **Usable?** The second Quartermaster is arranged between us, not by whoever
   runs the server.
 
-**S6 — Trips and phases.** *Delivers 5. Advances 32 (phase machine).*
+**S6 — Trips and phases. Landed.** *Delivers 5. Advances 32 (phase machine).*
+See [its spec](specs/2026-08-29-trips-and-phases.md) and §12.11.
 
 - **Ops (6):** `trip.created`, `trip.renamed`, `trip.dates_set`,
   `trip.phase_moved`, `trip.participant_added`, `trip.participant_removed`.
@@ -1709,3 +1713,93 @@ no migration; see its [spec](specs/2026-08-29-people-and-ownership.md).
   existence.** "An affordance that leads nowhere is worse than a missing one"
   kept `PEOPLE & LOGINS` out at S3.5; at S4 it leads to a real screen, so the
   rule puts it in. It is titled `PEOPLE` until S5 can fill the other half.
+
+### 12.11 Consequences of S6: Trips and phases
+
+The first Trip slice, and therefore the one that decides how the fourth
+aggregate is shaped in `shared/` — eight later slices extend what it lays down.
+Six op types, no endpoints, no migration; see its
+[spec](specs/2026-08-29-trips-and-phases.md).
+
+- **`phase = "draft"` is the reducer's write at `trip.created`, not a payload
+  field**, and that single choice does the work three special cases would
+  otherwise have to. A `trip.phase_moved` delivered *before* its creation wins
+  on its strictly later stamp; a re-delivered creation writes an identical value
+  on an identical stamp and loses on `<= 0`; and nothing on the wire can carry a
+  phase, so no client can create a Trip that arrives already `closed` — an
+  absence rather than a guard. All three are the ordinary per-field LWW rule of
+  [sync §3.2](sync-protocol.md) doing the work, which is the argument for
+  putting the seed in the handler rather than in the payload, where the
+  catalogue's original `{name, from_trip_id?}` shape rather implied it
+  belonged.
+- **An absent `phase` register reads `draft`, and only
+  `shared/src/selectors/trip.ts` says so.** S4's `ownerOf` rule transplanted,
+  for the reason §12.10 gives: the fold conflates nothing, every reader treats
+  the two alike, and a call site that re-derives the equivalence drifts from the
+  sections. Here the symptom is sharper than S4's — a Trip listed under one
+  section drawn with another section's chip. It is reachable two ways and
+  neither is exotic: a `trip.phase_moved` delivered before its `trip.created`,
+  and a Trip addressed only by `trip.participant_added`, because `writeTrip`
+  creates the entity on first sight of any Trip op exactly as the other three
+  maps do.
+- **Every question the phase table answers has exactly one function beside it,
+  and the lookup itself is private.** `phaseOf`, `isActive`, `phaseName`,
+  `phaseNext` and `isKnownPhase` each resolve one miss in one way, and the
+  helper they share is not exported — because each of them *resolves* the miss
+  and the raw lookup would let a call site decide for itself what a missing row
+  means. `isActive` is the only definition of active-ness in the codebase and
+  S7's claim selector, S9's whereabouts and S10's close gate all call it. The
+  discipline was not free: three separate reviews in this slice caught a call
+  site re-deriving one of these — a `PHASES.some(…)` inline, a `?.next ?? null`
+  about to be written twice, a hard-coded phase name in the reopen confirm's
+  copy.
+- **`DAY N` is the `phase` register's own stamp, so at S6 a needless write is
+  visible.** No new field, no new op, no migration — `recordedAt`'s trick from
+  S3 over one register instead of the earliest of many. The consequence is that
+  S4's "a needless write moves `recordedAt` and reorders `NEWEST FIRST`" gets a
+  louder instance: a redundant `trip.phase_moved` resets a Trip on `DAY 12` to
+  `DAY 1`, in the chip's own content. So tapping the phase the Trip is already
+  in emits nothing, and the trip screen's EDIT mode emits one op per field that
+  actually changed and none for the rest.
+- **An unrecognised phase is not a draft, and the four answers are each a
+  decision.** It is **not active** (invariant 17 names three phases; the
+  conservative direction is the one where an old build never over-states what a
+  Trip is doing), it is **drawn verbatim** (`dimension('kind').format`'s rule),
+  it **states no next step** (there is no row to read one from), and it files
+  under a section named **`PLANNED`** rather than `DRAFTS` — the section is
+  named for its class because calling an unrecognised value a draft would state
+  something false. The five known rows stay tappable underneath it, so a Trip is
+  never stranded in a phase this build cannot leave.
+- **The CTA names the destination that exists, and that is a rule rather than a
+  placeholder.** The board's cards read `Continue pack-out` and `BUILD LIST ›`;
+  both name screens S7 and S9 build. "An affordance that leads nowhere is worse
+  than a missing one" — the rule that kept the `ACCOUNT` row out at S3.5 and put
+  the `PEOPLE` row in at S4 — is not quite the case here, because a button that
+  leads *somewhere* and lies about where is worse still. Both cards read
+  `OPEN ›` at S6, and the general form is worth carrying forward: **a board's
+  CTA copy lands on the slice that builds the board's destination.**
+- **The progress line falls through to a next-step line, which is the slice's
+  actual requirement rather than a substitute for it.** `● 48/61 PIECES` has
+  nothing to count until Entries exist and a `0/0` bar would state a fact about
+  a list nobody has built, so its place is taken by the phase's next step —
+  §8.3's "with the next thing to do stated". Because the line is a fact of the
+  phase *table* and not of the Trip, it stays correct as the later slices build
+  the things it names, and S7 and S9 return the progress line **above** it
+  rather than in place of it.
+- **`DepotState` is now the fold of everything, not just the depot, and the name
+  stays.** Renaming reaches `DepotStoreState`, `DepotProvider`, `useDepot`,
+  `DepotView` and every screen in three workspaces, and S5 is in flight across
+  those same files. Recorded as a misnomer rather than fixed under a slice that
+  would have to merge against it.
+- **S6 paid S4's fixture debt, and the payment is weaker than the original would
+  have been.** §8.7 obliges every slice from S2 onwards to capture an op fixture
+  for its own op types; S4's spec said the rule applied and no file landed, so
+  `person.renamed` and `gear.ownership_set` were pinned by nothing while
+  [sync §5.4](sync-protocol.md) had already frozen their wire format. `s4-ownership.ops.json` is folded by the
+  **S6** reducer, so any drift between the two slices is baked into the snapshot
+  as if it had always been the format and nothing in the repo could now tell.
+  One slice of window is still far better than the three the next discovery
+  would have carried. The transferable lesson is about the shape of the gap
+  rather than the fixture: **a spec sentence saying a standing rule "applies
+  unchanged" produces no artefact**, and nothing in Tier 0 or CI notices its
+  absence.

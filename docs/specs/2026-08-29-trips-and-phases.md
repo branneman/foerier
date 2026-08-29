@@ -731,3 +731,44 @@ somebody has to notice.
 | [`design/README.md`](../design/README.md) | Following the §3b/§3c precedent, each departure is appended to the section for the screen it changes: **§5** takes [§6.1](#61-the-cta-names-the-destination-that-exists)'s CTA rule, [§6.2](#62-the-progress-line-falls-through-to-a-next-step-line)'s next-step line and [§6.4](#64-a-third-route)'s route; **§5a** takes [§6.3](#63-the-reopen-confirm-ships-now-with-an-empty-body)'s confirm |
 | [`testing.md`](../testing.md) | The backward-compatibility group's fixture list gains `s4-ownership` and `s6-trips` ([§5.4](#54-the-fixture-rule), [§5.5](#55-s4s-fixture-debt-paid-here)) |
 | `CLAUDE.md` | Status: S6 landed, and the things worth knowing before touching Trips or phases |
+
+---
+
+## 10. What changed during implementation
+
+§6 records the design that was taken, and is left as it was written. Three
+things moved while the code was built, and they are amended here rather than
+back into §6.
+
+**§6.2 — only the active card draws the next-step line.** The planned card keeps
+the board's three lines (name, `DRAFT · 0 GEAR LISTED`, the CTA). `NEXT — BUILD
+THE GEAR LIST` beneath `DRAFT · 0 GEAR LISTED` says the same thing twice, on the
+one card the board deliberately keeps slight. §8.3's *"with the next thing to do
+stated"* is satisfied by the active card and by the trip screen, which draws the
+line for every phase — so nothing is lost except a restatement.
+
+**§6.3 — the reopen confirm's second line is parameterised by the target
+phase.** The board's `It returns to Unpack exactly as it stood.` was hard-coded
+against a SET PHASE sheet that offers all four other rows: for three of them the
+sentence is simply false, and narrowing the sheet to `unpack` would have been
+the worse fix, because invariant 16 makes every move expressible in either
+direction and the board's own footnote says any row is tappable. The line now
+names the row that was tapped. The word comes from a new `name` field on the
+phase row (`Draft` · `Pack-out` · `On trip` · `Unpack` · `Closed`) rather than
+from a casing transform of `label`, because no transform gets both `Pack-out`
+and `On trip` right without knowing which words a phase name is made of — which
+is what the table knows and a screen does not. The closed ledger row's `REOPEN`
+targets `unpack` specifically, so that surface still renders the board's
+sentence verbatim. `isKnownPhase` and `phaseNext` joined the module for the same
+reason one function further out: every question the table answers has a named
+accessor beside it, so no call site has to remember what a missing row means.
+
+**§4.1 — the 2-up fold's container is the list item, not the card.** An element
+is never its own query container, so `container-type: inline-size` on the card
+with `@container` rules matching the card itself resolved against the next
+container out — the screen — and flipped the layout at the wrong width while the
+genuine descendants stayed unapplied. The list item declares the container and
+the card declares none, which is `GearRow`'s arrangement with the pane the Depot
+hands it, and the card renders stacked with no container at all (§3.2's
+fail-open). Neither half is observable from a render, because jsdom evaluates no
+container query, so both are pinned by assertions on the stylesheets.

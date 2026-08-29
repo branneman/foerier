@@ -13,7 +13,7 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-**Code has started.** Six slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+**Code has started.** Seven slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
 have landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
@@ -212,9 +212,67 @@ gear-detail visits, and the bulk `SET OWNER` band is story 35, Later. It
 carries over between records exactly as `HOME` does, and leaving it at `Shared`
 writes **no** register at all.
 
-**Next is S5, auth 2** (story 28) — in-app Invites and the Logins list. S4
-unblocked it: story 28 issues Invites for People recorded under story 4
-([§8.2](docs/architecture-design.md#82-four-stories-accrete-across-slices-rather-than-landing-in-one)).
+**S6, Trips and phases, has landed** (story 5; advances story 32, the phase
+machine). Six op types — `trip.created`, `trip.renamed`, `trip.dates_set`,
+`trip.phase_moved`, `trip.participant_added`, `trip.participant_removed` — the
+fourth aggregate reaching the fold, `shared/src/selectors/trip.ts`, three
+components (`TripCard`, `PhaseSheet` with `ReopenConfirm`,
+`ParticipantPicker`) and three routes (`/trips`, `/trips/new`, `/trips/:id`).
+No endpoints, no migration, and the slicing engine untouched — Trip membership
+is S7's row in the dimension table. See
+[its spec](docs/specs/2026-08-29-trips-and-phases.md) and
+[§12.11](docs/architecture-design.md#1211-consequences-of-s6-trips-and-phases).
+
+**Four things about S6 are worth knowing before touching Trips or phases:**
+
+- **Every question the phase table answers has exactly one function beside it,
+  and the lookup itself is private.** `phaseOf`, `isActive`, `phaseNext`,
+  `phaseName` and `isKnownPhase` each resolve one miss in one way; the shared
+  helper is unexported precisely so no call site decides for itself what a
+  missing row means. `isActive` is the **only** definition of active-ness in
+  the codebase, and S7's claim selector, S9's whereabouts and S10's close gate
+  all call it. This is not theoretical tidiness: three separate reviews in this
+  slice caught a call site re-deriving one of them.
+- **An absent `phase` register reads `draft`, and only
+  `shared/src/selectors/trip.ts` says so** — S4's `ownerOf` rule transplanted,
+  with the same symptom when it drifts (a Trip listed in one section drawn with
+  another section's chip). It is reachable two ways: a `trip.phase_moved`
+  delivered before its `trip.created`, and a Trip addressed only by a
+  participant op. Relatedly, **`phase = "draft"` is the reducer's write at
+  `trip.created`, not a payload field** — which is what makes an out-of-order
+  `phase_moved` win on its own clock, a re-delivered creation idempotent, and a
+  Trip that arrives already `closed` unauthorable, all with no special case.
+- **`DAY N` comes from the `phase` register's own stamp, so at S6 a needless
+  write is *visible*.** A redundant `trip.phase_moved` resets a Trip on `DAY 12`
+  to `DAY 1`, in the chip's own content — S4's "a needless write moves
+  `recordedAt`", louder. That is why tapping the phase a Trip is already in
+  emits nothing, and why the trip screen's EDIT mode emits one op per field
+  that actually changed and none for the rest.
+- **The CTA names the destination that exists.** Both cards read `OPEN ›`, not
+  the board's `Continue pack-out` / `BUILD LIST ›`, because those name screens
+  S7 and S9 build — a button that leads somewhere and lies about where is worse
+  than a missing one. The general rule, recorded in `docs/design/README.md` §5
+  beside two other S6 departures: **a board's CTA copy lands on the slice that
+  builds the board's destination.**
+
+**S6 also paid S4's fixture debt.** S4's spec said the fixture rule "applies
+unchanged" and no file landed, so `person.renamed` and `gear.ownership_set` —
+two op types whose wire format [sync §5.4](docs/sync-protocol.md) had already
+frozen — were pinned by nothing. `s4-ownership.ops.json` is captured a slice
+late and says so in its own header: a drift between S4 and S6 is now baked into
+the snapshot as though it had always been the format. The lesson generalises
+past fixtures, and is written into [`docs/testing.md`](docs/testing.md): a spec
+sentence saying a standing rule applies produces no artefact, and no tier
+notices its absence.
+
+**S5, auth 2** (story 28) — in-app Invites and the Logins list — is the one
+slice out of order. It was next after S4, which unblocked it (story 28 issues
+Invites for People recorded under story 4,
+[§8.2](docs/architecture-design.md#82-four-stories-accrete-across-slices-rather-than-landing-in-one)),
+and S6 took the float
+[§8.6](docs/architecture-design.md#86-what-can-be-built-in-parallel) grants
+rather than idling behind it — an auth slice shares no op type and no `shared/`
+file with the Trip. S5 is in flight; **S7, the gear list, follows.**
 
 Four conventions the code now carries that are easy to trip over:
 

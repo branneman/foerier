@@ -352,12 +352,29 @@ Because installed PWAs run older app versions with **offline-queued ops** (see t
 [architecture spec](architecture-design.md) §7), the
 op-format must stay tolerant. A dedicated Tier 2 group replays **op fixtures**
 through the current reducer and asserts they still fold correctly — the guard
-that keeps expand-contract honest as vertical slices ship. Most of the
-fixture is genuinely captured from a previous app version; two ops
-(`shared/src/fixtures.test.ts:9-17`) are **forward-compatibility probes**
-instead, standing in for a foreign or future client — `authoring.ts` types
-every builder's `name` as `string`, so no foerier client, past or present,
-can author the `{name: null}` those two ops carry.
+that keeps expand-contract honest as vertical slices ship. There is one fixture
+per slice that introduced op types, and a slice **adds** one rather than editing
+a captured one:
+
+| Fixture | Op types it pins | Captured |
+| --- | --- | --- |
+| `shared/fixtures/s2-depot.ops.json` | the eleven Place · Person · Gear ops, plus an unknown-type probe | S2a |
+| `shared/fixtures/s3-tags.ops.json` | `gear.tag_applied`, `gear.tag_removed` | S3 |
+| `shared/fixtures/s4-ownership.ops.json` | `person.renamed`, `gear.ownership_set` | **S6 — one slice late** |
+| `shared/fixtures/s6-trips.ops.json` | the six Trip root ops | S6 |
+
+Most of what each carries is genuinely captured from the app that introduced
+the ops. A handful are **forward-compatibility probes** instead, standing in for
+a foreign or future client and documented as such in each test file's
+header — two `{name: null}` ops in the S2 fixture
+(`shared/src/fixtures.test.ts:9-17`, on builders whose `name` parameter is
+`string` and always has been), foreign tags in the S3 one, and four in the S6
+one: a `from_trip_id` no builder yet accepts, a sixth phase, a date in no
+recognised format, and a `null` name placed on `trip.created` precisely because
+that builder — unlike `trip.renamed`, which S6 settled as nullable — cannot
+author one. **Do not read a probe as evidence some old build emitted it**; that
+is the one misreading a fixture invites, and it would give exactly the wrong
+account of what the builders permit.
 
 The obligations under test are enumerated in
 [`sync-protocol.md` §5.3](sync-protocol.md): an unknown op type is retained
@@ -377,6 +394,17 @@ rather than squashing (see [CLAUDE.md](../CLAUDE.md)'s merge convention) will
 have the fixture a few commits after the reducer, and that is fine — the format
 did not move in between. A fixture taken a *slice* later is not fine, because by
 then it can have.
+
+**`s4-ownership.ops.json` is what the rule looks like when it is missed.** S4's
+spec said the fixture rule "applies unchanged" and no file landed, so two op
+types whose wire format §5.4 had already frozen were pinned by nothing until S6
+captured them. The capture is folded by the **S6** reducer, which means a drift
+between the two slices is baked into the snapshot as though it had always been
+the format, and nothing in the repo could now tell — the exact weakness the rule
+exists to prevent, in miniature. It is still strictly better than the same gap
+found three slices later. The lesson generalises past fixtures: a spec sentence
+saying a standing rule applies produces no artefact, and no tier notices its
+absence.
 
 S2a is the evidence the rule earns its keep: the fixture caught a live
 obligation-5 violation on its first run — `gear.renamed{name: null}` was being
