@@ -189,7 +189,9 @@ export function Account({
    * carries). The full row-by-row state is `People`'s own business: it is
    * mounted inline at Desktop and fetches this same list itself, rather than
    * being handed a derived prop, because its five row states need the join
-   * half of `GET /auth/invites` too. */
+   * half of `GET /auth/invites` too. The load effect below is gated off at
+   * Desktop for exactly that reason — fetching here too would just be a
+   * second `GET /auth/logins` whose result this component never reads. */
   const [loginCount, setLoginCount] = useState(0)
   const [loginsStatus, setLoginsStatus] = useState<LoadStatus>('loading')
   const [addingPasskey, setAddingPasskey] = useState(false)
@@ -268,6 +270,14 @@ export function Account({
   }, [api, token])
 
   useEffect(() => {
+    // Dead at Desktop: only the phone summary row below reads `loginCount`/
+    // `loginsStatus`, and Desktop renders `<People variant="inline">`
+    // instead, which fetches this same list itself. Fetching here too would
+    // be a second `GET /auth/logins` whose result nothing ever reads — the
+    // gate, not a shared hook, because `DEVICES`/`PASSKEYS` avoid this
+    // already by being rendered directly in both layouts, and reshaping
+    // this section to match is a bigger change than this fetch warrants.
+    if (isDesktop) return
     let cancelled = false
     void api
       .listLogins(token)
@@ -284,7 +294,7 @@ export function Account({
     return () => {
       cancelled = true
     }
-  }, [api, token])
+  }, [api, token, isDesktop])
 
   function openAddPasskey() {
     setPasskeyLabel(guessDeviceLabel())

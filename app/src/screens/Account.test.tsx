@@ -206,6 +206,11 @@ async function renderAccount(
 
   const removedPasskeys = new Set<string>()
   const revokedDevices = new Set<string>()
+  // Fix round 1: pins that Desktop issues no `GET /auth/logins` of its
+  // own — the phone summary row's dedicated fetch is dead there, since
+  // `<People variant="inline">` fetches the same list itself. A counter on
+  // the existing handler rather than new request-logging machinery.
+  let loginsRequests = 0
 
   const api = createAuthApi(
     fetchFrom([
@@ -247,6 +252,7 @@ async function renderAccount(
         method: 'GET',
         path: '/auth/logins',
         respond: () => {
+          loginsRequests += 1
           if (loginsFail) throw new Error('offline')
           return jsonResponse({
             logins: Array.from({ length: loginCount }, (_, index) => ({
@@ -309,7 +315,7 @@ async function renderAccount(
     </Router>,
   )
 
-  return { onSignOut, location }
+  return { onSignOut, location, loginsRequests: () => loginsRequests }
 }
 
 describe('Account', () => {
@@ -489,6 +495,27 @@ describe('Account', () => {
 
       expect(screen.queryByRole('link', { name: /People/ })).toBeNull()
       expect(screen.getByTestId('person-name')).toHaveTextContent('Mark')
+    })
+
+    // Fix round 1: the phone summary row's own `GET /auth/logins` effect
+    // used to fire unconditionally, so every Desktop visit issued a request
+    // whose result nothing here reads — `<People variant="inline">` already
+    // fetches the same list for its own row states. The gate is in the
+    // effect itself; this pins the request count rather than the gate's
+    // implementation.
+    it('issues no dedicated GET /auth/logins of its own — the phone summary fetch is dead here', async () => {
+      const { loginsRequests } = await renderAccount({
+        personName: 'Mark',
+        desktop: true,
+      })
+
+      // Waits for `People`'s own fetch to have actually landed, so the
+      // count below is not a race against a request still in flight.
+      await waitFor(() => {
+        expect(screen.getByTestId('people-count')).toHaveTextContent(/hold/)
+      })
+
+      expect(loginsRequests()).toBe(1)
     })
 
     it('unfolds the full device list inline, with a per-row SIGN OUT except on THIS DEVICE', async () => {
