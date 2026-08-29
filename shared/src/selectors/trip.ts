@@ -95,9 +95,11 @@ export const PHASES: readonly Phase[] = [
  * The row for a phase, or `undefined` for one this build has never heard of.
  *
  * Private on purpose: every question the table answers has a named function
- * beside it, so no caller has to remember what a missing row means. A later
- * surface needing `.next` should export a `phaseNext` **here** rather than
- * re-deriving the lookup at the screen — the same reason `phaseOf` exists.
+ * beside it — {@link phaseLabel}, {@link isActive}, {@link phaseNext} — so no
+ * caller has to remember what a missing row means, and the three answers to
+ * "this build has never heard of that phase" are decided here rather than at a
+ * screen. A sixth question wanting the row exports a named function beside
+ * these rather than the lookup.
  */
 function phaseRow(phase: PhaseValue): Phase | undefined {
   return PHASES.find((row) => row.id === phase)
@@ -150,6 +152,28 @@ export function phaseLabel(phase: PhaseValue): string {
  */
 export function isActive(trip: TripState): boolean {
   return phaseRow(phaseOf(trip))?.active ?? false
+}
+
+/**
+ * The next thing to do, for the line the card and the trip screen draw in
+ * place of the board's `● 48/61 PIECES` progress bar — which has nothing to
+ * count until S7 builds the gear list (spec §6.2).
+ *
+ * `null` twice over, and the two are different facts that happen to draw the
+ * same way. A **closed** Trip has nothing next, which is its row's own value.
+ * An **unrecognised** phase states no next step because the next thing to do
+ * is a fact of the phase table and there is no row (§3.4's fourth bullet) —
+ * and that bullet is stated once, here, so neither screen re-derives it. The
+ * chip beside the line still draws the raw value ({@link phaseLabel}); only
+ * the next-step line goes away.
+ *
+ * It takes a Trip rather than a {@link PhaseValue}, as {@link isActive} and
+ * {@link phaseDay} do: a surface asks this about the Trip in front of it, and
+ * routing through {@link phaseOf} is what makes an absent register answer with
+ * the draft line instead of nothing.
+ */
+export function phaseNext(trip: TripState): string | null {
+  return phaseRow(phaseOf(trip))?.next ?? null
 }
 
 /**

@@ -127,6 +127,7 @@ export {
   participantIds,
   phaseDay,
   phaseLabel,
+  phaseNext,
   phaseOf,
   PHASES,
   tripLabel,

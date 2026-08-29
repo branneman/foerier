@@ -14,6 +14,7 @@ import {
   participantIds,
   phaseDay,
   phaseLabel,
+  phaseNext,
   phaseOf,
   PHASES,
   tripLabel,
@@ -129,6 +130,38 @@ describe('phaseLabel', () => {
 
   it('draws an unrecognised phase exactly as it arrived', () => {
     expect(phaseLabel('something-later')).toBe('something-later')
+  })
+})
+
+describe('phaseNext', () => {
+  it.each([
+    ['draft', 'NEXT — BUILD THE GEAR LIST'],
+    ['pack_out', 'NEXT — PACK IT'],
+    ['on_trip', 'NEXT — MARK UNPACK WHEN YOU ARE BACK'],
+    ['unpack', 'NEXT — RESOLVE EVERY ENTRY, THEN CLOSE'],
+  ])("states §6.2's line for %s", (phase, line) => {
+    expect(phaseNext(trip(depot(aTrip({ id: 't1', phase })), 't1'))).toBe(line)
+  })
+
+  it('states nothing for closed, which has nothing next', () => {
+    const state = depot(aTrip({ id: 't1', phase: 'closed' }))
+    expect(phaseNext(trip(state, 't1'))).toBeNull()
+  })
+
+  it('states nothing for an unrecognised phase', () => {
+    // §3.4's fourth bullet: the next thing to do is a fact of the phase table
+    // and there is no row. The chip beside the line still draws the raw
+    // value — only the next-step line goes away.
+    const state = depot(aTrip({ id: 't1', phase: 'something-later' }))
+    expect(phaseNext(trip(state, 't1'))).toBeNull()
+    expect(phaseLabel(phaseOf(trip(state, 't1')))).toBe('something-later')
+  })
+
+  it('states the draft line for an absent register', () => {
+    // Through `phaseOf`, so the absent case answers like the draft it reads
+    // as rather than like a phase with no row.
+    const state = depot([tripParticipantAdded('t1', 'p1')])
+    expect(phaseNext(trip(state, 't1'))).toBe('NEXT — BUILD THE GEAR LIST')
   })
 })
 
