@@ -1,20 +1,28 @@
 @layer components {
   /*
-   * The card is its **own** container, so it folds against the width it is
-   * handed rather than against the viewport — `frontend-design.md` §3.2, and
-   * the board says it outright: "Same components as 393 — @container picks
-   * the layout, not the viewport."
+   * The card folds against the width it is handed rather than against the
+   * viewport — `frontend-design.md` §3.2, and the board says it outright:
+   * "Same components as 393 — @container picks the layout, not the viewport."
+   *
+   * **This file declares no `container-type`,** which is `GearRow`'s shape and
+   * not an omission: an element is never its own query container, so a rule
+   * matching `.card` inside `@container` would silently resolve against the
+   * *next* container out — at Roomy that is the screen at ≥40rem, which would
+   * flip the dashed card to row at exactly the width the board specifies 2-up,
+   * while the descendant rules resolving against the card (~17rem) stayed
+   * unapplied. The query container is the list item, declared in
+   * `Trips.module.css`, exactly as `GearRow` queries the pane `Depot` hands it.
    *
    * The direction is the interesting part. This card is **widest on a phone**
    * (393 minus gutters ≈ 22.5rem, one column) and **narrowest at Roomy**
-   * (640 minus gutters, two columns and a gap ≈ 17rem), so the base rules
-   * here are the *narrow* ones and the query unfolds them. `20rem` sits
-   * between the two with room either side. With no container-query support
-   * the base rules stand and every card renders stacked, which is the
-   * fail-open §3.2 requires and which is legible at any width.
+   * (640 minus gutters, two columns and a gap ≈ 17rem), so the base rules here
+   * are the *narrow* ones and the query unfolds them. `20rem` sits between the
+   * two with room either side. With no container-query support, and equally
+   * for a caller that provides no container at all, the base rules stand and
+   * the card renders stacked — the fail-open §3.2 requires, legible at any
+   * width.
    */
   .card {
-    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
@@ -79,12 +87,14 @@
    *
    * It is a **button**: tapping the phase chip opens SET PHASE, which is the
    * board's own rule and the only control that moves a Trip in either
-   * direction. Its 48px touch target comes from the padding around a short
-   * label plus the card's own row spacing; the chip itself stays chip-sized,
-   * as drawn.
+   * direction. `32px`, which is `SliceBar`'s chip and `ui/`'s `Chip` — a chip
+   * is not a primary action and the boards draw it small; the 48px the touch
+   * rule asks for belongs to the CTA below, which is the card's thumb-zone
+   * target.
    */
   .chip {
     flex: none;
+    min-height: max(2rem, 32px);
     padding: var(--space-4) var(--space-8);
     border: var(--stroke-chip) solid var(--color-brand-amber);
     border-radius: var(--radius-pill);

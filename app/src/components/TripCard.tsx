@@ -1,16 +1,8 @@
-import {
-  isActive,
-  phaseDay,
-  phaseLabel,
-  phaseNext,
-  phaseOf,
-  tripLabel,
-  type TripState,
-} from '@foerier/shared'
+import { phaseNext, tripLabel, type TripState } from '@foerier/shared'
 import { Link } from 'wouter'
 
 import { useDepot } from '../depot/store'
-import { tripDateRange, tripParticipants } from '../depot/trips'
+import { tripChip, tripDateRange, tripParticipants } from '../depot/trips'
 import styles from './TripCard.module.css'
 
 /**
@@ -39,14 +31,19 @@ import styles from './TripCard.module.css'
  *
  * ## The progress line falls through to the next step
  *
- * The board draws `● 48/61 PIECES · 13 LEFT` and a bar. There are no Entries
- * and no Pieces yet, so the line has nothing to count and a `0/0` bar would
- * state a fact about a list nobody has built. In its place the card draws
- * `phaseNext`, which is what this slice actually owes: *the phase control,
- * moving both directions, with the next thing to do stated*. It is a fact of
- * the phase table, so it stays correct as later slices build the things it
- * names, and the progress line returns **above** it rather than replacing it
- * (spec §6.2).
+ * The board draws `● 48/61 PIECES · 13 LEFT` and a bar on the **active** card.
+ * There are no Entries and no Pieces yet, so the line has nothing to count and
+ * a `0/0` bar would state a fact about a list nobody has built. In its place
+ * that card draws `phaseNext`, which is what this slice actually owes: *the
+ * phase control, moving both directions, with the next thing to do stated*. It
+ * is a fact of the phase table, so it stays correct as later slices build the
+ * things it names, and the progress line returns **above** it rather than
+ * replacing it (spec §6.2).
+ *
+ * The dashed card draws no such line. It never had a progress line to replace,
+ * spec §4.1 enumerates its three, and the board keeps it slight on purpose —
+ * `NEXT — BUILD THE GEAR LIST` beneath `DRAFT · 0 GEAR LISTED` says the same
+ * thing twice.
  *
  * ## `@container`, never a media query
  *
@@ -82,19 +79,19 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
   const label = tripLabel(trip)
   const participants = tripParticipants(state, trip)
   const dates = tripDateRange(trip)
-  const next = phaseNext(trip)
 
-  // `DAY N` is drawn for **active** phases only: a Draft has not started
-  // anything, and a closed Trip is a ledger row carrying its dates instead
-  // (spec §3.6). `isActive` is the only definition of active-ness in the
-  // codebase, so the test is asked rather than re-enumerated here.
-  //
-  // The count is local calendar days off the `phase` register's own stamp, so
-  // it needs the wall clock — read at render, which is as often as anything
-  // on this card can change.
-  const day = isActive(trip) ? phaseDay(trip, Date.now()) : null
-  const phase = phaseLabel(phaseOf(trip))
-  const chip = day === null ? phase : `${phase} · DAY ${day}`
+  // Composed by `tripChip` rather than here, because the trip screen draws the
+  // same control and the string has to read identically on both. The wall
+  // clock is read at render — as often as anything on this card can change.
+  const chip = tripChip(trip, Date.now())
+
+  // **The active card only.** Spec §4.1 enumerates the planned card's three
+  // lines — name, `DRAFT · 0 GEAR LISTED`, `OPEN ›` — and the board keeps the
+  // dashed card deliberately slight; `NEXT — BUILD THE GEAR LIST` would
+  // restate `0 GEAR LISTED` as a fourth line on the one card meant to carry
+  // fewest. §8.3's "the next thing to do stated" is satisfied on the active
+  // card here and on the trip screen, which draws it for every phase.
+  const next = variant === 'active' ? phaseNext(trip) : null
 
   return (
     <article
@@ -179,10 +176,11 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
         )}
 
         {next !== null && (
-          // `null` twice over and both draw the same way: a closed Trip has
-          // nothing next, and a phase this build has never heard of states no
-          // next step because there is no row to state one. The chip above
-          // still draws the raw value; only this line goes away.
+          // `null` three ways over, all drawing the same: the dashed card
+          // states no next step at all, a closed Trip has nothing next, and a
+          // phase this build has never heard of states none because there is
+          // no row to state one. The chip above still draws the raw value;
+          // only this line goes away.
           <p className={styles['next']} data-testid="trip-next">
             {next}
           </p>

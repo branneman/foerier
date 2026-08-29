@@ -11,6 +11,8 @@ import {
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
@@ -303,5 +305,43 @@ describe('the Trips screen', () => {
     await store.store.getState().drained()
 
     expect(await store.moves()).toEqual([{ trip: VOSGES, phase: 'on_trip' }])
+  })
+})
+
+describe('the container the cards fold against', () => {
+  it('is the list item, and the card sits directly inside it', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    renderTrips(
+      await seeded(
+        tripCreated(ALPS, 'Alps 2026'),
+        tripPhaseMoved(ALPS, 'pack_out'),
+      ),
+    )
+
+    // An element is never its own query container, so `TripCard.module.css`
+    // declares none and this file's `.cardItem` is it. The card must therefore
+    // be a **descendant** of the item — the arrangement `GearRow` has with the
+    // pane `Depot` hands it (`frontend-design.md` §3.2).
+    expect(screen.getByTestId(`trip-card-${ALPS}`).parentElement).toBe(
+      screen.getAllByTestId('trip-entry')[0],
+    )
+  })
+
+  it('declares the query container, and zeroes the lists the UA indents', () => {
+    // jsdom evaluates no container query and computes no layout, so the source
+    // is the only place these hold. Both are silent when broken: the card
+    // would fold against the screen at ≥40rem — the one width where the board
+    // wants it 2-up — and an unzeroed `<ul>` takes 40px out of the columns'
+    // own width, because `reset.css` zeroes only `ul[role='list']`.
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trips.module.css'),
+      'utf8',
+    )
+    expect(css).toMatch(/\.cardItem\s*\{[^}]*container-type:\s*inline-size/)
+    expect(css).toMatch(/\.cards\s*\{[^}]*padding:\s*0/)
+    expect(css).toMatch(/\.rows\s*\{[^}]*padding:\s*0/)
+    // Container queries throughout: what folds is layout, never which
+    // elements exist.
+    expect(css).not.toMatch(/^\s*@media\b/m)
   })
 })

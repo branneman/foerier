@@ -1,9 +1,5 @@
 import {
-  isActive,
-  phaseDay,
-  phaseLabel,
   phaseNext,
-  phaseOf,
   tripDatesSet,
   tripLabel,
   tripParticipantAdded,
@@ -18,7 +14,7 @@ import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
-import { tripDateRange, tripParticipants } from '../depot/trips'
+import { tripChip, tripDateRange, tripParticipants } from '../depot/trips'
 import styles from './Trip.module.css'
 
 /**
@@ -146,15 +142,12 @@ export function Trip() {
   const participants = tripParticipants(state, trip)
   const next = phaseNext(trip)
 
-  // The chip's two facts, each asked of the one function that answers it:
-  // `phaseOf` resolves an absent register to `draft`, `isActive` is the only
-  // definition of active-ness, and `phaseDay` counts local calendar days from
-  // the `phase` register's own stamp. `DAY N` is drawn for **active** phases
-  // only (spec §3.6) — a Draft has not started anything, and a closed Trip is
-  // settled history.
-  const day = isActive(trip) ? phaseDay(trip, Date.now()) : null
-  const phase = phaseLabel(phaseOf(trip))
-  const chip = day === null ? phase : `${phase} · DAY ${day}`
+  // The trip card draws this same control, and the string has to read
+  // identically on both surfaces — so it is composed once, in `tripChip`,
+  // which is also where the `DAY N`-for-active-phases-only rule (spec §3.6)
+  // is stated. Every question underneath it still goes to the one function in
+  // `shared/` that answers it.
+  const chip = tripChip(trip, Date.now())
 
   const canSave = nameDraft.trim() !== ''
 

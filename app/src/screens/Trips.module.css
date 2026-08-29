@@ -56,10 +56,27 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--space-12);
+    /* `reset.css` zeroes only `ul[role='list']`, so an unlabelled list keeps
+       the UA's 40px inline-start indent — which on a 2-up grid takes the
+       indent out of the columns' own width. `People.module.css` zeroes it the
+       same way. */
     list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
+  /*
+   * **The card's query container.** `TripCard.module.css` declares none of its
+   * own, because an element is never its own container and a rule matching
+   * `.card` from inside `@container` would resolve against `.screen` instead —
+   * ≥40rem at Roomy, which is the one width where it would be most wrong. So
+   * the item the card sits in is the container, and the card folds against the
+   * column it actually occupies: ~22.5rem full width on a phone, ~17rem as one
+   * of two at Roomy. `GearRow` and the pane `Depot` hands it are the same
+   * arrangement (`frontend-design.md` §3.2).
+   */
   .cardItem {
+    container-type: inline-size;
     display: flex;
     min-width: 0;
   }
@@ -90,6 +107,8 @@
     display: flex;
     flex-direction: column;
     list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
   /* Ledger rows: 56px minimum, a 1px rule between them, and nothing else —

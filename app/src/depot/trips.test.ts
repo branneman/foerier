@@ -7,6 +7,7 @@ import {
   tripCreated,
   tripDatesSet,
   tripParticipantAdded,
+  tripPhaseMoved,
   tripParticipantRemoved,
   type DepotState,
   type OpAuthor,
@@ -15,7 +16,12 @@ import {
 } from '@foerier/shared'
 import { describe, expect, it } from 'vitest'
 
-import { tripDateRange, tripParticipants, tripStartMonth } from './trips'
+import {
+  tripChip,
+  tripDateRange,
+  tripParticipants,
+  tripStartMonth,
+} from './trips'
 
 /**
  * Every fixture goes through the **real** reducer, never a hand-shaped
@@ -211,5 +217,54 @@ describe('tripStartMonth', () => {
       tripDatesSet(TRIP, { start: 'summer' }),
     )
     expect(tripStartMonth(theTrip(state))).toBe('summer')
+  })
+})
+
+describe('tripChip', () => {
+  /** The seed clock, and the day every `DAY N` below counts from. */
+  const SEEDED_AT = 1_700_000_000_000
+  const A_DAY = 24 * 60 * 60 * 1000
+
+  it('carries the day count for an active phase', () => {
+    const state = depot(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    // `DAY 1` is the day of the change, so the second calendar day is `DAY 2`.
+    expect(tripChip(theTrip(state), SEEDED_AT + A_DAY)).toBe('PACK-OUT · DAY 2')
+  })
+
+  it('draws a Drafts label alone, stamp or no stamp', () => {
+    // A Trip moved *to* `draft` has a phase register and a stamp, and has
+    // still not started anything: the count is gated on `isActive`, never on
+    // the register being present (spec §3.6).
+    const moved = depot(
+      tripCreated(TRIP, 'Vosges — Oct'),
+      tripPhaseMoved(TRIP, 'draft'),
+    )
+    expect(tripChip(theTrip(moved), SEEDED_AT + 9 * A_DAY)).toBe('DRAFT')
+
+    // And the register the reducer seeds at `trip.created` reads the same.
+    const created = depot(tripCreated(TRIP, 'Vosges — Oct'))
+    expect(tripChip(theTrip(created), SEEDED_AT + 9 * A_DAY)).toBe('DRAFT')
+  })
+
+  it('says nothing about a closed Trips days', () => {
+    const state = depot(
+      tripCreated(TRIP, 'Tessin 2025'),
+      tripPhaseMoved(TRIP, 'closed'),
+    )
+    expect(tripChip(theTrip(state), SEEDED_AT + 400 * A_DAY)).toBe('CLOSED')
+  })
+
+  it('draws a phase this build has never heard of exactly as it arrived', () => {
+    const state = depot(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'portaging'),
+    )
+    // Verbatim (`sync-protocol.md` §5.3, obligation 4), and no day count:
+    // `isActive` calls an unrecognised phase inactive rather than guessing, so
+    // an old build never over-states what a Trip is doing.
+    expect(tripChip(theTrip(state), SEEDED_AT + A_DAY)).toBe('portaging')
   })
 })

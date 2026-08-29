@@ -1,6 +1,10 @@
 import {
+  isActive,
   participantIds,
   personLabel,
+  phaseDay,
+  phaseLabel,
+  phaseOf,
   type DepotState,
   type TripState,
 } from '@foerier/shared'
@@ -12,14 +16,16 @@ import { sortedPeople, type PersonRow } from './people'
  * for the handful of Trip facts that are *display* decisions rather than
  * replica-identical ones.
  *
- * Two of them today. {@link tripParticipants} is the only place the Trip's
- * membership meets the household's roster; {@link tripDateRange} and
- * {@link tripStartMonth} are the only place its two date registers become
- * words. Neither belongs beside `participantIds` in `shared/`: the first
- * produces an order decided by `sortedPeople`, an `app/` module, and the
- * second a rendering of a string the reducer deliberately does not gate.
- * `shared/` keeps the facts every replica has to agree on; this keeps how one
- * screen shows them.
+ * {@link tripParticipants} is the only place the Trip's membership meets the
+ * household's roster; {@link tripDateRange} and {@link tripStartMonth} are the
+ * only place its two date registers become words; {@link tripChip} is the only
+ * place the phase and its day count become one string. None of the four
+ * belongs beside `participantIds` in `shared/`: the first produces an order
+ * decided by `sortedPeople`, an `app/` module, the next two a rendering of a
+ * string the reducer deliberately does not gate, and the last a composition of
+ * answers `shared/` already gives. `shared/` keeps the facts every replica has
+ * to agree on; this keeps how a screen shows them — and, where two screens
+ * show the same thing, keeps them showing it identically.
  */
 
 /**
@@ -215,4 +221,32 @@ function inclusiveDays(start: string, end: string): number | null {
       Date.UTC(from.year, from.month - 1, from.day)) /
     86_400_000
   return days < 0 ? null : days + 1
+}
+
+/**
+ * `PACK-OUT · DAY 2` — the phase chip's whole string, on the trip card and on
+ * the trip screen.
+ *
+ * Both surfaces draw the same control opening the same sheet, and it has to
+ * read identically on the two of them; composed at each of them it is one
+ * separator and one word away from not doing. Every *question* it asks is
+ * still answered by the one function that owns it — {@link phaseOf} resolves
+ * an absent register to `draft`, {@link phaseLabel} draws an unrecognised
+ * phase exactly as it arrived, {@link isActive} is the only definition of
+ * active-ness and {@link phaseDay} counts the days — so what lives here is the
+ * *composition* and nothing else. The rules stay in `shared/`.
+ *
+ * **`DAY N` is drawn for active phases only** (spec §3.6). A Draft has not
+ * started anything and a closed Trip is settled history, so the register being
+ * present is not the test: `isActive` is. That is also what keeps the count
+ * off a phase this build has never heard of, which `isActive` conservatively
+ * calls inactive.
+ *
+ * `now` is passed rather than read here, because the wall clock is a
+ * *rendering* input — the caller reads it once per render, and a test pins it.
+ */
+export function tripChip(trip: TripState, now: number): string {
+  const phase = phaseLabel(phaseOf(trip))
+  const day = isActive(trip) ? phaseDay(trip, now) : null
+  return day === null ? phase : `${phase} · DAY ${day}`
 }

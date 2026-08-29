@@ -12,6 +12,8 @@ import {
   type TripState,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
@@ -235,9 +237,11 @@ describe('the planned trip card', () => {
     // The `0` is a fact today and stays true until S7 gives it something to
     // count. The day count is not drawn: a Draft has not started anything.
     expect(screen.getByTestId('phase-chip').textContent).not.toContain('DAY')
-    expect(screen.getByTestId('trip-next')).toHaveTextContent(
-      'NEXT — BUILD THE GEAR LIST',
-    )
+    // And no next-step line. Spec §4.1 enumerates the dashed card's three
+    // lines and the board keeps it slight; `NEXT — BUILD THE GEAR LIST`
+    // beneath `DRAFT · 0 GEAR LISTED` would say the same thing twice on the
+    // one card meant to carry fewest.
+    expect(screen.queryByTestId('trip-next')).toBeNull()
   })
 
   it('links where the active card links', async () => {
@@ -260,9 +264,11 @@ describe('the planned trip card', () => {
     renderCard(card, 'planned')
 
     // Stored and drawn verbatim (`sync-protocol.md` §5.3, obligation 4).
-    // Inventing a casing would be coercion by another name, and inventing a
-    // next step would be a claim about a phase this build cannot describe.
+    // Inventing a casing would be coercion by another name.
     expect(screen.getByTestId('phase-chip')).toHaveTextContent('portaging')
+    // No `DAY N` either: the count is gated on `isActive`, which calls an
+    // unrecognised phase inactive rather than guessing, so an old build never
+    // over-states what a Trip is doing.
     expect(screen.getByTestId('phase-chip').textContent).not.toContain('DAY')
     expect(screen.queryByTestId('trip-next')).toBeNull()
   })
@@ -273,5 +279,60 @@ describe('the planned trip card', () => {
     renderCard(card, 'planned')
 
     expect(screen.getByTestId('trip-name')).toHaveTextContent('—')
+  })
+})
+
+describe('a Participant whose Person has not folded yet', () => {
+  it('draws an empty circle rather than a placeholder letter', async () => {
+    today(0)
+    const card = await seeded(
+      personRecorded('mark', 'Mark'),
+      tripCreated(TRIP, 'Alps 2026'),
+      tripParticipantAdded(TRIP, 'mark'),
+      // A `trip.participant_added` that overtook the `person.recorded` it
+      // names — an ordinary state on a device that has pulled one and not the
+      // other, and the reason `tripParticipants` appends rather than filters.
+      tripParticipantAdded(TRIP, 'ghost'),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    renderCard(card, 'active')
+
+    const cluster = screen.getByRole('img', { name: 'Participants: Mark, —' })
+    // The Participant is **listed**, because vanishing is the one behaviour a
+    // membership list must never have. Inventing an initial for them would be
+    // a fact the app does not have, so the circle is drawn empty — the People
+    // screen's treatment, and `personLabel`'s dash carries the name.
+    expect(cluster.children).toHaveLength(2)
+    expect(cluster.children[0]?.textContent).toBe('M')
+    expect(cluster.children[1]?.textContent).toBe('')
+  })
+})
+
+describe('the container fold', () => {
+  it('leaves the query container to the caller, as GearRow does', () => {
+    // jsdom evaluates no container query and computes no layout, so the only
+    // thing a test can hold here is the invariant itself — and this one is
+    // worth holding, because breaking it renders wrong without failing
+    // anything. An element is never its own query container: a rule matching
+    // `.card` from inside `@container` resolves against the *next* container
+    // out, which at Roomy is the screen at ≥40rem — so the dashed card would
+    // flip to row at exactly the width the board specifies 2-up, while the
+    // descendant rules resolving against the card (~17rem) stayed unapplied.
+    // `Trips.module.css`'s `.cardItem` is the container, exactly as `GearRow`
+    // queries the pane `Depot` hands it.
+    // Read off disk, and located through Vitest's own `testPath`: under the
+    // Vite transform `import.meta.url` is an http URL, and `?raw` on a
+    // `.module.css` still yields the class map.
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'TripCard.module.css'),
+      'utf8',
+    )
+    // A *declaration*, not the word: the paragraph above the rules explains
+    // why there is none, and would otherwise match itself.
+    expect(css).not.toMatch(/^\s*container-type\s*:/m)
+    expect(css).toMatch(/@container \(min-width: 20rem\)/)
+    // And never a media query: what folds here is layout, not which elements
+    // exist (`frontend-design.md` §3.2).
+    expect(css).not.toMatch(/^\s*@media\b/m)
   })
 })
