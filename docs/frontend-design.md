@@ -192,9 +192,9 @@ withheld at a single width**, because the two answer different questions.
   the sidebar and neither in the main column — so no screen draws one there.
   Below Desktop it depends on the screen: `GearDetail` is the detail half of
   `DepotView` at Split with the Depot list in the pane beside it, and
-  `Depot split` contains **no `‹` anywhere**; `Trip` and `NewTrip` have no
-  two-pane view at any width, so at Split they stand alone against an unlabeled
-  rail and the link is the only route back.
+  `Depot split` contains **no `‹` anywhere**; every other pushed screen has no
+  two-pane view at any width, so at Split each stands alone against an
+  unlabeled rail and the link is the only route back.
 
 The `<header>` element therefore needs a third answer: at Split a detail pane
 draws a sync line with no back link beside it, so "the band exists exactly when
@@ -208,42 +208,48 @@ back link not.*
 **One hook says it: `useScreenHeader` in `app/src/shell/useMediaQuery.ts`**,
 which composes the two queries it sits beside, takes a `ScreenPlacement`
 (`splitPane`, true only for `GearDetail`) and returns `{band, backLink,
-syncLine}`. It exists because four screens spelling the rule themselves is three
-chances to spell it differently — which is exactly how `Account` came to carry
-`Trip`'s defect from a different slice.
+syncLine}`. It exists because a rule spelled per screen is one chance per screen
+to spell it differently — which is exactly how `Account` came to carry `Trip`'s
+defect from a different slice.
 
-**A screen tested without the shell can only prove half of this.** The four
-per-screen suites render their screen alone, so an absence assertion there says
-the screen withheld a line and nothing about whether `AppShell` drew one — which
-is how the rule shipped inverted, with a visible double print on a phone, and
-passed review. `app/src/shell/screenBand.test.tsx` is the other half: it renders
-a pushed screen **inside** `AppShell` and counts one visible `SYNCED` at phone
-width, at Split and at Desktop.
+**A screen tested without the shell can only prove half of this.** A per-screen
+suite renders its screen alone, so an absence assertion there says the screen
+withheld a line and nothing about whether `AppShell` drew one — which is how the
+rule shipped inverted, with a visible double print on a phone, and passed
+review. `app/src/shell/screenBand.test.tsx` is the other half: it renders a
+pushed screen **inside** `AppShell` and counts one visible `SYNCED` at phone
+width, at Split and at Desktop. That is a permanent property of the two suites,
+not a note about one round.
 
-**The hook's reach is four screens, and that is a debt rather than the finished
-state.** `Trip`, `Account`, `GearDetail` and `NewTrip` ask it. Three pushed
-screens still spell their own band unconditionally, and the cost is **visible
-from 393 up**, not only at a desk:
+**The hook's reach is every screen that draws a sync line — all seven.**
+`AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`, `People` and `Devices`
+ask it, and no screen spells the rule itself. `splitPane` is true for
+`GearDetail` alone; two of the answers are worth stating, because they are
+about the app as built rather than as drawn:
 
-- **`AddGear` is the live one.** `<Route path="/add">` is unguarded, so the
-  screen is reachable at every width. Below Split its band states `SYNCED`
-  under `AppShell`'s header, which states it too — a second, identical line on
-  the primary device. At Split it is accidentally right *for the app as built*:
-  `<Route path="/add">` renders it standalone, so it is not a pane and does owe
-  a back link — the board's `Add gear — split 900` draws it as a pane with the
-  Depot list beside it, and that two-pane Add gear has never been built. At
-  Desktop it doubles the line against the sidebar's and repeats `‹ DEPOT` at the
-  row the sidebar already carries.
-- **`People` and `Devices`** `Redirect to="/account"` at Desktop, so their
-  Desktop band is never reached. What is left is the same phone double print
-  below Split, and a correct band at Split.
+- **`AddGear` answers `splitPane: false`, against its own board frame.**
+  `Add gear — split 900` draws it as a pane with the Depot list beside it, and
+  that two-pane Add gear has never been built: `<Route path="/add">` renders it
+  standalone at every width. So at Split `‹ DEPOT` still points at something
+  not on the page, and the link is drawn. It is also the one of the seven
+  reachable at every width — the route carries no guard — so all three of its
+  modes are counted in the composed suite.
+- **`People` and `Devices` `Redirect to="/account"` at Desktop**, so their
+  Desktop band is never reached and the composed suite counts them at the two
+  widths `App.tsx` actually mounts them at. `People` has a second render, the
+  `inline` variant Account unfolds into its own card at Desktop, which draws no
+  band at all.
 
-Converting them is a code change and is deliberately not folded into the rounds
-that extracted and then corrected the hook. The obligation is recorded here so
-the next person to touch a pushed screen finds it rather than rediscovering the
-doubled marker.
+**`InviteIssued` is the one pushed screen that does not ask, and only half the
+rule is its.** It draws a back link and has never drawn a sync line, so the
+sync half has nothing to say to it. The back-link half does: `‹ ACCOUNT` /
+`‹ PEOPLE & LOGINS` is unconditional, and neither route is guarded at Desktop,
+where the sidebar already carries an `Account` row — and where
+`‹ PEOPLE & LOGINS` points at `/account/people`, which redirects to `/account`
+at that width. Open, and smaller than the marker defect the rule was extracted
+for.
 
-**A second gap at Split, and no board answers it.** The FAB (`Depot`, `Trips`)
+**A gap at Split, and no board answers it.** The FAB (`Depot`, `Trips`)
 is gated `!isDesktop` and offset `bottom: 4.625rem` — 74px, which is the 56px
 tab bar plus 18px. At Split there is no tab bar: the nav is the left rail, so
 the offset clears nothing, and on `Depot` the control floats over the detail

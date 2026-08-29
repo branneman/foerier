@@ -315,12 +315,12 @@ superseded, and `docs/design/README.md` §5 is the shipped authority.
   **The round shipped this inverted and review caught it**, which is why
   `app/src/shell/screenBand.test.tsx` renders a screen *inside* `AppShell` and
   counts: the per-screen suites render without the shell, so their absence
-  assertions prove one side of a two-sided fact. **The hook's reach is four
-  screens and that is a stated debt:** `AddGear`, `People` and `Devices` still
-  spell their own band unconditionally, so all three print a second, identical
-  `SYNCED` under the phone header below Split — visible, on the primary device —
-  and `AddGear`, whose `/add` is unguarded, doubles it against the sidebar at
-  Desktop as well.
+  assertions prove one side of a two-sided fact. **The hook's reach is every
+  screen that draws a sync line — all seven:** `AddGear`, `GearDetail`, `Trip`,
+  `NewTrip`, `Account`, `People` and `Devices`. `splitPane` is true for
+  `GearDetail` alone; `AddGear` answers `false` against its own board frame,
+  because `Add gear — split 900` draws a pane the app has never built and
+  `<Route path="/add">` renders it standalone at every width.
 
 **S5, auth 2, has landed** (story 28) — the second Quartermaster is now
 arranged from inside the app rather than by whoever runs the server. No
