@@ -1,0 +1,153 @@
+@layer components {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    /*
+     * The cards fold against the column they are handed, not the viewport
+     * (`frontend-design.md` §3.2) — which is what puts them 2-up at Roomy and
+     * keeps them one-up in a narrow pane at the same width. `Depot.module.css`
+     * establishes its container for exactly the same reason.
+     */
+    container-type: inline-size;
+  }
+
+  .titleRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .new {
+    display: inline-flex;
+    align-items: center;
+    min-height: max(3rem, 48px);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .empty {
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  /*
+   * One grid across both forward sections, so the active card and the dashed
+   * card sit side by side at Roomy exactly as `Screens A` §04 draws them. Two
+   * adjacent grids could not: the second would start its own row.
+   *
+   * `@container`, never `@media` — the board says it in as many words: "Same
+   * components as 393 — @container picks the layout, not the viewport." One
+   * column is the base, so with no container-query support every card renders
+   * full width, which is the fail-open §3.2 requires.
+   */
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-12);
+    list-style: none;
+  }
+
+  .cardItem {
+    display: flex;
+    min-width: 0;
+  }
+
+  .cardItem > * {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @container (min-width: 40rem) {
+    /* Roomy — 640px, where the shell stops wasting the sides and card content
+       goes 2-up. */
+    .cards {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .sectionHead {
+    padding-block: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--color-ink-faint);
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  /* Ledger rows: 56px minimum, a 1px rule between them, and nothing else —
+     "closed trips are ledger rows: date, piece count, losses". */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    min-height: 3.5rem;
+    padding-block: var(--space-12);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .rowMain {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    flex: 1;
+    text-decoration: none;
+  }
+
+  /* Muted, not primary: a closed Trip is settled history until somebody
+     reopens it. */
+  .rowName {
+    font: var(--text-heading) var(--font-ui);
+    font-weight: 600;
+    color: var(--color-ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rowMeta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-ink-faint);
+  }
+
+  .reopen {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-12);
+    flex: none;
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  .chevron {
+    font-size: 1.125rem;
+    color: var(--color-ink-dim);
+  }
+}
