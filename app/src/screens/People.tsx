@@ -178,15 +178,20 @@ function metaOf(state: RowState): string | null {
 }
 
 /**
- * The verb-and-noun agreement `N of M people hold(s) a login.` carries. Not
- * exported: `Account.tsx`'s phone summary row states the same fact in its
- * own compact shape (`N SIGNED IN`, matching the DEVICES section head's own
- * badge) rather than fitting this full sentence into a row.
+ * The verb-and-noun agreement `N of M people hold(s) a login.` carries.
+ * Exported so `Account.tsx`'s phone summary row, which states the same fact
+ * in its own compact shape (`N OF M PEOPLE HOLD A LOGIN`, the board's own
+ * phrase — `docs/design/README.md` §13), can agree on the same rule rather
+ * than re-deriving it. A second derivation is exactly what drifts (S4's
+ * `owner.ts` lesson, `CLAUDE.md`).
  *
  * The verb agrees with the **count of logins**, never with the count of
  * people: `1 of 3 people holds a login.` and `2 of 3 people hold a login.`
  */
-function loginVerbClause(loginCount: number, peopleCount: number): string {
+export function loginVerbClause(
+  loginCount: number,
+  peopleCount: number,
+): string {
   return peopleCount === 1
     ? 'person holds'
     : loginCount === 1
@@ -295,8 +300,24 @@ export function People({
     }
   }
 
-  const loginCount = logins.length
-  const inviteCount = invites.filter((row) => row.purpose === 'join').length
+  // Counted from the rows this screen actually draws, not from the raw
+  // lists. A Maintainer-minted join Invite (`mintJoinInvite`) carries a
+  // `person_id` no `person.recorded` op has ever named, so it renders no
+  // row — counting `invites.length` there would print "… 1 invite out."
+  // with nothing on screen marked `INVITE OUT`, and symmetrically let
+  // `loginCount` print higher than `people.length`. `rowStateOf` is what
+  // decides whether a Login or Invite earns a row, so it is the one place
+  // both counts and the rendered rows below are allowed to come from.
+  const rows = people.map((person) => ({
+    person,
+    rowState: rowStateOf(person.id, personId, status, logins, invites),
+  }))
+  const loginCount = rows.filter(
+    ({ rowState }) => rowState.kind === 'own' || rowState.kind === 'login',
+  ).length
+  const inviteCount = rows.filter(
+    ({ rowState }) => rowState.kind === 'invited',
+  ).length
   const countLine =
     `${loginCount} of ${people.length} ${loginVerbClause(loginCount, people.length)} a login.` +
     (inviteCount === 0
@@ -307,7 +328,7 @@ export function People({
     <>
       {variant === 'list' && (
         <div className={styles['titleRow']}>
-          <h1 className={styles['title']}>People</h1>
+          <h1 className={styles['title']}>People & logins</h1>
           <button
             type="button"
             className={styles['modeToggle']}
@@ -335,14 +356,7 @@ export function People({
       )}
 
       <ul className={styles['rows']}>
-        {people.map((person) => {
-          const rowState = rowStateOf(
-            person.id,
-            personId,
-            status,
-            logins,
-            invites,
-          )
+        {rows.map(({ person, rowState }) => {
           const meta = metaOf(rowState)
 
           return (

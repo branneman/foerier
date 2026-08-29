@@ -422,13 +422,19 @@ describe('Account', () => {
       expect(screen.getByText('PEOPLE & LOGINS')).toBeInTheDocument()
     })
 
-    it('states how many hold a login in the phone summary row', async () => {
+    it('states how many hold a login in the phone summary row, in the board`s own words', async () => {
       await renderAccount({ personName: 'Mark', loginCount: 1 })
       await waitFor(() => {
         expect(screen.getByRole('link', { name: /People/ })).toHaveTextContent(
-          '1 SIGNED IN',
+          '1 OF 1 PERSON HOLDS A LOGIN',
         )
       })
+      // Not `SIGNED IN` — that counts a different fact (Devices currently
+      // reachable), which is the confusion `final-fix-report.md` finding 3
+      // named: a Login with zero Devices still holds a login.
+      expect(
+        screen.getByRole('link', { name: /People/ }),
+      ).not.toHaveTextContent('SIGNED IN')
     })
 
     it('omits the login clause while it cannot be loaded, rather than claiming zero', async () => {
@@ -446,7 +452,10 @@ describe('Account', () => {
       })
       expect(
         screen.getByRole('link', { name: /People/ }),
-      ).not.toHaveTextContent('SIGNED IN')
+      ).not.toHaveTextContent('HOLDS A LOGIN')
+      expect(screen.getByRole('link', { name: /People/ })).toHaveTextContent(
+        '1 PERSON',
+      )
       consoleError.mockRestore()
     })
   })

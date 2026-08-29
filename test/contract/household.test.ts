@@ -104,7 +104,7 @@ describe.skipIf(!hasCredential())('the deployed household', () => {
    * box, which is exactly what the Tier 4/5 spec §5 rules out.
    * `migrations.test.ts` proves it against a real Postgres instead.
    */
-  it('answers GET /auth/logins with the calling Login present', async () => {
+  it('answers GET /auth/logins with 200 and at least one Login', async () => {
     const res = await fetch(`${API}/auth/logins`, {
       headers: { authorization: `Bearer ${token}` },
     })

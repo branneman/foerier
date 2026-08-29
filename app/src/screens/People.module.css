@@ -107,14 +107,23 @@
   }
 
   /*
-   * 30px, and the **control** border — deliberately carrying no meaning.
+   * 30px. S5 gives the border a three-way meaning, not two:
    *
-   * The board's rule is accent border = holds a Login, control border = holds
-   * none (`docs/design/README.md` §13). S4 cannot tell those apart:
-   * `GET /auth/logins` is S5's. Drawing every circle as "no login" would
-   * render the joiner, who demonstrably holds one, as having none — so the
-   * circle is drawn neutral and **S5 lights it**. Fill never appears on
-   * account surfaces; fill belongs to packing.
+   *   accent (`--color-accent`)        holds a Login
+   *   control (`--color-rule-control`) holds none
+   *   base — this rule, `--color-rule` — the fact is not known yet
+   *
+   * `data-login` carries no attribute while `status !== 'loaded'` (the
+   * offline fallback) — this base rule is what paints that state, and it
+   * must not read as either of the other two. The base used to sit on
+   * `--color-rule-control`, the same token `[data-login='no']` uses below;
+   * that made "unknown" and "no login" the same pixel, so the offline
+   * fallback said "nobody in this Household holds a login" — false even for
+   * the reader's own row. `--color-rule` is the plainer, more muted divider
+   * token this file already uses for row rules; reused here as a border so
+   * "not known" reads as quieter than "known to be absent" rather than
+   * identical to it. Fill never appears on account surfaces; fill belongs to
+   * packing.
    */
   .circle {
     display: inline-flex;
@@ -123,18 +132,17 @@
     width: 1.875rem;
     height: 1.875rem;
     flex-shrink: 0;
-    border: var(--stroke-chip) solid var(--color-rule-control);
+    border: var(--stroke-chip) solid var(--color-rule);
     border-radius: var(--radius-pill);
     color: var(--color-ink-muted);
     font: var(--text-label) var(--font-mono);
     font-weight: 600;
   }
 
-  /* S5 lights the encoding the comment above describes: accent border for a
-     Person who holds a Login, control border for one who does not. Neither
-     rule fires while `data-login` carries no attribute at all — which is
-     exactly the offline fallback, and the pre-S5 default this file always
-     had. */
+  /* The encoding the comment above describes: accent border for a Person who
+     holds a Login, control border for one who demonstrably does not. Neither
+     rule fires while `data-login` carries no attribute at all, which leaves
+     the base rule's `--color-rule` showing — the offline fallback. */
   .circle[data-login='yes'] {
     border-color: var(--color-accent);
   }

@@ -6,7 +6,7 @@ import {
   type IdSource,
   type OpAuthor,
 } from '@foerier/shared'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -380,7 +380,9 @@ describe('the People screen', () => {
     renderPeople({ variant: 'inline' })
     await screen.findByTestId(`person-row-${MARK}`)
 
-    expect(screen.queryByRole('heading', { name: 'People' })).toBeNull()
+    expect(
+      screen.queryByRole('heading', { name: 'People & logins' }),
+    ).toBeNull()
     expect(screen.queryByRole('link', { name: '‹ ACCOUNT' })).toBeNull()
   })
 
@@ -525,6 +527,33 @@ describe('the People screen', () => {
     )
   })
 
+  /**
+   * `final-fix-report.md` finding 5: `npm run admin:invite` (`mintJoinInvite`)
+   * mints a join Invite against a fresh `person_id` that no `person.recorded`
+   * op has ever named — there is no fold entry to draw a row for. Counting
+   * `invites.length` would print "… 1 invite out." with no row on screen
+   * marked `INVITE OUT`; the count must come from what actually renders.
+   */
+  it('does not count a Maintainer-minted join invite for a Person nobody recorded', async () => {
+    renderPeople({
+      invites: [
+        {
+          id: 'I1',
+          purpose: 'join',
+          person_id: 'ghost-person-not-in-the-fold',
+          expires_at: new Date(NOW + DAY).toISOString(),
+        },
+      ],
+    })
+
+    expect(await screen.findByTestId('people-count')).toHaveTextContent(
+      '0 of 3 people hold a login.',
+    )
+    expect(
+      screen.queryByText('INVITE OUT · SINGLE USE'),
+    ).not.toBeInTheDocument()
+  })
+
   it('omits the invite clause when nothing is out, and pluralises the first', async () => {
     renderPeople({
       logins: [
@@ -608,6 +637,42 @@ describe('the People screen', () => {
     expect(
       within(row).queryByRole('link', { name: 'INVITE ›' }),
     ).not.toBeInTheDocument()
+  })
+
+  /**
+   * `final-fix-report.md` finding 4: the circle's border carries a three-way
+   * meaning — holds a login, holds none, or not known yet — and the CSS
+   * keys entirely off `data-login`'s three states (`'yes'`, `'no'`, absent).
+   * Before this fix the base rule and `[data-login='no']` shared one token,
+   * so "not known" and "known to be absent" were the same pixel; this pins
+   * that they stay three distinct `data-login` values rather than collapsing
+   * "unknown" into either of the other two.
+   */
+  it('gives loaded-with-login, loaded-without and unknown three distinct data-login states, not two', async () => {
+    renderPeople({
+      logins: [
+        { id: 'L1', person_id: ELS, device_count: 1, last_seen_at: NOW_ISO },
+      ],
+    })
+
+    expect(await screen.findByTestId(`person-initial-${ELS}`)).toHaveAttribute(
+      'data-login',
+      'yes',
+    )
+    expect(screen.getByTestId(`person-initial-${KEES}`)).toHaveAttribute(
+      'data-login',
+      'no',
+    )
+
+    cleanup()
+
+    renderPeople({ failLogins: true })
+    await screen.findByText(
+      'Login state could not be loaded. Check your connection.',
+    )
+    expect(screen.getByTestId(`person-initial-${ELS}`)).not.toHaveAttribute(
+      'data-login',
+    )
   })
 
   it('keeps + NEW PERSON and RENAME live with the login half down', async () => {

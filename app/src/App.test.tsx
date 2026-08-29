@@ -584,7 +584,7 @@ describe('the two other-Person invite-issued routes', () => {
     renderAt('/account/people')
 
     expect(
-      await screen.findByRole('heading', { name: 'People' }),
+      await screen.findByRole('heading', { name: 'People & logins' }),
     ).toBeInTheDocument()
   })
 })

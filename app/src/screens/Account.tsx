@@ -15,7 +15,7 @@ import {
   SignOutThisDeviceSheet,
   useDeviceSignOut,
 } from './Devices'
-import { People } from './People'
+import { People, loginVerbClause } from './People'
 
 export interface AccountProps {
   api: AuthApi
@@ -549,14 +549,17 @@ export function Account({
             <div>
               <div className={styles['rowTitle']}>People</div>
               <div className={styles['rowMeta']}>
-                {peopleCount} {peopleCount === 1 ? 'PERSON' : 'PEOPLE'}
-                {/* The login clause the People screen's own count line
-                    carries, in the phone summary row's compact shape — the
-                    same `N SIGNED IN` phrase the DEVICES section head badge
-                    above already uses. Omitted while the login half cannot
-                    be loaded: the same "state less, not something false"
-                    rule the pushed screen follows. */}
-                {loginsStatus === 'loaded' && ` · ${loginCount} SIGNED IN`}
+                {/* Board's own phrase (`docs/design/README.md` §13,
+                    Screens C "People and logins"): `N OF M PEOPLE HOLD A
+                    LOGIN`, not `SIGNED IN` — this line counts who holds a
+                    Login, not who is currently signed in anywhere, and
+                    those are different facts. Falls back to the plain
+                    people count while the login half cannot be loaded: the
+                    same "state less, not something false" rule the pushed
+                    screen follows. */}
+                {loginsStatus === 'loaded'
+                  ? `${loginCount} OF ${peopleCount} ${loginVerbClause(loginCount, peopleCount).toUpperCase()} A LOGIN`
+                  : `${peopleCount} ${peopleCount === 1 ? 'PERSON' : 'PEOPLE'}`}
               </div>
             </div>
             <span className={styles['chevron']} aria-hidden="true">
