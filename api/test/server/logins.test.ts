@@ -91,6 +91,13 @@ describe('logins', () => {
     })
   }
 
+  function del(path: string, token: string) {
+    return h.app.request(`/api/v1${path}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${token}` },
+    })
+  }
+
   it('counts only admissible Devices and reports the newest last seen', async () => {
     // Both within the middleware's 24h last-seen throttle (`session.ts`'s
     // `shouldRefreshLastSeen`) of the frozen clock (09:00 on the 25th): the
@@ -160,5 +167,117 @@ describe('logins', () => {
   it('refuses an unauthenticated caller', async () => {
     const res = await h.app.request('/api/v1/auth/logins')
     expect(res.status).toBe(401)
+  })
+
+  it('disables the Login and its next request is 401', async () => {
+    const caller = await signedInDevice()
+    const target = await signedInDevice()
+
+    expect(
+      (await del(`/auth/logins/${target.loginId}`, caller.token)).status,
+    ).toBe(204)
+
+    // The middleware rejects a request whose Login is disabled, so the
+    // revoked Device fails at its very next call — no waiting for expiry.
+    expect((await get('/auth/me', target.token)).status).toBe(401)
+  })
+
+  it('revokes the Login’s Devices and the Invites bound to it', async () => {
+    const caller = await signedInDevice()
+    const target = await signedInDevice()
+
+    const inviteId = systemIdSource.next()
+    await db
+      .insertInto('invite')
+      .values({
+        id: inviteId,
+        household_id: HOUSEHOLD,
+        person_id: systemIdSource.next(),
+        purpose: 'device',
+        secret_hash: new Uint8Array(32).fill(7),
+        login_id: target.loginId,
+        created_by_login: caller.loginId,
+        person_recorded: true,
+        expires_at: new Date(h.clock.now() + 60 * 60_000),
+      })
+      .execute()
+
+    await del(`/auth/logins/${target.loginId}`, caller.token)
+
+    const device = await db
+      .selectFrom('device')
+      .select('revoked_at')
+      .where('id', '=', target.deviceId)
+      .executeTakeFirstOrThrow()
+    expect(device.revoked_at).not.toBeNull()
+
+    const invite = await db
+      .selectFrom('invite')
+      .select('revoked_at')
+      .where('id', '=', inviteId)
+      .executeTakeFirstOrThrow()
+    expect(invite.revoked_at).not.toBeNull()
+  })
+
+  /**
+   * Story 28: "everything they recorded stays". True by construction — the
+   * transaction touches no `op` row, and `op.device_id` carries no foreign
+   * key to `device`.
+   */
+  it('leaves the ops that Login pushed readable', async () => {
+    const caller = await signedInDevice()
+    const target = await signedInDevice()
+
+    await db
+      .insertInto('op')
+      .values({
+        op_id: systemIdSource.next(),
+        household_id: HOUSEHOLD,
+        seq: 1,
+        aggregate: 'gear',
+        aggregate_id: systemIdSource.next(),
+        type: 'gear.recorded',
+        hlc: '2026-08-25T09:00:00.000Z-0000-aaaa',
+        device_id: target.deviceId,
+        payload: JSON.stringify({ name: 'Tarp' }),
+      })
+      .execute()
+
+    await del(`/auth/logins/${target.loginId}`, caller.token)
+
+    const pulled = await get('/sync/pull?since=0', caller.token)
+    expect(pulled.status).toBe(200)
+    const body = await jsonOf<{ ops: Array<{ type: string }> }>(pulled)
+    expect(body.ops.map((op) => op.type)).toContain('gear.recorded')
+  })
+
+  /**
+   * No Login can disable itself, which is what makes "a Household never
+   * reaches zero active Logins" true by construction rather than by a count.
+   */
+  it('refuses to revoke your own Login', async () => {
+    const caller = await signedInDevice()
+
+    const res = await del(`/auth/logins/${caller.loginId}`, caller.token)
+    expect(res.status).toBe(400)
+    expect(await jsonOf(res)).toMatchObject({ error: 'cannot_revoke_self' })
+
+    expect((await get('/auth/me', caller.token)).status).toBe(200)
+  })
+
+  it('answers 204 for an unknown id and for a non-UUID', async () => {
+    const caller = await signedInDevice()
+
+    expect(
+      (
+        await del(
+          '/auth/logins/0f00000e-0000-4000-8000-0000000000ff',
+          caller.token,
+        )
+      ).status,
+    ).toBe(204)
+    expect((await del('/auth/logins/not-a-uuid', caller.token)).status).toBe(
+      204,
+    )
   })
 })

@@ -282,6 +282,30 @@ export function createAuthRoutes({
     }
   })
 
+  auth.delete('/logins/:id', requireAuth, async (c) => {
+    const id = c.req.param('id')
+    const context = c.get('auth')
+
+    // Checked first, and precisely: the boards give the reason ("only your
+    // own row lacks them — your exit is SIGN OUT"), and the consequence is
+    // stronger than a screen rule. Since no Login can disable itself, a
+    // Household never reaches zero active Logins by any single act.
+    if (id === context.loginId) {
+      return c.json({ error: 'cannot_revoke_self' }, 400)
+    }
+
+    // 204 whether or not a row matched — same convention as
+    // `DELETE /invites/:id`.
+    if (!isUuid(id)) return c.body(null, 204)
+
+    try {
+      await service.revokeLogin(context, id)
+      return c.body(null, 204)
+    } catch (error) {
+      return failure(c, error)
+    }
+  })
+
   auth.get('/devices', requireAuth, async (c) => {
     try {
       const devices = await service.listDevices(c.get('auth'))

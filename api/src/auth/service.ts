@@ -936,6 +936,66 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
     },
 
     /**
+     * Disables another Login in this Household (story 28) — one transaction,
+     * in this order:
+     *
+     * 1. `login.disabled_at`, guarded by `disabled_at is null` so a
+     *    double-tap cannot move the timestamp.
+     * 2. `revoked_at` on its Devices.
+     * 3. `revoked_at` on Invites **bound to** it — a device link into a Login
+     *    nobody may use is a live credential for a dead account.
+     *
+     * Invites that Login *created* for other People are left alone: a join
+     * Invite creates a Login for somebody else, and Kees's onboarding does
+     * not collapse because Els lost access.
+     *
+     * Step 1 alone would already lock the account out — the middleware
+     * rejects a disabled Login, and `login/verify`, `device/claim` and
+     * `mintDeviceLink` each check it. Steps 2 and 3 exist so the Devices
+     * list and the Invite list stop *claiming* something no longer true.
+     *
+     * **Nothing here touches `op`.** That is how story 28's "everything they
+     * recorded stays" is kept — by construction rather than by care.
+     *
+     * Refusing the caller's own Login is the route's job, not this one's:
+     * it is a request-shape rule, and the route answers it with a `400`
+     * before any work starts.
+     */
+    async revokeLogin(context: AuthContext, loginId: string): Promise<void> {
+      const now = new Date(clock.now())
+
+      await db.transaction().execute(async (trx) => {
+        const disabled = await trx
+          .updateTable('login')
+          .set({ disabled_at: now })
+          .where('id', '=', loginId)
+          .where('household_id', '=', context.householdId)
+          .where('disabled_at', 'is', null)
+          .returning('id')
+          .executeTakeFirst()
+
+        // Not ours, already disabled, or no such row — all one answer, and
+        // nothing further to revoke.
+        if (disabled === undefined) return
+
+        await trx
+          .updateTable('device')
+          .set({ revoked_at: now })
+          .where('login_id', '=', loginId)
+          .where('revoked_at', 'is', null)
+          .execute()
+
+        await trx
+          .updateTable('invite')
+          .set({ revoked_at: now })
+          .where('login_id', '=', loginId)
+          .where('used_at', 'is', null)
+          .where('revoked_at', 'is', null)
+          .execute()
+      })
+    },
+
+    /**
      * Every Device signed in as this Login. Coarse labels only — no IPs, no
      * fingerprinting (`docs/design/README.md` §12).
      */
