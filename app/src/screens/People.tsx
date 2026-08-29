@@ -13,6 +13,7 @@ import { sortedPeople } from '../depot/people'
 import { formatDateTime } from '../format'
 import { useDepot } from '../depot/store'
 import { syncLabel, syncTone } from '../depot/syncLabel'
+import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './People.module.css'
 
 /**
@@ -206,6 +207,13 @@ export function People({
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
   const sync = useDepot((depot) => depot.sync)
+
+  // `splitPane: false` — `/account/people` has no two-pane view: below Desktop
+  // it is a screen of its own, and at Desktop it is not this component at all
+  // but Account's inline card. The hook is called unconditionally, before the
+  // `variant === 'inline'` return below, because a hook cannot be; `inline`
+  // simply never reads the answer.
+  const header = useScreenHeader({ splitPane: false })
 
   const [editing, setEditing] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -613,22 +621,34 @@ export function People({
 
   return (
     <div className={styles['screen']}>
-      <header className={styles['header']}>
-        <Link href="/account" className={styles['back']}>
-          ‹ ACCOUNT
-        </Link>
-        <span className={styles['sync']}>
-          <span
-            className={`${styles['syncDot']} ${
-              syncTone(sync) === 'unreachable'
-                ? styles['syncDotUnreachable']
-                : ''
-            }`}
-            aria-hidden="true"
-          />
-          {syncLabel(sync)}
-        </span>
-      </header>
+      {/* `useScreenHeader`'s rule (`frontend-design.md` §3.3): the back link
+          unless its destination is already on the page, the sync line at
+          Split alone. This screen only exists below Desktop, so what the two
+          answers come to here is `‹ ACCOUNT` at both widths and the sync line
+          at Split — but the rule is asked rather than spelled out, because a
+          rule spelled per screen is a chance to spell it differently. */}
+      {header.band && (
+        <header className={styles['header']}>
+          {header.backLink && (
+            <Link href="/account" className={styles['back']}>
+              ‹ ACCOUNT
+            </Link>
+          )}
+          {header.syncLine && (
+            <span className={styles['sync']}>
+              <span
+                className={`${styles['syncDot']} ${
+                  syncTone(sync) === 'unreachable'
+                    ? styles['syncDotUnreachable']
+                    : ''
+                }`}
+                aria-hidden="true"
+              />
+              {syncLabel(sync)}
+            </span>
+          )}
+        </header>
+      )}
 
       {body}
     </div>

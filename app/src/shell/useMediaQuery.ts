@@ -62,9 +62,12 @@ export interface ScreenPlacement {
    * it was pushed from drawn beside it at 52–64em?
    *
    * True for `GearDetail`, which `DepotView` renders in the right-hand pane
-   * with the Depot list in the left. False for `Trip`, `NewTrip` and
-   * `Account`: `App.tsx` routes each of them to a screen of its own at every
-   * width, and `DepotView` is the only two-pane view there is.
+   * with the Depot list in the left — and true for nothing else, because
+   * `DepotView` is the only two-pane view `App.tsx` has. Every other pushed
+   * screen answers `false`, `AddGear` included: `Screens A` §06 draws
+   * `Add gear — split 900` as a pane with the Depot list beside it, and
+   * `<Route path="/add">` renders it standalone, so the answer is about the
+   * app as built rather than as drawn.
    *
    * Named for the placement rather than for the screen because that is what
    * the answer reads: a screen with its own list beside it needs no link back
@@ -89,15 +92,12 @@ export interface ScreenHeader {
 }
 
 /**
- * Whether `Trip`, `NewTrip`, `GearDetail` or `Account` draws its own back link
- * and its own sync line. Four screens ask, and a rule spelled four times is
- * three chances to spell it differently.
- *
- * Four, not every pushed screen: `AddGear`, `People` and `Devices` still spell
- * their own band. That debt is stated in
- * [frontend-design §3.3](../../../docs/frontend-design.md), which names what
- * each of them prints at which width; converting them is a code change and
- * deliberately not this round's.
+ * Whether a pushed screen draws its own back link and its own sync line.
+ * **Every screen that draws a sync line asks** — `AddGear`, `GearDetail`,
+ * `Trip`, `NewTrip`, `Account`, `People` and `Devices`, which is all seven of
+ * them — because a rule spelled seven times is six chances to spell it
+ * differently, and that is exactly how `Account` came to carry `Trip`'s
+ * defect from a different slice.
  *
  * ## The sync line: at Split, and only at Split
  *
@@ -126,9 +126,9 @@ export interface ScreenHeader {
  *   `SYNCED 14:32`, and the main column carries neither.
  * - **At Split, it depends on {@link ScreenPlacement.splitPane}.** The rail
  *   draws no labels, so a screen standing alone there still owes the link —
- *   and `Trip` and `NewTrip` do stand alone, since `DepotView` is the only
- *   two-pane view. A detail pane does not: the list is beside it, which is
- *   why `Depot split` contains no `‹` anywhere.
+ *   and every caller but `GearDetail` does stand alone, since `DepotView` is
+ *   the only two-pane view. A detail pane does not: the list is beside it,
+ *   which is why `Depot split` contains no `‹` anywhere.
  * - **Below Split, always.** There are no panes and the nav is three tabs.
  */
 export function useScreenHeader({ splitPane }: ScreenPlacement): ScreenHeader {

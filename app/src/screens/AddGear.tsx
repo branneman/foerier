@@ -13,6 +13,7 @@ import { HomePicker } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
+import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './AddGear.module.css'
 
 /**
@@ -20,9 +21,12 @@ import styles from './AddGear.module.css'
  * round 2 (`docs/design/README.md` §3b, Screens A §06).
  *
  * **A screen, not a sheet** — confirmed against the sheet alternative rather
- * than inherited: the OS keyboard owns the lower half for a whole sitting,
- * the Home picker stacks on top as the only sheet, and Split renders the same
- * form in the detail pane with the list kept.
+ * than inherited: the OS keyboard owns the lower half for a whole sitting, and
+ * the Home picker stacks on top as the only sheet. The board's
+ * `Add gear — split 900` draws the form in a detail pane with the Depot list
+ * kept beside it; `App.tsx` routes `/add` to a screen of its own at every
+ * width, so that pane is drawn and not built — which is why this screen
+ * answers {@link useScreenHeader} `splitPane: false`.
  *
  * ## Order = the ledger line being written
  *
@@ -122,6 +126,11 @@ export function AddGear() {
   const [recorded, setRecorded] = useState<Recorded | null>(null)
   const [sessionCount, setSessionCount] = useState(0)
 
+  // `splitPane: false` — see the class docstring: `/add` is its own screen at
+  // every width, so at Split the back link is the only route back to the
+  // Depot.
+  const header = useScreenHeader({ splitPane: false })
+
   const nameField = useRef<HTMLInputElement>(null)
 
   const trimmedName = name.trim()
@@ -181,18 +190,29 @@ export function AddGear() {
 
   return (
     <div className={styles['screen']}>
-      {/* The same header gear detail carries, and the one every board frame
-          of this screen draws. Without it the only way back from a form is
-          the tab bar. */}
-      <header className={styles['header']}>
-        <Link href="/" className={styles['back']}>
-          ‹ DEPOT
-        </Link>
-        <span className={styles['sync']}>
-          <span className={styles['syncDot']} aria-hidden="true" />
-          {syncLabel(sync)}
-        </span>
-      </header>
+      {/* The same band gear detail carries, under the same rule
+          (`frontend-design.md` §3.3). Below Desktop the only other way back
+          from a form is the tab bar or the rail, neither of which names the
+          Depot, so the link is what this band is for; at Desktop the 216px
+          sidebar's own row is where `‹ DEPOT` points, so the link goes. The
+          sync line is drawn at Split alone, the one mode where `AppShell`'s
+          marker is a bare rail dot with no words. `useScreenHeader` decides
+          both, and at Desktop it withholds the band entirely. */}
+      {header.band && (
+        <header className={styles['header']}>
+          {header.backLink && (
+            <Link href="/" className={styles['back']}>
+              ‹ DEPOT
+            </Link>
+          )}
+          {header.syncLine && (
+            <span className={styles['sync']}>
+              <span className={styles['syncDot']} aria-hidden="true" />
+              {syncLabel(sync)}
+            </span>
+          )}
+        </header>
+      )}
 
       <div className={styles['titleRow']}>
         <h1 className={styles['title']}>Add gear</h1>

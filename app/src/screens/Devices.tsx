@@ -7,6 +7,7 @@ import { formatDate, formatDateTime } from '../format'
 import { useDepot } from '../depot/store'
 import { syncLabel, syncTone } from '../depot/syncLabel'
 import { clearLocalData as clearLocalDataForReal } from '../depot/wiring'
+import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Devices.module.css'
 
 /**
@@ -410,6 +411,10 @@ export function Devices({
   clearLocalData,
 }: DevicesProps) {
   const sync = useDepot((depot) => depot.sync)
+  // `splitPane: false` — `/account/devices` has no two-pane view, and at
+  // Desktop it has no render at all: `App.tsx` redirects it to `/account`
+  // there, where the same rows unfold into that screen's own card.
+  const header = useScreenHeader({ splitPane: false })
   const [devices, setDevices] = useState<readonly DeviceRow[]>([])
   const [devicesStatus, setDevicesStatus] = useState<LoadStatus>('loading')
   const search = useSearch()
@@ -466,22 +471,32 @@ export function Devices({
 
   return (
     <div className={styles['screen']}>
-      <header className={styles['header']}>
-        <Link href="/account" className={styles['back']}>
-          ‹ ACCOUNT
-        </Link>
-        <span className={styles['sync']}>
-          <span
-            className={`${styles['syncDot']} ${
-              syncTone(sync) === 'unreachable'
-                ? styles['syncDotUnreachable']
-                : ''
-            }`}
-            aria-hidden="true"
-          />
-          {syncLabel(sync)}
-        </span>
-      </header>
+      {/* `useScreenHeader`'s rule (`frontend-design.md` §3.3), the same one
+          People asks one screen along: the back link unless its destination
+          is already drawn, the sync line at Split alone — the one mode where
+          `AppShell`'s marker is a bare rail dot with no words. */}
+      {header.band && (
+        <header className={styles['header']}>
+          {header.backLink && (
+            <Link href="/account" className={styles['back']}>
+              ‹ ACCOUNT
+            </Link>
+          )}
+          {header.syncLine && (
+            <span className={styles['sync']}>
+              <span
+                className={`${styles['syncDot']} ${
+                  syncTone(sync) === 'unreachable'
+                    ? styles['syncDotUnreachable']
+                    : ''
+                }`}
+                aria-hidden="true"
+              />
+              {syncLabel(sync)}
+            </span>
+          )}
+        </header>
+      )}
 
       <h1 className={styles['title']}>Devices</h1>
       <p className={styles['count']}>

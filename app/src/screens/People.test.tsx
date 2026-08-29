@@ -17,6 +17,8 @@ import {
   DepotProvider,
   type EngineFactory,
 } from '../depot/store'
+import { SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { People, type PeopleProps } from './People'
 
 /**
@@ -712,5 +714,36 @@ describe('the People screen', () => {
     expect(
       within(row).queryByRole('link', { name: '›' }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('People — the band above the title', () => {
+  /**
+   * `useScreenHeader`'s rule on a screen that answers `splitPane: false`.
+   * Two widths, because two are all this render has: `App.tsx` redirects
+   * `/account/people` to `/account` at Desktop, where the `inline` variant
+   * draws the same rows inside Account's card and no band at all — which the
+   * inline test above already pins.
+   *
+   * Half the fact, as always without the shell: an absence here says this
+   * screen withheld a line, not that nothing else drew one.
+   * `shell/screenBand.test.tsx` counts the composed page.
+   */
+  it('draws the back link and no sync line below Split', async () => {
+    renderPeople()
+    await screen.findByTestId(`person-row-${MARK}`)
+
+    // `AppShell`'s own header band already states it, in words, at this width.
+    expect(screen.getByRole('link', { name: '‹ ACCOUNT' })).toBeVisible()
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+
+  it('draws both at Split, where the rail has neither a label nor a word', async () => {
+    setViewport(SPLIT)
+    renderPeople()
+    await screen.findByTestId(`person-row-${MARK}`)
+
+    expect(screen.getByRole('link', { name: '‹ ACCOUNT' })).toBeVisible()
+    expect(screen.getByText('SYNCED')).toBeVisible()
   })
 })

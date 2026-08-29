@@ -19,6 +19,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { Devices } from './Devices'
 
 /**
@@ -492,5 +494,35 @@ describe('Devices', () => {
       name: 'Sign out this device',
     })
     expect(signOut.className).not.toBe('')
+  })
+})
+
+describe('Devices — the band above the title', () => {
+  /**
+   * `useScreenHeader`'s rule on a screen that answers `splitPane: false`.
+   * Two widths, because two are all this screen has: `App.tsx` redirects
+   * `/account/devices` to `/account` at Desktop, where the same rows unfold
+   * into that screen's own card instead.
+   *
+   * Half the fact, as always without the shell: an absence here says this
+   * screen withheld a line, not that nothing else drew one.
+   * `shell/screenBand.test.tsx` counts the composed page.
+   */
+  it('draws the back link and no sync line below Split', async () => {
+    await renderDevices()
+    await screen.findByRole('heading', { name: 'Devices' })
+
+    // `AppShell`'s own header band already states it, in words, at this width.
+    expect(screen.getByRole('link', { name: '‹ ACCOUNT' })).toBeVisible()
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+
+  it('draws both at Split, where the rail has neither a label nor a word', async () => {
+    setViewport(SPLIT)
+    await renderDevices()
+    await screen.findByRole('heading', { name: 'Devices' })
+
+    expect(screen.getByRole('link', { name: '‹ ACCOUNT' })).toBeVisible()
+    expect(screen.getByText('SYNCED')).toBeVisible()
   })
 })

@@ -21,6 +21,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { AddGear } from './AddGear'
 
 /**
@@ -559,20 +561,49 @@ describe('Add gear — the trait', () => {
     ).toBeInTheDocument()
   })
 
-  // Every board frame of this screen carries `‹ DEPOT` + the sync state, the
-  // same header gear detail has. Without it the only way back is the tab bar,
-  // which is not where the eye goes on a form.
-  it('offers the way back the board draws', async () => {
-    const store = await seededStore()
-    renderAddGear(store)
-    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeInTheDocument()
-  })
-
   it('states that the record is local and syncs on its own', async () => {
     const store = await seededStore()
     renderAddGear(store)
     expect(
       screen.getByText('RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('Add gear — the band above the title', () => {
+  /**
+   * `useScreenHeader`'s rule on a screen that answers `splitPane: false`.
+   * The board draws `Add gear — split 900` as a pane with the Depot list
+   * beside it; `App.tsx` routes `/add` to a screen of its own at every width,
+   * so at Split `‹ DEPOT` still points at something not on the page.
+   *
+   * These are half the fact: this suite renders the screen without
+   * `AppShell`, so an absence here says the screen withheld a line and
+   * nothing about whether the shell drew one. `shell/screenBand.test.tsx`
+   * counts the composed page, at these same three widths.
+   */
+  it('draws the back link and no sync line below Split', async () => {
+    renderAddGear(await seededStore())
+
+    // `AppShell`'s own header band already states it, in words, at this
+    // width — the width this screen is used at most.
+    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeVisible()
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+
+  it('draws both at Split, where the rail has neither a label nor a word', async () => {
+    setViewport(SPLIT)
+    renderAddGear(await seededStore())
+
+    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeVisible()
+    expect(screen.getByText('SYNCED')).toBeVisible()
+  })
+
+  it('draws neither at Desktop, where the sidebar is the navigation', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderAddGear(await seededStore())
+
+    expect(screen.queryByRole('link', { name: '‹ DEPOT' })).toBeNull()
+    expect(screen.queryByText('SYNCED')).toBeNull()
   })
 })
