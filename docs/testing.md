@@ -154,6 +154,7 @@ registry** below so a persistent `foerier_test` DB never collides across classes
 | 12 | `0f00000c-…-00000000000c` | `testReset.test.ts` — the disposable E2E household |
 | 13 | `0f00000d-…-00000000000d` | `testReset.test.ts` — the household that must stay untouched |
 | 14 | `0f00000e-…-00000000000e` | `logins.test.ts` — the Logins list and revoking a Login |
+| 15 | `0f00000f-…-00000000000f` | `invites.test.ts` — in-app join Invites and purpose-scoped list/revoke |
 | _(claim the next free slot when adding a server-integration class)_ | | |
 
 Two rules the suite learned the hard way and that a new class must follow:

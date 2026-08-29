@@ -48,6 +48,23 @@ export class AuthError extends Error {
   }
 }
 
+/**
+ * A refusal the caller can act on, as distinct from `AuthError`, which is the
+ * vague `401` protecting the unauthenticated redemption endpoints. These
+ * callers are already inside the Household and can already list its People,
+ * so there is nothing to enumerate and precision costs nothing
+ * (`auth-design.md` §9.4).
+ */
+export class InviteRequestError extends Error {
+  readonly code: string
+
+  constructor(code: string) {
+    super(code)
+    this.name = 'InviteRequestError'
+    this.code = code
+  }
+}
+
 export interface AuthContext {
   deviceId: string
   loginId: string
@@ -840,6 +857,110 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
         householdId: context.householdId,
         personId: context.personId,
         loginId: context.loginId,
+        createdByLogin: context.loginId,
+      })
+    },
+
+    /**
+     * A join Invite for a Person recorded in this Household (story 28).
+     *
+     * Two guards and one supersede, in one transaction:
+     *
+     * - an active Login for that Person is `person_has_login`. The partial
+     *   index would catch it too, but only at redemption — on a stranger's
+     *   phone, behind the vague `401`, which is not enforcement a
+     *   Quartermaster can act on.
+     * - the Person's other outstanding join Invites are revoked, which keeps
+     *   `INVITE OUT` singular **by construction**. Two Quartermasters on two
+     *   Devices are the only path to a second one, and one link quietly
+     *   superseding the other beats two links of which the second dies at
+     *   redemption for reasons nobody can see.
+     *
+     * `person_recorded: true` is stated here rather than derived, which is
+     * the rule `invite.person_recorded` exists to keep: the client picked
+     * this Person off the folded list, so the joiner does not name
+     * themselves. The server has not folded an op and cannot check it.
+     */
+    async issueJoinInvite(
+      context: AuthContext,
+      personId: string,
+    ): Promise<{ inviteId: string; secret: string; expiresAt: Date }> {
+      const inviteId = ids.next()
+      const { secret, secretHash } = generateInviteSecret()
+      const expiresAt = inviteExpiry('join', clock)
+      const now = new Date(clock.now())
+
+      await db.transaction().execute(async (trx) => {
+        const existing = await trx
+          .selectFrom('login')
+          .select('id')
+          .where('household_id', '=', context.householdId)
+          .where('person_id', '=', personId)
+          .where('disabled_at', 'is', null)
+          .executeTakeFirst()
+
+        if (existing !== undefined) {
+          throw new InviteRequestError('person_has_login')
+        }
+
+        await trx
+          .updateTable('invite')
+          .set({ revoked_at: now })
+          .where('household_id', '=', context.householdId)
+          .where('person_id', '=', personId)
+          .where('purpose', '=', 'join')
+          .where('used_at', 'is', null)
+          .where('revoked_at', 'is', null)
+          .execute()
+
+        await trx
+          .insertInto('invite')
+          .values({
+            id: inviteId,
+            household_id: context.householdId,
+            person_id: personId,
+            purpose: 'join',
+            secret_hash: secretHash,
+            login_id: null,
+            created_by_login: context.loginId,
+            person_recorded: true,
+            expires_at: expiresAt,
+          })
+          .execute()
+      })
+
+      return { inviteId, secret, expiresAt }
+    },
+
+    /**
+     * A device link against **another Person's** Login.
+     *
+     * `auth-design.md` §3.1 has always said a device Invite may be issued by
+     * "that Login, **or any Quartermaster of the Household**"; this is the
+     * route that finally means it. The Login is resolved from the Person
+     * inside this Household — never taken from the body — so §9.3's tenancy
+     * rule applies unrelaxed.
+     */
+    async issueDeviceLinkFor(
+      context: AuthContext,
+      personId: string,
+    ): Promise<{ inviteId: string; secret: string; expiresAt: Date }> {
+      const login = await db
+        .selectFrom('login')
+        .select('id')
+        .where('household_id', '=', context.householdId)
+        .where('person_id', '=', personId)
+        .where('disabled_at', 'is', null)
+        .executeTakeFirst()
+
+      if (login === undefined) {
+        throw new InviteRequestError('no_login_for_person')
+      }
+
+      return insertDeviceLinkInvite({
+        householdId: context.householdId,
+        personId,
+        loginId: login.id,
         createdByLogin: context.loginId,
       })
     },

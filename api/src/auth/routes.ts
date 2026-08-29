@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import type { RegistrationResponseJSON } from '@simplewebauthn/server'
 
 import type { RateLimiter } from './rateLimiter.ts'
-import { AuthError, type AuthService } from './service.ts'
+import { AuthError, InviteRequestError, type AuthService } from './service.ts'
 import type { AuthVariables } from './middleware.ts'
 import type { MiddlewareHandler } from 'hono'
 
@@ -211,27 +211,46 @@ export function createAuthRoutes({
   })
 
   auth.post('/invites', requireAuth, async (c) => {
-    const body = await readJson<{ purpose: unknown }>(c)
+    const body = await readJson<{ purpose: unknown; person_id: unknown }>(c)
+    const context = c.get('auth')
+    const personId =
+      typeof body.person_id === 'string' && isUuid(body.person_id)
+        ? body.person_id
+        : null
 
-    // Only `device` until S5. A join Invite must name a Person, and there is
-    // no way to pick one before S4 records People — accepting one here would
-    // produce exactly the unnamed-Quartermaster defect 0004 exists to prevent.
-    // A plain 400 rather than the vague failure: there is no secret to protect
-    // and no enumeration surface, so being precise costs nothing.
-    if (body.purpose !== 'device') {
-      return c.json({ error: 'unsupported_purpose' }, 400)
-    }
-
+    // Precise 400s throughout: there is no secret to protect here and no
+    // enumeration surface, so being vague would cost the caller and buy
+    // nothing (`auth-design.md` §9.4 governs the unauthenticated routes).
     try {
-      const { inviteId, secret, expiresAt } = await service.issueDeviceLink(
-        c.get('auth'),
-      )
-      return c.json({
-        id: inviteId,
-        secret,
-        expires_at: expiresAt.toISOString(),
-      })
+      if (body.purpose === 'join') {
+        if (personId === null) {
+          return c.json({ error: 'person_id_required' }, 400)
+        }
+        const issued = await service.issueJoinInvite(context, personId)
+        return c.json({
+          id: issued.inviteId,
+          secret: issued.secret,
+          expires_at: issued.expiresAt.toISOString(),
+        })
+      }
+
+      if (body.purpose === 'device') {
+        const issued =
+          personId === null || personId === context.personId
+            ? await service.issueDeviceLink(context)
+            : await service.issueDeviceLinkFor(context, personId)
+        return c.json({
+          id: issued.inviteId,
+          secret: issued.secret,
+          expires_at: issued.expiresAt.toISOString(),
+        })
+      }
+
+      return c.json({ error: 'unsupported_purpose' }, 400)
     } catch (error) {
+      if (error instanceof InviteRequestError) {
+        return c.json({ error: error.code }, 400)
+      }
       return failure(c, error)
     }
   })
