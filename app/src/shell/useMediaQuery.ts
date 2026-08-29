@@ -52,43 +52,94 @@ export const DESKTOP = '(min-width: 64em)'
 /** Split and up: the two-pane list + detail unlock. */
 export const SPLIT = '(min-width: 52em)'
 
-/** What {@link useScreenHeader} answers: two questions, two breakpoints. */
+/**
+ * Where a screen is standing when it asks {@link useScreenHeader} — the one
+ * fact the answer turns on that a breakpoint cannot supply.
+ */
+export interface ScreenPlacement {
+  /**
+   * Is this screen the **detail pane of a two-pane view at Split** — the list
+   * it was pushed from drawn beside it at 52–64em?
+   *
+   * True for `GearDetail`, which `DepotView` renders in the right-hand pane
+   * with the Depot list in the left. False for `Trip`, `NewTrip` and
+   * `Account`: `App.tsx` routes each of them to a screen of its own at every
+   * width, and `DepotView` is the only two-pane view there is.
+   *
+   * Named for the placement rather than for the screen because that is what
+   * the answer reads: a screen with its own list beside it needs no link back
+   * to that list.
+   */
+  splitPane: boolean
+}
+
+/** What {@link useScreenHeader} answers: the band, and the two things in it. */
 export interface ScreenHeader {
-  /** Draw `‹ DEPOT` / `‹ TRIPS`? Withheld from Desktop. */
+  /**
+   * Draw the `<header>` band at all? True exactly when it would hold
+   * something — the two halves below are withheld at different widths, and at
+   * Split a `splitPane` screen draws the sync line with no back link beside
+   * it.
+   */
+  band: boolean
+  /** Draw `‹ DEPOT` / `‹ TRIPS`? */
   backLink: boolean
-  /** Draw the sync line in the main column? Withheld from Split up. */
+  /** Draw the sync line in the main column? */
   syncLine: boolean
 }
 
 /**
  * Whether `Trip`, `NewTrip`, `GearDetail` or `Account` draws its own back link
- * and its own sync line. **The two are withheld at two different widths**, and
- * the one place that says so is here — four screens ask, and a rule spelled
- * four times is three chances to spell it differently.
+ * and its own sync line. Four screens ask, and a rule spelled four times is
+ * three chances to spell it differently.
  *
  * Four, not every pushed screen: `AddGear`, `People` and `Devices` still spell
- * their own band and get it wrong. That debt is stated in
+ * their own band. That debt is stated in
  * [frontend-design §3.3](../../../docs/frontend-design.md), which names what
- * each of them prints; converting them is a code change and deliberately not
- * this round's.
+ * each of them prints at which width; converting them is a code change and
+ * deliberately not this round's.
  *
- * - **The back link goes at Desktop.** From 64em the 216px sidebar is labeled
- *   navigation and the row a `‹ TRIPS` points at is *in* it. At Split the nav
- *   is a 56px icon rail with no labels, so a screen there still owes the
- *   reader the name of where they came from.
- * - **The sync line goes from Split up.** {@link AppShell} draws the header
- *   band on `mode === 'tabs'` alone; from 52em the marker moves into the nav,
- *   which is where the boards put it — *"never in the main column at
- *   desktop"*. A screen that kept drawing it would state `SYNCED` twice from
- *   52em — beside its title and again in the nav, where at Split the bare rail
- *   dot carries it as an `aria-label` and the Desktop sidebar draws it.
+ * ## The sync line: at Split, and only at Split
  *
- * The `<header>` element itself exists exactly when the back link does, and
- * needs no third answer: below Split is inside below Desktop, so a withheld
- * back link is never accompanied by a surviving sync line.
+ * {@link AppShell} draws a **legible** marker in two of its three modes and
+ * not in the third:
+ *
+ * | Mode | `AppShell`'s marker | So the screen draws |
+ * | --- | --- | --- |
+ * | below Split (`tabs`) | the header band's `● SYNCED`, in words | nothing |
+ * | Split (`rail`) | a bare 6px dot; the words are an `aria-label` | **its own line** |
+ * | Desktop (`sidebar`) | the sidebar's line, in words | nothing |
+ *
+ * So a screen draws its own sync line at Split alone. Both board frames that
+ * draw a pushed screen at 900 agree: on `Screens A` §05 `Depot split` the
+ * detail pane's own band carries `● SYNCED` while the rail beside it ends in a
+ * bare dot, and §06's `Add gear — split 900` is the same pane, the same dot.
+ *
+ * ## The back link: unless its destination is already on the page
+ *
+ * `‹ DEPOT` points at the Depot. A screen owes the reader that link only where
+ * the Depot is not already in front of them.
+ *
+ * - **At Desktop, never.** The 216px sidebar is labeled navigation and the row
+ *   the link points at is *in* it — which is what `Screens B` §02A's
+ *   `Trip screen — S6 desktop` draws: the sidebar carries `TRIPS` and
+ *   `SYNCED 14:32`, and the main column carries neither.
+ * - **At Split, it depends on {@link ScreenPlacement.splitPane}.** The rail
+ *   draws no labels, so a screen standing alone there still owes the link —
+ *   and `Trip` and `NewTrip` do stand alone, since `DepotView` is the only
+ *   two-pane view. A detail pane does not: the list is beside it, which is
+ *   why `Depot split` contains no `‹` anywhere.
+ * - **Below Split, always.** There are no panes and the nav is three tabs.
  */
-export function useScreenHeader(): ScreenHeader {
+export function useScreenHeader({ splitPane }: ScreenPlacement): ScreenHeader {
   const isSplit = useMediaQuery(SPLIT)
   const isDesktop = useMediaQuery(DESKTOP)
-  return { backLink: !isDesktop, syncLine: !isSplit }
+
+  // Desktop is inside Split, so `!isSplit` already withholds the pane's link
+  // at Desktop too — the sidebar's reason and the pane's reason happen to
+  // agree there.
+  const backLink = splitPane ? !isSplit : !isDesktop
+  const syncLine = isSplit && !isDesktop
+
+  return { band: backLink || syncLine, backLink, syncLine }
 }

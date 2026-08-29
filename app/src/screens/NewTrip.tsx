@@ -106,7 +106,9 @@ export function NewTrip() {
   // layout and no stylesheet can carry it (`useMediaQuery`'s own reason, one
   // step further along than a pane that exists or does not).
   const desk = useMediaQuery(DESKTOP)
-  const header = useScreenHeader()
+  // `splitPane: false` — `/trips/new` has no two-pane view at any width, so at
+  // Split the back link is the only route out of a half-typed Trip.
+  const header = useScreenHeader({ splitPane: false })
 
   const trimmedName = name.trim()
   // The name is the only requirement. Dates are optional by story 5 — "a
@@ -160,19 +162,21 @@ export function NewTrip() {
 
   return (
     <div className={styles['screen']}>
-      {/* Below Desktop the only other way out of a half-typed Trip is the
-          tab bar, so the back link is what this band is for. At Desktop the
-          216px sidebar is labeled navigation and its `TRIPS` row is where
-          `‹ TRIPS` points, so the link goes and the band with it — the
-          `Gear list builder` artboard that draws `‹ TRIPS` is a bare pane
-          with no sidebar. The sync line goes one band earlier, at Split,
-          where `AppShell` takes the marker into the nav. `useScreenHeader`
-          decides both. */}
-      {header.backLink && (
+      {/* Below Desktop the only other way out of a half-typed Trip is the tab
+          bar or the rail, neither of which names `TRIPS`, so the back link is
+          what this band is for. At Desktop the 216px sidebar is labeled
+          navigation and its `TRIPS` row is where `‹ TRIPS` points, so the link
+          goes — the `Gear list builder` artboard that draws `‹ TRIPS` is a
+          bare pane with no sidebar. The sync line is drawn at **Split alone**,
+          the one mode where `AppShell`'s marker is a bare rail dot with no
+          words. `useScreenHeader` decides both. */}
+      {header.band && (
         <header className={styles['header']}>
-          <Link href="/trips" className={styles['back']}>
-            ‹ TRIPS
-          </Link>
+          {header.backLink && (
+            <Link href="/trips" className={styles['back']}>
+              ‹ TRIPS
+            </Link>
+          )}
           {header.syncLine && (
             <span className={styles['sync']}>
               <span className={styles['syncDot']} aria-hidden="true" />

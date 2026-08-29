@@ -133,27 +133,30 @@ function soleTrip(store: StoreApi<DepotStoreState>): string {
 
 describe('New trip — the band above the title', () => {
   /**
-   * `useScreenHeader`'s rule. The back link is the only other way out of a
-   * half-typed Trip below Desktop; at Desktop the 216px sidebar's `TRIPS` row
-   * *is* where it points, so both it and the band go. The sync line goes one
-   * band earlier, at Split, because that is where `AppShell` takes the marker
-   * into the nav.
+   * `useScreenHeader`'s rule, on a screen that answers `splitPane: false` —
+   * `/trips/new` has no two-pane view at any width. The back link is the only
+   * other way out of a half-typed Trip below Desktop; at Desktop the 216px
+   * sidebar's `TRIPS` row *is* where it points, so it goes. The sync line is
+   * drawn at Split alone, the one mode where `AppShell`'s marker is a bare
+   * rail dot with no words beside it.
    */
-  it('draws both below Split', async () => {
+  it('draws the back link and no sync line below Split', async () => {
     renderNewTrip(await seeded())
 
+    // `AppShell`'s own header band already states it, in words, at this width.
     expect(screen.getByRole('link', { name: '‹ TRIPS' })).toBeVisible()
-    expect(screen.getByText('SYNCED')).toBeVisible()
+    expect(screen.queryByText('SYNCED')).toBeNull()
   })
 
-  it('keeps the back link at Split and hands the sync line to the rail', async () => {
+  it('draws both at Split, where the rail has neither a label nor a word', async () => {
     setViewport(SPLIT)
     renderNewTrip(await seeded())
 
     // The rail draws no labels, so the link is still the only thing naming
-    // where the reader came from; the marker is already in the rail.
+    // where the reader came from — and its sync marker is a bare 6px dot, so
+    // this band is the only legible statement of the state.
     expect(screen.getByRole('link', { name: '‹ TRIPS' })).toBeVisible()
-    expect(screen.queryByText('SYNCED')).toBeNull()
+    expect(screen.getByText('SYNCED')).toBeVisible()
   })
 
   it('draws neither at Desktop, where the sidebar is the navigation', async () => {

@@ -111,30 +111,36 @@ function renderGearDetail(store: StoreApi<DepotStoreState>, gearId: string) {
 }
 
 /**
- * **The band above the title, and the two widths it is withheld at** —
- * `useScreenHeader`'s rule, shared with `Trip`, `NewTrip` and `Account`.
+ * **The band above the title** — `useScreenHeader`'s rule, shared with `Trip`,
+ * `NewTrip` and `Account`, and read here through the one screen that answers
+ * `splitPane: true`.
  *
- * At Split this screen is the detail half of `DepotView`'s two panes, beside a
- * 56px rail that draws no labels; `‹ DEPOT` is the only thing naming where the
- * reader came from, so it stays. At Desktop the pane is gone and the 216px
- * labeled sidebar is beside it, with `DEPOT` in it as the very destination the
- * link points at — so it goes. The sync line goes one band earlier, at Split,
- * because `AppShell` draws the header on `mode === 'tabs'` alone and from 52em
- * the marker is already in the nav.
+ * At Split this screen is the detail half of `DepotView`'s two panes, with the
+ * Depot list in the other one: `‹ DEPOT` would point at something already on
+ * the page, so it goes — and `Depot split` (900) contains no `‹` at all. The
+ * sync line runs the other way. `AppShell` draws words in the phone header and
+ * in the Desktop sidebar but only a **bare dot** on the Split rail, so this
+ * band is where the state is legible at exactly that width, which is what the
+ * same frame draws: `● SYNCED` in the detail pane.
+ *
+ * These tests render the screen alone, so they prove one side of that. The
+ * count over shell **and** screen composed is `shell/screenBand.test.tsx`.
  */
 describe('Gear detail — the band above the title', () => {
-  it('draws both below Split', async () => {
+  it('draws the back link and no sync line below Split', async () => {
     const gearId = anId()
     const store = await seededStore([
       gearRecorded(gearId, { name: 'Tent', container: false, kind: 'single' }),
     ])
     renderGearDetail(store, gearId)
 
+    // `AppShell`'s own header band states `SYNCED` in words at this width; a
+    // second one here is the same fact printed twice on the primary device.
     expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeVisible()
-    expect(screen.getByText('SYNCED')).toBeVisible()
+    expect(screen.queryByText('SYNCED')).toBeNull()
   })
 
-  it('keeps the back link at Split and hands the sync line to the rail', async () => {
+  it('hands the back link to the list pane at Split and draws the sync line', async () => {
     setViewport(SPLIT)
     const gearId = anId()
     const store = await seededStore([
@@ -142,8 +148,8 @@ describe('Gear detail — the band above the title', () => {
     ])
     renderGearDetail(store, gearId)
 
-    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeVisible()
-    expect(screen.queryByText('SYNCED')).toBeNull()
+    expect(screen.queryByRole('link', { name: '‹ DEPOT' })).toBeNull()
+    expect(screen.getByText('SYNCED')).toBeVisible()
   })
 
   it('draws neither at Desktop, where the sidebar is the navigation', async () => {

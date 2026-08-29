@@ -328,17 +328,26 @@ describe('Account', () => {
 
   /**
    * `useScreenHeader`'s rule, on the screen that has drawn this band longest.
-   * The back link and the sync line are withheld at **two different widths**:
-   * the sidebar takes the link at Desktop, and `AppShell` takes the marker
-   * into the nav one band earlier, at Split.
+   * The two halves turn on different facts: the sidebar takes the back link at
+   * Desktop, while the sync line is drawn at **Split alone** — the one mode
+   * where `AppShell`'s marker is a bare rail dot rather than words.
    */
-  it('keeps the back link at Split and hands the sync line to the rail', async () => {
+  it('draws both at Split, where the rail carries only a dot', async () => {
     setViewport(SPLIT)
     await renderAccount({ personName: 'Mark' })
 
     expect(await screen.findByRole('link', { name: '‹ DEPOT' })).toBeVisible()
-    // Already in the 56px rail from 52em, so a second one beside the title
-    // states the same fact twice.
+    // The 56px rail's marker carries its words only as an `aria-label`, so
+    // this band is the one legible statement of the state at this width.
+    expect(screen.getByText('SYNCED')).toBeVisible()
+  })
+
+  it('draws the back link and no sync line below Split', async () => {
+    await renderAccount({ personName: 'Mark' })
+
+    // `AppShell`'s own header band states `SYNCED` in words below Split, so a
+    // second one here would print it twice on the primary device.
+    expect(await screen.findByRole('link', { name: '‹ DEPOT' })).toBeVisible()
     expect(screen.queryByText('SYNCED')).toBeNull()
   })
 

@@ -170,7 +170,9 @@ export function Account({
   )
   const sync = useDepot((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
-  const header = useScreenHeader()
+  // `splitPane: false` — `/account` is its own screen at every width; the only
+  // two-pane view in `App.tsx` is `DepotView`.
+  const header = useScreenHeader({ splitPane: false })
   const canAddPasskey = usePlatformAuthenticatorAvailable()
 
   const [householdName, setHouseholdName] = useState<string | null>(null)
@@ -334,14 +336,17 @@ export function Account({
     <div className={styles['screen']}>
       {/* Below Desktop this is a pushed screen off Depot; at Desktop the
           216px sidebar is already the nav, so `‹ DEPOT` does not repeat here
-          (`docs/design/README.md` §11). The sync line goes one band earlier,
-          because `AppShell` moves the marker into the nav from **Split** —
-          `useScreenHeader` is the one place both widths are decided. */}
-      {header.backLink && (
+          (`docs/design/README.md` §11). The sync line is drawn at **Split
+          alone**, the one mode where `AppShell`'s marker is a bare rail dot
+          carrying its words only as an `aria-label` — `useScreenHeader` is the
+          one place both are decided. */}
+      {header.band && (
         <header className={styles['header']}>
-          <Link href="/" className={styles['back']}>
-            ‹ DEPOT
-          </Link>
+          {header.backLink && (
+            <Link href="/" className={styles['back']}>
+              ‹ DEPOT
+            </Link>
+          )}
           {header.syncLine && (
             <span className={styles['sync']}>
               <span className={styles['syncDot']} aria-hidden="true" />

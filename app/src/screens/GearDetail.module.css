@@ -33,6 +33,11 @@
   .sync {
     display: flex;
     align-items: center;
+    /* At Split this band holds the sync line and nothing else — the back link
+       is withheld, because the Depot list is in the pane beside it. Without
+       this, `space-between`'s lone child sits at the leading edge; the board
+       draws `● SYNCED` at the trailing one. */
+    margin-left: auto;
     gap: var(--space-8);
     color: var(--color-ink-muted);
     font: var(--text-label) var(--font-mono);

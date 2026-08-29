@@ -313,16 +313,27 @@ describe('the trip screen — the header the board draws', () => {
     )
   })
 
-  it('keeps the back link at Split and hands the sync line to the rail', async () => {
+  it('draws both at Split, where the rail carries only a dot', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     setViewport(SPLIT)
     await renderTrip(`/trips/${ALPS}`, ...alps())
 
-    // `AppShell` draws the header band on `mode === 'tabs'` alone, so from
-    // 52em the sync marker is already in the rail and a second `SYNCED`
-    // beside the title states the same fact twice. The rail carries no
-    // labels, though, so `‹ TRIPS` is still the only thing naming where the
-    // reader came from — which is why the two are withheld at two widths.
+    // The rail's sync marker is a bare 6px dot whose words exist only as an
+    // `aria-label`, so this band is the one place the state is legible at
+    // this width. The rail carries no destination labels either, so
+    // `‹ TRIPS` is still the only thing naming where the reader came from —
+    // and a Trip is nobody's pane, so nothing else supplies it.
+    expect(screen.getByRole('link', { name: '‹ TRIPS' })).toBeVisible()
+    expect(screen.getByText('SYNCED')).toBeVisible()
+  })
+
+  it('draws the back link and no sync line below Split', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    // `AppShell` draws its header band on `mode === 'tabs'` — below Split —
+    // and states `SYNCED` in words there, so a second one beside the title
+    // would print it twice on the primary device.
     expect(screen.getByRole('link', { name: '‹ TRIPS' })).toBeVisible()
     expect(screen.queryByText('SYNCED')).toBeNull()
   })

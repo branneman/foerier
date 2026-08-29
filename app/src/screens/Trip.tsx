@@ -136,7 +136,9 @@ export function Trip() {
   const emit = useDepot((depot) => depot.emit)
   const sync = useDepot((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
-  const header = useScreenHeader()
+  // `splitPane: false` — `DepotView` is the only two-pane view in `App.tsx`,
+  // and a Trip is not in it: at Split this screen stands alone.
+  const header = useScreenHeader({ splitPane: false })
 
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -347,15 +349,18 @@ export function Trip() {
 
   return (
     <div className={styles['screen']}>
-      {/* Two withholdings at two widths, both `useScreenHeader`'s: the sidebar
-          is labeled navigation from Desktop, so `‹ TRIPS` goes there; the sync
-          marker moves into the nav from **Split**, so the line goes one band
-          earlier. `Account`, `GearDetail` and `NewTrip` read the same rule. */}
-      {header.backLink && (
+      {/* Both `useScreenHeader`'s, and neither is one width: `‹ TRIPS` goes at
+          Desktop, where the sidebar's own `TRIPS` row is what it points at,
+          and the sync line is drawn at **Split alone**, where `AppShell` puts
+          only a bare dot in the rail. `Account`, `GearDetail` and `NewTrip`
+          read the same rule. */}
+      {header.band && (
         <header className={styles['header']}>
-          <Link href="/trips" className={styles['back']}>
-            ‹ TRIPS
-          </Link>
+          {header.backLink && (
+            <Link href="/trips" className={styles['back']}>
+              ‹ TRIPS
+            </Link>
+          )}
           {header.syncLine && (
             <span className={styles['sync']}>
               <span className={styles['syncDot']} aria-hidden="true" />
