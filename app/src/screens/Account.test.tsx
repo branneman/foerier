@@ -362,6 +362,34 @@ describe('Account', () => {
   // a fetch that fails — the ordinary case offline, not the exception — used
   // to read as a confident, wrong "0 devices signed in." / "None on this
   // login." These pin the honest failure state instead.
+  /**
+   * The section the board reserves for `PEOPLE & LOGINS`, holding only the
+   * half S4 can fill. The rule that kept it out at S3.5 — an affordance that
+   * leads nowhere is worse than a missing one — now argues for it.
+   */
+  describe('the PEOPLE section', () => {
+    it('links to the People screen below Desktop', async () => {
+      await renderAccount({ personName: 'Mark' })
+      expect(screen.getByRole('link', { name: /People/ })).toHaveAttribute(
+        'href',
+        '/account/people',
+      )
+    })
+
+    it('counts the household in its summary row', async () => {
+      await renderAccount({ personName: 'Mark' })
+      expect(screen.getByRole('link', { name: /People/ })).toHaveTextContent(
+        '1 PERSON',
+      )
+    })
+
+    it('is titled PEOPLE, not the board`s PEOPLE & LOGINS, until S5', async () => {
+      await renderAccount({ personName: 'Mark' })
+      expect(screen.getByText('PEOPLE')).toBeInTheDocument()
+      expect(screen.queryByText('PEOPLE & LOGINS')).toBeNull()
+    })
+  })
+
   describe('when a load fails', () => {
     it('says passkeys could not be loaded, rather than claiming there are none', async () => {
       await renderAccount({ passkeysFail: true, platformAuthenticator: true })
@@ -397,6 +425,17 @@ describe('Account', () => {
   })
 
   describe('at Desktop', () => {
+    it('unfolds the People list inline instead of linking to it', async () => {
+      // The board draws desktop with the summary rows unfolded — "all three
+      // people inline" — so this is a media query, deciding which elements
+      // exist. `/account/people` redirects back here, exactly as
+      // `/account/devices` already does.
+      await renderAccount({ personName: 'Mark', desktop: true })
+
+      expect(screen.queryByRole('link', { name: /People/ })).toBeNull()
+      expect(screen.getByTestId('person-name')).toHaveTextContent('Mark')
+    })
+
     it('unfolds the full device list inline, with a per-row SIGN OUT except on THIS DEVICE', async () => {
       await renderAccount({ devices: threeDevices(), desktop: true })
 

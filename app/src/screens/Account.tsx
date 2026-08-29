@@ -15,6 +15,7 @@ import {
   SignOutThisDeviceSheet,
   useDeviceSignOut,
 } from './Devices'
+import { People } from './People'
 
 export interface AccountProps {
   api: AuthApi
@@ -125,12 +126,17 @@ function usePlatformAuthenticatorAvailable(): boolean {
  * load-bearing, not cosmetic: it is the same reasoning the boards give for
  * every other ordering decision in this slice.
  *
- * **PEOPLE & LOGINS is omitted outright.** Its screen is story 28's (S5,
- * `architecture-design.md` §8's slice plan) — building the row now would
- * point at nothing, and "an affordance that leads nowhere is worse than a
- * missing one" is the exact rule that kept the whole `ACCOUNT` affordance out
- * of the shell until this slice (`AppShell.tsx`'s own doc comment). It lands
- * with S5.
+ * **PEOPLE arrived at S4**, in the slot the board reserves for `PEOPLE &
+ * LOGINS`. The rule that kept it out at S3.5 — "an affordance that leads
+ * nowhere is worse than a missing one", the same rule that kept the whole
+ * `ACCOUNT` affordance out of the shell until then — now argues the other
+ * way: it leads to a real screen where People are recorded and renamed.
+ *
+ * It is titled **`PEOPLE`** rather than the board's `PEOPLE & LOGINS`
+ * because that is all it can hold. S5 (story 28) renames it and adds the
+ * right column, the login meta line, and the outstanding-invite row; those
+ * three obligations are written down in
+ * `docs/specs/2026-08-29-people-and-ownership.md` §7.
  *
  * **`Add a passkey on this device` renders only where the device can make
  * one** — gated on {@link usePlatformAuthenticatorAvailable}, hidden while
@@ -163,6 +169,9 @@ export function Account({
   onSignOut,
   clearLocalData,
 }: AccountProps) {
+  const peopleCount = useDepot(
+    (depot) => Object.keys(depot.state.people).length,
+  )
   const personName = useDepot(
     (depot) => depot.state.people[personId]?.name?.value ?? null,
   )
@@ -479,8 +488,32 @@ export function Account({
         </section>
       </div>
 
-      {/* PEOPLE & LOGINS lands with S5 (story 28) — omitted, see the doc
-          comment above `Account`. */}
+      <section className={isDesktop ? styles['card'] : styles['section']}>
+        <div className={styles['sectionHead']}>
+          {/* `PEOPLE`, not the board's `PEOPLE & LOGINS`: S5 adds the second
+              half and renames it then. */}
+          <span className={styles['sectionLabel']}>PEOPLE</span>
+        </div>
+
+        {isDesktop ? (
+          // The board draws desktop with the summary rows unfolded — "all
+          // three people inline". A media query, because it decides which
+          // elements exist (`frontend-design.md` §3.2).
+          <People personId={personId} variant="inline" />
+        ) : (
+          <Link href="/account/people" className={styles['row']}>
+            <div>
+              <div className={styles['rowTitle']}>People</div>
+              <div className={styles['rowMeta']}>
+                {peopleCount} {peopleCount === 1 ? 'PERSON' : 'PEOPLE'}
+              </div>
+            </div>
+            <span className={styles['chevron']} aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        )}
+      </section>
 
       <footer className={styles['footer']}>
         {isDesktop ? (

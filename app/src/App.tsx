@@ -29,6 +29,7 @@ import { Account } from './screens/Account'
 import { AddGear } from './screens/AddGear'
 import { DeviceLink } from './screens/DeviceLink'
 import { Devices } from './screens/Devices'
+import { People } from './screens/People'
 import { Find } from './screens/Find'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
@@ -389,6 +390,18 @@ export function App({
                     token={session.token}
                     onSignedOut={signOut}
                   />
+                )}
+              </Route>
+              <Route path="/account/people">
+                {isDesktop ? (
+                  // The board unfolds "all three people inline" into
+                  // Account's own PEOPLE card at Desktop (§11) — the same
+                  // rows, reached from there instead. Exactly the redirect
+                  // `/account/devices` above already takes, for the same
+                  // reason: a media query decides what *exists*.
+                  <Redirect to="/account" />
+                ) : (
+                  <People personId={session.personId} />
                 )}
               </Route>
               <Route>
