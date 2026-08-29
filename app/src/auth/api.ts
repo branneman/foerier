@@ -65,6 +65,20 @@ export interface IssuedInvite {
   expires_at: string
 }
 
+export interface LoginRow {
+  id: string
+  person_id: string
+  device_count: number
+  last_seen_at: string | null
+}
+
+export interface InviteRow {
+  id: string
+  purpose: 'join' | 'device'
+  person_id: string
+  expires_at: string
+}
+
 /** Every way the server can say no, as one thing, because it is one thing. */
 export class AuthRequestError extends Error {
   readonly status: number
@@ -185,12 +199,36 @@ export function createAuthApi(
       post<IssuedInvite>('/auth/invites', { purpose: 'device' }, token),
 
     listInvites: (token: string) =>
-      get<{
-        invites: Array<{ id: string; purpose: string; expires_at: string }>
-      }>('/auth/invites', token),
+      get<{ invites: InviteRow[] }>('/auth/invites', token),
 
     revokeInvite: (token: string, id: string) =>
       del(`/auth/invites/${id}`, token),
+
+    listLogins: (token: string) =>
+      get<{ logins: LoginRow[] }>('/auth/logins', token),
+
+    /** Disables another Person's Login. Never your own — the server refuses. */
+    revokeLogin: (token: string, id: string) =>
+      del(`/auth/logins/${id}`, token),
+
+    /** A join Invite for a Person recorded in the Household (story 28). */
+    issueJoinInvite: (token: string, personId: string) =>
+      post<IssuedInvite>(
+        '/auth/invites',
+        { purpose: 'join', person_id: personId },
+        token,
+      ),
+
+    /**
+     * A device link against **another** Person's Login. The caller's own is
+     * `issueDeviceLink` above, which sends no `person_id`.
+     */
+    issueDeviceLinkFor: (token: string, personId: string) =>
+      post<IssuedInvite>(
+        '/auth/invites',
+        { purpose: 'device', person_id: personId },
+        token,
+      ),
   }
 }
 
