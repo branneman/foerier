@@ -11,7 +11,7 @@ import { ParticipantPicker } from '../components/ParticipantPicker'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import { peopleOn } from '../depot/trips'
-import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
+import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import styles from './NewTrip.module.css'
 
 /**
@@ -78,8 +78,9 @@ import styles from './NewTrip.module.css'
  *
  * ## No failure state
  *
- * Like Add gear: local ops on a local log, and the sync line in the header is
- * the only thing that ever has anything to report.
+ * Like Add gear: local ops on a local log, and the sync marker is the only
+ * thing that ever has anything to report — from this screen's own header
+ * below Split, and from the shell's nav above it.
  */
 export function NewTrip() {
   const state = useDepot((depot) => depot.state)
@@ -104,6 +105,7 @@ export function NewTrip() {
   // layout and no stylesheet can carry it (`useMediaQuery`'s own reason, one
   // step further along than a pane that exists or does not).
   const desk = useMediaQuery(DESKTOP)
+  const header = useScreenHeader()
 
   const trimmedName = name.trim()
   // The name is the only requirement. Dates are optional by story 5 — "a
@@ -157,17 +159,27 @@ export function NewTrip() {
 
   return (
     <div className={styles['screen']}>
-      {/* The header every form in the app carries. Without it the only way
-          out of a half-typed Trip is the tab bar. */}
-      <header className={styles['header']}>
-        <Link href="/trips" className={styles['back']}>
-          ‹ TRIPS
-        </Link>
-        <span className={styles['sync']}>
-          <span className={styles['syncDot']} aria-hidden="true" />
-          {syncLabel(sync)}
-        </span>
-      </header>
+      {/* Below Desktop the only other way out of a half-typed Trip is the
+          tab bar, so the back link is what this band is for. At Desktop the
+          216px sidebar is labeled navigation and its `TRIPS` row is where
+          `‹ TRIPS` points, so the link goes and the band with it — the
+          `Gear list builder` artboard that draws `‹ TRIPS` is a bare pane
+          with no sidebar. The sync line goes one band earlier, at Split,
+          where `AppShell` takes the marker into the nav. `useScreenHeader`
+          decides both. */}
+      {header.backLink && (
+        <header className={styles['header']}>
+          <Link href="/trips" className={styles['back']}>
+            ‹ TRIPS
+          </Link>
+          {header.syncLine && (
+            <span className={styles['sync']}>
+              <span className={styles['syncDot']} aria-hidden="true" />
+              {syncLabel(sync)}
+            </span>
+          )}
+        </header>
+      )}
 
       <h1 className={styles['title']}>New trip</h1>
 

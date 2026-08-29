@@ -8,7 +8,7 @@ import { BUILD_SHA } from '../build'
 import { formatDate, isToday } from '../format'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
-import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
+import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Account.module.css'
 import {
   DeviceList,
@@ -170,6 +170,7 @@ export function Account({
   )
   const sync = useDepot((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
+  const header = useScreenHeader()
   const canAddPasskey = usePlatformAuthenticatorAvailable()
 
   const [householdName, setHouseholdName] = useState<string | null>(null)
@@ -332,17 +333,21 @@ export function Account({
   return (
     <div className={styles['screen']}>
       {/* Below Desktop this is a pushed screen off Depot; at Desktop the
-          216px sidebar is already the nav, so no back link or sync line
-          repeats here (`docs/design/README.md` §11). */}
-      {!isDesktop && (
+          216px sidebar is already the nav, so `‹ DEPOT` does not repeat here
+          (`docs/design/README.md` §11). The sync line goes one band earlier,
+          because `AppShell` moves the marker into the nav from **Split** —
+          `useScreenHeader` is the one place both widths are decided. */}
+      {header.backLink && (
         <header className={styles['header']}>
           <Link href="/" className={styles['back']}>
             ‹ DEPOT
           </Link>
-          <span className={styles['sync']}>
-            <span className={styles['syncDot']} aria-hidden="true" />
-            {syncLabel(sync)}
-          </span>
+          {header.syncLine && (
+            <span className={styles['sync']}>
+              <span className={styles['syncDot']} aria-hidden="true" />
+              {syncLabel(sync)}
+            </span>
+          )}
         </header>
       )}
 

@@ -51,3 +51,37 @@ export const DESKTOP = '(min-width: 64em)'
 
 /** Split and up: the two-pane list + detail unlock. */
 export const SPLIT = '(min-width: 52em)'
+
+/** What {@link useScreenHeader} answers: two questions, two breakpoints. */
+export interface ScreenHeader {
+  /** Draw `‹ DEPOT` / `‹ TRIPS`? Withheld from Desktop. */
+  backLink: boolean
+  /** Draw the sync line in the main column? Withheld from Split up. */
+  syncLine: boolean
+}
+
+/**
+ * Whether a screen reached *from* a destination draws its own back link and
+ * its own sync line. **The two are withheld at two different widths**, and the
+ * one place that says so is here — four screens ask, and a rule spelled four
+ * times is three chances to spell it differently.
+ *
+ * - **The back link goes at Desktop.** From 64em the 216px sidebar is labeled
+ *   navigation and the row a `‹ TRIPS` points at is *in* it. At Split the nav
+ *   is a 56px icon rail with no labels, so a screen there still owes the
+ *   reader the name of where they came from.
+ * - **The sync line goes from Split up.** {@link AppShell} draws the header
+ *   band on `mode === 'tabs'` alone; from 52em the marker moves into the nav,
+ *   which is where the boards put it — *"never in the main column at
+ *   desktop"*. A screen that kept drawing it would print `SYNCED` twice at
+ *   52–64em, once in the rail and once beside the title.
+ *
+ * The `<header>` element itself exists exactly when the back link does, and
+ * needs no third answer: below Split is inside below Desktop, so a withheld
+ * back link is never accompanied by a surviving sync line.
+ */
+export function useScreenHeader(): ScreenHeader {
+  const isSplit = useMediaQuery(SPLIT)
+  const isDesktop = useMediaQuery(DESKTOP)
+  return { backLink: !isDesktop, syncLine: !isSplit }
+}

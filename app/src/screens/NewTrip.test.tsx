@@ -20,7 +20,7 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
-import { DESKTOP } from '../shell/useMediaQuery'
+import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { NewTrip } from './NewTrip'
 
@@ -129,6 +129,40 @@ function soleTrip(store: StoreApi<DepotStoreState>): string {
   if (id === undefined) throw new Error('unreachable: length checked above')
   return id
 }
+
+describe('New trip — the band above the title', () => {
+  /**
+   * `useScreenHeader`'s rule. The back link is the only other way out of a
+   * half-typed Trip below Desktop; at Desktop the 216px sidebar's `TRIPS` row
+   * *is* where it points, so both it and the band go. The sync line goes one
+   * band earlier, at Split, because that is where `AppShell` takes the marker
+   * into the nav.
+   */
+  it('draws both below Split', async () => {
+    renderNewTrip(await seeded())
+
+    expect(screen.getByRole('link', { name: '‹ TRIPS' })).toBeVisible()
+    expect(screen.getByText('SYNCED')).toBeVisible()
+  })
+
+  it('keeps the back link at Split and hands the sync line to the rail', async () => {
+    setViewport(SPLIT)
+    renderNewTrip(await seeded())
+
+    // The rail draws no labels, so the link is still the only thing naming
+    // where the reader came from; the marker is already in the rail.
+    expect(screen.getByRole('link', { name: '‹ TRIPS' })).toBeVisible()
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+
+  it('draws neither at Desktop, where the sidebar is the navigation', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderNewTrip(await seeded())
+
+    expect(screen.queryByRole('link', { name: '‹ TRIPS' })).toBeNull()
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+})
 
 describe('New trip — the create', () => {
   it('holds the primary until a name is typed', async () => {
@@ -372,7 +406,7 @@ describe('New trip — the create', () => {
   })
 
   it('creates on return at desk widths', async () => {
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     const seed = await seeded()
     const user = userEvent.setup()
     renderNewTrip(seed)

@@ -24,7 +24,7 @@ import {
   DepotProvider,
   type EngineFactory,
 } from '../depot/store'
-import { DESKTOP } from '../shell/useMediaQuery'
+import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { Trip } from './Trip'
 
@@ -311,6 +311,20 @@ describe('the trip screen — the header the board draws', () => {
     expect(css).toMatch(
       /\.attention\s*\{[^}]*color:\s*var\(--color-status-attention\)/,
     )
+  })
+
+  it('keeps the back link at Split and hands the sync line to the rail', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(SPLIT)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    // `AppShell` draws the header band on `mode === 'tabs'` alone, so from
+    // 52em the sync marker is already in the rail and a second `SYNCED`
+    // beside the title states the same fact twice. The rail carries no
+    // labels, though, so `‹ TRIPS` is still the only thing naming where the
+    // reader came from — which is why the two are withheld at two widths.
+    expect(screen.getByRole('link', { name: '‹ TRIPS' })).toBeVisible()
+    expect(screen.queryByText('SYNCED')).toBeNull()
   })
 
   it('renders a line rather than throwing for an id the fold has never seen', async () => {
@@ -727,7 +741,7 @@ describe('the trip screen — Participants on the resting screen', () => {
 describe('the trip screen — the 1024 frame', () => {
   it('gathers the whole header into one row, with EDIT last', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     await renderTrip(`/trips/${ALPS}`, ...alps())
 
     // Title, chip, dates and the Participants cluster are siblings of one
@@ -754,7 +768,7 @@ describe('the trip screen — the 1024 frame', () => {
 
   it('draws no PARTICIPANTS group label — the board has none at 1024', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     await renderTrip(`/trips/${ALPS}`, ...alps())
 
     expect(screen.queryByText('PARTICIPANTS')).toBeNull()
@@ -792,7 +806,7 @@ describe('the trip screen — the 1024 frame', () => {
 
   it('leaves the back link and the sync line to the sidebar', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     await renderTrip(`/trips/${ALPS}`, ...alps())
 
     // The 216px sidebar is the navigation and carries the sync line itself —
@@ -805,7 +819,7 @@ describe('the trip screen — the 1024 frame', () => {
 
   it('opens the same EDIT, over the same two registers', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     const user = userEvent.setup()
     const seed = await renderTrip(`/trips/${ALPS}`, ...alps())
 

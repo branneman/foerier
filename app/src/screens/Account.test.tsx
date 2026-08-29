@@ -22,7 +22,7 @@ import {
   type EngineFactory,
 } from '../depot/store'
 import { setViewport } from '../testSetup'
-import { DESKTOP } from '../shell/useMediaQuery'
+import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { Account } from './Account'
 
 /**
@@ -198,7 +198,7 @@ async function renderAccount(
   } = options
 
   stubPlatformAuthenticator(platformAuthenticator)
-  if (desktop) setViewport(DESKTOP)
+  if (desktop) setViewport(SPLIT, DESKTOP)
 
   const specs: OpSpec[] =
     personName === null ? [] : [personRecorded(PERSON_ID, personName)]
@@ -324,6 +324,32 @@ describe('Account', () => {
 
     expect(await screen.findByText('Mark')).toBeInTheDocument()
     expect(screen.getByText('VELDKAMP HOUSEHOLD')).toBeInTheDocument()
+  })
+
+  /**
+   * `useScreenHeader`'s rule, on the screen that has drawn this band longest.
+   * The back link and the sync line are withheld at **two different widths**:
+   * the sidebar takes the link at Desktop, and `AppShell` takes the marker
+   * into the nav one band earlier, at Split.
+   */
+  it('keeps the back link at Split and hands the sync line to the rail', async () => {
+    setViewport(SPLIT)
+    await renderAccount({ personName: 'Mark' })
+
+    expect(await screen.findByRole('link', { name: '‹ DEPOT' })).toBeVisible()
+    // Already in the 56px rail from 52em, so a second one beside the title
+    // states the same fact twice.
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+
+  it('draws neither the back link nor the sync line at Desktop', async () => {
+    await renderAccount({ personName: 'Mark', desktop: true })
+
+    // The 216px sidebar is the navigation, and its `DEPOT` row is the very
+    // destination `‹ DEPOT` points at (`docs/design/README.md` §11).
+    await screen.findByRole('heading', { name: 'Account' })
+    expect(screen.queryByRole('link', { name: '‹ DEPOT' })).toBeNull()
+    expect(screen.queryByText('SYNCED')).toBeNull()
   })
 
   it('offers to add a passkey only where the device can make one', async () => {

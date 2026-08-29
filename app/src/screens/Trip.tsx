@@ -19,7 +19,7 @@ import {
   tripDateRange,
   tripParticipants,
 } from '../depot/trips'
-import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
+import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Trip.module.css'
 
 /**
@@ -119,11 +119,14 @@ import styles from './Trip.module.css'
  * the *drawing* while leaving the tab order in the 393 sequence — `EDIT`
  * looking last and focusing third.
  *
- * The back link and the sync line go with the band that held them: at Desktop
- * the 216px sidebar is the navigation, `TRIPS` in it is the very destination
- * `‹ TRIPS` points at, and the sync line belongs there and nowhere else —
- * "never in the main column at desktop". `Account` withholds the same two, at
- * the same breakpoint, for the same reason.
+ * The back link and the sync line go with the band that held them — but not
+ * at the same width, which is `useScreenHeader`'s whole reason for existing.
+ * `‹ TRIPS` survives to Split, because the 56px rail there draws no labels and
+ * a reader still needs the name of where they came from; it goes at Desktop,
+ * where the 216px sidebar's `TRIPS` row *is* the destination it points at. The
+ * sync line goes one band earlier, at Split, because that is where `AppShell`
+ * takes the marker into the nav — "never in the main column at desktop".
+ * `Account`, `GearDetail` and `NewTrip` read the same rule from the same hook.
  */
 export function Trip() {
   const params = useParams<{ id: string }>()
@@ -132,6 +135,7 @@ export function Trip() {
   const emit = useDepot((depot) => depot.emit)
   const sync = useDepot((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
+  const header = useScreenHeader()
 
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -340,18 +344,21 @@ export function Trip() {
 
   return (
     <div className={styles['screen']}>
-      {/* The phone's own band. At Desktop the sidebar is the navigation and
-          carries the sync line, so neither repeats here — `Account`'s rule at
-          the same breakpoint. */}
-      {!isDesktop && (
+      {/* Two withholdings at two widths, both `useScreenHeader`'s: the sidebar
+          is labeled navigation from Desktop, so `‹ TRIPS` goes there; the sync
+          marker moves into the nav from **Split**, so the line goes one band
+          earlier. `Account`, `GearDetail` and `NewTrip` read the same rule. */}
+      {header.backLink && (
         <header className={styles['header']}>
           <Link href="/trips" className={styles['back']}>
             ‹ TRIPS
           </Link>
-          <span className={styles['sync']}>
-            <span className={styles['syncDot']} aria-hidden="true" />
-            {syncLabel(sync)}
-          </span>
+          {header.syncLine && (
+            <span className={styles['sync']}>
+              <span className={styles['syncDot']} aria-hidden="true" />
+              {syncLabel(sync)}
+            </span>
+          )}
         </header>
       )}
 

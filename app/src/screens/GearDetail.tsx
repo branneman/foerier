@@ -32,6 +32,7 @@ import { TagPicker } from '../components/TagPicker'
 import { WhereaboutsCard } from '../components/WhereaboutsCard'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
+import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './GearDetail.module.css'
 
 /**
@@ -106,6 +107,7 @@ export function GearDetail() {
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
   const sync = useDepot((depot) => depot.sync)
+  const header = useScreenHeader()
 
   const [moveOpen, setMoveOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -188,15 +190,26 @@ export function GearDetail() {
 
   return (
     <div className={styles['screen']}>
-      <header className={styles['header']}>
-        <Link href="/" className={styles['back']}>
-          ‹ DEPOT
-        </Link>
-        <span className={styles['sync']}>
-          <span className={styles['syncDot']} aria-hidden="true" />
-          {syncLabel(sync)}
-        </span>
-      </header>
+      {/* At Desktop this screen is a pane with the 216px labeled sidebar
+          beside it, and `DEPOT` in that sidebar is where `‹ DEPOT` points —
+          so the link goes. At Split it is the detail half of the two-pane
+          view against a 56px rail that draws no labels, and the link stays.
+          The sync line goes one band earlier than the link, because that is
+          where `AppShell` takes the marker into the nav; both widths are
+          decided in `useScreenHeader` and nowhere else. */}
+      {header.backLink && (
+        <header className={styles['header']}>
+          <Link href="/" className={styles['back']}>
+            ‹ DEPOT
+          </Link>
+          {header.syncLine && (
+            <span className={styles['sync']}>
+              <span className={styles['syncDot']} aria-hidden="true" />
+              {syncLabel(sync)}
+            </span>
+          )}
+        </header>
+      )}
 
       <div className={styles['identity']}>
         <h1

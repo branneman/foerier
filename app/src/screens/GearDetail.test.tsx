@@ -26,6 +26,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { GearDetail } from './GearDetail'
 
 /** The only way a `TagString` is made (`shared/src/tags.ts`). */
@@ -107,6 +109,55 @@ function renderGearDetail(store: StoreApi<DepotStoreState>, gearId: string) {
   )
   return { location, container: result.container }
 }
+
+/**
+ * **The band above the title, and the two widths it is withheld at** —
+ * `useScreenHeader`'s rule, shared with `Trip`, `NewTrip` and `Account`.
+ *
+ * At Split this screen is the detail half of `DepotView`'s two panes, beside a
+ * 56px rail that draws no labels; `‹ DEPOT` is the only thing naming where the
+ * reader came from, so it stays. At Desktop the pane is gone and the 216px
+ * labeled sidebar is beside it, with `DEPOT` in it as the very destination the
+ * link points at — so it goes. The sync line goes one band earlier, at Split,
+ * because `AppShell` draws the header on `mode === 'tabs'` alone and from 52em
+ * the marker is already in the nav.
+ */
+describe('Gear detail — the band above the title', () => {
+  it('draws both below Split', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, { name: 'Tent', container: false, kind: 'single' }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeVisible()
+    expect(screen.getByText('SYNCED')).toBeVisible()
+  })
+
+  it('keeps the back link at Split and hands the sync line to the rail', async () => {
+    setViewport(SPLIT)
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, { name: 'Tent', container: false, kind: 'single' }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeVisible()
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+
+  it('draws neither at Desktop, where the sidebar is the navigation', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, { name: 'Tent', container: false, kind: 'single' }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.queryByRole('link', { name: '‹ DEPOT' })).toBeNull()
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+})
 
 describe('Gear detail', () => {
   it('shows the gear name and the MVP meta line', async () => {

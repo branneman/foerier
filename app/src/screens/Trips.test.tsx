@@ -24,7 +24,7 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
-import { DESKTOP } from '../shell/useMediaQuery'
+import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { Trips } from './Trips'
 
@@ -167,7 +167,7 @@ describe('the Trips screen', () => {
   })
 
   it('keeps the title-row step at desktop, where there is no FAB', async () => {
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     renderTrips(await seeded())
 
     // The FAB is drawn 74px above the 3-tab bar, and desktop has a sidebar
