@@ -75,14 +75,6 @@
     cursor: pointer;
   }
 
-  /* The board's meta row, under the title: dates left, circles right. */
-  .meta {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    min-width: 0;
-  }
-
   .dates {
     font-family: var(--font-mono);
     font-size: 0.6875rem;
@@ -92,10 +84,34 @@
     white-space: nowrap;
   }
 
+  /* The board's own block: a quiet label, then the row of circles under it.
+     It is drawn for every Trip — the ghost is the edit affordance and it does
+     not come and go — so nothing here is conditional on membership. */
+  .participants {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .participantRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .groupLabel {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
   .circles {
     display: inline-flex;
     gap: var(--space-4);
-    margin-left: auto;
     flex: none;
   }
 
@@ -114,6 +130,43 @@
     font-family: var(--font-mono);
     font-size: 0.5625rem;
     font-weight: 600;
+  }
+
+  /*
+   * The dashed `+` — gear detail's trailing ghost chip, drawn as a circle
+   * because a Participant is drawn as one. Same 22px as its neighbours, so the
+   * row reads as one cluster rather than as three faces and a button.
+   *
+   * 22px is under the 24px minimum a pointer target has to answer for, and the
+   * board's own size is not up for renegotiation, so the *drawing* stays 22px
+   * and the ::after grows the hit area to 44px without taking any layout with
+   * it. Sizing the button itself would push the circles out of line with the
+   * board.
+   */
+  .addParticipant {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 1.375rem;
+    height: 1.375rem;
+    padding: 0;
+    border: var(--stroke-chip) dashed var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .addParticipant::after {
+    content: '';
+    position: absolute;
+    inset: -0.6875rem;
   }
 
   .phaseRow {
@@ -143,14 +196,6 @@
     letter-spacing: var(--tracking-label);
     white-space: nowrap;
     cursor: pointer;
-  }
-
-  /* Where the board's `61 PIECES · EST 48.2 KG` sits, in the quiet mono
-     register — a statement, never a call to action. */
-  .next {
-    font: var(--text-label) var(--font-mono);
-    letter-spacing: var(--tracking-label);
-    color: var(--color-ink-faint);
   }
 
   .edit {
@@ -195,29 +240,35 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-12);
+    align-items: start;
   }
 
-  .pickRow {
+  /* The field and, when it has one, the note under it — one column, so a note
+     on one end does not push the other end's input down. */
+  .dateField {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-12);
-    width: 100%;
-    min-height: max(3rem, 48px);
-    padding-inline: var(--space-16);
-    border: var(--stroke-rule) solid var(--color-rule-control);
-    border-radius: var(--radius-control);
-    background: none;
-    color: var(--color-ink-primary);
-    cursor: pointer;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
   }
 
-  .pickValue {
-    font: var(--text-body) var(--font-ui);
-    color: var(--color-ink-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  /* Beside the field it is about, in the same quiet mono the labels use — the
+     sentence is meta and only the glyph is a warning. */
+  .storedNote {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    overflow-wrap: anywhere;
+  }
+
+  /* The system's attention class — *missing, lost, disagreement* — and never
+     progress. On the glyph alone: colouring the whole line would make a
+     sentence shout where a single mark is meant to. */
+  .attention {
+    color: var(--color-status-attention);
   }
 
   .editActions {
@@ -257,28 +308,33 @@
     cursor: pointer;
   }
 
-  .hint {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
-    letter-spacing: 0.08em;
-    line-height: 1.7;
-    text-transform: uppercase;
-    color: var(--color-ink-faint);
-  }
-
-  /* The region the gear list builder fills. A rule above it, so the empty
-     line reads as a section with nothing in it rather than as a stray
-     sentence under the header. */
+  /* The region the gear list builder fills. A rule above it, so the two empty
+     lines read as a section with nothing in it rather than as stray sentences
+     under the header. Centred, as the board draws it: the region is the rest
+     of the screen and the count is what the eye should land on. */
   .gear {
-    padding-top: var(--space-16);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-8);
+    padding-top: var(--space-32);
+    padding-bottom: var(--space-32);
     border-top: var(--stroke-rule) solid var(--color-rule-row);
+    text-align: center;
   }
 
   .gearEmpty {
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     letter-spacing: var(--tracking-label);
-    color: var(--color-ink-faint);
+    color: var(--color-ink-primary);
+  }
+
+  /* The domain fact under the count: sentence case and the UI face, because it
+     is a sentence rather than a ledger line. */
+  .gearSource {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-muted);
   }
 
   .empty {
