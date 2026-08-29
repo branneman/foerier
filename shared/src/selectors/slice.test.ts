@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { aGear, anOp, hlcAt } from '../../testUtils/index.ts'
+import { aGear, anOp, aPerson, hlcAt } from '../../testUtils/index.ts'
 import {
   gearRetired,
   gearTagApplied,
@@ -86,6 +86,244 @@ function aDepot(): DepotState {
     one(gearTagApplied('g-mug', aTag('winter')), 9),
   ])
 }
+
+/**
+ * A household with two People and four pieces of gear, two of them owned.
+ *
+ * `g-tent` carries **no `owner` register at all** while `g-stove` carries an
+ * explicit `{type:'shared'}` — the pair that keeps every ownership assertion
+ * below honest, because the fold keeps those two facts apart and only
+ * `selectors/owner.ts` brings them together.
+ *
+ * | id | name | owner |
+ * | --- | --- | --- |
+ * | `g-tent` | Tent | *(absent)* |
+ * | `g-stove` | Stove | shared, explicitly |
+ * | `g-jacket` | Down jacket | Els |
+ * | `g-boots` | Winter boots | Mark |
+ */
+function anOwnedDepot(): DepotState {
+  return fold([
+    ...at(aPerson({ id: 'els', name: 'Els' }), 1),
+    ...at(aPerson({ id: 'mark', name: 'Mark' }), 2),
+    ...at(aGear({ id: 'g-tent', name: 'Tent' }), 3),
+    ...at(
+      aGear({ id: 'g-stove', name: 'Stove', owner: { type: 'shared' } }),
+      4,
+    ),
+    ...at(
+      aGear({
+        id: 'g-jacket',
+        name: 'Down jacket',
+        owner: { type: 'person', personId: 'els' },
+      }),
+      5,
+    ),
+    ...at(
+      aGear({
+        id: 'g-boots',
+        name: 'Winter boots',
+        owner: { type: 'person', personId: 'mark' },
+      }),
+      6,
+    ),
+  ])
+}
+
+describe('the ownership dimension', () => {
+  it('reads gear with no owner register as shared', () => {
+    const state = anOwnedDepot()
+    expect(
+      dimension('ownership').valuesOf(state.gear['g-tent']!, state),
+    ).toEqual(['shared'])
+  })
+
+  it('reads an explicit shared owner identically', () => {
+    const state = anOwnedDepot()
+    expect(
+      dimension('ownership').valuesOf(state.gear['g-stove']!, state),
+    ).toEqual(['shared'])
+  })
+
+  it('reads gear with a personal owner as personal', () => {
+    const state = anOwnedDepot()
+    expect(
+      dimension('ownership').valuesOf(state.gear['g-jacket']!, state),
+    ).toEqual(['personal'])
+  })
+
+  it('offers both values with their counts, most-used first', () => {
+    // A two-two tie, so the ascending-value tiebreak decides and `personal`
+    // comes first. That the tie is broken *at all* is the point: the order
+    // has to be total, or two devices with identical state draw the picker
+    // differently.
+    expect(dimensionValues(anOwnedDepot(), 'ownership')).toEqual([
+      { value: 'personal', count: 2 },
+      { value: 'shared', count: 2 },
+    ])
+  })
+
+  it('puts the more-used value first when there is no tie', () => {
+    const state = fold([
+      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...at(aGear({ id: 'g1', name: 'Tent' }), 2),
+      ...at(aGear({ id: 'g2', name: 'Stove' }), 3),
+      ...at(
+        aGear({
+          id: 'g3',
+          name: 'Down jacket',
+          owner: { type: 'person', personId: 'els' },
+        }),
+        4,
+      ),
+    ])
+    expect(dimensionValues(state, 'ownership')).toEqual([
+      { value: 'shared', count: 2 },
+      { value: 'personal', count: 1 },
+    ])
+  })
+
+  it('draws its two values in sentence case', () => {
+    const state = anOwnedDepot()
+    expect(dimension('ownership').format('shared', state)).toBe('Shared')
+    expect(dimension('ownership').format('personal', state)).toBe('Personal')
+  })
+})
+
+describe('the person dimension', () => {
+  it('carries no value for shared gear, rather than a sentinel', () => {
+    const state = anOwnedDepot()
+    expect(dimension('person').valuesOf(state.gear['g-tent']!, state)).toEqual(
+      [],
+    )
+    expect(dimension('person').valuesOf(state.gear['g-stove']!, state)).toEqual(
+      [],
+    )
+  })
+
+  it('carries the person id for personal gear', () => {
+    const state = anOwnedDepot()
+    expect(
+      dimension('person').valuesOf(state.gear['g-jacket']!, state),
+    ).toEqual(['els'])
+  })
+
+  it('formats a person id as the recorded name', () => {
+    const state = anOwnedDepot()
+    expect(dimension('person').format('els', state)).toBe('Els')
+  })
+
+  it('formats a Person whose op has not arrived as an em dash', () => {
+    const state = anOwnedDepot()
+    expect(dimension('person').format('ghost', state)).toBe('—')
+  })
+
+  it('omits a Person who owns nothing, because the vocabulary is derived', () => {
+    // Not a declared list anywhere: `dimensionValues` reads the visible depot,
+    // the same rule that lets an unrecognised Kind appear and that makes the
+    // Tag vocabulary work with no Tag entity. Narrowing to someone who owns
+    // nothing would return zero, so they are not offered.
+    const state = fold([
+      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...at(aPerson({ id: 'kees', name: 'Kees' }), 2),
+      ...at(
+        aGear({
+          id: 'g1',
+          name: 'Down jacket',
+          owner: { type: 'person', personId: 'els' },
+        }),
+        3,
+      ),
+    ])
+    expect(dimensionValues(state, 'person')).toEqual([
+      { value: 'els', count: 1 },
+    ])
+  })
+
+  it('counts nothing from retired gear', () => {
+    const state = fold([
+      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...at(
+        aGear({
+          id: 'g1',
+          name: 'Down jacket',
+          owner: { type: 'person', personId: 'els' },
+        }),
+        2,
+      ),
+      one(gearRetired('g1'), 3),
+    ])
+    expect(dimensionValues(state, 'person')).toEqual([])
+  })
+})
+
+describe("story 4's two narrowings", () => {
+  it('narrows to one Person’s Personal gear', () => {
+    expect(
+      shownIds(anOwnedDepot(), slice({ filters: { person: ['els'] } })),
+    ).toEqual(['g-jacket'])
+  })
+
+  it('narrows to Shared gear only, including gear with no owner register', () => {
+    // The acceptance criterion, and the reason `ownerOf` is a selector rather
+    // than a rendering detail: `g-tent` has no register and must survive.
+    expect(
+      shownIds(anOwnedDepot(), slice({ filters: { ownership: ['shared'] } })),
+    ).toEqual(['g-stove', 'g-tent'])
+  })
+
+  it('narrows to all Personal gear, whoever’s — the query one dimension could not express', () => {
+    // Still `NAME A→Z`: "Down jacket" before "Winter boots". Narrowing never
+    // re-sorts the list under the reader.
+    expect(
+      shownIds(anOwnedDepot(), slice({ filters: { ownership: ['personal'] } })),
+    ).toEqual(['g-jacket', 'g-boots'])
+  })
+
+  it('ANDs ownership with another dimension', () => {
+    const state = fold([
+      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...at(
+        aGear({
+          id: 'g1',
+          name: 'Down jacket',
+          kind: 'single',
+          owner: { type: 'person', personId: 'els' },
+        }),
+        2,
+      ),
+      ...at(
+        aGear({
+          id: 'g2',
+          name: 'Socks',
+          kind: 'counted',
+          owner: { type: 'person', personId: 'els' },
+        }),
+        3,
+      ),
+    ])
+    expect(
+      shownIds(
+        state,
+        slice({ filters: { person: ['els'], kind: ['counted'] } }),
+      ),
+    ).toEqual(['g2'])
+  })
+
+  it('returns nothing for the structurally contradictory pair, and still counts it', () => {
+    // `OWNERSHIP: SHARED` + `PERSON: ELS` is reachable and always empty.
+    // Deliberately not guarded: the engine has exactly one filter rule, an
+    // empty slice is the honest answer, and `CLEAR (2)` is one tap away.
+    const result = sliceDepot(
+      anOwnedDepot(),
+      slice({ filters: { ownership: ['shared'], person: ['els'] } }),
+    )
+    expect(result.shown).toBe(0)
+    expect(result.total).toBe(4)
+    expect(result.active).toBe(2)
+    expect(result.groups).toEqual([])
+  })
+})
 
 describe('sliceDepot — the resting state', () => {
   it('returns the whole visible depot in one group, sorted by name', () => {
@@ -372,22 +610,34 @@ describe('sliceDepot — grouping', () => {
 })
 
 /**
- * The dimension table is what makes §8.5 affordable: S4, S7, S8, S9 and S10
- * each add a **row**, not a branch. These pin the two rows that exist.
+ * The dimension table is what makes §8.5 affordable: S7, S8, S9 and S10 each
+ * add a **row**, not a branch — as S4 just did, twice. These pin the four
+ * rows that exist.
+ *
+ * `format` takes the depot as well as the value, because a value is not
+ * always self-describing: `PERSON` carries ids and draws names. Tag, Kind and
+ * Ownership ignore it, and are handed one anyway rather than the table
+ * carrying two shapes of formatter.
  */
 describe('the dimension table', () => {
+  const anywhere = aDepot()
+
   it('draws a tag with the # that is never stored', () => {
-    expect(dimension('tag').format('winter')).toBe('#winter')
+    expect(dimension('tag').format('winter', anywhere)).toBe('#winter')
   })
 
   it('draws a kind with the glossary Kind, never the containment trait', () => {
-    expect(dimension('kind').format('single')).toBe('Single')
-    expect(dimension('kind').format('per_person')).toBe('Per-person')
-    expect(dimension('kind').format('counted')).toBe('Counted')
+    expect(dimension('kind').format('single', anywhere)).toBe('Single')
+    expect(dimension('kind').format('per_person', anywhere)).toBe('Per-person')
+    expect(dimension('kind').format('counted', anywhere)).toBe('Counted')
   })
 
   it('draws an unrecognised kind exactly as it arrived', () => {
-    expect(dimension('kind').format('sled')).toBe('sled')
+    expect(dimension('kind').format('sled', anywhere)).toBe('sled')
+  })
+
+  it('draws an unrecognised ownership value exactly as it arrived', () => {
+    expect(dimension('ownership').format('borrowed', anywhere)).toBe('borrowed')
   })
 
   /**

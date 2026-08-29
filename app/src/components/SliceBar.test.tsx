@@ -33,6 +33,35 @@ const VOCABULARY: Record<string, readonly DimensionValue[]> = {
     { value: 'counted', count: 12 },
     { value: 'single', count: 5 },
   ],
+  ownership: [
+    { value: 'shared', count: 84 },
+    { value: 'personal', count: 44 },
+  ],
+  person: [
+    { value: 'els', count: 22 },
+    { value: 'mark', count: 14 },
+  ],
+}
+
+/**
+ * The bound formatter the screen supplies. Person ids draw as names, which is
+ * the whole reason `formatFor` is a prop rather than a call into the
+ * dimension table: the label is not in the value.
+ */
+const NAMES: Record<string, string> = { els: 'Els', mark: 'Mark' }
+
+const KINDS: Record<string, string> = {
+  single: 'Single',
+  per_person: 'Per-person',
+  counted: 'Counted',
+}
+
+function formatValue(id: string, value: string): string {
+  if (id === 'tag') return `#${value}`
+  if (id === 'kind') return KINDS[value] ?? value
+  if (id === 'person') return NAMES[value] ?? '—'
+  if (id === 'ownership') return value === 'shared' ? 'Shared' : 'Personal'
+  return value
 }
 
 function aResult(overrides: Partial<SliceResult> = {}): SliceResult {
@@ -49,6 +78,7 @@ function renderBar(
       spec={{ ...EMPTY_SLICE, ...spec }}
       result={aResult(result)}
       valuesFor={(id) => VOCABULARY[id] ?? []}
+      formatFor={formatValue}
       onChange={onChange}
     />,
   )
@@ -60,8 +90,30 @@ describe('SliceBar — the chips', () => {
     renderBar()
     expect(screen.getByRole('button', { name: '+ TAG' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '+ KIND' })).toBeInTheDocument()
+    // S4's two rows, and the whole of what the bar needed to learn to draw
+    // them: nothing. Ghosts come from `DIMENSIONS`.
+    expect(
+      screen.getByRole('button', { name: '+ OWNERSHIP' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ PERSON' })).toBeInTheDocument()
     // The retired value-carrying ghost.
     expect(screen.queryByRole('button', { name: /\+ TAG: / })).toBeNull()
+  })
+
+  it('labels a selected PERSON chip with the name, never the id', () => {
+    renderBar({ filters: { person: ['els'] } })
+    expect(
+      screen.getByRole('button', { name: 'PERSON: Els' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /PERSON: els/ })).toBeNull()
+  })
+
+  it('hides the OWNERSHIP ghost while it is active, and keeps TAG`s', () => {
+    // Both fall out of `arity` alone — neither dimension is special-cased in
+    // this component.
+    renderBar({ filters: { ownership: ['shared'] } })
+    expect(screen.queryByRole('button', { name: '+ OWNERSHIP' })).toBeNull()
+    expect(screen.getByRole('button', { name: '+ TAG' })).toBeInTheDocument()
   })
 
   /**
@@ -271,6 +323,7 @@ describe('SliceBar — expanded', () => {
         spec={EMPTY_SLICE}
         result={aResult()}
         valuesFor={() => []}
+        formatFor={formatValue}
         onChange={() => {}}
         layout="expanded"
       />,

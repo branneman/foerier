@@ -3,6 +3,7 @@ import { stampOf, type Register } from '../registers.ts'
 import type { DepotState, GearState } from '../state.ts'
 import { foldText } from '../text.ts'
 import { tagsOf, visibleGear } from './depot.ts'
+import { ownerOf, personLabel } from './owner.ts'
 
 /**
  * **The slicing engine** — story 13's "narrow, sort, and group lists by at
@@ -17,8 +18,8 @@ import { tagsOf, visibleGear } from './depot.ts'
  *
  * | Dimension | Arrives with |
  * | --- | --- |
- * | Tag; Kind | **S3** |
- * | Person; Ownership | S4 |
+ * | Tag; Kind | S3 |
+ * | Ownership; Person | **S4** |
  * | Trip membership | S7 |
  * | Per-Person grouping of Pieces | S8 |
  * | Packing status; Container | S9 |
@@ -33,7 +34,7 @@ import { tagsOf, visibleGear } from './depot.ts'
  * Every dimension a list can be narrowed by. Widened, never restructured, by
  * each slice in the table above.
  */
-export type DimensionId = 'tag' | 'kind'
+export type DimensionId = 'tag' | 'kind' | 'ownership' | 'person'
 
 /** Components §04's three keys at S3. `newest` is by when gear was recorded. */
 export type SortKey = 'name-asc' | 'name-desc' | 'newest'
@@ -48,7 +49,7 @@ export type GroupKey = 'none' | 'kind'
 
 export interface Dimension {
   id: DimensionId
-  /** The chip's label: `TAG`, `KIND`. */
+  /** The chip's label: `TAG`, `KIND`, `OWNERSHIP`, `PERSON`. */
   label: string
   /**
    * `multi` keeps its ghost add-chip while active, because several values
@@ -61,17 +62,23 @@ export interface Dimension {
    * ordinary — untagged gear carries no tags.
    *
    * `state` is handed in as well as `gear` because dimensions arriving later
-   * need it: S4's Ownership resolves a `personId` to a Person, and S7's Trip
-   * membership is a cross-aggregate question. Costing it now saves the table
-   * being reshaped by the first dimension that asks.
+   * need it: S7's Trip membership is a cross-aggregate question. Costing it
+   * now saves the table being reshaped by the first dimension that asks.
    */
   valuesOf(gear: GearState, state: DepotState): readonly string[]
   /**
    * How one value is drawn. Sentence case and the `#` a tag chip draws but
    * never stores; CAPS is a CSS transform where a surface wants it, matching
    * how the rest of this codebase renders label text.
+   *
+   * **`state` is here because a value is not always self-describing.** S3
+   * anticipated exactly this — its note on `valuesOf` above once read "S4's
+   * Ownership resolves a `personId` to a Person" — and put the parameter one
+   * function too early. The anticipation was right and the placement was off
+   * by one: `valuesOf` returns the id, and it is `format` that has to turn it
+   * into a name.
    */
-  format(value: string): string
+  format(value: string, state: DepotState): string
 }
 
 /** `SINGLE · PER-PERSON · COUNTED` — the **glossary Kind**, never the
@@ -80,6 +87,12 @@ const KIND_LABELS: Readonly<Record<string, string>> = {
   single: 'Single',
   per_person: 'Per-person',
   counted: 'Counted',
+}
+
+/** The two halves of the domain's "personal to one person, **or** shared". */
+const OWNERSHIP_LABELS: Readonly<Record<string, string>> = {
+  shared: 'Shared',
+  personal: 'Personal',
 }
 
 const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
@@ -103,6 +116,49 @@ const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
     // An unrecognised kind is drawn exactly as it arrived (§5.3 obligation
     // 4 stores it verbatim) — inventing a casing for it would be coercion.
     format: (value) => KIND_LABELS[value] ?? value,
+  },
+  /**
+   * **Personal or Shared** — the coarse projection of the one `owner`
+   * register, and the only dimension whose `valuesOf` returns exactly one
+   * value for every piece of gear in the depot. An absent register reads
+   * shared (`selectors/owner.ts`), which is what makes this dimension agree
+   * with the label the row beside it draws.
+   */
+  ownership: {
+    id: 'ownership',
+    label: 'OWNERSHIP',
+    arity: 'single',
+    valuesOf: (gear) => [
+      ownerOf(gear).type === 'shared' ? 'shared' : 'personal',
+    ],
+    format: (value) => OWNERSHIP_LABELS[value] ?? value,
+  },
+  /**
+   * **Whose** — the fine projection of the same register.
+   *
+   * Shared gear carries no value at all rather than a sentinel, so it simply
+   * never matches; and a Person who owns nothing never reaches the picker,
+   * because {@link dimensionValues} derives the vocabulary from the visible
+   * depot rather than from any declared list.
+   *
+   * Two dimensions over one register is the boards' decision, not the
+   * register's: Components §04 draws `PERSON · S4` and `OWNERSHIP · S4` as
+   * two dashed ghosts, and story 13's criterion names them separately. A
+   * single merged `OWNER` dimension would have expressed both of story 4's
+   * narrowings with one chip and could not have expressed the third
+   * (*all* personal gear, whoever's). The cost of two is that
+   * `OWNERSHIP: SHARED` + `PERSON: ELS` is reachable and always empty —
+   * see {@link passesFilters}.
+   */
+  person: {
+    id: 'person',
+    label: 'PERSON',
+    arity: 'single',
+    valuesOf: (gear) => {
+      const owner = ownerOf(gear)
+      return owner.type === 'person' ? [owner.personId] : []
+    },
+    format: (value, state) => personLabel(state, value),
   },
 }
 
@@ -273,6 +329,14 @@ function nameOf(gear: GearState): string {
  *   selected value being carried *is* `kind === value`. No special case.
  * - **A dimension with nothing selected is skipped**, rather than made into
  *   a predicate matching everything.
+ * - **Two dimensions over one register can contradict, and nothing here
+ *   stops them.** `OWNERSHIP: SHARED` plus `PERSON: ELS` is reachable and
+ *   structurally empty — S4 added both because the boards drew both. That is
+ *   the same shape as `KIND: COUNTED` plus a tag no counted gear carries: the
+ *   count line reads `0 OF 128`, which is the honest answer, and `CLEAR (2)`
+ *   is story 13's undo one tap away. The only fix would be a second
+ *   combinator *between* dimensions, and there is deliberately exactly one
+ *   rule in this function.
  */
 function passesFilters(
   gear: GearState,
@@ -313,6 +377,7 @@ const UNGROUPED_LABEL = '—'
 
 function groupGear(
   gear: readonly GearState[],
+  state: DepotState,
   group: GroupKey,
 ): readonly SliceGroup[] {
   if (gear.length === 0) return []
@@ -333,7 +398,7 @@ function groupGear(
 
   const format = dimension('kind').format
   const groups = [...buckets]
-    .map(([key, items]) => ({ key, label: format(key), gear: items }))
+    .map(([key, items]) => ({ key, label: format(key, state), gear: items }))
     // Alphabetically by **label** — `Counted · Per-person · Single` — which
     // is what the board's grouped frame draws, and is not the enum's order.
     // Case-insensitive so an unrecognised lowercase kind files sensibly
@@ -375,7 +440,7 @@ export function sliceDepot(state: DepotState, spec: SliceSpec): SliceResult {
   )
 
   return {
-    groups: groupGear(sortGear(shown, spec.sort), spec.group),
+    groups: groupGear(sortGear(shown, spec.sort), state, spec.group),
     shown: shown.length,
     total: all.length,
     // `CLEAR (n)` "stays visible while **anything** narrows" (Components

@@ -105,7 +105,7 @@ function Row({
           ? {
               ...(kind === undefined
                 ? {}
-                : { kind: dimension('kind').format(kind) }),
+                : { kind: dimension('kind').format(kind, state) }),
               ...(path === '' ? {} : { path }),
               ...(qty === undefined ? {} : { qty }),
               tags: tagsOf(gear),
@@ -170,6 +170,16 @@ export function Depot({ selectedId }: DepotProps = {}) {
   const view = useMemo(() => containmentView(state), [state])
   const result = useMemo(() => sliceDepot(state, spec), [state, spec])
   const counts = useMemo(() => depotCounts(state), [state])
+  // Both bound to the state this screen already holds, so `SliceBar` stays a
+  // presentational component: one answers *what can be narrowed by*, the
+  // other *how a value is drawn*. S4's PERSON needs the second because it
+  // carries ids and draws names.
+  const formatFor = useMemo(
+    () => (id: DimensionId, value: string) =>
+      dimension(id).format(value, state),
+    [state],
+  )
+
   const valuesFor = useMemo(
     () => (id: DimensionId) => dimensionValues(state, id),
     [state],
@@ -221,6 +231,7 @@ export function Depot({ selectedId }: DepotProps = {}) {
           spec={spec}
           result={result}
           valuesFor={valuesFor}
+          formatFor={formatFor}
           onChange={setSpec}
           layout={isDesktop ? 'expanded' : 'collapsed'}
         />

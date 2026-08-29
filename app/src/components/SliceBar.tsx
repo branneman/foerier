@@ -55,6 +55,17 @@ export interface SliceBarProps {
   result: SliceResult
   /** What each dimension can currently be narrowed by — `dimensionValues`. */
   valuesFor: (id: DimensionId) => readonly DimensionValue[]
+  /**
+   * How one value of one dimension is drawn — `dimension(id).format(value,
+   * state)`, bound to the state the screen already holds.
+   *
+   * Injected rather than called here, for the same reason `valuesFor` is: a
+   * value is not always self-describing. S4's `PERSON` carries person ids and
+   * draws names, so formatting needs the depot — and threading the whole
+   * `DepotState` through a presentational component to reach one lookup would
+   * be the wrong seam. The screen owns the state; this owns the anatomy.
+   */
+  formatFor: (id: DimensionId, value: string) => string
   onChange: (spec: SliceSpec) => void
   /** `expanded` puts GROUP BY inline; `collapsed` folds it behind the readout. */
   layout?: 'collapsed' | 'expanded'
@@ -85,6 +96,7 @@ export function SliceBar({
   spec,
   result,
   valuesFor,
+  formatFor,
   onChange,
   layout = 'collapsed',
 }: SliceBarProps) {
@@ -129,7 +141,7 @@ export function SliceBar({
           selectedOf(spec, of.id).map((value) => (
             <Chip
               key={`${of.id}:${value}`}
-              label={`${of.label}: ${of.format(value)}`}
+              label={`${of.label}: ${formatFor(of.id, value)}`}
               selected
               onClick={() => setPicking(of.id)}
               onRemove={() => remove(of.id, value)}
@@ -217,7 +229,7 @@ export function SliceBar({
         <ValueMenu
           title={dimension(picking).label}
           values={valuesFor(picking)}
-          format={dimension(picking).format}
+          format={(value) => formatFor(picking, value)}
           selected={selectedOf(spec, picking)}
           onPick={(value) => apply(picking, value)}
           onClose={() => setPicking(null)}
