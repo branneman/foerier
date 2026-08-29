@@ -26,8 +26,10 @@ export type {
   KindValue,
   Owner,
   PersonState,
+  PhaseValue,
   PlaceState,
   Residence,
+  TripState,
   UnfoldedOps,
 } from './state.ts'
 
@@ -67,6 +69,12 @@ export {
   placeRecorded,
   placeRemoved,
   placeRenamed,
+  tripCreated,
+  tripDatesSet,
+  tripParticipantAdded,
+  tripParticipantRemoved,
+  tripPhaseMoved,
+  tripRenamed,
 } from './authoring.ts'
 
 export { applyOp, emptyState, fold } from './reduce.ts'

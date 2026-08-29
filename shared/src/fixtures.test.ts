@@ -42,9 +42,10 @@ describe('the S2 op fixture', () => {
     expect(state).toMatchSnapshot()
   })
 
-  // Obligation 1: an unknown `type` (`trip.entry_status_set`, a real S6
-  // catalogue entry this build has never heard of) is retained and counted,
-  // never rejected and never folded.
+  // Obligation 1: an unknown `type` (`trip.entry_status_set`, a real
+  // catalogue entry — S9's — this build has never heard of) is retained and
+  // counted, never rejected and never folded. It stays unknown through S6,
+  // which folds the Trip *root* and none of the four nested maps.
   it('retains the op types it cannot fold rather than rejecting them', () => {
     const state = fold(fixture as OpEnvelope[])
     expect(state.unfolded.types['trip.entry_status_set']).toBe(1)

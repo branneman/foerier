@@ -2,11 +2,15 @@ import {
   gearRecorded,
   personRecorded,
   placeRecorded,
+  tripCreated,
+  tripDatesSet,
+  tripParticipantAdded,
+  tripPhaseMoved,
   type OpSpec,
 } from '../src/authoring.ts'
 import { formatHlc } from '../src/hlc.ts'
 import type { OpEnvelope } from '../src/ops.ts'
-import type { KindValue, Owner, Residence } from '../src/state.ts'
+import type { KindValue, Owner, PhaseValue, Residence } from '../src/state.ts'
 
 /**
  * Factories return op **specs**, not folded entities (see this module's
@@ -94,6 +98,54 @@ export function aPerson(
 ): OpSpec[] {
   const id = overrides.id ?? freshId('40000000')
   return [personRecorded(id, overrides.name ?? 'Els')]
+}
+
+/**
+ * The ops that make one Trip. Unlike the other three factories this returns
+ * **several** ops, because a Trip's shape is spread across four op types and
+ * `trip.created` carries only the name — the phase is the reducer's own write
+ * and the dates and Participants are separate ops (spec §1.3, §1.4, §1.5).
+ * They come back in authoring order, so a caller stamping increasing clocks
+ * over the flattened list gets exactly the log a screen would have written.
+ *
+ * `phase` emits a `trip.phase_moved` **whenever it is given**, including
+ * `'draft'`: a Trip whose phase was moved to `draft` explicitly is a
+ * different fact about the log from one that never left it, and a factory
+ * that silently dropped the op would make the two indistinguishable in a test
+ * that cares. Omit `phase` for the seeded default.
+ *
+ * `start` and `end` are only in the payload when given, and `null` clears —
+ * {@link tripDatesSet}'s own rule, unchanged. There is deliberately no
+ * default pair: story 5 says a Draft usually has no dates, and defaulting
+ * them would make every fixture assert the dated case.
+ */
+export function aTrip(
+  overrides: Partial<{
+    id: string
+    name: string
+    phase: PhaseValue
+    start: string | null
+    end: string | null
+    participants: readonly string[]
+  }> = {},
+): OpSpec[] {
+  const id = overrides.id ?? freshId('50000000')
+  const specs: OpSpec[] = [tripCreated(id, overrides.name ?? 'Ardennes')]
+  if (overrides.phase !== undefined) {
+    specs.push(tripPhaseMoved(id, overrides.phase))
+  }
+  if (overrides.start !== undefined || overrides.end !== undefined) {
+    specs.push(
+      tripDatesSet(id, {
+        ...(overrides.start === undefined ? {} : { start: overrides.start }),
+        ...(overrides.end === undefined ? {} : { end: overrides.end }),
+      }),
+    )
+  }
+  for (const personId of overrides.participants ?? []) {
+    specs.push(tripParticipantAdded(id, personId))
+  }
+  return specs
 }
 
 /**

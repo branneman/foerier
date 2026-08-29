@@ -1,7 +1,7 @@
 import type { Aggregate, OpEnvelope } from './ops.ts'
 import type { HlcClock } from './hlc.ts'
 import type { IdSource } from './boundaries.ts'
-import type { KindValue, Owner, Residence } from './state.ts'
+import type { KindValue, Owner, PhaseValue, Residence } from './state.ts'
 import type { TagString } from './tags.ts'
 
 /**
@@ -287,5 +287,131 @@ export function personRenamed(id: string, name: string | null): OpSpec {
     aggregate_id: id,
     type: 'person.renamed',
     payload: { name },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.4: creates the Trip; seeds `name`.
+ *
+ * It does **not** seed the phase — `trip.created`'s payload is
+ * `{name, from_trip_id?}` and carries no phase field at all, so the reducer
+ * writes `draft` itself on this op's own clock (spec §1.3). Three properties
+ * fall out of that and none of them needs a special case: a
+ * `trip.phase_moved` delivered first wins on its own strictly-later stamp, a
+ * re-delivered creation is idempotent, and no client can author a Trip that
+ * arrives already `closed`.
+ *
+ * `from_trip_id` has no parameter here, deliberately: nothing before S14
+ * copies a Trip from a template, and a builder parameter with no caller is a
+ * shape frozen by §5.4 on a guess. The reducer folds the field regardless
+ * (`TripState.fromTripId`), and the fixture pins it with a hand-written op.
+ *
+ * `name` is a `string`, though {@link tripRenamed} and the reader both accept
+ * `null`: no screen can author a Trip with no name — F3 step 1 requires
+ * one — and the nullable type exists for a *reader* meeting an op some other
+ * build emitted (spec §1.2). {@link personRecorded} draws the same line for
+ * the same reason.
+ */
+export function tripCreated(id: string, name: string): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: id,
+    type: 'trip.created',
+    payload: { name },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.4: sets `name`.
+ *
+ * **`string | null`, settled by this slice** — the seventh and eighth `name`
+ * rows, closed exactly as S4 closed the sixth (§4.2's `person.renamed`) and
+ * from the same general rule rather than a new one: `TripState.name` is
+ * `Register<string | null>`, so an explicit `null` clears and an absent field
+ * leaves the register alone (§1.3).
+ */
+export function tripRenamed(id: string, name: string | null): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: id,
+    type: 'trip.renamed',
+    payload: { name },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.4: sets `start_date` and/or `end_date` — two
+ * independent registers, each following the absent-versus-null rule
+ * separately (§1.3).
+ *
+ * A key the caller omits is **omitted from the payload entirely**
+ * ({@link gearRecorded}'s spread idiom), never emitted as `undefined` or
+ * coerced to `null`: omitting leaves that date alone, and `null` clears it.
+ * The screen therefore emits only what changed, which is what stops one
+ * device's date edit from reverting the other's.
+ *
+ * The payload keys are `start` and `end`, shorter than the `startDate` /
+ * `endDate` registers they write — the same split `gear.owned_count_set`
+ * already has (spec §1.4). A date is emitted as written and read back
+ * verbatim; there is no `YYYY-MM-DD` gate on either side.
+ */
+export function tripDatesSet(
+  id: string,
+  dates: { start?: string | null; end?: string | null },
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: id,
+    type: 'trip.dates_set',
+    payload: {
+      ...(dates.start === undefined ? {} : { start: dates.start }),
+      ...(dates.end === undefined ? {} : { end: dates.end }),
+    },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.4: moves the phase. One register, one value, so
+ * exclusivity is structural and there is nothing to guard — and invariant 16
+ * makes every move expressible in **either** direction, so this builder
+ * encodes no transition graph. Entering `closed` is unguarded until S10 has
+ * something that could be open; leaving it is confirmed on the screen, never
+ * in the op.
+ */
+export function tripPhaseMoved(id: string, phase: PhaseValue): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: id,
+    type: 'trip.phase_moved',
+    payload: { phase },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.4: sets the per-person register to **present**
+ * (§3.4), the same shape {@link gearTagApplied} has on tags.
+ */
+export function tripParticipantAdded(id: string, personId: string): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: id,
+    type: 'trip.participant_added',
+    payload: { person_id: personId },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.4: sets the per-person register to **absent** (§3.4).
+ *
+ * Not a delete — one register, written `false`, carrying a clock like any
+ * other write, so a concurrent re-add wins on merit rather than on which
+ * device happened to sync first.
+ */
+export function tripParticipantRemoved(id: string, personId: string): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: id,
+    type: 'trip.participant_removed',
+    payload: { person_id: personId },
   }
 }

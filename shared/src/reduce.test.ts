@@ -169,6 +169,56 @@ function gearRestoredOp(
   return op('gear', gearId, 'gear.restored', {}, hlc, deviceId)
 }
 
+/**
+ * The four Trip root ops (`sync-protocol.md` §4.4). `payload` mirrors the
+ * wire directly and is forwarded verbatim, exactly as `gearRecordedOp`'s
+ * does — which is what lets a test hand-shape a `trip.created` carrying
+ * `from_trip_id`, a field `authoring.ts` deliberately has no parameter for
+ * because nothing before S14 authors one (spec §1.3).
+ */
+function tripCreatedOp(
+  tripId: string,
+  payload: Record<string, unknown>,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('trip', tripId, 'trip.created', payload, hlc, deviceId)
+}
+
+function tripRenamedOp(
+  tripId: string,
+  payload: Record<string, unknown>,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('trip', tripId, 'trip.renamed', payload, hlc, deviceId)
+}
+
+/**
+ * The payload keys are `start` and `end`; the registers they write are
+ * `startDate` and `endDate` (spec §1.4) — the same split
+ * `gear.owned_count_set{count}` already has. Spelled out here so a reader of
+ * these tests does not take the mismatch for a typo.
+ */
+function tripDatesSetOp(
+  tripId: string,
+  payload: Record<string, unknown>,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('trip', tripId, 'trip.dates_set', payload, hlc, deviceId)
+}
+
+/** `phase` is `unknown` so a test can hand it something no build recognises. */
+function tripPhaseMovedOp(
+  tripId: string,
+  phase: unknown,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('trip', tripId, 'trip.phase_moved', { phase }, hlc, deviceId)
+}
+
 /** Freezes an object graph so any mutation at any depth throws in strict mode. */
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
@@ -212,6 +262,7 @@ describe('applyOp', () => {
         { name: 'Tarp', container: false, kind: 'single', owned_count: 1 },
         at(1),
       ),
+      tripCreatedOp('t1', { name: 'Ardennes' }, at(1)),
     ])
 
     // A deep freeze is the real witness. A JSON snapshot only catches a
@@ -254,13 +305,40 @@ describe('applyOp', () => {
       applyOp(before, gearRenamedOp('g1', 'Stale', at(0))),
     ).not.toThrow()
     expect(() => applyOp(before, personOp('pe1', 'Bran', at(2)))).not.toThrow()
+    // And the Trip handlers, which are the reason this test is worth
+    // extending rather than copying: `tripCreated` and `tripDatesSet` each
+    // write two or three registers behind one identity check, which is
+    // exactly the shape a stray in-place assignment would hide.
+    expect(() =>
+      applyOp(before, tripRenamedOp('t1', { name: 'Vosges' }, at(2))),
+    ).not.toThrow()
+    expect(() =>
+      applyOp(before, tripDatesSetOp('t1', { start: '2026-08-14' }, at(2))),
+    ).not.toThrow()
+    expect(() =>
+      applyOp(before, tripPhaseMovedOp('t1', 'pack_out', at(2))),
+    ).not.toThrow()
+    expect(() =>
+      applyOp(
+        before,
+        op('trip', 't1', 'trip.participant_added', { person_id: 'pe1' }, at(2)),
+      ),
+    ).not.toThrow()
+    // And a losing trip write, which takes the early-return path.
+    expect(() =>
+      applyOp(before, tripPhaseMovedOp('t1', 'draft', at(0))),
+    ).not.toThrow()
   })
 
-  it('emptyState has no places, no gear, no people, and nothing unfolded', () => {
+  it('emptyState has no places, no gear, no people, no trips, and nothing unfolded', () => {
     const state = emptyState()
     expect(state.places).toEqual({})
     expect(state.gear).toEqual({})
     expect(state.people).toEqual({})
+    // The fourth aggregate reaches the fold at S6, and `emptyState` gaining a
+    // key is the only change the client store can see: `store.ts` folds
+    // through this function and never enumerates the maps itself.
+    expect(state.trips).toEqual({})
     expect(state.unfolded).toEqual({ count: 0, types: {} })
   })
 
@@ -987,5 +1065,345 @@ describe('gear tags', () => {
       op('gear', 'untagged', 'gear.recorded', { name: 'Tent' }, at(1)),
     ])
     expect(Object.hasOwn(state.gear['untagged'] ?? {}, 'tags')).toBe(false)
+  })
+})
+
+/**
+ * The **fourth aggregate** reaching the fold (`sync-protocol.md` §4.4, and
+ * `docs/specs/2026-08-29-trips-and-phases.md` §1). Six op types, five
+ * handlers, and one decision worth pinning above all the others: `phase =
+ * "draft"` is written by the **reducer** at `trip.created`, not carried in
+ * the payload. Three of the tests below exist only because of that choice —
+ * the out-of-order `phase_moved`, the idempotent replay, and the shared
+ * stamp — and in each of them the ordinary LWW rule does the work a special
+ * case would otherwise have to (spec §1.3).
+ */
+describe('trips', () => {
+  it('trip.created creates the Trip, seeds its name, and seeds phase draft', () => {
+    const state = fold([tripCreatedOp('t1', { name: 'Ardennes' }, at(1))])
+    expect(state.trips['t1']?.id).toBe('t1')
+    expect(state.trips['t1']?.name?.value).toBe('Ardennes')
+    // Not in the payload — §4.4's `trip.created` carries `{name,
+    // from_trip_id?}` and nothing else, so no client can create a Trip
+    // already `closed`. That is an absence, not a guard.
+    expect(state.trips['t1']?.phase?.value).toBe('draft')
+  })
+
+  it('trip.created stamps name and phase with the same clock', () => {
+    const state = fold([tripCreatedOp('t1', { name: 'Ardennes' }, at(4))])
+    expect(state.trips['t1']?.name?.hlc).toBe(at(4))
+    expect(state.trips['t1']?.phase?.hlc).toBe(at(4))
+    expect(state.trips['t1']?.phase?.deviceId).toBe(DEVICE)
+  })
+
+  it('a later trip.phase_moved survives its own trip.created, in either fold order', () => {
+    // §8.2's out-of-authoring-order case, resolved by nothing but the clock:
+    // the seeded `draft` is a write at at(2) and loses to a write at at(5).
+    // The Trip is `pack_out` and stays `pack_out` when its creation is
+    // finally delivered — which is the whole reason the phase is the
+    // reducer's write rather than a payload field it could have carried.
+    const created = tripCreatedOp('t1', { name: 'Ardennes' }, at(2))
+    const moved = tripPhaseMovedOp('t1', 'pack_out', at(5))
+
+    const late = fold([moved, created])
+    expect(late.trips['t1']?.phase?.value).toBe('pack_out')
+    expect(late.trips['t1']?.name?.value).toBe('Ardennes')
+
+    expect(fold([created, moved]).trips['t1']).toEqual(late.trips['t1'])
+  })
+
+  it('trip.created is idempotent under replay', () => {
+    // Our own op returning through pull (§8.3). Both registers it writes are
+    // written on the identical stamp, so both lose on `<= 0` and the whole
+    // fold is a no-op at O(1) — identity, not merely equality.
+    const createOp = tripCreatedOp('t1', { name: 'Ardennes' }, at(1))
+    const once = fold([createOp])
+    const twice = applyOp(once, createOp)
+    expect(twice).toBe(once)
+    expect(twice.trips['t1']?.phase?.value).toBe('draft')
+  })
+
+  it('trip.created folds from_trip_id, which no builder of ours can author', () => {
+    // Folded at S6, read at S14 (spec §1.3). §5.4 freezes `trip.created`'s
+    // payload shape the moment this slice ships, so a field the reducer
+    // silently dropped would be a field nothing could ever prove was
+    // carried — hence the hand-shaped op, the same device S3's fixture uses
+    // for tags no builder of ours can author.
+    const state = fold([
+      tripCreatedOp(
+        't2',
+        { name: 'Ardennes again', from_trip_id: 't1' },
+        at(1),
+      ),
+    ])
+    expect(state.trips['t2']?.fromTripId?.value).toBe('t1')
+    expect(state.trips['t2']?.fromTripId?.hlc).toBe(at(1))
+  })
+
+  it('trip.created leaves fromTripId absent when the payload omits it', () => {
+    const state = fold([tripCreatedOp('t1', { name: 'Ardennes' }, at(1))])
+    expect(Object.hasOwn(state.trips['t1']!, 'fromTripId')).toBe(false)
+  })
+
+  it('trip.renamed sets the name', () => {
+    const state = fold([
+      tripCreatedOp('t1', { name: 'Ardennes' }, at(1)),
+      tripRenamedOp('t1', { name: 'Vosges' }, at(2)),
+    ])
+    expect(state.trips['t1']?.name?.value).toBe('Vosges')
+    // A rename is a name write and nothing else: the phase the creation
+    // seeded is untouched, and its stamp with it.
+    expect(state.trips['t1']?.phase?.value).toBe('draft')
+    expect(state.trips['t1']?.phase?.hlc).toBe(at(1))
+  })
+
+  it('trip.renamed with an explicit null clears the name', () => {
+    // `TripState.name` is `Register<string | null>` like every other name
+    // register, so §1.3's rule applies with no carve-out — the seventh and
+    // eighth `name` rows settled exactly as S4 settled the sixth.
+    const state = fold([
+      tripCreatedOp('t1', { name: 'Ardennes' }, at(1)),
+      tripRenamedOp('t1', { name: null }, at(2)),
+    ])
+    expect(state.trips['t1']?.name?.value).toBeNull()
+  })
+
+  it('trip.renamed with name omitted leaves an existing name untouched', () => {
+    // The direction §1.3 actually forbids: an absent field is not an
+    // explicit clear.
+    const before = fold([tripCreatedOp('t1', { name: 'Ardennes' }, at(1))])
+    const after = applyOp(before, tripRenamedOp('t1', {}, at(2)))
+    expect(after).toBe(before)
+    expect(after.trips['t1']?.name?.value).toBe('Ardennes')
+  })
+
+  it('trip.renamed creates the Trip when it arrives out of authoring order', () => {
+    // `writeTrip` creates the entity for any trip op, exactly as the other
+    // three maps do — so a Trip can exist with a name and no phase at all,
+    // which is one of the two reachable cases for `phaseOf`'s
+    // absent-reads-`draft` rule (spec §3.2).
+    const state = fold([tripRenamedOp('t1', { name: 'Ardennes' }, at(2))])
+    expect(state.trips['t1']?.id).toBe('t1')
+    expect(state.trips['t1']?.name?.value).toBe('Ardennes')
+    expect(Object.hasOwn(state.trips['t1']!, 'phase')).toBe(false)
+  })
+
+  it('trip.dates_set with start alone leaves the end untouched', () => {
+    // Two independent registers, each following the absent-versus-null rule
+    // separately, so the screen emits only what changed (spec §1.4).
+    const state = fold([
+      tripDatesSetOp('t1', { start: '2026-08-14', end: '2026-08-20' }, at(1)),
+      tripDatesSetOp('t1', { start: '2026-08-15' }, at(2)),
+    ])
+    expect(state.trips['t1']?.startDate?.value).toBe('2026-08-15')
+    expect(state.trips['t1']?.endDate?.value).toBe('2026-08-20')
+    // Not merely still correct — still *unwritten*: the end register carries
+    // the first op's clock, not the second's.
+    expect(state.trips['t1']?.endDate?.hlc).toBe(at(1))
+  })
+
+  it('trip.dates_set with an explicit null end clears the end and not the start', () => {
+    const state = fold([
+      tripDatesSetOp('t1', { start: '2026-08-14', end: '2026-08-20' }, at(1)),
+      tripDatesSetOp('t1', { end: null }, at(2)),
+    ])
+    expect(state.trips['t1']?.startDate?.value).toBe('2026-08-14')
+    expect(state.trips['t1']?.endDate?.value).toBeNull()
+  })
+
+  it('trip.dates_set stores a malformed date verbatim', () => {
+    // No `YYYY-MM-DD` gate, deliberately (spec §1.4): a reader reporting
+    // anything else `absent` would be rejecting a quartermaster's work to
+    // enforce a spelling, which is what §5.3 forbids. A malformed date is
+    // visible rather than silently dropped, and the lexicographic date sort
+    // stays total either way.
+    const state = fold([tripDatesSetOp('t1', { start: 'not-a-date' }, at(1))])
+    expect(state.trips['t1']?.startDate?.value).toBe('not-a-date')
+  })
+
+  it('trip.dates_set ignores a date that is not a string at all', () => {
+    // The one thing a tolerant date reader still refuses: `readString` reports
+    // a non-string `absent`, so the register is left exactly as it was — and
+    // with nothing prior, never created.
+    const state = fold([tripDatesSetOp('t1', { start: 20260814 }, at(1))])
+    expect(Object.hasOwn(state.trips['t1'] ?? {}, 'startDate')).toBe(false)
+  })
+
+  it('trip.phase_moved moves through all five phases, in either direction', () => {
+    // Invariant 16: any move in either direction is expressible, so the
+    // sequence is an order to draw and never a transition graph to enforce.
+    // The last move here is `closed` → `draft`, the backward one: entering
+    // `closed` is unguarded (§8.3) and leaving it is confirmed in the UI, not
+    // in the fold.
+    const moves = ['pack_out', 'on_trip', 'unpack', 'closed', 'draft'] as const
+    let state = fold([tripCreatedOp('t1', { name: 'Ardennes' }, at(1))])
+    expect(state.trips['t1']?.phase?.value).toBe('draft')
+    moves.forEach((phase, i) => {
+      state = applyOp(state, tripPhaseMovedOp('t1', phase, at(i + 2)))
+      expect(state.trips['t1']?.phase?.value).toBe(phase)
+    })
+  })
+
+  it('trip.phase_moved stores an unrecognised phase verbatim', () => {
+    // §5.3 obligation 4, the rule `gear.kind_set` already follows: a peer on
+    // a later build can fold a phase this build has never heard of, and
+    // coercing it would destroy the value. `PhaseValue` is open past its five
+    // members precisely so the reader needs no cast.
+    const state = fold([
+      tripCreatedOp('t1', { name: 'Ardennes' }, at(1)),
+      tripPhaseMovedOp('t1', 'shakedown', at(2)),
+    ])
+    expect(state.trips['t1']?.phase?.value).toBe('shakedown')
+  })
+
+  it('trip.phase_moved ignores a phase that is absent or not a string', () => {
+    // `PhaseValue` has no `null` member, so a `null` payload is malformed
+    // input rather than a clear — `writeIfPresent`'s side of the line.
+    const before = fold([tripCreatedOp('t1', { name: 'Ardennes' }, at(1))])
+    expect(applyOp(before, tripPhaseMovedOp('t1', null, at(2)))).toBe(before)
+    expect(applyOp(before, tripPhaseMovedOp('t1', 7, at(3)))).toBe(before)
+    expect(
+      applyOp(before, op('trip', 't1', 'trip.phase_moved', {}, at(4))),
+    ).toBe(before)
+  })
+
+  it('returns the identical state when a write on any Trip register loses', () => {
+    const seeded = fold([
+      tripCreatedOp('t1', { name: 'Ardennes', from_trip_id: 't0' }, at(9)),
+      tripDatesSetOp('t1', { start: '2026-08-14', end: '2026-08-20' }, at(9)),
+      tripPhaseMovedOp('t1', 'pack_out', at(9)),
+    ])
+    // Every handler propagates identity: a late-arriving older op must not
+    // fabricate a new Trip, a new `trips` map or a new `DepotState`, each of
+    // which invalidates a memo downstream for nothing. The two multi-register
+    // handlers are the ones that could get this wrong — a spread placed
+    // before the identity check would still copy on a wholly lost write.
+    expect(applyOp(seeded, tripCreatedOp('t1', { name: 'Old' }, at(2)))).toBe(
+      seeded,
+    )
+    expect(applyOp(seeded, tripRenamedOp('t1', { name: 'Old' }, at(2)))).toBe(
+      seeded,
+    )
+    expect(
+      applyOp(seeded, tripDatesSetOp('t1', { start: '2020-01-01' }, at(2))),
+    ).toBe(seeded)
+    expect(applyOp(seeded, tripDatesSetOp('t1', { end: null }, at(2)))).toBe(
+      seeded,
+    )
+    expect(applyOp(seeded, tripPhaseMovedOp('t1', 'draft', at(2)))).toBe(seeded)
+  })
+})
+
+/**
+ * `sync-protocol.md` §3.4 puts trip Participants in the same row as gear
+ * tags: **not one register holding an array**, but one register per member,
+ * keyed `(trip_id, "participants", <person_id>)`. The handler is
+ * `gearTagWritten`'s with `person_id` for `tag`, and the whole concurrency
+ * story is again the register key rather than the code.
+ *
+ * It has to be a map for a reason beyond merge safety: S8 derives a Piece per
+ * Participant, so adding a Participant later gives them a Piece with **no
+ * backfill op**.
+ */
+describe('trip participants', () => {
+  const TRIP = 'trip-participants'
+
+  const participantOp = (
+    type: 'trip.participant_added' | 'trip.participant_removed',
+    personId: unknown,
+    hlc: string,
+    deviceId = DEVICE,
+  ) => op('trip', TRIP, type, { person_id: personId }, hlc, deviceId)
+
+  it('sets a per-person register to present', () => {
+    const state = fold([participantOp('trip.participant_added', 'els', at(1))])
+    expect(state.trips[TRIP]?.participants?.['els']?.value).toBe(true)
+  })
+
+  it('sets the register to absent rather than deleting the key', () => {
+    const state = fold([
+      participantOp('trip.participant_added', 'els', at(1)),
+      participantOp('trip.participant_removed', 'els', at(2)),
+    ])
+    // The key survives: a removal is a write carrying a clock, and dropping
+    // it would let a concurrent re-add win by arrival order rather than on
+    // its own stamp.
+    expect(Object.hasOwn(state.trips[TRIP]?.participants ?? {}, 'els')).toBe(
+      true,
+    )
+    expect(state.trips[TRIP]?.participants?.['els']?.value).toBe(false)
+  })
+
+  it('keeps two Participants as two independent registers', () => {
+    // Two devices adding *different* People address different registers, so
+    // neither write is contested: the union is not computed, it is the
+    // absence of a conflict.
+    const state = fold([
+      participantOp('trip.participant_added', 'els', at(1), DEVICE),
+      participantOp('trip.participant_added', 'mark', at(1), DEVICE_B),
+    ])
+    expect(state.trips[TRIP]?.participants?.['els']?.value).toBe(true)
+    expect(state.trips[TRIP]?.participants?.['mark']?.value).toBe(true)
+  })
+
+  it('resolves an add racing a remove of the same Person by plain LWW', () => {
+    // One register, resolved by `writeRegister` like every other field —
+    // and by the stamp, not by which of the two fold orders happens here.
+    const add = participantOp('trip.participant_added', 'els', at(3))
+    const remove = participantOp('trip.participant_removed', 'els', at(2))
+    expect(fold([add, remove]).trips[TRIP]?.participants?.['els']?.value).toBe(
+      true,
+    )
+    expect(fold([remove, add]).trips[TRIP]?.participants?.['els']?.value).toBe(
+      true,
+    )
+  })
+
+  it('breaks an identical-clock tie by device id', () => {
+    // Equal HLCs, so `compareStamps` falls through to the device id and the
+    // higher one wins: DEVICE_B's add stands, DEVICE's removal loses even
+    // though it folds second.
+    const state = fold([
+      participantOp('trip.participant_added', 'els', at(1), DEVICE_B),
+      participantOp('trip.participant_removed', 'els', at(1), DEVICE),
+    ])
+    expect(state.trips[TRIP]?.participants?.['els']?.value).toBe(true)
+  })
+
+  it('creates the Trip from a participant op alone, out of authoring order', () => {
+    const state = fold([participantOp('trip.participant_added', 'els', at(1))])
+    expect(state.trips[TRIP]?.id).toBe(TRIP)
+    // The second reachable case for `phaseOf`'s absent-reads-`draft` rule
+    // (spec §3.2): a Trip that exists, with Participants, and no phase.
+    expect(Object.hasOwn(state.trips[TRIP]!, 'phase')).toBe(false)
+  })
+
+  it('ignores an op whose person_id is absent or not a string', () => {
+    const before = fold([participantOp('trip.participant_added', 'els', at(1))])
+    expect(
+      applyOp(before, participantOp('trip.participant_added', 7, at(2))),
+    ).toBe(before)
+    expect(
+      applyOp(before, participantOp('trip.participant_removed', null, at(3))),
+    ).toBe(before)
+    expect(
+      applyOp(before, op('trip', TRIP, 'trip.participant_added', {}, at(4))),
+    ).toBe(before)
+  })
+
+  it('returns the identical state object when a write loses', () => {
+    const seeded = fold([participantOp('trip.participant_added', 'els', at(5))])
+    const stale = applyOp(
+      seeded,
+      participantOp('trip.participant_removed', 'els', at(2)),
+    )
+    expect(stale).toBe(seeded)
+  })
+
+  it('leaves participants absent on a Trip no participant op has ever addressed', () => {
+    // Absent is a different fact from an empty map, and the two must not be
+    // conflated on the way in: no participant op has ever addressed this Trip.
+    const state = fold([tripCreatedOp('t1', { name: 'Ardennes' }, at(1))])
+    expect(Object.hasOwn(state.trips['t1']!, 'participants')).toBe(false)
   })
 })

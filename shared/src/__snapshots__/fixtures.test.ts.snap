@@ -301,6 +301,7 @@ exports[`the S2 op fixture > folds the S2 fixture to exactly the state it folded
       },
     },
   },
+  "trips": {},
   "unfolded": {
     "count": 1,
     "types": {

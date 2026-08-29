@@ -10,17 +10,25 @@ import {
   type Read,
 } from './payloads.ts'
 import { writeRegister, type Register } from './registers.ts'
-import type { DepotState, GearState, PersonState, PlaceState } from './state.ts'
+import type {
+  DepotState,
+  GearState,
+  PersonState,
+  PhaseValue,
+  PlaceState,
+  TripState,
+} from './state.ts'
 
 /**
  * The fold's starting point (`sync-protocol.md` §8.4): no places, no gear, no
- * people, and nothing unfolded.
+ * people, no trips, and nothing unfolded.
  */
 export function emptyState(): DepotState {
   return {
     places: {},
     gear: {},
     people: {},
+    trips: {},
     unfolded: { count: 0, types: {} },
   }
 }
@@ -96,6 +104,29 @@ function writePerson(
 }
 
 /**
+ * The `writePlace`/`writeGear`/`writePerson` shape a **fourth** time, for
+ * `trips` (S6). Reads or creates the `TripState` at `id`, applies `update`,
+ * and copies only what changed.
+ *
+ * Four copies of a six-line function is the point at which a generic
+ * `writeEntity<K>` starts to look right. It is deliberately **not** taken
+ * (spec §2): the generic needs the map key *and* the entity type as
+ * parameters, which reads worse than the thing it replaces, and each of these
+ * four is read far more often than it is written.
+ */
+function writeTrip(
+  state: DepotState,
+  id: string,
+  stamp: Stamp,
+  update: (trip: TripState, stamp: Stamp) => TripState,
+): DepotState {
+  const current = state.trips[id] ?? { id }
+  const updated = update(current, stamp)
+  if (updated === current) return state
+  return { ...state, trips: { ...state.trips, [id]: updated } }
+}
+
+/**
  * Writes `read`'s value into `current` via `writeRegister` only when `read`
  * actually carries a value — an absent (or malformed) field leaves `current`
  * untouched, propagating its identity so a caller can tell nothing changed.
@@ -115,11 +146,14 @@ function writeIfPresent<T>(
 /**
  * The `writeIfPresent` counterpart for a register whose **declared type
  * includes `null`** — named for that, not for `name`, so it generalises for
- * free the next time a nullable, non-`name` register shows up (`trip.
- * dates_set`'s `start`/`end`, a later slice's `date｜null`, is exactly this
- * shape). `PlaceState.name`, `GearState.name` and `PersonState.name` —
- * `Register<string | null>` (`state.ts`, Task 3) — are the only registers on
- * that side of the line today.
+ * free the next time a nullable, non-`name` register shows up. **S6 is that
+ * slice, and it needed no change here**: `trip.dates_set`'s `start`/`end`
+ * were named in this comment as the anticipated case and turned out to be
+ * exactly this shape, which is the whole return on naming the function for
+ * the type rather than for the field. The registers on that side of the line
+ * are now `PlaceState.name`, `GearState.name`, `PersonState.name`,
+ * `TripState.name` and `TripState.startDate`/`endDate` — all
+ * `Register<string | null>`.
  *
  * The rule, uniform across every register in this reducer: **a register
  * whose declared type includes `null` takes an explicit `null` as a clear; a
@@ -132,9 +166,10 @@ function writeIfPresent<T>(
  * overstatement (`sync-protocol.md` §4.3's note records the correction).
  *
  * Every op that writes a `name` register — `place.recorded`/
- * `place.renamed`, `gear.recorded`/`gear.renamed`, `person.recorded` — goes
- * through this function rather than `writeIfPresent`, so the three behave
- * identically wherever they are written. (An earlier version of this file
+ * `place.renamed`, `gear.recorded`/`gear.renamed`, `person.recorded`/
+ * `person.renamed`, `trip.created`/`trip.renamed` — goes through this
+ * function rather than `writeIfPresent`, so all of them behave identically
+ * wherever they are written. (An earlier version of this file
  * had `setPlaceName` collapse `null` into absent, reasoning from §4.1's
  * payload shape rather than from the state type; that made an explicit
  * clear fold identically to an absent field, exactly the conflation
@@ -353,6 +388,181 @@ const gearOwnershipSet: Handler = (state, op, stamp) =>
   })
 
 /**
+ * `trip.created` (`sync-protocol.md` §4.4): creates the Trip, seeds `name`,
+ * seeds `phase = "draft"`, and folds the optional template provenance.
+ *
+ * `gearRecorded`'s shape rather than `setPlaceName`'s, because this op writes
+ * more than one register — and the second one is written by **this handler**,
+ * not carried in the payload (spec §1.3). §4.4's payload is
+ * `{name, from_trip_id?}`; the phase is stamped with this op's own clock, and
+ * three properties follow from that with no special case anywhere:
+ *
+ * - A `trip.phase_moved` delivered **before** its creation wins, because its
+ *   clock is strictly later. §8.2's out-of-authoring-order case, resolved by
+ *   the ordinary rule.
+ * - A re-delivered `trip.created` (our own op returning through pull, §8.3)
+ *   writes identical values on an identical stamp and loses on `<= 0`.
+ *   Idempotent for free.
+ * - No payload can carry a phase, so no client can create a Trip already
+ *   `closed`. An absence, not a guard.
+ *
+ * `from_trip_id` is folded and read by nobody until S14 (spec §1.3). §5.4
+ * freezes this payload the moment S6 ships, so a field the reducer dropped
+ * would be a field no fixture could prove was carried — and `authoring.ts`
+ * has no parameter for it, so the only writer is a hand-shaped op.
+ */
+const tripCreated: Handler = (state, op, stamp) =>
+  writeTrip(state, op.aggregate_id, stamp, (trip, st) => {
+    // `TripState.name` is `Register<string | null>` like every other name
+    // register, so an explicit `null` is a clear (§1.3, `setPlaceName`'s rule).
+    const name = writeNullableIfPresent(
+      trip.name,
+      readString(op.payload, 'name'),
+      st,
+    )
+    const phase = writeRegister<PhaseValue>(trip.phase, 'draft', st)
+    const fromTripId = writeIfPresent(
+      trip.fromTripId,
+      readString(op.payload, 'from_trip_id'),
+      st,
+    )
+    // Identity across all three before the spread, not after: a wholly lost
+    // write must return the identical `TripState` so `writeTrip` can return
+    // the identical `DepotState`. `phase` is never `undefined` here —
+    // `writeRegister` always returns a register — so only the two optional
+    // reads need the `undefined` guard on the way out.
+    if (
+      name === trip.name &&
+      phase === trip.phase &&
+      fromTripId === trip.fromTripId
+    ) {
+      return trip
+    }
+    return {
+      ...trip,
+      ...(name === undefined ? {} : { name }),
+      phase,
+      ...(fromTripId === undefined ? {} : { fromTripId }),
+    }
+  })
+
+/**
+ * `trip.renamed` (`sync-protocol.md` §4.4): sets `name`, via
+ * `writeNullableIfPresent`'s rule — the eighth `name` row, settled by this
+ * slice from the general rule and not a new one (spec §1.2).
+ *
+ * Unlike `setPlaceName` and `setPersonName` this sits under **one** key: its
+ * partner `trip.created` writes two further registers, so it needs
+ * `gearRecorded`'s shape and an identity check spanning all three. The three
+ * lines of name write are duplicated there rather than extracted here,
+ * exactly as `gearRecorded` and `gearRenamed` already duplicate them.
+ */
+const setTripName: Handler = (state, op, stamp) =>
+  writeTrip(state, op.aggregate_id, stamp, (trip, st) => {
+    const next = writeNullableIfPresent(
+      trip.name,
+      readString(op.payload, 'name'),
+      st,
+    )
+    if (next === trip.name) return trip
+    return next === undefined ? trip : { ...trip, name: next }
+  })
+
+/**
+ * `trip.dates_set` (`sync-protocol.md` §4.4): two **independent** registers,
+ * each following the absent-versus-null rule separately (§1.3), so
+ * `{start}` alone leaves the end exactly as it was and `{end: null}` clears
+ * the end and only the end. That is what lets the screen emit just what
+ * changed instead of re-asserting both dates on every save.
+ *
+ * The payload keys are `start`/`end`; the registers are `startDate`/
+ * `endDate` (spec §1.4) — the split `gear.owned_count_set{count}` already
+ * has, named here so nobody "fixes" it later.
+ *
+ * `readString`, with **no `YYYY-MM-DD` gate**: a reader that reported
+ * anything else `absent` would be rejecting a quartermaster's work to enforce
+ * a spelling, which is what §5.3 forbids and §4.3's `TagString` note argues
+ * at length. A malformed date is stored verbatim and drawn verbatim — visible
+ * rather than silently dropped — and the display sort stays lexicographic,
+ * which is exactly right for `YYYY-MM-DD` and total for anything else. There
+ * is likewise no end-before-start guard: the domain states no such invariant,
+ * and two devices may legitimately write the two registers concurrently, so a
+ * guard would have to discard one of two valid writes.
+ */
+const tripDatesSet: Handler = (state, op, stamp) =>
+  writeTrip(state, op.aggregate_id, stamp, (trip, st) => {
+    const startDate = writeNullableIfPresent(
+      trip.startDate,
+      readString(op.payload, 'start'),
+      st,
+    )
+    const endDate = writeNullableIfPresent(
+      trip.endDate,
+      readString(op.payload, 'end'),
+      st,
+    )
+    if (startDate === trip.startDate && endDate === trip.endDate) return trip
+    return {
+      ...trip,
+      ...(startDate === undefined ? {} : { startDate }),
+      ...(endDate === undefined ? {} : { endDate }),
+    }
+  })
+
+/**
+ * `trip.phase_moved` (`sync-protocol.md` §4.4): sets `phase`. `gearKindSet`'s
+ * shape exactly — one register, one value, so exclusivity is structural and
+ * there is nothing to guard, and invariant 16 makes every move expressible in
+ * either direction, so there is no transition graph to enforce either.
+ *
+ * `readOpen`, not a closed enum reader: an unrecognised phase is stored
+ * verbatim (§5.3 obligation 4) and `selectors/trip.ts` decides what the app
+ * does with one — not active, filed under `PLANNED`, no next step.
+ */
+const tripPhaseMoved: Handler = (state, op, stamp) =>
+  writeTrip(state, op.aggregate_id, stamp, (trip, st) => {
+    const phase = readOpen(op.payload, 'phase')
+    if (phase.kind !== 'value') return trip
+    const next = writeRegister<PhaseValue>(trip.phase, phase.value, st)
+    return next === trip.phase ? trip : { ...trip, phase: next }
+  })
+
+/**
+ * `trip.participant_added` / `trip.participant_removed`
+ * (`sync-protocol.md` §4.4): `gearTagWritten`'s handler with `person_id` for
+ * `tag` and `participants` for `tags` — an ordinary LWW pair on one
+ * **per-person** register (§3.4).
+ *
+ * The concurrency story is the register key, not the code. Two devices adding
+ * *different* People address different registers, so neither write is
+ * contested and both survive: the union is not computed, it is the absence of
+ * a conflict. An add racing a remove of the *same* Person is one register
+ * resolving by `writeRegister` like every other field.
+ *
+ * `false` is a real value carrying a real clock, never a dropped key —
+ * dropping it would let a concurrent re-add win by arrival order. And the map
+ * has to *be* a map for a second reason: S8 derives one Piece per
+ * Participant, which is what lets a Participant added late get a Piece with
+ * no backfill op.
+ */
+const tripParticipantWritten =
+  (present: boolean): Handler =>
+  (state, op, stamp) =>
+    writeTrip(state, op.aggregate_id, stamp, (trip, st) => {
+      const personId = readString(op.payload, 'person_id')
+      if (personId.kind !== 'value') return trip
+      const current = trip.participants?.[personId.value]
+      const next = writeRegister(current, present, st)
+      // Identity propagated, same as every other handler: a lost write must
+      // not fabricate a new `trip` and invalidate a memo downstream.
+      if (next === current) return trip
+      return {
+        ...trip,
+        participants: { ...trip.participants, [personId.value]: next },
+      }
+    })
+
+/**
  * The op-type dispatch table (`sync-protocol.md` §4.1, §4.3). A `Record`, not
  * a `switch`, so "is this type known?" is a lookup — the same question the
  * tolerant reader asks.
@@ -392,6 +602,17 @@ const handlers: Record<string, Handler> = {
   // `place.recorded`/`place.renamed` already has above.
   'person.recorded': setPersonName,
   'person.renamed': setPersonName,
+  // The fourth aggregate (§4.4). `trip.created` is not paired with
+  // `trip.renamed` under one handler the way the other two `recorded`/
+  // `renamed` pairs are, because it writes two further registers of its own.
+  'trip.created': tripCreated,
+  'trip.renamed': setTripName,
+  'trip.dates_set': tripDatesSet,
+  'trip.phase_moved': tripPhaseMoved,
+  // Per-person registers (§3.4). Present and absent, not create and delete —
+  // exactly the tag pair above.
+  'trip.participant_added': tripParticipantWritten(true),
+  'trip.participant_removed': tripParticipantWritten(false),
 }
 
 /**

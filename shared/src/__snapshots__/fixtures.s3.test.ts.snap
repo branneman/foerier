@@ -126,6 +126,7 @@ exports[`the S3 tag fixture > folds the S3 fixture to exactly the state it folde
   },
   "people": {},
   "places": {},
+  "trips": {},
   "unfolded": {
     "count": 0,
     "types": {},

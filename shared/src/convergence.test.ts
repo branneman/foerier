@@ -664,26 +664,31 @@ describe('convergence', () => {
     const known = PERSON_IDS[0]
     const unknown = PERSON_IDS[1]
 
-    // `trip.created` is in the catalogue (§4.4) but this build does not fold
-    // it — the honest shape of "an op type from a newer client". It is
+    // `trip.entry_added` is in the catalogue (§4.4) but this build does not
+    // fold it — the honest shape of "an op type from a newer client". It is
     // hand-shaped precisely because there is no builder for it here; the
     // builders are the types the shipped slices author.
     //
-    // **This example used to be `person.renamed`**, and moved when S4 folded
-    // that row. The property under test never changed; only the op that can
-    // still demonstrate it did, which is the price of picking a real
-    // catalogue entry over an invented one — and worth paying, because an
-    // invented type would not prove a *newer client's* op survives.
-    const tripCreated: OpSpec = {
+    // **This example has now moved twice**: it was `person.renamed` until S4
+    // folded that row, then `trip.created` until S6 folded this whole
+    // aggregate's root. The property under test never changes; only the op
+    // that can still demonstrate it does, which is the standing price of
+    // picking a real catalogue entry over an invented one — and still worth
+    // paying, because an invented type would not prove a *newer client's* op
+    // survives. S7 will move it again.
+    const entryAdded: OpSpec = {
       aggregate: 'trip',
       aggregate_id: unknown,
-      type: 'trip.created',
-      payload: { name: 'Alps 2026' },
+      type: 'trip.entry_added',
+      payload: {
+        entry_id: GEAR_IDS[0],
+        source: { from: 'depot', gear_id: GEAR_IDS[0] },
+      },
     }
 
     a.emit(personRecorded(known, 'Bran'))
     clock.advance(1000)
-    const unfoldable = b.emit(tripCreated)
+    const unfoldable = b.emit(entryAdded)
     exchange(a, b)
 
     // `noteUnfolded` is the one counter in the fold that is *not* register-
@@ -697,15 +702,18 @@ describe('convergence', () => {
       // §5.3 obligation 1: retained and counted, never rejected.
       expect(r.state().unfolded).toEqual({
         count: 1,
-        types: { 'trip.created': 1 },
+        types: { 'trip.entry_added': 1 },
       })
       expect(r.log()).toHaveLength(2)
       expect(r.state().people[known]?.name?.value).toBe('Bran')
-      // An op this build cannot fold creates nothing — and creates it in no
-      // map, which is why the aggregate it names is one this build has no
-      // map for at all.
+      // An op this build cannot fold creates nothing, in any map. Since S6
+      // this is the sharper claim it used to be unable to make: the aggregate
+      // the op names now *has* a map here, and `writeTrip` still never runs,
+      // because dispatch is a lookup on `type` and an unknown one never
+      // reaches a handler at all.
       expect(Object.hasOwn(r.state().people, unknown)).toBe(false)
       expect(Object.hasOwn(r.state().gear, unknown)).toBe(false)
+      expect(Object.hasOwn(r.state().trips, unknown)).toBe(false)
     }
   })
 
