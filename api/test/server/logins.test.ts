@@ -243,7 +243,9 @@ describe('logins', () => {
       })
       .execute()
 
-    await del(`/auth/logins/${target.loginId}`, caller.token)
+    expect(
+      (await del(`/auth/logins/${target.loginId}`, caller.token)).status,
+    ).toBe(204)
 
     const pulled = await get('/sync/pull?since=0', caller.token)
     expect(pulled.status).toBe(200)
