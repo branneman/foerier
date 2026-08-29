@@ -1,5 +1,5 @@
 import { startAuthentication } from '@simplewebauthn/browser'
-import { depotCounts } from '@foerier/shared'
+import { depotCounts, visibleTrips } from '@foerier/shared'
 import {
   useCallback,
   useEffect,
@@ -33,6 +33,9 @@ import { People } from './screens/People'
 import { Find } from './screens/Find'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
+import { NewTrip } from './screens/NewTrip'
+import { Trip } from './screens/Trip'
+import { Trips } from './screens/Trips'
 import { AppShell } from './shell/AppShell'
 import styles from './shell/AppShell.module.css'
 import { DESKTOP, useMediaQuery } from './shell/useMediaQuery'
@@ -125,10 +128,15 @@ function SignedInShell({
  * The counts the desktop sidebar draws beside each destination
  * (`Screens A` §02's SIDEBAR ANATOMY: `DEPOT 128 · TRIPS 3 · FIND` none).
  *
- * `/trips` has no entry, and that is the honest state rather than an
- * oversight — there are no Trips until S6, so a count would be a zero nobody
- * asked about. `/find` never carries one: it answers a question, it does not
- * hold a collection.
+ * **A destination's count is the size of the list it opens.** So `/trips`
+ * counts every non-deleted Trip — `visibleTrips`, which is the very list the
+ * Trips screen partitions — and not the active ones: a household with a year
+ * of finished trips behind it would otherwise read `TRIPS 0` while the row
+ * opens onto a full ledger. Closed Trips are on that screen, so they are in
+ * this number.
+ *
+ * `/find` still carries no entry, and never will: it answers a question, it
+ * does not hold a collection.
  *
  * Read here rather than inside `AppShell` because the shell is rendered
  * *outside* the `DepotProvider` — deliberately, so the nav does not depend on
@@ -138,10 +146,11 @@ function useDestinationCounts(
   store: StoreApi<DepotStoreState>,
 ): Readonly<Partial<Record<string, number>>> {
   const state = useStore(store, (depot) => depot.state)
-  // `depotCounts` sorts the whole depot, so it is memoed on the fold rather
-  // than recomputed on every sync tick.
+  // Both memoed on the fold rather than recomputed on every sync tick:
+  // `depotCounts` sorts the whole depot, and `visibleTrips` sorts every Trip.
   const gear = useMemo(() => depotCounts(state).gear, [state])
-  return { '/': gear }
+  const trips = useMemo(() => visibleTrips(state).length, [state])
+  return { '/': gear, '/trips': trips }
 }
 
 /**
@@ -357,8 +366,18 @@ export function App({
               <Route path="/add">
                 <AddGear />
               </Route>
+              {/* `/trips/new` **before** `/trips/:id`: wouter's `Switch`
+                  renders the first match, so with the parameterised route
+                  first, `new` is read as a Trip id and F3's first step
+                  becomes `No such trip.` */}
               <Route path="/trips">
-                <EmptyState title="Trips" line="No trips." />
+                <Trips />
+              </Route>
+              <Route path="/trips/new">
+                <NewTrip />
+              </Route>
+              <Route path="/trips/:id">
+                <Trip />
               </Route>
               <Route path="/find">
                 <Find />
