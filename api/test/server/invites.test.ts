@@ -126,12 +126,12 @@ describe('invites', () => {
   it('is single-use — the second redemption of one secret fails', async () => {
     const caller = await signedInDevice()
     const personId = systemIdSource.next()
-    const { secret } = await jsonOf<{ secret: string }>(
-      await post('/auth/invites', caller.token, {
-        purpose: 'join',
-        person_id: personId,
-      }),
-    )
+    const issued = await post('/auth/invites', caller.token, {
+      purpose: 'join',
+      person_id: personId,
+    })
+    expect(issued.status).toBe(200)
+    const { secret } = await jsonOf<{ secret: string }>(issued)
 
     const first = await h.app.request('/api/v1/auth/device/claim', {
       method: 'POST',
@@ -150,12 +150,12 @@ describe('invites', () => {
 
   it('expires after seven days', async () => {
     const caller = await signedInDevice()
-    const { secret } = await jsonOf<{ secret: string }>(
-      await post('/auth/invites', caller.token, {
-        purpose: 'join',
-        person_id: systemIdSource.next(),
-      }),
-    )
+    const issued = await post('/auth/invites', caller.token, {
+      purpose: 'join',
+      person_id: systemIdSource.next(),
+    })
+    expect(issued.status).toBe(200)
+    const { secret } = await jsonOf<{ secret: string }>(issued)
 
     h.clock.advance(7 * 24 * 60 * 60 * 1000 + 1)
 
@@ -188,16 +188,18 @@ describe('invites', () => {
     const caller = await signedInDevice()
     const personId = systemIdSource.next()
 
-    const first = await jsonOf<{ id: string }>(
-      await post('/auth/invites', caller.token, {
-        purpose: 'join',
-        person_id: personId,
-      }),
-    )
-    await post('/auth/invites', caller.token, {
+    const firstRes = await post('/auth/invites', caller.token, {
       purpose: 'join',
       person_id: personId,
     })
+    expect(firstRes.status).toBe(200)
+    const first = await jsonOf<{ id: string }>(firstRes)
+
+    const secondRes = await post('/auth/invites', caller.token, {
+      purpose: 'join',
+      person_id: personId,
+    })
+    expect(secondRes.status).toBe(200)
 
     const row = await db
       .selectFrom('invite')
@@ -224,12 +226,12 @@ describe('invites', () => {
       .where('id', '=', other.loginId)
       .executeTakeFirstOrThrow()
 
-    const body = await jsonOf<{ id: string }>(
-      await post('/auth/invites', caller.token, {
-        purpose: 'device',
-        person_id: person.person_id,
-      }),
-    )
+    const issued = await post('/auth/invites', caller.token, {
+      purpose: 'device',
+      person_id: person.person_id,
+    })
+    expect(issued.status).toBe(200)
+    const body = await jsonOf<{ id: string }>(issued)
 
     const row = await db
       .selectFrom('invite')
@@ -256,9 +258,11 @@ describe('invites', () => {
   it('still mints the caller’s own device link with no person_id', async () => {
     const caller = await signedInDevice()
 
-    const body = await jsonOf<{ id: string }>(
-      await post('/auth/invites', caller.token, { purpose: 'device' }),
-    )
+    const issued = await post('/auth/invites', caller.token, {
+      purpose: 'device',
+    })
+    expect(issued.status).toBe(200)
+    const body = await jsonOf<{ id: string }>(issued)
 
     const row = await db
       .selectFrom('invite')
