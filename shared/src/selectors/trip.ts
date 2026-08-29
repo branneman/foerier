@@ -78,8 +78,13 @@ export interface Phase {
  * PHASE sheet draws its rows straight off this array, and the order it draws
  * is the sequence a Trip usually runs.
  *
- * The `next` lines are spec §6.2's table verbatim. Ledger voice: terse,
- * factual, mono caps, no cheerleading.
+ * The `next` lines are the boards' table verbatim (`Screens B` 02A, README
+ * §5). Ledger voice: terse, factual, mono caps, no cheerleading. The design
+ * round redrew two of the five, and `on_trip`'s is the one worth the reason:
+ * `SET UNPACK WHEN BACK` **names the actual control** — the quartermaster
+ * sets the phase, and `SET UNPACK` is the thing they do. Spec §6.2's table
+ * holds the superseded pair; it is a dated record of the slice, and the
+ * boards outrank it.
  */
 export const PHASES: readonly Phase[] = [
   {
@@ -94,14 +99,14 @@ export const PHASES: readonly Phase[] = [
     label: 'PACK-OUT',
     name: 'Pack-out',
     active: true,
-    next: 'NEXT — PACK IT',
+    next: 'NEXT — PACK THE LIST',
   },
   {
     id: 'on_trip',
     label: 'ON TRIP',
     name: 'On trip',
     active: true,
-    next: 'NEXT — MARK UNPACK WHEN YOU ARE BACK',
+    next: 'NEXT — SET UNPACK WHEN BACK',
   },
   {
     id: 'unpack',

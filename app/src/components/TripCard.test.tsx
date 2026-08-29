@@ -145,7 +145,9 @@ describe('the active trip card', () => {
     ).toBeVisible()
     // In place of the board's `● 48/61 PIECES · 13 LEFT`, which has nothing to
     // count until the gear list exists (spec §6.2).
-    expect(screen.getByTestId('trip-next')).toHaveTextContent('NEXT — PACK IT')
+    expect(screen.getByTestId('trip-next')).toHaveTextContent(
+      'NEXT — PACK THE LIST',
+    )
     expect(screen.queryByText(/PIECES/)).toBeNull()
   })
 

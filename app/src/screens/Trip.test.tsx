@@ -171,7 +171,9 @@ describe('the trip screen — the header the board draws', () => {
     expect(screen.getByTestId('phase-chip')).toHaveTextContent(
       'PACK-OUT · DAY 1',
     )
-    expect(screen.getByTestId('trip-next')).toHaveTextContent('NEXT — PACK IT')
+    expect(screen.getByTestId('trip-next')).toHaveTextContent(
+      'NEXT — PACK THE LIST',
+    )
   })
 
   it('draws no day count for a Draft', async () => {

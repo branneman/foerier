@@ -75,15 +75,16 @@ describe('PHASES', () => {
   })
 
   it('states the next step for every phase but closed', () => {
-    // Spec §6.2's table, verbatim: this is the line the card and the trip
-    // screen draw in place of a progress bar that has nothing to count until
-    // S7 builds the gear list.
+    // The boards' table verbatim (`Screens B` 02A, README §5), which the
+    // design round redrew two rows of: `PACK IT` → `PACK THE LIST`, and
+    // `MARK UNPACK WHEN YOU ARE BACK` → `SET UNPACK WHEN BACK`. Spec §6.2
+    // holds the superseded pair and is a dated record, not the authority.
     expect(
       Object.fromEntries(PHASES.map((phase) => [phase.id, phase.next])),
     ).toEqual({
       draft: 'NEXT — BUILD THE GEAR LIST',
-      pack_out: 'NEXT — PACK IT',
-      on_trip: 'NEXT — MARK UNPACK WHEN YOU ARE BACK',
+      pack_out: 'NEXT — PACK THE LIST',
+      on_trip: 'NEXT — SET UNPACK WHEN BACK',
       unpack: 'NEXT — RESOLVE EVERY ENTRY, THEN CLOSE',
       closed: null,
     })
@@ -170,10 +171,10 @@ describe('isKnownPhase', () => {
 describe('phaseNext', () => {
   it.each([
     ['draft', 'NEXT — BUILD THE GEAR LIST'],
-    ['pack_out', 'NEXT — PACK IT'],
-    ['on_trip', 'NEXT — MARK UNPACK WHEN YOU ARE BACK'],
+    ['pack_out', 'NEXT — PACK THE LIST'],
+    ['on_trip', 'NEXT — SET UNPACK WHEN BACK'],
     ['unpack', 'NEXT — RESOLVE EVERY ENTRY, THEN CLOSE'],
-  ])("states §6.2's line for %s", (phase, line) => {
+  ])('states the drawn line for %s', (phase, line) => {
     expect(phaseNext(trip(depot(aTrip({ id: 't1', phase })), 't1'))).toBe(line)
   })
 
