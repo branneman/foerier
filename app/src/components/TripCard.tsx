@@ -6,54 +6,62 @@ import { tripChip, tripDateRange, tripParticipants } from '../depot/trips'
 import styles from './TripCard.module.css'
 
 /**
- * **A Trip, as the Trips list draws it** — `Screens B` §02's active card and
- * its dashed draft card, which are one component with two variants rather
- * than two components: the anatomy is identical (name · phase chip · dates ·
- * Participants · next step · a way in), and what differs is which of those
- * facts a Trip in that section happens to hold.
+ * **A Trip, as the Trips list draws it** — `Screens B` §02A's `Trips — S6 ship
+ * state`: the active card and its dashed draft card, which are one component
+ * with two variants rather than two components, because the anatomy is
+ * identical (name · phase chip · dates · Participants · next step · a way in)
+ * and what differs is which of those facts a Trip in that section happens to
+ * hold.
  *
  * It lives in `app/src/components/` and not in `ui/`. `GearRow` earned its
  * place there by having two callers in two screens (`Depot` and `Find`); this
  * has one. It moves when S7 or S9 gives it a second — the same rule, applied
  * the same way rather than pre-empted (spec §4.1).
  *
- * ## The CTA names the destination that exists
+ * ## No button, no verb link — the card itself is the target
  *
- * The board's active card reads `Continue pack-out` and its draft card
- * `BUILD LIST ›`. **Neither destination exists at this slice**: the gear list
- * builder and the packing view are later. The repo's rule — *an affordance
- * that leads nowhere is worse than a missing one*, stated when the `ACCOUNT`
- * row was held back until the Account screen existed — decides it, and the
- * board's copy would be worse than a missing affordance rather than better: it
- * does not lead nowhere, it leads somewhere and lies about it. So both read
- * `OPEN ›` and go to `/trips/:id`, which is real, and each becomes the board's
- * copy on the slice that builds the board's destination (spec §6.1).
+ * `OPEN ›` is retired. The board's reason, verbatim: it *"spent the system's
+ * strongest element on its flattest verb and taught the accent button to mean
+ * nothing"*. A board's CTA copy lands on the slice that builds its
+ * destination — `BUILD LIST ›` with the builder, `Continue pack-out` with the
+ * packing view — and until then the interim affordance is the closed row's own
+ * `›` with the whole card tappable. When the accent button returns, it means
+ * something.
  *
- * ## The progress line falls through to the next step
+ * ## The link and the chip are siblings, never nested
  *
- * The board draws `● 48/61 PIECES · 13 LEFT` and a bar on the **active** card.
- * There are no Entries and no Pieces yet, so the line has nothing to count and
- * a `0/0` bar would state a fact about a list nobody has built. In its place
- * that card draws `phaseNext`, which is what this slice actually owes: *the
- * phase control, moving both directions, with the next thing to do stated*. It
- * is a fact of the phase table, so it stays correct as later slices build the
- * things it names, and the progress line returns **above** it rather than
- * replacing it (spec §6.2).
+ * The phase chip is a `<button>`, and a button inside an anchor is invalid
+ * HTML *and* a live interaction bug: one tap would open SET PHASE and navigate
+ * away from the screen it opened on. `ClosedRow` already answers this — its
+ * `REOPEN` sits *beside* the row's link rather than inside it — and the answer
+ * is the same here, with the link stretched over the card so that "beside, in
+ * the DOM" still reads as "the whole card" under a thumb. Neither element
+ * contains the other, so nothing bubbles from one to the other.
  *
- * The dashed card draws no such line. It never had a progress line to replace,
- * spec §4.1 enumerates its three, and the board keeps it slight on purpose —
- * `NEXT — BUILD THE GEAR LIST` beneath `DRAFT · 0 GEAR LISTED` says the same
- * thing twice.
+ * ## The NEXT line belongs to every non-closed card
+ *
+ * Where the board draws `● 48/61 PIECES · 13 LEFT`, this draws `phaseNext` —
+ * *"a permanent obligation, not a stand-in: it survives the progress line and
+ * sits above it"*, which is why the full-weight variant puts the progress line
+ * **under** it rather than in its place. It shipped
+ * active-only, on the argument that `NEXT — BUILD THE GEAR LIST` restates
+ * `DRAFT · 0 GEAR LISTED`; the board reverses that, because the redundancy is
+ * an accident of the count being zero and *"dies at `DRAFT · 14 GEAR
+ * LISTED`"*.
+ *
+ * So the line is asked for unconditionally, and `phaseNext`'s two nulls answer
+ * for themselves: a **closed** Trip has nothing next, and an **unrecognised**
+ * phase states nothing because the next step is a fact of the phase table and
+ * there is no row. Both come out of `shared/`, not out of a variant test here.
  *
  * ## `@container`, never a media query
  *
- * The card establishes its own inline-size container and folds against the
- * width it is handed — [frontend-design §3.2](../../../docs/frontend-design.md),
- * and the board says it in as many words: *"Same components as 393 —
- * `@container` picks the layout, not the viewport."* The same card is the
- * full-width one on a phone and one of two columns at Roomy, where it is
- * **narrower** than on the phone; nothing about its contents changes, so
- * nothing here is a media query.
+ * The card folds against the width it is handed —
+ * [frontend-design §3.2](../../../docs/frontend-design.md), and the board says
+ * it in as many words: *"CONTAINER QUERY: SAME COMPONENTS, THE PANE PICKS THE
+ * FOLD — NOT THE VIEWPORT."* The same card is the full-width one on a phone
+ * and one of two columns at Roomy, where it is **narrower** than on the phone;
+ * nothing about its contents changes, so nothing here is a media query.
  */
 export interface TripCardProps {
   trip: TripState
@@ -85,13 +93,7 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
   // clock is read at render — as often as anything on this card can change.
   const chip = tripChip(trip, Date.now())
 
-  // **The active card only.** Spec §4.1 enumerates the planned card's three
-  // lines — name, `DRAFT · 0 GEAR LISTED`, `OPEN ›` — and the board keeps the
-  // dashed card deliberately slight; `NEXT — BUILD THE GEAR LIST` would
-  // restate `0 GEAR LISTED` as a fourth line on the one card meant to carry
-  // fewest. §8.3's "the next thing to do stated" is satisfied on the active
-  // card here and on the trip screen, which draws it for every phase.
-  const next = variant === 'active' ? phaseNext(trip) : null
+  const next = phaseNext(trip)
 
   return (
     <article
@@ -104,105 +106,103 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
       // own reason, and it is a fact about the section, not about the styling.
       data-variant={variant}
     >
-      <div className={styles['body']}>
-        <div className={styles['head']}>
-          <span className={styles['name']} data-testid="trip-name">
-            {/* `▸` is the trip world against `⌂ HOME`'s (Foundations,
-                principle 3), and it belongs to a Trip that is actually
-                arranging gear. A Draft is not on one. */}
-            {variant === 'active' ? '▸ ' : ''}
-            {label}
-          </span>
-
-          <span className={styles['phaseLine']} data-testid="phase-line">
-            <button
-              type="button"
-              className={styles['chip']}
-              data-testid="phase-chip"
-              aria-haspopup="dialog"
-              onClick={onOpenPhase}
-            >
-              {chip}
-            </button>
-            {variant === 'planned' && (
-              // The board's `DRAFT · 0 GEAR LISTED`, split so the chip's
-              // accessible name is the phase and nothing else: the count is a
-              // fact about the gear list, not about the control that moves a
-              // Trip. The `0` is true today and stays true until S7 gives it
-              // something to count.
-              <span className={styles['listed']}> · 0 GEAR LISTED</span>
-            )}
-          </span>
-        </div>
-
-        {(dates !== null || participants.length > 0) && (
-          <div className={styles['meta']} data-testid="trip-meta">
-            {dates !== null && (
-              <span className={styles['dates']} data-testid="trip-dates">
-                {dates}
-              </span>
-            )}
-            {participants.length > 0 && (
-              // One `role="img"` over the whole cluster rather than a label on
-              // each circle: the initials are a single piece of information —
-              // who is on this Trip — and read out one letter at a time they
-              // are as easily a stray alphabet as a roster. The circles
-              // themselves stay `aria-hidden`, which is the People screen's
-              // treatment and `AccountAvatar`'s before it.
-              <span
-                className={styles['circles']}
-                role="img"
-                aria-label={`Participants: ${participants
-                  .map((person) => person.label)
-                  .join(', ')}`}
-              >
-                {participants.map((person) => (
-                  <span
-                    key={person.id}
-                    className={styles['circle']}
-                    aria-hidden="true"
-                  >
-                    {/* A Person with no folded name draws an **empty** circle
-                        rather than a placeholder letter — inventing one would
-                        be a fact the app does not have. */}
-                    {person.label === '—'
-                      ? ''
-                      : person.label.charAt(0).toUpperCase()}
-                  </span>
-                ))}
-              </span>
-            )}
-          </div>
-        )}
-
-        {next !== null && (
-          // `null` exactly one way here: the dashed card, which states no next
-          // step at all. `phaseNext`'s own two nulls — a closed Trip, and a
-          // phase this build has never heard of — are unreachable through this
-          // line, because `next` is only computed for the active variant and
-          // the active variant is `isActive`, which neither of those is. They
-          // are reached on the trip screen, which draws the line for every
-          // phase; there the chip still draws the raw value and only the line
-          // goes away.
-          <p className={styles['next']} data-testid="trip-next">
-            {next}
-          </p>
-        )}
-      </div>
-
+      {/* The card's one control, stretched over the whole of it and named for
+          the Trip: a link list reading `Open`, `Open`, `Open` tells nothing
+          apart, and the name is the only thing that does. The `›` below is
+          what a sighted reader sees of it. */}
       <Link
         href={`/trips/${trip.id}`}
-        className={`${styles['cta']} ${
-          variant === 'active' ? styles['ctaActive'] : styles['ctaPlanned']
-        }`}
-        // A list of cards whose links are all named `OPEN` is unnavigable by
-        // link list, and the Trip's name is the only thing that tells them
-        // apart. The visible copy stays the board's register — terse, mono,
-        // with the chevron.
+        className={styles['surface']}
         aria-label={`Open ${label}`}
-      >
-        OPEN ›
-      </Link>
+      />
+
+      <div className={styles['head']}>
+        <span className={styles['name']} data-testid="trip-name">
+          {/* `▸` is the trip world against `⌂ HOME`'s (Foundations,
+              principle 3), and it belongs to a Trip that is actually
+              arranging gear. A Draft is not on one. */}
+          {variant === 'active' ? '▸ ' : ''}
+          {label}
+        </span>
+
+        {/* Beside the chip on the active card and beside the name on the
+            dashed one — one element either way, placed by the grid, because a
+            container query decides how what exists lays out and never which
+            elements exist. */}
+        <span
+          className={styles['chevron']}
+          data-testid="trip-chevron"
+          aria-hidden="true"
+        >
+          ›
+        </span>
+
+        <span className={styles['phaseLine']} data-testid="phase-line">
+          <button
+            type="button"
+            className={styles['chip']}
+            data-testid="phase-chip"
+            aria-haspopup="dialog"
+            onClick={onOpenPhase}
+          >
+            {chip}
+          </button>
+          {variant === 'planned' && (
+            // The board's `DRAFT · 0 GEAR LISTED`, split so the chip's
+            // accessible name is the phase and nothing else: the count is a
+            // fact about the gear list, not about the control that moves a
+            // Trip. The `0` is true today and stays true until S7 gives it
+            // something to count.
+            <span className={styles['listed']}> · 0 GEAR LISTED</span>
+          )}
+        </span>
+      </div>
+
+      {(dates !== null || participants.length > 0) && (
+        <div className={styles['meta']} data-testid="trip-meta">
+          {dates !== null && (
+            <span className={styles['dates']} data-testid="trip-dates">
+              {dates}
+            </span>
+          )}
+          {participants.length > 0 && (
+            // One `role="img"` over the whole cluster rather than a label on
+            // each circle: the initials are a single piece of information —
+            // who is on this Trip — and read out one letter at a time they
+            // are as easily a stray alphabet as a roster. The circles
+            // themselves stay `aria-hidden`, which is the People screen's
+            // treatment and `AccountAvatar`'s before it.
+            <span
+              className={styles['circles']}
+              role="img"
+              aria-label={`Participants: ${participants
+                .map((person) => person.label)
+                .join(', ')}`}
+            >
+              {participants.map((person) => (
+                <span
+                  key={person.id}
+                  className={styles['circle']}
+                  aria-hidden="true"
+                >
+                  {/* A Person with no folded name draws an **empty** circle
+                      rather than a placeholder letter — inventing one would
+                      be a fact the app does not have. */}
+                  {person.label === '—'
+                    ? ''
+                    : person.label.charAt(0).toUpperCase()}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+
+      {next !== null && (
+        <p className={styles['next']} data-testid="trip-next">
+          {next}
+        </p>
+      )}
     </article>
   )
 }

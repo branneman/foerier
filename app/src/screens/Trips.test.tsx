@@ -24,6 +24,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { DESKTOP } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { Trips } from './Trips'
 
 /**
@@ -129,12 +131,35 @@ describe('the Trips screen', () => {
     // The line `/trips` has drawn since the shell existed, kept word for word.
     expect(screen.getByText('No trips.')).toBeVisible()
     expect(screen.queryAllByTestId('trip-entry')).toHaveLength(0)
-    // `+ NEW` survives the empty state: without it the first Trip could never
+    // The step survives the empty state: without it the first Trip could never
     // be created.
-    expect(screen.getByRole('link', { name: '+ NEW' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'New trip' })).toHaveAttribute(
       'href',
       '/trips/new',
     )
+  })
+
+  it('draws the new-trip step as the Depots FAB', async () => {
+    renderTrips(await seeded())
+
+    // "The Trips list gains the Depot's 56px FAB as `+ NEW`'s drawn control
+    // (F3 had the step, no frame)." The `+` is decoration; the FAB and the
+    // desktop control below are the same action, so they carry the same name.
+    const fab = screen.getByRole('link', { name: 'New trip' })
+    expect(fab).toHaveTextContent('+')
+    expect(fab.textContent).not.toContain('NEW')
+  })
+
+  it('keeps the title-row step at desktop, where there is no FAB', async () => {
+    setViewport(DESKTOP)
+    renderTrips(await seeded())
+
+    // The FAB is drawn 74px above the 3-tab bar, and desktop has a sidebar
+    // instead — so it goes where `Depot`'s goes, and the title row keeps the
+    // control, exactly as `Depot` keeps `+ Add gear` there.
+    const step = screen.getByRole('link', { name: 'New trip' })
+    expect(step).toHaveTextContent('+ NEW')
+    expect(step).toHaveAttribute('href', '/trips/new')
   })
 
   it('draws the three sections in order, and heads only the last', async () => {

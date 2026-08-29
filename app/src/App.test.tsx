@@ -342,8 +342,8 @@ describe('the Trips routes', () => {
 
     // The screen's own empty state reads `No trips.` — the same line the
     // placeholder it replaced drew — so the assertion is on something only
-    // the real screen has: F3's `+ NEW`.
-    expect(await screen.findByRole('link', { name: '+ NEW' })).toBeVisible()
+    // the real screen has: F3's step, drawn as the FAB.
+    expect(await screen.findByRole('link', { name: 'New trip' })).toBeVisible()
   })
 
   it('opens New trip at /trips/new rather than reading `new` as a Trip id', async () => {

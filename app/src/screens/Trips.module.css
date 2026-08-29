@@ -1,5 +1,6 @@
 @layer components {
   .screen {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
@@ -10,6 +11,17 @@
      * establishes its container for exactly the same reason.
      */
     container-type: inline-size;
+  }
+
+  /*
+   * 76px bottom clearance so the FAB never covers the last card or the last
+   * ledger row (`docs/design/README.md` §3). Carried by a class the screen
+   * adds only where it draws the FAB, rather than by a width query that undoes
+   * it at desktop: the clearance is owed to the control, so it is spelled
+   * against the control's own presence and this file needs no `@media`.
+   */
+  .clearance {
+    padding-bottom: 4.75rem;
   }
 
   .titleRow {
@@ -25,6 +37,8 @@
     color: var(--color-ink-primary);
   }
 
+  /* Desktop's step, where the FAB's 74px of tab-bar clearance would be
+     clearing nothing. `Depot`'s `+ Add gear` sits in the same slot. */
   .new {
     display: inline-flex;
     align-items: center;
@@ -34,6 +48,31 @@
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  /*
+   * `Depot`'s FAB, declaration for declaration: 56px, `+`, 74px above the
+   * 3-tab bar. The board hands this screen the same control — "the Trips list
+   * gains the Depot's 56px FAB as `+ NEW`'s drawn control (F3 had the step, no
+   * frame)" — and the two are copies rather than a shared rule because `ui/`
+   * has no FAB primitive and two callers is where `GearRow`'s rule says one
+   * gets made, not before.
+   */
+  .fab {
+    position: fixed;
+    right: var(--space-16);
+    bottom: 4.625rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--radius-sheet);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-title) var(--font-ui);
+    font-weight: 700;
     text-decoration: none;
   }
 

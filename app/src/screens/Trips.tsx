@@ -13,6 +13,7 @@ import { ReopenConfirm } from '../components/ReopenConfirm'
 import { TripCard } from '../components/TripCard'
 import { useDepot } from '../depot/store'
 import { tripStartMonth } from '../depot/trips'
+import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trips.module.css'
 
 /**
@@ -62,10 +63,20 @@ const REOPEN_TO: PhaseKey = 'unpack'
  * (`docs/specs/2026-08-29-radix-conversion.md`). A card that owned its sheet
  * would put one per Trip in the tree; instead each card asks, and the id of
  * whichever Trip asked is what this holds.
+ *
+ * ## The new-trip step is the Depot's FAB
+ *
+ * "The Trips list gains the Depot's 56px FAB as `+ NEW`'s drawn control (F3
+ * had the step, no frame)." It is drawn 74px above the 3-tab bar, so it goes
+ * exactly where `Depot`'s goes — and, like `Depot`'s, it is not drawn at
+ * desktop, where the bar it clears does not exist and the sidebar is the
+ * navigation. There the title row keeps the step, as `Depot`'s keeps
+ * `+ Add gear`.
  */
 export function Trips() {
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
+  const isDesktop = useMediaQuery(DESKTOP)
 
   // Memoed on the fold, as `Depot` memoes `depotCounts`: the partition and its
   // two orders are pure functions of the state, and the store hands out a new
@@ -94,14 +105,23 @@ export function Trips() {
   const nothing = cards.length === 0 && sections.closed.length === 0
 
   return (
-    <div className={styles['screen']}>
+    <div
+      className={`${styles['screen']} ${isDesktop ? '' : styles['clearance']}`}
+    >
       <div className={styles['titleRow']}>
         <h1 className={styles['title']}>Trips</h1>
-        {/* F3's first step is its own screen, following Add gear: the flow is
-            labelled desk work, dense picker, keyboard-friendly. */}
-        <Link href="/trips/new" className={styles['new']}>
-          + NEW
-        </Link>
+        {isDesktop && (
+          // The `+` is decoration; this and the FAB below are the same action,
+          // so they carry the same accessible name — `Depot`'s rule for the
+          // same pair.
+          <Link
+            href="/trips/new"
+            className={styles['new']}
+            aria-label="New trip"
+          >
+            + NEW
+          </Link>
+        )}
       </div>
 
       {nothing ? (
@@ -158,6 +178,14 @@ export function Trips() {
             setReopenTripId(null)
           }}
         />
+      )}
+
+      {!isDesktop && (
+        // F3's first step is its own screen, following Add gear: the flow is
+        // labelled desk work, dense picker, keyboard-friendly.
+        <Link href="/trips/new" className={styles['fab']} aria-label="New trip">
+          +
+        </Link>
       )}
     </div>
   )

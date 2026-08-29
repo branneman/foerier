@@ -16,6 +16,8 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Router } from 'wouter'
+import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { inMemoryOpLog } from '../depot/opLog'
@@ -93,16 +95,26 @@ async function seeded(...specs: readonly OpSpec[]): Promise<Seeded> {
   return { store, trip: () => store.getState().state.trips[TRIP]! }
 }
 
+/**
+ * Rendered under a **recording** memory location, because the one thing this
+ * card owes that cannot be asserted structurally is that the phase chip does
+ * not navigate. `history` starts at `/trips` and grows by one entry per
+ * followed link, so "nothing moved" and "this moved, once" are both statable.
+ */
 function renderCard(
   { store, trip }: Seeded,
   variant: 'active' | 'planned',
   onOpenPhase: () => void = () => {},
 ) {
+  const location = memoryLocation({ path: '/trips', record: true })
   render(
-    <DepotProvider value={store}>
-      <TripCard trip={trip()} variant={variant} onOpenPhase={onOpenPhase} />
-    </DepotProvider>,
+    <Router hook={location.hook}>
+      <DepotProvider value={store}>
+        <TripCard trip={trip()} variant={variant} onOpenPhase={onOpenPhase} />
+      </DepotProvider>
+    </Router>,
   )
+  return location
 }
 
 /** `DAY N` counts local calendar days, so this is what makes N deterministic. */
@@ -149,9 +161,12 @@ describe('the active trip card', () => {
       'NEXT — PACK THE LIST',
     )
     expect(screen.queryByText(/PIECES/)).toBeNull()
+    // The `›` beside the chip: the closed row's own glyph, doing what `OPEN ›`
+    // used to do with a whole accent button.
+    expect(screen.getByTestId('trip-chevron')).toHaveTextContent('›')
   })
 
-  it('names the destination that exists', async () => {
+  it('is one tap target, and carries no button and no verb link', async () => {
     today(1)
     const card = await seeded(
       tripCreated(TRIP, 'Alps 2026'),
@@ -159,12 +174,40 @@ describe('the active trip card', () => {
     )
     renderCard(card, 'active')
 
-    // Spec §6.1: the board's `Continue pack-out` lands on a packing screen S9
-    // builds. A button that leads somewhere and lies about it is worse than a
-    // missing one, so the CTA reads what it does.
-    const cta = screen.getByRole('link', { name: 'Open Alps 2026' })
-    expect(cta).toHaveTextContent('OPEN ›')
-    expect(cta).toHaveAttribute('href', `/trips/${TRIP}`)
+    // `OPEN ›` is retired — it "spent the system's strongest element on its
+    // flattest verb and taught the accent button to mean nothing", and a
+    // board's CTA copy lands on the slice that builds its destination.
+    expect(screen.queryByText(/OPEN/)).toBeNull()
+
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(1)
+    expect(links[0]).toHaveAccessibleName('Open Alps 2026')
+    expect(links[0]).toHaveAttribute('href', `/trips/${TRIP}`)
+  })
+
+  it('carves the phase chip out of that target rather than nesting it', async () => {
+    today(1)
+    const user = userEvent.setup()
+    const opens = vi.fn()
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    const location = renderCard(card, 'active', opens)
+
+    // Siblings, never nested — `ClosedRow`'s own arrangement. A `<button>`
+    // inside an `<a>` is invalid HTML *and* a live bug: one tap would open SET
+    // PHASE and leave the screen it opened on.
+    const chip = screen.getByTestId('phase-chip')
+    expect(chip.closest('a')).toBeNull()
+
+    await user.click(chip)
+    expect(opens).toHaveBeenCalledTimes(1)
+    expect(location.history).toEqual(['/trips'])
+
+    await user.click(screen.getByRole('link', { name: 'Open Alps 2026' }))
+    expect(location.history).toEqual(['/trips', `/trips/${TRIP}`])
+    expect(opens).toHaveBeenCalledTimes(1)
   })
 
   it('drops the dates row entirely when the Trip has none', async () => {
@@ -239,22 +282,38 @@ describe('the planned trip card', () => {
     // The `0` is a fact today and stays true until S7 gives it something to
     // count. The day count is not drawn: a Draft has not started anything.
     expect(screen.getByTestId('phase-chip').textContent).not.toContain('DAY')
-    // And no next-step line. Spec §4.1 enumerates the dashed card's three
-    // lines and the board keeps it slight; `NEXT — BUILD THE GEAR LIST`
-    // beneath `DRAFT · 0 GEAR LISTED` would say the same thing twice on the
-    // one card meant to carry fewest.
-    expect(screen.queryByTestId('trip-next')).toBeNull()
+    // The line lands on every non-closed card, drafts included. It shipped
+    // active-only, on the argument that it restates `0 GEAR LISTED`; that
+    // redundancy is an accident of the count being zero and dies at
+    // `DRAFT · 14 GEAR LISTED`.
+    expect(screen.getByTestId('trip-next')).toHaveTextContent(
+      'NEXT — BUILD THE GEAR LIST',
+    )
+    expect(screen.getByTestId('trip-chevron')).toHaveTextContent('›')
   })
 
-  it('links where the active card links', async () => {
+  it('is tappable end to end, with its own chip carved out', async () => {
     today(0)
+    const user = userEvent.setup()
+    const opens = vi.fn()
     const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
-    renderCard(card, 'planned')
+    const location = renderCard(card, 'planned', opens)
 
-    // The board's `BUILD LIST ›` names the gear list builder, which is S7's.
-    const cta = screen.getByRole('link', { name: 'Open Vosges — Oct' })
-    expect(cta).toHaveTextContent('OPEN ›')
-    expect(cta).toHaveAttribute('href', `/trips/${TRIP}`)
+    // The board's `BUILD LIST ›` names the gear list builder, which is S7's,
+    // so the dashed card gets the interim affordance the active one gets: the
+    // `›`, and a card that is tappable end to end.
+    expect(screen.queryByText(/BUILD LIST/)).toBeNull()
+    expect(screen.queryByText(/OPEN/)).toBeNull()
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(1)
+    expect(links[0]).toHaveAccessibleName('Open Vosges — Oct')
+    expect(links[0]).toHaveAttribute('href', `/trips/${TRIP}`)
+
+    // The chip sits on its own line here rather than beside the name, and is
+    // carved out of the target exactly as the active card's is.
+    await user.click(screen.getByTestId('phase-chip'))
+    expect(opens).toHaveBeenCalledTimes(1)
+    expect(location.history).toEqual(['/trips'])
   })
 
   it('states no next step for a phase this build has never heard of', async () => {
@@ -272,6 +331,9 @@ describe('the planned trip card', () => {
     // unrecognised phase inactive rather than guessing, so an old build never
     // over-states what a Trip is doing.
     expect(screen.getByTestId('phase-chip').textContent).not.toContain('DAY')
+    // The card asks `phaseNext` for every Trip it draws, so this null is the
+    // phase table's answer and not a variant gate: the next thing to do is a
+    // fact of the row, and there is no row.
     expect(screen.queryByTestId('trip-next')).toBeNull()
   })
 
