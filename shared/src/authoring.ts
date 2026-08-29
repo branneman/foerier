@@ -180,6 +180,22 @@ export function gearOwnedCountSet(id: string, count: number): OpSpec {
 }
 
 /**
+ * `sync-protocol.md` §4.3: sets `owner`.
+ *
+ * The cheapest op in the catalogue after the tag pair — {@link wireOwner}
+ * already existed, because `gear.recorded` may carry `owner?` and S2 wired the
+ * camelCase-to-wire mapping for it.
+ */
+export function gearOwnershipSet(id: string, owner: Owner): OpSpec {
+  return {
+    aggregate: 'gear',
+    aggregate_id: id,
+    type: 'gear.ownership_set',
+    payload: { owner: wireOwner(owner) },
+  }
+}
+
+/**
  * `sync-protocol.md` §4.3: sets the per-tag register to **present** (§3.4).
  *
  * The parameter is a {@link TagString}, not a `string`, and that is the
@@ -246,6 +262,30 @@ export function personRecorded(id: string, name: string): OpSpec {
     aggregate: 'person',
     aggregate_id: id,
     type: 'person.recorded',
+    payload: { name },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.2: sets `name`.
+ *
+ * **`string | null`, settled by this slice.** §4.2 typed the row `{name}` and
+ * said in as many words that the slice which folds it settles the question.
+ * `PersonState.name` is `Register<string | null>`, so an explicit `null` is a
+ * clear like any other write and an absent field leaves the register alone
+ * (§1.3). No carve-out: this is the rule the four other name registers already
+ * follow.
+ *
+ * {@link personRecorded} above keeps its `string` parameter. Its only callers
+ * — the join screen and the People screen's `+ NEW PERSON` — have a name in
+ * hand, and a Person recorded with no name is not a state any screen can
+ * author.
+ */
+export function personRenamed(id: string, name: string | null): OpSpec {
+  return {
+    aggregate: 'person',
+    aggregate_id: id,
+    type: 'person.renamed',
     payload: { name },
   }
 }

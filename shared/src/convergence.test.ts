@@ -525,20 +525,26 @@ describe('convergence', () => {
     const known = PERSON_IDS[0]
     const unknown = PERSON_IDS[1]
 
-    // `person.renamed` is in the catalogue (§4.2) but this build does not fold
+    // `trip.created` is in the catalogue (§4.4) but this build does not fold
     // it — the honest shape of "an op type from a newer client". It is
     // hand-shaped precisely because there is no builder for it here; the
-    // eleven builders are the eleven types this slice authors.
-    const personRenamed: OpSpec = {
-      aggregate: 'person',
+    // builders are the types the shipped slices author.
+    //
+    // **This example used to be `person.renamed`**, and moved when S4 folded
+    // that row. The property under test never changed; only the op that can
+    // still demonstrate it did, which is the price of picking a real
+    // catalogue entry over an invented one — and worth paying, because an
+    // invented type would not prove a *newer client's* op survives.
+    const tripCreated: OpSpec = {
+      aggregate: 'trip',
       aggregate_id: unknown,
-      type: 'person.renamed',
-      payload: { name: 'Ada' },
+      type: 'trip.created',
+      payload: { name: 'Alps 2026' },
     }
 
     a.emit(personRecorded(known, 'Bran'))
     clock.advance(1000)
-    const unfoldable = b.emit(personRenamed)
+    const unfoldable = b.emit(tripCreated)
     exchange(a, b)
 
     // `noteUnfolded` is the one counter in the fold that is *not* register-
@@ -552,12 +558,15 @@ describe('convergence', () => {
       // §5.3 obligation 1: retained and counted, never rejected.
       expect(r.state().unfolded).toEqual({
         count: 1,
-        types: { 'person.renamed': 1 },
+        types: { 'trip.created': 1 },
       })
       expect(r.log()).toHaveLength(2)
       expect(r.state().people[known]?.name?.value).toBe('Bran')
-      // An op this build cannot fold creates nothing.
+      // An op this build cannot fold creates nothing — and creates it in no
+      // map, which is why the aggregate it names is one this build has no
+      // map for at all.
       expect(Object.hasOwn(r.state().people, unknown)).toBe(false)
+      expect(Object.hasOwn(r.state().gear, unknown)).toBe(false)
     }
   })
 

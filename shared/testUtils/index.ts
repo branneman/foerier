@@ -1,6 +1,6 @@
 import type { Clock, IdSource } from '../src/boundaries.ts'
 
-export { aGear, aPlace, anOp, hlcAt } from './factories.ts'
+export { aGear, aPerson, aPlace, anOp, hlcAt } from './factories.ts'
 
 /** The convergence tier's in-memory client (`docs/testing.md` Tier 2). */
 export type { Replica } from './replica.ts'

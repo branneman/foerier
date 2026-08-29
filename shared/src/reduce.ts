@@ -311,12 +311,20 @@ const gearTagWritten =
     })
 
 /**
- * `person.recorded` (`sync-protocol.md` §4.2): creates the Person and seeds
- * `name`. Only this op is in scope for this slice — `person.renamed` stays
- * unfolded (§5.3 obligation 1) until a later slice gives it a People list to
- * land on.
+ * `person.recorded` and `person.renamed` both just set `name`
+ * (`sync-protocol.md` §4.2) — the entity itself is created by `writePerson`
+ * either way, out of authoring order or not (§8.2). The same shape
+ * `setPlaceName` above already has, for the same reason.
+ *
+ * **`person.renamed` joined this handler at S4**, and settled §4.2's deferred
+ * question by doing so: it was left as `{name}` "until the slice that folds it
+ * settles the same question for that row", and the answer is that
+ * `PersonState.name` is `Register<string | null>`, so
+ * `writeNullableIfPresent`'s rule applies unchanged and an explicit `null`
+ * clears. There was never a second rule to find — only a register whose type
+ * had already decided.
  */
-const personRecorded: Handler = (state, op, stamp) =>
+const setPersonName: Handler = (state, op, stamp) =>
   writePerson(state, op.aggregate_id, stamp, (person, st) => {
     const next = writeNullableIfPresent(
       person.name,
@@ -328,9 +336,26 @@ const personRecorded: Handler = (state, op, stamp) =>
   })
 
 /**
+ * `gear.ownership_set` (§4.3): sets `owner`. One register, one value — the
+ * domain's "personal to one person, **or** shared" is structural, so there is
+ * nothing to guard and returning gear to the pool is a write, not a clear.
+ *
+ * An **absent** register is not the same fact as `{type:'shared'}`, and this
+ * handler never conflates them: it writes only what arrived. That the two
+ * *read* alike is `selectors/owner.ts`'s decision, made once, on the way out.
+ */
+const gearOwnershipSet: Handler = (state, op, stamp) =>
+  writeGear(state, op.aggregate_id, stamp, (gear, st) => {
+    const owner = readOwner(op.payload, 'owner')
+    if (owner.kind !== 'value') return gear
+    const next = writeRegister(gear.owner, owner.value, st)
+    return next === gear.owner ? gear : { ...gear, owner: next }
+  })
+
+/**
  * The op-type dispatch table (`sync-protocol.md` §4.1, §4.3). A `Record`, not
  * a `switch`, so "is this type known?" is a lookup — the same question the
- * tolerant reader asks. Task 7 extends this table with Person.
+ * tolerant reader asks.
  */
 const handlers: Record<string, Handler> = {
   'place.recorded': setPlaceName,
@@ -346,6 +371,7 @@ const handlers: Record<string, Handler> = {
   'gear.rehomed': gearRehomed,
   'gear.kind_set': gearKindSet,
   'gear.owned_count_set': gearOwnedCountSet,
+  'gear.ownership_set': gearOwnershipSet,
   // Per-tag registers (§3.4). Present and absent, not create and delete.
   'gear.tag_applied': gearTagWritten(true),
   'gear.tag_removed': gearTagWritten(false),
@@ -362,7 +388,10 @@ const handlers: Record<string, Handler> = {
       const next = writeRegister(gear.retired, false, st)
       return next === gear.retired ? gear : { ...gear, retired: next }
     }),
-  'person.recorded': personRecorded,
+  // Both only set `name`, so one handler serves both — the same pairing
+  // `place.recorded`/`place.renamed` already has above.
+  'person.recorded': setPersonName,
+  'person.renamed': setPersonName,
 }
 
 /**

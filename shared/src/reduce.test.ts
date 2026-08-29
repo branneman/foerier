@@ -144,6 +144,15 @@ function gearOwnedCountSetOp(
   return op('gear', gearId, 'gear.owned_count_set', { count }, hlc, deviceId)
 }
 
+function gearOwnershipSetOp(
+  gearId: string,
+  owner: Record<string, unknown> | null,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('gear', gearId, 'gear.ownership_set', { owner }, hlc, deviceId)
+}
+
 function gearRetiredOp(
   gearId: string,
   hlc: string,
@@ -496,6 +505,91 @@ describe('applyOp', () => {
     expect(twice.gear['g1']?.ownedCount?.value).toBe(3)
   })
 
+  it('gear.ownership_set sets a personal owner', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Down jacket', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearOwnershipSetOp('g1', { type: 'person', person_id: 'pe1' }, at(2)),
+    ])
+    expect(state.gear['g1']?.owner?.value).toEqual({
+      type: 'person',
+      personId: 'pe1',
+    })
+  })
+
+  it('gear.ownership_set sets shared back over a personal owner', () => {
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Down jacket', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearOwnershipSetOp('g1', { type: 'person', person_id: 'pe1' }, at(2)),
+      gearOwnershipSetOp('g1', { type: 'shared' }, at(3)),
+    ])
+    // One register, one value — the domain's "personal to one person, *or*
+    // shared" is structural, so returning gear to the pool needs no clear.
+    expect(state.gear['g1']?.owner?.value).toEqual({ type: 'shared' })
+  })
+
+  it('gear.ownership_set ignores a malformed owner and returns the identical state', () => {
+    const before = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Down jacket', container: false, kind: 'single' },
+        at(1),
+      ),
+    ])
+    const after = fold(
+      [
+        gearOwnershipSetOp('g1', { type: 'nonsense' }, at(2)),
+        gearOwnershipSetOp('g1', { type: 'person' }, at(3)),
+        gearOwnershipSetOp('g1', null, at(4)),
+        op('gear', 'g1', 'gear.ownership_set', {}, at(5)),
+      ],
+      before,
+    )
+    expect(after).toBe(before)
+  })
+
+  it('gear.ownership_set returns the identical state when its write loses', () => {
+    const seeded = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Down jacket', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearOwnershipSetOp('g1', { type: 'person', person_id: 'late' }, at(9)),
+    ])
+    const after = applyOp(
+      seeded,
+      gearOwnershipSetOp('g1', { type: 'person', person_id: 'early' }, at(5)),
+    )
+    expect(after).toBe(seeded)
+  })
+
+  it('gear.ownership_set never touches the tombstone', () => {
+    // An edit never writes `retired` (§3.5), so re-owning retired gear leaves
+    // it retired — the same property the rename and rehome tests pin.
+    const state = fold([
+      gearRecordedOp(
+        'g1',
+        { name: 'Down jacket', container: false, kind: 'single' },
+        at(1),
+      ),
+      gearRetiredOp('g1', at(2)),
+      gearOwnershipSetOp('g1', { type: 'person', person_id: 'pe1' }, at(3)),
+    ])
+    expect(state.gear['g1']?.retired?.value).toBe(true)
+    expect(state.gear['g1']?.owner?.value).toEqual({
+      type: 'person',
+      personId: 'pe1',
+    })
+  })
+
   it('gear.retired sets the tombstone', () => {
     const state = fold([
       gearRecordedOp(
@@ -589,15 +683,30 @@ describe('applyOp', () => {
     expect(twice.people['pe1']?.name?.value).toBe('Bran')
   })
 
-  it('person.renamed is not folded in this slice and is counted as unfolded', () => {
-    const state = fold([personRenamedOp('pe1', 'Bran', at(1))])
-    expect(state.unfolded).toEqual({
-      count: 1,
-      types: { 'person.renamed': 1 },
-    })
-    // §5.3 obligation 1: retained, not folded — this build has no People
-    // list for `person.renamed` to land on yet (S4), so nothing is created.
-    expect(state.people).toEqual({})
+  it('person.renamed sets the name', () => {
+    const state = fold([
+      personOp('pe1', 'Els', at(1)),
+      personRenamedOp('pe1', 'Elsje', at(2)),
+    ])
+    expect(state.people['pe1']?.name?.value).toBe('Elsje')
+  })
+
+  it('person.renamed creates the Person when it arrives out of authoring order', () => {
+    // Same property `place.renamed` has: `writePerson` creates the entity
+    // either way (§8.2), so a rename that overtakes its `recorded` is not a
+    // dropped write.
+    const state = fold([personRenamedOp('pe1', 'Els', at(2))])
+    expect(state.people['pe1']?.id).toBe('pe1')
+    expect(state.people['pe1']?.name?.value).toBe('Els')
+  })
+
+  it('person.renamed returns the identical state when its write loses', () => {
+    const seeded = fold([
+      personOp('pe1', 'Els', at(1)),
+      personRenamedOp('pe1', 'Late', at(9)),
+    ])
+    const after = applyOp(seeded, personRenamedOp('pe1', 'Early', at(5)))
+    expect(after).toBe(seeded)
   })
 })
 
@@ -705,6 +814,29 @@ describe('name registers: an explicit null clears, an absent field leaves it alo
   it('person.recorded with name omitted never creates the register', () => {
     const state = fold([op('person', 'pe1', 'person.recorded', {}, at(1))])
     expect(Object.hasOwn(state.people['pe1'] ?? {}, 'name')).toBe(false)
+  })
+
+  it('person.renamed with an explicit null clears the name', () => {
+    // §4.2 typed this row `{name}` and deferred the question to the slice
+    // that folds it. S4 is that slice, and this is the answer: the same rule
+    // as the four other name registers, with no carve-out.
+    const state = fold([
+      personOp('pe1', 'Els', at(1)),
+      op('person', 'pe1', 'person.renamed', { name: null }, at(2)),
+    ])
+    expect(state.people['pe1']?.name?.value).toBeNull()
+  })
+
+  it('person.renamed with name omitted leaves an existing name untouched', () => {
+    // The direction §1.3 actually forbids, and the one `gear.renamed`'s own
+    // omission case exists to pin: a seeded name, then an empty payload.
+    const before = fold([personOp('pe1', 'Els', at(1))])
+    const after = applyOp(
+      before,
+      op('person', 'pe1', 'person.renamed', {}, at(2)),
+    )
+    expect(after).toBe(before)
+    expect(after.people['pe1']?.name?.value).toBe('Els')
   })
 
   // The non-nullable registers stay exactly as they were: `residence`'s type

@@ -1,7 +1,12 @@
-import { gearRecorded, placeRecorded, type OpSpec } from '../src/authoring.ts'
+import {
+  gearRecorded,
+  personRecorded,
+  placeRecorded,
+  type OpSpec,
+} from '../src/authoring.ts'
 import { formatHlc } from '../src/hlc.ts'
 import type { OpEnvelope } from '../src/ops.ts'
-import type { KindValue, Residence } from '../src/state.ts'
+import type { KindValue, Owner, Residence } from '../src/state.ts'
 
 /**
  * Factories return op **specs**, not folded entities (see this module's
@@ -55,6 +60,7 @@ export function aGear(
     kind: KindValue
     residence: Residence
     ownedCount: number
+    owner: Owner
   }> = {},
 ): OpSpec[] {
   const id = overrides.id ?? freshId('20000000')
@@ -69,8 +75,25 @@ export function aGear(
       ...(overrides.ownedCount === undefined
         ? {}
         : { owned_count: overrides.ownedCount }),
+      // Left absent by default like `residence` and `ownedCount`, and for a
+      // sharper reason: an absent `owner` reads `SHARED`
+      // (`selectors/owner.ts`), so defaulting it here would make every
+      // fixture silently assert the equivalence rather than exercise it.
+      ...(overrides.owner === undefined ? {} : { owner: overrides.owner }),
     }),
   ]
+}
+
+/**
+ * The ops that record one Person: just `person.recorded`. A Person is an id
+ * and a name and nothing else, so unlike {@link aGear} there is nothing to
+ * leave deliberately absent.
+ */
+export function aPerson(
+  overrides: Partial<{ id: string; name: string }> = {},
+): OpSpec[] {
+  const id = overrides.id ?? freshId('40000000')
+  return [personRecorded(id, overrides.name ?? 'Els')]
 }
 
 /**

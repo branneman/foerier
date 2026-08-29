@@ -4,6 +4,7 @@ import { countingIdSource, fakeClock } from '../testUtils/index.ts'
 import {
   gearKindSet,
   gearOwnedCountSet,
+  gearOwnershipSet,
   gearRecorded,
   gearRehomed,
   gearRenamed,
@@ -12,6 +13,7 @@ import {
   gearTagApplied,
   gearTagRemoved,
   personRecorded,
+  personRenamed,
   placeRecorded,
   placeRemoved,
   placeRenamed,
@@ -72,6 +74,39 @@ describe('gearRecorded', () => {
       owned_count: 3,
       owner: { type: 'person', person_id: 'p1' },
     })
+  })
+})
+
+describe('S4`s two builders', () => {
+  it('gearOwnershipSet crosses the same camelCase boundary gearRecorded does', () => {
+    expect(gearOwnershipSet('g1', { type: 'person', personId: 'p1' })).toEqual({
+      aggregate: 'gear',
+      aggregate_id: 'g1',
+      type: 'gear.ownership_set',
+      payload: { owner: { type: 'person', person_id: 'p1' } },
+    })
+  })
+
+  it('gearOwnershipSet carries a bare shared owner', () => {
+    expect(gearOwnershipSet('g1', { type: 'shared' }).payload).toEqual({
+      owner: { type: 'shared' },
+    })
+  })
+
+  it('personRenamed carries an explicit null, because null is a clear', () => {
+    // The distinction §1.3 rests on: `{name: null}` on the wire is a write,
+    // and an omitted key is a different message entirely. A builder that
+    // dropped the key here would make the clear unauthorable.
+    expect(personRenamed('pe1', null)).toEqual({
+      aggregate: 'person',
+      aggregate_id: 'pe1',
+      type: 'person.renamed',
+      payload: { name: null },
+    })
+  })
+
+  it('personRenamed carries a name', () => {
+    expect(personRenamed('pe1', 'Elsje').payload).toEqual({ name: 'Elsje' })
   })
 })
 
