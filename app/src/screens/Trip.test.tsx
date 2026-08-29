@@ -24,6 +24,8 @@ import {
   DepotProvider,
   type EngineFactory,
 } from '../depot/store'
+import { DESKTOP } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { Trip } from './Trip'
 
 /**
@@ -681,5 +683,141 @@ describe('the trip screen — Participants on the resting screen', () => {
     const cluster = screen.getByRole('img', { name: 'Participants: Els, —' })
     expect(cluster.children).toHaveLength(2)
     expect(cluster.children[1]?.textContent).toBe('')
+  })
+})
+
+/**
+ * **The 1024 frame is a different set of elements, not the same ones
+ * reordered.** `Screens B` §02A draws two trip screens, and comparing them
+ * element by element is what settles the mechanism: at 1024 the
+ * `PARTICIPANTS` group label **does not exist**, the circles are pushed to the
+ * trailing edge of a single header row, and `EDIT` is last. Existence
+ * differing by mode is
+ * [frontend-design §3.2](../../../docs/frontend-design.md)'s media query, and
+ * DOM order is what these tests read — CSS `order` would have moved the
+ * drawing and left the focus order behind.
+ */
+describe('the trip screen — the 1024 frame', () => {
+  it('gathers the whole header into one row, with EDIT last', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(DESKTOP)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    // Title, chip, dates and the Participants cluster are siblings of one
+    // parent here; at 393 they are three stacked blocks.
+    const row = screen.getByRole('heading', { name: 'Alps 2026' }).parentElement
+    expect(row).not.toBeNull()
+    expect(row).toContainElement(screen.getByTestId('phase-chip'))
+    expect(row).toContainElement(screen.getByTestId('trip-dates'))
+    expect(row).toContainElement(
+      screen.getByRole('button', { name: 'Participants' }),
+    )
+    expect(row).toContainElement(screen.getByRole('button', { name: 'EDIT' }))
+
+    // `EDIT` is last, which is a fact about the **document** and therefore
+    // about the tab order too. Reordering one DOM in CSS would have satisfied
+    // the eye and left the keyboard reading the 393 sequence.
+    expect(
+      screen
+        .getByRole('button', { name: 'Participants' })
+        .compareDocumentPosition(screen.getByRole('button', { name: 'EDIT' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('draws no PARTICIPANTS group label — the board has none at 1024', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(DESKTOP)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    expect(screen.queryByText('PARTICIPANTS')).toBeNull()
+    // The cluster and its ghost are the same elements at both widths — only
+    // the label and the arrangement differ.
+    expect(
+      screen.getByRole('img', { name: 'Participants: Els, Mies' }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Participants' })).toBeVisible()
+  })
+
+  it('keeps the label at 393 and hides it from the accessibility tree', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    // Drawn, because the board draws it — and `aria-hidden`, because the two
+    // elements under it already carry the meaning: a screen reader would
+    // otherwise hear PARTICIPANTS, then `Participants: Els, Mies`, then
+    // `Participants button`, three announcements for one block.
+    expect(screen.getByText('PARTICIPANTS')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+
+    // And the 393 order is the other one: `EDIT` sits beside the title, so it
+    // comes *before* the ghost rather than after it.
+    expect(
+      screen
+        .getByRole('button', { name: 'EDIT' })
+        .compareDocumentPosition(
+          screen.getByRole('button', { name: 'Participants' }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('leaves the back link and the sync line to the sidebar', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(DESKTOP)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    // The 216px sidebar is the navigation and carries the sync line itself —
+    // "never in the main column at desktop". `Account` withholds the same two
+    // for the same reason, and the sidebar's `TRIPS` is the very destination
+    // `‹ TRIPS` points at.
+    expect(screen.queryByRole('link', { name: '‹ TRIPS' })).toBeNull()
+    expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+
+  it('opens the same EDIT, over the same two registers', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(DESKTOP)
+    const user = userEvent.setup()
+    const seed = await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    const field = screen.getByRole('textbox', { name: 'Name' })
+    await user.clear(field)
+    await user.type(field, 'Alps 2027')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await seed.authored()).toEqual([
+      { type: 'trip.renamed', payload: { name: 'Alps 2027' } },
+    ])
+    // The button unmounts while editing at this width too, so the same
+    // hand-back applies.
+    expect(screen.getByRole('button', { name: 'EDIT' })).toHaveFocus()
+  })
+
+  /**
+   * jsdom computes no cascade, so the two rules the frames turn on are
+   * asserted where they are written — the `▲` colour test above and
+   * `TripCard`'s container-query test are the shape.
+   */
+  it('fills the pane with the empty region, and pushes the cluster right', async () => {
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
+      'utf8',
+    )
+
+    // The board gives the region the rest of the pane and centres the two
+    // lines in it; fixed padding left it sitting under the header with the
+    // pane empty below.
+    expect(css).toMatch(/\.gear\s*\{[^}]*flex:\s*1/)
+    expect(css).toMatch(/\.gear\s*\{[^}]*justify-content:\s*center/)
+
+    // `margin-left: auto` inside the one header row — the board's own
+    // mechanism for the trailing cluster, and the reason nothing here needs
+    // CSS `order`.
+    expect(css).toMatch(
+      /\.deskHeader\s+\.participantRow\s*\{[^}]*margin-left:\s*auto/,
+    )
   })
 })

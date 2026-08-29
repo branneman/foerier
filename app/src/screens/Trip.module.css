@@ -1,8 +1,13 @@
 @layer components {
+  /* `min-height: 100%` so the empty gear region below has something to fill.
+     The pane is a stretched grid item of the shell, so the percentage
+     resolves; where it does not, the region simply falls back to its own
+     padding and the screen still reads. */
   .screen {
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
+    min-height: 100%;
   }
 
   .header {
@@ -44,6 +49,32 @@
     align-items: baseline;
     justify-content: space-between;
     gap: var(--space-12);
+  }
+
+  /*
+   * The 1024 frame's single header band — name, chip, dates, then the
+   * Participants cluster at the trailing edge, then `EDIT`. It is a different
+   * set of elements from the phone's three stacked blocks, not those blocks
+   * relaid, and `Trip.tsx` renders one or the other: only the group label is
+   * missing here, and nothing is hidden.
+   *
+   * The rule under the band is this element's, so the gear region drops its
+   * own at the same width — two lines 16px apart where the board draws one.
+   */
+  .deskHeader {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-12);
+    padding-bottom: var(--space-16);
+    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /* `margin-left: auto` and not `order`: the cluster is already after the
+     dates in the document, so this pushes the drawing to where the tab order
+     already goes. */
+  .deskHeader .participantRow {
+    margin-left: auto;
   }
 
   .title {
@@ -310,17 +341,28 @@
 
   /* The region the gear list builder fills. A rule above it, so the two empty
      lines read as a section with nothing in it rather than as stray sentences
-     under the header. Centred, as the board draws it: the region is the rest
-     of the screen and the count is what the eye should land on. */
+     under the header. Centred, as the board draws it: the region *is* the rest
+     of the screen — `flex: 1`, not a padded block — and the count is what the
+     eye should land on. The padding is what is left when there is no spare
+     height to centre in: an open EDIT card on a short window. */
   .gear {
     display: flex;
+    flex: 1;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: var(--space-8);
-    padding-top: var(--space-32);
-    padding-bottom: var(--space-32);
+    padding: var(--space-32);
     border-top: var(--stroke-rule) solid var(--color-rule-row);
     text-align: center;
+  }
+
+  /* At Desktop the header band carries the rule, so this one would be a second
+     line a gap below the first. */
+  @media (min-width: 64em) {
+    .gear {
+      border-top: 0;
+    }
   }
 
   .gearEmpty {

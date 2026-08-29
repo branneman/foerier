@@ -14,6 +14,7 @@ import { PhaseSheet } from '../components/PhaseSheet'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import { tripChip, tripDateRange, tripParticipants } from '../depot/trips'
+import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trip.module.css'
 
 /**
@@ -94,6 +95,30 @@ import styles from './Trip.module.css'
  * it (S14, with the template branch of F3); the absence is the design at this
  * slice rather than an omission, and the reducer already folds `deleted` so
  * nothing here has to change when it lands.
+ *
+ * ## Two frames, and therefore two sets of elements
+ *
+ * §02A draws this screen twice, and the 1024 frame is **not** the 393 one
+ * relaid. It is one header row — name, chip, dates, then the circles and the
+ * ghost at the trailing edge, then `EDIT` — and it carries **no
+ * `PARTICIPANTS` group label at all**, because a labelled block stacked under
+ * a title is a phone's answer to narrow width and the row has no stack to
+ * label.
+ *
+ * An element that exists in one mode and not the other is
+ * [frontend-design §3.2](../../../docs/frontend-design.md)'s media query, the
+ * same call `AppShell`, `DepotView`, `Depot`, `Account` and `Trips` already
+ * make. CSS `order` over one DOM was the alternative and is the worse one
+ * twice over: it would still have to render the label and hide it, putting a
+ * word in the accessibility tree the 1024 board does not draw, and it moves
+ * the *drawing* while leaving the tab order in the 393 sequence — `EDIT`
+ * looking last and focusing third.
+ *
+ * The back link and the sync line go with the band that held them: at Desktop
+ * the 216px sidebar is the navigation, `TRIPS` in it is the very destination
+ * `‹ TRIPS` points at, and the sync line belongs there and nowhere else —
+ * "never in the main column at desktop". `Account` withholds the same two, at
+ * the same breakpoint, for the same reason.
  */
 export function Trip() {
   const params = useParams<{ id: string }>()
@@ -101,6 +126,7 @@ export function Trip() {
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
   const sync = useDepot((depot) => depot.sync)
+  const isDesktop = useMediaQuery(DESKTOP)
 
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -202,111 +228,154 @@ export function Trip() {
 
   const canSave = nameDraft.trim() !== ''
 
+  // The header's five pieces, built once and placed by whichever frame is
+  // drawn. Each is the *same* element at both widths — same handler, same
+  // accessible name — so the frames disagree about arrangement only, plus the
+  // one element the 1024 row does not have: the `PARTICIPANTS` group label.
+
+  // The heading keeps showing the **recorded** name while EDIT holds a draft
+  // below it, rather than being replaced by the field: what the ledger says is
+  // what is folded, and the field is a proposal until `Save` writes an op. It
+  // is also what keeps one `h1` on the screen through both modes.
+  const title = <h1 className={styles['title']}>{label}</h1>
+
+  // No `aria-pressed`: this button is rendered only when EDIT is off, so the
+  // attribute could never be anything but `"false"` — a state announced and
+  // never changed. See the departure in the header.
+  const modeToggle = editing ? null : (
+    <button
+      ref={editButton}
+      type="button"
+      className={styles['modeToggle']}
+      onClick={() => openEdit(trip)}
+    >
+      EDIT
+    </button>
+  )
+
+  const phaseChip = (
+    <button
+      type="button"
+      className={styles['chip']}
+      data-testid="phase-chip"
+      aria-haspopup="dialog"
+      onClick={() => setPhaseOpen(true)}
+    >
+      {chip}
+    </button>
+  )
+
+  // The dates drop on their own — "dates are optional and a draft usually has
+  // none, so the header simply drops them" — and the chip never does.
+  const dateLine =
+    dates === null ? null : (
+      <span className={styles['dates']} data-testid="trip-dates">
+        {dates}
+      </span>
+    )
+
+  // Gear detail's tag chips, in Person circles: display, then the one dashed
+  // ghost that edits. Drawn for every Trip, Participants or none — a gear with
+  // no tags shows the lone ghost, and so does a Trip with nobody on it yet.
+  const participantCluster = (
+    <div className={styles['participantRow']}>
+      {participants.length > 0 && (
+        // One `role="img"` over the whole cluster, `TripCard`'s treatment and
+        // `AccountAvatar`'s before it: the initials are a single piece of
+        // information — who is on this Trip — and read out one letter at a
+        // time they are as easily a stray alphabet as a roster. An empty
+        // cluster is not drawn at all: a picture of nobody.
+        <span
+          className={styles['circles']}
+          role="img"
+          aria-label={`Participants: ${participants
+            .map((person) => person.label)
+            .join(', ')}`}
+        >
+          {participants.map((person) => (
+            <span
+              key={person.id}
+              className={styles['circle']}
+              aria-hidden="true"
+            >
+              {/* A Person with no folded name draws an **empty** circle rather
+                  than a placeholder letter — inventing one would be a fact the
+                  app does not have. */}
+              {person.label === '—' ? '' : person.label.charAt(0).toUpperCase()}
+            </span>
+          ))}
+        </span>
+      )}
+      {/* Named for the surface it opens rather than for the glyph, and named
+          `Participants` rather than `Add participants` because the sheet
+          removes as readily as it adds — gear detail's `+ tag` opens a picker
+          that does both. */}
+      <button
+        type="button"
+        className={styles['addParticipant']}
+        aria-label="Participants"
+        aria-haspopup="dialog"
+        onClick={() => setPickerOpen(true)}
+      >
+        +
+      </button>
+    </div>
+  )
+
   return (
     <div className={styles['screen']}>
-      <header className={styles['header']}>
-        <Link href="/trips" className={styles['back']}>
-          ‹ TRIPS
-        </Link>
-        <span className={styles['sync']}>
-          <span className={styles['syncDot']} aria-hidden="true" />
-          {syncLabel(sync)}
-        </span>
-      </header>
-
-      <div className={styles['titleRow']}>
-        {/* The heading keeps showing the **recorded** name while EDIT holds a
-            draft below it, rather than being replaced by the field: what the
-            ledger says is what is folded, and the field is a proposal until
-            `Save` writes an op. It is also what keeps one `h1` on the screen
-            through both modes. */}
-        <h1 className={styles['title']}>{label}</h1>
-        {!editing && (
-          // No `aria-pressed`: this button is rendered only when EDIT is off,
-          // so the attribute could never be anything but `"false"` — a state
-          // announced and never changed. See the departure in the header.
-          <button
-            ref={editButton}
-            type="button"
-            className={styles['modeToggle']}
-            onClick={() => openEdit(trip)}
-          >
-            EDIT
-          </button>
-        )}
-      </div>
-
-      {/* The board's chip line: the phase, then the dates beside it. The dates
-          drop on their own — "dates are optional and a draft usually has none,
-          so the header simply drops them" — and the chip never does. */}
-      <div className={styles['phaseRow']}>
-        <button
-          type="button"
-          className={styles['chip']}
-          data-testid="phase-chip"
-          aria-haspopup="dialog"
-          onClick={() => setPhaseOpen(true)}
-        >
-          {chip}
-        </button>
-        {dates !== null && (
-          <span className={styles['dates']} data-testid="trip-dates">
-            {dates}
+      {/* The phone's own band. At Desktop the sidebar is the navigation and
+          carries the sync line, so neither repeats here — `Account`'s rule at
+          the same breakpoint. */}
+      {!isDesktop && (
+        <header className={styles['header']}>
+          <Link href="/trips" className={styles['back']}>
+            ‹ TRIPS
+          </Link>
+          <span className={styles['sync']}>
+            <span className={styles['syncDot']} aria-hidden="true" />
+            {syncLabel(sync)}
           </span>
-        )}
-      </div>
+        </header>
+      )}
 
-      {/* Gear detail's tag chips, in Person circles: display, then the one
-          dashed ghost that edits. It is drawn for every Trip, Participants or
-          none — a gear with no tags shows the lone ghost, and so does a Trip
-          with nobody on it yet. */}
-      <div className={styles['participants']}>
-        <span className={styles['groupLabel']}>PARTICIPANTS</span>
-        <div className={styles['participantRow']}>
-          {participants.length > 0 && (
-            // One `role="img"` over the whole cluster, `TripCard`'s treatment
-            // and `AccountAvatar`'s before it: the initials are a single piece
-            // of information — who is on this Trip — and read out one letter
-            // at a time they are as easily a stray alphabet as a roster. An
-            // empty cluster is not drawn at all: a picture of nobody.
-            <span
-              className={styles['circles']}
-              role="img"
-              aria-label={`Participants: ${participants
-                .map((person) => person.label)
-                .join(', ')}`}
-            >
-              {participants.map((person) => (
-                <span
-                  key={person.id}
-                  className={styles['circle']}
-                  aria-hidden="true"
-                >
-                  {/* A Person with no folded name draws an **empty** circle
-                      rather than a placeholder letter — inventing one would be
-                      a fact the app does not have. */}
-                  {person.label === '—'
-                    ? ''
-                    : person.label.charAt(0).toUpperCase()}
-                </span>
-              ))}
-            </span>
-          )}
-          {/* Named for the surface it opens rather than for the glyph, and
-              named `Participants` rather than `Add participants` because the
-              sheet removes as readily as it adds — gear detail's `+ tag`
-              opens a picker that does both. */}
-          <button
-            type="button"
-            className={styles['addParticipant']}
-            aria-label="Participants"
-            aria-haspopup="dialog"
-            onClick={() => setPickerOpen(true)}
-          >
-            +
-          </button>
+      {isDesktop ? (
+        // One row, and `EDIT` genuinely last in the document rather than
+        // last-looking: the tab order is the DOM order, which is the whole
+        // reason this is a media query and not `order`.
+        <div className={styles['deskHeader']}>
+          {title}
+          {phaseChip}
+          {dateLine}
+          {participantCluster}
+          {modeToggle}
         </div>
-      </div>
+      ) : (
+        <>
+          <div className={styles['titleRow']}>
+            {title}
+            {modeToggle}
+          </div>
+
+          {/* The board's chip line: the phase, then the dates beside it. */}
+          <div className={styles['phaseRow']}>
+            {phaseChip}
+            {dateLine}
+          </div>
+
+          <div className={styles['participants']}>
+            {/* `aria-hidden`, because the two elements under it already say
+                it: the cluster is named `Participants: Els, Mies` and the
+                ghost `Participants`, so an announced label would make one
+                block three announcements. It is drawn because the board draws
+                it — the stack needs a name that the 1024 row does not. */}
+            <span className={styles['groupLabel']} aria-hidden="true">
+              PARTICIPANTS
+            </span>
+            {participantCluster}
+          </div>
+        </>
+      )}
 
       {editing && (
         <div className={styles['edit']}>
