@@ -98,6 +98,24 @@ describe.skipIf(!hasCredential())('the deployed household', () => {
     expect(pulled.ops.map((o) => o.id)).toContain(op.id)
   })
 
+  /**
+   * The deployed box has S5's route. A schema fact — `0006`'s partial index —
+   * is deliberately NOT checked here: proving it needs a Login minted on the
+   * box, which is exactly what the Tier 4/5 spec §5 rules out.
+   * `migrations.test.ts` proves it against a real Postgres instead.
+   */
+  it('answers GET /auth/logins with the calling Login present', async () => {
+    const res = await fetch(`${API}/auth/logins`, {
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.status).toBe(200)
+
+    const body = (await res.json()) as {
+      logins: Array<{ id: string; person_id: string }>
+    }
+    expect(body.logins.length).toBeGreaterThan(0)
+  })
+
   it('answers reset with exact counts the second time', async () => {
     // The one op the test above pushed, and nothing else: no second Device
     // signed in, no Passkey was added, no Invite was minted. This is the same

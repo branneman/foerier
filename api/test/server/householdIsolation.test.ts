@@ -562,4 +562,44 @@ describe('household isolation', () => {
       .execute()
     expect(stillThere).toHaveLength(1)
   })
+
+  it("never lists another household's logins", async () => {
+    const a = await joinHousehold(HOUSEHOLD_A)
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    const listedByB = await jsonOf<{ logins: Array<{ id: string }> }>(
+      await h.app.request('/api/v1/auth/logins', {
+        headers: { authorization: `Bearer ${b.token}` },
+      }),
+    )
+    expect(listedByB.logins.map((login) => login.id)).not.toContain(a.login_id)
+  })
+
+  it("never revokes another household's login", async () => {
+    const b = await joinHousehold(HOUSEHOLD_B)
+
+    // A Login in A, since the caller's own is refused with 400
+    // (`cannot_revoke_self`) before scoping even runs — that path proves
+    // nothing about the boundary.
+    const otherInA = await joinHousehold(HOUSEHOLD_A)
+
+    const del = await h.app.request(
+      `/api/v1/auth/logins/${otherInA.login_id}`,
+      {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${b.token}` },
+      },
+    )
+    // Deliberately indistinguishable from a real revoke — "not yours" and
+    // "does not exist" are both 204 (§ routes.ts comment). The status proves
+    // nothing; the row is what proves the scoping.
+    expect(del.status).toBe(204)
+
+    const row = await db
+      .selectFrom('login')
+      .select('disabled_at')
+      .where('id', '=', otherInA.login_id)
+      .executeTakeFirstOrThrow()
+    expect(row.disabled_at).toBeNull()
+  })
 })
