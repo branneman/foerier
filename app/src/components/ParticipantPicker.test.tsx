@@ -209,6 +209,40 @@ describe('the participant picker', () => {
     expect(toggles).toEqual([{ personId: people[0]?.id ?? '', next: true }])
   })
 
+  it('folds the create row away again after recording, draft and all', async () => {
+    const user = userEvent.setup()
+    const store = await seededStore()
+    renderPicker(store)
+
+    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.type(screen.getByLabelText('New person name'), 'Kees')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await store.getState().drained()
+
+    // `OwnerPicker` never has to do this: selecting an owner closes that
+    // sheet, so mount is its reset. This one stays open for the next
+    // Participant, so the row has to reset itself — and reopening it must not
+    // show the name just recorded.
+    expect(screen.getByRole('button', { name: '+ New person' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    expect(screen.getByLabelText('New person name')).toHaveValue('')
+  })
+
+  it('drops the draft name when the create row is cancelled', async () => {
+    const user = userEvent.setup()
+    const store = await seededStore()
+    renderPicker(store)
+
+    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.type(screen.getByLabelText('New person name'), 'Kee')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: '+ New person' }))
+
+    // Abandoning a half-typed name has to abandon it: the sheet outlives the
+    // create row, so the row cannot lean on mount for its reset.
+    expect(screen.getByLabelText('New person name')).toHaveValue('')
+  })
+
   it('will not record a Person with a blank name', async () => {
     const user = userEvent.setup()
     const store = await seededStore()

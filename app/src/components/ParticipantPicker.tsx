@@ -141,7 +141,15 @@ export function ParticipantPicker({
           <button
             type="button"
             className={styles['inlineCancel']}
-            onClick={() => setAdding(false)}
+            // Cancelling drops the draft name as well as the row. Mount is
+            // this sheet's only other reset and the sheet stays open across
+            // both paths, so without it a second `+ New person` would open on
+            // the text that was just abandoned — the same wrong state
+            // `addPerson` clears itself to avoid.
+            onClick={() => {
+              setNewName('')
+              setAdding(false)
+            }}
           >
             Cancel
           </button>
