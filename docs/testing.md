@@ -214,8 +214,7 @@ what let it run from the first deploy. `household.test.ts` is the other half:
 with a real Device token it pushes an op and pulls it back, proving the whole
 `/sync` path through Caddy, the deployed process and the box's Postgres, which
 no local tier can. It `describe.skipIf`s itself when the credential secrets are
-absent, so a fork's pull request and a developer's laptop still run the
-unauthenticated file.
+absent, so a developer's laptop still runs the unauthenticated file.
 
 **One disposable Household, wiped at the start of every run.** The suite does
 not create a Household and cannot: `admin:bootstrap --disposable --name "E2E"`

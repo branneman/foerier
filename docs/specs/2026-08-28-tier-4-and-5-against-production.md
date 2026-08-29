@@ -312,7 +312,8 @@ is created once, by hand, and replayed every run.
    redeem the join link, complete the ceremony.
 3. `WebAuthn.getCredentials` → export `credentialId`, `privateKey` (PKCS#8),
    `userHandle`, `rpId`, `isResidentCredential`.
-4. Store as GitHub secrets.
+4. Store as GitHub secrets, then `gh variable set E2E_ENABLED --body true`
+   — the repository variable that turns `e2e-prod` on (§7).
 
 **One credential has to serve both tiers, and that constrains the algorithm.**
 Tier 5 replays it into Chrome; Tier 4 replays it into `SoftwareAuthenticator`,

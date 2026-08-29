@@ -101,7 +101,12 @@ async function clearSyncedState(page: Page): Promise<void> {
         }
         request.onsuccess = () => {
           const db = request.result
-          const stores = ['op', 'meta', 'deadLetter']
+          // Every store but the session: derived from the database rather
+          // than listed here, so a store a later slice adds is cleared too
+          // instead of silently replaying last run's state into this one.
+          const stores = Array.from(db.objectStoreNames).filter(
+            (name) => name !== 'auth',
+          )
           const tx = db.transaction(stores, 'readwrite')
           for (const store of stores) tx.objectStore(store).clear()
           tx.oncomplete = () => {
