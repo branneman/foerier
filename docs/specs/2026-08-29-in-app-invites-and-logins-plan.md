@@ -26,7 +26,7 @@
 - **Tier 0 runs on every commit** (pre-commit: `npm run check:workspaces`, `tsc --noEmit` across workspaces, ESLint, Prettier). A commit that fails it is not a commit.
 - **Working in a git worktree: run `npm ci` in it, first thing.** Without it Node's resolver walks up to the main checkout's `node_modules` and you edit one tree while testing another.
 - **Known-flaky neighbour:** `api/test/server/sync.test.ts` fails nondeterministically in the full suite and passes alone. If it fails, re-run it alone to confirm the known flake.
-- **Commands.** `npm test -w @foerier/api` (Tier 2s needs Postgres up: `docker compose -f docker-compose.dev.yml up -d`), `npm test -w @foerier/app`, `npm test -w @foerier/ui`, `npm test` (all), `npm run typecheck`, `npx playwright test` (Tier 5).
+- **Commands.** **Tier 2s is its own Vitest project and is NOT part of `npm test`** — run it with `npm run test:server` (filter with `npm run test:server -- logins`), and bring Postgres up first: `docker compose -f docker-compose.dev.yml up -d`, `npm test -w @foerier/app`, `npm test -w @foerier/ui`, `npm test` (all), `npm run typecheck`, `npx playwright test` (Tier 5).
 
 ---
 
@@ -165,7 +165,7 @@ If `migrations.test.ts`'s household constant is named differently, use the name 
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
-npm test -w @foerier/api -- migrations
+npm run test:server -- migrations
 ```
 
 Expected: `lets a Person hold a new Login after the old one is disabled` FAILS with a unique-violation error naming `login_household_person_unique`. The second case passes already.
@@ -239,7 +239,7 @@ import * as m0006 from '../../migrations/0006_login_reinvite.ts'
 - [ ] **Step 5: Run the tests to verify they pass**
 
 ```bash
-npm test -w @foerier/api -- migrations
+npm run test:server -- migrations
 ```
 
 Expected: both new cases PASS. If the first still fails, the test database is holding the old constraint — `migrations.test.ts` runs migrations itself; check that the file's setup actually migrates rather than assuming a pre-migrated database.
@@ -451,7 +451,7 @@ describe('logins', () => {
 - [ ] **Step 3: Run it to verify it fails**
 
 ```bash
-npm test -w @foerier/api -- logins
+npm run test:server -- logins
 ```
 
 Expected: FAIL — `404` where `200` was expected, because the route does not exist.
@@ -542,7 +542,7 @@ In `api/src/auth/routes.ts`, after the `auth.delete('/invites/:id', …)` block:
 - [ ] **Step 6: Run the tests to verify they pass**
 
 ```bash
-npm test -w @foerier/api -- logins
+npm run test:server -- logins
 npm run typecheck
 ```
 
@@ -695,7 +695,7 @@ Check `/sync/pull`'s actual query parameter name in `api/src/sync/routes.ts` bef
 - [ ] **Step 2: Run to verify they fail**
 
 ```bash
-npm test -w @foerier/api -- logins
+npm run test:server -- logins
 ```
 
 Expected: the five new cases FAIL with `404`.
@@ -795,7 +795,7 @@ Expected: the five new cases FAIL with `404`.
 - [ ] **Step 5: Run the tests to verify they pass**
 
 ```bash
-npm test -w @foerier/api -- logins
+npm run test:server -- logins
 npm run typecheck
 ```
 
@@ -1038,7 +1038,7 @@ Check `h.clock`'s advance method name in `shared/testUtils`'s `fakeClock` before
 - [ ] **Step 3: Run to verify they fail**
 
 ```bash
-npm test -w @foerier/api -- invites
+npm run test:server -- invites
 ```
 
 Expected: every join case FAILS with `400 unsupported_purpose`; the device-with-person_id cases fail because `person_id` is ignored.
@@ -1230,8 +1230,8 @@ Import `InviteRequestError` alongside the existing `AuthError` import.
 - [ ] **Step 6: Run the tests to verify they pass**
 
 ```bash
-npm test -w @foerier/api -- invites
-npm test -w @foerier/api -- account
+npm run test:server -- invites
+npm run test:server -- account
 npm run typecheck
 ```
 
@@ -1345,7 +1345,7 @@ Add the `del` and `get` helpers to this file too, matching Task 3's.
 - [ ] **Step 2: Run to verify they fail**
 
 ```bash
-npm test -w @foerier/api -- invites
+npm run test:server -- invites
 ```
 
 Expected: the first two FAIL (the join Invite is invisible to `other`), the third passes already.
@@ -1430,7 +1430,7 @@ In `api/src/auth/routes.ts`'s `GET /invites`, add the field:
 - [ ] **Step 5: Run the tests to verify they pass**
 
 ```bash
-npm test -w @foerier/api
+npm run test:server
 npm run typecheck
 ```
 
@@ -1465,7 +1465,7 @@ Open `api/test/server/householdIsolation.test.ts` and follow whatever mechanism 
 - [ ] **Step 2: Run it**
 
 ```bash
-npm test -w @foerier/api -- householdIsolation
+npm run test:server -- householdIsolation
 ```
 
 Expected: PASS — the service scopes both queries by `context.householdId`. If either fails, that is a real tenancy bug in Task 2 or 3, not a test to relax.
@@ -2685,8 +2685,11 @@ Replace the "Next is S5" paragraph with an S5 status block in the register the S
 - [ ] **Step 5: Full green**
 
 ```bash
-npm run typecheck && npm test && npx playwright test
+npm run typecheck && npm test && npm run test:server && npx playwright test
 ```
+
+`npm test` covers Tiers 1, 2 and 3 only — `test:server` is the separate
+project, and a run that skips it has not proved the server at all.
 
 - [ ] **Step 6: Commit**
 
