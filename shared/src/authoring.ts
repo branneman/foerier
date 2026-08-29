@@ -273,7 +273,7 @@ export function personRecorded(id: string, name: string): OpSpec {
  * said in as many words that the slice which folds it settles the question.
  * `PersonState.name` is `Register<string | null>`, so an explicit `null` is a
  * clear like any other write and an absent field leaves the register alone
- * (§1.3). No carve-out: this is the rule the four other name registers already
+ * (§1.3). No carve-out: this is the rule the six other name registers already
  * follow.
  *
  * {@link personRecorded} above keeps its `string` parameter. Its only callers

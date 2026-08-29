@@ -121,6 +121,19 @@ export {
 export type { Whereabouts, WhereaboutsSlice } from './selectors/whereabouts.ts'
 export { whereabouts } from './selectors/whereabouts.ts'
 
+export type { Phase, PhaseKey, TripSections } from './selectors/trip.ts'
+export {
+  isActive,
+  participantIds,
+  phaseDay,
+  phaseLabel,
+  phaseOf,
+  PHASES,
+  tripLabel,
+  tripSections,
+  visibleTrips,
+} from './selectors/trip.ts'
+
 export type { Match } from './selectors/find.ts'
 export { findGear } from './selectors/find.ts'
 
