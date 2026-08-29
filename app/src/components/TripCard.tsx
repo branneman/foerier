@@ -162,7 +162,19 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
         <div className={styles['meta']} data-testid="trip-meta">
           {dates !== null && (
             <span className={styles['dates']} data-testid="trip-dates">
-              {dates}
+              {dates.range}
+              {dates.span !== null && ` · ${dates.span}`}
+              {dates.warning !== null && (
+                <>
+                  {' · '}
+                  {/* The glyph in its own element: the range beside it is
+                      muted meta and only the mark is the warning, so a single
+                      text node would force the attention class onto the whole
+                      line or onto none of it. The trip screen draws the same
+                      pair the same way. */}
+                  <span className={styles['attention']}>▲</span> {dates.warning}
+                </>
+              )}
             </span>
           )}
           {participants.length > 0 && (

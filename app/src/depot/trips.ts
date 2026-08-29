@@ -102,11 +102,35 @@ export function peopleOn(
   return [...folded, ...unfolded]
 }
 
+/** The meta line's pieces — {@link tripDateRange}'s whole answer. */
+export interface TripDates {
+  /** `AUG 14 → SEP 02`, `AUG 14 →` or `→ SEP 02`. Always drawn. */
+  range: string
+  /** `20 DAYS`, or `null` where there is no arithmetic to do. */
+  span: string | null
+  /**
+   * `ENDS BEFORE IT STARTS`, or `null`. Never set at the same time as
+   * {@link span}, and drawn with the `▲` and the attention class by whichever
+   * surface draws it.
+   */
+  warning: string | null
+}
+
 /**
- * `AUG 14 → SEP 02 · 20 DAYS` — the trip card's meta line, or `null` when the
- * Trip carries no dates at all and the line simply drops (the board's own
- * variant: *"dates are optional and a draft usually has none — the meta row
- * simply drops"*).
+ * `AUG 14 → SEP 02 · 20 DAYS` — the trip card's and the trip screen's meta
+ * line, in **parts** — or `null` when the Trip carries no dates at all and the
+ * line simply drops (the board's own variant: *"dates are optional and a draft
+ * usually has none — the meta row simply drops"*).
+ *
+ * ## Parts, and not one string
+ *
+ * The board paints `▲ ENDS BEFORE IT STARTS` in the attention class and the
+ * range beside it in muted meta, so the two cannot be one text node: a caller
+ * handed a single string can only colour all of it or none of it, and
+ * colouring the whole line makes a sentence shout where one mark is meant to.
+ * The `▲` itself is the caller's for the same reason `StoredDateNote` gives it
+ * an element of its own — a glyph inheriting the muted meta around it is a `▲`
+ * in name only.
  *
  * ## It formats here rather than in `shared/`
  *
@@ -141,10 +165,11 @@ export function peopleOn(
  * valid when they were made. Nothing can be rejected after the fact, so the
  * only honest move is to say so.
  *
- * The `▲` is the system's attention class (`#D98263`) — *missing, lost,
+ * The `▲` marks the system's attention class (`#D98263`) — *missing, lost,
  * disagreement* — and never progress. Which is also why the day count goes
  * while the range is reversed: `· 20 DAYS` beside the ▲ would be a second,
- * confident, false statement about the same pair of dates.
+ * confident, false statement about the same pair of dates. `warning` and
+ * `span` are therefore never both set.
  *
  * The comparison is on the **stored strings**, which is exact rather than
  * lucky: it is reached only once both ends have been read as `YYYY-MM-DD`, and
@@ -154,18 +179,29 @@ export function peopleOn(
  * a Trip whose dates disagree with nothing. A range with an end this module
  * cannot read is left alone: it cannot be counted and it cannot be judged.
  */
-export function tripDateRange(trip: TripState): string | null {
+export function tripDateRange(trip: TripState): TripDates | null {
   const start = trip.startDate?.value ?? null
   const end = trip.endDate?.value ?? null
   if (start === null && end === null) return null
-  if (start === null) return `→ ${formatDay(end as string)}`
-  if (end === null) return `${formatDay(start)} →`
+  if (start === null) return rangeOnly(`→ ${formatDay(end as string)}`)
+  if (end === null) return rangeOnly(`${formatDay(start)} →`)
 
   const span = inclusiveDays(start, end)
   const range = `${formatDay(start)} → ${formatDay(end)}`
-  if (span === null) return range
-  if (end < start) return `${range} · ▲ ENDS BEFORE IT STARTS`
-  return `${range} · ${span} ${span === 1 ? 'DAY' : 'DAYS'}`
+  if (span === null) return rangeOnly(range)
+  if (end < start) {
+    return { range, span: null, warning: 'ENDS BEFORE IT STARTS' }
+  }
+  return {
+    range,
+    span: `${span} ${span === 1 ? 'DAY' : 'DAYS'}`,
+    warning: null,
+  }
+}
+
+/** A range with nothing to add to it: one end, or an end that will not read. */
+function rangeOnly(range: string): TripDates {
+  return { range, span: null, warning: null }
 }
 
 /**
@@ -220,7 +256,8 @@ function formatDay(value: string): string {
   return `${MONTHS[parts.month - 1]} ${String(parts.day).padStart(2, '0')}`
 }
 
-interface IsoDate {
+/** {@link parseIsoDate}'s answer: the three fields, already checked. */
+export interface IsoDate {
   year: number
   month: number
   day: number
@@ -229,13 +266,23 @@ interface IsoDate {
 /**
  * The `YYYY-MM-DD` convention, read strictly *here* precisely because the
  * reducer reads it loosely: the fold stores whatever arrived, and this is the
- * one place that has to decide whether it can be treated as a date. A miss is
- * not an error — every caller above falls through to the raw string.
+ * one place that has to decide whether a stored string can be treated as a
+ * date. A miss is not an error — every caller in this module falls through to
+ * the raw string.
  *
  * The calendar is checked by round-tripping through `Date.UTC`, so
  * `2026-02-30` misses rather than silently drawing as `FEB 30`.
+ *
+ * **Exported because there is exactly one calendar validator in `app/`.**
+ * `Trip.tsx`'s `undrawable` asks a different *question* — whether a `date`
+ * control can draw the value at all, rather than how to render it — but it is
+ * the same calendar underneath, and two independent validators can drift:
+ * one would start accepting a spelling the other rejects, and a stored date
+ * would then be drawn as a date and annotated as unreadable on the same
+ * screen. So the question stays beside its control and the calendar lives
+ * here.
  */
-function parseIsoDate(value: string): IsoDate | null {
+export function parseIsoDate(value: string): IsoDate | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (match === null) return null
   const year = Number(match[1])
@@ -255,14 +302,10 @@ function parseIsoDate(value: string): IsoDate | null {
 /**
  * Days from `start` to `end` **inclusive of both ends** — `AUG 14 → SEP 02` is
  * 20, which is the board's number and the number of days a Trip is away.
- * Negative when the range is reversed, and `null` only when an end will not
- * read as a date.
- *
- * `null` means *one* thing on purpose. It used to mean two — unreadable, and
- * reversed — which was fine while both drew the bare range, and stopped being
- * fine the moment the reversed case gained a line of its own: the caller has
- * to tell "there is nothing to say" from "there is something to say and it is
- * ▲". Sign says the second; `null` is left holding only the first.
+ * Negative when the range is reversed, and `null` **only** when an end will
+ * not read as a date — the two are separate answers on purpose, because the
+ * caller has to tell "there is nothing to say" from "there is something to say
+ * and it is ▲". Sign carries the second; `null` is left holding the first.
  *
  * `Date.UTC` and not local midnight: these are calendar dates with no clock
  * attached, so there is no DST transition to absorb and no reason to let the

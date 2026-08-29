@@ -179,16 +179,18 @@ describe('tripDateRange', () => {
 
   it('draws the boards line, span included and inclusive of both ends', () => {
     // `AUG 14 → SEP 02 · 20 DAYS` is the board's own number: the days a Trip
-    // is away, not the difference between two dates.
+    // is away, not the difference between two dates. Parts, not one string:
+    // the separators and the `▲` belong to whichever surface draws them,
+    // because only a surface can put the warning in its own element.
     expect(
       tripDateRange(dated({ start: '2026-08-14', end: '2026-09-02' })),
-    ).toBe('AUG 14 → SEP 02 · 20 DAYS')
+    ).toEqual({ range: 'AUG 14 → SEP 02', span: '20 DAYS', warning: null })
   })
 
   it('counts a one-day Trip in the singular', () => {
     expect(
       tripDateRange(dated({ start: '2026-08-14', end: '2026-08-14' })),
-    ).toBe('AUG 14 → AUG 14 · 1 DAY')
+    ).toEqual({ range: 'AUG 14 → AUG 14', span: '1 DAY', warning: null })
   })
 
   it('drops the line entirely when the Trip carries no dates', () => {
@@ -204,8 +206,16 @@ describe('tripDateRange', () => {
   it('keeps the arrow when only one end is known', () => {
     // The arrow is what says which end is missing. A bare `SEP 02` would read
     // as a start date, which is a fact the Trip does not hold.
-    expect(tripDateRange(dated({ start: '2026-08-14' }))).toBe('AUG 14 →')
-    expect(tripDateRange(dated({ end: '2026-09-02' }))).toBe('→ SEP 02')
+    expect(tripDateRange(dated({ start: '2026-08-14' }))).toEqual({
+      range: 'AUG 14 →',
+      span: null,
+      warning: null,
+    })
+    expect(tripDateRange(dated({ end: '2026-09-02' }))).toEqual({
+      range: '→ SEP 02',
+      span: null,
+      warning: null,
+    })
   })
 
   it('draws a date it cannot read exactly as it arrived, and counts nothing', () => {
@@ -214,9 +224,13 @@ describe('tripDateRange', () => {
     // coercion by another name, and there is no arithmetic to do.
     expect(
       tripDateRange(dated({ start: 'next summer', end: '2026-09-02' })),
-    ).toBe('next summer → SEP 02')
+    ).toEqual({ range: 'next summer → SEP 02', span: null, warning: null })
     // A calendar that does not exist misses too, rather than drawing FEB 30.
-    expect(tripDateRange(dated({ start: '2026-02-30' }))).toBe('2026-02-30 →')
+    expect(tripDateRange(dated({ start: '2026-02-30' }))).toEqual({
+      range: '2026-02-30 →',
+      span: null,
+      warning: null,
+    })
   })
 
   it('reports a reversed range, and suppresses the count that would be false', () => {
@@ -225,23 +239,33 @@ describe('tripDateRange', () => {
     // may write the two ends concurrently and a guard would have to discard
     // one of two valid writes. So the range is reported, never prevented —
     // and the span goes, because 20 DAYS of a reversed range is a falsehood.
+    //
+    // The warning is its own part precisely so a surface can paint it in the
+    // attention class while the range beside it stays muted meta — one string
+    // could only be coloured whole or not at all. The `▲` is the surface's
+    // for the same reason and so is not in here.
     expect(
       tripDateRange(dated({ start: '2026-09-02', end: '2026-08-14' })),
-    ).toBe('SEP 02 → AUG 14 · ▲ ENDS BEFORE IT STARTS')
+    ).toEqual({
+      range: 'SEP 02 → AUG 14',
+      span: null,
+      warning: 'ENDS BEFORE IT STARTS',
+    })
   })
 
   it('does not judge a range reversed when an end will not read as a date', () => {
     // The trap this guards: compared as bare strings, `'2026-09-02' <
     // 'next summer'`, so an ungated comparison would report a Trip starting
     // `next summer` as ending before it starts. A range with an unreadable
-    // end cannot be judged at all, and the ▲ is the attention class — it
-    // must never be spent on a guess.
+    // end cannot be judged at all, and the warning drives the attention class
+    // — which must never be spent on a guess.
     expect(
-      tripDateRange(dated({ start: 'next summer', end: '2026-09-02' })),
-    ).not.toContain('▲')
+      tripDateRange(dated({ start: 'next summer', end: '2026-09-02' }))
+        ?.warning,
+    ).toBeNull()
     expect(
       tripDateRange(dated({ start: '2026-09-02', end: 'next summer' })),
-    ).toBe('SEP 02 → next summer')
+    ).toEqual({ range: 'SEP 02 → next summer', span: null, warning: null })
   })
 
   it('does not call a same-day Trip reversed', () => {
@@ -249,7 +273,7 @@ describe('tripDateRange', () => {
     // away, not a contradiction.
     expect(
       tripDateRange(dated({ start: '2026-08-14', end: '2026-08-14' })),
-    ).toBe('AUG 14 → AUG 14 · 1 DAY')
+    ).toEqual({ range: 'AUG 14 → AUG 14', span: '1 DAY', warning: null })
   })
 })
 

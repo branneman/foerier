@@ -286,6 +286,33 @@ describe('the trip screen — the header the board draws', () => {
     expect(screen.getByRole('button', { name: 'Participants' })).toBeVisible()
   })
 
+  it('draws a reversed ranges ▲ in the attention class, not the header muted', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'Alps 2026'),
+      tripDatesSet(ALPS, { start: '2026-09-02', end: '2026-08-14' }),
+    )
+
+    const dates = screen.getByTestId('trip-dates')
+    expect(dates).toHaveTextContent('SEP 02 → AUG 14 · ▲ ENDS BEFORE IT STARTS')
+    // The glyph is its own element, exactly as EDIT's stored-date note draws
+    // it: the header line is muted meta and only the mark is the warning, so
+    // one text node would force the attention class onto all of it or none.
+    expect(dates.firstElementChild?.textContent).toBe('▲')
+    expect(dates.textContent).not.toContain('DAYS')
+
+    // jsdom computes no cascade, so the class carrying the colour is asserted
+    // where it is written — the stored-date note's own shape, below.
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
+      'utf8',
+    )
+    expect(css).toMatch(
+      /\.attention\s*\{[^}]*color:\s*var\(--color-status-attention\)/,
+    )
+  })
+
   it('renders a line rather than throwing for an id the fold has never seen', async () => {
     // `state.trips[id]` is `undefined`, which is a different fact from a Trip
     // that exists and carries nothing: this one the fold has never heard of.

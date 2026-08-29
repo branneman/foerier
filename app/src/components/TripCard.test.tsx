@@ -210,6 +210,37 @@ describe('the active trip card', () => {
     expect(opens).toHaveBeenCalledTimes(1)
   })
 
+  it('draws a reversed ranges ▲ in the attention class, not the meta muted', async () => {
+    today(0)
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripDatesSet(TRIP, { start: '2026-09-02', end: '2026-08-14' }),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    renderCard(card, 'active')
+
+    const dates = screen.getByTestId('trip-dates')
+    expect(dates).toHaveTextContent('SEP 02 → AUG 14 · ▲ ENDS BEFORE IT STARTS')
+    // The whole point of `tripDateRange` returning parts: the glyph is its own
+    // element, so it can be coloured without colouring the range beside it. A
+    // ▲ inheriting the muted meta it sits in is a ▲ in name only — the same
+    // rule EDIT's stored-date note already follows one screen along.
+    expect(dates.firstElementChild?.textContent).toBe('▲')
+
+    // jsdom computes no cascade, so the class carrying the colour is asserted
+    // where it is written — `Trip.test.tsx`'s shape, for the same fact.
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'TripCard.module.css'),
+      'utf8',
+    )
+    expect(css).toMatch(
+      /\.attention\s*\{[^}]*color:\s*var\(--color-status-attention\)/,
+    )
+    // And the count goes: `20 DAYS` beside the ▲ would be a second, confident,
+    // false statement about the same pair of dates.
+    expect(dates.textContent).not.toContain('DAYS')
+  })
+
   it('drops the dates row entirely when the Trip has none', async () => {
     today(0)
     const card = await seeded(

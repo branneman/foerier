@@ -186,6 +186,14 @@
     white-space: nowrap;
   }
 
+  /* The system's attention class — *missing, lost, disagreement* — and never
+     progress. On the `▲` alone, never on the range beside it: colouring the
+     whole line would make a sentence shout where a single mark is meant to.
+     `Trip.module.css` draws the same pair identically. */
+  .attention {
+    color: var(--color-status-attention);
+  }
+
   .circles {
     display: inline-flex;
     gap: var(--space-4);

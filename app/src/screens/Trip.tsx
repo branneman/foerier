@@ -13,7 +13,12 @@ import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
-import { tripChip, tripDateRange, tripParticipants } from '../depot/trips'
+import {
+  parseIsoDate,
+  tripChip,
+  tripDateRange,
+  tripParticipants,
+} from '../depot/trips'
 import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trip.module.css'
 
@@ -270,7 +275,18 @@ export function Trip() {
   const dateLine =
     dates === null ? null : (
       <span className={styles['dates']} data-testid="trip-dates">
-        {dates}
+        {dates.range}
+        {dates.span !== null && ` · ${dates.span}`}
+        {dates.warning !== null && (
+          <>
+            {' · '}
+            {/* The glyph in its own element, as `StoredDateNote` draws it one
+                block down: the range beside it is muted meta and only the mark
+                is the warning. Handed one string these would be one text node
+                and the attention class could only take the whole line. */}
+            <span className={styles['attention']}>▲</span> {dates.warning}
+          </>
+        )}
       </span>
     )
 
@@ -542,29 +558,20 @@ function StoredDateNote({
  * question the note above turns on, and a different question from the one
  * `tripDateRange` asks. That one is formatting a stored string for display and
  * falls through to the raw value; this one is deciding whether a *control* can
- * show it at all, which is why it lives beside the control rather than in
- * `depot/trips.ts`.
+ * show it at all, which is why the question lives beside the control.
+ *
+ * The **calendar** underneath the question does not: it is `parseIsoDate`'s,
+ * the one in `depot/trips.ts`, because two independent validators can drift —
+ * one would start accepting a spelling the other rejects, and the same stored
+ * string would then be drawn as a date by the header and annotated as
+ * unreadable by this note, on one screen. `2026-02-30` is why the calendar has
+ * to be checked at all and not only the shape: it is spelled right, is not a
+ * day, and a `date` input renders it empty exactly as it renders
+ * `aug sometime` empty.
  *
  * An empty draft is drawable: it is what "no date" looks like, and a Trip that
  * never had one must not be annotated.
- *
- * The calendar is checked and not only the shape, because `2026-02-30` has the
- * right spelling and is not a day — a `date` input renders it empty exactly as
- * it renders `aug sometime` empty, so the same silence needs the same
- * sentence. `Date.UTC` and not local midnight: these are calendar dates with
- * no clock attached, so the viewing device's zone must not change the answer.
  */
 function undrawable(value: string): boolean {
-  if (value === '') return false
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (match === null) return true
-  const year = Number(match[1])
-  const month = Number(match[2])
-  const day = Number(match[3])
-  const utc = new Date(Date.UTC(year, month - 1, day))
-  return (
-    utc.getUTCFullYear() !== year ||
-    utc.getUTCMonth() !== month - 1 ||
-    utc.getUTCDate() !== day
-  )
+  return value !== '' && parseIsoDate(value) === null
 }
