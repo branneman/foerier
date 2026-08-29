@@ -266,6 +266,22 @@ export function createAuthRoutes({
     }
   })
 
+  auth.get('/logins', requireAuth, async (c) => {
+    try {
+      const logins = await service.listLogins(c.get('auth'))
+      return c.json({
+        logins: logins.map((login) => ({
+          id: login.id,
+          person_id: login.personId,
+          device_count: login.deviceCount,
+          last_seen_at: login.lastSeenAt?.toISOString() ?? null,
+        })),
+      })
+    } catch (error) {
+      return failure(c, error)
+    }
+  })
+
   auth.get('/devices', requireAuth, async (c) => {
     try {
       const devices = await service.listDevices(c.get('auth'))

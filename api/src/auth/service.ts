@@ -881,6 +881,61 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
     },
 
     /**
+     * Which People in this Household hold a Login (story 28).
+     *
+     * **Active Logins only.** A disabled Login is not a fact the screen has
+     * any use for: the Person reads `NO LOGIN`, and that is true, because
+     * they cannot sign in.
+     *
+     * `deviceCount` counts Devices on exactly the predicate the middleware
+     * admits a request on — neither revoked nor expired — so the number on
+     * screen and the number that can actually reach the server are the same
+     * number. `lastSeenAt` is the newest across those, `null` when there are
+     * none.
+     *
+     * Returns `person_id` and never a name: the server has never folded an
+     * op and does not start here (`auth-design.md` §2.1).
+     */
+    async listLogins(context: AuthContext): Promise<
+      Array<{
+        id: string
+        personId: string
+        deviceCount: number
+        lastSeenAt: Date | null
+      }>
+    > {
+      const now = new Date(clock.now())
+
+      const rows = await db
+        .selectFrom('login')
+        .leftJoin('device', (join) =>
+          join
+            .onRef('device.login_id', '=', 'login.id')
+            .on('device.revoked_at', 'is', null)
+            .on('device.expires_at', '>', now),
+        )
+        .select(({ fn }) => [
+          'login.id as id',
+          'login.person_id as person_id',
+          fn.count<number>('device.id').as('device_count'),
+          fn.max('device.last_seen_at').as('last_seen_at'),
+        ])
+        .where('login.household_id', '=', context.householdId)
+        .where('login.disabled_at', 'is', null)
+        .groupBy(['login.id', 'login.person_id'])
+        .execute()
+
+      return rows.map((row) => ({
+        id: row.id,
+        personId: row.person_id,
+        // `count` reaches the driver as a string on `bigint`; see
+        // `db/index.ts`. Number() rather than trusting the column type.
+        deviceCount: Number(row.device_count),
+        lastSeenAt: row.last_seen_at ?? null,
+      }))
+    },
+
+    /**
      * Every Device signed in as this Login. Coarse labels only — no IPs, no
      * fingerprinting (`docs/design/README.md` §12).
      */
