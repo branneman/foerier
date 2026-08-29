@@ -6,6 +6,9 @@ export type { LogoProps, MarkProps } from './Logo'
 export { Chip } from './Chip'
 export type { ChipProps } from './Chip'
 
+export { ExpiryChip } from './ExpiryChip'
+export type { ExpiryChipProps } from './ExpiryChip'
+
 export { Sheet } from './Sheet'
 export type { SheetProps } from './Sheet'
 

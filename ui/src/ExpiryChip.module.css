@@ -1,0 +1,26 @@
+@layer components {
+  /* §14's own anatomy — radius 999, 1.5px stroke, mono 10/600. Muted while an
+     hour or more remains; amber once inside the last hour. Not `Chip`'s
+     anatomy: this is inert, a status rather than a value. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--color-ink-muted);
+  }
+
+  .chip[data-urgent='true'] {
+    border-color: var(--color-brand-amber);
+    /* `color-mix` rather than a literal alpha value, so the tint tracks
+       `--color-brand-amber` through both theme blocks instead of going
+       two-tone in light mode. */
+    background: color-mix(in srgb, var(--color-brand-amber) 8%, transparent);
+    color: var(--color-brand-amber);
+  }
+}
