@@ -128,7 +128,8 @@ import styles from './Trip.module.css'
  * destination it points at. The sync line is drawn at **Split alone**:
  * `AppShell` states the status in words in the phone header and in the sidebar,
  * and on the rail it draws a bare dot whose words are only an `aria-label`.
- * `Account`, `GearDetail` and `NewTrip` read the same rule from the same hook.
+ * Every other screen `useScreenHeader` reaches reads the same rule off the
+ * same hook (`frontend-design.md` §3.3).
  */
 export function Trip() {
   const params = useParams<{ id: string }>()
@@ -350,11 +351,10 @@ export function Trip() {
 
   return (
     <div className={styles['screen']}>
-      {/* Both `useScreenHeader`'s, and neither is one width: `‹ TRIPS` goes at
-          Desktop, where the sidebar's own `TRIPS` row is what it points at,
-          and the sync line is drawn at **Split alone**, where `AppShell` puts
-          only a bare dot in the rail. `Account`, `GearDetail` and `NewTrip`
-          read the same rule. */}
+      {/* Both halves of `useScreenHeader`'s rule (`frontend-design.md` §3.3):
+          `‹ TRIPS` goes at Desktop, where the sidebar's own `TRIPS` row is
+          what it points at, and the sync line is drawn at **Split alone**,
+          where `AppShell` puts only a bare dot in the rail. */}
       {header.band && (
         <header className={styles['header']}>
           {header.backLink && (

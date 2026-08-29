@@ -174,9 +174,8 @@ two-line row at a viewport of 900.
 ### 3.3 Screen headers — the back link and the sync line
 
 A screen reached *from* a destination draws a band above its title: a back link
-(`‹ DEPOT`, `‹ TRIPS`) and, on every such screen but `InviteIssued`, the sync
-marker. **Each is withheld, and neither is withheld at a single width**,
-because the two answer different questions.
+(`‹ DEPOT`, `‹ TRIPS`) and the sync marker. **Each is withheld, and neither is
+withheld at a single width**, because the two answer different questions.
 
 - **The sync line is drawn at Split (`52–64em`), and only there.** `AppShell`
   states the status in **words** in two of its three modes — the phone header
@@ -225,10 +224,10 @@ not a note about one round.
 **The hook's reach is every screen that draws either half of the band — all
 eight.** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`, `People`,
 `Devices` and `InviteIssued` ask it, and no screen spells the rule itself.
-Seven of the eight draw a sync line; `InviteIssued` never has, so only the
-back-link half is its. `splitPane` is true for `GearDetail` alone. Three of the
-answers are worth stating, because they are about the app as built rather than
-as drawn:
+Seven of the eight draw a sync line; `InviteIssued` does not, which is left
+open below rather than settled. `splitPane` is true for `GearDetail` alone.
+Three of the answers are worth stating, because they are about the app as
+built rather than as drawn:
 
 - **`AddGear` answers `splitPane: false`, against its own board frame.**
   `Add gear — split 900` draws it as a pane with the Depot list beside it, and
@@ -257,6 +256,21 @@ as drawn:
   labelled `Account` row and `/account/people` redirects to `/account`, so the
   link would have bounced through a redirect to a row already in the
   navigation.
+
+**Open — `InviteIssued`'s sync half has no drawn answer, and this doc does
+not invent one.** At Split the reader gets exactly what the rail gives
+every screen there — a bare 6px dot whose state is carried only in an
+`aria-label` — and nothing on the page states it in words; the sync
+line's own reason, that Split is the mode where nothing legible says it,
+applies to this screen exactly as it applies to the other seven. What
+holds it back is not that reason: no board draws `InviteIssued` at Split
+at all — the one frame it has is the phone 393 door — so there is no
+drawn line to build toward. Mitigating, not resolving: the screen's one
+action is a live `POST /auth/invites`, so a device that cannot sync fails
+by that call failing, visibly, rather than by an invite that silently
+never reaches the household. Left open rather than added — adding the
+line without a board to draw it from is exactly the guess this doc keeps
+refusing to make.
 
 **A gap at Split, and no board answers it.** The FAB (`Depot`, `Trips`)
 is gated `!isDesktop` and offset `bottom: 4.625rem` — 74px, which is the 56px
