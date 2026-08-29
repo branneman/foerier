@@ -1846,9 +1846,14 @@ see its [spec](specs/2026-08-29-in-app-invites-and-logins.md).
   found at design time, not in production.** `0002_auth.ts`'s plain `unique (household_id,
   person_id)` was right for as long as no Login could be revoked, and wrong
   the moment `DELETE /auth/logins/:id` existed: the next `register/verify` for
-  a revoked Person's `person_id` would have hit the index and failed with the
-  vague `401`, on a screen that can only say "ask for a new invite" — which
-  produces another Invite that fails the same way. `0006_login_reinvite`
+  a revoked Person's `person_id` would have hit the index and failed with a
+  raw Postgres unique-violation error — not an `AuthError`, so `failure()`
+  (`api/src/auth/routes.ts:422`) rethrows it and, with no `app.onError`, Hono
+  answers a plain-text `500` rather than the vague `401` every other failure
+  on these routes gets — on a screen that can only say "ask for a new invite"
+  — which produces another Invite that fails the same way (`JoinContainer`
+  treats any non-decline error alike, so the user-facing experience is the
+  intended one even though the status code is not). `0006_login_reinvite`
   loosens the constraint to `where disabled_at is null` before any code
   exercised the old one in anger, which is the whole argument for writing a
   spec before writing the migration: the bug this closes never had a chance to

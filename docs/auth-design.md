@@ -573,8 +573,10 @@ Maintainer-minted device link revocable by any member, and this document has
 not decided that a device link should be Household business the way a join
 Invite is — [S5's spec](specs/2026-08-29-in-app-invites-and-logins.md) §2.4
 draws that line for a reason, and widening it is a policy call, not a bug fix.
-Two mitigations already exist without it: the link expires in an hour on its
-own, and `npm run admin:list` lets the Maintainer see it.
+One mitigation already exists without it: the link expires in an hour on its
+own. `npm run admin:list` does not help here — it prints Households and their
+Logins, and a Maintainer-minted device link has no Login to attach itself to
+until it is redeemed.
 
 `POST /sync/push`, `GET /sync/pull`, and `GET /version` are unchanged;
 `/version` stays unauthenticated.

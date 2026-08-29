@@ -301,8 +301,8 @@ Invite and a device link across three entry points. See
   `/auth/invites` by anyone. Recorded rather than fixed, in
   [auth-design §9.1](docs/auth-design.md#91-endpoints): the obvious fix
   would make every Maintainer-minted device link revocable by any member,
-  a policy call this design has not made. It expires in an hour regardless,
-  and `admin:list` still shows it.
+  a policy call this design has not made. It expires in an hour regardless —
+  `admin:list` does not show it; it prints only Households and their Logins.
 
 **S5 landed after S6, which is the one place the slice order does not match
 [§8](docs/architecture-design.md#8-the-slice-plan)'s.** It was next after S4,

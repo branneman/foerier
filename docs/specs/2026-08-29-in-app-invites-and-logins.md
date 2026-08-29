@@ -61,9 +61,14 @@ That is the right shape while no Login can ever be revoked. `DELETE
 because deleting it would take its Passkeys and Devices with it and leave no
 record that access was ever granted. So the moment revocation exists, the
 constraint means **a revoked Person can never hold a Login again**: the next
-`register/verify` for that `person_id` hits the unique index and fails with the
-vague `401`, on a screen that can only say "ask for a new invite" — which
-produces another invite that fails the same way.
+`register/verify` for that `person_id` hits the unique index and fails with a
+raw Postgres unique-violation error. That is not an `AuthError`, so `failure()`
+(`api/src/auth/routes.ts:422`) rethrows it, and with no `app.onError` Hono
+answers a plain-text `500` — not the vague `401` every other failure on these
+routes gets — on a screen that can only say "ask for a new invite," which
+produces another invite that fails the same way. (`JoinContainer` treats any
+non-decline error alike, so the user-facing experience is the intended one
+even though the status code is not.)
 
 Story 28 says "A Person may hold at most one Login", not "at most one ever".
 
