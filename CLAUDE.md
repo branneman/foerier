@@ -254,12 +254,13 @@ is S7's row in the dimension table. See
   `recordedAt`", louder. That is why tapping the phase a Trip is already in
   emits nothing, and why the trip screen's EDIT mode emits one op per field
   that actually changed and none for the rest.
-- **The CTA names the destination that exists.** Both cards read `OPEN ›`, not
-  the board's `Continue pack-out` / `BUILD LIST ›`, because those name screens
-  S7 and S9 build — a button that leads somewhere and lies about where is worse
-  than a missing one. The general rule, recorded in `docs/design/README.md` §5
-  beside two other S6 departures: **a board's CTA copy lands on the slice that
-  builds the board's destination.**
+- **The CTA names the destination that exists.** No card carries the board's
+  `Continue pack-out` or `BUILD LIST ›`, because those name screens S7 and S9
+  build — a button that leads somewhere and lies about where is worse than a
+  missing one. The general rule, recorded in `docs/design/README.md` §5 beside
+  the other S6 departures: **a board's CTA copy lands on the slice that builds
+  the board's destination.** (The interim `OPEN ›` that first stood in its place
+  has since been retired; see the design round below.)
 
 **S6 also paid S4's fixture debt.** S4's spec said the fixture rule "applies
 unchanged" and no file landed, so `person.renamed` and `gear.ownership_set` —
@@ -270,6 +271,45 @@ the snapshot as though it had always been the format. The lesson generalises
 past fixtures, and is written into [`docs/testing.md`](docs/testing.md): a spec
 sentence saying a standing rule applies produces no artefact, and no tier
 notices its absence.
+
+**A design round has since redrawn every one of S6's Trips surfaces**, against
+a new board round at `Screens B` **02A**. No new op types, no endpoints, no
+migration; `shared/` moved only for two copy strings and `UNNAMED_PERSON`, the
+sentinel `personLabel` returns, hoisted out of five hardcoded literals.
+`OPEN ›` is retired and the whole card is tappable; Participants left EDIT for
+the resting screen (gear detail's tag chips), leaving EDIT holding name and
+dates under one commit model; a reversed date range is reported (`▲ ENDS BEFORE
+IT STARTS`) rather than guarded; the trip screen gained its own 1024 frame.
+The dated spec is **not** rewritten —
+[its §10](docs/specs/2026-08-29-trips-and-phases.md) lists what the round
+superseded, and `docs/design/README.md` §5 is the shipped authority.
+
+**Three things about it are worth knowing before touching these surfaces:**
+
+- **The NEXT line is permanent, and the progress line comes back *below* it.**
+  This is the thing S7 and S9 will otherwise get backwards — §12.11 said "above"
+  until this round, and the board says `NEXT LINE SITS ABOVE THE PROGRESS LINE.`
+  in as many words. It draws on every non-closed card, drafts included, and it
+  belongs to **the card and not the trip screen**: a next-step line is a
+  list-scanning affordance, and on the trip screen the chip already states the
+  phase and the empty region the task.
+- **`container-type` makes an element the containing block for its
+  `position: fixed` descendants.** A FAB inside `.screen` is fixed to a box whose
+  height is the content's, not to the viewport — invisible on a long Depot list,
+  obvious on a one-card Trips list where it lands beside the title and scrolls
+  away. It had shipped that way on Depot since S3. Both screens now return a
+  fragment with the FAB as the screen's sibling; the container stays, because the
+  card and row folds resolve against it. jsdom computes no layout, so both tests
+  assert the **shape** — the FAB is not contained by the element declaring the
+  query container.
+- **The back link is withheld at Desktop and the sync line from Split up**, and
+  the two breakpoints differ because that is where `AppShell` takes each into the
+  nav — the marker at Split, the labeled sidebar at Desktop. One hook,
+  `useScreenHeader`, is the only place that says so
+  ([frontend-design §3.3](docs/frontend-design.md)). **Its reach is four screens
+  and that is a stated debt:** `AddGear`, `People` and `Devices` still spell
+  their own band, and `AddGear` is the live one — `/add` is unguarded, so it
+  prints `SYNCED` twice at every width from 52em.
 
 **S5, auth 2, has landed** (story 28) — the second Quartermaster is now
 arranged from inside the app rather than by whoever runs the server. No

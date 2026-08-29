@@ -171,6 +171,63 @@ decides *how what exists lays out*. S3 is the worked example both ways:
 whichever pane it lands in, which is why Split 900's 308px list renders the
 two-line row at a viewport of 900.
 
+### 3.3 Screen headers — the back link and the sync line
+
+A screen reached *from* a destination draws a band above its title: a back link
+(`‹ DEPOT`, `‹ TRIPS`) and the sync marker. **Both are withheld, and at two
+different widths**, because that is where `AppShell` takes each of them into
+the nav:
+
+- **The back link goes at Desktop (`≥ 64em`).** The 216px sidebar is labeled
+  navigation, and the row `‹ TRIPS` points at *is* the sidebar's `TRIPS`. At
+  Split the nav is a 56px icon rail with no labels, so the back link is the only
+  thing on screen naming where the reader came from and it stays.
+- **The sync line goes from Split up (`≥ 52em`).** `AppShell` draws its own
+  header band on `mode === 'tabs'` alone, so from 52em the marker is already in
+  the rail — and the boards put it there and nowhere else, *"never in the main
+  column at desktop"*. A screen that kept drawing its own would print `SYNCED`
+  twice at 52–64em, once in the rail and once beside the title.
+
+The `<header>` element itself exists exactly when the back link does and needs no
+third answer, because below Split is inside below Desktop: a withheld link is
+never left with a surviving line.
+
+The boards are what settle the asymmetry, and they settle it by drawing two 1024
+frames that differ. `Screens B`'s `Gear list builder` draws `‹ TRIPS` and is a
+bare pane with **no sidebar**; `Trip screen — S6 desktop` draws the 216px
+sidebar, puts the sync marker inside it, and drops both from the main column.
+**Sidebar drawn ⇒ back link and sync line not.**
+
+**One hook says it: `useScreenHeader` in `app/src/shell/useMediaQuery.ts`**,
+which composes the two queries it sits beside and returns `{backLink, syncLine}`.
+It exists because four screens spelling the rule themselves is three chances to
+spell it differently — which is exactly how `Account` came to carry `Trip`'s
+defect from a different slice.
+
+**Its reach is four screens, and that is a debt rather than the finished state.**
+`Trip`, `Account`, `GearDetail` and `NewTrip` ask the hook. Three pushed screens
+still spell their own band and get it wrong:
+
+- **`AddGear` is the live one.** `<Route path="/add">` is unguarded, so the
+  screen is reachable at every width and its unconditional `<header>` prints
+  `SYNCED` twice from 52em up, Desktop included.
+- **`People` and `Devices`** `Redirect to="/account"` at Desktop, so their back
+  link is never reached and only the sync line is wrong — the same double print,
+  bounded to 52–64em.
+
+Converting them is a code change and is deliberately not folded into the round
+that extracted the hook. The obligation is recorded here so the next person to
+touch a pushed screen finds it rather than rediscovering the doubled marker.
+
+**A second gap at Split, and no board answers it.** The FAB (`Depot`, `Trips`)
+is gated `!isDesktop` and offset `bottom: 4.625rem` — 74px, which is the 56px
+tab bar plus 18px. At Split there is no tab bar: the nav is the left rail, so
+the offset clears nothing, and on `Depot` the control floats over the detail
+pane rather than sitting in the list pane's box. It is fixed to the viewport
+now and correctly so; what is missing is a drawn answer for where a FAB belongs
+once the nav moves off the bottom edge.
+
+
 ## 4. CSS architecture
 
 ### 4.1 Cascade layers

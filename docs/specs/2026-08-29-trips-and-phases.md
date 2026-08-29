@@ -19,6 +19,14 @@ the phase model, the SET PHASE excerpt and the no-dates card variant; `Screens B
 2-up`; `User Flows` F3 carries the New Trip flow. `docs/design/README.md` §5 and
 §5a are the written handoff.
 
+**A later board round applied that rule to this spec, after the slice had
+shipped.** `Screens B` **02A** redrew every S6 surface and reversed several
+decisions §4 and §6 record. Those sections are left exactly as written — they
+are the record of the design that was taken, and rewriting them would erase the
+fact that the boards changed their mind rather than that the implementer got it
+wrong. [§10](#10-what-changed-during-implementation) names every one, and
+`docs/design/README.md` §5 plus `Screens B` 02A are the shipped authority.
+
 S6 is the **first Trip slice**, so it is the slice that decides how the Trip
 aggregate is shaped in `shared/` — and eight later slices (S7 · S8 · S9 · S10 ·
 S11 · S12 · S13 · S14) extend what it lays down. Where a decision here is
@@ -601,6 +609,17 @@ changes.
 Recorded here and in `docs/design/README.md`, following the precedent S3 set with
 Add gear's `UNDO` and S4 with the `OWNER` row.
 
+> **Superseded in part.** The `Screens B` **02A** design round, taken after S6
+> shipped, overturned [§6.1](#61-the-cta-names-the-destination-that-exists)'s
+> `OPEN ›` and half of [§6.2](#62-the-progress-line-falls-through-to-a-next-step-line)
+> — the two NEXT strings, where the line is drawn, and which way the progress
+> line returns. **Read `docs/design/README.md` §5 and `Screens B` 02A for what
+> ships**; these sections stay as drawn, and
+> [§10](#10-what-changed-during-implementation) lists the differences. The
+> *rules* under both survive intact: a board's CTA copy still lands on the slice
+> that builds its destination, and the next-step line is still what §8.3's
+> "with the next thing to do stated" buys.
+
 ### 6.1 The CTA names the destination that exists
 
 The board's active card carries `Continue pack-out`, and its draft card carries
@@ -737,8 +756,8 @@ somebody has to notice.
 ## 10. What changed during implementation
 
 §6 records the design that was taken, and is left as it was written. Three
-things moved while the code was built, and they are amended here rather than
-back into §6.
+things moved while the code was built, and a fourth moved after the slice had
+shipped. All four are amended here rather than back into §6.
 
 **§6.2 — only the active card draws the next-step line.** The planned card keeps
 the board's three lines (name, `DRAFT · 0 GEAR LISTED`, the CTA). `NEXT — BUILD
@@ -772,3 +791,42 @@ the card declares none, which is `GearRow`'s arrangement with the pane the Depot
 hands it, and the card renders stacked with no container at all (§3.2's
 fail-open). Neither half is observable from a render, because jsdom evaluates no
 container query, so both are pinned by assertions on the stylesheets.
+
+**After shipping: the `Screens B` 02A design round superseded §4.1, §4.3, §6.1
+and half of §6.2.** A board round taken against every S6 surface reversed
+five things this spec settles, and `docs/design/README.md` §5 plus `Screens B`
+02A are the authority for all of them:
+
+- **`OPEN ›` is retired** (§6.1, and the glance table's CTA row). No card carries
+  a button or a verb link; the interim affordance is the closed row's own `›` at
+  the card's trailing edge, and the whole card is tappable. §6.1's *rule* is
+  untouched — `BUILD LIST ›` still arrives with the builder and `Continue
+  pack-out` with the packing view.
+- **Two of §6.2's table rows were redrawn.** `NEXT — PACK IT` became `NEXT —
+  PACK THE LIST`, and `NEXT — MARK UNPACK WHEN YOU ARE BACK` became `NEXT — SET
+  UNPACK WHEN BACK`, which names the control the reader actually taps rather
+  than describing an outcome. `shared/src/selectors/trip.ts` holds the shipped
+  five.
+- **The line goes on every non-closed card, drafts included**, reversing this
+  section's own first amendment. The redundancy that argument rested on is an
+  accident of the count being zero and dies at `DRAFT · 14 GEAR LISTED`.
+- **The line belongs to the card and not to the trip screen** (§4.3's fourth
+  bullet). A next-step line is a list-scanning affordance; on the trip screen
+  the chip states the phase and the empty region states the task.
+- **It is permanent, and the progress line returns *below* it**, not above —
+  §6.2's last sentence has it the wrong way round, and `NEXT LINE SITS ABOVE THE
+  PROGRESS LINE.` is drawn on the board's full-weight card variant.
+
+One further reversal belongs to §4 rather than §6 and is listed here for the
+same reason: **Participants left EDIT for the resting screen** (§4.3's `EDIT`
+paragraph). They are gear detail's tag chips now — circles plus a dashed `+`
+ghost, writes landing at once, removal never confirming — and EDIT is left
+holding name and dates under one commit model, with the disclosure line that
+had been holding the two models together deleted rather than reworded.
+
+The round also **added** two things §1.4 leaves open rather than settles.
+`SEP 02 → AUG 14 · ▲ ENDS BEFORE IT STARTS` reports a reversed range and
+suppresses the day count while it is reversed — §1.4 rules out the *guard*, and
+this is the ledger saying so instead — and EDIT states a stored date it cannot
+draw: `▲ STORED AS "aug sometime" — PICKING A DATE REPLACES IT`, which is what
+"drawn verbatim" costs on a screen whose control is the OS `date` picker.

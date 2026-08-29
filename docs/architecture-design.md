@@ -1799,17 +1799,35 @@ Six op types, no endpoints, no migration; see its
   both name screens S7 and S9 build. "An affordance that leads nowhere is worse
   than a missing one" — the rule that kept the `ACCOUNT` row out at S3.5 and put
   the `PEOPLE` row in at S4 — is not quite the case here, because a button that
-  leads *somewhere* and lies about where is worse still. Both cards read
-  `OPEN ›` at S6, and the general form is worth carrying forward: **a board's
-  CTA copy lands on the slice that builds the board's destination.**
+  leads *somewhere* and lies about where is worse still. So no card carries a
+  button or a verb link at all — the interim affordance is the closed row's own
+  `›` at the card's trailing edge, with the whole card tappable — and the
+  general form is worth carrying forward: **a board's CTA copy lands on the
+  slice that builds the board's destination.**
 - **The progress line falls through to a next-step line, which is the slice's
   actual requirement rather than a substitute for it.** `● 48/61 PIECES` has
   nothing to count until Entries exist and a `0/0` bar would state a fact about
   a list nobody has built, so its place is taken by the phase's next step —
   §8.3's "with the next thing to do stated". Because the line is a fact of the
   phase *table* and not of the Trip, it stays correct as the later slices build
-  the things it names, and S7 and S9 return the progress line **above** it
-  rather than in place of it.
+  the things it names. It is **permanent, not a stand-in**: the line keeps the
+  slot it holds today and S7 and S9 return the progress line **below** it,
+  never in place of it. The card is also the only surface that draws it: a
+  next-step line is a list-scanning affordance, and the trip screen already
+  states the phase in its chip and the task in its empty region.
+- **`SET PHASE` is drawn as a mono eyebrow and ships in the display face, and
+  that is a stated debt rather than a gap.** `Screens B` 02A sets the sheet's
+  title in Spline Sans Mono at 8.5px with the eyebrow's letterspacing;
+  `Sheet.module.css`'s one `.title` rule sets `var(--font-display)` and both
+  `Sheet` and `Confirm` render their titles through it, and `PhaseSheet` is the
+  only caller in the app passing a title that is not sentence case. Restyling
+  the primitive was refused: the board means *this* title, and every other
+  sheet and confirm in the app — `Edit gear`, `Tags`,
+  `Home`, `Owner`, `Participants`, `Sort and group`, `Sign out this device?` —
+  is sentence-case display and would be wrong in mono. The fix is an opt-in
+  `titleTone` on `Sheet` that `PhaseSheet` alone passes, and it belongs to
+  whichever slice next opens `ui/`'s overlay primitives rather than to a
+  one-caller detour through the shared package.
 - **`DepotState` is now the fold of everything, not just the depot, and the name
   stays.** Renaming reaches `DepotStoreState`, `DepotProvider`, `useDepot`,
   `DepotView` and every screen in three workspaces, and S5 was in flight across
