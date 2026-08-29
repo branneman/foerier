@@ -262,6 +262,7 @@ export function createAuthRoutes({
         invites: invites.map((invite) => ({
           id: invite.id,
           purpose: invite.purpose,
+          person_id: invite.personId,
           expires_at: invite.expiresAt.toISOString(),
         })),
       })

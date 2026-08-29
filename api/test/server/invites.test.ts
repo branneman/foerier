@@ -87,6 +87,19 @@ describe('invites', () => {
     })
   }
 
+  function get(path: string, token: string) {
+    return h.app.request(`/api/v1${path}`, {
+      headers: { authorization: `Bearer ${token}` },
+    })
+  }
+
+  function del(path: string, token: string) {
+    return h.app.request(`/api/v1${path}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${token}` },
+    })
+  }
+
   it('mints a join Invite for a recorded Person', async () => {
     const caller = await signedInDevice()
     const personId = systemIdSource.next()
@@ -270,5 +283,90 @@ describe('invites', () => {
       .where('id', '=', body.id)
       .executeTakeFirstOrThrow()
     expect(row.login_id).toBe(caller.loginId)
+  })
+
+  /**
+   * The rule, in one sentence: a join Invite creates a Login — that is
+   * Household business — and a device Invite is a credential for one Login,
+   * so it stays with its issuer (`auth-design.md` §3.1's own "listable by
+   * the issuer", kept for the purpose it was written about and widened for
+   * the one it was not).
+   */
+  it('shows a join Invite to a second Login in the Household', async () => {
+    const issuer = await signedInDevice()
+    const other = await signedInDevice()
+    const personId = systemIdSource.next()
+
+    const mintedRes = await post('/auth/invites', issuer.token, {
+      purpose: 'join',
+      person_id: personId,
+    })
+    expect(mintedRes.status).toBe(200)
+    const minted = await jsonOf<{ id: string }>(mintedRes)
+
+    const listRes = await get('/auth/invites', other.token)
+    expect(listRes.status).toBe(200)
+    const { invites } = await jsonOf<{
+      invites: Array<{ id: string; purpose: string; person_id: string }>
+    }>(listRes)
+
+    expect(invites).toContainEqual(
+      expect.objectContaining({
+        id: minted.id,
+        purpose: 'join',
+        person_id: personId,
+      }),
+    )
+  })
+
+  it('lets a second Login revoke a join Invite it did not issue', async () => {
+    const issuer = await signedInDevice()
+    const other = await signedInDevice()
+
+    const mintedRes = await post('/auth/invites', issuer.token, {
+      purpose: 'join',
+      person_id: systemIdSource.next(),
+    })
+    expect(mintedRes.status).toBe(200)
+    const minted = await jsonOf<{ id: string }>(mintedRes)
+
+    const delRes = await del(`/auth/invites/${minted.id}`, other.token)
+    expect(delRes.status).toBe(204)
+
+    const row = await db
+      .selectFrom('invite')
+      .select('revoked_at')
+      .where('id', '=', minted.id)
+      .executeTakeFirstOrThrow()
+    expect(row.revoked_at).not.toBeNull()
+  })
+
+  it('hides another Login’s device link, and refuses to revoke it', async () => {
+    const issuer = await signedInDevice()
+    const other = await signedInDevice()
+
+    const mintedRes = await post('/auth/invites', issuer.token, {
+      purpose: 'device',
+    })
+    expect(mintedRes.status).toBe(200)
+    const minted = await jsonOf<{ id: string }>(mintedRes)
+
+    const listRes = await get('/auth/invites', other.token)
+    expect(listRes.status).toBe(200)
+    const { invites } = await jsonOf<{ invites: Array<{ id: string }> }>(
+      listRes,
+    )
+    expect(invites.map((invite) => invite.id)).not.toContain(minted.id)
+
+    // 204 either way — "not yours" and "does not exist" are one answer — but
+    // the row must survive.
+    const delRes = await del(`/auth/invites/${minted.id}`, other.token)
+    expect(delRes.status).toBe(204)
+    const row = await db
+      .selectFrom('invite')
+      .select('revoked_at')
+      .where('id', '=', minted.id)
+      .executeTakeFirstOrThrow()
+    expect(row.revoked_at).toBeNull()
   })
 })

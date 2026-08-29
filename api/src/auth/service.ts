@@ -966,17 +966,33 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
     },
 
     /**
-     * Invites this Login issued and has not spent. Never returns the secret:
-     * it exists only in the link, and the row holds a hash (§3.1).
+     * Outstanding Invites this caller may see. Never returns the secret: it
+     * exists only in the link, and the row holds a hash (§3.1).
+     *
+     * **Scoped by purpose, not by a flag.** A join Invite creates a Login —
+     * Household business, listed on People & logins where any member may
+     * revoke it, because two Quartermasters who cannot see each other's
+     * invites will both issue one for Els. A device Invite is a credential
+     * for one Login and stays with its issuer, which is what §3.1 says.
      */
-    async listInvites(
-      context: AuthContext,
-    ): Promise<Array<{ id: string; purpose: InvitePurpose; expiresAt: Date }>> {
+    async listInvites(context: AuthContext): Promise<
+      Array<{
+        id: string
+        purpose: InvitePurpose
+        personId: string
+        expiresAt: Date
+      }>
+    > {
       const rows = await db
         .selectFrom('invite')
-        .select(['id', 'purpose', 'expires_at'])
+        .select(['id', 'purpose', 'person_id', 'expires_at'])
         .where('household_id', '=', context.householdId)
-        .where('created_by_login', '=', context.loginId)
+        .where((eb) =>
+          eb.or([
+            eb('purpose', '=', 'join'),
+            eb('created_by_login', '=', context.loginId),
+          ]),
+        )
         .where('used_at', 'is', null)
         .where('revoked_at', 'is', null)
         .where('expires_at', '>', new Date(clock.now()))
@@ -986,18 +1002,24 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
       return rows.map((row) => ({
         id: row.id,
         purpose: row.purpose,
+        personId: row.person_id,
         expiresAt: row.expires_at,
       }))
     },
 
-    /** Kills the link, never any data. Scoped to the caller's own Household. */
+    /** Kills the link, never any data. Same purpose scope as `listInvites`. */
     async revokeInvite(context: AuthContext, inviteId: string): Promise<void> {
       await db
         .updateTable('invite')
         .set({ revoked_at: new Date(clock.now()) })
         .where('id', '=', inviteId)
         .where('household_id', '=', context.householdId)
-        .where('created_by_login', '=', context.loginId)
+        .where((eb) =>
+          eb.or([
+            eb('purpose', '=', 'join'),
+            eb('created_by_login', '=', context.loginId),
+          ]),
+        )
         .execute()
     },
 
