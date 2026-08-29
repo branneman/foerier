@@ -1353,10 +1353,13 @@ retired outright.
   text sits beside it.
 - **Counts are handed in, not read.** `AppShell` renders *outside* the
   `DepotProvider` — deliberately, so the nav never depends on a store the
-  signed-out shell has never had — so `App` reads `depotCounts` and passes a
-  map keyed by href. `/trips` has no entry until S6 and `/find` never gets
-  one; a destination with no entry simply draws no count, which is how the
-  board reads it.
+  signed-out shell has never had — so `App` reads the counts and passes a map
+  keyed by href. A destination with no entry simply draws no count, which is
+  how the board reads it, and the rule for which destinations get one is not a
+  list but a sentence: **a count is the size of the list the destination
+  opens.** `/find` therefore never gets one — it answers a question rather
+  than holding a collection — and every destination that does open a list gets
+  one on the slice that builds the list.
 - **The `ACCOUNT` affordance was settled and left unbuilt, in all three
   modes — and built at S3.5.** R3 draws a sidebar row pinned bottom, a rail
   avatar, and a phone header avatar; all three were blocked on the same
@@ -1737,19 +1740,25 @@ Six op types, no endpoints, no migration; see its
   for the reason §12.10 gives: the fold conflates nothing, every reader treats
   the two alike, and a call site that re-derives the equivalence drifts from the
   sections. Here the symptom is sharper than S4's — a Trip listed under one
-  section drawn with another section's chip. It is reachable two ways and
-  neither is exotic: a `trip.phase_moved` delivered before its `trip.created`,
-  and a Trip addressed only by `trip.participant_added`, because `writeTrip`
-  creates the entity on first sight of any Trip op exactly as the other three
-  maps do.
+  section drawn with another section's chip. What makes it reachable is the
+  bullet above read the other way: `trip.created` and `trip.phase_moved` are
+  the register's only writers, and `writeTrip` creates the entity on first
+  sight of *any* Trip op, exactly as the other three maps do. So a
+  `trip.renamed`, a `trip.dates_set` or a participant op landing while the
+  creation is still queued on another device leaves a Trip with a name, dates
+  or participants and no phase. The out-of-order `phase_moved` is not one of
+  those cases and never was: it writes the register unconditionally, so that
+  Trip has a phase before it has a name.
 - **Every question the phase table answers has exactly one function beside it,
   and the lookup itself is private.** `phaseOf`, `isActive`, `phaseLabel`,
-  `phaseName`, `phaseNext` and `isKnownPhase` each resolve one miss in one way,
-  and the helper the six of them share is not exported — because each of them
-  *resolves* the miss, and the raw lookup would let a call site decide for
-  itself what a missing row means. `isActive` is the only definition of
-  active-ness in the codebase, and S7's claim selector, S9's whereabouts and
-  S10's close gate all call it. The
+  `phaseName`, `phaseNext` and `isKnownPhase` each answer one question in one
+  way, and the row lookup **five** of them share is not exported. `phaseOf` is
+  the sixth and reads the register rather than the table, so it is the one that
+  never asks. The lookup stays private because each of the five *resolves* a
+  missing row — to the raw value, to not-active, to no next step — and
+  handing the row out would let a call site decide for itself what a miss
+  means. `isActive` is the only definition of active-ness in the codebase, and
+  S7's claim selector, S9's whereabouts and S10's close gate all call it. The
   discipline was not free: three separate reviews in this slice caught a call
   site re-deriving one of these — a `PHASES.some(…)` inline, a `?.next ?? null`
   about to be written twice, a hard-coded phase name in the reopen confirm's

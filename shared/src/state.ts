@@ -106,10 +106,15 @@ export interface TripState {
    * in either direction (invariant 16).
    *
    * An **absent** register reads `draft`, and only `selectors/trip.ts`'s
-   * `phaseOf` says so. It is reachable two ways: a `trip.phase_moved`
-   * delivered before its `trip.created`, and a Trip addressed only by a
-   * participant op. The fold conflates nothing — absent and an explicit
-   * `"draft"` stay different facts about the log.
+   * `phaseOf` says so. It is reachable whenever a Trip is addressed by an op
+   * that is neither of the register's two writers — `trip.renamed`,
+   * `trip.dates_set` or a participant op arriving while the `trip.created`
+   * that would seed the phase is still queued on another device. `writeTrip`
+   * creates the entity for any Trip op, so the Trip exists with a name, dates
+   * or participants and no phase. An out-of-order `trip.phase_moved` is
+   * **not** one of those paths: it writes the register unconditionally, so
+   * that Trip has a phase before it has a name. The fold conflates nothing —
+   * absent and an explicit `"draft"` stay different facts about the log.
    */
   phase?: Register<PhaseValue>
   /**

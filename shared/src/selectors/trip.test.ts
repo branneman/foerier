@@ -383,6 +383,21 @@ describe('tripSections', () => {
     expect(ids(tripSections(state).planned)).toEqual(['t1', 't2', 't3'])
   })
 
+  it('breaks a same-spelling-different-case tie before reaching the id', () => {
+    // `byNameThenId`'s middle branch, and the only one nothing else covers.
+    // Two names that lower-case identically are *not* the same name, and the
+    // id must not be what separates them: the ids here run the other way, so
+    // a comparator that fell straight from the case-insensitive compare to
+    // the id would answer `['t1', 't2']`. Code-point order puts `Alpha`
+    // first, and — the point of the branch — puts it first on every device,
+    // because `toLowerCase` collapsed a difference the display still shows.
+    const state = depot(
+      aTrip({ id: 't2', name: 'Alpha', start: '2026-08-01' }),
+      aTrip({ id: 't1', name: 'alpha', start: '2026-08-01' }),
+    )
+    expect(ids(tripSections(state).planned)).toEqual(['t2', 't1'])
+  })
+
   it('breaks an undated tie the same way', () => {
     const state = depot(
       aTrip({ id: 't2', name: 'Bravo', phase: 'closed' }),

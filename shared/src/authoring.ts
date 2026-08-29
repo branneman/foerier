@@ -340,9 +340,9 @@ export function tripRenamed(id: string, name: string | null): OpSpec {
 }
 
 /**
- * `sync-protocol.md` §4.4: sets `start_date` and/or `end_date` — two
- * independent registers, each following the absent-versus-null rule
- * separately (§1.3).
+ * `sync-protocol.md` §4.4: emits `start` and/or `end`, which write the
+ * `startDate` and `endDate` registers — two independent registers, each
+ * following the absent-versus-null rule separately (§1.3).
  *
  * A key the caller omits is **omitted from the payload entirely**
  * ({@link gearRecorded}'s spread idiom), never emitted as `undefined` or
@@ -350,10 +350,11 @@ export function tripRenamed(id: string, name: string | null): OpSpec {
  * The screen therefore emits only what changed, which is what stops one
  * device's date edit from reverting the other's.
  *
- * The payload keys are `start` and `end`, shorter than the `startDate` /
- * `endDate` registers they write — the same split `gear.owned_count_set`
- * already has (spec §1.4). A date is emitted as written and read back
- * verbatim; there is no `YYYY-MM-DD` gate on either side.
+ * The two names differ on purpose — the same split `gear.owned_count_set`
+ * already has over an `ownedCount` register (spec §1.4) — and are named at
+ * both ends here so nobody "fixes" one to match the other. A date is emitted
+ * as written and read back verbatim; there is no `YYYY-MM-DD` gate on either
+ * side.
  */
 export function tripDatesSet(
   id: string,

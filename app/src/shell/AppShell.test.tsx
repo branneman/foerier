@@ -121,7 +121,10 @@ describe('AppShell — the sidebar at Desktop', () => {
     expect(within(nav).getByRole('link', { name: 'Depot' })).toHaveTextContent(
       '128',
     )
-    // Trips has no count until trips exist; Find never has one.
+    // The shell draws what it is handed and nothing else. This `counts` map
+    // carries `/` alone, so Trips draws no count here — not because Trips has
+    // none (`App` hands it one), but because a destination absent from the map
+    // renders no badge at all, which is what Find relies on permanently.
     expect(
       within(nav).getByRole('link', { name: 'Trips' }),
     ).not.toHaveTextContent(/\d/)

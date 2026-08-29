@@ -136,11 +136,17 @@ function phaseRow(phase: PhaseValue): Phase | undefined {
  * exactly once is what stops the list, the chip and the sections drifting
  * apart.
  *
- * The absent case is reachable in ordinary use, not just in a fixture: a
- * `trip.phase_moved` delivered before its `trip.created` yields a Trip with a
- * phase and no name, and a Trip addressed only by `trip.participant_added`
- * yields one with no phase register at all. `writeTrip` creates the entity for
- * any trip op, out of authoring order, exactly as the other three maps do.
+ * The absent case is reachable in ordinary use, not just in a fixture, and the
+ * rule is worth stating rather than the instances: `trip.created` and
+ * `trip.phase_moved` are the register's **only** writers, while `writeTrip`
+ * creates the entity for any trip op at all, out of authoring order, exactly
+ * as the other three maps do. So a `trip.renamed`, a `trip.dates_set` or a
+ * participant op that lands while the creation is still queued on another
+ * device yields a Trip with no phase register. The out-of-order
+ * `trip.phase_moved` is the *contrast* and not a third instance (spec §3.2):
+ * it writes the register unconditionally, so that Trip has a phase before it
+ * has a name — which is the property `trip.created` seeding `draft` from the
+ * handler buys, not a hole in it.
  */
 export function phaseOf(trip: TripState): PhaseValue {
   return trip.phase?.value ?? 'draft'

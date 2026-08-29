@@ -227,21 +227,27 @@ is S7's row in the dimension table. See
 
 - **Every question the phase table answers has exactly one function beside it,
   and the lookup itself is private.** `phaseOf`, `isActive`, `phaseLabel`,
-  `phaseName`, `phaseNext` and `isKnownPhase` each resolve one miss in one way;
-  the shared helper is unexported precisely so no call site decides for itself
-  what a missing row means. `isActive` is the **only** definition of active-ness in
-  the codebase, and S7's claim selector, S9's whereabouts and S10's close gate
-  all call it. This is not theoretical tidiness: three separate reviews in this
+  `phaseName`, `phaseNext` and `isKnownPhase` each answer one question in one
+  way; the row lookup **five** of them share is unexported precisely so no
+  call site decides for itself what a missing row means (`phaseOf` is the
+  sixth and reads the register rather than the table, so it is the one that
+  never asks). `isActive` is the **only** definition of active-ness in the
+  codebase, and S7's claim selector, S9's whereabouts and S10's close gate all
+  call it. This is not theoretical tidiness: three separate reviews in this
   slice caught a call site re-deriving one of them.
 - **An absent `phase` register reads `draft`, and only
   `shared/src/selectors/trip.ts` says so** — S4's `ownerOf` rule transplanted,
   with the same symptom when it drifts (a Trip listed in one section drawn with
-  another section's chip). It is reachable two ways: a `trip.phase_moved`
-  delivered before its `trip.created`, and a Trip addressed only by a
-  participant op. Relatedly, **`phase = "draft"` is the reducer's write at
-  `trip.created`, not a payload field** — which is what makes an out-of-order
-  `phase_moved` win on its own clock, a re-delivered creation idempotent, and a
-  Trip that arrives already `closed` unauthorable, all with no special case.
+  another section's chip). It is reachable because `trip.created` and
+  `trip.phase_moved` are the register's only writers while `writeTrip` creates
+  the entity for *any* Trip op: a `trip.renamed`, a `trip.dates_set` or a
+  participant op landing before the creation leaves a Trip with no phase. An
+  out-of-order `phase_moved` is **not** such a case — it writes the register
+  unconditionally, so that Trip has a phase before it has a name. Relatedly,
+  **`phase = "draft"` is the reducer's write at `trip.created`, not a payload
+  field** — which is what makes an out-of-order `phase_moved` win on its own
+  clock, a re-delivered creation idempotent, and a Trip that arrives already
+  `closed` unauthorable, all with no special case.
 - **`DAY N` comes from the `phase` register's own stamp, so at S6 a needless
   write is *visible*.** A redundant `trip.phase_moved` resets a Trip on `DAY 12`
   to `DAY 1`, in the chip's own content — S4's "a needless write moves

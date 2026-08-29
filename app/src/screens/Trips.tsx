@@ -2,6 +2,7 @@ import {
   tripLabel,
   tripPhaseMoved,
   tripSections,
+  type PhaseKey,
   type TripState,
 } from '@foerier/shared'
 import { useMemo, useState } from 'react'
@@ -13,6 +14,20 @@ import { TripCard } from '../components/TripCard'
 import { useDepot } from '../depot/store'
 import { tripStartMonth } from '../depot/trips'
 import styles from './Trips.module.css'
+
+/**
+ * The phase the closed ledger row's `REOPEN` moves a Trip to — the one it was
+ * in when it was closed, and the one the board's sentence names. The SET PHASE
+ * sheet is where the other three are reachable.
+ *
+ * **One constant because two authors of it is one edit away from a lie.** The
+ * confirm's sentence is parameterised by this (`It returns to Unpack exactly
+ * as it stood`) and the op writes it; everywhere else in this screen the word
+ * the user reads and the value written are already the same variable, and
+ * spelling it twice here would let a change to the copy name a phase the op
+ * does not write.
+ */
+const REOPEN_TO: PhaseKey = 'unpack'
 
 /**
  * **Trips** — `Screens B` §02's phone frame and `Screens A` §04's `Trips roomy
@@ -136,13 +151,10 @@ export function Trips() {
       {reopenTrip !== undefined && (
         <ReopenConfirm
           trip={reopenTrip}
-          // The ledger row's reopen targets `unpack` specifically — the phase
-          // a Trip was in when it was closed, and the one the board's sentence
-          // names. The SET PHASE sheet is where the other three are reachable.
-          to="unpack"
+          to={REOPEN_TO}
           onCancel={() => setReopenTripId(null)}
           onConfirm={() => {
-            emit(tripPhaseMoved(reopenTrip.id, 'unpack'))
+            emit(tripPhaseMoved(reopenTrip.id, REOPEN_TO))
             setReopenTripId(null)
           }}
         />

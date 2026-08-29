@@ -176,11 +176,14 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
         )}
 
         {next !== null && (
-          // `null` three ways over, all drawing the same: the dashed card
-          // states no next step at all, a closed Trip has nothing next, and a
-          // phase this build has never heard of states none because there is
-          // no row to state one. The chip above still draws the raw value;
-          // only this line goes away.
+          // `null` exactly one way here: the dashed card, which states no next
+          // step at all. `phaseNext`'s own two nulls — a closed Trip, and a
+          // phase this build has never heard of — are unreachable through this
+          // line, because `next` is only computed for the active variant and
+          // the active variant is `isActive`, which neither of those is. They
+          // are reached on the trip screen, which draws the line for every
+          // phase; there the chip still draws the raw value and only the line
+          // goes away.
           <p className={styles['next']} data-testid="trip-next">
             {next}
           </p>
