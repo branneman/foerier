@@ -610,7 +610,7 @@ Landing this slice updates, in the same commit range:
 - **[`architecture-design.md`](../architecture-design.md) §8.3** — S5 marked
   landed; its "Endpoints" line corrected to include the widened
   `/auth/invites`; a "Migration" line added; the Tier 5 line corrected to
-  local-only per [§5.4](#54-tier-5--local-only-and-why). A new **§12.11**
+  local-only per [§5.4](#54-tier-5--local-only-and-why). A new **§12.12**
   records the consequences.
 - **[`design/README.md`](../design/README.md) §13** — S5's three debts marked
   discharged, [§6.1](#61-reopen--is-not-built) and

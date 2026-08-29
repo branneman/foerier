@@ -600,8 +600,10 @@ either side keep their names, for the same reason stories do.
   concurrent ownership edits.
 - **Usable?** Personal gear stops being everyone's problem, and S5 is unblocked.
 
-**S5 — Auth 2: bring another Person in. Landed.** *Story 28.* See
-[its spec](specs/2026-08-29-in-app-invites-and-logins.md) and §12.11.
+**S5 — Auth 2: bring another Person in. Landed, after S6.** *Story 28.* See
+[its spec](specs/2026-08-29-in-app-invites-and-logins.md) and §12.12 — which
+is numbered after S6's because §12 records the order slices **landed**, and
+S6 took the float §8.6 grants rather than idling behind this one.
 
 [auth-design §13](auth-design.md) slice 2, moved behind S4 per §8.2.
 
