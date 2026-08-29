@@ -26,7 +26,7 @@
 - **Tier 0 runs on every commit** (pre-commit: `npm run check:workspaces`, `tsc --noEmit` across workspaces, ESLint, Prettier). A commit that fails it is not a commit.
 - **Working in a git worktree: run `npm ci` in it, first thing.** Without it Node's resolver walks up to the main checkout's `node_modules` and you edit one tree while testing another.
 - **Known-flaky neighbour:** `api/test/server/sync.test.ts` fails nondeterministically in the full suite and passes alone. If it fails, re-run it alone to confirm the known flake.
-- **Commands.** **Tier 2s is its own Vitest project and is NOT part of `npm test`** — run it with `npm run test:server` (filter with `npm run test:server -- logins`), and bring Postgres up first: `docker compose -f docker-compose.dev.yml up -d`, `npm test -w @foerier/app`, `npm test -w @foerier/ui`, `npm test` (all), `npm run typecheck`, `npx playwright test` (Tier 5).
+- **Commands.** **Tier 2s is its own Vitest project and is NOT part of `npm test`** — run it with `npm run test:server` (filter with `npm run test:server -- logins`), and bring Postgres up first: `docker compose -f docker-compose.dev.yml up -d`. **No workspace has a `test` script of its own** — `npm test -w @foerier/app` does nothing useful. Tiers 1-3 run through the root config: `npm test` for all of them, `npx vitest run --project app` (or `--project ui`, `--project shared`) for one, and `-t <name>` to filter. Then `npm run typecheck`, `npm run test:contract` (Tier 4, needs a deployed box and a stored credential — normally unrunnable locally), and `npx playwright test` (Tier 5).
 
 ---
 
@@ -1694,7 +1694,7 @@ describe('ExpiryChip', () => {
 - [ ] **Step 2: Run to verify it fails**
 
 ```bash
-npm test -w @foerier/ui -- ExpiryChip
+npx vitest run --project ui -t ExpiryChip
 ```
 
 Expected: FAIL — cannot resolve `./ExpiryChip`.
@@ -1793,7 +1793,7 @@ export type { ExpiryChipProps } from './ExpiryChip'
 - [ ] **Step 6: Run to verify it passes**
 
 ```bash
-npm test -w @foerier/ui -- ExpiryChip
+npx vitest run --project ui -t ExpiryChip
 npm run typecheck
 ```
 
@@ -1902,7 +1902,7 @@ Append to `app/src/screens/InviteIssued.test.tsx`, following the file's existing
 - [ ] **Step 3: Run to verify they fail**
 
 ```bash
-npm test -w @foerier/app -- InviteIssued
+npx vitest run --project app -t InviteIssued
 ```
 
 Expected: FAIL — the component takes no `purpose` or `subjectPersonId`.
@@ -2017,7 +2017,7 @@ Place both **after** `/account/people` in the `Switch`, so the more specific pat
 - [ ] **Step 6: Run the tests to verify they pass**
 
 ```bash
-npm test -w @foerier/app -- InviteIssued
+npx vitest run --project app -t InviteIssued
 npm run typecheck
 ```
 
@@ -2266,7 +2266,7 @@ git commit -m "One invite-issued screen, three ways in"
 - [ ] **Step 2: Run to verify they fail**
 
 ```bash
-npm test -w @foerier/app -- People
+npx vitest run --project app -t People
 ```
 
 Expected: FAIL across the board — `People` takes no `api`.
@@ -2577,7 +2577,7 @@ In `Account.tsx`, `:495`'s label becomes `PEOPLE & LOGINS`, and the comment at `
 - [ ] **Step 11: Run the tests to verify they pass**
 
 ```bash
-npm test -w @foerier/app
+npx vitest run --project app
 npm run typecheck
 ```
 
