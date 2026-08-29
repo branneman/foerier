@@ -33,9 +33,10 @@
 
   /*
    * The chosen marker. Same anatomy as the owner picker's `● NOW` and a
-   * different word, because `NOW` states which single value a register holds
-   * and there is no single one here — `PARTICIPANT` is the boards' own term
-   * for a Person who is on the Trip (Components §02 tags a name with it).
+   * different word *and* a different glyph, because `● NOW` states which
+   * single value a register holds and there is no single one here: `✓` is the
+   * boards' multi-select mark, the builder's `IN LIST ✓` grammar, and the dot
+   * stays reserved for the single-select word.
    */
   .marker {
     flex: none;
@@ -88,6 +89,12 @@
     cursor: pointer;
   }
 
+  /*
+   * Mono caps, where `OwnerPicker`'s twin of this row is UI sentence case: the
+   * board draws `+ NEW PERSON` and the word is a control's name rather than a
+   * Person's, which is the line the two type families divide on everywhere
+   * else here. The divergence is the board's; it is not a drift.
+   */
   .addPerson {
     width: 100%;
     min-height: max(3rem, 48px);
@@ -95,7 +102,9 @@
     border-radius: var(--radius-control);
     background: none;
     color: var(--color-ink-muted);
-    font: var(--text-body) var(--font-ui);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
     cursor: pointer;
   }
 

@@ -133,6 +133,16 @@ function markedRow(): string | null {
 }
 
 describe('the SET PHASE sheet', () => {
+  it('titles itself SET PHASE, and nothing longer', async () => {
+    const seeded = await seededTrip('draft')
+    renderSheet(seeded)
+
+    // The sheet's short label, and the whole of it: the chip that opened it
+    // is the Trip's own, on the Trip's own screen, so naming the Trip here
+    // would repeat what the reader is already looking at.
+    expect(screen.getByRole('dialog', { name: 'SET PHASE' })).toBeVisible()
+  })
+
   it('lists the five phases in PHASES order', async () => {
     const seeded = await seededTrip('pack_out')
     renderSheet(seeded)
@@ -284,7 +294,13 @@ describe('the SET PHASE sheet', () => {
       expect(markedRow()).toBeNull()
       // Drawn exactly as it arrived (§5.3 obligation 4) — inventing a casing
       // for it would be coercion by another name.
-      expect(screen.getByText('● NOW — portaging')).toBeVisible()
+      // One `p`, two spans: `● NOW` carries the accent and the raw value
+      // carries ink, so this line encodes the word exactly as the marked row
+      // does — and an unrecognised phase never reads as the thing on screen
+      // that wants an action.
+      expect(screen.getByTestId('phase-now')).toHaveTextContent(
+        '● NOW — portaging',
+      )
       expect(rowLabels()).toHaveLength(5)
     })
 

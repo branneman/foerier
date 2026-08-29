@@ -72,12 +72,26 @@
   }
 
   /*
+   * A `fieldset`, stripped of its UA border and padding exactly as Add gear
+   * strips its own: the `DATES · OPTIONAL` legend is one label over two
+   * controls, which is what a group is for, and states `OPTIONAL` once rather
+   * than on each end.
+   */
+  .dates {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    border: 0;
+    padding: 0;
+  }
+
+  /*
    * The two dates sit side by side from the phone up: they are one fact with
    * two ends, and stacking them puts the arrow of the range in the reading
    * order rather than in the layout. `1fr 1fr` of a 393 gutter still clears
    * the 48px control height, which is the only dimension that has to hold.
    */
-  .dates {
+  .dateFields {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-12);
@@ -107,6 +121,40 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /*
+   * The chosen People, as the trip card draws them — display is circles and a
+   * picker is rows, and this row is display until it is tapped. Duplicated
+   * from `TripCard.module.css` rather than shared for that file's own stated
+   * reason: the two agree today and answer to different boards.
+   */
+  .circles {
+    display: inline-flex;
+    gap: var(--space-4);
+    overflow: hidden;
+  }
+
+  /* 22px, the trip card's size, against the People screen's 30px rows. No
+     login encoding and no fill: fill belongs to packing. */
+  .circle {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 600;
+  }
+
+  .chevron {
+    flex: none;
+    color: var(--color-ink-faint);
   }
 
   .primary {

@@ -98,7 +98,7 @@ function renderPicker(
   return { toggles, closes: () => closed }
 }
 
-/** The row labels, without the `● PARTICIPANT` marker a chosen row carries. */
+/** The row labels, without the `PARTICIPANT ✓` marker a chosen row carries. */
 function rowLabels(): (string | null)[] {
   return screen
     .getAllByTestId('participant-row')
@@ -136,10 +136,23 @@ describe('the participant picker', () => {
 
     const els = screen.getByRole('button', { name: /Els/ })
     expect(els).toHaveAttribute('aria-pressed', 'true')
-    expect(els).toHaveTextContent('● PARTICIPANT')
+    expect(els).toHaveTextContent('PARTICIPANT ✓')
     const mark = screen.getByRole('button', { name: /Mark/ })
     expect(mark).toHaveAttribute('aria-pressed', 'false')
-    expect(mark).not.toHaveTextContent('● PARTICIPANT')
+    expect(mark).not.toHaveTextContent('PARTICIPANT ✓')
+  })
+
+  it('marks membership in the multi-select word, not the single-select one', async () => {
+    const store = await seededStore([personRecorded('els', 'Els')])
+    renderPicker(store, ['els'])
+
+    // `● NOW` states which single value a register holds, and a Participant
+    // list is a set — so the marker is the builder's `IN LIST ✓` grammar
+    // instead. The two must not be confusable: a reader who has learnt that
+    // `● NOW` means "the one" would read a second `● NOW` as a contradiction.
+    const els = screen.getByRole('button', { name: /Els/ })
+    expect(els).toHaveTextContent('PARTICIPANT ✓')
+    expect(els).not.toHaveTextContent('● NOW')
   })
 
   it('adds a Person to the selection, and stays open', async () => {
@@ -195,7 +208,7 @@ describe('the participant picker', () => {
     const store = await seededStore()
     const { toggles } = renderPicker(store)
 
-    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
     await user.type(screen.getByLabelText('New person name'), 'Kees')
     await user.click(screen.getByRole('button', { name: 'Add' }))
     await store.getState().drained()
@@ -214,7 +227,7 @@ describe('the participant picker', () => {
     const store = await seededStore()
     renderPicker(store)
 
-    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
     await user.type(screen.getByLabelText('New person name'), 'Kees')
     await user.click(screen.getByRole('button', { name: 'Add' }))
     await store.getState().drained()
@@ -223,8 +236,8 @@ describe('the participant picker', () => {
     // sheet, so mount is its reset. This one stays open for the next
     // Participant, so the row has to reset itself — and reopening it must not
     // show the name just recorded.
-    expect(screen.getByRole('button', { name: '+ New person' })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    expect(screen.getByRole('button', { name: '+ NEW PERSON' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
     expect(screen.getByLabelText('New person name')).toHaveValue('')
   })
 
@@ -233,10 +246,10 @@ describe('the participant picker', () => {
     const store = await seededStore()
     renderPicker(store)
 
-    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
     await user.type(screen.getByLabelText('New person name'), 'Kee')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
-    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
 
     // Abandoning a half-typed name has to abandon it: the sheet outlives the
     // create row, so the row cannot lean on mount for its reset.
@@ -248,7 +261,7 @@ describe('the participant picker', () => {
     const store = await seededStore()
     renderPicker(store)
 
-    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
     expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
     await user.type(screen.getByLabelText('New person name'), '   ')
     expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
@@ -261,6 +274,6 @@ describe('the participant picker', () => {
     // The empty case is the one that matters: a Trip planned before anyone
     // was recorded must not be a dead end.
     expect(screen.queryAllByTestId('participant-row')).toEqual([])
-    expect(screen.getByRole('button', { name: '+ New person' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '+ NEW PERSON' })).toBeVisible()
   })
 })

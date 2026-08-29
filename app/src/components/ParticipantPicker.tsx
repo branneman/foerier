@@ -11,6 +11,11 @@ import styles from './ParticipantPicker.module.css'
  * is single-select, and otherwise the same anatomy on purpose: one row per
  * recorded Person in `sortedPeople` order, a dashed create row, a `Close`.
  *
+ * Rows, not circles: a picker is made of rows everywhere in this app and a
+ * circle is display. The one word that differs from the twin is the marker —
+ * membership reads `PARTICIPANT ✓`, the builder's `IN LIST ✓` grammar, and
+ * `● NOW` stays reserved for a register that holds exactly one value.
+ *
  * There is no pinned first row. `Shared` is a *value* of the ownership
  * register and belongs at the top of the owner picker for that reason; a
  * Participant list is a set of People and has no equivalent pseudo-value.
@@ -83,8 +88,8 @@ export function ParticipantPicker({
     onToggle(id, true)
     // And then the create row folds away again, which `OwnerPicker` never has
     // to do: selecting an owner closes that sheet, so mount is its reset.
-    // This one stays open for the next Participant, so a second `+ New
-    // person` must not open on the name just recorded.
+    // This one stays open for the next Participant, so a second
+    // `+ NEW PERSON` must not open on the name just recorded.
     setNewName('')
     setAdding(false)
   }
@@ -107,7 +112,7 @@ export function ParticipantPicker({
               >
                 <span>{person.label}</span>
                 {chosen && (
-                  <span className={styles['marker']}>● PARTICIPANT</span>
+                  <span className={styles['marker']}>PARTICIPANT ✓</span>
                 )}
               </button>
             </li>
@@ -143,8 +148,8 @@ export function ParticipantPicker({
             className={styles['inlineCancel']}
             // Cancelling drops the draft name as well as the row. Mount is
             // this sheet's only other reset and the sheet stays open across
-            // both paths, so without it a second `+ New person` would open on
-            // the text that was just abandoned — the same wrong state
+            // both paths, so without it a second `+ NEW PERSON` would open
+            // on the text that was just abandoned — the same wrong state
             // `addPerson` clears itself to avoid.
             onClick={() => {
               setNewName('')
@@ -160,7 +165,7 @@ export function ParticipantPicker({
           className={styles['addPerson']}
           onClick={() => setAdding(true)}
         >
-          + New person
+          + NEW PERSON
         </button>
       )}
 

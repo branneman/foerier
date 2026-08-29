@@ -88,7 +88,11 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   }
 
   return (
-    <Sheet title="Set phase" onClose={onClose} desktopCard>
+    // `SET PHASE` and nothing longer: every sheet carries a short label, and
+    // the chip that opened this one is the Trip's own — on the Trip's own
+    // screen, under the Trip's own name — so naming the Trip here would
+    // repeat the line the reader is already looking at.
+    <Sheet title="SET PHASE" onClose={onClose} desktopCard>
       {!known && (
         // §3.4: the value is drawn **exactly as it arrived**, because
         // inventing a casing for it would be coercion by another name
@@ -96,7 +100,9 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
         // returns it unchanged, so the rule stays in one place. The five rows
         // stay tappable underneath, which is what keeps a Trip from being
         // stranded in a phase this build cannot leave.
-        <p className={styles['unknown']}>● NOW — {phaseLabel(current)}</p>
+        <p className={styles['unknown']} data-testid="phase-now">
+          <span className={styles['now']}>● NOW</span> — {phaseLabel(current)}
+        </p>
       )}
 
       <ul className={styles['rows']}>

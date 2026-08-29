@@ -324,7 +324,7 @@ describe('the Trips screen', () => {
     await user.click(chips[1]!)
 
     const sheet = screen.getByRole('dialog')
-    expect(sheet).toHaveTextContent('Set phase')
+    expect(sheet).toHaveTextContent('SET PHASE')
 
     await user.click(screen.getByRole('button', { name: /ON TRIP/ }))
     await store.store.getState().drained()

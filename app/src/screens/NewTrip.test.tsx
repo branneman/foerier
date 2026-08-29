@@ -20,6 +20,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { DESKTOP } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { NewTrip } from './NewTrip'
 
 /**
@@ -214,7 +216,7 @@ describe('New trip — the create', () => {
     renderNewTrip(seed)
 
     await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Alps 2026')
-    await user.click(screen.getByRole('button', { name: 'Participants' }))
+    await user.click(screen.getByRole('button', { name: /^Participants/ }))
     await user.click(screen.getByRole('button', { name: /Els/ }))
     await user.click(screen.getByRole('button', { name: /Mies/ }))
     await user.click(screen.getByRole('button', { name: /Kees/ }))
@@ -246,8 +248,62 @@ describe('New trip — the create', () => {
     const user = userEvent.setup()
     renderNewTrip(seed)
 
-    await user.click(screen.getByRole('button', { name: 'Participants' }))
-    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.click(screen.getByRole('button', { name: /^Participants/ }))
+    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'New person name' }),
+      'Kees',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    // The circle is one letter, so the roster lives in the row's accessible
+    // name: initials read out one at a time are as easily a stray alphabet as
+    // a list of People (`TripCard`'s argument, one screen along).
+    expect(
+      screen.getByRole('button', { name: 'Participants: Kees' }),
+    ).toBeVisible()
+  })
+
+  it('draws the chosen Participants as circles, and names them in full', async () => {
+    const seed = await seeded(
+      personRecorded('els', 'Els'),
+      personRecorded('mies', 'Mies'),
+    )
+    const user = userEvent.setup()
+    renderNewTrip(seed)
+
+    // `None`, not an empty slot: a Trip with nobody on it is a state the
+    // ledger states rather than leaves blank.
+    expect(
+      screen.getByRole('button', { name: 'Participants: None' }),
+    ).toHaveTextContent('None')
+
+    await user.click(screen.getByRole('button', { name: /^Participants/ }))
+    await user.click(screen.getByRole('button', { name: /Els/ }))
+    await user.click(screen.getByRole('button', { name: /Mies/ }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    // Circles, as the board draws them — the trip card's own display idiom,
+    // and deliberately not the trip screen's dashed `+` ghost: this row is
+    // Add gear's bordered `HOME`/`OWNER` control, on Add gear's shape of
+    // screen.
+    const row = screen.getByRole('button', { name: 'Participants: Els, Mies' })
+    expect(row).toHaveTextContent('E')
+    expect(row).toHaveTextContent('M')
+    expect(row).not.toHaveTextContent('Els')
+  })
+
+  it('draws a Person with no folded name as an empty circle', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded()
+    renderNewTrip(seed)
+
+    // Recorded from inside the picker, so for a tick this Person is in the
+    // selection and not yet in the fold. Inventing a placeholder letter would
+    // be a fact the app does not have (`TripCard`'s rule).
+    await user.click(screen.getByRole('button', { name: /^Participants/ }))
+    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
     await user.type(
       screen.getByRole('textbox', { name: 'New person name' }),
       'Kees',
@@ -256,29 +312,8 @@ describe('New trip — the create', () => {
     await user.click(screen.getByRole('button', { name: 'Close' }))
 
     expect(
-      screen.getByRole('button', { name: 'Participants' }),
-    ).toHaveTextContent('Kees')
-  })
-
-  it('shows the chosen Participants on the row', async () => {
-    const seed = await seeded(
-      personRecorded('els', 'Els'),
-      personRecorded('mies', 'Mies'),
-    )
-    const user = userEvent.setup()
-    renderNewTrip(seed)
-
-    expect(
-      screen.getByRole('button', { name: 'Participants' }),
-    ).toHaveTextContent('None')
-
-    await user.click(screen.getByRole('button', { name: 'Participants' }))
-    await user.click(screen.getByRole('button', { name: /Els/ }))
-    await user.click(screen.getByRole('button', { name: 'Close' }))
-
-    expect(
-      screen.getByRole('button', { name: 'Participants' }),
-    ).toHaveTextContent('Els')
+      screen.getByRole('button', { name: 'Participants: Kees' }),
+    ).toHaveTextContent('K')
   })
 
   /**
@@ -294,7 +329,7 @@ describe('New trip — the create', () => {
 
     await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Alps 2026')
     await user.type(screen.getByLabelText('Start'), '2026-08-14')
-    await user.click(screen.getByRole('button', { name: 'Participants' }))
+    await user.click(screen.getByRole('button', { name: /^Participants/ }))
     await user.click(screen.getByRole('button', { name: /Els/ }))
     await user.click(screen.getByRole('button', { name: 'Close' }))
     await user.click(screen.getByRole('button', { name: 'Create trip' }))
@@ -318,6 +353,58 @@ describe('New trip — the create', () => {
     expect(
       await screen.findByText(`Trip ${soleTrip(seed.store)}`),
     ).toBeInTheDocument()
+  })
+
+  it('states that the name is the only requirement, in two places', async () => {
+    renderNewTrip(await seeded())
+
+    // The board's footnote, and the gate above it are the same fact said
+    // twice on purpose: the CTA is disabled and the label never changes, so
+    // the line under it is the only thing that says what is missing.
+    expect(
+      screen.getByText('NAME IS THE ONLY REQUIRED INPUT'),
+    ).toBeInTheDocument()
+    // The other half of the same fact: the dates say so on their own group,
+    // where the eye is when it wonders.
+    expect(
+      screen.getByRole('group', { name: 'Dates · optional' }),
+    ).toBeInTheDocument()
+  })
+
+  it('creates on return at desk widths', async () => {
+    setViewport(DESKTOP)
+    const seed = await seeded()
+    const user = userEvent.setup()
+    renderNewTrip(seed)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Alps 2026{Enter}',
+    )
+
+    expect((await seed.authored()).map((op) => op.type)).toEqual([
+      'trip.created',
+    ])
+  })
+
+  it('leaves the return key to the field on a phone', async () => {
+    const seed = await seeded()
+    const user = userEvent.setup()
+    renderNewTrip(seed)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Alps 2026{Enter}',
+    )
+
+    // Add gear's return-to-record is a batch loop at a desk; this screen is
+    // reached once per Trip and the CTA sits in the thumb zone, so on a phone
+    // the key belongs to the field the OS keyboard is over. Nothing was
+    // written, and the screen is still here to write it.
+    expect(await seed.authored()).toEqual([])
+    expect(
+      screen.getByRole('button', { name: 'Create trip' }),
+    ).not.toBeDisabled()
   })
 
   it('offers a way back to the Trips list', async () => {

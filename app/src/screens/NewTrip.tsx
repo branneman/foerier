@@ -11,6 +11,7 @@ import { ParticipantPicker } from '../components/ParticipantPicker'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import { peopleOn } from '../depot/trips'
+import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './NewTrip.module.css'
 
 /**
@@ -25,8 +26,25 @@ import styles from './NewTrip.module.css'
  * (the participant picker) stacks rather than competes.
  *
  * The rows are in the order the ledger line is written — **`NAME`** ·
- * **`DATES`** · **`PARTICIPANTS`** — and the primary sits at the bottom, in
- * the thumb zone, exactly as `AddGear` puts `Add gear` there.
+ * **`DATES · OPTIONAL`** · **`PARTICIPANTS`** — and the primary sits at the
+ * bottom, in the thumb zone, exactly as `AddGear` puts `Add gear` there. Name
+ * is the only required input, said twice: the CTA is gated on it and the
+ * footnote under the CTA states it.
+ *
+ * Participants is Add gear's bordered `HOME`/`OWNER` row, drawing the chosen
+ * People as the trip card's circles — and deliberately **not** the trip
+ * screen's dashed `+` ghost, which is that screen's one edit affordance on a
+ * read surface. Each control matches its host: this screen is a form.
+ *
+ * ## Return creates at desk widths only
+ *
+ * Add gear's return key records unconditionally, and this screen's does not.
+ * The difference is the batch: Add gear is a sitting of many records, where
+ * type → return → type is the loop and reaching for the CTA every time is the
+ * cost. A Trip is created once, and on a phone the OS keyboard is over the
+ * screen with its own return key — which belongs to the field it is attached
+ * to. At a desk there is no soft keyboard to take it from, and the hands are
+ * already on the keys.
  *
  * ## Three ops at most, and one for a bare Trip
  *
@@ -82,6 +100,11 @@ export function NewTrip() {
   const [participants, setParticipants] = useState<readonly string[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
 
+  // A media query, in JS, because the answer decides *behaviour* rather than
+  // layout and no stylesheet can carry it (`useMediaQuery`'s own reason, one
+  // step further along than a pane that exists or does not).
+  const desk = useMediaQuery(DESKTOP)
+
   const trimmedName = name.trim()
   // The name is the only requirement. Dates are optional by story 5 — "a
   // draft usually has none" — and a Trip with no Participants is an ordinary
@@ -93,12 +116,19 @@ export function NewTrip() {
   // order from `sortedPeople`, so "the third one down" means one Person
   // everywhere, and an id the fold has not caught up with listed as `—`
   // rather than dropped. That last part is not hypothetical here — the
-  // picker's own `+ New person` authors through `emit`, which folds on the
+  // picker's own `+ NEW PERSON` authors through `emit`, which folds on the
   // store's queue, so a Person recorded mid-flow is in this selection a tick
   // before `sortedPeople` has heard of them.
-  const chosenLabels = peopleOn(state, participants).map(
-    (person) => person.label,
-  )
+  const chosen = peopleOn(state, participants)
+  // The circles are one letter each, so the roster lives in the row's
+  // accessible name: initials read out one at a time are as easily a stray
+  // alphabet as a list of People (`TripCard`'s argument, one screen along).
+  // `None` is in it too — a Trip with nobody on it is a state the ledger
+  // states rather than leaves blank.
+  const roster =
+    chosen.length === 0
+      ? 'None'
+      : chosen.map((person) => person.label).join(', ')
 
   function submit() {
     if (!canSubmit) return
@@ -150,10 +180,11 @@ export function NewTrip() {
           autoFocus
           onChange={(event) => setName(event.target.value)}
           onKeyDown={(event) => {
-            // Return creates, as it records on Add gear: this screen is one
-            // required field and two optional ones, and the keyboard never
-            // dismisses to reach the CTA.
-            if (event.key === 'Enter') {
+            // Return creates at a desk, where there is no soft keyboard for
+            // it to belong to. On a phone it stays the field's own key: this
+            // screen is reached once per Trip, and the CTA is in the thumb
+            // zone rather than behind a keyboard that has to be dismissed.
+            if (event.key === 'Enter' && desk) {
               event.preventDefault()
               submit()
             }
@@ -161,48 +192,72 @@ export function NewTrip() {
         />
       </label>
 
-      <div className={styles['dates']}>
-        <label className={styles['field']}>
-          <span className={styles['label']}>Start</span>
-          {/* Native `date`, not a hand-built picker: the value it produces is
-              the `YYYY-MM-DD` the registers hold by convention (spec §1.4),
-              and the platform control is the one every device already knows
-              how to drive with a keyboard. */}
-          <input
-            type="date"
-            className={styles['input']}
-            value={start}
-            onChange={(event) => setStart(event.target.value)}
-          />
-        </label>
-        <label className={styles['field']}>
-          <span className={styles['label']}>End</span>
-          <input
-            type="date"
-            className={styles['input']}
-            value={end}
-            onChange={(event) => setEnd(event.target.value)}
-          />
-        </label>
-      </div>
+      {/* A group, so `OPTIONAL` is stated once over both ends rather than
+          twice, and so the two fields read as the one fact they are. The
+          `legend` is the same mono eyebrow every other label on this screen
+          uses; `fieldset`/`legend` is Add gear's own idiom for a labelled
+          group of controls. */}
+      <fieldset className={styles['dates']}>
+        <legend className={styles['label']}>Dates · optional</legend>
+        <div className={styles['dateFields']}>
+          <label className={styles['field']}>
+            <span className={styles['label']}>Start</span>
+            {/* Native `date`, not a hand-built picker: the value it produces
+                is the `YYYY-MM-DD` the registers hold by convention (spec
+                §1.4), and the platform control is the one every device
+                already knows how to drive with a keyboard. */}
+            <input
+              type="date"
+              className={styles['input']}
+              value={start}
+              onChange={(event) => setStart(event.target.value)}
+            />
+          </label>
+          <label className={styles['field']}>
+            <span className={styles['label']}>End</span>
+            <input
+              type="date"
+              className={styles['input']}
+              value={end}
+              onChange={(event) => setEnd(event.target.value)}
+            />
+          </label>
+        </div>
+      </fieldset>
 
       {/* The same 48px bordered row Add gear gives HOME and OWNER — a value
           that is picked rather than typed reads the same way wherever it
-          appears. */}
-      <button
-        type="button"
-        className={styles['pickRow']}
-        aria-label="Participants"
-        onClick={() => setPickerOpen(true)}
-      >
+          appears — with the label above it, as this screen's other two
+          controls carry theirs. */}
+      <div className={styles['field']}>
         <span className={styles['label']}>Participants</span>
-        <span className={styles['pickValue']}>
-          {/* `None`, not an empty slot: a Trip with nobody on it is a state
-              the ledger states rather than leaves blank. */}
-          {chosenLabels.length === 0 ? 'None' : chosenLabels.join(', ')}{' '}
-          <span aria-hidden="true">›</span>
-        </span>
-      </button>
+        <button
+          type="button"
+          className={styles['pickRow']}
+          aria-label={`Participants: ${roster}`}
+          onClick={() => setPickerOpen(true)}
+        >
+          {chosen.length === 0 ? (
+            <span className={styles['pickValue']}>None</span>
+          ) : (
+            <span className={styles['circles']} aria-hidden="true">
+              {chosen.map((person) => (
+                <span key={person.id} className={styles['circle']}>
+                  {/* A Person with no folded name draws an **empty** circle
+                      rather than a placeholder letter — inventing one would
+                      be a fact the app does not have (`TripCard`'s rule). */}
+                  {person.label === '—'
+                    ? ''
+                    : person.label.charAt(0).toUpperCase()}
+                </span>
+              ))}
+            </span>
+          )}
+          <span className={styles['chevron']} aria-hidden="true">
+            ›
+          </span>
+        </button>
+      </div>
 
       <button
         type="button"
@@ -213,9 +268,12 @@ export function NewTrip() {
         Create trip
       </button>
 
-      <p className={styles['fact']}>
-        RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND
-      </p>
+      {/* The board's footnote, and the only thing on screen that says what
+          the disabled CTA is waiting for: the label never changes, so the
+          button cannot explain itself. Add gear's `RECORDED ON THIS DEVICE ·
+          SYNCS IN THE BACKGROUND` is the same slot spent on the other fact
+          this screen has to state, and this one is the scarcer. */}
+      <p className={styles['fact']}>NAME IS THE ONLY REQUIRED INPUT</p>
 
       {pickerOpen && (
         <ParticipantPicker
