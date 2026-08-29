@@ -105,89 +105,102 @@ export function Trips() {
   const nothing = cards.length === 0 && sections.closed.length === 0
 
   return (
-    <div
-      className={`${styles['screen']} ${isDesktop ? '' : styles['clearance']}`}
-    >
-      <div className={styles['titleRow']}>
-        <h1 className={styles['title']}>Trips</h1>
-        {isDesktop && (
-          // The `+` is decoration; this and the FAB below are the same action,
-          // so they carry the same accessible name — `Depot`'s rule for the
-          // same pair.
-          <Link
-            href="/trips/new"
-            className={styles['new']}
-            aria-label="New trip"
-          >
-            + NEW
-          </Link>
-        )}
-      </div>
-
-      {nothing ? (
-        <p className={styles['empty']}>No trips.</p>
-      ) : (
-        <>
-          {cards.length > 0 && (
-            <ul className={styles['cards']}>
-              {cards.map(({ trip, variant }) => (
-                <li
-                  key={trip.id}
-                  className={styles['cardItem']}
-                  data-testid="trip-entry"
-                  data-trip={trip.id}
-                >
-                  <TripCard
-                    trip={trip}
-                    variant={variant}
-                    onOpenPhase={() => setPhaseTripId(trip.id)}
-                  />
-                </li>
-              ))}
-            </ul>
+    // A fragment, because the FAB is the screen's **sibling** — see the note
+    // beside it below.
+    <>
+      <div
+        className={`${styles['screen']} ${isDesktop ? '' : styles['clearance']}`}
+        data-testid="trips-screen"
+      >
+        <div className={styles['titleRow']}>
+          <h1 className={styles['title']}>Trips</h1>
+          {isDesktop && (
+            // The `+` is decoration; this and the FAB below are the same action,
+            // so they carry the same accessible name — `Depot`'s rule for the
+            // same pair.
+            <Link
+              href="/trips/new"
+              className={styles['new']}
+              aria-label="New trip"
+            >
+              + NEW
+            </Link>
           )}
+        </div>
 
-          {sections.closed.length > 0 && (
-            <>
-              <h2 className={styles['sectionHead']}>CLOSED</h2>
-              <ul className={styles['rows']}>
-                {sections.closed.map((trip) => (
-                  <ClosedRow
+        {nothing ? (
+          <p className={styles['empty']}>No trips.</p>
+        ) : (
+          <>
+            {cards.length > 0 && (
+              <ul className={styles['cards']}>
+                {cards.map(({ trip, variant }) => (
+                  <li
                     key={trip.id}
-                    trip={trip}
-                    onReopen={() => setReopenTripId(trip.id)}
-                  />
+                    className={styles['cardItem']}
+                    data-testid="trip-entry"
+                    data-trip={trip.id}
+                  >
+                    <TripCard
+                      trip={trip}
+                      variant={variant}
+                      onOpenPhase={() => setPhaseTripId(trip.id)}
+                    />
+                  </li>
                 ))}
               </ul>
-            </>
-          )}
-        </>
-      )}
+            )}
 
-      {phaseTrip !== undefined && (
-        <PhaseSheet trip={phaseTrip} onClose={() => setPhaseTripId(null)} />
-      )}
+            {sections.closed.length > 0 && (
+              <>
+                <h2 className={styles['sectionHead']}>CLOSED</h2>
+                <ul className={styles['rows']}>
+                  {sections.closed.map((trip) => (
+                    <ClosedRow
+                      key={trip.id}
+                      trip={trip}
+                      onReopen={() => setReopenTripId(trip.id)}
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
 
-      {reopenTrip !== undefined && (
-        <ReopenConfirm
-          trip={reopenTrip}
-          to={REOPEN_TO}
-          onCancel={() => setReopenTripId(null)}
-          onConfirm={() => {
-            emit(tripPhaseMoved(reopenTrip.id, REOPEN_TO))
-            setReopenTripId(null)
-          }}
-        />
-      )}
+        {phaseTrip !== undefined && (
+          <PhaseSheet trip={phaseTrip} onClose={() => setPhaseTripId(null)} />
+        )}
+
+        {reopenTrip !== undefined && (
+          <ReopenConfirm
+            trip={reopenTrip}
+            to={REOPEN_TO}
+            onCancel={() => setReopenTripId(null)}
+            onConfirm={() => {
+              emit(tripPhaseMoved(reopenTrip.id, REOPEN_TO))
+              setReopenTripId(null)
+            }}
+          />
+        )}
+      </div>
 
       {!isDesktop && (
         // F3's first step is its own screen, following Add gear: the flow is
         // labelled desk work, dense picker, keyboard-friendly.
+        //
+        // **Outside `.screen`, and that is load-bearing.** `.screen` declares
+        // `container-type`, which applies layout containment and so makes it
+        // the containing block for any `position: fixed` descendant. Its
+        // height is the content's, so a FAB inside it would be fixed to a
+        // ~160px box on a one-card list — beside the title, scrolling with
+        // the page, rather than 74px above the tab bar. The container itself
+        // stays: the 40rem query the cards fold on resolves against it.
         <Link href="/trips/new" className={styles['fab']} aria-label="New trip">
           +
         </Link>
       )}
-    </div>
+    </>
   )
 }
 

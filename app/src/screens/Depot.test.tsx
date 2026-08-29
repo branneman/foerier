@@ -347,6 +347,22 @@ describe('the Depot list', () => {
 
     expect(await screen.findByText('Add gear screen')).toBeInTheDocument()
   })
+
+  it('hangs the FAB outside the screens query container', async () => {
+    renderDepot(await seededStore([]))
+
+    // `container-type` applies layout containment, and a contained element is
+    // the **containing block for its `position: fixed` descendants** — so a
+    // FAB inside `.screen` is positioned against a box whose height is the
+    // content's rather than against the viewport, and it scrolls with the
+    // list instead of clearing the tab bar. Sibling, therefore, never child.
+    //
+    // jsdom computes no layout, so the shape is what holds this — the same
+    // argument `Trips.test.tsx`'s `@container` fences are asserted on, and
+    // the same test one screen along.
+    const fab = screen.getByRole('link', { name: 'Add gear' })
+    expect(screen.getByTestId('depot-screen').contains(fab)).toBe(false)
+  })
 })
 
 /**

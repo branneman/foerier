@@ -58,6 +58,12 @@
    * frame)" — and the two are copies rather than a shared rule because `ui/`
    * has no FAB primitive and two callers is where `GearRow`'s rule says one
    * gets made, not before.
+   *
+   * Rendered as a **sibling** of `.screen`, never inside it — `.screen`
+   * declares `container-type`, which applies layout containment and so becomes
+   * the containing block for any fixed descendant, and `.screen`'s height is
+   * the content's. On a one-card list that is ~160px, so `bottom` would land
+   * this beside the title. `Depot` has the same arrangement.
    */
   .fab {
     position: fixed;

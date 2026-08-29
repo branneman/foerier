@@ -99,6 +99,11 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Rendered as a **sibling** of `.screen`, never inside it: `.screen`
+     declares `container-type`, which applies layout containment and so becomes
+     the containing block for any fixed descendant — `bottom` would then be
+     measured from a content-height box instead of from the viewport.
+     `Depot.tsx` carries the same note, and `Trips` the same arrangement. */
   .fab {
     position: fixed;
     right: var(--space-16);

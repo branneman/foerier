@@ -150,6 +150,22 @@ describe('the Trips screen', () => {
     expect(fab.textContent).not.toContain('NEW')
   })
 
+  it('hangs the FAB outside the screens query container', async () => {
+    renderTrips(await seeded())
+
+    // `container-type` applies layout containment, and a contained element is
+    // the **containing block for its `position: fixed` descendants** — so a
+    // FAB inside `.screen` is positioned against a box whose height is the
+    // content's. On an empty or one-card list that box is ~160px tall, which
+    // puts `bottom: 4.625rem` beside the title rather than above the tab bar,
+    // and scrolls it with the page. Sibling, therefore, never child.
+    //
+    // jsdom computes no layout, so the shape is what holds this — the same
+    // argument the `@container` fences below are asserted on.
+    const fab = screen.getByRole('link', { name: 'New trip' })
+    expect(screen.getByTestId('trips-screen').contains(fab)).toBe(false)
+  })
+
   it('keeps the title-row step at desktop, where there is no FAB', async () => {
     setViewport(DESKTOP)
     renderTrips(await seeded())
@@ -363,6 +379,10 @@ describe('the container the cards fold against', () => {
       'utf8',
     )
     expect(css).toMatch(/\.cardItem\s*\{[^}]*container-type:\s*inline-size/)
+    // `.screen`'s own container is what the 40rem query above resolves
+    // against, and it is also the reason the FAB has to be its sibling: a
+    // contained element is the containing block for a fixed descendant.
+    expect(css).toMatch(/\.screen\s*\{[^}]*container-type:\s*inline-size/)
     expect(css).toMatch(/\.cards\s*\{[^}]*padding:\s*0/)
     expect(css).toMatch(/\.rows\s*\{[^}]*padding:\s*0/)
     // Container queries throughout: what folds is layout, never which

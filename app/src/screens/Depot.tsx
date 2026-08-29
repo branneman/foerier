@@ -200,117 +200,129 @@ export function Depot({ selectedId }: DepotProps = {}) {
   const nothingRecorded = result.total === 0
 
   return (
-    <div className={styles['screen']}>
-      <div className={styles['main']}>
-        {!isDesktop && (
-          <header className={styles['header']}>
-            <Logo size={28} title="foerier" />
-          </header>
-        )}
-
-        <div className={styles['titleRow']}>
-          <h1 className={styles['title']}>Depot</h1>
-          {isDesktop && (
-            <span className={styles['headline']}>
-              {counts.gear} GEAR · {counts.pieces} PIECES
-            </span>
+    // A fragment, because the FAB is the screen's **sibling** — see the note
+    // beside it below.
+    <>
+      <div className={styles['screen']} data-testid="depot-screen">
+        <div className={styles['main']}>
+          {!isDesktop && (
+            <header className={styles['header']}>
+              <Logo size={28} title="foerier" />
+            </header>
           )}
-          <input
-            type="search"
-            className={styles['search']}
-            aria-label="Search gear"
-            placeholder="Search gear"
-            value={spec.search}
-            onChange={(event) =>
-              setSpec({ ...spec, search: event.target.value })
-            }
+
+          <div className={styles['titleRow']}>
+            <h1 className={styles['title']}>Depot</h1>
+            {isDesktop && (
+              <span className={styles['headline']}>
+                {counts.gear} GEAR · {counts.pieces} PIECES
+              </span>
+            )}
+            <input
+              type="search"
+              className={styles['search']}
+              aria-label="Search gear"
+              placeholder="Search gear"
+              value={spec.search}
+              onChange={(event) =>
+                setSpec({ ...spec, search: event.target.value })
+              }
+            />
+            {isDesktop && (
+              // The `+` is decoration; the phone FAB and this button are the
+              // same action, so they carry the same accessible name.
+              <Link
+                href="/add"
+                className={styles['addButton']}
+                aria-label="Add gear"
+              >
+                + Add gear
+              </Link>
+            )}
+          </div>
+
+          <SliceBar
+            spec={spec}
+            result={result}
+            valuesFor={valuesFor}
+            formatFor={formatFor}
+            onChange={setSpec}
+            layout={isDesktop ? 'expanded' : 'collapsed'}
           />
-          {isDesktop && (
-            // The `+` is decoration; the phone FAB and this button are the
-            // same action, so they carry the same accessible name.
-            <Link
-              href="/add"
-              className={styles['addButton']}
-              aria-label="Add gear"
+
+          {nothingRecorded ? (
+            <p className={styles['empty']}>Nothing recorded yet.</p>
+          ) : result.shown === 0 ? (
+            <p className={styles['empty']}>No matches.</p>
+          ) : (
+            <ul
+              className={`${styles['list']} ${isDesktop ? styles['table'] : ''}`}
             >
-              + Add gear
-            </Link>
+              {isDesktop && (
+                <li className={styles['columnHeads']}>
+                  {/*
+                   * "Click a column head = sort" (§2). Only GEAR sorts, because
+                   * at S3 two of the three sort keys are name and the third —
+                   * NEWEST FIRST — has no column to be the head of: nothing in
+                   * the table shows when a piece of gear was recorded. That is
+                   * why the expanded arrange row keeps its SORT options here
+                   * rather than dropping them as "the ▾ control appears only
+                   * where no heads exist" would suggest: dropping them would
+                   * leave NEWEST FIRST unreachable at desktop width.
+                   */}
+                  <button
+                    type="button"
+                    className={styles['columnHead']}
+                    onClick={() =>
+                      setSpec({
+                        ...spec,
+                        sort:
+                          spec.sort === 'name-asc' ? 'name-desc' : 'name-asc',
+                      })
+                    }
+                  >
+                    GEAR{' '}
+                    {spec.sort === 'name-asc'
+                      ? '↑'
+                      : spec.sort === 'name-desc'
+                        ? '↓'
+                        : ''}
+                  </button>
+                  <span>KIND</span>
+                  <span>OWNER</span>
+                  <span>HOME</span>
+                  <span>TAGS</span>
+                  <span>QTY</span>
+                  <span>WHEREABOUTS</span>
+                </li>
+              )}
+              {result.groups.map((group) => (
+                <Group
+                  key={group.key}
+                  group={group}
+                  state={state}
+                  view={view}
+                  layout={layout}
+                  selectedId={selectedId}
+                />
+              ))}
+            </ul>
           )}
         </div>
-
-        <SliceBar
-          spec={spec}
-          result={result}
-          valuesFor={valuesFor}
-          formatFor={formatFor}
-          onChange={setSpec}
-          layout={isDesktop ? 'expanded' : 'collapsed'}
-        />
-
-        {nothingRecorded ? (
-          <p className={styles['empty']}>Nothing recorded yet.</p>
-        ) : result.shown === 0 ? (
-          <p className={styles['empty']}>No matches.</p>
-        ) : (
-          <ul
-            className={`${styles['list']} ${isDesktop ? styles['table'] : ''}`}
-          >
-            {isDesktop && (
-              <li className={styles['columnHeads']}>
-                {/*
-                 * "Click a column head = sort" (§2). Only GEAR sorts, because
-                 * at S3 two of the three sort keys are name and the third —
-                 * NEWEST FIRST — has no column to be the head of: nothing in
-                 * the table shows when a piece of gear was recorded. That is
-                 * why the expanded arrange row keeps its SORT options here
-                 * rather than dropping them as "the ▾ control appears only
-                 * where no heads exist" would suggest: dropping them would
-                 * leave NEWEST FIRST unreachable at desktop width.
-                 */}
-                <button
-                  type="button"
-                  className={styles['columnHead']}
-                  onClick={() =>
-                    setSpec({
-                      ...spec,
-                      sort: spec.sort === 'name-asc' ? 'name-desc' : 'name-asc',
-                    })
-                  }
-                >
-                  GEAR{' '}
-                  {spec.sort === 'name-asc'
-                    ? '↑'
-                    : spec.sort === 'name-desc'
-                      ? '↓'
-                      : ''}
-                </button>
-                <span>KIND</span>
-                <span>OWNER</span>
-                <span>HOME</span>
-                <span>TAGS</span>
-                <span>QTY</span>
-                <span>WHEREABOUTS</span>
-              </li>
-            )}
-            {result.groups.map((group) => (
-              <Group
-                key={group.key}
-                group={group}
-                state={state}
-                view={view}
-                layout={layout}
-                selectedId={selectedId}
-              />
-            ))}
-          </ul>
-        )}
       </div>
 
       {!isDesktop && (
+        // **Outside `.screen`, and that is load-bearing.** `.screen` declares
+        // `container-type`, which applies layout containment and so makes it
+        // the containing block for any `position: fixed` descendant — its
+        // height is the content's, so a FAB inside it clears the tab bar only
+        // by accident of the list being long, and scrolls with the page. The
+        // container itself stays: it is what the list's own queries resolve
+        // against. `Trips` has the same arrangement for the same reason.
         <Link href="/add" className={styles['fab']} aria-label="Add gear">
           +
         </Link>
       )}
-    </div>
+    </>
   )
 }
