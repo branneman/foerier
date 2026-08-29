@@ -27,7 +27,7 @@ import { createSessionDepot, type DepotFactory } from './depot/wiring'
 import { DepotView } from './shell/DepotView'
 import { Account } from './screens/Account'
 import { AddGear } from './screens/AddGear'
-import { DeviceLink } from './screens/DeviceLink'
+import { InviteIssued } from './screens/InviteIssued'
 import { Devices } from './screens/Devices'
 import { People } from './screens/People'
 import { Find } from './screens/Find'
@@ -391,10 +391,12 @@ export function App({
                 />
               </Route>
               <Route path="/account/device-link">
-                <DeviceLink
+                <InviteIssued
                   api={api}
                   token={session.token}
                   personId={session.personId}
+                  subjectPersonId={session.personId}
+                  purpose="device"
                 />
               </Route>
               <Route path="/account/devices">
@@ -421,6 +423,28 @@ export function App({
                   <Redirect to="/account" />
                 ) : (
                   <People personId={session.personId} />
+                )}
+              </Route>
+              <Route path="/account/people/:personId/invite">
+                {(params) => (
+                  <InviteIssued
+                    api={api}
+                    token={session.token}
+                    personId={session.personId}
+                    subjectPersonId={params.personId}
+                    purpose="join"
+                  />
+                )}
+              </Route>
+              <Route path="/account/people/:personId/device-link">
+                {(params) => (
+                  <InviteIssued
+                    api={api}
+                    token={session.token}
+                    personId={session.personId}
+                    subjectPersonId={params.personId}
+                    purpose="device"
+                  />
                 )}
               </Route>
               <Route>

@@ -529,7 +529,7 @@ describe('the device-link route', () => {
   // Task 9's report flagged `/account/device-link` reaching the shell's
   // catch-all as the entry point's one gap until this screen existed
   // (`docs/design/README.md` §14). `noNetwork` means the Invite itself
-  // never loads here — `issueDeviceLink`'s own contract is `DeviceLink.
+  // never loads here — `issueDeviceLink`'s own contract is `InviteIssued.
   // test.tsx`'s business — this is only proving `App` routes here at all,
   // at every width, rather than to "Not found.".
   it('is reachable rather than falling through to the shell catch-all', async () => {
@@ -546,6 +546,45 @@ describe('the device-link route', () => {
 
     expect(
       await screen.findByRole('heading', { name: 'Sign in on another device' }),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('the two other-Person invite-issued routes', () => {
+  // Task 9's own two new entry points. `noNetwork` again means only routing
+  // is under test here, not what `InviteIssued` does with an Invite once one
+  // arrives — that is `InviteIssued.test.tsx`'s business.
+  it('routes a join Invite to InviteIssued, not the shell catch-all', async () => {
+    renderAt('/account/people/0f0000a5-0000-4000-8000-0000000000a5/invite')
+
+    expect(
+      await screen.findByRole('heading', { name: /^Invite for /i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '‹ PEOPLE & LOGINS' }),
+    ).toBeInTheDocument()
+  })
+
+  it('routes a device link for another Person to InviteIssued', async () => {
+    renderAt('/account/people/0f0000a5-0000-4000-8000-0000000000a5/device-link')
+
+    expect(
+      await screen.findByRole('heading', { name: /^Device link for /i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '‹ PEOPLE & LOGINS' }),
+    ).toBeInTheDocument()
+  })
+
+  // The more specific `:personId` patterns must not shadow the plain list,
+  // nor the reverse — `/account/people` is a different literal path from
+  // `/account/people/:personId/invite`, but this is what actually proves
+  // wouter's matching order in this version rather than assuming it.
+  it('does not shadow the plain /account/people list route', async () => {
+    renderAt('/account/people')
+
+    expect(
+      await screen.findByRole('heading', { name: 'People' }),
     ).toBeInTheDocument()
   })
 })

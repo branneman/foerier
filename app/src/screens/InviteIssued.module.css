@@ -84,31 +84,9 @@
     gap: var(--space-8);
   }
 
-  /* The expiry chip — existing chip anatomy (boards §14: radius 999, 1.5px
-     stroke, mono 10/600). Muted while an hour or more remains; a device
-     link's whole lifetime is one hour, so in this screen `data-urgent` is
-     always true — deliberate, not a bug (see `DeviceLink.tsx`). */
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    border: var(--stroke-chip) solid var(--color-rule-control);
-    border-radius: var(--radius-pill);
-    padding: 0.25rem 0.625rem;
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: var(--color-ink-muted);
-  }
-
-  .chip[data-urgent='true'] {
-    border-color: var(--color-brand-amber);
-    /* `color-mix` rather than a literal alpha value, so the tint tracks
-       `--color-brand-amber` through both theme blocks instead of going
-       two-tone in light mode (Task 9's own finding on this exact pattern). */
-    background: color-mix(in srgb, var(--color-brand-amber) 8%, transparent);
-    color: var(--color-brand-amber);
-  }
+  /* The expiry chip itself is `ui/ExpiryChip` — two callers (this screen and
+     the outstanding-invite row on People & logins) moved its anatomy out of
+     a screen's CSS module. */
 
   .singleUse {
     font-family: var(--font-mono);
