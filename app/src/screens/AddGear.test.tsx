@@ -1,5 +1,6 @@
 import {
   createHlcClock,
+  personRecorded,
   placeRecorded,
   type Clock,
   type IdSource,
@@ -148,6 +149,142 @@ describe('Add gear — the record', () => {
     expect(gear.kind?.value).toBe('counted')
     expect(gear.ownedCount?.value).toBe(4)
     expect(gear.residence?.value).toEqual({ in: 'place', id: placeId })
+  })
+
+  /**
+   * The second departure from the board (`AddGear.tsx`'s own doc comment):
+   * F1's settled order carries no owner, and S4 adds one because the
+   * alternative is a gear-detail visit per personal item until story 35's
+   * bulk bar lands.
+   */
+  it('records the chosen owner on the one gear.recorded op', async () => {
+    const store = await seededStore([personRecorded('els', 'Els')])
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Down jacket',
+    )
+    await user.click(screen.getByRole('button', { name: 'Owner' }))
+    await user.click(screen.getByRole('button', { name: /Els/ }))
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    const { gear } = soleGear(store)
+    expect(gear.owner?.value).toEqual({ type: 'person', personId: 'els' })
+  })
+
+  it('writes no owner register at all when the owner was left Shared', async () => {
+    // Absence already reads SHARED (`selectors/owner.ts`), so writing
+    // `{type:'shared'}` on every record would add a register carrying no fact
+    // anybody stated — and would make `NEWEST FIRST` depend on a field nobody
+    // set. The row still draws `Shared`, because that is what absence means.
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    expect(screen.getByRole('button', { name: 'Owner' })).toHaveTextContent(
+      'Shared',
+    )
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Tent')
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    const { gear } = soleGear(store)
+    expect(Object.hasOwn(gear, 'owner')).toBe(false)
+  })
+
+  it('carries the owner over to the next record in the sitting', async () => {
+    // The whole point of the departure: a shelf in a bedroom is one person's,
+    // so the second record must not need a second visit to the picker. Same
+    // argument the board gives for HOME.
+    const store = await seededStore([personRecorded('els', 'Els')])
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Down jacket',
+    )
+    await user.click(screen.getByRole('button', { name: 'Owner' }))
+    await user.click(screen.getByRole('button', { name: /Els/ }))
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    expect(screen.getByRole('button', { name: 'Owner' })).toHaveTextContent(
+      'Els',
+    )
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Rain jacket',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    const owners = Object.values(store.getState().state.gear).map(
+      (gear) => gear.owner?.value,
+    )
+    expect(owners).toEqual([
+      { type: 'person', personId: 'els' },
+      { type: 'person', personId: 'els' },
+    ])
+  })
+
+  it('resets kind and the trait between records but not the owner', async () => {
+    const store = await seededStore([personRecorded('els', 'Els')])
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Down jacket',
+    )
+    await user.click(screen.getByRole('button', { name: 'Owner' }))
+    await user.click(screen.getByRole('button', { name: /Els/ }))
+    await user.click(screen.getByRole('radio', { name: 'Container' }))
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    expect(screen.getByRole('radio', { name: 'Item' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Single' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Owner' })).toHaveTextContent(
+      'Els',
+    )
+  })
+
+  it('records a Person from the picker without leaving the sitting', async () => {
+    // The dead end the inline `+ New person` row exists to prevent: the form
+    // is half filled and the Person was never recorded.
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Winter boots',
+    )
+    await user.click(screen.getByRole('button', { name: 'Owner' }))
+    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.type(screen.getByLabelText('New person name'), 'Kees')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await store.getState().drained()
+
+    // The name survived the picker, and the new Person is already chosen.
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue(
+      'Winter boots',
+    )
+    expect(screen.getByRole('button', { name: 'Owner' })).toHaveTextContent(
+      'Kees',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    const kees = Object.values(store.getState().state.people)[0]
+    const { gear } = soleGear(store)
+    expect(gear.owner?.value).toEqual({ type: 'person', personId: kees?.id })
   })
 
   it('defaults to a single item, loose', async () => {

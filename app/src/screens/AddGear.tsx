@@ -1,13 +1,16 @@
 import {
   gearRecorded,
+  personLabel,
   systemIdSource,
   type KindValue,
+  type Owner,
   type Residence,
 } from '@foerier/shared'
 import { useRef, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
+import { OwnerPicker } from '../components/OwnerPicker'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import styles from './AddGear.module.css'
@@ -23,8 +26,8 @@ import styles from './AddGear.module.css'
  *
  * ## Order = the ledger line being written
  *
- * NAME · KIND (+ count) · HOME · RECORDED AS. Two things about that order are
- * decisions rather than habit:
+ * NAME · KIND (+ count) · HOME · OWNER · RECORDED AS. Three things about that
+ * order are decisions rather than habit:
  *
  * - **Owned count inserts *below* Kind**, so nothing at or above the thumb
  *   moves when Counted is picked.
@@ -32,15 +35,18 @@ import styles from './AddGear.module.css'
  *   the only irreversible one, so it sits where the eye lands before
  *   committing. Round 1's checkbox is retired — a checkbox reads as a
  *   setting, and this is not a setting.
+ * - **OWNER sits beside HOME**, because the two behave identically — both
+ *   carry over between records — and because it is not on the board at all.
+ *   See "The second departure" below.
  *
  * ## The sitting
  *
  * **After Add the screen stays.** Round 1 navigated to the new gear's detail
  * after every record, which made populating a depot a round trip per item.
  * Now the name clears and keeps focus — return records, so the batch loop is
- * type → return → type — Kind, count and trait reset, and **Home carries
- * over**, because a depot is recorded shelf by shelf. A fresh entry starts at
- * Loose.
+ * type → return → type — Kind, count and trait reset, and **Home and owner
+ * carry over**, because a depot is recorded shelf by shelf. A fresh entry
+ * starts at Loose and Shared.
  *
  * ## The one departure from the board
  *
@@ -53,6 +59,24 @@ import styles from './AddGear.module.css'
  * weaker because time passed, which is exactly what a before-first-push
  * retraction would be. So the confirmation line ships without it. The board
  * element is blocked on story 36, not wrong.
+ *
+ * ## The second departure: `OWNER` is not on the board's F1
+ *
+ * The board's order is settled and reasoned, and carries no owner. Taken
+ * anyway, because without it S4's only route to attributing gear is one
+ * gear-detail visit per item, and the Depot's bulk `SET OWNER` band is story
+ * 35, tagged Later. A household attributing a two-hundred-item depot would
+ * make two hundred screen visits, and the slice's own test — "personal gear
+ * stops being everyone's problem" — would fail on the first day of real use.
+ *
+ * It sits **after HOME** because the two behave identically. The board's own
+ * argument for HOME carrying over is that "a depot is recorded shelf by
+ * shelf"; a shelf in a bedroom is one person's, so the argument is the same
+ * one. Owner is also one of the five shared attributes the domain model lists
+ * (home, owner, kind, tags, weight) — and the only one F1 omitted.
+ *
+ * Still **one** `gear.recorded` carrying every field. Nothing new is emitted,
+ * and the screen's "no failure state" property is untouched.
  */
 
 const KIND_OPTIONS: readonly { value: KindValue; label: string }[] = [
@@ -93,6 +117,8 @@ export function AddGear() {
   const [ownedCount, setOwnedCount] = useState('')
   const [home, setHome] = useState<Residence | undefined>(undefined)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [owner, setOwner] = useState<Owner>({ type: 'shared' })
+  const [ownerPickerOpen, setOwnerPickerOpen] = useState(false)
   const [recorded, setRecorded] = useState<Recorded | null>(null)
   const [sessionCount, setSessionCount] = useState(0)
 
@@ -118,6 +144,13 @@ export function AddGear() {
         container,
         kind,
         ...(home === undefined ? {} : { residence: home }),
+        // **Only when it is personal.** An untouched form must not write an
+        // ownership register at all: absence already reads `SHARED`
+        // (`selectors/owner.ts`), so writing `{type:'shared'}` on every
+        // record would add a register carrying no fact anybody stated, and
+        // make `NEWEST FIRST`'s `recordedAt` depend on a field nobody set.
+        // The row still *draws* `Shared`, because that is what absence means.
+        ...(owner.type === 'shared' ? {} : { owner }),
         ...(kind === 'counted' && countIsChosen
           ? { owned_count: parsedCount }
           : {}),
@@ -131,7 +164,9 @@ export function AddGear() {
     })
     setSessionCount((count) => count + 1)
 
-    // Home persists; everything else returns to its default.
+    // Home and owner persist; everything else returns to its default. A
+    // depot is recorded shelf by shelf, and a shelf in a bedroom is one
+    // person's.
     setName('')
     setKind('single')
     setOwnedCount('')
@@ -274,6 +309,24 @@ export function AddGear() {
         </span>
       </button>
 
+      {/* The same 48px bordered control HOME uses, and deliberately the same
+          classes: the board draws the two rows identically, and a third
+          caller is when to generalise the name. */}
+      <button
+        type="button"
+        className={styles['homeRow']}
+        aria-label="Owner"
+        onClick={() => setOwnerPickerOpen(true)}
+      >
+        <span className={styles['label']}>Owner</span>
+        <span className={styles['homeValue']}>
+          {owner.type === 'shared'
+            ? 'Shared'
+            : personLabel(state, owner.personId)}{' '}
+          <span aria-hidden="true">›</span>
+        </span>
+      </button>
+
       <fieldset className={styles['segmentedField']}>
         <legend className={styles['label']}>Recorded as</legend>
         <div className={styles['segmented']}>
@@ -316,6 +369,17 @@ export function AddGear() {
       <p className={styles['fact']}>
         RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND
       </p>
+
+      {ownerPickerOpen && (
+        <OwnerPicker
+          value={owner}
+          onSelect={(next) => {
+            setOwner(next)
+            setOwnerPickerOpen(false)
+          }}
+          onClose={() => setOwnerPickerOpen(false)}
+        />
+      )}
 
       {pickerOpen && (
         <HomePicker
