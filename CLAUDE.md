@@ -226,10 +226,10 @@ is S7's row in the dimension table. See
 **Four things about S6 are worth knowing before touching Trips or phases:**
 
 - **Every question the phase table answers has exactly one function beside it,
-  and the lookup itself is private.** `phaseOf`, `isActive`, `phaseNext`,
-  `phaseName` and `isKnownPhase` each resolve one miss in one way; the shared
-  helper is unexported precisely so no call site decides for itself what a
-  missing row means. `isActive` is the **only** definition of active-ness in
+  and the lookup itself is private.** `phaseOf`, `isActive`, `phaseLabel`,
+  `phaseName`, `phaseNext` and `isKnownPhase` each resolve one miss in one way;
+  the shared helper is unexported precisely so no call site decides for itself
+  what a missing row means. `isActive` is the **only** definition of active-ness in
   the codebase, and S7's claim selector, S9's whereabouts and S10's close gate
   all call it. This is not theoretical tidiness: three separate reviews in this
   slice caught a call site re-deriving one of them.
@@ -259,7 +259,7 @@ is S7's row in the dimension table. See
 unchanged" and no file landed, so `person.renamed` and `gear.ownership_set` —
 two op types whose wire format [sync §5.4](docs/sync-protocol.md) had already
 frozen — were pinned by nothing. `s4-ownership.ops.json` is captured a slice
-late and says so in its own header: a drift between S4 and S6 is now baked into
+late, and `shared/src/fixtures.s4.test.ts`'s header says so: a drift between S4 and S6 is now baked into
 the snapshot as though it had always been the format. The lesson generalises
 past fixtures, and is written into [`docs/testing.md`](docs/testing.md): a spec
 sentence saying a standing rule applies produces no artefact, and no tier

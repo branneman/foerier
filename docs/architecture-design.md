@@ -1743,12 +1743,13 @@ Six op types, no endpoints, no migration; see its
   creates the entity on first sight of any Trip op exactly as the other three
   maps do.
 - **Every question the phase table answers has exactly one function beside it,
-  and the lookup itself is private.** `phaseOf`, `isActive`, `phaseName`,
-  `phaseNext` and `isKnownPhase` each resolve one miss in one way, and the
-  helper they share is not exported — because each of them *resolves* the miss
-  and the raw lookup would let a call site decide for itself what a missing row
-  means. `isActive` is the only definition of active-ness in the codebase and
-  S7's claim selector, S9's whereabouts and S10's close gate all call it. The
+  and the lookup itself is private.** `phaseOf`, `isActive`, `phaseLabel`,
+  `phaseName`, `phaseNext` and `isKnownPhase` each resolve one miss in one way,
+  and the helper the six of them share is not exported — because each of them
+  *resolves* the miss, and the raw lookup would let a call site decide for
+  itself what a missing row means. `isActive` is the only definition of
+  active-ness in the codebase, and S7's claim selector, S9's whereabouts and
+  S10's close gate all call it. The
   discipline was not free: three separate reviews in this slice caught a call
   site re-deriving one of these — a `PHASES.some(…)` inline, a `?.next ?? null`
   about to be written twice, a hard-coded phase name in the reopen confirm's
@@ -1795,9 +1796,10 @@ Six op types, no endpoints, no migration; see its
   have been.** §8.7 obliges every slice from S2 onwards to capture an op fixture
   for its own op types; S4's spec said the rule applied and no file landed, so
   `person.renamed` and `gear.ownership_set` were pinned by nothing while
-  [sync §5.4](sync-protocol.md) had already frozen their wire format. `s4-ownership.ops.json` is folded by the
-  **S6** reducer, so any drift between the two slices is baked into the snapshot
-  as if it had always been the format and nothing in the repo could now tell.
+  [sync §5.4](sync-protocol.md) had already frozen their wire format.
+  `s4-ownership.ops.json` is folded by the **S6** reducer, so any drift between
+  the two slices is baked into the snapshot as if it had always been the format
+  and nothing in the repo could now tell.
   One slice of window is still far better than the three the next discovery
   would have carried. The transferable lesson is about the shape of the gap
   rather than the fixture: **a spec sentence saying a standing rule "applies

@@ -366,9 +366,9 @@ a captured one:
 Most of what each carries is genuinely captured from the app that introduced
 the ops. A handful are **forward-compatibility probes** instead, standing in for
 a foreign or future client and documented as such in each test file's
-header — two `{name: null}` ops in the S2 fixture
-(`shared/src/fixtures.test.ts:9-17`, on builders whose `name` parameter is
-`string` and always has been), foreign tags in the S3 one, and four in the S6
+header — two `{name: null}` ops in the S2 fixture (named in
+`fixtures.test.ts`'s own header, and carried on builders whose `name` parameter
+is `string` and always has been), foreign tags in the S3 one, and four in the S6
 one: a `from_trip_id` no builder yet accepts, a sixth phase, a date in no
 recognised format, and a `null` name placed on `trip.created` precisely because
 that builder — unlike `trip.renamed`, which S6 settled as nullable — cannot
