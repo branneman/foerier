@@ -1,0 +1,99 @@
+@layer components {
+  /*
+   * The picker row vocabulary once more, duplicated rather than shared for
+   * `OwnerPicker.module.css`'s stated reason — except that here the rows are a
+   * fixed table of five and will not grow the create row or the person circle
+   * the other two pickers can, so the divergence runs the other way.
+   */
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  /* Rows 40+ — the sheet primitive (Screens A §03). */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--color-ink-primary);
+    /* The phase labels are the boards' mono caps — `PACK-OUT`, `ON TRIP` —
+       and the strings in `PHASES` already carry that casing, so nothing is
+       transformed here: what the table says is what is drawn. */
+    font: var(--text-body) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  /* The anatomy the owner picker borrowed from this sheet, back home. */
+  .now {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+
+  /*
+   * The phase this build has never heard of, stated above the rows because it
+   * is the one fact the rows cannot carry — none of them is marked.
+   */
+  .unknown {
+    padding-inline: var(--space-4);
+    padding-block: var(--space-8);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+
+  /* The board's footnote — the quiet mono register, not a warning. */
+  .footnote {
+    padding-inline: var(--space-4);
+    padding-block: var(--space-12);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
+  .close {
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  /* The reopen confirm's two buttons. Accent, not attention: nothing was
+     thrown away, and the board draws the primary that way. */
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .primary {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
