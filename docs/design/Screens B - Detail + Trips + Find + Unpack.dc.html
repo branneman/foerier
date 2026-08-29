@@ -246,7 +246,7 @@
     <div style="width:330px; display:flex; flex-direction:column; gap:12px">
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
-        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">One active trip gets the only card with a CTA. Drafts are dashed outlines — lists in progress, not commitments. Closed trips are ledger rows: date, piece count, losses. A lost piece stays visible at trip level forever; that is the ledger keeping score. Every closed row carries REOPEN — closing clears nothing, so a trip closed too early, or one whose lost gear turns up months later, returns to Unpack exactly as it stood (02B).</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">One active trip usually gets the only card with a CTA — N Active cards are legitimate and identical (S6, 02A below); the CTA and progress line land with their slices, and 02A draws the ship state until Entries exist. Drafts are dashed outlines — lists in progress, not commitments. Closed trips are ledger rows: date, piece count, losses. A lost piece stays visible at trip level forever; that is the ledger keeping score. Every closed row carries REOPEN — closing clears nothing, so a trip closed too early, or one whose lost gear turns up months later, returns to Unpack exactly as it stood (02B).</div>
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">PHASE MODEL</div>
@@ -256,7 +256,7 @@
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#6A7161">EXCERPT — SET PHASE (TAP THE PHASE CHIP)</div>
         <div style="background:#151A15; border:1px solid #333C33; border-radius:16px 16px 0 0; margin-top:10px; padding:10px 16px 14px">
           <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 12px"></div>
-          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">ALPS 2026 — SET PHASE</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">SET PHASE</div>
           <div style="display:flex; flex-direction:column; margin-top:8px">
             <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C"><span>DRAFT</span></div>
             <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5; font-weight:600"><span>PACK-OUT</span><span style="color:#93BC9F">● NOW</span></div>
@@ -265,7 +265,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C"><span>CLOSED</span></div>
           </div>
         </div>
-        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.06em; margin-top:8px; line-height:1.7">ANY ROW TAPPABLE, BACKWARDS INCLUDED. NO DATE OR COUNT EVER MOVES A PHASE.</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.06em; margin-top:8px; line-height:1.7">ANY ROW TAPPABLE, BACKWARDS INCLUDED. NO DATE OR COUNT EVER MOVES A PHASE. TAPPING ● NOW WRITES NOTHING AND CLOSES (S6) — A REDUNDANT WRITE WOULD RESET THE DAY COUNT. TITLE IS THE SHORT LABEL — THE CHIP TAPPED IS THE TRIP&#8217;S OWN.</div>
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#6A7161">VARIANT — TRIP CARD WITHOUT DATES (STORY 5)</div>
@@ -433,6 +433,307 @@
     <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em; margin-top:10px; line-height:1.7">DATES ARE OPTIONAL (STORY 5) — A DRAFT USUALLY HAS NONE, SO THE HEADER SIMPLY DROPS THEM. WEIGHT TOTALS ARE STORY 16, LATER.</div>
   </div>
 
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">02A — TRIPS AT S6 · SHIP STATE BEFORE ENTRIES EXIST</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Trips — S6 ship state" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 0">
+        <svg width="28" height="22" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="width:26px; height:26px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600">M</span>
+      </div>
+      <div style="padding:10px 16px 14px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Trips</div>
+      </div>
+      <div style="margin:0 16px 12px; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px; cursor:pointer">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <span style="font-weight:600; font-size:17px; color:#E8E5D5">▸ Alps 2026</span>
+          <span style="display:inline-flex; align-items:center; gap:10px; flex-shrink:0"><span style="padding:4px 9px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.06em">ON TRIP · DAY 12</span><span style="color:#5E6857; font-size:18px">›</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:8px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">AUG 14 → SEP 02 · 20 DAYS</span>
+          <span style="display:inline-flex; gap:4px; margin-left:auto">
+            <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+            <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">E</span>
+            <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">K</span>
+          </span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; letter-spacing:.05em; margin-top:12px">NEXT — SET UNPACK WHEN BACK</div>
+      </div>
+      <div style="margin:0 16px 12px; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px; cursor:pointer">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <span style="font-weight:600; font-size:17px; color:#E8E5D5">▸ Ardennen — Sep</span>
+          <span style="display:inline-flex; align-items:center; gap:10px; flex-shrink:0"><span style="padding:4px 9px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.06em">PACK-OUT · DAY 1</span><span style="color:#5E6857; font-size:18px">›</span></span>
+        </div>
+        <div style="display:flex; align-items:center; margin-top:8px">
+          <span style="display:inline-flex; gap:4px; margin-left:auto">
+            <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+            <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">E</span>
+          </span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; letter-spacing:.05em; margin-top:12px">NEXT — PACK THE LIST</div>
+      </div>
+      <div style="margin:0 16px 14px; border:1px dashed #47523F; border-radius:12px; padding:12px 14px; cursor:pointer">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <div style="font-weight:600; font-size:15px; color:#E8E5D5">Vosges — Oct</div>
+          <span style="color:#5E6857; font-size:18px; flex-shrink:0">›</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; margin-top:2px">DRAFT · 0 GEAR LISTED</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; letter-spacing:.05em; margin-top:8px">NEXT — BUILD THE GEAR LIST</div>
+      </div>
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:10px 16px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161">CLOSED</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 16px; border-top:1px solid #2A3129; min-height:56px">
+        <div>
+          <div style="font-weight:600; font-size:15px; color:#97A08C">Tessin 2025</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#6A7161; margin-top:2px">JUL 2025</div>
+        </div>
+        <span style="display:inline-flex; align-items:center; gap:12px; flex-shrink:0"><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em">REOPEN</span><span style="color:#5E6857; font-size:18px">›</span></span>
+      </div>
+      <div style="height:76px"></div>
+      <div style="display:flex; border-top:1px solid #333C33; background:#1F2620">
+        <div style="flex:1; text-align:center; padding:9px 0 12px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#97A08C" stroke-width="1.6"></rect><rect x="13" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#97A08C" stroke-width="1.6"></rect><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="#97A08C" stroke-width="1.6"></rect><rect x="13" y="13" width="8" height="8" rx="1.5" fill="none" stroke="#97A08C" stroke-width="1.6"></rect></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#97A08C; margin-top:3px">DEPOT</div>
+        </div>
+        <div style="flex:1; text-align:center; padding:9px 0 12px; border-top:2px solid #93BC9F; margin-top:-1px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><line x1="5.5" y1="3" x2="5.5" y2="21" stroke="#93BC9F" stroke-width="1.8" stroke-linecap="round"></line><polygon points="5.5,4 19,7.5 5.5,11" fill="#93BC9F"></polygon></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#93BC9F; margin-top:3px">TRIPS</div>
+        </div>
+        <div style="flex:1; text-align:center; padding:9px 0 12px">
+          <svg width="19" height="19" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#97A08C" stroke-width="1.8"></circle><line x1="15.5" y1="15.5" x2="21" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line></svg>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.1em; color:#97A08C; margin-top:3px">FIND</div>
+        </div>
+      </div>
+      <div style="position:absolute; right:16px; bottom:86px; width:56px; height:56px; border-radius:16px; background:#93BC9F; color:#151A15; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:500; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.35)">+</div>
+    </div>
+
+    <div data-screen-label="Trip screen — S6" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ TRIPS</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</span>
+      </div>
+      <div style="padding:0 16px 14px">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px">
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Alps 2026</div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em; color:#97A08C; cursor:pointer; padding-top:9px">EDIT</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:8px">
+          <span style="padding:4px 9px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.06em; cursor:pointer">ON TRIP · DAY 12</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">AUG 14 → SEP 02 · 20 DAYS</span>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">PARTICIPANTS</div>
+        <div style="display:flex; gap:6px; margin-top:8px">
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">E</span>
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">K</span>
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px dashed #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600; cursor:pointer">+</span>
+        </div>
+      </div>
+      <div style="border-top:1px solid #333C33; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:0 32px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#E8E5D5">0 GEAR LISTED.</div>
+        <div style="font-size:13px; color:#97A08C; text-align:center">The gear list is built from the depot.</div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE INTERIM RULE — S6</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">A board&#8217;s CTA copy lands on the slice that builds its destination: BUILD LIST › arrives with the builder, Continue pack-out with the packing view. Until then no card carries a button or verb link — the shipped OPEN › is retired: it spent the system&#8217;s strongest element on its flattest verb and taught the accent button to mean nothing. The interim affordance is the closed row&#8217;s own › and the whole card is tappable; when the accent button returns it means something. In the progress slot, a per-phase NEXT line — a permanent obligation, not a stand-in: it survives the progress line and sits above it (full-weight card below). Five strings, two redrawn: PACK IT → PACK THE LIST; MARK UNPACK WHEN YOU ARE BACK → SET UNPACK WHEN BACK — it names the actual control. The line appears on every non-closed card, drafts included (shipped active-only; redrawn — the redundancy argument dies at DRAFT · 14 GEAR LISTED). Closed rows carry none. The empty region below the trip header is the honest minimum plus one permanent domain fact — never release meta-text, never a dead affordance; the same empty state gains the add affordances when the builder lands.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#6A7161">VARIANT — THE CARD AT FULL WEIGHT (WHEN ENTRIES LAND)</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; margin-top:10px; padding:14px">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+            <span style="font-weight:600; font-size:17px; color:#E8E5D5">▸ Alps 2026</span>
+            <span style="padding:4px 9px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.06em; flex-shrink:0">PACK-OUT · DAY 2</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:8px">
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">AUG 14 → SEP 02 · 20 DAYS</span>
+            <span style="display:inline-flex; gap:4px; margin-left:auto">
+              <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+              <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">E</span>
+            </span>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; letter-spacing:.05em; margin-top:12px">NEXT — PACK THE LIST</div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">● 48/61 PIECES</span><span>13 LEFT</span></div>
+          <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:6px"><div style="width:79%; height:100%; background:#7BB389"></div></div>
+          <button style="width:100%; height:48px; margin-top:12px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Continue pack-out</button>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.06em; margin-top:8px; line-height:1.7">FIVE ELEMENTS IS THE CEILING — DRAWN NOW BECAUSE THIS IS WHAT THE CARD WILL ACTUALLY BE. THE NEXT LINE SITS ABOVE THE PROGRESS LINE.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#6A7161">ROOMY 540 — THE PANE PICKS 2-UP</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; margin-top:10px; padding:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px">
+          <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px">
+            <div style="font-weight:600; font-size:15px; color:#E8E5D5">▸ Alps 2026</div>
+            <div style="margin-top:6px"><span style="padding:3px 8px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em">ON TRIP · DAY 12</span></div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#97A08C; letter-spacing:.05em; margin-top:10px">NEXT — SET UNPACK WHEN BACK</div>
+          </div>
+          <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:12px">
+            <div style="font-weight:600; font-size:15px; color:#E8E5D5">▸ Ardennen — Sep</div>
+            <div style="margin-top:6px"><span style="padding:3px 8px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em">PACK-OUT · DAY 1</span></div>
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#97A08C; letter-spacing:.05em; margin-top:10px">NEXT — PACK THE LIST</div>
+          </div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.06em; margin-top:8px; line-height:1.7">CONTAINER QUERY: SAME COMPONENTS, THE PANE PICKS THE FOLD — NOT THE VIEWPORT. THE S6 CARD FOLDS LIKE THE FULL CARD.</div>
+      </div>
+    </div>
+  </div>
+
+  <div data-screen-label="Trip screen — S6 desktop" style="width:1024px; height:520px; background:#151A15; border:1px solid #333C33; border-radius:16px; overflow:hidden; display:grid; grid-template-columns:216px 1fr; margin-top:24px">
+    <div style="border-right:1px solid #333C33; padding:18px 14px; display:flex; flex-direction:column; gap:4px">
+      <div style="display:flex; align-items:center; gap:8px; padding:0 8px 14px">
+        <svg width="24" height="19" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:17px">foerier</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 10px; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.08em; color:#97A08C">DEPOT<span style="color:#6A7161">128</span></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 10px; border-radius:8px; background:#28312A; font-family:'Spline Sans Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.08em; color:#E8E5D5">TRIPS<span style="color:#97A08C">3</span></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 10px; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.08em; color:#97A08C">FIND</div>
+      <div style="flex:1"></div>
+      <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px">
+        <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.08em; color:#97A08C">ACCOUNT</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:7px; padding:6px 10px 0"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em">SYNCED 14:32</span></div>
+    </div>
+    <div style="display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; gap:14px; padding:20px 24px 16px; border-bottom:1px solid #333C33">
+        <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:24px">Alps 2026</span>
+        <span style="padding:4px 9px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.06em; cursor:pointer">ON TRIP · DAY 12</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">AUG 14 → SEP 02 · 20 DAYS</span>
+        <span style="display:inline-flex; gap:4px; margin-left:auto">
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">E</span>
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">K</span>
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px dashed #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600; cursor:pointer">+</span>
+        </span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em; color:#97A08C; cursor:pointer">EDIT</span>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:13px; color:#E8E5D5">0 GEAR LISTED.</div>
+        <div style="font-size:14px; color:#97A08C">The gear list is built from the depot.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; margin-top:24px">
+    <div data-screen-label="New trip" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; display:flex; flex-direction:column">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ TRIPS</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</span>
+      </div>
+      <div style="padding:0 16px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">New trip</div>
+      </div>
+      <div style="padding:16px; display:flex; flex-direction:column; gap:16px">
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">NAME</div>
+          <div style="margin-top:6px; height:48px; box-sizing:border-box; background:#0F130F; border:1.5px solid #E2A65B; box-shadow:0 0 0 2px rgba(226,166,91,.3); border-radius:8px; display:flex; align-items:center; padding:0 14px; font-size:15px; color:#E8E5D5">Ardennen — Sep<span style="display:inline-block; width:1.5px; height:18px; background:#E2A65B; margin-left:2px"></span></div>
+        </div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">DATES · OPTIONAL</div>
+          <div style="display:flex; gap:8px; margin-top:6px">
+            <div style="flex:1; height:48px; box-sizing:border-box; border:1.5px solid #47523F; border-radius:8px; display:flex; align-items:center; justify-content:space-between; padding:0 14px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.1em; color:#6A7161">START</span><span style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#5E6857">—</span></div>
+            <div style="flex:1; height:48px; box-sizing:border-box; border:1.5px solid #47523F; border-radius:8px; display:flex; align-items:center; justify-content:space-between; padding:0 14px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.1em; color:#6A7161">END</span><span style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#5E6857">—</span></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">PARTICIPANTS</div>
+          <div style="margin-top:6px; min-height:48px; box-sizing:border-box; border:1.5px solid #47523F; border-radius:8px; display:flex; align-items:center; gap:6px; padding:8px 14px; cursor:pointer">
+            <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+            <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">E</span>
+            <span style="margin-left:auto; color:#5E6857; font-size:18px">›</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1"></div>
+      <div style="padding:0 16px 20px">
+        <button style="width:100%; height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Create trip</button>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; text-align:center; margin-top:10px">NAME IS THE ONLY REQUIRED INPUT</div>
+      </div>
+    </div>
+
+    <div data-screen-label="Participants picker" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ TRIPS</span>
+      </div>
+      <div style="padding:0 16px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">New trip</div>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 12px"></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Participants</div>
+        <div style="display:flex; flex-direction:column; margin-top:8px">
+          <div style="display:flex; align-items:center; gap:12px; min-height:48px; border-bottom:1px solid #2A3129; cursor:pointer">
+            <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">E</span>
+            <span style="flex:1; font-weight:600; font-size:16px">Els</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F">PARTICIPANT ✓</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; min-height:48px; border-bottom:1px solid #2A3129; cursor:pointer">
+            <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">K</span>
+            <span style="flex:1; font-weight:600; font-size:16px">Kees</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; min-height:48px; cursor:pointer">
+            <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">M</span>
+            <span style="flex:1; font-weight:600; font-size:16px">Mark</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F">PARTICIPANT ✓</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; margin-top:12px; min-height:48px; border:1px dashed #47523F; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#97A08C; cursor:pointer">+ NEW PERSON</div>
+        <button style="width:100%; height:48px; margin-top:8px; background:transparent; color:#93BC9F; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Close</button>
+      </div>
+    </div>
+
+    <div data-screen-label="Set phase — unrecognised phase" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ TRIPS</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</span>
+      </div>
+      <div style="padding:0 16px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Jura 2026</div>
+        <div style="margin-top:8px"><span style="padding:4px 9px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.06em">portaging</span></div>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 12px"></div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">SET PHASE</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; margin-top:10px"><span style="color:#93BC9F">● NOW</span><span style="color:#97A08C"> — </span><span style="color:#E8E5D5">portaging</span></div>
+        <div style="display:flex; flex-direction:column; margin-top:8px">
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; cursor:pointer"><span>DRAFT</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; cursor:pointer"><span>PACK-OUT</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; cursor:pointer"><span>ON TRIP</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; cursor:pointer"><span>UNPACK</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; cursor:pointer"><span>CLOSED</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DATES — THE OS OWNS THE INPUT (S6)</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Start and End are native date inputs — an external surface, the passkey-sheet rule: recreate nothing; the boards draw dates only as output. Both optional; both empty writes nothing at all. There is no end-before-start guard — two devices may legitimately write the two ends concurrently, and a guard would have to discard one of two valid writes. A reversed range is reported in the ledger&#8217;s own idiom, never prevented:</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:8px; margin-top:10px; padding:10px 14px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C">SEP 02 → AUG 14 · <span style="color:#D98263">▲ ENDS BEFORE IT STARTS</span></div>
+        <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">— and the day count is suppressed while reversed (it would be false). A stored date that is not YYYY-MM-DD renders an empty input while the value survives; EDIT states it beside the field, so the field never silently looks cleared:</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:8px; margin-top:10px; padding:10px 14px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C"><span style="color:#D98263">▲</span> STORED AS &#8220;aug sometime&#8221; — PICKING A DATE REPLACES IT</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">ONE COMMIT MODEL — S6, REDRAWN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The shipped screen had two: typed fields on Save/Cancel, a participant tap at once, patched by a disclosure line. Redrawn: participants leave EDIT and live on the resting screen — gear detail&#8217;s tag-chip pattern, the one edit affordance on a read surface. Circles plus a dashed + ghost open the picker; writes land at once; removal never confirms (cheap, instantly reversible — the tag picker&#8217;s rule). EDIT now covers name and dates only, one commit model, and the disclosure line is deleted. The picker is rows, not circles — rows are what pickers are made of everywhere here; circles are display. Multi-select membership is marked PARTICIPANT ✓, the builder&#8217;s IN LIST ✓ grammar; ● NOW stays the single-select word. + NEW PERSON records a Person and selects them at once — the home picker&#8217;s + New place rule.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">UNRECOGNISED PHASE · THE ● NOW TAP (S6)</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">An older build folding a newer phase draws it verbatim, lowercase, in a quiet bordered chip — no amber (an old build must never over-state that a trip is Active), and no ▲: the data is right, the build is old, and there is nothing for the household to resolve — the attention class is for things that want an action. It files under the planned band, gets no NEXT line, and SET PHASE marks no row: ● NOW — portaging stands above five tappable rows, so no trip is ever stranded in a phase this build cannot leave. Tapping the ● NOW row writes nothing and closes — a redundant write would reset the chip&#8217;s DAY count to a visible lie. The row stays undimmed: dim means future or disabled, and NOW is neither — it is satisfied.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">SMALL TREATMENTS + LIST STATES (S6)</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Blessed as shipped: the draft chip stays quiet mono, never amber — amber is the trip world and a draft is not in it. The SET PHASE sheet titles SET PHASE alone — the chip that opened it is the trip&#8217;s own, and every sheet carries a short label (excerpt in 02 updated). TRIPS 0 in the desktop sidebar — the count is the size of the list the row opens, exactly as DEPOT 0. New trip is a screen, not a sheet: the participants picker must stack on it, and it follows Add gear&#8217;s shape — name first (the only required input, focused), dates, participants, thumb-zone CTA gated on name; at desk widths Enter creates. Decided now: the middle band is named PLANNED against the day it needs a header — it holds drafts and unrecognised phases, so DRAFTS would misname it; only CLOSED draws a header today, as the board had it. Two Active trips render as N identical cards, no primary-trip treatment — their interaction is the over-claim surface&#8217;s job (02B). The Trips list gains the Depot&#8217;s 56px FAB as + NEW&#8217;s drawn control (F3 had the step, no frame).</div>
+      </div>
+    </div>
+  </div>
+
   <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">02B — ACTIVATION, OVER-CLAIM &amp; REOPEN · PHONE 393</div>
   <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
     <div data-screen-label="Start pack-out — over-claim" style="width:393px; height:620px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
@@ -508,7 +809,7 @@
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">REOPEN — DELIBERATE, NOT ALARMING</div>
-        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Same register as deleting a trip (a deliberate, confirmed act) but nothing was thrown away, so the primary stays accent, not attention. Reopen exists for a trip closed too early and for lost gear that turns up months later — resolving the entry then hands the gear home, as during any unpack. If reopening would over-claim against another active trip, the same ▲ block appears in this sheet.</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Same register as deleting a trip (a deliberate, confirmed act) but nothing was thrown away, so the primary stays accent, not attention. Reopen exists for a trip closed too early and for lost gear that turns up months later — resolving the entry then hands the gear home, as during any unpack. If reopening would over-claim against another active trip, the same ▲ block appears in this sheet. S6 ships the confirm as title + body only — the mono blocks are conditional on Entries and outcomes and return with them; they are information, not weight, and the register is the confirm itself. The body is parameterised: &#8220;It returns to {phase} exactly as it stood.&#8221; — SET PHASE offers all four rows out of CLOSED, and refusing them would contradict its own ANY ROW TAPPABLE; the closed row&#8217;s REOPEN link targets Unpack, where this sheet&#8217;s sentence renders verbatim.</div>
       </div>
     </div>
   </div>
@@ -681,6 +982,6 @@
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:6720}}"></script>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:8600}}"></script>
 </body>
 </html>

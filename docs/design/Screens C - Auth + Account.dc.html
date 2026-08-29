@@ -698,7 +698,7 @@
           </div>
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0">
             <span style="display:inline-flex; align-items:center; padding:4px 10px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em; color:#97A08C">EXPIRES IN 6 d</span>
-            <span style="display:flex; gap:12px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F; cursor:pointer">REOPEN &#8250;</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">REVOKE</span></span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">REVOKE</span>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
@@ -751,19 +751,111 @@
       </div>
     </div>
 
+    <div data-screen-label="People and logins — login state unknown" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ACCOUNT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#E2A65B"></span>OFFLINE</span>
+      </div>
+      <div style="padding:0 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">People &amp; logins</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:8px">3 people.</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:6px">Login state could not be loaded. Check your connection.</div>
+      </div>
+      <div style="border-top:1px solid #333C33">
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">E</span>
+          <div style="flex:1"><div style="font-weight:600; font-size:16px">Els</div></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">K</span>
+          <div style="flex:1"><div style="font-weight:600; font-size:16px">Kees</div></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+          <span style="width:30px; height:30px; border-radius:50%; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">M</span>
+          <div style="flex:1"><div style="display:flex; align-items:center; gap:8px"><span style="font-weight:600; font-size:16px">Mark</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.06em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 5px">YOU</span></div></div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; margin:12px 16px 16px; min-height:48px; border:1px dashed #47523F; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#97A08C; cursor:pointer">+ NEW PERSON</div>
+      </div>
+    </div>
+
     <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
-        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Equality made visible: identical row anatomy for every person, alphabetical order, no owner badge, no crowns. YOU is positional, not privileged — Els sees the same actions on Mark&#8217;s row. Any signed-in member can issue a device link for another&#8217;s login or revoke it; only your own row lacks them (your exit is SIGN OUT). The outstanding-invite row is the collapsed form of the handover screen: expiry chip + REOPEN + REVOKE.</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Equality made visible: identical row anatomy for every person, alphabetical order, no owner badge, no crowns. YOU is positional, not privileged — Els sees the same actions on Mark&#8217;s row. Any signed-in member can issue a device link for another&#8217;s login or revoke it; only your own row lacks them (your exit is SIGN OUT). The outstanding-invite row is the collapsed form of the handover screen: expiry chip + REVOKE — REOPEN is retired (S5): the invite secret is stored hashed and the plaintext lives only in the link, so nothing — server or client — can reopen a closed handover. Re-handing is REVOKE, then the same row&#8217;s INVITE &#8250;: the second step is the verb the goal names, drawn under ROW STATES below.</div>
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">STATES COVERED</div>
-        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Left: the empty-ish household — one login, one invite out, one person who never signs in. Right: steady state. A child&#8217;s row is a plain fact (&#8220;joins trips as participant&#8221;), and INVITE stays available — the UI does not police who may hold a login.</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Left: the empty-ish household — one login, one invite out, one person who never signs in. Right: steady state. A child&#8217;s row is a plain fact (&#8220;joins trips as participant&#8221;), and INVITE stays available — the UI does not police who may hold a login. Third (S5): login state unknown. Who holds a Login is a server fact, so a failed load falls the list back whole — withdrawn circles, no meta, no right column, count line `3 people.`, one quiet line directly under it in Account&#8217;s existing words. Screen-level, never per-row.</div>
       </div>
     </div>
   </div>
 
-  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">09 — INVITE ISSUED · COMPACT 393 · BOTH PURPOSES</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; margin-top:24px">
+    <div data-screen-label="People and logins — revoke a login" style="width:393px; height:560px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; ACCOUNT</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>SYNCED 14:32</span>
+      </div>
+      <div style="padding:0 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">People &amp; logins</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:8px">2 of 3 people hold a login.</div>
+      </div>
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 16px"></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Revoke Els&#8217;s login?</div>
+        <div style="font-size:14px; line-height:21px; margin-top:12px">Els&#8217;s devices lose access at their next sync. Everything Els recorded stays with the household.</div>
+        <button style="width:100%; height:48px; margin-top:20px; background:transparent; color:#D98263; border:1.5px solid #D98263; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Revoke login</button>
+        <button style="width:100%; height:48px; margin-top:8px; background:transparent; color:#93BC9F; border:1.5px solid #E2A65B; border-radius:8px; box-shadow:0 0 0 2px rgba(226,166,91,.3); font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Cancel</button>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:10px; line-height:1.7">CANCEL TAKES INITIAL FOCUS (DRAWN) &#183; ESCAPE CLOSES &#183; NO SCRIM DISMISSAL &#183; NO &#9650; — NOTHING IS DISCARDED</div>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE PERSON CIRCLE — THREE STATES · 30 PX · BOTH THEMES (S5)</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:8px; margin-top:10px; padding:14px 16px; display:flex; gap:28px">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:7px"><span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">M</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#97A08C">HOLDS A LOGIN</span></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:7px"><span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">E</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#97A08C">NO LOGIN</span></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:7px"><span style="width:30px; height:30px; border-radius:50%; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">K</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#97A08C">NOT KNOWN</span></div>
+        </div>
+        <div style="background:#F0EBDD; border-radius:8px; margin-top:8px; padding:14px 16px; display:flex; gap:28px">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:7px"><span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #35523F; color:#35523F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">M</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161">HOLDS A LOGIN</span></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:7px"><span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #BBB6A2; color:#6A7161; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">E</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161">NO LOGIN</span></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:7px"><span style="width:30px; height:30px; border-radius:50%; color:#6A7161; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">K</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8px; font-weight:600; letter-spacing:.08em; color:#6A7161">NOT KNOWN</span></div>
+        </div>
+        <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">The third state is a withdrawal, not a third claim. The ring is the statement &#8220;login state is known&#8221;; when the list cannot load, the ring goes with it and the initial drops to ink/muted. No colour is added, so it cannot flatten in any theme; dashed stays reserved for add affordances; fill stays packing&#8217;s. Unknown is screen-level — every circle withdraws at once, which is what makes the quiet header line legible as the explanation for the whole list. Parchment still gains the full rule hierarchy as tokens (rule/row #E3DECB, rule/control #BBB6A2 — Foundations), because control borders at #D8D2BE fail at 1.5 px on light surfaces — but the circle no longer depends on it.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">ROW STATES ADDED — S5</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:8px; margin-top:10px">
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #2A3129; min-height:44px">
+            <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">E</span>
+            <div style="flex:1">
+              <div style="font-weight:600; font-size:16px">Els</div>
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">LOGIN &#183; NO DEVICE SIGNED IN</div>
+            </div>
+            <span style="display:flex; gap:12px; flex-shrink:0"><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F; cursor:pointer">DEVICE LINK &#8250;</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; cursor:pointer">REVOKE</span></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; min-height:44px">
+            <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #93BC9F; color:#93BC9F; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600; flex-shrink:0">E</span>
+            <div style="flex:1">
+              <div style="font-weight:600; font-size:16px">Els</div>
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">SIGNED IN &#183; 1 DEVICE &#183; LAST SEEN 2026-08-20 19:04</div>
+            </div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#93BC9F; flex-shrink:0; cursor:pointer">RENAME</span>
+          </div>
+        </div>
+        <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">Top: the fifth meta line — a Login whose every device is signed out. SIGNED IN &#183; 0 DEVICES would be false in both words; LOGIN &#183; NO DEVICE SIGNED IN states the facts, and DEVICE LINK &#8250; beside it is the way back in — the lockout row says what to do next without changing shape (a locked-out member is a fact, not an alarm). Bottom: EDIT on — RENAME replaces the right column on every row, own row included, so actions and editing never compete for the slot and nothing can be revoked mid-edit.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS DRAWN AFTER THE FACT — S5</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Revoking a login confirms (sheet left — bordered attention, no &#9650;: &#167;12&#8217;s rule stands, only sign-out-this-device can discard work); revoking an invite does not — confirms scale with consequence, not with label: an invite is a link and never data, and a mistaken kill is one INVITE &#8250; from repair. INVITE &#8250; and DEVICE LINK &#8250; mint on arrival — the handover screen is the confirmation; backing out leaves the row reading INVITE OUT with REVOKE one tap away, and re-issue supersedes, so nothing invisible accumulates. The own row&#8217;s &#8250; opens Devices (it expands the meta beside it) and is dropped in the Desktop inline variant, where the Devices card sits two rows above. LAST SEEN renders in the device&#8217;s local time, no zone suffix — UTC is false for every reader of a one-timezone household; relative forms fight a ledger that writes dates as data (&#167;12&#8217;s device rows follow the same rule). The unknown-state line sits directly under the count line, in Account&#8217;s existing words; the withdrawn circles are what tie it to the rows.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:32px 0 12px">09 — INVITE ISSUED · COMPACT 393 · THREE DOORS</div>
   <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
     <div data-screen-label="Invite issued — join" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
       <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
@@ -774,7 +866,7 @@
         <div style="font-size:13px; color:#97A08C; margin-top:6px">Hand it over yourself — foerier sends no mail.</div>
         <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:14px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px">
           <div style="background:#F0EBDD; border-radius:8px; padding:10px; width:126px; height:126px">{{ qrJoin }}</div>
-          <div style="width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #333C33; border-radius:8px; padding:10px 12px; font-family:'Spline Sans Mono',monospace; font-size:11.5px; line-height:1.6; color:#E8E5D5; word-break:break-all; user-select:all">https://foerier.veldkamp.net/join#9f3k-q7xw-2mhp</div>
+          <div style="width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #333C33; border-radius:8px; padding:10px 12px; font-family:'Spline Sans Mono',monospace; font-size:11.5px; line-height:1.6; color:#E8E5D5; word-break:break-all; user-select:all">https://foerier.veldkamp.net/j/9f3k-q7xw-2mhp</div>
           <button style="width:100%; height:48px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Copy link</button>
           <div style="display:flex; gap:8px; align-items:center">
             <span style="display:inline-flex; align-items:center; padding:4px 10px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em; color:#97A08C">EXPIRES IN 6 d</span>
@@ -795,7 +887,28 @@
         <div style="font-size:13px; color:#97A08C; margin-top:6px">Open this on the other device. It signs that device in as you, Mark.</div>
         <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:14px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px">
           <div style="background:#F0EBDD; border-radius:8px; padding:10px; width:126px; height:126px">{{ qrDevice }}</div>
-          <div style="width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #333C33; border-radius:8px; padding:10px 12px; font-family:'Spline Sans Mono',monospace; font-size:11.5px; line-height:1.6; color:#E8E5D5; word-break:break-all; user-select:all">https://foerier.veldkamp.net/join#x2c8-11qa-9rrt</div>
+          <div style="width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #333C33; border-radius:8px; padding:10px 12px; font-family:'Spline Sans Mono',monospace; font-size:11.5px; line-height:1.6; color:#E8E5D5; word-break:break-all; user-select:all">https://foerier.veldkamp.net/d/x2c8-11qa-9rrt</div>
+          <button style="width:100%; height:48px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Copy link</button>
+          <div style="display:flex; gap:8px; align-items:center">
+            <span style="display:inline-flex; align-items:center; padding:4px 10px; border:1.5px solid #E2A65B; border-radius:99px; background:rgba(226,166,91,.08); font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em; color:#E2A65B">EXPIRES IN 58 min</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; letter-spacing:.06em">SINGLE USE</span>
+          </div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#97A08C; margin-top:14px">The link is the credential. Treat it like a key.</div>
+        <div style="display:flex; justify-content:center; align-items:center; min-height:48px; margin-top:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.06em; color:#D98263; cursor:pointer">REVOKE LINK</span></div>
+      </div>
+    </div>
+
+    <div data-screen-label="Invite issued — device link for another person" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">&#8249; PEOPLE &amp; LOGINS</span>
+      </div>
+      <div style="padding:0 16px 16px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Device link for Els</div>
+        <div style="font-size:13px; color:#97A08C; margin-top:6px">Open this on Els&#8217;s device. It signs that device in as Els.</div>
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; margin-top:14px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px">
+          <div style="background:#F0EBDD; border-radius:8px; padding:10px; width:126px; height:126px">{{ qrDevice2 }}</div>
+          <div style="width:100%; box-sizing:border-box; background:#0F130F; border:1px solid #333C33; border-radius:8px; padding:10px 12px; font-family:'Spline Sans Mono',monospace; font-size:11.5px; line-height:1.6; color:#E8E5D5; word-break:break-all; user-select:all">https://foerier.veldkamp.net/d/7pq2-88zn-4kvc</div>
           <button style="width:100%; height:48px; background:transparent; color:#E8E5D5; border:1.5px solid #47523F; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Copy link</button>
           <div style="display:flex; gap:8px; align-items:center">
             <span style="display:inline-flex; align-items:center; padding:4px 10px; border:1.5px solid #E2A65B; border-radius:99px; background:rgba(226,166,91,.08); font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em; color:#E2A65B">EXPIRES IN 58 min</span>
@@ -810,11 +923,15 @@
     <div style="flex:1; min-width:280px; display:flex; flex-direction:column; gap:12px">
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
-        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">One handover screen, two purposes; only title, lead line, expiry and the fact line change. QR for phones in the same room, mono selectable link for every other channel. The expiry chip is the live element — muted at days, amber under an hour — and the same chip reappears on the outstanding-invite row in People &amp; logins. REVOKE stays attention text: it kills the link, not any data.</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">One handover screen, three doors (S5); only title, lead line, expiry, the fact line and the revoke label change — REVOKE INVITE / REVOKE LINK name two different things in the vocabulary (settled S5; this note once claimed the label was constant, and the drawn labels won). The back link follows the route in (S5): &#8249; ACCOUNT only for your own device link; &#8249; PEOPLE &amp; LOGINS for a join invite and for another person&#8217;s device link. QR for phones in the same room, mono selectable link for every other channel. The expiry chip is the live element — muted at days, amber under an hour — and the same chip reappears on the outstanding-invite row in People &amp; logins. REVOKE stays attention text: it kills the link, not any data.</div>
       </div>
       <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
         <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">OUT OF BAND, BY DESIGN</div>
         <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">foerier never transmits the invite — no email, no SMS, no share sheet preselection. The user hands it over in a channel they already trust. &#8220;The link is the credential&#8221; is the entire security model, stated once.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE THIRD DOOR — S5</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">A device link minted from another person&#8217;s row is the lockout rescue — the most consequential handover one member makes for another. It deliberately gets no distinct treatment: one anatomy is this screen&#8217;s law, the words carry the difference, and the amber 1-hour chip is already the hottest element here. The fact line stays word-for-word &#8220;The link is the credential. Treat it like a key.&#8221; — the security model is stated once, in the same words, wherever it applies. Minted on mount, like the other two doors: this screen is the confirmation; backing out leaves the credential visible on its row with REVOKE beside it; no auto-revoke on back — it would kill a link the user may already have copied.</div>
       </div>
     </div>
   </div>
@@ -869,7 +986,7 @@
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:8800}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1264,&quot;height&quot;:10400}}">
 class Component extends DCLogic {
   qr(seed) {
     const n = 21, cells = [];
@@ -890,7 +1007,7 @@ class Component extends DCLogic {
     return React.createElement('svg', { width: 126, height: 126, viewBox: '0 0 126 126' }, cells);
   }
   renderVals() {
-    return { qrJoin: this.qr(7), qrDevice: this.qr(13) };
+    return { qrJoin: this.qr(7), qrDevice: this.qr(13), qrDevice2: this.qr(29) };
   }
 }
 </script>
