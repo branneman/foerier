@@ -1278,9 +1278,18 @@ describe('trips', () => {
     // which invalidates a memo downstream for nothing. The two multi-register
     // handlers are the ones that could get this wrong — a spread placed
     // before the identity check would still copy on a wholly lost write.
-    expect(applyOp(seeded, tripCreatedOp('t1', { name: 'Old' }, at(2)))).toBe(
-      seeded,
-    )
+    // The stale creation carries a **different** `from_trip_id`, so this
+    // exercises the register's *losing* read rather than only its absent one:
+    // with the field omitted, `writeIfPresent` would return the existing
+    // register unchanged for the trivial reason and the identity check would
+    // pass without the comparison ever running.
+    expect(
+      applyOp(
+        seeded,
+        tripCreatedOp('t1', { name: 'Old', from_trip_id: 't-other' }, at(2)),
+      ),
+    ).toBe(seeded)
+    expect(seeded.trips['t1']?.fromTripId?.value).toBe('t0')
     expect(applyOp(seeded, tripRenamedOp('t1', { name: 'Old' }, at(2)))).toBe(
       seeded,
     )

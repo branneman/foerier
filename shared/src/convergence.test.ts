@@ -24,11 +24,17 @@ import {
   placeRecorded,
   placeRemoved,
   placeRenamed,
+  tripCreated,
+  tripDatesSet,
+  tripParticipantAdded,
+  tripParticipantRemoved,
+  tripPhaseMoved,
+  tripRenamed,
   type OpSpec,
 } from './authoring.ts'
 import type { OpEnvelope } from './ops.ts'
 import { containmentView } from './selectors/containment.ts'
-import type { KindValue, Owner, Residence } from './state.ts'
+import type { KindValue, Owner, PhaseValue, Residence } from './state.ts'
 import { normalizeTag, type TagString } from './tags.ts'
 
 /**
@@ -80,6 +86,17 @@ const PLACE_IDS = [
 const PERSON_IDS = [
   '40000000-0000-7000-8000-000000000000',
   '40000000-0000-7000-8000-000000000001',
+] as const
+/**
+ * **Two**, and for the same reason the pools above are small: with one Trip
+ * per two devices, two devices contesting the same `phase` register — or the
+ * same participant register — is the common case rather than a coincidence.
+ * Two is enough because a Trip has no containment and no cross-Trip edge:
+ * nothing here gets more interesting with a third.
+ */
+const TRIP_IDS = [
+  '50000000-0000-7000-8000-000000000000',
+  '50000000-0000-7000-8000-000000000001',
 ] as const
 
 /**
@@ -211,8 +228,75 @@ const arbOwner: fc.Arbitrary<Owner> = fc.oneof(
   arbPersonId.map((personId): Owner => ({ type: 'person', personId })),
 )
 
+const arbTripId = fc.constantFrom(...TRIP_IDS)
+const arbTripName = fc.constantFrom('Ardennes', 'Vosges', 'Sarek')
+/** `shakedown` is deliberately not one of the five known phases — `arbKind`'s
+ * rule a second time, and §5.3 obligation 4's whole point: an unrecognised
+ * enum value has to survive the merge exactly as it arrived. */
+const arbPhase = fc.constantFrom<PhaseValue[]>(
+  'draft',
+  'pack_out',
+  'on_trip',
+  'unpack',
+  'closed',
+  'shakedown',
+)
 /**
- * All fifteen op types this build folds (`sync-protocol.md` §4), authored
+ * Two conforming dates and one that is not a date at all (§1.4: no format
+ * gate, stored and compared verbatim). Three states per field — a date, an
+ * explicit `null` clear, and absent — because those are the three the
+ * absent-versus-null rule distinguishes, and the merge has to keep them
+ * apart under every arrival order, not only under authoring order.
+ */
+const arbDateField = fc.option(
+  fc.option(fc.constantFrom('2026-08-14', '2026-08-20', 'not-a-date'), {
+    nil: null,
+  }),
+  { nil: undefined },
+)
+
+/**
+ * S6's six op types, nested under **one** weighted branch of the outer
+ * `oneof` rather than spread across six unweighted ones — so the trip share
+ * is a number to set rather than a consequence of how many op types the slice
+ * happened to add.
+ *
+ * It is set to 4 in 19 (~21% of ops) because 1 in 16 was measured and found
+ * too thin: over 200 runs it put trip ops in 6% of draws and left two devices
+ * contesting one Trip register in **12** runs, against **~70** at this
+ * weight. The obvious worry — that diluting the gear ops costs the
+ * containment-cycle rate `arbResidence` is tuned for — was measured too and
+ * is not real: cycles turn up in 5–15 runs per 200 with no trip ops at all
+ * and 11–14 with these, which is seed noise either way. (That also puts
+ * `arbResidence`'s "17" where it belongs — a single measurement from a
+ * generator with fewer op types in it, not a floor to defend.)
+ */
+const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
+  fc.tuple(arbTripId, arbTripName).map(([id, name]) => tripCreated(id, name)),
+  // Nullable, so the property exercises the clear as well as the write —
+  // `personRenamed`'s rule on the seventh and eighth `name` rows.
+  fc
+    .tuple(arbTripId, fc.option(arbTripName, { nil: null }))
+    .map(([id, name]) => tripRenamed(id, name)),
+  fc
+    .record({ id: arbTripId, start: arbDateField, end: arbDateField })
+    .map(({ id, start, end }) =>
+      tripDatesSet(id, {
+        ...(start === undefined ? {} : { start }),
+        ...(end === undefined ? {} : { end }),
+      }),
+    ),
+  fc.tuple(arbTripId, arbPhase).map(([id, phase]) => tripPhaseMoved(id, phase)),
+  fc
+    .tuple(arbTripId, arbPersonId)
+    .map(([id, personId]) => tripParticipantAdded(id, personId)),
+  fc
+    .tuple(arbTripId, arbPersonId)
+    .map(([id, personId]) => tripParticipantRemoved(id, personId)),
+)
+
+/**
+ * All twenty-one op types this build folds (`sync-protocol.md` §4), authored
  * through the real builders — never a hand-shaped payload, so the generator
  * cannot drift from the wire format.
  */
@@ -269,6 +353,7 @@ const arbSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbPersonId, fc.option(arbName, { nil: null }))
     .map(([id, name]) => personRenamed(id, name)),
+  { arbitrary: arbTripSpec, weight: 4 },
 )
 
 /**
@@ -662,33 +747,37 @@ describe('convergence', () => {
   it('an unknown op type converges as an unfolded count, not as a divergence', () => {
     const { clock, a, b } = aWorld()
     const known = PERSON_IDS[0]
-    const unknown = PERSON_IDS[1]
+    const unknown = GEAR_IDS[0]
 
-    // `trip.entry_added` is in the catalogue (§4.4) but this build does not
-    // fold it — the honest shape of "an op type from a newer client". It is
-    // hand-shaped precisely because there is no builder for it here; the
-    // builders are the types the shipped slices author.
+    // An op type this build does not fold — the honest shape of "an op from a
+    // peer on a much later build". Hand-shaped precisely because there is no
+    // builder for it here; the builders are the types the shipped slices
+    // author.
     //
-    // **This example has now moved twice**: it was `person.renamed` until S4
-    // folded that row, then `trip.created` until S6 folded this whole
-    // aggregate's root. The property under test never changes; only the op
-    // that can still demonstrate it does, which is the standing price of
-    // picking a real catalogue entry over an invented one — and still worth
-    // paying, because an invented type would not prove a *newer client's* op
-    // survives. S7 will move it again.
-    const entryAdded: OpSpec = {
-      aggregate: 'trip',
+    // **The example had moved twice before this one**: `person.renamed` until
+    // S4 folded that row, then `trip.created` until S6 folded this aggregate's
+    // root. Both churned for the same reason — both were MVP catalogue entries
+    // with a slice already coming for them, so each stopped being unfoldable
+    // the moment that slice landed. Picking another (`trip.entry_added`, S7;
+    // `trip.consumed_count_set`, S10) only sets the next move's date.
+    //
+    // `gear.weighed` cannot churn. Weight is **story 16, tagged Later**
+    // (`docs/user-stories.md`), and §5's Later-seams list names its op type as
+    // unspecified and additive — so no slice in the MVP plan folds it, while
+    // it stays every bit as realistic as a catalogue entry, which an invented
+    // type would not be. The property under test never changed; this is the
+    // first op that can go on demonstrating it without a standing appointment
+    // to be rewritten.
+    const weighed: OpSpec = {
+      aggregate: 'gear',
       aggregate_id: unknown,
-      type: 'trip.entry_added',
-      payload: {
-        entry_id: GEAR_IDS[0],
-        source: { from: 'depot', gear_id: GEAR_IDS[0] },
-      },
+      type: 'gear.weighed',
+      payload: { grams: 780 },
     }
 
     a.emit(personRecorded(known, 'Bran'))
     clock.advance(1000)
-    const unfoldable = b.emit(entryAdded)
+    const unfoldable = b.emit(weighed)
     exchange(a, b)
 
     // `noteUnfolded` is the one counter in the fold that is *not* register-
@@ -702,15 +791,15 @@ describe('convergence', () => {
       // §5.3 obligation 1: retained and counted, never rejected.
       expect(r.state().unfolded).toEqual({
         count: 1,
-        types: { 'trip.entry_added': 1 },
+        types: { 'gear.weighed': 1 },
       })
       expect(r.log()).toHaveLength(2)
       expect(r.state().people[known]?.name?.value).toBe('Bran')
-      // An op this build cannot fold creates nothing, in any map. Since S6
-      // this is the sharper claim it used to be unable to make: the aggregate
-      // the op names now *has* a map here, and `writeTrip` still never runs,
-      // because dispatch is a lookup on `type` and an unknown one never
-      // reaches a handler at all.
+      // An op this build cannot fold creates nothing, in any map — and the
+      // claim is at its sharpest on `gear`, the map with eleven handlers and
+      // a `writeGear` that creates a Gear on first sight of any of them. It
+      // still never runs, because dispatch is a lookup on `type` and an
+      // unknown one never reaches a handler at all.
       expect(Object.hasOwn(r.state().people, unknown)).toBe(false)
       expect(Object.hasOwn(r.state().gear, unknown)).toBe(false)
       expect(Object.hasOwn(r.state().trips, unknown)).toBe(false)
@@ -837,5 +926,147 @@ describe('convergence', () => {
     // never arriving at all.
     expect(race(true)?.value).toBe(false)
     expect(race(false)?.value).toBe(true)
+  })
+
+  /**
+   * **S6's first named scenario** (§8.3, and the spec's §5.2): *concurrent
+   * phase moves resolve by plain LWW.*
+   *
+   * As with tags, the claim is structural. The phase is **one register
+   * holding one value**, so exclusivity is a property of the shape rather
+   * than of a rule: there is nothing for a merge to do but pick a winner, and
+   * no arrival order can leave a Trip both `on_trip` and `unpack`. Had the
+   * five phases been five booleans — the obvious alternative, and the one a
+   * transition graph invites — this test would be where two devices produced
+   * a Trip in two phases at once and the fold had no basis to choose.
+   *
+   * Invariant 16 is the other half: every move is expressible in either
+   * direction, so a *backwards* move is an ordinary write and loses or wins
+   * on its clock like any other. That is why B's move here is the earlier
+   * phase in the sequence and still wins.
+   */
+  it('two concurrent phase moves converge to the later stamp on both replicas', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+
+    const created = a.emit(tripCreated(trip, 'Ardennes'))
+    exchange(a, b)
+
+    // Neither device has seen the other's move when it authors its own.
+    clock.advance(1000)
+    a.emit(tripPhaseMoved(trip, 'on_trip'))
+    clock.advance(1000)
+    const later = b.emit(tripPhaseMoved(trip, 'pack_out'))
+    // `exchange` hands each replica the pair in the opposite order to the
+    // other, so both arrival orders are exercised in the one round.
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      // The register carries the winning op's own stamp, not merely its
+      // value — which is what proves the loser arrived and lost rather than
+      // never arriving at all.
+      expect(r.state().trips[trip]?.phase).toEqual({
+        value: 'pack_out',
+        hlc: later.hlc,
+        deviceId: later.device_id,
+      })
+    }
+    // The `draft` the creation seeded (spec §1.3) is a third write on that one
+    // register and loses to both, on nothing but its clock — the reason the
+    // phase is the reducer's write rather than a payload field is that a
+    // three-way race over it needs no rule of its own.
+    expect(created.hlc < later.hlc).toBe(true)
+    expect(a.state().trips[trip]?.name?.hlc).toBe(created.hlc)
+  })
+
+  /**
+   * **S6's second named scenario**: a Participant added on one Device and
+   * removed on another. `sync-protocol.md` §3.4 puts Participants in the same
+   * row as gear tags — one register per person id, never one register holding
+   * an array — so this is the *same* register contested twice and resolves by
+   * plain LWW, with no add-wins bias.
+   *
+   * The second half is the one a passing LWW check would not catch: the
+   * loser's write must not come back later. A handler that rebuilt the
+   * participants map instead of writing one key would leave this green until
+   * some unrelated op on the Trip resurrected the loser, which is why the
+   * rename below is here and why the assertion is on identity.
+   */
+  it('a Participant added on one Device and removed on another resolves by plain LWW', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const els = PERSON_IDS[0]
+
+    a.emit(personRecorded(els, 'Els'))
+    a.emit(tripCreated(trip, 'Ardennes'))
+    a.emit(tripParticipantAdded(trip, els))
+    exchange(a, b)
+
+    clock.advance(1000)
+    a.emit(tripParticipantAdded(trip, els))
+    clock.advance(1000)
+    const removal = b.emit(tripParticipantRemoved(trip, els))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    // `false` is a value carrying a clock, not a deleted key. Dropping the key
+    // would let A's re-add win by arrival order on the next device to sync.
+    expect(a.state().trips[trip]?.participants?.[els]).toEqual({
+      value: false,
+      hlc: removal.hlc,
+      deviceId: removal.device_id,
+    })
+
+    const settled = a.state().trips[trip]?.participants
+    clock.advance(1000)
+    a.emit(tripRenamed(trip, 'Ardennes, later'))
+    exchange(a, b)
+
+    // A write to a different register on the same aggregate leaves the
+    // participants map **identical**, not merely equal: the rename spreads the
+    // Trip and carries this map across by reference.
+    expect(a.state().trips[trip]?.participants).toBe(settled)
+    expect(b.state().trips[trip]?.participants?.[els]?.value).toBe(false)
+    expect(a.state()).toEqual(b.state())
+  })
+
+  /**
+   * The third, which comes free: different registers on the **same** root do
+   * not interfere. There is no conflict to resolve, so what this proves is
+   * that `trip.dates_set` — one of the two multi-register handlers — does not
+   * carry a stale `name` across with the two dates it writes. A handler that
+   * spread a captured Trip rather than the current one would pass every
+   * single-register test and fail this.
+   */
+  it('a rename racing a dates set leaves all three registers standing', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+
+    a.emit(tripCreated(trip, 'Ardennes'))
+    exchange(a, b)
+
+    clock.advance(1000)
+    const rename = a.emit(tripRenamed(trip, 'Vosges'))
+    clock.advance(1000)
+    const dates = b.emit(
+      tripDatesSet(trip, { start: '2026-08-14', end: '2026-08-20' }),
+    )
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const t = r.state().trips[trip]
+      // The rename is the *earlier* op and survives untouched, stamp and all,
+      // which is the sharp form of "the later multi-register write did not
+      // reach it".
+      expect(t?.name?.value).toBe('Vosges')
+      expect(t?.name?.hlc).toBe(rename.hlc)
+      expect(t?.startDate?.value).toBe('2026-08-14')
+      expect(t?.endDate?.value).toBe('2026-08-20')
+      expect(t?.endDate?.hlc).toBe(dates.hlc)
+      // And the phase the creation seeded is untouched by either.
+      expect(t?.phase?.value).toBe('draft')
+    }
   })
 })
