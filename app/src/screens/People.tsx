@@ -5,6 +5,7 @@ import { Link } from 'wouter'
 
 import type { AuthApi, InviteRow, LoginRow } from '../auth/api'
 import { sortedPeople } from '../depot/people'
+import { formatDateTime } from '../format'
 import { useDepot } from '../depot/store'
 import { syncLabel, syncTone } from '../depot/syncLabel'
 import styles from './People.module.css'
@@ -138,19 +139,6 @@ function rowStateOf(
   return { kind: 'none' }
 }
 
-/**
- * `2026-08-20 19:04`. Sliced straight off the ISO string rather than read
- * through `Date`'s local-time accessors — the same choice
- * `Devices.tsx`'s own `formatDateTime` already made, and for the same
- * reason: a `getHours()`/`getMinutes()` read is the *viewer's* offset, which
- * would make this line print a different hour on a device in a different
- * timezone than the one the Login was last seen from, and silently drift
- * further from `Devices.tsx`'s twin the moment anyone touched either.
- */
-function lastSeenLabel(iso: string): string {
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`
-}
-
 function metaOf(state: RowState): string | null {
   switch (state.kind) {
     case 'unknown':
@@ -168,7 +156,7 @@ function metaOf(state: RowState): string | null {
         `${state.deviceCount === 1 ? 'DEVICE' : 'DEVICES'}` +
         (state.lastSeenAt === null
           ? ''
-          : ` · LAST SEEN ${lastSeenLabel(state.lastSeenAt)}`)
+          : ` · LAST SEEN ${formatDateTime(state.lastSeenAt)}`)
       )
     case 'invited':
       return 'INVITE OUT · SINGLE USE'
@@ -573,7 +561,7 @@ export function People({
         <Confirm
           variant="sheet"
           title={`Revoke ${revoking.name}’s login?`}
-          description={`${revoking.name}’s devices lose access at their next contact with the server. Everything ${revoking.name} recorded stays.`}
+          description={`${revoking.name}’s devices lose access at their next sync. Everything ${revoking.name} recorded stays with the household.`}
           onClose={() => setRevoking(null)}
           actions={
             <>

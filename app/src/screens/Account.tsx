@@ -5,6 +5,7 @@ import { Link } from 'wouter'
 
 import type { AuthApi, DeviceRow, PasskeyRow } from '../auth/api'
 import { BUILD_SHA } from '../build'
+import { formatDate, isToday } from '../format'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
@@ -51,14 +52,6 @@ export interface AccountProps {
  */
 function guessDeviceLabel(): string {
   return deviceLabelFromUserAgent(navigator.userAgent) ?? ''
-}
-
-function formatDate(iso: string): string {
-  return iso.slice(0, 10)
-}
-
-function isToday(iso: string): boolean {
-  return iso.slice(0, 10) === new Date().toISOString().slice(0, 10)
 }
 
 function lastUsedLabel(iso: string | null): string {

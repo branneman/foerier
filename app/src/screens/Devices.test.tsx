@@ -117,7 +117,7 @@ function aDevice(overrides: Partial<DeviceRow> = {}): DeviceRow {
     id: anId(),
     label: 'Firefox on Android',
     created_at: '2026-03-02T10:00:00.000Z',
-    last_seen_at: '2026-08-19T14:32:00.000Z',
+    last_seen_at: '2026-08-19T12:32:00.000Z',
     current: false,
     enrolled_passkey_here: true,
     ...overrides,

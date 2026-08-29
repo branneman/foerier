@@ -107,23 +107,31 @@
   }
 
   /*
-   * 30px. S5 gives the border a three-way meaning, not two:
+   * 30px, three states — and the third is a **withdrawal, not a third
+   * claim** (Screens C §08, "THE PERSON CIRCLE — THREE STATES", S5).
    *
-   *   accent (`--color-accent`)        holds a Login
-   *   control (`--color-rule-control`) holds none
-   *   base — this rule, `--color-rule` — the fact is not known yet
+   *   ring accent, initial accent      holds a Login
+   *   ring control, initial ink/muted  holds none
+   *   **no ring**, initial ink/muted   login state is not known
    *
-   * `data-login` carries no attribute while `status !== 'loaded'` (the
-   * offline fallback) — this base rule is what paints that state, and it
-   * must not read as either of the other two. The base used to sit on
-   * `--color-rule-control`, the same token `[data-login='no']` uses below;
-   * that made "unknown" and "no login" the same pixel, so the offline
-   * fallback said "nobody in this Household holds a login" — false even for
-   * the reader's own row. `--color-rule` is the plainer, more muted divider
-   * token this file already uses for row rules; reused here as a border so
-   * "not known" reads as quieter than "known to be absent" rather than
-   * identical to it. Fill never appears on account surfaces; fill belongs to
-   * packing.
+   * The ring *is* the statement "login state is known". When the list cannot
+   * load, the ring goes with it. That is why the third state adds no colour:
+   * a third border token would have to stay legible against both palettes
+   * forever, and the first attempt at one flattened in parchment, where every
+   * `--color-rule*` resolved to the same value — so "unknown" and "no login"
+   * were the same pixel and the offline fallback said "nobody in this
+   * Household holds a login", false even for the reader's own row.
+   * Withdrawing the ring cannot flatten in any theme.
+   *
+   * The two appearances it does not take are already taken: **dashed** is an
+   * add affordance (`+ NEW PERSON`, `+ TAG`) and **fill** belongs to packing.
+   *
+   * The border stays in the box model as `transparent` rather than being
+   * removed, so a row does not resize by 3px when the login list lands.
+   *
+   * **Screen-level, never per-row.** `data-login` is absent on every row at
+   * once while `status !== 'loaded'`, which is what makes the one quiet line
+   * under the count line read as the explanation for the whole list.
    */
   .circle {
     display: inline-flex;
@@ -132,19 +140,18 @@
     width: 1.875rem;
     height: 1.875rem;
     flex-shrink: 0;
-    border: var(--stroke-chip) solid var(--color-rule);
+    border: var(--stroke-chip) solid transparent;
     border-radius: var(--radius-pill);
     color: var(--color-ink-muted);
     font: var(--text-label) var(--font-mono);
     font-weight: 600;
   }
 
-  /* The encoding the comment above describes: accent border for a Person who
-     holds a Login, control border for one who demonstrably does not. Neither
-     rule fires while `data-login` carries no attribute at all, which leaves
-     the base rule's `--color-rule` showing — the offline fallback. */
+  /* Neither rule fires while `data-login` carries no attribute at all, which
+     leaves the transparent border showing — the withdrawn ring. */
   .circle[data-login='yes'] {
     border-color: var(--color-accent);
+    color: var(--color-accent);
   }
   .circle[data-login='no'] {
     border-color: var(--color-rule-control);

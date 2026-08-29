@@ -3,21 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useSearch } from 'wouter'
 
 import type { AuthApi, DeviceRow } from '../auth/api'
+import { formatDate, formatDateTime } from '../format'
 import { useDepot } from '../depot/store'
 import { syncLabel, syncTone } from '../depot/syncLabel'
 import { clearLocalData as clearLocalDataForReal } from '../depot/wiring'
 import styles from './Devices.module.css'
-
-function formatDate(iso: string): string {
-  return iso.slice(0, 10)
-}
-
-/** `LAST SEEN` carries a time (`docs/design/README.md` §12's
- * `2026-08-19 14:32`) — unlike a passkey's `LAST USED`, which only ever
- * needs day granularity. */
-function formatDateTime(iso: string): string {
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`
-}
 
 /**
  * Three states, not a boolean — same reasoning as `Account.tsx`'s own

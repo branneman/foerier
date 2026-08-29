@@ -411,7 +411,7 @@ describe('the People screen', () => {
           id: 'L2',
           person_id: ELS,
           device_count: 1,
-          last_seen_at: '2026-08-20T19:04:00.000Z',
+          last_seen_at: '2026-08-20T17:04:00.000Z',
         },
       ],
     })
@@ -582,7 +582,7 @@ describe('the People screen', () => {
     expect(screen.getByText('Revoke Els’s login?')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Els’s devices lose access at their next contact with the server. Everything Els recorded stays.',
+        'Els’s devices lose access at their next sync. Everything Els recorded stays with the household.',
       ),
     ).toBeInTheDocument()
 
@@ -640,13 +640,17 @@ describe('the People screen', () => {
   })
 
   /**
-   * `final-fix-report.md` finding 4: the circle's border carries a three-way
-   * meaning — holds a login, holds none, or not known yet — and the CSS
-   * keys entirely off `data-login`'s three states (`'yes'`, `'no'`, absent).
-   * Before this fix the base rule and `[data-login='no']` shared one token,
-   * so "not known" and "known to be absent" were the same pixel; this pins
-   * that they stay three distinct `data-login` values rather than collapsing
-   * "unknown" into either of the other two.
+   * The circle's three states (Screens C §08, "THE PERSON CIRCLE — THREE
+   * STATES"), and the third is a **withdrawal**: ring accent = holds a
+   * Login, ring control = holds none, **no ring** = login state is not
+   * known. The CSS keys entirely off `data-login`'s three values (`'yes'`,
+   * `'no'`, absent), so this is where the three-way distinction is pinned.
+   *
+   * The first attempt gave "unknown" a third *colour*, which flattened in
+   * the parchment theme where every `--color-rule*` resolved to one value —
+   * so the offline fallback said "nobody in this Household holds a login",
+   * false even for the reader's own row. Withdrawing the ring cannot flatten
+   * in any theme, because it adds no colour to flatten.
    */
   it('gives loaded-with-login, loaded-without and unknown three distinct data-login states, not two', async () => {
     renderPeople({
@@ -670,9 +674,17 @@ describe('the People screen', () => {
     await screen.findByText(
       'Login state could not be loaded. Check your connection.',
     )
-    expect(screen.getByTestId(`person-initial-${ELS}`)).not.toHaveAttribute(
-      'data-login',
-    )
+
+    // Screen-level, never per-row: every circle withdraws together, the
+    // reader's own included — which is what makes the one quiet line above
+    // read as the explanation for the whole list rather than a note about
+    // somebody else's row. A per-row fallback would leave `MARK` ringed and
+    // silently claim the fetch had told us something about him.
+    for (const id of [MARK, ELS, KEES]) {
+      expect(screen.getByTestId(`person-initial-${id}`)).not.toHaveAttribute(
+        'data-login',
+      )
+    }
   })
 
   it('keeps + NEW PERSON and RENAME live with the login half down', async () => {

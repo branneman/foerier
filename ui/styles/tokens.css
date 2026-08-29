@@ -78,7 +78,13 @@
     --parchment-bg-raised: #ffffff;
     --parchment-ink-primary: #232820;
     --parchment-ink-muted: #6a7161;
+    /* Three rule values, matching sage's hierarchy. Added at S5
+       (Foundations, "light values added S5"): a control border at
+       `--parchment-rule` fails at 1.5px on a light surface, and any component
+       that leans on the hierarchy flattens to one line weight without them. */
     --parchment-rule: #d8d2be;
+    --parchment-rule-row: #e3decb;
+    --parchment-rule-control: #bbb6a2;
     --parchment-accent: #35523f;
     --amber-light: #b4741f;
     --status-staged-light: #8a6717;
@@ -123,8 +129,8 @@
       --color-ink-faint: var(--parchment-ink-muted);
       --color-ink-dim: var(--parchment-ink-muted);
       --color-rule: var(--parchment-rule);
-      --color-rule-row: var(--parchment-rule);
-      --color-rule-control: var(--parchment-rule);
+      --color-rule-row: var(--parchment-rule-row);
+      --color-rule-control: var(--parchment-rule-control);
       --color-accent: var(--parchment-accent);
       --color-accent-fill: rgb(53 82 63 / 0.16);
       --color-brand-amber: var(--amber-light);
@@ -146,8 +152,8 @@
     --color-ink-faint: var(--parchment-ink-muted);
     --color-ink-dim: var(--parchment-ink-muted);
     --color-rule: var(--parchment-rule);
-    --color-rule-row: var(--parchment-rule);
-    --color-rule-control: var(--parchment-rule);
+    --color-rule-row: var(--parchment-rule-row);
+    --color-rule-control: var(--parchment-rule-control);
     --color-accent: var(--parchment-accent);
     --color-accent-fill: rgb(53 82 63 / 0.16);
     --color-brand-amber: var(--amber-light);

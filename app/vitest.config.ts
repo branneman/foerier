@@ -13,6 +13,19 @@ export default defineConfig({
   test: {
     name: 'app',
     environment: 'jsdom',
+    /**
+     * The account surfaces render timestamps in the **reader's local time**
+     * (Screens C §08, S5), so an unpinned zone would make those assertions
+     * pass or fail by where the machine is.
+     *
+     * Pinned to a zone that is deliberately **not** UTC: under `TZ=UTC` a
+     * local-time formatter and the ISO-slicing one it replaced produce
+     * identical strings, so every assertion would hold against the bug it
+     * exists to catch. Amsterdam is the household's own zone and is offset
+     * in both halves of the year (+1 / +2), which is also what makes the
+     * fixtures below read as the boards draw them.
+     */
+    env: { TZ: 'Europe/Amsterdam' },
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/testSetup.ts'],
   },
