@@ -80,8 +80,10 @@ function NavItem({
       ) : (
         <>
           <span>{label}</span>
-          {/* Desktop only, and only where a count exists: `FIND` never has
-              one, and `TRIPS` has none until trips do.
+          {/* Desktop only, and only where a count exists. A count is the
+              size of the list the destination opens, so `FIND` is the one row
+              that never has one — it answers a question rather than holding a
+              collection.
 
               `aria-hidden`, deliberately: a destination is called Depot
               whether it holds nothing or two hundred things, and folding the
@@ -228,8 +230,10 @@ export interface AppShellProps {
   syncTone?: 'reachable' | 'unreachable'
   /**
    * What each destination counts, keyed by href — drawn in the sidebar only.
-   * A destination with no entry simply has no count, which is how `FIND`
-   * reads today and `TRIPS` reads until S6.
+   * A count is the **size of the list the destination opens**, which is why
+   * `FIND` is the one row that carries none: it answers a question rather
+   * than holding a collection. A destination with no entry simply draws no
+   * count.
    */
   counts?: Readonly<Partial<Record<string, number>>>
   /**

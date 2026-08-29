@@ -8,8 +8,9 @@ import fixture from '../fixtures/s2-depot.ops.json' with { type: 'json' }
 /**
  * `docs/testing.md` frames this fixture as ops "captured from a previous app
  * version" — true of every op here except the two `{name: null}` ones below.
- * `authoring.ts` types every builder's `name` as `string`, so no foerier
- * client, past or present, can author a `null` name; these two are
+ * `authoring.ts` types the `name` of `gearRenamed` and `placeRenamed` — the
+ * two builders these probes are on — as `string`, so no foerier client, past
+ * or present, can author a `null` through either; these two are
  * **forward-compatibility probes**, standing in for a foreign or future
  * client that legitimately sends one (`sync-protocol.md` §1.3 permits it —
  * see `reduce.ts`'s `writeNullableIfPresent`). Do not read them as evidence
