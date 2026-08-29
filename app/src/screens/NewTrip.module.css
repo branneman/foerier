@@ -1,0 +1,152 @@
+@layer components {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .sync {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .syncDot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .input {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  /*
+   * The two dates sit side by side from the phone up: they are one fact with
+   * two ends, and stacking them puts the arrow of the range in the reading
+   * order rather than in the layout. `1fr 1fr` of a 393 gutter still clears
+   * the 48px control height, which is the only dimension that has to hold.
+   */
+  .dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12);
+  }
+
+  /* Add gear's HOME/OWNER row, third caller. Same 48px bordered control,
+     because a value that is picked rather than typed reads the same way
+     wherever it appears. */
+  .pickRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-primary);
+    cursor: pointer;
+  }
+
+  .pickValue {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .primary {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Disabled is a state of the ledger line, not a failure: the label never
+     changes, so the button never explains itself in place of the fact above
+     it saying what is missing (`AddGear.module.css`). */
+  .primary:disabled {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-muted);
+    cursor: default;
+  }
+
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* Roomy 540 centres a 448 measure, exactly as Add gear does — the two
+     screens are the same form at the same width, and the flow moves from one
+     to the other. */
+  @media (min-width: 40em) {
+    .screen {
+      max-width: 28rem;
+      margin-inline: auto;
+      width: 100%;
+    }
+  }
+}
