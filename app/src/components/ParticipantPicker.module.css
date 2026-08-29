@@ -1,0 +1,110 @@
+@layer components {
+  /*
+   * `OwnerPicker.module.css`'s vocabulary, duplicated rather than `composes`d
+   * — the same argument that file makes about the Home picker, one twin
+   * further along. The two agree today because both are "a list of rows plus a
+   * dashed create row"; this one diverges the moment a Participant row grows
+   * the person circle the trip card draws, and that divergence must be a
+   * change to this file and not to the owner picker's rendering.
+   */
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  /* Rows 40+ — the sheet primitive (Screens A §03). */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  /*
+   * The chosen marker. Same anatomy as the owner picker's `● NOW` and a
+   * different word, because `NOW` states which single value a register holds
+   * and there is no single one here — `PARTICIPANT` is the boards' own term
+   * for a Person who is on the Trip (Components §02 tags a name with it).
+   */
+  .marker {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+
+  .addRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding-block: var(--space-8);
+  }
+
+  .addInput {
+    flex: 1;
+    min-height: max(3rem, 48px);
+    background: var(--color-well);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    padding-inline: var(--space-12);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  .inlineSave {
+    flex: none;
+    min-height: 2.5rem;
+    padding-inline: var(--space-12);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .inlineCancel {
+    flex: none;
+    min-height: 2.5rem;
+    padding-inline: var(--space-8);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .addPerson {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    border: var(--stroke-rule) dashed var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .close {
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}
