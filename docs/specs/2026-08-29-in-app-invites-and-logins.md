@@ -286,17 +286,23 @@ Notes the table cannot carry:
 
 - **State 3 is not on the boards** and is argued in [§6.2](#62-login--no-device-signed-in).
   Your own row can never reach it — you are reading this on a Device.
-- **`LAST SEEN` is not local time**, despite an earlier draft of this spec
-  saying so. It is formatted `YYYY-MM-DD HH:MM` as the board draws it, sliced
-  straight off the ISO string — the same choice `Devices.tsx`'s own
-  `formatDateTime` already made, and for the same reason: a `Date`
-  `getHours()`/`getMinutes()` read is the *reader's* offset, which would make
-  the line print a different hour on a device in a different timezone than
-  the one the Login was actually last seen from, silently drift from
-  `Devices.tsx`'s twin the moment either was touched, and be unassertable in a
-  test that does not also fix the runner's timezone. It appears only on
-  another Person's row. Printing when *you* were last seen, on the screen you
-  are looking at, is noise.
+- **`LAST SEEN` renders in the reader's local time**, formatted
+  `YYYY-MM-DD HH:MM` with no zone suffix. This spec argued the opposite twice
+  and was wrong both times; the boards settled it (Screens C §08, "DECISIONS
+  DRAWN AFTER THE FACT"). **UTC is false for every reader of a one-timezone
+  household** — `19:04Z` is 21:04 on the phone in their hand — and a relative
+  form (`5 DAYS AGO`) fights a ledger that writes dates as data. The
+  machine-independence this spec was protecting is a property of the *test
+  runner*, not of the product, and it is bought instead by pinning
+  `TZ=Europe/Amsterdam` in `app/vitest.config.ts` — deliberately not UTC,
+  under which a local formatter and the ISO-slicing one it replaced emit
+  identical strings and every assertion would pass against the bug it exists
+  to catch. One formatter, `app/src/format.ts`, now serves this line,
+  `Devices.tsx`'s twin and Account's `ADDED`/`LAST USED`: while `LAST SEEN`
+  was local and `SIGNED IN` was not, a single Devices row could print a date
+  from one calendar beside a time from another. It appears only on another
+  Person's row — printing when *you* were last seen, on the screen you are
+  looking at, is noise.
 - **The own row's `›` is omitted in the `inline` variant.** At Desktop, People
   unfolds into Account's card and `/account/devices` redirects back to
   `/account` — a chevron whose destination is the card two rows above it is an
@@ -314,9 +320,14 @@ Notes the table cannot carry:
 no scrim dismissal, per the Radix conversion's §3.1:
 
 > **Revoke Els's login?**
-> Els's devices lose access at their next contact with the server. Everything
-> Els recorded stays.
+> Els's devices lose access at their next sync. Everything Els recorded stays
+> with the household.
 > `Revoke login` · `Cancel`
+
+The copy is the board's, not this spec's first draft: "at their next sync"
+because that is the phrase §12's Devices sheets already use for the same
+delay, and "stays with the household" because "stays" alone leaves open
+*where*.
 
 No ▲. Nothing is discarded, and §12's rule is that signing out this device is
 the only auth action that earns the attention class. **`REVOKE` on an Invite is
@@ -333,8 +344,8 @@ The People half of this screen is a fold of the op log and keeps working with
 the radio off. The login half is a server fact and cannot.
 
 When either request fails, the screen renders **exactly what S4 rendered** —
-neutral circles, no meta, no right column, `3 people.` — plus one line in the
-established wording:
+**circles with the ring withdrawn**, no meta, no right column, `3 people.` —
+plus one line in the established wording:
 
 ```
 Login state could not be loaded. Check your connection.
@@ -345,6 +356,24 @@ be true while knowing less. The rule it keeps is the one that governed the whole
 S4 → S5 seam: **drawing every circle as "no login" would render the joiner as
 having none, and stating something false is worse than stating less.** Offline
 is the same situation as S4, arriving later.
+
+**The circle is where that rule was nearly lost, and the boards are what saved
+it.** S4 could say its circle "carried no meaning attached"; S5 gives the
+control border the meaning `= no login`, so the same pixel becomes a claim.
+This spec's first answer was a third *colour* for "not known", which held in
+sage and flattened in parchment — where `--color-rule`, `--color-rule-row` and
+`--color-rule-control` all resolved to one value — putting the false statement
+straight back for every light-theme reader. The boards' answer is a
+**withdrawal**: the ring *is* the statement "login state is known", so when the
+list cannot load the ring goes with it (Screens C §08, "THE PERSON CIRCLE —
+THREE STATES"). Adding no colour is what makes it unflattenable in any theme,
+now or later. Parchment separately gained the rule hierarchy it was missing —
+a control border at `#d8d2be` fails at 1.5px on a light surface — but no
+circle depends on it.
+
+**Withdrawal is screen-level, never per-row.** Every circle loses its ring at
+once, which is what makes the single line above legible as the explanation for
+the whole list rather than a note about one row.
 
 `+ NEW PERSON` and EDIT/RENAME stay live offline throughout — they author ops.
 
@@ -504,7 +533,16 @@ pattern this reuses.
 
 ---
 
-## 6. Three departures from the boards
+## 6. Three departures from the boards — since adopted
+
+**All three are now drawn.** They are kept below as the arguments that were
+made, because the boards took each of them and a reader who finds a departure
+recorded here should know it stopped being one. The design pass that adopted
+them also **overturned two decisions this spec had made without a board** —
+`LAST SEEN`'s timezone ([§3.2](#32-the-five-row-states)) and the revoke sheet's
+copy — and answered the one thing this spec parked rather than settled, the
+circle's third appearance ([§3.3](#33-offline)). Twelve decisions went to that
+pass; ten came back blessed as built.
 
 ### 6.1 `REOPEN ›` is not built
 

@@ -284,7 +284,7 @@ Invite and a device link across three entry points. See
 [its spec](docs/specs/2026-08-29-in-app-invites-and-logins.md) and
 [§12.12](docs/architecture-design.md#1212-consequences-of-s5-in-app-invites-and-the-logins-list).
 
-**Two things about S5 are worth knowing before touching auth again:**
+**Three things about S5 are worth knowing before touching auth again:**
 
 - **Purpose scopes listing and revoking, and it is one sentence, not a
   flag.** A join Invite creates a Login, which is Household business — any
@@ -303,6 +303,22 @@ Invite and a device link across three entry points. See
   would make every Maintainer-minted device link revocable by any member,
   a policy call this design has not made. It expires in an hour regardless —
   `admin:list` does not show it; it prints only Households and their Logins.
+- **An encoding inherited as "meaningless for now" becomes load-bearing the
+  moment a slice gives it meaning.** S4 drew the person circle's control
+  border with *no meaning attached*, so its offline render could call that
+  border neutral. S5 makes the same border mean `= no login` — and every
+  fallback that leaned on its emptiness silently became a false statement.
+  The boards' answer is a **withdrawal**, not a third colour: the ring *is*
+  the claim "login state is known", so when the list cannot load the ring
+  goes with it (`docs/design/README.md` §13). A third colour was tried first
+  and collapsed in the parchment theme, where every `--color-rule*` resolved
+  to one value. Two habits come out of it — **timestamps render in the
+  reader's local time** through the one formatter in `app/src/format.ts`
+  (`app/vitest.config.ts` pins `TZ=Europe/Amsterdam` so the assertions mean
+  something; under UTC they would pass against the bug they exist to catch),
+  and **a decision taken in code that no board draws gets written down and
+  challenged**. S5's audit found twelve; the boards blessed ten and
+  overturned two, both of them copy.
 
 **S5 landed after S6, which is the one place the slice order does not match
 [§8](docs/architecture-design.md#8-the-slice-plan)'s.** It was next after S4,

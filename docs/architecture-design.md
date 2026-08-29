@@ -1877,12 +1877,35 @@ see its [spec](specs/2026-08-29-in-app-invites-and-logins.md).
   [auth-design §5](auth-design.md#5-devices-that-cannot-hold-a-passkey)
   already provides for exactly this.
 - **A screen designed to be true while knowing less turned out to be its own
-  offline mode.** §12.10 recorded that S4 shipped People with its login half
-  drawn neutral, because stating "no login" for a joiner who demonstrably held
-  one would be false, and stating less is not the same defect as stating
-  something wrong. S5 needed a fallback for exactly one new case — the login
-  fetch failing — and the render that fallback needed already existed: it is
-  S4's screen, unchanged, plus one line saying the connection failed. No
-  second neutral state was designed, because the first one was never a
-  stopgap; it was already honest about knowing nothing, which is precisely
-  what offline is.
+  offline mode — everywhere except the one pixel that had quietly become a
+  claim.** §12.10 recorded that S4 shipped People with its login half drawn
+  neutral, because stating "no login" for a joiner who demonstrably held one
+  would be false. S5 needed a fallback for exactly one new case — the login
+  fetch failing — and the render it needed already existed: S4's screen, plus
+  one line saying the connection failed. But S4 could call its circle
+  "neutral" only because the control border meant nothing yet. **S5 gives that
+  border the meaning `= no login`, and a neutral state cannot be spelled with
+  a token that now carries a claim.** The first fix reached for a third
+  colour, which held in sage and collapsed in parchment — where every
+  `--color-rule*` resolved to one value — putting the false statement back for
+  every light-theme reader, invisibly, because the tests pinned the attribute
+  and not the pixel. The boards answered with a **withdrawal**: the ring *is*
+  the statement "login state is known", so when the list cannot load the ring
+  goes with it. Adding no colour is what makes it unflattenable in any theme.
+  The general lesson is about the *seam*, not the circle: an encoding
+  inherited as "meaningless for now" becomes load-bearing the moment a later
+  slice assigns it meaning, and every fallback that leaned on its emptiness
+  silently becomes a lie.
+- **Twelve decisions reached code without ever reaching a board, and a design
+  pass took all twelve.** S5 is the first slice to have that gap audited
+  rather than noticed: what shipped was compared against `docs/design`
+  line by line, and everything the boards did not draw — an added meta state,
+  an undrawn confirm sheet and its copy, a third door on the handover screen,
+  what `EDIT` does to a right column that did not exist when `EDIT` was
+  settled, where an undrawn chevron leads — was written up and challenged.
+  **Ten came back blessed as built; two were overturned**, the revoke sheet's
+  wording and `LAST SEEN`'s timezone. That ratio is the argument for the
+  audit rather than against it: the two that changed were both *copy*
+  decisions taken silently by an implementer, which is exactly the class a
+  code review cannot catch, because nothing about them is wrong as code.
+  §8.5's later slices should expect the same pass.
