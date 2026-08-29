@@ -26,3 +26,7 @@ test/e2e/.auth/
 
 # Claude Code local state: personal settings and nested worktrees
 .claude/
+
+# Subagent-driven-development scratch: ledger, task briefs, review packages.
+# Scratch by design — the record that outlives a branch is its git history.
+.superpowers/
