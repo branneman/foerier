@@ -1812,9 +1812,11 @@ Six op types, no endpoints, no migration; see its
   rather than in place of it.
 - **`DepotState` is now the fold of everything, not just the depot, and the name
   stays.** Renaming reaches `DepotStoreState`, `DepotProvider`, `useDepot`,
-  `DepotView` and every screen in three workspaces, and S5 is in flight across
-  those same files. Recorded as a misnomer rather than fixed under a slice that
-  would have to merge against it.
+  `DepotView` and every screen in three workspaces, and S5 was in flight across
+  those same files when S6 landed. Recorded as a misnomer rather than fixed
+  under a slice that would have to merge against it. **The reason has since
+  expired** — S5 has landed, so the rename is now a self-contained job for
+  whichever slice wants it, and no longer blocked on anything.
 - **S6 paid S4's fixture debt, and the payment is weaker than the original would
   have been.** §8.7 obliges every slice from S2 onwards to capture an op fixture
   for its own op types; S4's spec said the rule applied and no file landed, so
