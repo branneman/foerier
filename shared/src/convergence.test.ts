@@ -11,6 +11,7 @@ import {
 import {
   gearKindSet,
   gearOwnedCountSet,
+  gearOwnershipSet,
   gearRecorded,
   gearRehomed,
   gearRenamed,
@@ -19,6 +20,7 @@ import {
   gearTagApplied,
   gearTagRemoved,
   personRecorded,
+  personRenamed,
   placeRecorded,
   placeRemoved,
   placeRenamed,
@@ -26,7 +28,7 @@ import {
 } from './authoring.ts'
 import type { OpEnvelope } from './ops.ts'
 import { containmentView } from './selectors/containment.ts'
-import type { KindValue, Residence } from './state.ts'
+import type { KindValue, Owner, Residence } from './state.ts'
 import { normalizeTag, type TagString } from './tags.ts'
 
 /**
@@ -200,7 +202,17 @@ const arbResidence: fc.Arbitrary<Residence> = fc.oneof(
 )
 
 /**
- * All thirteen op types this build folds (`sync-protocol.md` §4), authored
+ * `shared` or one of the two People — the whole domain of the `owner`
+ * register, so two devices contesting it is the common case rather than a
+ * rare one.
+ */
+const arbOwner: fc.Arbitrary<Owner> = fc.oneof(
+  fc.constant<Owner>({ type: 'shared' }),
+  arbPersonId.map((personId): Owner => ({ type: 'person', personId })),
+)
+
+/**
+ * All fifteen op types this build folds (`sync-protocol.md` §4), authored
  * through the real builders — never a hand-shaped payload, so the generator
  * cannot drift from the wire format.
  */
@@ -222,14 +234,19 @@ const arbSpec: fc.Arbitrary<OpSpec> = fc.oneof(
       kind: arbKind,
       residence: fc.option(arbResidence, { nil: undefined }),
       ownedCount: fc.option(fc.nat({ max: 3 }), { nil: undefined }),
+      // Optional, so the property generates gear with **no** owner register
+      // as well as gear with one — the pair `selectors/owner.ts` reads alike
+      // and the fold keeps apart.
+      owner: fc.option(arbOwner, { nil: undefined }),
     })
-    .map(({ id, name, container, kind, residence, ownedCount }) =>
+    .map(({ id, name, container, kind, residence, ownedCount, owner }) =>
       gearRecorded(id, {
         name,
         container,
         kind,
         ...(residence === undefined ? {} : { residence }),
         ...(ownedCount === undefined ? {} : { owned_count: ownedCount }),
+        ...(owner === undefined ? {} : { owner }),
       }),
     ),
   fc.tuple(arbGearId, arbName).map(([id, name]) => gearRenamed(id, name)),
@@ -244,7 +261,14 @@ const arbSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   arbGearId.map((id) => gearRestored(id)),
   fc.tuple(arbGearId, arbTag).map(([id, tag]) => gearTagApplied(id, aTag(tag))),
   fc.tuple(arbGearId, arbTag).map(([id, tag]) => gearTagRemoved(id, aTag(tag))),
+  fc
+    .tuple(arbGearId, arbOwner)
+    .map(([id, owner]) => gearOwnershipSet(id, owner)),
   fc.tuple(arbPersonId, arbName).map(([id, name]) => personRecorded(id, name)),
+  // Nullable, so the property exercises the clear as well as the write.
+  fc
+    .tuple(arbPersonId, fc.option(arbName, { nil: null }))
+    .map(([id, name]) => personRenamed(id, name)),
 )
 
 /**
@@ -401,6 +425,121 @@ describe('convergence', () => {
       kind: 'place',
       id: shed,
     })
+  })
+
+  it('two concurrent ownership sets converge to the later stamp on both replicas', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const els = PERSON_IDS[0]
+    const mark = PERSON_IDS[1]
+
+    a.emit(personRecorded(els, 'Els'))
+    a.emit(personRecorded(mark, 'Mark'))
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Down jacket',
+        container: false,
+        kind: 'single',
+      }),
+    )
+    exchange(a, b)
+
+    clock.advance(1000)
+    a.emit(gearOwnershipSet(gear, { type: 'person', personId: els }))
+    clock.advance(1000)
+    const later = b.emit(
+      gearOwnershipSet(gear, { type: 'person', personId: mark }),
+    )
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    // One register, plain LWW on `(hlc, device_id)` — §8.3's named scenario
+    // for this slice, and it needed no merge rule of its own.
+    expect(a.state().gear[gear]?.owner).toEqual({
+      value: { type: 'person', personId: mark },
+      hlc: later.hlc,
+      deviceId: later.device_id,
+    })
+  })
+
+  it('a concurrent return-to-the-pool is a write like any other, not a clear', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const els = PERSON_IDS[0]
+
+    a.emit(personRecorded(els, 'Els'))
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Down jacket',
+        container: false,
+        kind: 'single',
+        owner: { type: 'person', personId: els },
+      }),
+    )
+    exchange(a, b)
+
+    // A takes it personal again; B returns it to the shared pool, later.
+    clock.advance(1000)
+    a.emit(gearOwnershipSet(gear, { type: 'person', personId: els }))
+    clock.advance(1000)
+    b.emit(gearOwnershipSet(gear, { type: 'shared' }))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    // The register holds `shared` explicitly rather than being erased, which
+    // is what lets a later personal write lose to it on the clock alone.
+    expect(a.state().gear[gear]?.owner?.value).toEqual({ type: 'shared' })
+  })
+
+  it('a rename racing an ownership set leaves both writes standing', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const els = PERSON_IDS[0]
+
+    a.emit(personRecorded(els, 'Els'))
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Down jacket',
+        container: false,
+        kind: 'single',
+      }),
+    )
+    exchange(a, b)
+
+    // Different aggregates, different registers: neither write is contested,
+    // so the union is not computed — it is the absence of a conflict. Free to
+    // assert, and it is what proves S4's two ops do not interfere.
+    clock.advance(1000)
+    a.emit(personRenamed(els, 'Elsje'))
+    clock.advance(1000)
+    b.emit(gearOwnershipSet(gear, { type: 'person', personId: els }))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    expect(a.state().people[els]?.name?.value).toBe('Elsje')
+    expect(a.state().gear[gear]?.owner?.value).toEqual({
+      type: 'person',
+      personId: els,
+    })
+  })
+
+  it('a rename racing a name clear resolves by clock, and null is the winner it can be', () => {
+    const { clock, a, b } = aWorld()
+    const els = PERSON_IDS[0]
+
+    a.emit(personRecorded(els, 'Els'))
+    exchange(a, b)
+
+    clock.advance(1000)
+    a.emit(personRenamed(els, 'Elsje'))
+    clock.advance(1000)
+    b.emit(personRenamed(els, null))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    // `null` is a value with a clock, not an absence — so the later clear
+    // wins outright rather than losing to whatever was there before.
+    expect(a.state().people[els]?.name?.value).toBeNull()
   })
 
   it('place.removed racing a rehome into that place leaves the gear loose on both', () => {
