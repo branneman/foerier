@@ -25,7 +25,7 @@
 - **Vocabulary is law.** Trip · Phase · Participant · Draft · Pack-out · On trip · Unpack · Closed · Active · Quartermaster. Never "event", never "user", never "status" for a phase (status is packing, S9).
 - **Never print a slice number in user-facing copy.** `S7`-style scope tags live on the boards and in comments, never on screen.
 - **Known-flaky neighbour:** `api/test/server/sync.test.ts` fails nondeterministically in the full suite and passes alone. This slice touches no `api/` file; if it fails, re-run it alone to confirm the known flake.
-- **Commands.** `npm test -w @foerier/shared`, `npm test -w @foerier/app`, `npm test` (all), `npm run typecheck`.
+- **Commands.** The workspaces have no `test` script of their own; the root runs Vitest projects. Use `npx vitest run --project shared`, `npx vitest run --project app`, `npx vitest run --project ui`, `npm test` (shared + ui + app + api), `npm run typecheck`, `npm run lint`, `npm run format:check`. Where a task below says `npm test -w @foerier/<name>`, read it as `npx vitest run --project <name>`.
 
 ---
 
