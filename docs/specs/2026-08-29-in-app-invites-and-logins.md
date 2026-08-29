@@ -343,9 +343,9 @@ place to hand-maintain a cache.
 The People half of this screen is a fold of the op log and keeps working with
 the radio off. The login half is a server fact and cannot.
 
-When either request fails, the screen renders **exactly what S4 rendered** —
-**circles with the ring withdrawn**, no meta, no right column, `3 people.` —
-plus one line in the established wording:
+When either request fails, the screen renders what S4 rendered **everywhere
+except the circle** — no meta, no right column, `3 people.`, and **circles
+with the ring withdrawn** — plus one line in the established wording:
 
 ```
 Login state could not be loaded. Check your connection.

@@ -22,6 +22,9 @@
 
     /* ---- Primitive: shape ---- */
     --radius-pill: 999px;
+    /* The `YOU` badge, and nothing else so far — 3px, small enough that the
+       control scale's 8px would read as a different component. */
+    --radius-badge: 0.1875rem;
     --radius-control: 0.5rem;
     --radius-card: 0.75rem;
     --radius-sheet: 1rem;

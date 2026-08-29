@@ -165,14 +165,21 @@
     font-family: var(--font-ui);
   }
 
+  /* `YOU` is positional, not privileged — but the boards draw it in accent on
+     a half-strength accent border (Screens C §08), not in ink/faint on a
+     control border. It read as the latter because `--radius-chip` was never
+     a token: an invalid `border-radius` declaration is dropped at computed
+     value time, so the badge rendered square, and the colours had drifted
+     with it. */
   .badge {
     font-family: var(--font-mono);
     font-size: 0.5rem;
     font-weight: 600;
     letter-spacing: var(--tracking-label);
-    color: var(--color-ink-faint);
-    border: var(--stroke-rule) solid var(--color-rule-control);
-    border-radius: var(--radius-chip);
+    color: var(--color-accent);
+    border: var(--stroke-rule) solid
+      color-mix(in srgb, var(--color-accent) 50%, transparent);
+    border-radius: var(--radius-badge);
     padding: 0.0625rem var(--space-4);
   }
 

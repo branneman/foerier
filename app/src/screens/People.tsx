@@ -102,7 +102,12 @@ type RowState =
  * exist yet.
  *
  * `unknown` is what the whole screen falls back to when the server half
- * cannot be loaded, and it renders exactly what S4 rendered.
+ * cannot be loaded. It renders what S4 rendered **everywhere except the
+ * circle**: S4 could draw the control border and call it neutral because it
+ * meant nothing yet, and S5 gives that same border the meaning `= no login`,
+ * so reusing it here would state something false about every Person on
+ * screen. The circle withdraws its ring instead
+ * (`People.module.css`'s `.circle`).
  */
 function rowStateOf(
   personId: string,
@@ -360,11 +365,16 @@ export function People({
                   placeholder letter — inventing one would be a fact the app
                   does not have.
 
-                  `data-login` carries the board's accent-vs-control border
+                  `data-login` carries the board's accent-vs-control ring
                   encoding, and carries **no attribute at all** while the
-                  login half is not `'loaded'` — the CSS then falls through
-                  to S4's neutral border, which is the whole of the offline
-                  fallback for the circle. */}
+                  login half is not `'loaded'` — which is what withdraws the
+                  ring, because neither rule fires and the base border stays
+                  `transparent`. **Do not give the base rule a colour.** The
+                  ring is the statement "login state is known"; painting one
+                  here would say "no login" about every Person on screen,
+                  including the reader, whose own Login is the reason the
+                  screen is open. A third colour was tried and flattened in
+                  the parchment theme — see the CSS's own comment. */}
               <span
                 className={styles['circle']}
                 data-testid={`person-initial-${person.id}`}
