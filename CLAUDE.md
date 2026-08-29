@@ -166,10 +166,55 @@ overlay:**
   `Sign out this device?` can be part-way through `clearLocalData()`. Escape
   closes both.
 
-**Then S4, People and ownership.** It adds `person.renamed` and
-`gear.ownership_set`, the People list, the owner on gear detail — and
-**Person and Ownership as two more rows in S3's dimension table**, which is
-how story 4's narrowing is delivered rather than as a second, private filter.
+**S4, People and ownership, has landed** (story 4). Two ops —
+`person.renamed` and `gear.ownership_set` — the People screen, the owner
+picker, owner on Add gear, on gear detail and in the Depot's rows and OWNER
+column, and **Ownership and Person as two more rows in S3's dimension table**
+plus `GROUP BY OWNER`. No endpoints and no migration. See
+[its spec](docs/specs/2026-08-29-people-and-ownership.md) and
+[§12.10](docs/architecture-design.md#1210-consequences-of-s4-people-and-ownership).
+
+**Three things about S4 are worth knowing before touching People or
+ownership:**
+
+- **Two dimensions over one register, and the contradictory pair is recorded
+  rather than guarded.** The folded state is one `owner` register, and one
+  merged `OWNER` dimension would have expressed both of story 4's narrowings
+  with a single chip — but Components §04 draws `PERSON · S4` and
+  `OWNERSHIP · S4` as two dashed ghosts, and the second row buys the query the
+  merge cannot: *all* personal gear, whoever's. The price is that
+  `OWNERSHIP: SHARED` + `PERSON: ELS` is reachable and always empty. Not
+  guarded: the engine has exactly **one** filter rule, `0 OF N` is the honest
+  answer, and a second combinator between dimensions is precisely what S3
+  refused to build.
+- **An absent `owner` register reads `SHARED`, and only
+  `shared/src/selectors/owner.ts` says so.** The fold conflates nothing —
+  absent and `{type:'shared'}` stay different facts about the log — but every
+  reader treats them alike, and the Ownership dimension derives its values from
+  that one function. A call site that re-derives the rule will drift from the
+  filter, and the symptom is a row labelled `SHARED` vanishing under
+  `OWNERSHIP: SHARED`. It is also why gear detail's Edit sheet seeds its draft
+  through `ownerOf`: reading the raw register would make every Save on pre-S4
+  gear author an op, and a needless write moves `recordedAt` and reorders
+  `NEWEST FIRST`.
+- **The People screen is the board's minus its entire login half, and what it
+  leaves empty is S5's stated debt.** The row's meta slot, the circle's
+  accent-border login encoding, and the `PEOPLE` → `PEOPLE & LOGINS` rename all
+  wait on `GET /auth/logins`. Drawing every circle as "no login" would render
+  the joiner, who demonstrably holds one, as having none — so it draws neutral.
+  The three obligations are listed in the spec's §7 and in
+  `docs/design/README.md` §13.
+
+**Add gear gained an `OWNER` row, which is a departure from a settled board.**
+Recorded in `docs/design/README.md` §3b beside the `UNDO` note, for the same
+kind of reason: without it, attributing a two-hundred-item depot is two hundred
+gear-detail visits, and the bulk `SET OWNER` band is story 35, Later. It
+carries over between records exactly as `HOME` does, and leaving it at `Shared`
+writes **no** register at all.
+
+**Next is S5, auth 2** (story 28) — in-app Invites and the Logins list. S4
+unblocked it: story 28 issues Invites for People recorded under story 4
+([§8.2](docs/architecture-design.md#82-four-stories-accrete-across-slices-rather-than-landing-in-one)).
 
 Four conventions the code now carries that are easy to trip over:
 

@@ -430,21 +430,22 @@ payloads.
 | Type | Payload | Effect on folded state | Domain §9 | Story |
 | --- | --- | --- | --- | --- |
 | `person.recorded` | `{name: string｜null}` | Creates the Person; seeds `name`. `null` clears; absent ≠ null (§1.3) | Person recorded | 4 |
-| `person.renamed` | `{name}` | Sets `name` | Person renamed | 4 |
+| `person.renamed` | `{name: string｜null}` | Sets `name`. `null` clears; absent ≠ null (§1.3) | Person renamed | 4 |
 
 A Person is never removed: gear ownership and past trips reference them, and the
 model gives no removal operation. `login`/`device` disabling is
 [auth-design](auth-design.md)'s concern and is not an op.
 
-**The two rows ship in different slices: `person.recorded` in S2,
+**The two rows shipped in different slices: `person.recorded` in S2,
 `person.renamed` in S4.** Both trace to story 4, and the `Story` column above
 says so — but the story that *introduces* an op is not always the slice that
 *builds* it. S1's join screen already asks the joiner their name and pre-binds
 their Person id ([auth-design §3.4](auth-design.md)), so until something
 authors `person.recorded` the Household's own Login points at a Person nobody
 ever created. It therefore lands with the first slice that has an op log to
-append to, which is S2; `person.renamed` and the People UI stay in S4
-([architecture §8.3](architecture-design.md)).
+append to, which is S2; `person.renamed` and the People UI landed with S4
+([architecture §8.3](architecture-design.md),
+[its spec](specs/2026-08-29-people-and-ownership.md)).
 
 ### 4.3 Gear — 10 ops
 
@@ -497,7 +498,8 @@ trip. An absolute set is idempotent, LWW-safe, and matches story 11's requiremen
 that changing away from `consumed` **offers** the correction rather than silently
 re-applying it — the offer computes the new absolute value and waits for a human.
 
-**`name` is nullable; this was settled during the S2 slice.**
+**`name` is nullable; this was settled during the S2 slice, and finished at
+S4.**
 `place.recorded`/`place.renamed`, `gear.recorded`/`gear.renamed` and
 `person.recorded` all type their `name` field `string｜null`: an explicit
 `null` clears the field, a write like any other, while an absent field
@@ -507,9 +509,15 @@ absent-versus-null distinction generally, with no per-field carve-out.
 (treating an *absent* field as an explicit clear), so it says nothing about
 what a `null` payload should do, and citing it to justify collapsing `null`
 into absent — the reverse direction — was an error made and corrected during
-this slice, not a second, independent rule. `person.renamed` is not yet
-implemented by any reducer and is left as `{name}` here until the slice that
-folds it settles the same question for that row.
+this slice, not a second, independent rule.
+
+**`person.renamed` was the one row left open, and S4 closed it.** It was typed
+`{name}` here until the slice that folded it settled the same question — and
+the answer was that there was never a second question: `PersonState.name` is
+`Register<string | null>` and has been since S2, so the reducer's existing rule
+applied unchanged. It folds through the same `writeNullableIfPresent` path as
+the other four name registers, under the same handler as `person.recorded`,
+and its row above is typed accordingly.
 
 ### 4.4 Trip — 23 ops
 

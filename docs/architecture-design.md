@@ -583,14 +583,16 @@ either side keep their names, for the same reason stories do.
 - **Usable?** Every Device the household owns can be signed in, and any of them
   cut off from any other. Before this, one of them could not get in at all.
 
-**S4 — People and ownership.** *Delivers 4.*
+**S4 — People and ownership. Landed.** *Delivers 4.* See
+[its spec](specs/2026-08-29-people-and-ownership.md) and §12.10.
 
 - **Ops (2):** `person.renamed`, `gear.ownership_set`. `person.recorded` is
   S2's — see that slice's second note.
-- **UI:** the People list; owner on the gear detail; **Person** and **Ownership**
-  added to S3's slicing cluster — which is how story 4's "narrowed to one
-  Person's Personal gear, or to Shared only" is delivered, rather than as a
-  second, private filter.
+- **UI:** the People screen; the owner picker; owner on Add gear, on gear
+  detail and in the Depot's rows and OWNER column; **Person** and
+  **Ownership** added to S3's slicing cluster — which is how story 4's
+  "narrowed to one Person's Personal gear, or to Shared only" is delivered,
+  rather than as a second, private filter — plus `GROUP BY OWNER`.
 - **Tests:** Tier 1 — the ownership register and the two narrowings. Tier 2 —
   concurrent ownership edits.
 - **Usable?** Personal gear stops being everyone's problem, and S5 is unblocked.
@@ -1641,3 +1643,69 @@ endpoints, no `shared/`; see its
   tab has this open`. It uses a plain button and closes when the sequence
   finishes. `Confirm.Cancel` is still there, so Radix's focus target is
   unaffected.
+
+### 12.10 Consequences of S4: People and ownership
+
+The slice that delivers story 4 and unblocks S5. Two op types, no endpoints,
+no migration; see its [spec](specs/2026-08-29-people-and-ownership.md).
+
+- **§8.5's ladder was followed, not departed from — and that is worth saying
+  because S3's entry above records departures and a reader will look for one
+  here.** The ladder says Person *and* Ownership at S4, and the boards draw
+  two dashed ghost chips to match. The tidier design was one merged `OWNER`
+  dimension: the folded state is a single register, one chip would have
+  expressed both of story 4's narrowings, and it would have matched the Depot
+  table's own column head. Two rows won because the boards drew two, and
+  because the second row buys a query the merge cannot express — *all*
+  Personal gear, whoever's.
+- **The price of two dimensions over one register is a chip pair that can
+  only ever return nothing**, and it is **recorded rather than guarded**.
+  `OWNERSHIP: SHARED` + `PERSON: ELS` is reachable; the count line reads
+  `0 OF N`, which is honest, and `CLEAR (2)` is one tap away. Guarding it
+  would mean a second combinator *between* dimensions, and refusing to build
+  one is what S3's engine is. The note lives in `passesFilters`, where the
+  next author will be standing when they wonder.
+- **Grouping got its own table, beside the dimension table rather than inside
+  it.** A dimension may answer "several" (Tag) or "none" (Person, for shared
+  gear); a grouping must answer exactly one, because it is a partition. `OWNER`
+  groups by the *register*, which neither filter dimension does alone —
+  grouping by `person` would file the whole shared pool under `—`, and by
+  `ownership` would give two coarse groups and never name a Person. The
+  distinction paid for itself immediately: "GROUP BY never offers TAG" stopped
+  being prose beside a hardcoded branch in three files and became the fact that
+  a grouping needs a `keyOf` and Tag has none.
+- **An absent `owner` register reads `SHARED`, said once in `shared/`.** The
+  fold conflates nothing — absent and `{type:'shared'}` stay different facts
+  about the op log — but every *reader* treats them alike, and that equivalence
+  lives in one selector because the Ownership dimension derives its values from
+  it. A call site that re-derived the rule and drifted would make a row plainly
+  labelled `SHARED` vanish under `OWNERSHIP: SHARED`, which is a bug a
+  Quartermaster can see. It is also why gear detail's Edit sheet seeds its
+  draft through that selector: reading the raw register would make every Save
+  on pre-S4 gear author an ownership op, and a needless write moves
+  `recordedAt` and reorders `NEWEST FIRST`.
+- **`Dimension.format` gained the depot, and S3's own note is why that is
+  cheap.** S3 anticipated the need exactly — "S4's Ownership resolves a
+  `personId` to a Person" — and put the parameter one function too early, on
+  `valuesOf`. Right about the need, off by one about the place. The correction
+  reached `app/`, where `SliceBar` took a bound `formatFor` beside the
+  `valuesFor` it already had, keeping the component free of `DepotState`.
+- **Add gear gained an `OWNER` row, and that is a departure.** The board's F1
+  order is settled and reasoned and carries no owner. Without it, S4's only
+  route to attributing gear is one gear-detail visit per item and the Depot's
+  bulk `SET OWNER` band is story 35, Later — so a household attributing a
+  two-hundred-item depot makes two hundred screen visits, and the slice's own
+  "usable?" test fails on the first day. It carries over between records for
+  the board's own reason for HOME doing so: a depot is recorded shelf by shelf,
+  and a shelf in a bedroom is one person's.
+- **The People screen ships as the board's minus its entire login half, and
+  the three gaps are S5's stated debt.** Every line in the person row's meta
+  slot and right column is login state, and `GET /auth/logins` is S5's; the
+  circle's accent border means "holds a Login", which S4 cannot know, so it
+  draws neutral rather than rendering the joiner as having none. Written into
+  the spec's §7 so S5 inherits an obligation rather than a gap somebody has to
+  notice — the same discipline §12.7 asked for after `invite.person_recorded`.
+- **The Account row S3.5 deliberately omitted is now the argument for its own
+  existence.** "An affordance that leads nowhere is worse than a missing one"
+  kept `PEOPLE & LOGINS` out at S3.5; at S4 it leads to a real screen, so the
+  rule puts it in. It is titled `PEOPLE` until S5 can fill the other half.
