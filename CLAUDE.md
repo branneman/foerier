@@ -302,16 +302,25 @@ superseded, and `docs/design/README.md` §5 is the shipped authority.
   card and row folds resolve against it. jsdom computes no layout, so both tests
   assert the **shape** — the FAB is not contained by the element declaring the
   query container.
-- **The back link is withheld at Desktop and the sync line from Split up**, and
-  the two breakpoints differ because that is where `AppShell` takes each into the
-  nav — the marker at Split, the labeled sidebar at Desktop. One hook,
-  `useScreenHeader`, is the only place that says so
-  ([frontend-design §3.3](docs/frontend-design.md)). **Its reach is four screens
-  and that is a stated debt:** `AddGear`, `People` and `Devices` still spell
-  their own band, and `AddGear` is the live one — `/add` is unguarded, so it
-  states `SYNCED` twice at every width from 52em, heard at Split (the rail
-  draws a bare dot and carries the string as its `aria-label`) and seen at
-  Desktop.
+- **A screen draws its own sync line at Split and only at Split, and its own
+  back link unless the destination is already on the page.** `AppShell` states
+  the status in words in the phone header and in the Desktop sidebar, and draws
+  a **bare 6px dot** on the Split rail — so Split is the one mode where nothing
+  legible says it. The back link turns on a different fact: never at Desktop,
+  where the labeled sidebar is the destination, and at Split only for a screen
+  that is not a pane — `GearDetail` has the Depot list beside it there and
+  `Depot split` draws no `‹` at all, while a Trip has no two-pane view at any
+  width. One hook, `useScreenHeader`, taking a `splitPane` placement, is the
+  only place that says so ([frontend-design §3.3](docs/frontend-design.md)).
+  **The round shipped this inverted and review caught it**, which is why
+  `app/src/shell/screenBand.test.tsx` renders a screen *inside* `AppShell` and
+  counts: the per-screen suites render without the shell, so their absence
+  assertions prove one side of a two-sided fact. **The hook's reach is four
+  screens and that is a stated debt:** `AddGear`, `People` and `Devices` still
+  spell their own band unconditionally, so all three print a second, identical
+  `SYNCED` under the phone header below Split — visible, on the primary device —
+  and `AddGear`, whose `/add` is unguarded, doubles it against the sidebar at
+  Desktop as well.
 
 **S5, auth 2, has landed** (story 28) — the second Quartermaster is now
 arranged from inside the app rather than by whoever runs the server. No

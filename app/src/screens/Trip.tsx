@@ -120,13 +120,14 @@ import styles from './Trip.module.css'
  * the *drawing* while leaving the tab order in the 393 sequence — `EDIT`
  * looking last and focusing third.
  *
- * The back link and the sync line go with the band that held them — but not
- * at the same width, which is `useScreenHeader`'s whole reason for existing.
+ * The back link and the sync line go with the band that held them — but on
+ * different questions, which is `useScreenHeader`'s whole reason for existing.
  * `‹ TRIPS` survives to Split, because the 56px rail there draws no labels and
- * a reader still needs the name of where they came from; it goes at Desktop,
- * where the 216px sidebar's `TRIPS` row *is* the destination it points at. The
- * sync line goes one band earlier, at Split, because that is where `AppShell`
- * takes the marker into the nav — "never in the main column at desktop".
+ * a Trip is nobody's pane, so nothing else on the page names where the reader
+ * came from; it goes at Desktop, where the 216px sidebar's `TRIPS` row *is* the
+ * destination it points at. The sync line is drawn at **Split alone**:
+ * `AppShell` states the status in words in the phone header and in the sidebar,
+ * and on the rail it draws a bare dot whose words are only an `aria-label`.
  * `Account`, `GearDetail` and `NewTrip` read the same rule from the same hook.
  */
 export function Trip() {

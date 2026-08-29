@@ -174,51 +174,74 @@ two-line row at a viewport of 900.
 ### 3.3 Screen headers — the back link and the sync line
 
 A screen reached *from* a destination draws a band above its title: a back link
-(`‹ DEPOT`, `‹ TRIPS`) and the sync marker. **Both are withheld, and at two
-different widths**, because that is where `AppShell` takes each of them into
-the nav:
+(`‹ DEPOT`, `‹ TRIPS`) and the sync marker. **Each is withheld, and neither is
+withheld at a single width**, because the two answer different questions.
 
-- **The back link goes at Desktop (`≥ 64em`).** The 216px sidebar is labeled
-  navigation, and the row `‹ TRIPS` points at *is* the sidebar's `TRIPS`. At
-  Split the nav is a 56px icon rail with no labels, so the back link is the only
-  thing on screen naming where the reader came from and it stays.
-- **The sync line goes from Split up (`≥ 52em`).** `AppShell` draws its own
-  header band on `mode === 'tabs'` alone, so from 52em the marker is already in
-  the rail — and the boards put it there and nowhere else, *"never in the main
-  column at desktop"*. A screen that kept drawing its own would state `SYNCED`
-  twice from 52em — beside its title and again in the nav, where at Split the
-  bare rail dot carries it as an `aria-label` and the Desktop sidebar draws it.
+- **The sync line is drawn at Split (`52–64em`), and only there.** `AppShell`
+  states the status in **words** in two of its three modes — the phone header
+  band below Split, and the 216px sidebar at Desktop — and in the third it draws
+  a bare 6px dot on the 56px rail, hanging the words on an `aria-label`. Split
+  is therefore the one mode where nothing legible says it, and the one mode
+  where a screen draws its own. Both boards that draw a pushed screen at 900
+  agree: `Screens A` §05's `Depot split` carries `● SYNCED` in the detail pane's
+  own band with a bare dot in the rail beside it, and §06's
+  `Add gear — split 900` is the same pane and the same dot.
+- **The back link is drawn unless its destination is already on the page**,
+  which is not a width alone. At Desktop the labeled sidebar *is* that
+  destination — `Trip screen — S6 desktop` draws `TRIPS` and the sync line in
+  the sidebar and neither in the main column — so no screen draws one there.
+  Below Desktop it depends on the screen: `GearDetail` is the detail half of
+  `DepotView` at Split with the Depot list in the pane beside it, and
+  `Depot split` contains **no `‹` anywhere**; `Trip` and `NewTrip` have no
+  two-pane view at any width, so at Split they stand alone against an unlabeled
+  rail and the link is the only route back.
 
-The `<header>` element itself exists exactly when the back link does and needs no
-third answer, because below Split is inside below Desktop: a withheld link is
-never left with a surviving line.
+The `<header>` element therefore needs a third answer: at Split a detail pane
+draws a sync line with no back link beside it, so "the band exists exactly when
+the back link does" is not true.
 
-The boards are what settle the asymmetry, and they settle it by drawing two 1024
-frames that differ. `Screens B`'s `Gear list builder` draws `‹ TRIPS` and is a
-bare pane with **no sidebar**; `Trip screen — S6 desktop` draws the 216px
-sidebar, puts the sync marker inside it, and drops both from the main column.
-**Sidebar drawn ⇒ back link and sync line not.**
+`Gear list builder` is the 1024 frame that draws `‹ TRIPS` — and it is a bare
+pane with **no sidebar**, which is what makes it consistent with
+`Trip screen — S6 desktop` rather than a contradiction of it: *sidebar drawn ⇒
+back link not.*
 
 **One hook says it: `useScreenHeader` in `app/src/shell/useMediaQuery.ts`**,
-which composes the two queries it sits beside and returns `{backLink, syncLine}`.
-It exists because four screens spelling the rule themselves is three chances to
-spell it differently — which is exactly how `Account` came to carry `Trip`'s
-defect from a different slice.
+which composes the two queries it sits beside, takes a `ScreenPlacement`
+(`splitPane`, true only for `GearDetail`) and returns `{band, backLink,
+syncLine}`. It exists because four screens spelling the rule themselves is three
+chances to spell it differently — which is exactly how `Account` came to carry
+`Trip`'s defect from a different slice.
 
-**Its reach is four screens, and that is a debt rather than the finished state.**
-`Trip`, `Account`, `GearDetail` and `NewTrip` ask the hook. Three pushed screens
-still spell their own band and get it wrong:
+**A screen tested without the shell can only prove half of this.** The four
+per-screen suites render their screen alone, so an absence assertion there says
+the screen withheld a line and nothing about whether `AppShell` drew one — which
+is how the rule shipped inverted, with a visible double print on a phone, and
+passed review. `app/src/shell/screenBand.test.tsx` is the other half: it renders
+a pushed screen **inside** `AppShell` and counts one visible `SYNCED` at phone
+width, at Split and at Desktop.
+
+**The hook's reach is four screens, and that is a debt rather than the finished
+state.** `Trip`, `Account`, `GearDetail` and `NewTrip` ask it. Three pushed
+screens still spell their own band unconditionally, and the cost is **visible
+from 393 up**, not only at a desk:
 
 - **`AddGear` is the live one.** `<Route path="/add">` is unguarded, so the
-  screen is reachable at every width and its unconditional `<header>` states
-  `SYNCED` twice from 52em up — heard at Split, seen at Desktop.
-- **`People` and `Devices`** `Redirect to="/account"` at Desktop, so their back
-  link is never reached and only the sync line is wrong — the same doubling,
-  bounded to 52–64em and so heard rather than seen.
+  screen is reachable at every width. Below Split its band states `SYNCED`
+  under `AppShell`'s header, which states it too — a second, identical line on
+  the primary device. At Split it is accidentally right *for the app as built*:
+  `<Route path="/add">` renders it standalone, so it is not a pane and does owe
+  a back link — the board's `Add gear — split 900` draws it as a pane with the
+  Depot list beside it, and that two-pane Add gear has never been built. At
+  Desktop it doubles the line against the sidebar's and repeats `‹ DEPOT` at the
+  row the sidebar already carries.
+- **`People` and `Devices`** `Redirect to="/account"` at Desktop, so their
+  Desktop band is never reached. What is left is the same phone double print
+  below Split, and a correct band at Split.
 
-Converting them is a code change and is deliberately not folded into the round
-that extracted the hook. The obligation is recorded here so the next person to
-touch a pushed screen finds it rather than rediscovering the doubled marker.
+Converting them is a code change and is deliberately not folded into the rounds
+that extracted and then corrected the hook. The obligation is recorded here so
+the next person to touch a pushed screen finds it rather than rediscovering the
+doubled marker.
 
 **A second gap at Split, and no board answers it.** The FAB (`Depot`, `Trips`)
 is gated `!isDesktop` and offset `bottom: 4.625rem` — 74px, which is the 56px
