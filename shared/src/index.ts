@@ -95,7 +95,12 @@ export {
   visiblePlaces,
 } from './selectors/depot.ts'
 
-export { ownerLabel, ownerOf, personLabel } from './selectors/owner.ts'
+export {
+  ownerLabel,
+  ownerOf,
+  personLabel,
+  UNNAMED_PERSON,
+} from './selectors/owner.ts'
 
 export type {
   Dimension,

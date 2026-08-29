@@ -1,6 +1,7 @@
 import {
   createHlcClock,
   personRecorded,
+  personRenamed,
   type Clock,
   type IdSource,
   type OpAuthor,
@@ -330,24 +331,34 @@ describe('New trip — the create', () => {
 
   it('draws a Person with no folded name as an empty circle', async () => {
     const user = userEvent.setup()
-    const seed = await seeded()
+    // A Person whose name the fold holds as **cleared** — `person.renamed`
+    // accepts an explicit `null` and the reader folds it, so a peer clearing
+    // a name is an ordinary arrival rather than a broken op. `personLabel`
+    // reads that as `UNNAMED_PERSON`, which is the branch this asserts.
+    //
+    // It is stated this way rather than through the picker's own
+    // `+ NEW PERSON` — the other route to a label-less Person, an id in the
+    // selection before the fold has caught up — because `emit` folds on the
+    // store's queue and the queue has drained long before an assertion can
+    // read the DOM. That path is covered where it can be held still, in
+    // `depot/trips.test.ts`'s `peopleOn` cases.
+    const seed = await seeded(
+      personRecorded('kees', 'Kees'),
+      personRenamed('kees', null),
+    )
     renderNewTrip(seed)
 
-    // Recorded from inside the picker, so for a tick this Person is in the
-    // selection and not yet in the fold. Inventing a placeholder letter would
-    // be a fact the app does not have (`TripCard`'s rule).
     await user.click(screen.getByRole('button', { name: /^Participants/ }))
-    await user.click(screen.getByRole('button', { name: '+ NEW PERSON' }))
-    await user.type(
-      screen.getByRole('textbox', { name: 'New person name' }),
-      'Kees',
-    )
-    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await user.click(screen.getByRole('button', { name: /—/ }))
     await user.click(screen.getByRole('button', { name: 'Close' }))
 
-    expect(
-      screen.getByRole('button', { name: 'Participants: Kees' }),
-    ).toHaveTextContent('K')
+    // The circle is empty, not an em dash and not a placeholder letter:
+    // inventing one would be a fact the app does not have. The row still
+    // names them, because a Participant must never silently vanish.
+    const row = screen.getByRole('button', { name: 'Participants: —' })
+    expect(row).toBeVisible()
+    const circle = row.querySelector('span span')
+    expect(circle?.textContent).toBe('')
   })
 
   /**

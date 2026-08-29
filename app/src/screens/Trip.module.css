@@ -343,8 +343,8 @@
      lines read as a section with nothing in it rather than as stray sentences
      under the header. Centred, as the board draws it: the region *is* the rest
      of the screen — `flex: 1`, not a padded block — and the count is what the
-     eye should land on. The padding is what is left when there is no spare
-     height to centre in: an open EDIT card on a short window. */
+     eye should land on. The padding keeps the two lines off the edges when
+     there is no spare height to centre in, and off the sides at any height. */
   .gear {
     display: flex;
     flex: 1;

@@ -98,8 +98,19 @@ function renderPicker(
   return { toggles, closes: () => closed }
 }
 
-/** The row labels, without the `PARTICIPANT ✓` marker a chosen row carries. */
+/**
+ * The row labels, without the `PARTICIPANT ✓` marker a chosen row carries —
+ * and without the leading initial circle, which is why this reads the
+ * **second** child. The board draws each row as circle · name · marker.
+ */
 function rowLabels(): (string | null)[] {
+  return screen
+    .getAllByTestId('participant-row')
+    .map((row) => row.children[1]?.textContent ?? null)
+}
+
+/** The initial each row draws, in row order — `''` for an empty circle. */
+function rowInitials(): (string | null)[] {
   return screen
     .getAllByTestId('participant-row')
     .map((row) => row.firstElementChild?.textContent ?? null)
@@ -118,6 +129,25 @@ describe('the participant picker', () => {
     expect(rowLabels()).toEqual(['Els', 'Mark'])
   })
 
+  it('leads each row with the boards initial circle', async () => {
+    const store = await seededStore([
+      personRecorded('mark', 'Mark'),
+      personRecorded('els', 'Els'),
+    ])
+    renderPicker(store)
+
+    // `Screens B` 02A's picker draws a 30px circle to the left of every name.
+    // It is `aria-hidden`: the name is right beside it, and an initial read
+    // aloud is as easily a stray letter (`AccountAvatar`'s rule).
+    expect(rowInitials()).toEqual(['E', 'M'])
+    const circles = screen
+      .getAllByTestId('participant-row')
+      .map((row) => row.firstElementChild)
+    for (const circle of circles) {
+      expect(circle).toHaveAttribute('aria-hidden', 'true')
+    }
+  })
+
   it('draws a Person with no name as a dash rather than an empty row', async () => {
     const store = await seededStore([
       personRecorded('els', 'Els'),
@@ -125,6 +155,10 @@ describe('the participant picker', () => {
     ])
     renderPicker(store)
     expect(rowLabels()).toEqual(['—'])
+    // And the circle beside it is **empty** rather than an em dash or an
+    // invented letter — the treatment `TripCard`, `Trip` and the People
+    // screen all give a Person the fold has no name for.
+    expect(rowInitials()).toEqual([''])
   })
 
   it('reflects the held selection on every row', async () => {

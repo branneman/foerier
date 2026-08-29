@@ -61,17 +61,33 @@ export function ownerLabel(state: DepotState, gear: GearState): string {
 }
 
 /**
+ * What {@link personLabel} returns for a Person with no folded name, and the
+ * one place the glyph is spelled.
+ *
+ * Every surface that draws a Person as a **circle** has to ask whether there
+ * is an initial to draw — the trip card, the trip screen, the People screen,
+ * the new-trip row, the participant picker — and each asked by comparing
+ * against a literal `'—'` of its own. Five copies of a sentinel is five
+ * chances to drift from the one function that produces it, and the drift is
+ * silent: a circle would draw the em dash as somebody's initial. So the
+ * sentinel lives beside the label it is a value of, and every reader imports
+ * it.
+ */
+export const UNNAMED_PERSON = '—'
+
+/**
  * A Person's name for a chip, a picker row or a group header — sentence case,
  * as recorded, never upper-cased here (CAPS is a CSS transform where a surface
  * wants it, matching how the rest of this codebase renders label text).
  *
- * An unnamed or unknown Person reads `—`, the same glyph the ungrouped bucket
- * uses. Both are reachable: a `person.recorded` carrying an explicit `null`,
- * and — more often — a gear op naming a Person whose own op is still queued on
- * someone else's phone. A chip with an empty label would look broken and a raw
- * UUID would look worse; `—` is selectable, countable, and honest.
+ * An unnamed or unknown Person reads {@link UNNAMED_PERSON}, the same glyph
+ * the ungrouped bucket uses. Both are reachable: a `person.recorded` carrying
+ * an explicit `null`, and — more often — a gear op naming a Person whose own
+ * op is still queued on someone else's phone. A chip with an empty label would
+ * look broken and a raw UUID would look worse; `—` is selectable, countable,
+ * and honest.
  */
 export function personLabel(state: DepotState, personId: string): string {
   const name = state.people[personId]?.name?.value ?? ''
-  return name.trim() === '' ? '—' : name
+  return name.trim() === '' ? UNNAMED_PERSON : name
 }

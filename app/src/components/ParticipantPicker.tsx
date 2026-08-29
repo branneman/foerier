@@ -1,4 +1,4 @@
-import { personRecorded, systemIdSource } from '@foerier/shared'
+import { personRecorded, systemIdSource, UNNAMED_PERSON } from '@foerier/shared'
 import { Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
@@ -11,10 +11,12 @@ import styles from './ParticipantPicker.module.css'
  * is single-select, and otherwise the same anatomy on purpose: one row per
  * recorded Person in `sortedPeople` order, a dashed create row, a `Close`.
  *
- * Rows, not circles: a picker is made of rows everywhere in this app and a
- * circle is display. The one word that differs from the twin is the marker —
- * membership reads `PARTICIPANT ✓`, the builder's `IN LIST ✓` grammar, and
- * `● NOW` stays reserved for a register that holds exactly one value.
+ * Rows, not circles: a picker is made of rows everywhere in this app, and the
+ * circle the board draws at the head of each one is display *inside* a row
+ * rather than a circle in place of it. The one word that differs from the twin
+ * is the marker — membership reads `PARTICIPANT ✓`, the builder's `IN LIST ✓`
+ * grammar, and `● NOW` stays reserved for a register that holds exactly one
+ * value.
  *
  * There is no pinned first row. `Shared` is a *value* of the ownership
  * register and belongs at the top of the owner picker for that reason; a
@@ -110,7 +112,21 @@ export function ParticipantPicker({
                 aria-pressed={chosen}
                 onClick={() => onToggle(person.id, !chosen)}
               >
-                <span>{person.label}</span>
+                {/* The board's 30px initial circle, the People screen's size
+                    and not the trip card's 22px — a picker row is a row, and
+                    it is the row's height that sets the circle's. `aria-hidden`
+                    for `AccountAvatar`'s reason: the name is right beside it,
+                    and an initial announced is as easily a stray letter. A
+                    Person with no folded name draws an **empty** circle rather
+                    than a placeholder letter. No login ring: that encoding is
+                    the People screen's statement about Logins, and this sheet
+                    knows nothing about them. */}
+                <span className={styles['circle']} aria-hidden="true">
+                  {person.label === UNNAMED_PERSON
+                    ? ''
+                    : person.label.charAt(0).toUpperCase()}
+                </span>
+                <span className={styles['name']}>{person.label}</span>
                 {chosen && (
                   <span className={styles['marker']}>PARTICIPANT ✓</span>
                 )}

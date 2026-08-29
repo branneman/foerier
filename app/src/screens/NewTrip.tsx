@@ -3,6 +3,7 @@ import {
   tripCreated,
   tripDatesSet,
   tripParticipantAdded,
+  UNNAMED_PERSON,
 } from '@foerier/shared'
 import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
@@ -258,7 +259,7 @@ export function NewTrip() {
                   {/* A Person with no folded name draws an **empty** circle
                       rather than a placeholder letter — inventing one would
                       be a fact the app does not have (`TripCard`'s rule). */}
-                  {person.label === '—'
+                  {person.label === UNNAMED_PERSON
                     ? ''
                     : person.label.charAt(0).toUpperCase()}
                 </span>

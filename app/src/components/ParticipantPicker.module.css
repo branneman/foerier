@@ -2,10 +2,10 @@
   /*
    * `OwnerPicker.module.css`'s vocabulary, duplicated rather than `composes`d
    * — the same argument that file makes about the Home picker, one twin
-   * further along. The two agree today because both are "a list of rows plus a
-   * dashed create row"; this one diverges the moment a Participant row grows
-   * the person circle the trip card draws, and that divergence must be a
-   * change to this file and not to the owner picker's rendering.
+   * further along. The divergence the duplication was there for has arrived:
+   * a Participant row leads with a person circle and an owner row does not,
+   * so `.row`, `.circle` and `.name` below are this file's and changing them
+   * cannot reach the owner picker's rendering.
    */
   .rows {
     display: flex;
@@ -29,6 +29,40 @@
     font-weight: 600;
     text-align: left;
     cursor: pointer;
+  }
+
+  /*
+   * The board's 30px initial circle at the head of each row — the People
+   * screen's size (`People.module.css`'s `.circle`), because both are rows and
+   * it is the row's height that sets it; the trip card's 22px belongs to a
+   * cluster of circles with no row around them.
+   *
+   * No `data-login` ring: that encoding is the People screen's statement about
+   * Logins, and this sheet is about a Trip. A border here would say something
+   * about a Login that this surface has not asked and cannot answer.
+   */
+  .circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    flex-shrink: 0;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    color: var(--color-ink-muted);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+  }
+
+  /* Takes the slack, so the marker stays at the trailing edge rather than
+     being spread evenly with the circle by the row's `space-between`. */
+  .name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /*
