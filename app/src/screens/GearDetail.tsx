@@ -3,6 +3,7 @@ import {
   dimensionValues,
   gearKindSet,
   gearOwnedCountSet,
+  gearOwnershipSet,
   gearRehomed,
   gearRenamed,
   gearRetired,
@@ -10,11 +11,14 @@ import {
   gearTagRemoved,
   normalizeTag,
   ownerLabel,
+  ownerOf,
+  personLabel,
   tagsOf,
   whereabouts,
   type DepotState,
   type GearState,
   type KindValue,
+  type Owner,
   type PathSegment,
   type WhereaboutsSlice,
 } from '@foerier/shared'
@@ -23,6 +27,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
+import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
 import { WhereaboutsCard } from '../components/WhereaboutsCard'
 import { useDepot } from '../depot/store'
@@ -107,6 +112,8 @@ export function GearDetail() {
   const [nameDraft, setNameDraft] = useState('')
   const [kindDraft, setKindDraft] = useState<KindValue>('single')
   const [countDraft, setCountDraft] = useState('1')
+  const [ownerDraft, setOwnerDraft] = useState<Owner>({ type: 'shared' })
+  const [ownerPickerOpen, setOwnerPickerOpen] = useState(false)
   const [retireOpen, setRetireOpen] = useState(false)
   const [tagsOpen, setTagsOpen] = useState(false)
 
@@ -122,6 +129,11 @@ export function GearDetail() {
     setNameDraft(current.name?.value ?? '')
     setKindDraft(current.kind?.value ?? 'single')
     setCountDraft(String(current.ownedCount?.value ?? 1))
+    // Through `ownerOf`, not `current.owner?.value`: an absent register has
+    // to seed the draft as `{type:'shared'}` so that an untouched Save
+    // compares equal and writes nothing. Reading the raw register here would
+    // make every Save on pre-S4 gear author an ownership op.
+    setOwnerDraft(ownerOf(current))
     setEditOpen(true)
   }
 
@@ -141,6 +153,21 @@ export function GearDetail() {
       if (validCount && parsedCount !== current.ownedCount?.value) {
         emit(gearOwnedCountSet(id, parsedCount))
       }
+    }
+
+    // Only when it changed, the discipline every field above follows. Both
+    // sides go through `ownerOf`, so gear with no register compares equal to
+    // the `Shared` the sheet drew and a no-op Save stays a no-op — which
+    // matters more here than elsewhere, because a needless write would move
+    // the gear's `recordedAt` and reorder `NEWEST FIRST`.
+    const currentOwner = ownerOf(current)
+    const ownerChanged =
+      ownerDraft.type !== currentOwner.type ||
+      (ownerDraft.type === 'person' &&
+        currentOwner.type === 'person' &&
+        ownerDraft.personId !== currentOwner.personId)
+    if (ownerChanged) {
+      emit(gearOwnershipSet(id, ownerDraft))
     }
 
     setEditOpen(false)
@@ -344,6 +371,24 @@ export function GearDetail() {
               </div>
             </fieldset>
 
+            {/* The 48px bordered row Add gear's HOME and OWNER both use.
+                The picker stacks on this sheet, the way the Home picker
+                already stacks on Add gear. */}
+            <button
+              type="button"
+              className={styles['ownerRow']}
+              aria-label="Owner"
+              onClick={() => setOwnerPickerOpen(true)}
+            >
+              <span className={styles['label']}>Owner</span>
+              <span className={styles['ownerValue']}>
+                {ownerDraft.type === 'shared'
+                  ? 'Shared'
+                  : personLabel(state, ownerDraft.personId)}{' '}
+                <span aria-hidden="true">›</span>
+              </span>
+            </button>
+
             {kindDraft === 'counted' && (
               <label className={styles['field']}>
                 <span className={styles['label']}>Owned count</span>
@@ -372,6 +417,17 @@ export function GearDetail() {
               </button>
             </div>
           </div>
+
+          {ownerPickerOpen && (
+            <OwnerPicker
+              value={ownerDraft}
+              onSelect={(next) => {
+                setOwnerDraft(next)
+                setOwnerPickerOpen(false)
+              }}
+              onClose={() => setOwnerPickerOpen(false)}
+            />
+          )}
         </Sheet>
       )}
 

@@ -4,6 +4,7 @@ import {
   gearRetired,
   gearTagApplied,
   normalizeTag,
+  personRecorded,
   placeRecorded,
   type Clock,
   type IdSource,
@@ -198,6 +199,100 @@ describe('Gear detail', () => {
 
     expect(store.getState().state.gear[gearId]?.name?.value).toBe(
       'Climbing rope',
+    )
+  })
+
+  it('reads PERSONAL plus the initial in the meta line', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      personRecorded('els', 'Els'),
+      gearRecorded(gearId, {
+        name: 'Down jacket',
+        container: false,
+        kind: 'single',
+        owner: { type: 'person', personId: 'els' },
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('ITEM · PERSONAL E')).toBeInTheDocument()
+  })
+
+  it('EDIT sets a personal owner and emits gear.ownership_set', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      personRecorded('els', 'Els'),
+      gearRecorded(gearId, {
+        name: 'Down jacket',
+        container: false,
+        kind: 'single',
+      }),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    await user.click(screen.getByRole('button', { name: 'Owner' }))
+    await user.click(screen.getByRole('button', { name: /Els/ }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await store.getState().drained()
+
+    expect(store.getState().state.gear[gearId]?.owner?.value).toEqual({
+      type: 'person',
+      personId: 'els',
+    })
+    // And the meta line agrees with the picker, through the one selector.
+    expect(screen.getByText('ITEM · PERSONAL E')).toBeInTheDocument()
+  })
+
+  it('EDIT returns gear to the shared pool', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      personRecorded('els', 'Els'),
+      gearRecorded(gearId, {
+        name: 'Down jacket',
+        container: false,
+        kind: 'single',
+        owner: { type: 'person', personId: 'els' },
+      }),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    await user.click(screen.getByRole('button', { name: 'Owner' }))
+    await user.click(screen.getByRole('button', { name: /Shared/ }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await store.getState().drained()
+
+    // A write, not a clear: the register holds `shared` explicitly, which is
+    // what lets a later personal write lose to it on the clock alone.
+    expect(store.getState().state.gear[gearId]?.owner?.value).toEqual({
+      type: 'shared',
+    })
+  })
+
+  it('EDIT writes no ownership op when the owner was not touched', async () => {
+    // Gear recorded before S4 carries no `owner` register. The draft is
+    // seeded through `ownerOf`, so the `Shared` the sheet draws compares
+    // equal to that absence and a no-op Save stays a no-op — a needless
+    // write here would move the gear's `recordedAt` and reorder NEWEST FIRST.
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, { name: 'Tent', container: false, kind: 'single' }),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    expect(screen.getByRole('button', { name: 'Owner' })).toHaveTextContent(
+      'Shared',
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await store.getState().drained()
+
+    expect(Object.hasOwn(store.getState().state.gear[gearId]!, 'owner')).toBe(
+      false,
     )
   })
 

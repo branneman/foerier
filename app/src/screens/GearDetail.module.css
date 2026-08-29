@@ -205,6 +205,29 @@
     font: var(--text-body) var(--font-ui);
   }
 
+  /* The same 48px bordered control Add gear's HOME and OWNER rows draw —
+     a row that opens a picker, not a field you type into, so it takes the
+     border without the well. */
+  .ownerRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-12);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-primary);
+    cursor: pointer;
+  }
+
+  .ownerValue {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+  }
+
   .kindField {
     display: flex;
     flex-direction: column;
