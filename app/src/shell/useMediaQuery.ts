@@ -61,10 +61,16 @@ export interface ScreenHeader {
 }
 
 /**
- * Whether a screen reached *from* a destination draws its own back link and
- * its own sync line. **The two are withheld at two different widths**, and the
- * one place that says so is here — four screens ask, and a rule spelled four
- * times is three chances to spell it differently.
+ * Whether `Trip`, `NewTrip`, `GearDetail` or `Account` draws its own back link
+ * and its own sync line. **The two are withheld at two different widths**, and
+ * the one place that says so is here — four screens ask, and a rule spelled
+ * four times is three chances to spell it differently.
+ *
+ * Four, not every pushed screen: `AddGear`, `People` and `Devices` still spell
+ * their own band and get it wrong. That debt is stated in
+ * [frontend-design §3.3](../../../docs/frontend-design.md), which names what
+ * each of them prints; converting them is a code change and deliberately not
+ * this round's.
  *
  * - **The back link goes at Desktop.** From 64em the 216px sidebar is labeled
  *   navigation and the row a `‹ TRIPS` points at is *in* it. At Split the nav
@@ -73,8 +79,9 @@ export interface ScreenHeader {
  * - **The sync line goes from Split up.** {@link AppShell} draws the header
  *   band on `mode === 'tabs'` alone; from 52em the marker moves into the nav,
  *   which is where the boards put it — *"never in the main column at
- *   desktop"*. A screen that kept drawing it would print `SYNCED` twice at
- *   52–64em, once in the rail and once beside the title.
+ *   desktop"*. A screen that kept drawing it would state `SYNCED` twice from
+ *   52em — beside its title and again in the nav, where at Split the bare rail
+ *   dot carries it as an `aria-label` and the Desktop sidebar draws it.
  *
  * The `<header>` element itself exists exactly when the back link does, and
  * needs no third answer: below Split is inside below Desktop, so a withheld

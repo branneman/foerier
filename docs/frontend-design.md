@@ -185,8 +185,9 @@ the nav:
 - **The sync line goes from Split up (`≥ 52em`).** `AppShell` draws its own
   header band on `mode === 'tabs'` alone, so from 52em the marker is already in
   the rail — and the boards put it there and nowhere else, *"never in the main
-  column at desktop"*. A screen that kept drawing its own would print `SYNCED`
-  twice at 52–64em, once in the rail and once beside the title.
+  column at desktop"*. A screen that kept drawing its own would state `SYNCED`
+  twice from 52em — beside its title and again in the nav, where at Split the
+  bare rail dot carries it as an `aria-label` and the Desktop sidebar draws it.
 
 The `<header>` element itself exists exactly when the back link does and needs no
 third answer, because below Split is inside below Desktop: a withheld link is
@@ -209,11 +210,11 @@ defect from a different slice.
 still spell their own band and get it wrong:
 
 - **`AddGear` is the live one.** `<Route path="/add">` is unguarded, so the
-  screen is reachable at every width and its unconditional `<header>` prints
-  `SYNCED` twice from 52em up, Desktop included.
+  screen is reachable at every width and its unconditional `<header>` states
+  `SYNCED` twice from 52em up — heard at Split, seen at Desktop.
 - **`People` and `Devices`** `Redirect to="/account"` at Desktop, so their back
-  link is never reached and only the sync line is wrong — the same double print,
-  bounded to 52–64em.
+  link is never reached and only the sync line is wrong — the same doubling,
+  bounded to 52–64em and so heard rather than seen.
 
 Converting them is a code change and is deliberately not folded into the round
 that extracted the hook. The obligation is recorded here so the next person to
@@ -226,7 +227,6 @@ the offset clears nothing, and on `Depot` the control floats over the detail
 pane rather than sitting in the list pane's box. It is fixed to the viewport
 now and correctly so; what is missing is a drawn answer for where a FAB belongs
 once the nav moves off the bottom edge.
-
 
 ## 4. CSS architecture
 

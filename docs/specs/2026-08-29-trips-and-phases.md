@@ -50,7 +50,7 @@ load-bearing for them, it says so.
 | Trip sections | **`ACTIVE` · `PLANNED` · `CLOSED`**, each totally ordered ([§3.5](#35-three-sections-two-date-orders)) |
 | `DAY N` | The **`phase` register's own stamp**, in local calendar days. No new field, no new op ([§3.6](#36-day-n-comes-from-the-register-that-already-carries-it)) |
 | Routes | **`/trips`, `/trips/new`, `/trips/:id`** — three, and `/trips/:id` is the header S7 builds under |
-| The card's CTA | Names **the destination that exists** — `OPEN ›` at S6, not `Continue pack-out` ([§6.1](#61-the-cta-names-the-destination-that-exists)) |
+| The card's CTA | Names **the destination that exists** — `OPEN ›` at S6, not `Continue pack-out` ([§6.1](#61-the-cta-names-the-destination-that-exists)) — superseded, see [§10](#10-what-changed-during-implementation) |
 | The progress line | Falls through to a **next-step line**; there are no Entries to count ([§6.2](#62-the-progress-line-falls-through-to-a-next-step-line)) |
 | Entering `closed` | **Unguarded**, per §8.3. Nothing can be open until S10 |
 | Leaving `closed` | **Confirmed at S6** — invariant 19 is the domain's, not story 11b's. S11 fills the sheet's body ([§6.3](#63-the-reopen-confirm-ships-now-with-an-empty-body)) |
@@ -409,8 +409,9 @@ title with nothing between them, because a header over a single card is noise.
   chip (`PACK-OUT · DAY 2`), the dates line (mono, **dropped entirely** when
   there are none — the board draws that variant), participant circles, the
   next-step line (§6.2), and the full-width CTA (§6.1).
-- **`PLANNED`** — dashed-border cards: name, `DRAFT · 0 GEAR LISTED`, `OPEN ›`.
-  The `0` is a fact at S6 and stays true until S7 gives it something to count.
+- **`PLANNED`** — dashed-border cards: name, `DRAFT · 0 GEAR LISTED`, `OPEN ›`
+  — superseded, see [§10](#10-what-changed-during-implementation). The `0` is a
+  fact at S6 and stays true until S7 gives it something to count.
 - **`CLOSED`** — ledger rows: muted name, mono meta (`JUL 2025` from the start
   date, drawn from the dates that exist), and `REOPEN`, which opens §6.3's
   confirm. The board's `54 PIECES · 1 LOST` waits on S7 and S10.

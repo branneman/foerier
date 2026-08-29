@@ -309,7 +309,9 @@ superseded, and `docs/design/README.md` §5 is the shipped authority.
   ([frontend-design §3.3](docs/frontend-design.md)). **Its reach is four screens
   and that is a stated debt:** `AddGear`, `People` and `Devices` still spell
   their own band, and `AddGear` is the live one — `/add` is unguarded, so it
-  prints `SYNCED` twice at every width from 52em.
+  states `SYNCED` twice at every width from 52em, heard at Split (the rail
+  draws a bare dot and carries the string as its `aria-label`) and seen at
+  Desktop.
 
 **S5, auth 2, has landed** (story 28) — the second Quartermaster is now
 arranged from inside the app rather than by whoever runs the server. No

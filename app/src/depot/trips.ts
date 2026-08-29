@@ -104,7 +104,11 @@ export function peopleOn(
 
 /** The meta line's pieces — {@link tripDateRange}'s whole answer. */
 export interface TripDates {
-  /** `AUG 14 → SEP 02`, `AUG 14 →` or `→ SEP 02`. Always drawn. */
+  /**
+   * `AUG 14 → SEP 02`, `AUG 14 →` or `→ SEP 02` — and an end this module
+   * cannot read passes through verbatim beside one it can
+   * (`next summer → SEP 02`). Always drawn.
+   */
   range: string
   /** `20 DAYS`, or `null` where there is no arithmetic to do. */
   span: string | null
