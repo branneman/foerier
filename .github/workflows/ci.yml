@@ -170,16 +170,20 @@ jobs:
   # (docs/specs/2026-08-28-tier-4-and-5-against-production.md §6.4).
   #
   # So this is one of the two jobs that hold the CI credential, and both obey
-  # the same rules: every third-party action pinned by SHA, no GITHUB_TOKEN
-  # scope of any kind, the secrets on the one step that reads them, and nothing
-  # — no trace, no report, no artifact — ever uploaded (§5.1, §7).
+  # the same rules: the `push` guard on the job itself rather than only
+  # inherited through `changes`, every third-party action pinned by SHA, no
+  # GITHUB_TOKEN scope of any kind, the secrets on the one step that reads them,
+  # and nothing — no trace, no report, no artifact — ever uploaded (§5.1, §7).
   #
-  # Without the secrets — a fork's pull request, a local run — `household.test.ts`
-  # skips itself and `deployment.test.ts`'s unauthenticated assertions still run.
+  # Without the secrets — a local run — `household.test.ts` skips itself and
+  # `deployment.test.ts`'s unauthenticated assertions still run.
   contract:
     needs: [changes, build-push]
-    if: needs.changes.outputs.deployable == 'true'
+    if: github.event_name == 'push' && needs.changes.outputs.deployable == 'true'
     runs-on: ubuntu-latest
+    # A hung fetch in a test's setup is outside Vitest's `testTimeout`, and this
+    # job holds a production credential for as long as it runs.
+    timeout-minutes: 20
     permissions: {}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -236,10 +240,21 @@ jobs:
   # inherits it. The `push` guard is repeated on this job rather than only
   # inherited through `changes`, because a job holding a production credential
   # should not lean on a guard that exists to skip prose-only deploys (§7).
+  #
+  # `vars.E2E_ENABLED` is the flip that turns this job on, and it stays off
+  # until the one-time credential capture (§5) has happened. The capture needs
+  # an API already serving this branch's ES256 algorithm ordering, so the
+  # secrets cannot exist before this merges — and unlike Tier 4, Tier 5 cannot
+  # degrade without them: `globalSetup.production.ts` throws on an empty
+  # `E2E_*`. The repository variable is therefore what keeps `main` green in
+  # the window between merge and capture; flip it to `true` afterwards.
   e2e-prod:
     needs: [changes, contract]
-    if: github.event_name == 'push' && needs.changes.outputs.deployable == 'true'
+    if: vars.E2E_ENABLED == 'true' && github.event_name == 'push' && needs.changes.outputs.deployable == 'true'
     runs-on: ubuntu-latest
+    # A hung fetch in `globalSetup` is outside Playwright's per-test timeout,
+    # and this job holds a production credential for as long as it runs.
+    timeout-minutes: 20
     permissions: {}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

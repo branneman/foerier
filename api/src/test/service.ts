@@ -78,6 +78,7 @@ export function createTestResetService({ db, clock }: TestResetServiceDeps) {
           .selectFrom('device')
           .select('passkey_id')
           .where('id', '=', context.deviceId)
+          .where('household_id', '=', context.householdId)
           .executeTakeFirstOrThrow()
 
         const deleted = await trx

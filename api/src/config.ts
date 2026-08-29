@@ -21,12 +21,17 @@ export interface Config {
   /**
    * The Household `POST /test/reset` is allowed to wipe, lowercased.
    *
-   * Set only in the e2e environment, by the infrastructure repo
-   * (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3.3) — never
-   * in production. Its absence is *not* an error: `undefined` is how the
-   * route mount decides not to exist at all (§3, "Mount conditionally"), so a
-   * production server that never sets this variable never exposes a reset
-   * endpoint in the first place.
+   * There is no separate e2e environment (§10): this is set **on the
+   * production box**, by the infrastructure repo
+   * (`docs/specs/2026-08-28-tier-4-and-5-against-production.md` §3.3), naming
+   * the one disposable Household CI is allowed to wipe. Mounting a destructive
+   * route in production is safe because that variable is only the first of
+   * three gates — the caller's Household must also *equal* it, and must itself
+   * be flagged `disposable` (§3.3, §8).
+   *
+   * Its absence is *not* an error: `undefined` is how the route mount decides
+   * not to exist at all (§3, "Mount conditionally"), so a server that never
+   * sets this variable never exposes a reset endpoint in the first place.
    */
   e2eHouseholdId: string | undefined
 }

@@ -84,7 +84,7 @@ export function assertTripwire(counts: ResetCounts): void {
 
   if (revoked > 1 || passkeys !== 0 || invites !== 0) {
     throw new Error(
-      `TRIPWIRE: reset revoked ${revoked} devices / found ${passkeys} foreign passkeys / ${invites} outstanding invites — a credential other than CI's was live. Rotate per docs/specs/2026-08-28-tier-4-and-5-against-production.md §9.3`,
+      `TRIPWIRE: reset revoked ${revoked} devices / found ${passkeys} foreign passkeys / ${invites} outstanding invites — a credential other than CI's was live — or a previous run was cancelled between sign-in and reset. Rotate per docs/specs/2026-08-28-tier-4-and-5-against-production.md §9.3`,
     )
   }
 }

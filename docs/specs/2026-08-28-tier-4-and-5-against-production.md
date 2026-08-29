@@ -523,8 +523,19 @@ A new job, after the contract tier rather than beside it:
 ```yaml
 e2e-prod:
   needs: [changes, contract]
-  if: github.event_name == 'push' && needs.changes.outputs.deployable == 'true'
+  if: >-
+    vars.E2E_ENABLED == 'true' && github.event_name == 'push'
+    && needs.changes.outputs.deployable == 'true'
 ```
+
+`E2E_ENABLED` is a repository **variable**, not a secret, and it is the flip
+that turns this job on. It has to exist because Tier 5 cannot degrade the way
+Tier 4 does: `globalSetup.production.ts` calls `credential()`, which throws on
+an empty `E2E_*` instead of skipping — and the credential cannot be captured
+until an API carrying §5's ES256 ordering is deployed, which is to say until
+after this work merges. The variable is therefore what keeps `main` green in
+the window between the merge and the one-time capture; it is flipped to `true`
+once the capture is done and the secrets are stored.
 
 The `push` guard is on the job itself, not only inherited through `changes`:
 a job holding a production credential should not depend on a guard that

@@ -268,7 +268,10 @@ Two PWA-specific twists this project must cover:
 **Tooling:** Playwright, `test/e2e/`. Target via `PLAYWRIGHT_BASE_URL` (a local
 production build served by `vite preview` by default; CI's post-deploy job
 points it at `app.foerier.app`). **Trigger:** automatically after every deploy
-to `main`.
+to `main` — gated on the `E2E_ENABLED` repository variable, because unlike Tier
+4 this tier cannot degrade without the credential: `globalSetup` throws on an
+empty `E2E_*` rather than skipping, so the variable stays off until the
+credential has been captured.
 
 **Retargeting is one variable, and that variable switches four things on.**
 Setting `PLAYWRIGHT_BASE_URL` drops the `webServer` block and, with it, adds a

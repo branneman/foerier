@@ -213,7 +213,11 @@ describe('POST /test/reset', () => {
     const res = await reset(h.app, caller.token)
     expect(res.status).toBe(200)
     // The counts are what the route *did*, which is what makes them usable as
-    // §3.5's tripwire rather than decoration.
+    // §3.5's tripwire rather than decoration. `passkeys` counts *deletions*,
+    // and it is 1 here only because this case manufactures a second Login: the
+    // caller's Passkey is spared, the other one goes. A clean production run
+    // deletes none, which is why §3.5's table expects `= 0` and treats any
+    // deletion at all as a credential that is not CI's.
     expect(await jsonOf<ResetBody>(res)).toEqual({
       deleted: 2,
       revoked: 1,
@@ -240,7 +244,9 @@ describe('POST /test/reset', () => {
     ).toBeNull()
 
     // Exactly one credential survives, and it is the one the caller signed in
-    // with — the invariant §3.5's `passkeys = 1` oracle rests on.
+    // with — the invariant §3.5's tripwire rests on. With nothing but the
+    // caller's Passkey left behind, a later run that deletes one has found a
+    // credential somebody else added.
     const callerDevice = await db
       .selectFrom('device')
       .select('passkey_id')
