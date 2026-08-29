@@ -3,6 +3,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
+    /* So `.primary`'s `margin-top: auto` has a height to push against. The
+       pane is a stretched grid item of the shell, so the percentage resolves;
+       where it does not, the CTA simply follows the last field and the screen
+       still reads — `Trip.module.css` takes the same fallback. */
+    min-height: 100%;
   }
 
   .header {
@@ -157,7 +162,13 @@
     color: var(--color-ink-faint);
   }
 
+  /* The thumb-zone CTA this screen's docstring claims and 02A's `New trip`
+     frame draws with a `flex:1` spacer above the button. Three fields do not
+     fill a phone, so without this the primary sits mid-screen on exactly the
+     device the thumb zone is for. `.fact` follows it down: `margin-top: auto`
+     on the first of the two pushes the pair. */
   .primary {
+    margin-top: auto;
     width: 100%;
     min-height: max(3rem, 48px);
     border: 0;

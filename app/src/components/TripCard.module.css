@@ -94,6 +94,12 @@
     /* A Draft is still the household's, not a spent row: primary ink, and the
        dashed outline is what says it is not a commitment. */
     color: var(--color-ink-primary);
+    /* 15px against the Active card's 17px, which is what 02A draws — the
+       dashed card's whole encoding is *quieter*, and size is part of it. The
+       `font` shorthand resets weight, so 600 is restated rather than
+       inherited from `.name`. */
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
   }
 
   /* The interim affordance, in the closed row's own glyph and the closed row's
@@ -224,7 +230,12 @@
   .next {
     font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
-    color: var(--color-ink-faint);
+    /* `ink-muted`, the same weight as `.dates` above it — 02A draws both lines
+       at `#97A08C`. Faint would put the card's one instruction below the
+       metadata beside it, and only in the dark theme: the parchment palette
+       maps `ink-faint` and `ink-muted` to the same value, so a drift here is
+       invisible in half the themes it exists in. */
+    color: var(--color-ink-muted);
   }
 
   @container (min-width: 20rem) {

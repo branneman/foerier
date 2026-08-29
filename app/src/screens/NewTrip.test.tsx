@@ -332,6 +332,22 @@ describe('New trip — the create', () => {
     expect(row).not.toHaveTextContent('Els')
   })
 
+  it('draws the group label and hides it from the accessibility tree', async () => {
+    renderNewTrip(await seeded())
+
+    // The button below it already carries `Participants: …` as its accessible
+    // name, so an announced label makes it "Participants", then "Participants:
+    // None, button" — two announcements for one control. `Trip.tsx` hides the
+    // same word for the same reason.
+    expect(screen.getByText('Participants')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Participants: None' }),
+    ).toBeVisible()
+  })
+
   it('draws a Person with no folded name as an empty circle', async () => {
     const user = userEvent.setup()
     // A Person whose name the fold holds as **cleared** — `person.renamed`

@@ -306,10 +306,16 @@ export function parseIsoDate(value: string): IsoDate | null {
 /**
  * Days from `start` to `end` **inclusive of both ends** — `AUG 14 → SEP 02` is
  * 20, which is the board's number and the number of days a Trip is away.
- * Negative when the range is reversed, and `null` **only** when an end will
- * not read as a date — the two are separate answers on purpose, because the
- * caller has to tell "there is nothing to say" from "there is something to say
- * and it is ▲". Sign carries the second; `null` is left holding the first.
+ * `null` **only** when an end will not read as a date.
+ *
+ * **The sign says nothing, and must not be read as if it did.** Inclusive
+ * counting adds one, so a range reversed by a single day —
+ * `start 2026-08-15`, `end 2026-08-14` — comes back as `0` rather than as
+ * anything negative, and `span < 0` would call that Trip well-ordered. Whether
+ * a range is reversed is the caller's question and {@link tripDateRange}
+ * answers it the one exact way there is, by comparing the stored `YYYY-MM-DD`
+ * strings; this function is asked only for the count and returns a number that
+ * means nothing at all unless `start <= end`.
  *
  * `Date.UTC` and not local midnight: these are calendar dates with no clock
  * attached, so there is no DST transition to absorb and no reason to let the

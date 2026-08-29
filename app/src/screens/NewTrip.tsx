@@ -247,7 +247,17 @@ export function NewTrip() {
           appears — with the label above it, as this screen's other two
           controls carry theirs. */}
       <div className={styles['field']}>
-        <span className={styles['label']}>Participants</span>
+        {/* Drawn, because the board draws it — and `aria-hidden`, because the
+            button below already carries `Participants: …` as its accessible
+            name, so without this a reader hears "Participants", then
+            "Participants: Els, Mies, button". A plain `<span>`, unlike the
+            `<label>`s above it, names nothing; removing it from the
+            accessibility tree costs the control no name at all. `Trip.tsx`
+            hides the same word for the same reason, and `AddGear` avoids it by
+            putting the label inside the button. */}
+        <span className={styles['label']} aria-hidden="true">
+          Participants
+        </span>
         <button
           type="button"
           className={styles['pickRow']}

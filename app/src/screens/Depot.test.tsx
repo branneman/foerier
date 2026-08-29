@@ -26,7 +26,7 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
-import { DESKTOP } from '../shell/useMediaQuery'
+import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { Depot } from './Depot'
 
@@ -559,7 +559,7 @@ describe('the Depot at desktop width', () => {
   // Tags appear in the table's own column and nowhere else — at 44px density
   // chips would dominate the row, and the full set is on gear detail.
   it('shows tags in the table column that the folded row hides', async () => {
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     renderDepot(await aHomedDepot())
 
     const row = screen.getByRole('link', { name: 'Sleeping bag' })
@@ -572,7 +572,7 @@ describe('the Depot at desktop width', () => {
   })
 
   it('sorts from the GEAR column head', async () => {
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     const user = userEvent.setup()
     renderDepot(await aHomedDepot())
 
@@ -592,7 +592,7 @@ describe('the Depot at desktop width', () => {
    * suggest. A recorded deviation, not an oversight.
    */
   it('keeps every sort key reachable, including the one no column head offers', async () => {
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     renderDepot(await aHomedDepot())
 
     expect(

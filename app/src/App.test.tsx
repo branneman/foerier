@@ -515,7 +515,7 @@ describe('the Devices route', () => {
   // and the footer `SIGN OUT` link Task 9 shipped would lead to a route
   // that immediately sends it right back — a dead end, not a redirect.
   it('redirects to Account at Desktop, where the same rows unfold inline', async () => {
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     renderAt('/account/devices')
 
     expect(
@@ -541,7 +541,7 @@ describe('the device-link route', () => {
   })
 
   it('stays reachable at Desktop, unlike the Devices route', async () => {
-    setViewport(DESKTOP)
+    setViewport(SPLIT, DESKTOP)
     renderAt('/account/device-link')
 
     expect(

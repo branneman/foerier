@@ -14,7 +14,15 @@ import { afterEach } from 'vitest'
  */
 let matches = new Set<string>()
 
-/** Make these queries match until the next test. Pass nothing to reset. */
+/**
+ * Make these queries match until the next test. Pass nothing to reset.
+ *
+ * The stub matches **exact query strings**, so it will happily describe a
+ * viewport that cannot exist: `setViewport(DESKTOP)` alone is a width at or
+ * above 64em that is somehow below 52em. Name every breakpoint the width
+ * crosses — `setViewport(SPLIT, DESKTOP)` for Desktop — or the first component
+ * that starts asking about Split gets a silently wrong answer.
+ */
 export function setViewport(...queries: readonly string[]): void {
   matches = new Set(queries)
 }
