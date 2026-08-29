@@ -50,7 +50,7 @@ exports[`the S6 trip fixture > folds the S6 fixture to exactly the state it fold
       "id": "99999999-0000-7000-8000-000000000002",
       "name": {
         "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
-        "hlc": "2026-08-29T09:11:00.000Z-0000",
+        "hlc": "2026-08-29T09:10:00.000Z-0000",
         "value": null,
       },
       "phase": {

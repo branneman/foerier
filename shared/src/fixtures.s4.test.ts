@@ -98,6 +98,14 @@ describe('the S4 ownership fixture', () => {
     expect(state.gear[RETURNED_GEAR]?.owner?.value).toEqual({ type: 'shared' })
   })
 
+  // Nothing here is unfoldable, and saying so is what catches a typo'd `type`:
+  // an op named `gear.ownership-set` would fold into nothing at all, leave
+  // every register assertion below reading an absent value, and be invisible
+  // in the snapshot except as a count nobody checked.
+  it('folds every op in the fixture', () => {
+    expect(fold(fixture as OpEnvelope[]).unfolded.count).toBe(0)
+  })
+
   it('renames a Person the fixture never recorded', () => {
     // `writePerson` creates the entity on first sight of any person op, so a
     // rename arriving before its `person.recorded` is a Person with a name

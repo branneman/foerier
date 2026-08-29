@@ -31,21 +31,27 @@ import fixture from '../fixtures/s6-trips.ops.json' with { type: 'json' }
  *    the moment this slice ships, so a fixture is the only thing that can
  *    prove a field nothing yet reads is carried at all.
  * 2. **`trip.phase_moved{phase: "shakedown"}`** — `PhaseValue` is open past
- *    its five members (§5.3 obligation 4), but `tripPhaseMoved`'s callers only
- *    ever pass one of the five. A sixth can only come from a later build.
+ *    its five members (§5.3 obligation 4), but every *app* caller of
+ *    `tripPhaseMoved` passes one of the five; the only caller that does not is
+ *    the convergence property, which passes this very value for this very
+ *    reason. A sixth can only reach a real log from a later build.
  * 3. **`trip.dates_set{start: "next weekend"}`** — there is deliberately no
  *    format gate on either side (§1.4), so a peer on a build with a different
  *    date convention is exactly what this stands for. Our own screens emit
  *    `YYYY-MM-DD` from a date input.
- * 4. **`trip.renamed{name: null}`** — the builders type `name` as `string`,
- *    because no screen can author a Trip with no name; the nullable register
- *    exists for a *reader* meeting an op some other build emitted (§1.2).
+ * 4. **`trip.created{name: null}`** — and it is the **creation** that carries
+ *    it, not the rename, because `tripCreated` types `name` as `string` and
+ *    genuinely has no way to author this, while `tripRenamed` accepts `null`
+ *    and is called with one (§1.2 settled that in this slice). The nullable
+ *    register on the creation therefore exists only for a *reader* meeting an
+ *    op some other build emitted.
  */
 
 /** The ordinary path: created, dated, crewed, renamed, moved, then re-dated. */
 const ORDINARY_TRIP = '99999999-0000-7000-8000-000000000001'
-/** Carries three of the four probes: `from_trip_id`, a null name, a foreign
- * phase and a date that is not one. */
+/** Carries all four probes: created with both a `from_trip_id` and a null
+ * name, then moved to a foreign phase and dated with something that is not a
+ * date. */
 const FOREIGN_TRIP = '99999999-0000-7000-8000-000000000002'
 /** Closed, then moved to `draft` by a *lower* clock arriving later in the file. */
 const LATE_LOSER_TRIP = '99999999-0000-7000-8000-000000000003'
@@ -121,11 +127,21 @@ describe('the S6 trip fixture', () => {
     expect(trip?.startDate?.value).toBe('next weekend')
   })
 
-  /** Probe 4. The seventh and eighth `name` rows, settled by §1.3's general
-   * rule rather than a carve-out. */
-  it('clears a Trip name given an explicit null', () => {
+  /**
+   * Probe 4. The seventh `name` row, settled by §1.3's general rule rather
+   * than a carve-out: `TripState.name` is `Register<string | null>`, so the
+   * creation's explicit `null` is a write like any other and the Trip exists
+   * holding a name of nothing. `tripCreated` cannot author this — which is
+   * the whole reason the probe sits on the creation and not on the rename,
+   * where the builder's own signature would have made it ordinary.
+   */
+  it('folds a null name onto a Trip no builder of ours could have created', () => {
     const trip = fold(fixture as OpEnvelope[]).trips[FOREIGN_TRIP]
+    expect(trip?.id).toBe(FOREIGN_TRIP)
     expect(trip?.name?.value).toBeNull()
+    // Seeded on the creation's own clock, beside the phase it also seeds —
+    // a nameless Trip is still a created one (§1.3).
+    expect(trip?.name?.hlc).toBe('2026-08-29T09:10:00.000Z-0000')
   })
 
   // Arrival order is not merge order (§8.2). The move to `draft` sits last in

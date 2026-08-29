@@ -121,7 +121,7 @@
     "hlc": "2026-08-29T09:10:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
     "payload": {
-      "name": "Ardennes again",
+      "name": null,
       "from_trip_id": "99999999-0000-7000-8000-000000000001"
     },
     "seq": 9,
@@ -132,11 +132,11 @@
     "household_id": "11111111-0000-7000-8000-000000000001",
     "aggregate": "trip",
     "aggregate_id": "99999999-0000-7000-8000-000000000002",
-    "type": "trip.renamed",
-    "hlc": "2026-08-29T09:11:00.000Z-0000",
+    "type": "trip.phase_moved",
+    "hlc": "2026-08-29T09:12:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
     "payload": {
-      "name": null
+      "phase": "shakedown"
     },
     "seq": 10,
     "received_at": "2026-08-29T10:00:00Z"
@@ -146,11 +146,11 @@
     "household_id": "11111111-0000-7000-8000-000000000001",
     "aggregate": "trip",
     "aggregate_id": "99999999-0000-7000-8000-000000000002",
-    "type": "trip.phase_moved",
-    "hlc": "2026-08-29T09:12:00.000Z-0000",
+    "type": "trip.dates_set",
+    "hlc": "2026-08-29T09:13:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
     "payload": {
-      "phase": "shakedown"
+      "start": "next weekend"
     },
     "seq": 11,
     "received_at": "2026-08-29T10:00:00Z"
@@ -159,12 +159,12 @@
     "id": "88888888-0000-7000-8000-00000000000c",
     "household_id": "11111111-0000-7000-8000-000000000001",
     "aggregate": "trip",
-    "aggregate_id": "99999999-0000-7000-8000-000000000002",
-    "type": "trip.dates_set",
-    "hlc": "2026-08-29T09:13:00.000Z-0000",
+    "aggregate_id": "99999999-0000-7000-8000-000000000003",
+    "type": "trip.created",
+    "hlc": "2026-08-29T09:20:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
     "payload": {
-      "start": "next weekend"
+      "name": "Sarek"
     },
     "seq": 12,
     "received_at": "2026-08-29T10:00:00Z"
@@ -174,11 +174,11 @@
     "household_id": "11111111-0000-7000-8000-000000000001",
     "aggregate": "trip",
     "aggregate_id": "99999999-0000-7000-8000-000000000003",
-    "type": "trip.created",
-    "hlc": "2026-08-29T09:20:00.000Z-0000",
+    "type": "trip.phase_moved",
+    "hlc": "2026-08-29T09:30:00.000Z-0000",
     "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
     "payload": {
-      "name": "Sarek"
+      "phase": "closed"
     },
     "seq": 13,
     "received_at": "2026-08-29T10:00:00Z"
@@ -189,26 +189,12 @@
     "aggregate": "trip",
     "aggregate_id": "99999999-0000-7000-8000-000000000003",
     "type": "trip.phase_moved",
-    "hlc": "2026-08-29T09:30:00.000Z-0000",
-    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
-    "payload": {
-      "phase": "closed"
-    },
-    "seq": 14,
-    "received_at": "2026-08-29T10:00:00Z"
-  },
-  {
-    "id": "88888888-0000-7000-8000-00000000000f",
-    "household_id": "11111111-0000-7000-8000-000000000001",
-    "aggregate": "trip",
-    "aggregate_id": "99999999-0000-7000-8000-000000000003",
-    "type": "trip.phase_moved",
     "hlc": "2026-08-29T09:22:00.000Z-0000",
     "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
     "payload": {
       "phase": "draft"
     },
-    "seq": 15,
+    "seq": 14,
     "received_at": "2026-08-29T10:00:00Z"
   }
 ]
