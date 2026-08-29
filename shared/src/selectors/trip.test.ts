@@ -11,9 +11,11 @@ import { emptyState, fold } from '../reduce.ts'
 import type { DepotState, TripState } from '../state.ts'
 import {
   isActive,
+  isKnownPhase,
   participantIds,
   phaseDay,
   phaseLabel,
+  phaseName,
   phaseNext,
   phaseOf,
   PHASES,
@@ -130,6 +132,38 @@ describe('phaseLabel', () => {
 
   it('draws an unrecognised phase exactly as it arrived', () => {
     expect(phaseLabel('something-later')).toBe('something-later')
+  })
+})
+
+describe('phaseName', () => {
+  it('names the five known phases for a sentence', () => {
+    // Not a casing of `label`: no transform turns `PACK-OUT` into `Pack-out`
+    // and `ON TRIP` into `On trip` without knowing which words a phase name
+    // is made of, which is what the table knows and a screen does not.
+    expect(PHASES.map((phase) => phaseName(phase.id))).toEqual([
+      'Draft',
+      'Pack-out',
+      'On trip',
+      'Unpack',
+      'Closed',
+    ])
+  })
+
+  it('names an unrecognised phase exactly as it arrived', () => {
+    expect(phaseName('something-later')).toBe('something-later')
+  })
+})
+
+describe('isKnownPhase', () => {
+  it('recognises every row of the table and nothing else', () => {
+    expect(PHASES.map((phase) => isKnownPhase(phase.id))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ])
+    expect(isKnownPhase('something-later')).toBe(false)
   })
 })
 

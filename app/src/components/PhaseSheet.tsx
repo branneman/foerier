@@ -1,5 +1,7 @@
 import {
+  isKnownPhase,
   phaseLabel,
+  phaseName,
   phaseOf,
   PHASES,
   tripLabel,
@@ -53,9 +55,13 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   const [reopenTo, setReopenTo] = useState<PhaseKey | null>(null)
 
   const current = phaseOf(trip)
-  // A phase this build has never heard of matches no row, so `known` is
-  // `false` and no row draws `● NOW` — see the mono line below.
-  const known = PHASES.some((row) => row.id === current)
+  // Through `isKnownPhase` rather than a `PHASES.some(…)` of our own: the
+  // phase table's own docstring reserves every question about it for a named
+  // function beside it, and this is one — "is there a row at all" is the one
+  // thing the resolving accessors cannot answer, because each of them
+  // *resolves* the miss. A lookup here would put "what an unrecognised phase
+  // means" in two places, and this screen's copy is the one that would drift.
+  const known = isKnownPhase(current)
 
   function move(phase: PhaseKey) {
     emit(tripPhaseMoved(trip.id, phase))
@@ -114,7 +120,18 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
         })}
       </ul>
 
-      <p className={styles['footnote']}>NO DATE OR COUNT EVER MOVES A PHASE.</p>
+      {/*
+        The board's footnote, both sentences. The first is not decoration: a
+        list of five rows with one marked reads as a status readout, and
+        nothing else on screen says the row *above* the current one can be
+        tapped. It is the discoverability of the sheet's whole point, and the
+        second sentence is the reason — a phase is set by a quartermaster and
+        by nothing else.
+      */}
+      <p className={styles['footnote']}>
+        ANY ROW TAPPABLE, BACKWARDS INCLUDED. NO DATE OR COUNT EVER MOVES A
+        PHASE.
+      </p>
 
       <Sheet.Close>
         <button type="button" className={styles['close']}>
@@ -125,6 +142,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
       {reopenTo !== null && (
         <ReopenConfirm
           trip={trip}
+          to={reopenTo}
           onCancel={() => setReopenTo(null)}
           onConfirm={() => move(reopenTo)}
         />
@@ -146,20 +164,34 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
  * (spec §6.3).
  *
  * What ships is the board's title and its second line, both true today and
- * true afterwards. The two mono blocks under them are **S11's**: the
- * `1 ENTRY STILL OPEN — HEADLAMP, K · ▲ LOST` block needs outcomes, and the
- * over-claim block needs Entries. Neither is faked and neither is stubbed —
- * an empty body states nothing false, while a hard-coded count would.
+ * true afterwards. The two mono blocks under them belong to other slices:
+ * `1 ENTRY STILL OPEN — HEADLAMP, K · ▲ LOST` needs **S10**'s outcomes, and
+ * the over-claim block needs **S7**'s Entries; architecture §8.3 gives
+ * **S11** the reopen clause that fills the body from them. Neither block is
+ * faked and neither is stubbed — an empty body states nothing false, while a
+ * hard-coded count would.
+ *
+ * **The line names the phase the move goes to**, which is the one place this
+ * departs from the board's drawn sentence. The board draws the reopen from a
+ * closed ledger row, which targets `unpack` and reads *"It returns to Unpack
+ * …"*; the SET PHASE sheet offers all four other rows, because invariant 16
+ * makes every move expressible in either direction and the boards' own
+ * footnote says any row is tappable. So the copy generalises rather than the
+ * behaviour narrowing, and the word comes from the phase table
+ * ({@link phaseName}) rather than from a casing rule invented at this screen.
  *
  * The primary stays **accent** rather than the attention colour a destructive
  * confirm carries: nothing was thrown away. The body says so.
  */
 function ReopenConfirm({
   trip,
+  to,
   onCancel,
   onConfirm,
 }: {
   trip: TripState
+  /** The phase the Trip is being reopened into — never `closed`. */
+  to: PhaseKey
   onCancel: () => void
   onConfirm: () => void
 }) {
@@ -169,7 +201,7 @@ function ReopenConfirm({
       // `trip.created` has not arrived reads `Reopen —?` rather than
       // `Reopen ?`.
       title={`Reopen ${tripLabel(trip)}?`}
-      description="It returns to Unpack exactly as it stood. Closing cleared nothing."
+      description={`It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.`}
       onClose={onCancel}
       actions={
         <>

@@ -154,10 +154,13 @@ describe('the SET PHASE sheet', () => {
       'aria-pressed',
       'true',
     )
-    // The board's footnote, verbatim — the sheet is the only place the app
-    // says out loud that nothing else moves a phase.
+    // The board's footnote, **both** sentences. The first is what tells a
+    // quartermaster the backward move exists at all — five rows with one
+    // marked otherwise read as a status readout.
     expect(
-      screen.getByText('NO DATE OR COUNT EVER MOVES A PHASE.'),
+      screen.getByText(
+        'ANY ROW TAPPABLE, BACKWARDS INCLUDED. NO DATE OR COUNT EVER MOVES A PHASE.',
+      ),
     ).toBeVisible()
   })
 
@@ -224,6 +227,25 @@ describe('the SET PHASE sheet', () => {
         'Reopen Alps 2026?It returns to Unpack exactly as it stood. Closing cleared nothing.CancelReopen',
       )
       expect(await seeded.moves()).toEqual([])
+    })
+
+    it('names the phase the move actually goes to', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededTrip('closed')
+      renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /DRAFT/ }))
+
+      // The board draws this sentence for the reopen from a closed ledger
+      // row, which targets `unpack`. The sheet offers all four other rows —
+      // invariant 16, and the footnote right above them — so the sentence
+      // has to name the row that was tapped or it states something false for
+      // three of the four. `Draft`, not `DRAFT`: the phase table carries the
+      // sentence-case name beside the mono label so no screen casts one into
+      // the other.
+      expect(screen.getByRole('alertdialog')).toHaveTextContent(
+        'It returns to Draft exactly as it stood. Closing cleared nothing.',
+      )
     })
 
     it('moves only once the decision is taken', async () => {

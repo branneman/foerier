@@ -43,6 +43,24 @@ export interface Phase {
   id: PhaseKey
   /** `DRAFT` · `PACK-OUT` · `ON TRIP` · `UNPACK` · `CLOSED`. */
   label: string
+  /**
+   * The same phase **in a sentence** — `Draft` · `Pack-out` · `On trip` ·
+   * `Unpack` · `Closed`.
+   *
+   * A second field rather than a transform of {@link label}, because the
+   * transform does not exist: `PACK-OUT` is `Pack-out` and `ON TRIP` is `On
+   * trip`, and no casing function gets both right without knowing which words
+   * a phase name is made of — which is exactly what the table knows and a
+   * screen does not. The alternative is a lower-casing helper at the one
+   * screen that needs it, and that is the table re-derived somewhere it
+   * cannot be kept in step (the same argument {@link phaseNext} makes for
+   * living here).
+   *
+   * The chip, the sheet's rows and the sections draw {@link label}; prose
+   * draws this. Today the reopen confirm is prose's only caller — *"It
+   * returns to Unpack exactly as it stood."*
+   */
+  name: string
   /** Invariant 17: only these three give a Trip's arrangement effect. */
   active: boolean
   /**
@@ -67,39 +85,43 @@ export const PHASES: readonly Phase[] = [
   {
     id: 'draft',
     label: 'DRAFT',
+    name: 'Draft',
     active: false,
     next: 'NEXT — BUILD THE GEAR LIST',
   },
   {
     id: 'pack_out',
     label: 'PACK-OUT',
+    name: 'Pack-out',
     active: true,
     next: 'NEXT — PACK IT',
   },
   {
     id: 'on_trip',
     label: 'ON TRIP',
+    name: 'On trip',
     active: true,
     next: 'NEXT — MARK UNPACK WHEN YOU ARE BACK',
   },
   {
     id: 'unpack',
     label: 'UNPACK',
+    name: 'Unpack',
     active: true,
     next: 'NEXT — RESOLVE EVERY ENTRY, THEN CLOSE',
   },
-  { id: 'closed', label: 'CLOSED', active: false, next: null },
+  { id: 'closed', label: 'CLOSED', name: 'Closed', active: false, next: null },
 ]
 
 /**
  * The row for a phase, or `undefined` for one this build has never heard of.
  *
  * Private on purpose: every question the table answers has a named function
- * beside it — {@link phaseLabel}, {@link isActive}, {@link phaseNext} — so no
- * caller has to remember what a missing row means, and the three answers to
- * "this build has never heard of that phase" are decided here rather than at a
- * screen. A sixth question wanting the row exports a named function beside
- * these rather than the lookup.
+ * beside it — {@link phaseLabel}, {@link phaseName}, {@link isActive},
+ * {@link phaseNext}, {@link isKnownPhase} — so no caller has to remember what
+ * a missing row means, and every answer to "this build has never heard of that
+ * phase" is decided here rather than at a screen. A question wanting the row
+ * exports a named function beside these rather than the lookup.
  */
 function phaseRow(phase: PhaseValue): Phase | undefined {
   return PHASES.find((row) => row.id === phase)
@@ -138,6 +160,41 @@ export function phaseOf(trip: TripState): PhaseValue {
  */
 export function phaseLabel(phase: PhaseValue): string {
   return phaseRow(phase)?.label ?? phase
+}
+
+/**
+ * The phase **in a sentence** — `Unpack`, not `UNPACK`.
+ *
+ * {@link phaseLabel}'s twin, and unrecognised values fall through the same
+ * way and for the same reason: the value is drawn exactly as it arrived, and
+ * a casing invented for it here would be coercion by another name.
+ *
+ * The reopen confirm is its one caller today: *"It returns to Unpack exactly
+ * as it stood."* The sentence names **the phase the move goes to**, which is
+ * any of the four a closed Trip can be reopened into (invariant 16), so it is
+ * the table that supplies the word rather than the boards' single drawn
+ * example.
+ */
+export function phaseName(phase: PhaseValue): string {
+  return phaseRow(phase)?.name ?? phase
+}
+
+/**
+ * Whether this build has a row for `phase` at all.
+ *
+ * The one question the other accessors cannot answer, because each of them
+ * *resolves* an unrecognised phase — to the raw value, to not-active, to no
+ * next step — and a surface that has to draw the unrecognised case
+ * differently needs to know before it asks. The SET PHASE sheet is that
+ * surface: no row draws `● NOW`, and a mono line states the value verbatim
+ * above them (spec §3.4).
+ *
+ * It exists so that no caller writes `PHASES.some(…)` or `PHASES.find(…)` of
+ * its own. The moment one does, "what an unrecognised phase means" is decided
+ * in two places, and the screen's copy is the one that drifts.
+ */
+export function isKnownPhase(phase: PhaseValue): boolean {
+  return phaseRow(phase) !== undefined
 }
 
 /**

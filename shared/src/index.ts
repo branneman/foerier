@@ -124,9 +124,11 @@ export { whereabouts } from './selectors/whereabouts.ts'
 export type { Phase, PhaseKey, TripSections } from './selectors/trip.ts'
 export {
   isActive,
+  isKnownPhase,
   participantIds,
   phaseDay,
   phaseLabel,
+  phaseName,
   phaseNext,
   phaseOf,
   PHASES,
