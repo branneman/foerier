@@ -7,7 +7,7 @@ import {
   tripRenamed,
   type TripState,
 } from '@foerier/shared'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
 import { ParticipantPicker } from '../components/ParticipantPicker'
@@ -44,10 +44,20 @@ import styles from './Trip.module.css'
  *
  * ## EDIT carries all three of story 5's facts
  *
- * *"and change that later"* is name, dates **and** Participants. The toggle is
- * the People screen's quiet mono `EDIT`, which is the Home picker's settled
+ * *"and change that later"* is name, dates **and** Participants. `EDIT` is the
+ * People screen's quiet mono control, which is the Home picker's settled
  * vocabulary (`docs/design/README.md` §3c): a rename affordance on a resting
  * row is a wall of controls around a screen you mostly read.
+ *
+ * **It is not, however, that screen's *toggle*, and the departure is
+ * deliberate.** People's button persists and swaps `EDIT`/`DONE`, so it is a
+ * pressed state and carries `aria-pressed`. This one has `Save` and `Cancel`
+ * standing in for `DONE` — two exits with different meanings, which one
+ * `DONE` cannot express — so the button *vanishes* while editing and is
+ * therefore never in a pressed state. It carries no `aria-pressed`: a control
+ * rendered only when off would hard-code `"false"` forever, which announces a
+ * state that never changes. Because it unmounts, `Save` and `Cancel` return
+ * focus to it by hand; People's persistent button never has to.
  *
  * **Each edit emits its own op when it changes and nothing when it does not.**
  * Gear detail's Edit sheet is the precedent, and the reason bites harder here:
@@ -81,6 +91,20 @@ export function Trip() {
   const [phaseOpen, setPhaseOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
 
+  // The `EDIT` button unmounts while editing, so leaving EDIT mode would drop
+  // focus to `<body>` and strand a keyboard on the top of the document. The
+  // flag is what keeps that to the two exits that *came from* here: a Trip
+  // that merely re-renders — a pulled op moving its phase, say — must not
+  // steal focus from wherever it actually is.
+  const editButton = useRef<HTMLButtonElement>(null)
+  const returnFocus = useRef(false)
+
+  useEffect(() => {
+    if (editing || !returnFocus.current) return
+    returnFocus.current = false
+    editButton.current?.focus()
+  }, [editing])
+
   const trip: TripState | undefined =
     tripId === undefined ? undefined : state.trips[tripId]
 
@@ -94,6 +118,13 @@ export function Trip() {
     // produces for "not entered" — so an untouched field compares equal and
     // writes nothing, and a Trip that never had dates cannot acquire a pair of
     // clears by being opened in EDIT.
+    //
+    // A register holding something the `date` control cannot show — spec §1.4
+    // gates no format, so a peer's `'next summer'` folds and is stored — seeds
+    // the draft with that string, which the input renders as empty while the
+    // draft still holds it. Saving therefore compares equal and writes
+    // nothing: the quartermaster's value survives untouched rather than being
+    // silently cleared by a field that could not draw it.
     setStartDraft(current.startDate?.value ?? '')
     setEndDraft(current.endDate?.value ?? '')
     setEditing(true)
@@ -122,6 +153,7 @@ export function Trip() {
     }
     if (Object.keys(dates).length > 0) emit(tripDatesSet(id, dates))
 
+    returnFocus.current = true
     setEditing(false)
   }
 
@@ -171,10 +203,13 @@ export function Trip() {
             through both modes. */}
         <h1 className={styles['title']}>{label}</h1>
         {!editing && (
+          // No `aria-pressed`: this button is rendered only when EDIT is off,
+          // so the attribute could never be anything but `"false"` — a state
+          // announced and never changed. See the departure in the header.
           <button
+            ref={editButton}
             type="button"
             className={styles['modeToggle']}
-            aria-pressed={editing}
             onClick={() => openEdit(trip)}
           >
             EDIT
@@ -317,7 +352,10 @@ export function Trip() {
             <button
               type="button"
               className={styles['cancel']}
-              onClick={() => setEditing(false)}
+              onClick={() => {
+                returnFocus.current = true
+                setEditing(false)
+              }}
             >
               Cancel
             </button>
@@ -327,7 +365,8 @@ export function Trip() {
               has to notice — the People screen's "a Person is never removed"
               line, in the same slot and the same register. */}
           <p className={styles['hint']}>
-            A PARTICIPANT IS PICKED, NOT SAVED — IT TAKES EFFECT AT ONCE.
+            A PARTICIPANT TAKES EFFECT AT ONCE — SAVE AND CANCEL DO NOT COVER
+            IT.
           </p>
         </div>
       )}

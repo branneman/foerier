@@ -220,7 +220,11 @@ describe('the trip screen — the header the board draws', () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     await renderTrip(`/trips/${ALPS}`, ...alps())
 
-    expect(screen.getByTestId('gear-list')).toHaveTextContent('0 GEAR LISTED.')
+    // Anchored, because `toHaveTextContent` is a substring match and the
+    // region's copy is exact: `0 GEAR LISTED.` and nothing beside it.
+    expect(screen.getByTestId('gear-list')).toHaveTextContent(
+      /^0 GEAR LISTED\.$/,
+    )
     expect(screen.queryByRole('button', { name: /add/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /add/i })).toBeNull()
   })
@@ -231,6 +235,38 @@ describe('the trip screen — the header the board draws', () => {
     await renderTrip('/trips/tttttttt-0000-7000-8000-0000000000ff')
 
     expect(screen.getByText('No such trip.')).toBeVisible()
+  })
+
+  /**
+   * The other half of the not-found split. `writeTrip` creates the entity for
+   * **any** Trip op, out of authoring order, so a `trip.participant_added`
+   * that arrives before its `trip.created` yields a Trip the fold has seen and
+   * that carries no name — an ordinary unnamed Trip, drawn `—`, and emphatically
+   * not a missing one.
+   */
+  it('draws a Trip that exists with no name as —, never as missing', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      personRecorded('els', 'Els'),
+      tripParticipantAdded(ALPS, 'els'),
+    )
+
+    expect(screen.queryByText('No such trip.')).toBeNull()
+    expect(screen.getByRole('heading', { name: '—' })).toBeVisible()
+    // The phase register is absent too, and an absent one reads `draft`.
+    expect(screen.getByTestId('phase-chip')).toHaveTextContent('DRAFT')
+    expect(screen.getByRole('img', { name: 'Participants: Els' })).toBeVisible()
+  })
+
+  it('drops the meta row entirely for a Trip with neither dates nor Participants', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, tripCreated(ALPS, 'Vosges — Oct'))
+
+    // The board's own variant: "dates are optional and a draft usually has
+    // none — the meta row simply drops."
+    expect(screen.queryByTestId('trip-dates')).toBeNull()
+    expect(screen.queryByRole('img', { name: /Participants/ })).toBeNull()
   })
 
   it('offers no way to delete a Trip', async () => {
@@ -262,6 +298,32 @@ describe('the trip screen — EDIT', () => {
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull()
+    // The button unmounted while editing, so leaving EDIT has to hand focus
+    // back by hand — otherwise a keyboard lands on `<body>`.
+    expect(screen.getByRole('button', { name: 'EDIT' })).toHaveFocus()
+  })
+
+  it('returns focus to EDIT after a Save as well', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(screen.getByRole('button', { name: 'EDIT' })).toHaveFocus()
+  })
+
+  it('announces no pressed state on a control that is only ever off', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    // People's `EDIT` persists and swaps to `DONE`, so `aria-pressed` is a
+    // fact there. This one unmounts while editing, so the attribute could only
+    // ever read `"false"` — a state announced and never changed.
+    expect(screen.getByRole('button', { name: 'EDIT' })).not.toHaveAttribute(
+      'aria-pressed',
+    )
   })
 
   it('writes nothing at all when nothing changed', async () => {

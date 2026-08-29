@@ -234,6 +234,32 @@ describe('New trip — the create', () => {
     expect(ops.some((op) => op.type === 'trip.participant_removed')).toBe(false)
   })
 
+  /**
+   * A Person recorded from inside the picker is on the row **at once**, which
+   * is `peopleOn`'s doing rather than this screen's: `emit` folds on the
+   * store's queue, so for a tick that Person is in the selection and not yet
+   * in `sortedPeople`. A row that filtered the roster would drop the Person it
+   * had just been told to add.
+   */
+  it('lists a Person recorded from inside the picker', async () => {
+    const seed = await seeded()
+    const user = userEvent.setup()
+    renderNewTrip(seed)
+
+    await user.click(screen.getByRole('button', { name: 'Participants' }))
+    await user.click(screen.getByRole('button', { name: '+ New person' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'New person name' }),
+      'Kees',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(
+      screen.getByRole('button', { name: 'Participants' }),
+    ).toHaveTextContent('Kees')
+  })
+
   it('shows the chosen Participants on the row', async () => {
     const seed = await seeded(
       personRecorded('els', 'Els'),
@@ -253,6 +279,31 @@ describe('New trip — the create', () => {
     expect(
       screen.getByRole('button', { name: 'Participants' }),
     ).toHaveTextContent('Els')
+  })
+
+  /**
+   * The whole burst, in the order the ledger line is written. The pairwise
+   * tests above pin each op's payload; this one pins that all three go out
+   * together and in that order — `trip.created` first, because the two after
+   * it address a Trip it is what creates.
+   */
+  it('writes the three ops in order for a Trip carrying everything', async () => {
+    const seed = await seeded(personRecorded('els', 'Els'))
+    const user = userEvent.setup()
+    renderNewTrip(seed)
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Alps 2026')
+    await user.type(screen.getByLabelText('Start'), '2026-08-14')
+    await user.click(screen.getByRole('button', { name: 'Participants' }))
+    await user.click(screen.getByRole('button', { name: /Els/ }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await user.click(screen.getByRole('button', { name: 'Create trip' }))
+
+    expect(await seed.authored()).toEqual([
+      { type: 'trip.created', payload: { name: 'Alps 2026' } },
+      { type: 'trip.dates_set', payload: { start: '2026-08-14' } },
+      { type: 'trip.participant_added', payload: { person_id: 'els' } },
+    ])
   })
 
   it('lands on the new Trip, which is where F3 points', async () => {

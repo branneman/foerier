@@ -54,9 +54,12 @@
     overflow-wrap: anywhere;
   }
 
-  /* The People screen's quiet mono toggle, character for character: a rename
-     affordance on a resting screen is a control around something you mostly
-     read. */
+  /* The People screen's quiet mono control, at the same weight and in the same
+     slot: a rename affordance on a resting screen is a wall of controls around
+     something you mostly read. Not that screen's *toggle*, though — this one
+     unmounts while EDIT is on, because `Save` and `Cancel` say two different
+     things where `DONE` says one (see `Trip.tsx`'s header), so it carries no
+     pressed state. */
   .modeToggle {
     flex: none;
     display: inline-flex;

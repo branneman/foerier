@@ -17,6 +17,7 @@ import {
 import { describe, expect, it } from 'vitest'
 
 import {
+  peopleOn,
   tripChip,
   tripDateRange,
   tripParticipants,
@@ -130,6 +131,42 @@ describe('tripParticipants', () => {
       tripCreated(TRIP, 'Alps 2026'),
     )
     expect(tripParticipants(state, theTrip(state))).toEqual([])
+  })
+})
+
+describe('peopleOn', () => {
+  /**
+   * The create screen's way in — it holds a **draft** selection and has no
+   * Trip to ask — and the reason "who is on this Trip" is one code path rather
+   * than two. A screen that filtered `sortedPeople` itself would drop an id
+   * the fold has not caught up with, and `emit` folds on the store's queue, so
+   * a Person recorded from inside the picker is exactly that for a tick.
+   */
+  it('lists an id with no folded Person rather than dropping it', () => {
+    const state = depot(personRecorded('p1', 'Mark'))
+
+    expect(peopleOn(state, ['just-recorded', 'p1'])).toEqual([
+      { id: 'p1', label: 'Mark' },
+      { id: 'just-recorded', label: '—' },
+    ])
+  })
+
+  it('orders the folded ones by label, whatever order it is handed', () => {
+    // A draft holds ids in tap order; `participantIds` holds them in id order.
+    // Neither reaches the display — `sortedPeople` decides that.
+    const state = depot(
+      personRecorded('p1', 'Mark'),
+      personRecorded('p2', 'Els'),
+    )
+
+    expect(peopleOn(state, ['p1', 'p2'])).toEqual([
+      { id: 'p2', label: 'Els' },
+      { id: 'p1', label: 'Mark' },
+    ])
+  })
+
+  it('is empty for an empty selection', () => {
+    expect(peopleOn(depot(personRecorded('p1', 'Mark')), [])).toEqual([])
   })
 })
 

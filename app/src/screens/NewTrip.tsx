@@ -8,9 +8,9 @@ import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
 
 import { ParticipantPicker } from '../components/ParticipantPicker'
-import { sortedPeople } from '../depot/people'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
+import { peopleOn } from '../depot/trips'
 import styles from './NewTrip.module.css'
 
 /**
@@ -88,14 +88,17 @@ export function NewTrip() {
   // state, not an unfinished one.
   const canSubmit = trimmedName !== ''
 
-  const chosen = new Set(participants)
-  // Display order from `sortedPeople`, the list the People screen and both
-  // pickers already share, so "the third one down" means one Person
-  // everywhere. Every id in the draft came out of the picker, which only
-  // offers folded People, so nothing can be missing from this list.
-  const chosenLabels = sortedPeople(state)
-    .filter((person) => chosen.has(person.id))
-    .map((person) => person.label)
+  // The same path the trip screen and the trip card draw their Participants
+  // through, over a draft selection instead of a Trip's registers: display
+  // order from `sortedPeople`, so "the third one down" means one Person
+  // everywhere, and an id the fold has not caught up with listed as `—`
+  // rather than dropped. That last part is not hypothetical here — the
+  // picker's own `+ New person` authors through `emit`, which folds on the
+  // store's queue, so a Person recorded mid-flow is in this selection a tick
+  // before `sortedPeople` has heard of them.
+  const chosenLabels = peopleOn(state, participants).map(
+    (person) => person.label,
+  )
 
   function submit() {
     if (!canSubmit) return

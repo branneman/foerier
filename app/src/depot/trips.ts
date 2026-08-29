@@ -63,7 +63,32 @@ export function tripParticipants(
   state: DepotState,
   trip: TripState,
 ): readonly PersonRow[] {
-  const ids = participantIds(trip)
+  return peopleOn(state, participantIds(trip))
+}
+
+/**
+ * {@link tripParticipants}' core, over a bare set of person ids — and the
+ * create screen's only way in, because `/trips/new` holds a **draft**
+ * selection and has no Trip to ask.
+ *
+ * It is exported so that "who is on this Trip" has one code path rather than
+ * two. The create screen used to filter `sortedPeople` itself, which looks
+ * equivalent and is not: `emit` folds on the store's queue, so a Person
+ * recorded from inside the picker sits in the selection for a tick before
+ * `sortedPeople` has heard of them — and a list that filters would drop the
+ * Person it had just been told to add. Here that Person is listed, as `—`,
+ * until the fold catches up, which is the same behaviour and the same reason
+ * as the paragraph above.
+ *
+ * The ids arrive in whatever order the caller holds them — `participantIds`'
+ * id order from a Trip, tap order from a draft. Neither reaches the display:
+ * the folded ones are ordered by `sortedPeople` and only the unfolded tail
+ * keeps the caller's order, because there is no label to sort it by.
+ */
+export function peopleOn(
+  state: DepotState,
+  ids: readonly string[],
+): readonly PersonRow[] {
   if (ids.length === 0) return []
 
   const onTrip = new Set(ids)
