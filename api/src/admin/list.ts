@@ -55,9 +55,17 @@ async function main(): Promise<void> {
         continue
       }
       for (const login of household.logins) {
+        // Shown, not filtered — a Maintainer diagnosing a lockout
+        // (`admin:invite --login <id>` failing with `login disabled`) needs
+        // to see the disabled row, not have it read exactly like a live one.
+        const disabledSuffix =
+          login.disabledAt === null
+            ? ''
+            : `  DISABLED ${login.disabledAt.toISOString().slice(0, 10)}`
         console.log(
           `  login  ${login.id}  person ${login.personId}  ` +
-            `${String(login.devices)} device(s)  since ${login.createdAt.toISOString().slice(0, 10)}`,
+            `${String(login.devices)} device(s)  since ${login.createdAt.toISOString().slice(0, 10)}` +
+            disabledSuffix,
         )
       }
     }

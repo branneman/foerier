@@ -162,14 +162,18 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
   }
 
   /**
-   * The one insert a device-link Invite ever needs, shared by the two ways
+   * The one insert a device-link Invite ever needs, shared by the three ways
    * of asking for one: {@link mintDeviceLink} (Maintainer script, no signed-in
-   * caller, `created_by_login` null) and `issueDeviceLink` (a signed-in
-   * Device issuing one for itself, `created_by_login` its own Login).
+   * caller, `created_by_login` null), `issueDeviceLink` (a signed-in Device
+   * issuing one for itself, `created_by_login` its own Login), and
+   * {@link issueDeviceLinkFor} (a signed-in Device issuing one for another
+   * Person's Login — auth-design §3.1's "or any Quartermaster of the
+   * Household" — `created_by_login` still the caller).
    *
-   * Everything about the row is identical between the two callers except
-   * whose Login vouches for it — so they share this insert rather than each
-   * repeating the six-field shape and risking one drifting from the other.
+   * Everything about the row is identical between the three callers except
+   * whose Login vouches for it and whose Login it is minted against — so
+   * they share this insert rather than each repeating the six-field shape
+   * and risking one drifting from the others.
    */
   async function insertDeviceLinkInvite({
     householdId,
@@ -1361,7 +1365,14 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
       return { householdName: household.name }
     },
 
-    /** The Maintainer's only window onto who exists. Reads nothing secret. */
+    /**
+     * The Maintainer's only window onto who exists. Reads nothing secret.
+     *
+     * Includes disabled Logins rather than filtering them — a Maintainer
+     * diagnosing a lockout (`admin:invite --login <id>` failing with
+     * `login disabled`) needs to see the row, not have it vanish. `admin:list`
+     * is what marks `disabledAt` in its printed output.
+     */
     async listHouseholds(): Promise<
       Array<{
         id: string
@@ -1371,6 +1382,7 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
           personId: string
           createdAt: Date
           devices: number
+          disabledAt: Date | null
         }>
       }>
     > {
@@ -1392,6 +1404,7 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
           'login.household_id as household_id',
           'login.person_id as person_id',
           'login.created_at as created_at',
+          'login.disabled_at as disabled_at',
           fn.count<string>('device.id').as('devices'),
         ])
         .groupBy([
@@ -1399,6 +1412,7 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
           'login.household_id',
           'login.person_id',
           'login.created_at',
+          'login.disabled_at',
         ])
         .execute()
 
@@ -1413,6 +1427,7 @@ export function createAuthService({ db, clock, ids, rp }: AuthServiceDeps) {
             createdAt: login.created_at,
             // `count` reaches the driver as a string; see `db/index.ts`.
             devices: Number(login.devices),
+            disabledAt: login.disabled_at,
           })),
       }))
     },

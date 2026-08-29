@@ -341,7 +341,41 @@ describe('device links', () => {
       const mine = households.find((row) => row.id === HOUSEHOLD)
       expect(mine?.name).toBe('Veldkamp')
       expect(mine?.logins).toEqual([
-        expect.objectContaining({ id: LOGIN, personId: PERSON, devices: 0 }),
+        expect.objectContaining({
+          id: LOGIN,
+          personId: PERSON,
+          devices: 0,
+          disabledAt: null,
+        }),
+      ])
+    })
+
+    /**
+     * `final-fix-report.md` finding 7: before revocation existed no Login
+     * could be disabled, so `listHouseholds` had no `disabled_at` to omit.
+     * Revoking a Login must not make it vanish from `admin:list` — a
+     * Maintainer diagnosing `admin:invite --login <id>` failing with
+     * `login disabled` needs to see the row, marked rather than hidden.
+     */
+    it('lists a disabled Login rather than filtering it away', async () => {
+      await db
+        .insertInto('login')
+        .values({ id: LOGIN, household_id: HOUSEHOLD, person_id: PERSON })
+        .execute()
+      await db
+        .updateTable('login')
+        .set({ disabled_at: new Date(h.clock.now()) })
+        .where('id', '=', LOGIN)
+        .execute()
+
+      const households = await h.service.listHouseholds()
+      const mine = households.find((row) => row.id === HOUSEHOLD)
+      expect(mine?.logins).toEqual([
+        expect.objectContaining({
+          id: LOGIN,
+          personId: PERSON,
+          disabledAt: new Date(h.clock.now()),
+        }),
       ])
     })
 
