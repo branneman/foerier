@@ -4,6 +4,7 @@ import {
   gearRetired,
   gearTagApplied,
   normalizeTag,
+  personRecorded,
   placeRecorded,
   type Clock,
   type IdSource,
@@ -189,10 +190,17 @@ describe('the Depot list', () => {
     renderDepot(store)
 
     const row = screen.getByRole('link', { name: 'Tent' })
-    expect(within(row).getByText('Attic ▸ Crate B')).toBeInTheDocument()
+    // Owner leads the meta slot since S4, so the path is no longer the whole
+    // of it — the boards draw `PERSONAL E · SLAAPKAMER ▸ KAST`.
+    expect(within(row).getByTestId('gear-row-meta')).toHaveTextContent(
+      'SHARED · Attic ▸ Crate B',
+    )
   })
 
-  it('shows nothing where a home path would be for loose gear', async () => {
+  it('shows the owner alone where a home path would be for loose gear', async () => {
+    // Before S4 the meta slot could be empty and loose gear had none. The
+    // owner segment is never empty — an absent register reads `SHARED` — so
+    // the slot now always exists, carrying just the owner.
     const ropeId = anId()
     const store = await seededStore([
       gearRecorded(ropeId, { name: 'Rope', container: false, kind: 'single' }),
@@ -201,7 +209,27 @@ describe('the Depot list', () => {
     renderDepot(store)
 
     const row = screen.getByRole('link', { name: 'Rope' })
-    expect(within(row).queryByTestId('gear-row-meta')).toBeNull()
+    expect(within(row).getByTestId('gear-row-meta')).toHaveTextContent('SHARED')
+  })
+
+  it('leads the meta slot with the owning Person`s initial', async () => {
+    const jacketId = anId()
+    const store = await seededStore([
+      personRecorded('els', 'Els'),
+      gearRecorded(jacketId, {
+        name: 'Down jacket',
+        container: false,
+        kind: 'single',
+        owner: { type: 'person', personId: 'els' },
+      }),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Down jacket' })
+    expect(within(row).getByTestId('gear-row-meta')).toHaveTextContent(
+      'PERSONAL E',
+    )
   })
 
   it('shows the owned-count only for counted gear', async () => {
@@ -222,8 +250,12 @@ describe('the Depot list', () => {
     const mugRow = screen.getByRole('link', { name: 'Mug' })
     expect(within(mugRow).getByTestId('gear-row-meta')).toHaveTextContent('×4')
 
+    // The single's slot exists now — it carries the owner — but still no
+    // count, which is what this test is about.
     const tentRow = screen.getByRole('link', { name: 'Tent' })
-    expect(within(tentRow).queryByTestId('gear-row-meta')).toBeNull()
+    expect(within(tentRow).getByTestId('gear-row-meta')).not.toHaveTextContent(
+      '×',
+    )
   })
 
   it('filters rows by the search field', async () => {

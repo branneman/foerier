@@ -4,6 +4,7 @@ import {
   dimension,
   dimensionValues,
   homePath,
+  ownerLabel,
   sliceDepot,
   tagsOf,
   type ContainmentView,
@@ -41,12 +42,21 @@ import styles from './Depot.module.css'
  * title row's headline, where the board puts it.
  */
 
-/** `ATTIC ▸ CRATE B · ×2` — the row's meta slot. Owner joins it at S4. */
+/**
+ * `PERSONAL E · ATTIC ▸ CRATE B · ×2` — the row's meta slot, owner first,
+ * which is what the boards draw (`PERSONAL E · SLAAPKAMER ▸ KAST`,
+ * `SHARED · ⌂ KELDER ▸ SHELF 2`).
+ *
+ * The owner segment is never empty — absence reads `SHARED` — so the meta
+ * slot now always exists and the `undefined` branch below survives only for
+ * a shape the reducer cannot produce.
+ */
 function metaFor(
   state: DepotState,
   gear: GearState,
   view: ContainmentView,
 ): string | undefined {
+  const owner = ownerLabel(state, gear)
   const path = homePath(state, gear.id, view)
     .map((segment) => segment.name)
     .join(' ▸ ')
@@ -57,7 +67,7 @@ function metaFor(
     gear.kind?.value === 'counted' && gear.ownedCount?.value !== undefined
       ? `×${gear.ownedCount.value}`
       : ''
-  const meta = [path, count].filter((part) => part !== '').join(' · ')
+  const meta = [owner, path, count].filter((part) => part !== '').join(' · ')
   return meta === '' ? undefined : meta
 }
 
@@ -106,6 +116,7 @@ function Row({
               ...(kind === undefined
                 ? {}
                 : { kind: dimension('kind').format(kind, state) }),
+              owner: ownerLabel(state, gear),
               ...(path === '' ? {} : { path }),
               ...(qty === undefined ? {} : { qty }),
               tags: tagsOf(gear),

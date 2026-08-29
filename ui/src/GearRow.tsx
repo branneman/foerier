@@ -65,9 +65,13 @@ export interface GearRowProps {
   insideCount?: number
   /** The **glossary** Kind, already formatted. Table column only. */
   kind?: string
-  /** `SHARED`, or the owning Person. Meta line and table column. **S4 fills
-   * it**; until then the table's OWNER column reads `—`, which is honest —
-   * the column is drawn on the board and the fact does not exist yet. */
+  /** `SHARED`, or `PERSONAL E`. Meta line and table column.
+   *
+   * Callers pass `shared/`'s `ownerLabel`, which is the one place an absent
+   * ownership register is decided to read as `SHARED` — never a string built
+   * at the call site, or the table column and the row's meta line would be
+   * free to disagree. `—` remains the fallback for a caller with nothing to
+   * say, which since S4 no Depot caller is. */
   owner?: string
   /** `ATTIC ▸ SHELF L-TOP ▸ CRATE B`. Meta line and table column. */
   path?: string
