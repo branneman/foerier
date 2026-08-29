@@ -289,6 +289,62 @@ describe('the op table and the household counter', () => {
     // class — and the next run of this file — expects to find.
     await m0003.up(rawDb)
   })
+
+  /**
+   * The defect `0006_login_reinvite` exists for. A revoked Login keeps its
+   * row — deleting it would take its Passkeys and Devices with it — so a
+   * plain unique constraint on (household_id, person_id) would mean a
+   * revoked Person can never hold a Login again. Story 28 says "at most one
+   * Login", not "at most one ever".
+   */
+  it('lets a Person hold a new Login after the old one is disabled', async () => {
+    const personId = '0f000004-0000-4000-8000-0000000040f1'
+
+    await db
+      .insertInto('login')
+      .values({
+        id: '0f000004-0000-4000-8000-0000000040f2',
+        household_id: HOUSEHOLD_A,
+        person_id: personId,
+        disabled_at: new Date(Date.UTC(2026, 7, 25, 9, 0, 0)),
+      })
+      .execute()
+
+    await expect(
+      db
+        .insertInto('login')
+        .values({
+          id: '0f000004-0000-4000-8000-0000000040f3',
+          household_id: HOUSEHOLD_A,
+          person_id: personId,
+        })
+        .execute(),
+    ).resolves.toBeDefined()
+  })
+
+  it('still refuses two ACTIVE Logins for one Person', async () => {
+    const personId = '0f000004-0000-4000-8000-0000000040f4'
+
+    await db
+      .insertInto('login')
+      .values({
+        id: '0f000004-0000-4000-8000-0000000040f5',
+        household_id: HOUSEHOLD_A,
+        person_id: personId,
+      })
+      .execute()
+
+    await expect(
+      db
+        .insertInto('login')
+        .values({
+          id: '0f000004-0000-4000-8000-0000000040f6',
+          household_id: HOUSEHOLD_A,
+          person_id: personId,
+        })
+        .execute(),
+    ).rejects.toThrow()
+  })
 })
 
 /**
