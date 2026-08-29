@@ -130,6 +130,18 @@
     font-weight: 600;
   }
 
+  /* S5 lights the encoding the comment above describes: accent border for a
+     Person who holds a Login, control border for one who does not. Neither
+     rule fires while `data-login` carries no attribute at all — which is
+     exactly the offline fallback, and the pre-S5 default this file always
+     had. */
+  .circle[data-login='yes'] {
+    border-color: var(--color-accent);
+  }
+  .circle[data-login='no'] {
+    border-color: var(--color-rule-control);
+  }
+
   .name {
     font-size: 1rem;
     line-height: 1.375rem;
@@ -147,6 +159,55 @@
     border: var(--stroke-rule) solid var(--color-rule-control);
     border-radius: var(--radius-chip);
     padding: 0.0625rem var(--space-4);
+  }
+
+  /* The meta line — `SIGNED IN · 2 DEVICES`, `NO LOGIN · JOINS TRIPS AS
+     PARTICIPANT`, `INVITE OUT · SINGLE USE` — copied off `Devices.module.css`'s
+     own `.rowMeta` mono-11 rather than invented. */
+  .meta {
+    font: var(--text-label) var(--font-mono);
+    color: var(--color-ink-muted);
+    letter-spacing: var(--tracking-label);
+    margin-inline-start: auto;
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  /* The right column's own-row chevron, and `DEVICE LINK ›` / `INVITE ›` —
+     accent-text, never a filled button, matching `.rename`/`.action` on the
+     sibling account surfaces. */
+  .chevron {
+    flex-shrink: 0;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .action {
+    flex-shrink: 0;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  /* RETIRE rule (`docs/design/README.md` §4, Voice): attention-coloured
+     text, never a filled button — the same rule `Devices.module.css`'s own
+     `.signOut` follows for a Device's own revoke. */
+  .revoke {
+    flex-shrink: 0;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--color-status-attention);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
   }
 
   .rename {
@@ -224,5 +285,53 @@
     font-size: 0.5625rem;
     letter-spacing: var(--tracking-label);
     color: var(--color-ink-faint);
+  }
+
+  /* ---- the offline fallback line — copied off `Account.module.css`'s own
+     quiet-nudge register, never a toast ---- */
+  .nudgeLine {
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-ink-muted);
+  }
+
+  /* ---- the revoke-login confirm (`ui/`'s `Confirm`, `variant="sheet"`) ----
+
+     Copied off `Devices.module.css`'s own two confirm-sheet buttons: what's
+     genuinely these sheets' own is the two buttons, not the scrim, the
+     sheet surface or the actions row, which `Confirm` supplies. RETIRE rule:
+     attention border and text, never a filled red button — even though
+     nothing here is discarded, the same visual weight applies to any action
+     that ends another Person's access. */
+  .confirmAttention {
+    flex: 1;
+    min-height: max(3rem, 48px);
+    border: var(--stroke-chip) solid var(--color-status-attention);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-status-attention);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .confirmAttention:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-accent);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .ghost:disabled {
+    opacity: 0.6;
+    cursor: default;
   }
 }

@@ -6,7 +6,7 @@ import {
   type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
@@ -174,6 +174,12 @@ async function renderAccount(
     passkeysFail?: boolean
     /** Fails `GET /auth/devices` — same finding, for the DEVICES card. */
     devicesFail?: boolean
+    /** `GET /auth/logins`, read here only for the count the PEOPLE & LOGINS
+     * summary carries — `People.test.tsx` owns the row-by-row states. */
+    loginCount?: number
+    /** Fails `GET /auth/logins` — same finding as `passkeysFail`/
+     * `devicesFail`: a failed fetch must not read as "0 signed in." */
+    loginsFail?: boolean
   } = {},
 ) {
   const {
@@ -187,6 +193,8 @@ async function renderAccount(
     clearLocalData,
     passkeysFail = false,
     devicesFail = false,
+    loginCount = 0,
+    loginsFail = false,
   } = options
 
   stubPlatformAuthenticator(platformAuthenticator)
@@ -234,6 +242,26 @@ async function renderAccount(
             devices: devices.filter((device) => !revokedDevices.has(device.id)),
           })
         },
+      },
+      {
+        method: 'GET',
+        path: '/auth/logins',
+        respond: () => {
+          if (loginsFail) throw new Error('offline')
+          return jsonResponse({
+            logins: Array.from({ length: loginCount }, (_, index) => ({
+              id: `login-${index}`,
+              person_id: PERSON_ID,
+              device_count: 1,
+              last_seen_at: null,
+            })),
+          })
+        },
+      },
+      {
+        method: 'GET',
+        path: '/auth/invites',
+        respond: () => jsonResponse({ invites: [] }),
       },
       {
         method: 'POST',
@@ -383,10 +411,37 @@ describe('Account', () => {
       )
     })
 
-    it('is titled PEOPLE, not the board`s PEOPLE & LOGINS, until S5', async () => {
+    it('is titled PEOPLE & LOGINS, the board`s own label, now that S5 fills the second half', async () => {
       await renderAccount({ personName: 'Mark' })
-      expect(screen.getByText('PEOPLE')).toBeInTheDocument()
-      expect(screen.queryByText('PEOPLE & LOGINS')).toBeNull()
+      expect(screen.getByText('PEOPLE & LOGINS')).toBeInTheDocument()
+    })
+
+    it('states how many hold a login in the phone summary row', async () => {
+      await renderAccount({ personName: 'Mark', loginCount: 1 })
+      await waitFor(() => {
+        expect(screen.getByRole('link', { name: /People/ })).toHaveTextContent(
+          '1 SIGNED IN',
+        )
+      })
+    })
+
+    it('omits the login clause while it cannot be loaded, rather than claiming zero', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      await renderAccount({ personName: 'Mark', loginsFail: true })
+      // Waits for the failed fetch to actually settle, rather than the
+      // absence being a race against a request still in flight.
+      await waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith(
+          'account: could not load logins',
+          expect.any(Error),
+        )
+      })
+      expect(
+        screen.getByRole('link', { name: /People/ }),
+      ).not.toHaveTextContent('SIGNED IN')
+      consoleError.mockRestore()
     })
   })
 

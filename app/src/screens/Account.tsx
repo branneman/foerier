@@ -132,11 +132,11 @@ function usePlatformAuthenticatorAvailable(): boolean {
  * `ACCOUNT` affordance out of the shell until then — now argues the other
  * way: it leads to a real screen where People are recorded and renamed.
  *
- * It is titled **`PEOPLE`** rather than the board's `PEOPLE & LOGINS`
- * because that is all it can hold. S5 (story 28) renames it and adds the
- * right column, the login meta line, and the outstanding-invite row; those
- * three obligations are written down in
- * `docs/specs/2026-08-29-people-and-ownership.md` §7.
+ * **S5 (story 28) is what makes the board's own label, `PEOPLE & LOGINS`,
+ * true.** `GET /auth/logins` and the join half of `GET /auth/invites` now
+ * exist, so the section carries the right column, the login meta line, and
+ * the outstanding-invite row `People.tsx` itself draws — this file only
+ * threads `api`/`token` through and states the phone summary's login count.
  *
  * **`Add a passkey on this device` renders only where the device can make
  * one** — gated on {@link usePlatformAuthenticatorAvailable}, hidden while
@@ -184,6 +184,14 @@ export function Account({
   const [passkeysStatus, setPasskeysStatus] = useState<LoadStatus>('loading')
   const [devices, setDevices] = useState<readonly DeviceRow[]>([])
   const [devicesStatus, setDevicesStatus] = useState<LoadStatus>('loading')
+  /** Only the count is read here — the phone summary row's own login clause
+   * (`PEOPLE & LOGINS`'s meta gains what the People screen's count line
+   * carries). The full row-by-row state is `People`'s own business: it is
+   * mounted inline at Desktop and fetches this same list itself, rather than
+   * being handed a derived prop, because its five row states need the join
+   * half of `GET /auth/invites` too. */
+  const [loginCount, setLoginCount] = useState(0)
+  const [loginsStatus, setLoginsStatus] = useState<LoadStatus>('loading')
   const [addingPasskey, setAddingPasskey] = useState(false)
   const [passkeyLabel, setPasskeyLabel] = useState('')
   const [busy, setBusy] = useState(false)
@@ -253,6 +261,25 @@ export function Account({
       .catch((error: unknown) => {
         console.error('account: could not load devices', error)
         if (!cancelled) setDevicesStatus('failed')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [api, token])
+
+  useEffect(() => {
+    let cancelled = false
+    void api
+      .listLogins(token)
+      .then(({ logins }) => {
+        if (!cancelled) {
+          setLoginCount(logins.length)
+          setLoginsStatus('loaded')
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('account: could not load logins', error)
+        if (!cancelled) setLoginsStatus('failed')
       })
     return () => {
       cancelled = true
@@ -490,22 +517,36 @@ export function Account({
 
       <section className={isDesktop ? styles['card'] : styles['section']}>
         <div className={styles['sectionHead']}>
-          {/* `PEOPLE`, not the board's `PEOPLE & LOGINS`: S5 adds the second
-              half and renames it then. */}
-          <span className={styles['sectionLabel']}>PEOPLE</span>
+          {/* `PEOPLE & LOGINS`, the board's own label (`docs/design/README.md`
+              §13): S5 (story 28) is what makes it true — `GET /auth/logins`
+              and the join half of `GET /auth/invites` now exist, so the
+              screen this leads to draws the login half too. */}
+          <span className={styles['sectionLabel']}>PEOPLE & LOGINS</span>
         </div>
 
         {isDesktop ? (
           // The board draws desktop with the summary rows unfolded — "all
           // three people inline". A media query, because it decides which
           // elements exist (`frontend-design.md` §3.2).
-          <People personId={personId} variant="inline" />
+          <People
+            api={api}
+            token={token}
+            personId={personId}
+            variant="inline"
+          />
         ) : (
           <Link href="/account/people" className={styles['row']}>
             <div>
               <div className={styles['rowTitle']}>People</div>
               <div className={styles['rowMeta']}>
                 {peopleCount} {peopleCount === 1 ? 'PERSON' : 'PEOPLE'}
+                {/* The login clause the People screen's own count line
+                    carries, in the phone summary row's compact shape — the
+                    same `N SIGNED IN` phrase the DEVICES section head badge
+                    above already uses. Omitted while the login half cannot
+                    be loaded: the same "state less, not something false"
+                    rule the pushed screen follows. */}
+                {loginsStatus === 'loaded' && ` · ${loginCount} SIGNED IN`}
               </div>
             </div>
             <span className={styles['chevron']} aria-hidden="true">

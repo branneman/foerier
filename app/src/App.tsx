@@ -422,7 +422,11 @@ export function App({
                   // reason: a media query decides what *exists*.
                   <Redirect to="/account" />
                 ) : (
-                  <People personId={session.personId} />
+                  <People
+                    api={api}
+                    token={session.token}
+                    personId={session.personId}
+                  />
                 )}
               </Route>
               <Route path="/account/people/:personId/invite">
