@@ -389,6 +389,13 @@ describe('InviteIssued (the invite-issued screen)', () => {
       screen.getByRole('link', { name: '‹ PEOPLE & LOGINS' }),
     ).toBeInTheDocument()
     expect(await screen.findByText(/EXPIRES IN 6 d/)).toBeInTheDocument()
+    // A join Invite is not a link — the vocabulary in
+    // `docs/design/README.md` makes the two named things load-bearing, and
+    // the board draws this button's label as `REVOKE INVITE` here, never
+    // `REVOKE LINK`.
+    expect(
+      screen.getByRole('button', { name: 'REVOKE INVITE' }),
+    ).toBeInTheDocument()
 
     expect(issuedBodies).toEqual([{ purpose: 'join', person_id: ELS }])
   })
@@ -404,6 +411,11 @@ describe('InviteIssued (the invite-issued screen)', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: '‹ PEOPLE & LOGINS' }),
+    ).toBeInTheDocument()
+    // A device link is a link, and this is the other entry point that
+    // shares the own device-link's `REVOKE LINK` label.
+    expect(
+      screen.getByRole('button', { name: 'REVOKE LINK' }),
     ).toBeInTheDocument()
 
     expect(issuedBodies).toEqual([{ purpose: 'device', person_id: ELS }])

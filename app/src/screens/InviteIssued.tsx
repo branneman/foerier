@@ -32,9 +32,14 @@ export interface InviteIssuedProps {
  * - `/account/people/:personId/invite` — a join Invite for a Person who has
  *   no Login yet.
  *
- * Only the back link, title, lead, fact line and QR title vary between
- * them — the card, the copy button, the revoke button and the mint-once
- * guard below are identical regardless of which door the reader came in.
+ * The back link, title, lead, fact line, QR title and the revoke button's
+ * own label vary between them — the card, the copy button and the
+ * mint-once guard below are identical regardless of which door the reader
+ * came in. The revoke label follows the vocabulary
+ * (`docs/design/README.md`'s Auth vocabulary & rules): a join Invite is not
+ * a link, so "REVOKE LINK" is the wrong word for it — the board draws
+ * `REVOKE INVITE` there and `REVOKE LINK` for both device-link entry
+ * points, own and another's.
  *
  * **Issues exactly one Invite, ever, no matter how many times this
  * component renders.** `POST /auth/invites` hands back the secret exactly
@@ -83,6 +88,7 @@ export function InviteIssued({
         }.`,
         fact: 'The link is the credential. Treat it like a key.',
         qrTitle: 'Device link',
+        revokeLabel: 'REVOKE LINK',
       }
     : purpose === 'device'
       ? {
@@ -91,6 +97,7 @@ export function InviteIssued({
           lead: `Open this on ${name}’s device. It signs that device in as ${name}.`,
           fact: 'The link is the credential. Treat it like a key.',
           qrTitle: 'Device link',
+          revokeLabel: 'REVOKE LINK',
         }
       : {
           back: { href: '/account/people', label: '‹ PEOPLE & LOGINS' },
@@ -98,6 +105,7 @@ export function InviteIssued({
           lead: 'Hand it over yourself — foerier sends no mail.',
           fact: `It creates a login for ${name}. Nothing else can use it.`,
           qrTitle: 'Join invite',
+          revokeLabel: 'REVOKE INVITE',
         }
 
   useEffect(() => {
@@ -207,7 +215,7 @@ export function InviteIssued({
           onClick={() => void revoke()}
           disabled={invite === null || revoking}
         >
-          REVOKE LINK
+          {copy.revokeLabel}
         </button>
       </div>
     </div>
