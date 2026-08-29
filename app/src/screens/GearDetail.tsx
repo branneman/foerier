@@ -9,6 +9,7 @@ import {
   gearTagApplied,
   gearTagRemoved,
   normalizeTag,
+  ownerLabel,
   tagsOf,
   whereabouts,
   type DepotState,
@@ -58,17 +59,6 @@ const KIND_OPTIONS: readonly { value: KindValue; label: string }[] = [
  */
 function traitLabel(gear: GearState): string {
   return gear.container?.value === true ? 'CONTAINER' : 'ITEM'
-}
-
-/** `SHARED`, or the owning person's name — an intrinsic attribute
- * (`docs/ubiquitous-language.md`, Ownership), but nothing in this slice
- * authors a personal owner yet (that is story 4/S4's work), so every piece
- * of gear a Quartermaster can create here reads as shared. */
-function ownerLabel(state: DepotState, gear: GearState): string {
-  const owner = gear.owner?.value
-  if (owner === undefined || owner.type === 'shared') return 'SHARED'
-  const person = state.people[owner.personId]
-  return (person?.name?.value ?? '').toUpperCase()
 }
 
 /** `ITEM · SHARED · ×2` — the MVP meta line (no weight segment; that is
