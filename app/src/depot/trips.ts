@@ -129,8 +129,30 @@ export function peopleOn(
  *
  * `AUG 14 → SEP 02` is `20 DAYS` on the board, which is the count of days the
  * Trip is away rather than the difference between two dates. It is drawn only
- * when both ends parse and the end is not before the start: a negative span is
- * not a fact about anything, and an unparseable date has no arithmetic.
+ * when both ends parse: an unparseable date has no arithmetic.
+ *
+ * ## A reversed range is reported, never prevented
+ *
+ * `SEP 02 → AUG 14 · ▲ ENDS BEFORE IT STARTS` (the boards, `Screens B` 02A).
+ * There is deliberately **no end-before-start guard** anywhere in the slice,
+ * and the reason is the op log rather than leniency: the two ends are
+ * independent registers, two devices may legitimately write one each while
+ * offline, and a guard would have to reject one of two writes that were both
+ * valid when they were made. Nothing can be rejected after the fact, so the
+ * only honest move is to say so.
+ *
+ * The `▲` is the system's attention class (`#D98263`) — *missing, lost,
+ * disagreement* — and never progress. Which is also why the day count goes
+ * while the range is reversed: `· 20 DAYS` beside the ▲ would be a second,
+ * confident, false statement about the same pair of dates.
+ *
+ * The comparison is on the **stored strings**, which is exact rather than
+ * lucky: it is reached only once both ends have been read as `YYYY-MM-DD`, and
+ * within that spelling lexical order *is* chronological order. Gating it on
+ * that is the whole of the care — compared as bare strings `'2026-09-02' <
+ * 'next summer'`, so an ungated comparison would spend the attention class on
+ * a Trip whose dates disagree with nothing. A range with an end this module
+ * cannot read is left alone: it cannot be counted and it cannot be judged.
  */
 export function tripDateRange(trip: TripState): string | null {
   const start = trip.startDate?.value ?? null
@@ -142,6 +164,7 @@ export function tripDateRange(trip: TripState): string | null {
   const span = inclusiveDays(start, end)
   const range = `${formatDay(start)} → ${formatDay(end)}`
   if (span === null) return range
+  if (end < start) return `${range} · ▲ ENDS BEFORE IT STARTS`
   return `${range} · ${span} ${span === 1 ? 'DAY' : 'DAYS'}`
 }
 
@@ -232,6 +255,14 @@ function parseIsoDate(value: string): IsoDate | null {
 /**
  * Days from `start` to `end` **inclusive of both ends** — `AUG 14 → SEP 02` is
  * 20, which is the board's number and the number of days a Trip is away.
+ * Negative when the range is reversed, and `null` only when an end will not
+ * read as a date.
+ *
+ * `null` means *one* thing on purpose. It used to mean two — unreadable, and
+ * reversed — which was fine while both drew the bare range, and stopped being
+ * fine the moment the reversed case gained a line of its own: the caller has
+ * to tell "there is nothing to say" from "there is something to say and it is
+ * ▲". Sign says the second; `null` is left holding only the first.
  *
  * `Date.UTC` and not local midnight: these are calendar dates with no clock
  * attached, so there is no DST transition to absorb and no reason to let the
@@ -245,7 +276,7 @@ function inclusiveDays(start: string, end: string): number | null {
     (Date.UTC(to.year, to.month - 1, to.day) -
       Date.UTC(from.year, from.month - 1, from.day)) /
     86_400_000
-  return days < 0 ? null : days + 1
+  return days + 1
 }
 
 /**

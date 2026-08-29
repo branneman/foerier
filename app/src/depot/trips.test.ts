@@ -219,12 +219,37 @@ describe('tripDateRange', () => {
     expect(tripDateRange(dated({ start: '2026-02-30' }))).toBe('2026-02-30 →')
   })
 
-  it('states no span when the end falls before the start', () => {
-    // Two independent registers with no end-before-start guard, so this is an
-    // ordinary state. A negative span is not a fact about anything.
+  it('reports a reversed range, and suppresses the count that would be false', () => {
+    // The boards' own line (`Screens B` 02A, DATES — THE OS OWNS THE INPUT):
+    // there is deliberately no end-before-start guard, because two devices
+    // may write the two ends concurrently and a guard would have to discard
+    // one of two valid writes. So the range is reported, never prevented —
+    // and the span goes, because 20 DAYS of a reversed range is a falsehood.
     expect(
       tripDateRange(dated({ start: '2026-09-02', end: '2026-08-14' })),
-    ).toBe('SEP 02 → AUG 14')
+    ).toBe('SEP 02 → AUG 14 · ▲ ENDS BEFORE IT STARTS')
+  })
+
+  it('does not judge a range reversed when an end will not read as a date', () => {
+    // The trap this guards: compared as bare strings, `'2026-09-02' <
+    // 'next summer'`, so an ungated comparison would report a Trip starting
+    // `next summer` as ending before it starts. A range with an unreadable
+    // end cannot be judged at all, and the ▲ is the attention class — it
+    // must never be spent on a guess.
+    expect(
+      tripDateRange(dated({ start: 'next summer', end: '2026-09-02' })),
+    ).not.toContain('▲')
+    expect(
+      tripDateRange(dated({ start: '2026-09-02', end: 'next summer' })),
+    ).toBe('SEP 02 → next summer')
+  })
+
+  it('does not call a same-day Trip reversed', () => {
+    // The boundary the comparison has to get right: equal ends are one day
+    // away, not a contradiction.
+    expect(
+      tripDateRange(dated({ start: '2026-08-14', end: '2026-08-14' })),
+    ).toBe('AUG 14 → AUG 14 · 1 DAY')
   })
 })
 
