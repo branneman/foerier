@@ -271,14 +271,48 @@ past fixtures, and is written into [`docs/testing.md`](docs/testing.md): a spec
 sentence saying a standing rule applies produces no artefact, and no tier
 notices its absence.
 
-**S5, auth 2** (story 28) — in-app Invites and the Logins list — is the one
-slice out of order. It was next after S4, which unblocked it (story 28 issues
-Invites for People recorded under story 4,
+**S5, auth 2, has landed** (story 28) — the second Quartermaster is now
+arranged from inside the app rather than by whoever runs the server. No
+ops and `shared/` untouched, as at S3.5. One migration, `0006_login_reinvite`,
+makes `login`'s uniqueness partial so a revoked Person can hold a Login
+again. `GET /auth/logins` and `DELETE /auth/logins/:id` are new; `POST ·
+GET · DELETE /auth/invites` widen to take an optional `person_id` for both
+purposes and to scope list/revoke **by purpose** rather than always by
+issuer. People becomes **People & logins**, filling the login half S4 left
+empty; `DeviceLink.tsx` becomes `InviteIssued.tsx`, one screen for a join
+Invite and a device link across three entry points. See
+[its spec](docs/specs/2026-08-29-in-app-invites-and-logins.md) and
+[§12.12](docs/architecture-design.md#1212-consequences-of-s5-in-app-invites-and-the-logins-list).
+
+**Two things about S5 are worth knowing before touching auth again:**
+
+- **Purpose scopes listing and revoking, and it is one sentence, not a
+  flag.** A join Invite creates a Login, which is Household business — any
+  member may see and revoke it. A device Invite is a credential for one
+  Login and stays with its issuer. Both `listInvites` and `revokeInvite`
+  carry the same predicate, `purpose = 'join' or created_by_login = <caller>`,
+  and a future purpose should extend that sentence rather than grow a second
+  mechanism beside it.
+- **A device link the Maintainer mints is invisible to that predicate,
+  forever, and this was true before S5 too.** `mintDeviceLink`
+  (`admin:invite`'s device path) has always inserted `created_by_login:
+  null`, since there is no signed-in caller to name — no `loginId` equals
+  `null`, so such a row can never be listed or revoked through
+  `/auth/invites` by anyone. Recorded rather than fixed, in
+  [auth-design §9.1](docs/auth-design.md#91-endpoints): the obvious fix
+  would make every Maintainer-minted device link revocable by any member,
+  a policy call this design has not made. It expires in an hour regardless,
+  and `admin:list` still shows it.
+
+**S5 landed after S6, which is the one place the slice order does not match
+[§8](docs/architecture-design.md#8-the-slice-plan)'s.** It was next after S4,
+which unblocked it (story 28 issues Invites for People recorded under story 4,
 [§8.2](docs/architecture-design.md#82-four-stories-accrete-across-slices-rather-than-landing-in-one)),
 and S6 took the float
 [§8.6](docs/architecture-design.md#86-what-can-be-built-in-parallel) grants
-rather than idling behind it — an auth slice shares no op type and no `shared/`
-file with the Trip. S5 is in flight; **S7, the gear list, follows.**
+rather than idling behind it — an auth slice shares no op type and no
+`shared/` file with the Trip, so the two never met. **S7, the gear list,
+follows.**
 
 Four conventions the code now carries that are easy to trip over:
 

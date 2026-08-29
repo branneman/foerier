@@ -600,16 +600,28 @@ either side keep their names, for the same reason stories do.
   concurrent ownership edits.
 - **Usable?** Personal gear stops being everyone's problem, and S5 is unblocked.
 
-**S5 — Auth 2: bring another Person in.** *Story 28.*
+**S5 — Auth 2: bring another Person in. Landed.** *Story 28.* See
+[its spec](specs/2026-08-29-in-app-invites-and-logins.md) and §12.11.
 
 [auth-design §13](auth-design.md) slice 2, moved behind S4 per §8.2.
 
-- **Ops:** none.
-- **Endpoints:** `POST · GET · DELETE /auth/invites`, `GET /auth/logins`,
-  `DELETE /auth/logins/:id`.
-- **UI:** issue an Invite from a Person's row; the Logins list; revoke.
+- **Ops:** none. `shared/` is untouched, as at S3.5.
+- **Migration:** one — `0006_login_reinvite`, making `login`'s uniqueness
+  partial (`where disabled_at is null`), so a revoked Person can hold a Login
+  again.
+- **Endpoints:** `GET /auth/logins`, `DELETE /auth/logins/:id`; `POST
+  /auth/invites` widened with `purpose: "join"` and an optional `person_id`
+  for `"device"`; `GET · DELETE /auth/invites` widened to scope **by
+  purpose** rather than always by issuer.
+- **UI:** People becomes **People & logins** — issue an Invite from a
+  Person's row, the login half of the row, revoke a Login; `DeviceLink.tsx`
+  becomes `InviteIssued.tsx`, one screen for both Invite purposes across
+  three entry points.
 - **Tests:** Tier 2s — single-use and expiry enforcement, a revoked Login's
-  Devices receiving `401`. Tier 5 — join via an in-app Invite.
+  Devices receiving `401`, purpose-scoped list/revoke. Tier 5 — join via an
+  in-app Invite, **local-only and untagged**: `POST /test/reset` cannot
+  delete a Login, so a `@production` run would leave one behind that its own
+  tripwire could never see.
 - **Usable?** The second Quartermaster is arranged between us, not by whoever
   runs the server.
 
@@ -1814,3 +1826,58 @@ Six op types, no endpoints, no migration; see its
   rather than the fixture: **a spec sentence saying a standing rule "applies
   unchanged" produces no artefact**, and nothing in Tier 0 or CI notices its
   absence.
+
+### 12.12 Consequences of S5: in-app Invites and the Logins list
+
+The slice that finishes the screen S4 shipped half of and delivers story 28;
+see its [spec](specs/2026-08-29-in-app-invites-and-logins.md).
+
+- **`REOPEN ›` is undrawable, and the board drew it anyway.** Screens C §08
+  puts a `REOPEN ›` affordance on the outstanding-invite row, and it cannot be
+  built: [§3.1](auth-design.md#31-the-invite) stores the secret **hashed**, so
+  neither the server nor a reloaded client holds anything to reopen — the
+  plaintext lived once, in the link, and is gone. The row ships as `EXPIRES IN
+  6 d` + `REVOKE` instead; re-handing a link is two deliberate steps, `REVOKE`
+  then `INVITE ›`, each of which says exactly what it does. This is the same
+  class of departure S3 and S4 each recorded once: a board is a hypothesis
+  about the screen, not about what the security design already settled, and
+  where the two disagree the security design wins.
+- **The partial unique index closes a defect [§1 of the spec](specs/2026-08-29-in-app-invites-and-logins.md#1-one-migration-and-the-defect-it-prevents)
+  found at design time, not in production.** `0002_auth.ts`'s plain `unique (household_id,
+  person_id)` was right for as long as no Login could be revoked, and wrong
+  the moment `DELETE /auth/logins/:id` existed: the next `register/verify` for
+  a revoked Person's `person_id` would have hit the index and failed with the
+  vague `401`, on a screen that can only say "ask for a new invite" — which
+  produces another Invite that fails the same way. `0006_login_reinvite`
+  loosens the constraint to `where disabled_at is null` before any code
+  exercised the old one in anger, which is the whole argument for writing a
+  spec before writing the migration: the bug this closes never had a chance to
+  reach a Household.
+- **Purpose-scoped listing is one sentence, not a query parameter.** *A join
+  Invite creates a Login — Household business. A device Invite is a
+  credential for one Login, and stays with its issuer.* `listInvites` and
+  `revokeInvite` both gained the same predicate, `purpose = 'join' or
+  created_by_login = <caller>`, because the alternative — a boolean column
+  saying who may see a row — would have let the two purposes' visibility rules
+  drift independently the first time either changed. One predicate, stated
+  once, is what keeps them the same rule read from two directions.
+- **Self-revocation is refused, and that refusal is what keeps a Household
+  above zero Logins.** `DELETE /auth/logins/:id` answers `400
+  cannot_revoke_self` before touching anything else. Since no Login can
+  disable itself, no single act can bring a Household to zero active Logins —
+  the property holds **by construction**, not by a count checked afterward.
+  Two Logins revoking each other in the same instant is the one way around it,
+  and it is accepted rather than guarded: it needs two people deliberately
+  racing, and `npm run admin:invite` is the named escape hatch
+  [auth-design §5](auth-design.md#5-devices-that-cannot-hold-a-passkey)
+  already provides for exactly this.
+- **A screen designed to be true while knowing less turned out to be its own
+  offline mode.** §12.10 recorded that S4 shipped People with its login half
+  drawn neutral, because stating "no login" for a joiner who demonstrably held
+  one would be false, and stating less is not the same defect as stating
+  something wrong. S5 needed a fallback for exactly one new case — the login
+  fetch failing — and the render that fallback needed already existed: it is
+  S4's screen, unchanged, plus one line saying the connection failed. No
+  second neutral state was designed, because the first one was never a
+  stopgap; it was already honest about knowing nothing, which is precisely
+  what offline is.

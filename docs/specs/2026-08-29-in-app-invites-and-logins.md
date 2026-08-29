@@ -281,9 +281,17 @@ Notes the table cannot carry:
 
 - **State 3 is not on the boards** and is argued in [§6.2](#62-login--no-device-signed-in).
   Your own row can never reach it — you are reading this on a Device.
-- **`LAST SEEN` is local time**, formatted `YYYY-MM-DD HH:MM` as the board draws
-  it, and appears only on another Person's row. Printing when *you* were last
-  seen, on the screen you are looking at, is noise.
+- **`LAST SEEN` is not local time**, despite an earlier draft of this spec
+  saying so. It is formatted `YYYY-MM-DD HH:MM` as the board draws it, sliced
+  straight off the ISO string — the same choice `Devices.tsx`'s own
+  `formatDateTime` already made, and for the same reason: a `Date`
+  `getHours()`/`getMinutes()` read is the *reader's* offset, which would make
+  the line print a different hour on a device in a different timezone than
+  the one the Login was actually last seen from, silently drift from
+  `Devices.tsx`'s twin the moment either was touched, and be unassertable in a
+  test that does not also fix the runner's timezone. It appears only on
+  another Person's row. Printing when *you* were last seen, on the screen you
+  are looking at, is noise.
 - **The own row's `›` is omitted in the `inline` variant.** At Desktop, People
   unfolds into Account's card and `/account/devices` redirects back to
   `/account` — a chevron whose destination is the card two rows above it is an

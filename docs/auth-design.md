@@ -527,10 +527,15 @@ rather than a mitigated risk.
 All under `/api/v1`, replacing the three placeholders in the architecture spec.
 Marked **A** = requires a valid Device token.
 
-**What exists as of S3.5:** everything below except `GET /auth/logins` and
-`DELETE /auth/logins/:id`, which are story 28's and wait for S5. `POST
-/auth/invites` accepts only `purpose: "device"` until then — a join Invite must
-name a Person, and there is no way to pick one before S4 records People.
+`POST /auth/invites` takes `{ purpose: "join" | "device", person_id?: string }`
+— optional for both purposes, but for a different reason each time: absent on
+`"device"` it means the caller's own Login, exactly as before S5; on `"join"`
+it is required, since a join Invite must name the Person it creates a Login
+for. `GET · DELETE /auth/invites` scope **by purpose, not by a flag**: a join
+Invite creates a Login, which is Household business and listed for any member
+to revoke; a device Invite is a credential for one Login and stays with its
+issuer. [S5's spec](specs/2026-08-29-in-app-invites-and-logins.md) §2.3–§2.4
+has the full reasoning.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -548,9 +553,28 @@ name a Person, and there is no way to pick one before S4 records People.
 | POST | `/auth/passkeys/verify` | **A** — attach it to the calling Login |
 | GET · DELETE | `/auth/passkeys` · `/:id` | **A** — list / remove a passkey |
 | POST | `/auth/invites` | **A** — issue a join or device Invite for a `person_id` |
-| GET · DELETE | `/auth/invites` · `/:id` | **A** — list outstanding / revoke |
+| GET · DELETE | `/auth/invites` · `/:id` | **A** — list outstanding / revoke, scoped by purpose |
 | GET | `/auth/logins` | **A** — which People in the Household hold a Login |
 | DELETE | `/auth/logins/:id` | **A** — disable another Login and all its Devices |
+
+**A known gap, pre-existing and left alone.** `mintDeviceLink` — the
+Maintainer's `admin:invite` device-link path (`api/src/auth/service.ts`) — has
+always inserted `created_by_login: null`, because there is no caller to name
+one: it runs out of band, with no signed-in Login. S5's purpose-scoped
+predicate (`purpose = 'join' or created_by_login = <caller>`) never matches
+such a row — its purpose is `device`, so the join arm is closed, and no
+`loginId` in Postgres equals `null` — so a Maintainer-minted device link is
+invisible to `GET /auth/invites` and un-revocable through `DELETE
+/auth/invites/:id`, for every Login, forever. This is **not a regression**:
+the old predicate scoped by `created_by_login = caller` alone, which already
+excluded the row from everyone. S5 did not fix it, deliberately — the obvious
+change, letting `created_by_login is null` match, would make every
+Maintainer-minted device link revocable by any member, and this document has
+not decided that a device link should be Household business the way a join
+Invite is — [S5's spec](specs/2026-08-29-in-app-invites-and-logins.md) §2.4
+draws that line for a reason, and widening it is a policy call, not a bug fix.
+Two mitigations already exist without it: the link expires in an hour on its
+own, and `npm run admin:list` lets the Maintainer see it.
 
 `POST /sync/push`, `GET /sync/pull`, and `GET /version` are unchanged;
 `/version` stays unauthenticated.
@@ -580,7 +604,7 @@ is satisfied trivially.
 | Table | Columns (essentials) |
 | --- | --- |
 | `household` | `id`, `name`, `created_at` |
-| `login` | `id`, `household_id` →`household`, `person_id` (opaque UUID, §2.1), `created_at`, `disabled_at`; unique `(household_id, person_id)` |
+| `login` | `id`, `household_id` →`household`, `person_id` (opaque UUID, §2.1), `created_at`, `disabled_at`; unique `(household_id, person_id)` **where `disabled_at is null`** — partial, not plain: a revoked Person must be able to hold a Login again, and a plain constraint would forbid it (`0006_login_reinvite`, [S5's spec](specs/2026-08-29-in-app-invites-and-logins.md) §1) |
 | `passkey` | `id`, `login_id` →`login`, `credential_id` (bytea, unique), `public_key`, `sign_count`, `transports`, `aaguid`, `uv_seen`, `label`, `created_at`, `last_used_at` |
 | `device` | `id`, `login_id`, `household_id`, `token_hash` (bytea, unique), `label`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at` |
 | `invite` | `id`, `household_id`, `person_id`, `purpose` (`join`\|`device`), `secret_hash` (bytea, unique), `login_id` (device Invites only), `created_by_login`, `expires_at`, `used_at`, `revoked_at` |
@@ -750,6 +774,10 @@ themselves, which had been inferred from "does this Household have any Login"
 and was therefore correct for exactly one Person per Household. See
 [`docs/specs/2026-08-28-auth-device-links.md`](specs/2026-08-28-auth-device-links.md)
 §4 and §5.
+
+**Slice 2 landed 2026-08-29, as S5** — after slices 3 and 4, as the correction
+above always said it would, and after the People slice it depends on. See
+[`docs/specs/2026-08-29-in-app-invites-and-logins.md`](specs/2026-08-29-in-app-invites-and-logins.md).
 
 ## 14. What this document does not settle
 
