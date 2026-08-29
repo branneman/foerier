@@ -204,16 +204,57 @@ this proves the **deployment** is correct — problems a local DB cannot surface
 
 **Trigger:** on every push to `main`, after the image builds and Watchtower
 deploys — the CI job polls `GET /version` until the deployed SHA matches the
-pushed commit, then runs the suite. Dedicated test household; each writing test
-cleans up in teardown.
+pushed commit, then runs the suite. The poll asks the **API** only, so the app
+bundle Tier 5 loads may still be one Watchtower cycle behind the SHA the API
+reports; nothing in Tier 4 depends on the bundle, and Tier 5 runs minutes later.
+
+**Two files, two claims.** `deployment.test.ts` needs no Household and no
+credentials — its charter is everything reachable unauthenticated, which is
+what let it run from the first deploy. `household.test.ts` is the other half:
+with a real Device token it pushes an op and pulls it back, proving the whole
+`/sync` path through Caddy, the deployed process and the box's Postgres, which
+no local tier can. It `describe.skipIf`s itself when the credential secrets are
+absent, so a fork's pull request and a developer's laptop still run the
+unauthenticated file.
+
+**One disposable Household, wiped at the start of every run.** The suite does
+not create a Household and cannot: `admin:bootstrap --disposable --name "E2E"`
+minted it by hand, once, on the box. `POST /api/v1/test/reset`
+(`api/src/test/`) is what empties it — it deletes the Household's ops, revokes
+every Device but the caller's, and deletes its outstanding Invites and every
+Passkey but the caller's. Reset is at the **start**, never a teardown, so a
+cancelled or crashed run leaves a dirty Household and the next run's first act
+fixes it. Three gates keep the route away from anything real: it is not mounted
+unless the server was started with `E2E_HOUSEHOLD_ID`, the calling token's
+Household must equal that value, and the Household row must carry
+`disposable = true`.
+
+**The token is minted inside the job that spends it.** Vitest's `globalSetup`
+signs in over `POST /auth/login/verify` — in Node, with no browser, driving
+Tier 2s's own `SoftwareAuthenticator` from an exported credential — masks the
+token on the main process's stdout where `::add-mask::` is honoured, resets the
+Household, and hands the token to tests through `provide`/`inject`. No test
+performs the ceremony and no Device token crosses a job boundary. The config
+sets `fileParallelism: false`: one Household, one writer.
+
+**The reset is also a tripwire.** It returns counts of what it *did*, and the
+harness asserts `revoked ≤ 1`, `passkeys = 0`, `invites = 0` immediately after
+the first one. A compromised E2E Household looks healthy from the outside — it
+syncs, it signs in, its tests pass — so this is the only thing that would ever
+say otherwise: more than one revoked Device means someone else held a token, a
+deleted Passkey means someone added a credential (CI's own is the one spared,
+so a clean run deletes none), an Invite means someone minted a link. A
+violation fails the run naming the rotation procedure.
 
 ## Tier 5 — E2E smoke tests
 
 **Charter:** the real deployed site in a real browser, exercising exactly one core
 journey. Deliberately small — edge cases belong in lower tiers.
 
-**Golden path:** login → add gear → find it → build a trip → pack an item → close
-the trip.
+**Golden path, eventually:** sign in → add gear → find it → build a trip → pack
+an item → close the trip. **Today it stops at the third step** — sign in, record
+gear with the network cut, watch it sync — because the rest of it awaits S6–S10.
+The journey grows a leg per slice; the harness around it does not change.
 
 Two PWA-specific twists this project must cover:
 
@@ -223,9 +264,45 @@ Two PWA-specific twists this project must cover:
   assert the outbox flushes and state converges. Offline-first *is* the product,
   so the smoke test must prove it.
 
-**Tooling:** Playwright, `test/e2e/`. Target via `PLAYWRIGHT_BASE_URL` (local dev
-server by default; CI's post-deploy job points it at `app.foerier.app`).
-**Trigger:** automatically after every deploy to `main`.
+**Tooling:** Playwright, `test/e2e/`. Target via `PLAYWRIGHT_BASE_URL` (a local
+production build served by `vite preview` by default; CI's post-deploy job
+points it at `app.foerier.app`). **Trigger:** automatically after every deploy
+to `main`.
+
+**Retargeting is one variable, and that variable switches four things on.**
+Setting `PLAYWRIGHT_BASE_URL` drops the `webServer` block and, with it, adds a
+`globalSetup` that signs in and resets; `grep: /@production/`; `workers: 1` —
+one Household, one writer; and `trace: 'off'` with the `list` reporter, because
+a trace records request headers and `Authorization: Bearer foe_…` would be
+inside the zip. Off rather than merely not uploaded, so the guard does not
+depend on nobody ever adding an `upload-artifact` step.
+
+**Only tagged specs run against the box.** Three kinds of spec cannot: one that
+mints an Invite by Maintainer script (it needs `DATABASE_URL`, which CI does not
+have and must not), one that proves joining itself — joining consumes an Invite
+from the one Household that is never re-created — and one that signs the run's
+own Device out from under every later spec. So `auth.spec.ts` and
+`deviceLink.spec.ts` stay local-only; `depot.spec.ts` and `shell.spec.ts` carry
+`@production`. A local run is unchanged: the local project has no grep.
+
+**A signed-in Quartermaster comes from a fixture**
+(`test/e2e/quartermaster.ts`), and the fixture is two genuinely different acts
+behind one name. Locally it is
+what every spec did before it existed: mint an Invite with the real Maintainer
+script, attach a virtual authenticator, join. Against production it resets the
+Household and opens a context from `globalSetup`'s storage state — saved with
+`indexedDB: true`, since that is where the Device token lives, into a gitignored
+path no step uploads. The state is applied *in the fixture* rather than as a
+project-wide `use.storageState` because `shell.spec.ts` runs against production
+too and needs a **signed-out** visitor; signing that visitor in would quietly
+empty out the tests. Those specs take no fixture and so do not reset — they
+neither read the Household nor write to it.
+
+`globalSetup` clears the client's synced IndexedDB stores before saving the
+state, sparing only `auth`. The order is forced — the token exists only once the
+browser has signed in, and by then the sync engine has already pulled whatever
+the last run left — so without that step every spec would restore a snapshot
+holding last run's gear, against a server the reset had already emptied.
 
 ## Test data strategy
 
@@ -239,15 +316,32 @@ Three contexts, three strategies — never shared across contexts.
 - **Tier 2s:** each class seeds its own rows under its registered `household_id`
   and cleans mutable rows in setup; delete-by-both-UUID-and-natural-key to survive
   a persistent `foerier_test` DB (the `health` `init`-block pattern).
-- **Tier 4** needs no household and no credentials at all
+- **Tier 4's `deployment.test.ts`** needs no household and no credentials at all
   (`test/contract/deployment.test.ts:12-15`): its charter is everything
   reachable unauthenticated, which is what lets it run from the first deploy
   rather than from the first feature that needs a Household.
-- **Tier 5** mints a fresh Household per test by invoking the real Maintainer
-  bootstrap script (`test/e2e/mintInvite.ts:11-46`), deliberately rather than
-  seeding rows directly — `auth-design.md` §3.4 makes that script the only way
-  a Household's first Login is ever arranged, so a test that bypassed it would
-  not notice the front door breaking.
+- **Tier 5 locally** mints a fresh Household per test by invoking the real
+  Maintainer bootstrap script (`test/e2e/mintInvite.ts:11-46`), deliberately
+  rather than seeding rows directly — `auth-design.md` §3.4 makes that script
+  the only way a Household's first Login is ever arranged, so a test that
+  bypassed it would not notice the front door breaking.
+- **Tier 4's household suite and Tier 5 against production share one Household
+  and one credential**, and neither creates either. The Household was
+  bootstrapped by hand with `--disposable`; the Passkey was captured once, by
+  hand, against the deployed app (`test/e2e/captureCredential.ts`) and lives as
+  two GitHub secrets — a base64url credential id and a base64 PKCS#8 private
+  key — plus the user handle Chrome's virtual authenticator wants. Each job
+  replays that credential and mints a Device token of its own: a token is never
+  handed forward as a job output or an artifact, both of which are readable from
+  the run page of a public repository. The seeded sign count is **monotonic**,
+  never the exported one — the server requires `received > stored` and that
+  check is deliberately not relaxed: an exported key replayed from elsewhere is
+  exactly the cloned-authenticator case the counter exists to catch
+  (`api/test/server/auth.test.ts` pins the rejection). Both jobs pin every
+  third-party action by SHA, declare `permissions: {}`, and upload nothing.
+  Setup beyond the reset is **client-side**, pushed through the real
+  `/sync/push`: the server grows no fixture generator, and for Tier 5 the golden
+  path records its own gear through the UI anyway.
 
 ## Backward-compatibility testing
 
@@ -295,7 +389,7 @@ nothing else reached the path.
 | 1–3 (unit / convergence / component) | Every push to `main` |
 | 2s (server integration) | Every push to `main` (local `foerier_test` in CI) |
 | 4 (contract / API) | After every deploy to `main` (polls `/version` for the SHA) |
-| 5 (E2E smoke) | After every deploy to `main` |
+| 5 (E2E smoke) | After every deploy to `main` — the `@production` subset only |
 
 ## Running everything locally
 
@@ -303,6 +397,7 @@ nothing else reached the path.
 npm run typecheck && npm run lint && npm run format:check   # Tier 0
 npm test              # Tiers 1–3 + convergence
 npm run test:server   # Tier 2s (needs a local foerier_test Postgres)
-npm run test:contract # Tier 4 (needs the deployed server + test-household creds)
+npm run test:contract # Tier 4 (needs the deployed server; E2E_CREDENTIAL_ID +
+                      #         E2E_PRIVATE_KEY for the household suite)
 npm run test:e2e      # Tier 5 (Playwright; virtual authenticator)
 ```

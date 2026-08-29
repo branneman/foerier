@@ -32,7 +32,7 @@ it.
 | CI credential | One exported WebAuthn credential, replayed into Chrome's virtual authenticator each run — seeded with a **monotonic `signCount`** (§5.2), never with the exported one |
 | Tier 4's token | Minted **inside the job that uses it**, by signing the assertion in Node from the same exported key (§6.4). **A Device token never crosses a job boundary** |
 | The Device token | Masked the moment it exists, from `globalSetup` where the mask is known to fire; never in an assertion body; **no traces, HTML reports or artifacts uploaded** from the production project |
-| Tripwire | Reset returns counts; the harness asserts `revoked ≤ 1`, `passkeys = 1`, `invites = 0`, so a foreign token or credential turns a silent compromise into a red build (§3.5) |
+| Tripwire | Reset returns counts; the harness asserts `revoked ≤ 1`, `passkeys = 0`, `invites = 0`, so a foreign token or credential turns a silent compromise into a red build (§3.5) |
 | Recovery | `DELETE FROM household WHERE id = $old` — cascades to everything. **Rehearsed once before this lands** |
 | Isolation | Reset **at start**, never teardown — robust to a killed run |
 | Parallelism | `workers: 1` against production. Multiple Households is a later optimisation |
@@ -270,7 +270,7 @@ after its first reset, the harness asserts:
 | Field | Expected | What a violation means |
 | --- | --- | --- |
 | `revoked` | `≤ 1` | more than the previous run's one Device was live: **someone else held a token** |
-| `passkeys` | `= 1` | a Passkey other than CI's existed: **someone added a credential** |
+| `passkeys` | `= 0` | the route reports what it **deleted**, and CI's own Passkey is the one it spares — so any deletion at all is a Passkey other than CI's: **someone added a credential** |
 | `invites` | `= 0` | an outstanding Invite existed: **someone minted a link** (or a test leaked one — also worth knowing) |
 
 A violation fails the run with a message naming §9.3, and the run does *not*
@@ -313,6 +313,22 @@ is created once, by hand, and replayed every run.
 3. `WebAuthn.getCredentials` → export `credentialId`, `privateKey` (PKCS#8),
    `userHandle`, `rpId`, `isResidentCredential`.
 4. Store as GitHub secrets.
+
+**One credential has to serve both tiers, and that constrains the algorithm.**
+Tier 5 replays it into Chrome; Tier 4 replays it into `SoftwareAuthenticator`,
+which implements ES256 (P-256) and nothing else (§6.4). An authenticator takes
+the **first** algorithm the relying party offers, and both ceremonies used to
+offer Ed25519 first — so a capture would have produced a key that works
+perfectly in a browser and fails only in Tier 4, weeks later, as an
+unexplained production sign-in failure. So `generateRegistrationOptions` now
+passes `supportedAlgorithmIDs: [-7, -8, -257]` in both ceremonies
+(`api/src/auth/service.ts`), ES256 first; nothing is removed, and a real device
+that prefers Ed25519 or RS256 still gets it. The capture script refuses a
+non-ES256 key rather than warning about it.
+
+**So the capture must happen after an API carrying that ordering is deployed.**
+A key captured against the older image is Ed25519 and unusable, and the refusal
+is what says so at capture time rather than in CI.
 
 **Every run:** `WebAuthn.addVirtualAuthenticator` →
 `WebAuthn.addCredential({ ...exported, signCount: <monotonic> })` (§5.2) →
@@ -441,8 +457,12 @@ block and points at production; the config was written for it. Two changes:
   `deviceLink.spec.ts` stay local-only; `depot.spec.ts` (the golden path) and
   `shell.spec.ts` carry the tag. Local runs are unchanged: the local project
   has no `grep`.
-- **Reset first.** Every tagged spec's first act is `POST /test/reset`, so
-  state comes from the run rather than from whatever the last run left.
+- **Reset first.** Every tagged spec *that signs in* opens with
+  `POST /test/reset`, so state comes from the run rather than from whatever the
+  last run left. It is the `quartermaster` fixture that resets, which is the
+  same thing said precisely: `shell.spec.ts`'s tests want a **signed-out**
+  visitor, take no fixture, read nothing of the Household and write nothing to
+  it, so there is neither a token to reset with nor state to reset.
 
 **Reset-at-start, never teardown**, and that is the load-bearing choice: a
 cancelled or crashed run leaves the Household dirty, and the next run's first

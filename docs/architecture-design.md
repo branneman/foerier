@@ -1059,7 +1059,10 @@ byte-exact.
   can deploy the images. Adding a job that cannot pass would only teach us to
   ignore a red pipeline. Tier 5 runs locally against a production build in the
   meantime. Tier 4 has since landed (`1539df4`): CI's `contract` job waits for
-  Watchtower to serve the pushed SHA, then runs `npm run test:contract`.
+  Watchtower to serve the pushed SHA, then runs `npm run test:contract`. **This
+  deviation is now closed**: an `e2e-prod` job runs the `@production` specs
+  against `app.foerier.app` after `contract`, and the thing that had actually
+  been missing was a Household CI may destroy rather than the deploy (§12.8).
 - **The API's response headers landed with the skeleton**, not with auth. They
   are baseline hygiene for every response, and `Cache-Control: no-store` is
   specifically what makes `/version` usable as a deploy signal.
@@ -1089,11 +1092,14 @@ byte-exact.
 - **The relying party has three modes, not two.** WebAuthn requires the RP ID
   to be a registrable suffix of the origin's domain, so `foerier.app` simply
   cannot work on `localhost` — no configuration makes both work at once. Local
-  development and Tier 5 therefore use `localhost`, which yields credentials
-  that are correctly useless anywhere else. **Tier 2s uses the production
-  values**, since it needs no browser: the RP ID and origin that actually ship
-  are the ones under test. Production is a constant with no environment
-  override, because a wrong RP ID in production is unrecoverable.
+  development and a *local* Tier 5 run therefore use `localhost`, which yields
+  credentials that are correctly useless anywhere else — while a production
+  Tier 4 or Tier 5 run derives `foerier.app` from the origin under test
+  (`rpIdFor`, `test/contract/credential.ts`), so the one captured credential
+  stays valid across `app.`, `api.` and any later subdomain. **Tier 2s uses
+  the production values**, since it needs no browser: the RP ID and origin
+  that actually ship are the ones under test. Production is a constant with no
+  environment override, because a wrong RP ID in production is unrecoverable.
 - **One endpoint was added to [auth-design §9.1](auth-design.md):**
   `POST /auth/join/preview`. The join screen has to render "Join Veldkamp?"
   before the user agrees to anything, and no endpoint in the original table
@@ -1490,3 +1496,84 @@ running code could teach.
   and separately, a deferral is a bet on a finding's blast radius, and that
   bet needs to be re-priced against the whole journey the screen sits on,
   not just the screen in front of the reviewer when it was made.
+
+### 12.8 Consequences of Tier 4 and 5 against production
+
+The contract tier's household suite and the Tier 5 golden path now run against
+the box after every deploy
+([spec](specs/2026-08-28-tier-4-and-5-against-production.md)). Not a slice — no
+op type, no `shared/`, one route and one migration — but it settled several
+things the tiers above only stated in the abstract.
+
+- **The blocker was never the golden path being incomplete.** `ci.yml` had
+  deferred Tier 5 on the grounds that the journey needs trips, packing and
+  closing, which await S6–S10. That reasoning does not survive examination:
+  every actual blocker was timeless, and the real one was that CI had no way
+  to obtain a **Household it is allowed to destroy**. Naming it that way turned
+  a wait-for-S10 into one route, `POST /api/v1/test/reset` (`api/src/test/`),
+  that deletes and can never create. Three gates hold it: it is not mounted
+  unless the server was started with `E2E_HOUSEHOLD_ID` — so the kill switch
+  lives in the infrastructure repo, outside this one — the calling token's
+  Household must equal that value, and the Household row must carry
+  `disposable = true`, set only by `admin:bootstrap --disposable` and read
+  under the same `FOR UPDATE` lock `/sync/push` takes, so the gate and the wipe
+  cannot see different rows. Mounted conditionally rather than guarded inside a
+  handler, so "unset ⇒ 404" is true by construction with no early return for a
+  refactor to lose. A destroy-one is a much smaller thing to reason about than
+  the mint-a-Household-per-run endpoint most designs reach for first: its blast
+  radius is one named Household rather than unbounded tenant sprawl, and it
+  needs no new class of secret.
+- **A migration number is claimed when it lands, not when it is planned.** This
+  work was designed to borrow the `0004` migration S3.5 was about to open.
+  S3.5 landed first and `0004` shipped without the two columns, and migration
+  names sort lexicographically and are never renamed once deployed
+  (`api/src/db/migrations.ts`) — so the columns ship as their own
+  `0005_disposable_household`. Both are purely additive (one defaulted, one
+  nullable), which is what made the reorder cost nothing. The general form: a
+  spec may depend on another spec's *behaviour* and be rearranged around it,
+  but it must not depend on another spec's *unopened numbered slot*, because
+  that slot is allocated by whichever branch reaches the box first.
+- **A Device token never crosses a job boundary.** One mechanism unblocks both
+  tiers, and it is the **credential**, not the token: `contract` runs before
+  `e2e-prod`, so "reuse the browser's token" would mean a token travelling
+  backwards as a job output or an artifact, neither masked and both readable
+  from the run page of a public repository — carrying a sliding year of life.
+  So each job mints its own from the same exported Passkey, and Tier 4 does it
+  with no browser at all, driving Tier 2s's own `SoftwareAuthenticator`
+  (`api/test/server/softwareAuthenticator.ts`) through the real ceremony. The
+  token is masked in `globalSetup`, in the main process, because `::add-mask::`
+  is honoured only on a line of the step's own stdout and a mask called from a
+  test worker masks nothing; no assertion is ever made on a body that carries
+  one; and the production Playwright project sets `trace: 'off'` with the
+  `list` reporter, so there is no artifact to upload rather than a convention
+  against uploading it. Serving both tiers from one credential is also what
+  fixed the algorithm order: an authenticator takes the first algorithm offered
+  and `SoftwareAuthenticator` implements only ES256, so both registration
+  ceremonies now offer `[-7, -8, -257]` (`api/src/auth/service.ts`) and the
+  capture script refuses anything else.
+- **A test fixture can be an intrusion detector, and this one is.** A
+  compromised E2E Household looks perfectly healthy from outside: it syncs, it
+  signs in, its tests pass. Nothing would ever have prompted the rotation the
+  risk table bounds the leak with. So the route returns counts of what it
+  *did*, and every run asserts `revoked ≤ 1`, `passkeys = 0`, `invites = 0`
+  immediately after its first reset. What makes that an oracle rather than a
+  heuristic is the `UPDATE` itself: revoking every Device but the caller's on
+  every reset bounds the Household to exactly one live token, always, so the
+  expected counts are exact. A violation fails the build naming the rotation
+  procedure, and does not continue — the wipe has already happened, so the
+  count is the only evidence left.
+- **Only a subset of Tier 5 can run against a shared, never-recreated
+  Household**, and the specs that cannot are more interesting than the ones
+  that can. Three kinds are excluded: one that mints an Invite by Maintainer
+  script (it needs `DATABASE_URL`, which CI does not have and must not), one
+  that proves joining itself — joining consumes an Invite from the one
+  Household nothing re-creates — and one that signs the run's own Device out
+  from under every later spec. So `auth.spec.ts` and `deviceLink.spec.ts` stay
+  local-only and `depot.spec.ts` and `shell.spec.ts` carry `@production`,
+  selected by the production project's `grep`. The local project has no grep,
+  so a local run is unchanged, and every excluded spec still runs there against
+  a Household minted per test. The seam shows up in the fixture too: the
+  signed-in storage state is applied *inside* `quartermaster.ts` rather than as
+  a project-wide `use.storageState`, because `shell.spec.ts` needs a
+  **signed-out** visitor and a project-wide setting would have signed it in and
+  quietly emptied those tests out.

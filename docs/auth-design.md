@@ -181,6 +181,12 @@ know anything about the domain. Every later Invite takes the reverse route: the
 inviter creates (or picks) the Person in the app first, then issues the Invite
 for that `person_id`.
 
+The script takes one further flag, `--disposable`, which marks the Household as
+one `POST /test/reset` is allowed to wipe (`household.disposable`, default
+`false`). It is only ever set on the Household CI owns; see
+[the Tier 4/5 spec](specs/2026-08-28-tier-4-and-5-against-production.md) §3 and
+§9.1 below.
+
 ### 3.5 Joining
 
 1. `POST /auth/register/options` `{secret}` → the server validates the Invite and
@@ -548,6 +554,22 @@ name a Person, and there is no way to pick one before S4 records People.
 
 `POST /sync/push`, `GET /sync/pull`, and `GET /version` are unchanged;
 `/version` stays unauthenticated.
+
+**One route exists that this table deliberately does not list.**
+`POST /api/v1/test/reset` (`api/src/test/`) empties the Household CI tests
+against — its ops, its other Devices, its outstanding Invites, and every Passkey
+but the caller's. It is **not part of the auth surface**: it authenticates with
+an ordinary Device token through the same `requireAuth` as everything marked
+**A** above, adds no auth path and no class of secret, and takes its Household
+from the token and never from a body, so §9.3's tenancy rule applies to it
+unrelaxed. It is also **not mounted at all** unless the server was started with
+`E2E_HOUSEHOLD_ID` — the production kill switch lives outside this repo, with
+whoever writes the compose file — and refuses any Household but that one, and
+then only if the row carries `disposable = true`. Above all it **cannot
+create**: not a Household, not a Login, not a Person, not an Invite. §3.4's
+"only the first Login of a brand-new Household is arranged out of band, by the
+Maintainer" is therefore not amended by it. The full argument is in
+[the Tier 4/5 spec](specs/2026-08-28-tier-4-and-5-against-production.md) §3.
 
 ### 9.2 Tables
 
