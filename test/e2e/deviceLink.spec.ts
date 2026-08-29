@@ -204,7 +204,14 @@ test('a second joiner sees the name field — the person_recorded regression', a
 
   await page2.getByRole('link', { name: 'Account' }).click()
   await expect(page2.getByRole('heading', { name: 'Account' })).toBeVisible()
-  await expect(page2.getByText('Mark', { exact: true })).toBeVisible()
+  // Scoped to the YOU line. Since S4 the name is on this screen **twice** at
+  // Desktop — once here, and once as your own row in the PEOPLE card, which
+  // is what the board draws (\`Mark\` + a \`YOU\` badge, §13). An unscoped
+  // \`getByText\` is ambiguous, and the fact under test is specifically that
+  // the second joiner named themselves.
+  await expect(
+    page2.getByTestId('account-who').getByText('Mark', { exact: true }),
+  ).toBeVisible()
 })
 
 test('signing out this device clears a non-empty outbox and lands on /signin', async ({

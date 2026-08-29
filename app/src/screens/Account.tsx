@@ -319,7 +319,7 @@ export function Account({
       {isDesktop ? (
         <div className={styles['titleRow']}>
           <h1 className={styles['title']}>Account</h1>
-          <div className={styles['who']}>
+          <div className={styles['who']} data-testid="account-who">
             <span className={styles['whoName']}>{personName}</span>
             <span className={styles['whoHousehold']}>{householdLabel}</span>
           </div>
@@ -327,7 +327,7 @@ export function Account({
       ) : (
         <>
           <h1 className={styles['title']}>Account</h1>
-          <div className={styles['you']}>
+          <div className={styles['you']} data-testid="account-who">
             <span className={styles['avatar']} aria-hidden="true">
               {initial}
             </span>
