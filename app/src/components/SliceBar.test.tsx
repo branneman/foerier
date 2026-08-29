@@ -242,6 +242,15 @@ describe('SliceBar — the arrange readout', () => {
     )
   })
 
+  it('reads OWNER for S4`s grouping, with no label of its own to keep', () => {
+    // The readout takes the group's name from `shared/`'s grouping table, so
+    // adding OWNER taught this component nothing.
+    renderBar({ sort: 'name-asc', group: 'owner' })
+    expect(screen.getByTestId('arrange-readout')).toHaveTextContent(
+      'OWNER · NAME A→Z',
+    )
+  })
+
   it('opens the sort-and-group sheet', async () => {
     renderBar()
     await userEvent.click(screen.getByTestId('arrange-readout'))
@@ -296,7 +305,21 @@ describe('SliceBar — the arrange readout', () => {
     const group = screen.getByTestId('group-options')
     expect(group).toHaveTextContent('NONE')
     expect(group).toHaveTextContent('KIND')
+    expect(group).toHaveTextContent('OWNER')
     expect(group).not.toHaveTextContent('TAG')
+  })
+
+  it('changes the group to owner from the sheet', async () => {
+    const { onChange } = renderBar()
+    await userEvent.click(screen.getByTestId('arrange-readout'))
+    await userEvent.click(
+      within(screen.getByTestId('group-options')).getByRole('button', {
+        name: /OWNER/,
+      }),
+    )
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ group: 'owner' }),
+    )
   })
 
   it('offers only the sort keys S3 carries', async () => {

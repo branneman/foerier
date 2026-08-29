@@ -104,6 +104,8 @@ export {
   dimension,
   dimensionValues,
   EMPTY_SLICE,
+  GROUP_KEYS,
+  groupLabel,
   recordedAt,
   sliceDepot,
 } from './selectors/slice.ts'

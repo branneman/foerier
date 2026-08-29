@@ -65,6 +65,17 @@ describe('readSlicePrefs', () => {
     expect(readSlicePrefs(storage)).toEqual(prefs)
   })
 
+  it('round-trips S4`s grouping, which the known list now carries', () => {
+    // The list comes from `shared/`'s grouping table, so a build that learns
+    // a grouping starts honouring the value it had been falling back on. A
+    // rejected preference has always fallen back rather than being rewritten,
+    // which is why there is nothing to migrate.
+    const storage = fakeStorage()
+    const prefs: SlicePrefs = { sort: 'name-asc', group: 'owner' }
+    writeSlicePrefs(prefs, storage)
+    expect(readSlicePrefs(storage)).toEqual(prefs)
+  })
+
   it('falls back to the defaults rather than crashing on nonsense', () => {
     expect(
       readSlicePrefs(fakeStorage({ 'foerier.slice': 'not json' })),

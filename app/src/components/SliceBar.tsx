@@ -1,9 +1,9 @@
 import {
   DIMENSIONS,
   dimension,
+  groupLabel,
   type DimensionId,
   type DimensionValue,
-  type GroupKey,
   type SliceResult,
   type SliceSpec,
   type SortKey,
@@ -77,15 +77,12 @@ const SORT_LABELS: Readonly<Record<SortKey, string>> = {
   newest: 'NEWEST FIRST',
 }
 
-const GROUP_LABELS: Readonly<Record<GroupKey, string>> = {
-  none: 'NONE',
-  kind: 'KIND',
-}
-
-/** `NAME A→Z`, or `KIND · NAME A→Z` once grouped. */
+/** `NAME A→Z`, or `KIND · NAME A→Z` once grouped. The group half comes from
+ * `shared/`'s grouping table, so this readout never has to be taught a new
+ * grouping's name. */
 function arrangeReadout(spec: SliceSpec): string {
   const sort = SORT_LABELS[spec.sort]
-  return spec.group === 'none' ? sort : `${GROUP_LABELS[spec.group]} · ${sort}`
+  return spec.group === 'none' ? sort : `${groupLabel(spec.group)} · ${sort}`
 }
 
 function selectedOf(spec: SliceSpec, id: DimensionId): readonly string[] {

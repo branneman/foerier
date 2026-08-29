@@ -1,4 +1,9 @@
-import { EMPTY_SLICE, type GroupKey, type SortKey } from '@foerier/shared'
+import {
+  EMPTY_SLICE,
+  GROUP_KEYS,
+  type GroupKey,
+  type SortKey,
+} from '@foerier/shared'
 
 /**
  * The half of a slice that persists.
@@ -34,7 +39,13 @@ export const DEFAULT_SLICE_PREFS: SlicePrefs = {
 }
 
 const SORTS: readonly SortKey[] = ['name-asc', 'name-desc', 'newest']
-const GROUPS: readonly GroupKey[] = ['none', 'kind']
+
+// From `shared/`'s grouping table, so a stored value this build does not know
+// is rejected by the same list that decides what `GROUP BY` offers. A build
+// that later learns a grouping starts honouring the value it had been
+// falling back on — no migration, because a rejected preference has always
+// fallen back to `none` rather than being rewritten on disk.
+const GROUPS: readonly GroupKey[] = GROUP_KEYS
 
 function readMember<T extends string>(
   known: readonly T[],

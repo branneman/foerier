@@ -40,12 +40,17 @@ export type DimensionId = 'tag' | 'kind' | 'ownership' | 'person'
 export type SortKey = 'name-asc' | 'name-desc' | 'newest'
 
 /**
- * `NONE · KIND`, and **never TAG** — deliberate, and a domain fact rather
- * than a UI preference: tags are multi-valued, so a three-tag piece of gear
- * would land in three groups and the groups would not partition the list.
- * Slicing by tag is the filter's job.
+ * `NONE · KIND · OWNER`, and **never TAG** — deliberate, and a domain fact
+ * rather than a UI preference: tags are multi-valued, so a three-tag piece of
+ * gear would land in three groups and the groups would not partition the
+ * list. Slicing by tag is the filter's job.
+ *
+ * Since S4 that rule is **structural rather than prose beside a branch**: a
+ * grouping needs a {@link Grouping.keyOf} — "the one bucket this gear falls
+ * into" — and Tag has none, so Tag simply has no row in
+ * {@link GROUPING_TABLE}.
  */
-export type GroupKey = 'none' | 'kind'
+export type GroupKey = 'none' | 'kind' | 'owner'
 
 export interface Dimension {
   id: DimensionId
@@ -370,10 +375,78 @@ function sortGear(
   })
 }
 
-/** The group gear with no `kind` register falls into. Reachable only from a
- * peer on a different build; sorted last rather than by its label, which is
- * a dash and would sort somewhere arbitrary. */
+/** The group gear with no value in the grouping falls into — reachable for
+ * `kind` only, and there only from a peer on a different build. Sorted last
+ * rather than by its label, which is a dash and would sort somewhere
+ * arbitrary. `owner` never produces it: an absent register reads shared. */
 const UNGROUPED_LABEL = '—'
+
+/**
+ * **A grouping is a row in a table too** — but a *different* table from
+ * {@link Dimension}, and the difference is load-bearing.
+ *
+ * A dimension answers *which values does this gear carry*, and is allowed to
+ * answer "several" (Tag) or "none" (Person, for shared gear). A grouping
+ * answers *which single bucket does this gear fall into*, which is a
+ * partition.
+ *
+ * S4's `owner` is why the two tables are not one. It groups by the `owner`
+ * **register**, which neither of S4's filter dimensions does alone: grouping
+ * by `person` would file every shared piece of gear into the `—` bucket, and
+ * grouping by `ownership` would give two coarse groups and never name a
+ * Person. The partition the boards' segmented control wants is the
+ * register's.
+ */
+interface Grouping {
+  id: Exclude<GroupKey, 'none'>
+  /** The segmented control's label: `KIND`, `OWNER`. */
+  label: string
+  /** This gear's single bucket, or `undefined` for the `—` bucket. */
+  keyOf(gear: GearState, state: DepotState): string | undefined
+  /** The group header's text. */
+  format(key: string, state: DepotState): string
+  /**
+   * A key that sorts before every other group whatever its label.
+   *
+   * `owner` pins `shared`, because `Shared` is not a name: filing it between
+   * `Mark` and `Zoe` reads as a bug rather than as an ordering. Same
+   * reasoning that pins `Loose` to the top of the Home picker's rows — the
+   * pseudo-value meaning "belongs to no one in particular" is the list's
+   * spine, not an entry in it. The order stays **total**, which is what stops
+   * two devices with identical state drawing the list differently.
+   */
+  pinned?: string
+}
+
+const GROUPING_TABLE: Readonly<Record<Exclude<GroupKey, 'none'>, Grouping>> = {
+  kind: {
+    id: 'kind',
+    label: 'KIND',
+    keyOf: (gear) => gear.kind?.value,
+    format: (key, state) => dimension('kind').format(key, state),
+  },
+  owner: {
+    id: 'owner',
+    label: 'OWNER',
+    // Never `undefined`: an absent register reads shared, so every piece of
+    // gear has a bucket and the `—` group is unreachable here.
+    keyOf: (gear) => {
+      const owner = ownerOf(gear)
+      return owner.type === 'shared' ? 'shared' : owner.personId
+    },
+    format: (key, state) =>
+      key === 'shared' ? 'Shared' : personLabel(state, key),
+    pinned: 'shared',
+  },
+}
+
+/** What `GROUP BY` offers, in the order the segmented control draws them. */
+export const GROUP_KEYS: readonly GroupKey[] = ['none', 'kind', 'owner']
+
+/** The segmented control's label for one key. `NONE` has no table row. */
+export function groupLabel(key: GroupKey): string {
+  return key === 'none' ? 'NONE' : GROUPING_TABLE[key].label
+}
 
 function groupGear(
   gear: readonly GearState[],
@@ -383,36 +456,43 @@ function groupGear(
   if (gear.length === 0) return []
   if (group === 'none') return [{ key: '', label: '', gear }]
 
+  const of = GROUPING_TABLE[group]
   const buckets = new Map<string, GearState[]>()
-  const unkinded: GearState[] = []
+  const ungrouped: GearState[] = []
   for (const item of gear) {
-    const kind = item.kind?.value
-    if (kind === undefined) {
-      unkinded.push(item)
+    const key = of.keyOf(item, state)
+    if (key === undefined) {
+      ungrouped.push(item)
       continue
     }
-    const bucket = buckets.get(kind)
-    if (bucket === undefined) buckets.set(kind, [item])
+    const bucket = buckets.get(key)
+    if (bucket === undefined) buckets.set(key, [item])
     else bucket.push(item)
   }
 
-  const format = dimension('kind').format
   const groups = [...buckets]
-    .map(([key, items]) => ({ key, label: format(key, state), gear: items }))
-    // Alphabetically by **label** — `Counted · Per-person · Single` — which
-    // is what the board's grouped frame draws, and is not the enum's order.
-    // Case-insensitive so an unrecognised lowercase kind files sensibly
-    // rather than after every recognised one.
+    .map(([key, items]) => ({
+      key,
+      label: of.format(key, state),
+      gear: items,
+    }))
+    // The pinned key first; then alphabetically by **label** — for Kind that
+    // is `Counted · Per-person · Single`, which is what the board's grouped
+    // frame draws and is not the enum's order. Case-insensitive so an
+    // unrecognised lowercase value files sensibly rather than after every
+    // recognised one.
     .sort((a, b) => {
+      if (a.key === of.pinned) return b.key === of.pinned ? 0 : -1
+      if (b.key === of.pinned) return 1
       const al = a.label.toLowerCase()
       const bl = b.label.toLowerCase()
       if (al !== bl) return al < bl ? -1 : 1
       return a.key < b.key ? -1 : 1
     })
 
-  return unkinded.length === 0
+  return ungrouped.length === 0
     ? groups
-    : [...groups, { key: '', label: UNGROUPED_LABEL, gear: unkinded }]
+    : [...groups, { key: '', label: UNGROUPED_LABEL, gear: ungrouped }]
 }
 
 /**

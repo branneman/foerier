@@ -1,4 +1,10 @@
-import type { GroupKey, SliceSpec, SortKey } from '@foerier/shared'
+import {
+  GROUP_KEYS,
+  groupLabel,
+  type GroupKey,
+  type SliceSpec,
+  type SortKey,
+} from '@foerier/shared'
 import { Sheet } from '@foerier/ui'
 
 import styles from './SortGroupSheet.module.css'
@@ -12,10 +18,15 @@ import styles from './SortGroupSheet.module.css'
  * the SET PHASE anatomy, reused deliberately rather than invented again — one
  * app should have exactly one way of saying "this is the one you are on".
  *
- * `GROUP BY` offers `NONE · KIND` and **never TAG**. That is a domain fact
- * rather than a UI preference: tags are multi-valued, so a three-tag piece of
- * gear would land in three groups and the groups would not partition the
- * list. Slicing by tag is the filter's job.
+ * `GROUP BY` offers `NONE · KIND · OWNER` and **never TAG**. That is a
+ * domain fact rather than a UI preference: tags are multi-valued, so a
+ * three-tag piece of gear would land in three groups and the groups would not
+ * partition the list. Slicing by tag is the filter's job.
+ *
+ * The options are **derived from `shared/`'s grouping table**, not listed
+ * here, so a slice that adds a grouping adds a row there and nothing in this
+ * file. Tag's absence is likewise not an omission to remember: a grouping
+ * needs a `keyOf`, and Tag has none.
  *
  * ## Why this file exports two components
  *
@@ -50,10 +61,9 @@ const SORTS: readonly { key: SortKey; label: string }[] = [
   { key: 'newest', label: 'NEWEST FIRST' },
 ]
 
-const GROUPS: readonly { key: GroupKey; label: string }[] = [
-  { key: 'none', label: 'NONE' },
-  { key: 'kind', label: 'KIND' },
-]
+const GROUPS: readonly { key: GroupKey; label: string }[] = GROUP_KEYS.map(
+  (key) => ({ key, label: groupLabel(key) }),
+)
 
 function Options<T extends string>({
   label,

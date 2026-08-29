@@ -15,6 +15,8 @@ import {
   dimension,
   dimensionValues,
   EMPTY_SLICE,
+  GROUP_KEYS,
+  groupLabel,
   recordedAt,
   sliceDepot,
   type SliceSpec,
@@ -533,10 +535,14 @@ describe('recordedAt', () => {
 })
 
 /**
- * `GROUP BY` offers `NONE · KIND` and **never offers TAG** — deliberate, and
- * a domain fact rather than a UI preference: tags are multi-valued, so a
- * three-tag piece of gear would land in three groups and the groups would not
- * partition the list.
+ * `GROUP BY` offers `NONE · KIND · OWNER` and **never offers TAG** —
+ * deliberate, and a domain fact rather than a UI preference: tags are
+ * multi-valued, so a three-tag piece of gear would land in three groups and
+ * the groups would not partition the list.
+ *
+ * Since S4 that is structural rather than prose beside a branch: a grouping
+ * needs a `keyOf` — "the one bucket this gear falls into" — and Tag has none,
+ * so Tag has no row in `GROUPING_TABLE`.
  */
 describe('sliceDepot — grouping', () => {
   it('returns one unlabelled group when grouping is off', () => {
@@ -606,6 +612,104 @@ describe('sliceDepot — grouping', () => {
   it('returns no groups at all when nothing survived', () => {
     const spec = slice({ filters: { tag: ['nonesuch'] }, group: 'kind' })
     expect(sliceDepot(aDepot(), spec).groups).toEqual([])
+  })
+})
+
+/**
+ * **Grouping by owner groups by the register**, which is a thing neither of
+ * S4's two filter dimensions does alone — grouping by `person` would file
+ * every shared piece of gear into the `—` bucket, and grouping by `ownership`
+ * would give two coarse groups and never name a Person. That is why grouping
+ * has its own table rather than borrowing the dimension table's rows.
+ */
+describe('sliceDepot — grouping by owner', () => {
+  it('files shared gear together, whether the register is written or absent', () => {
+    const result = sliceDepot(anOwnedDepot(), slice({ group: 'owner' }))
+    const shared = result.groups.find((g) => g.key === 'shared')
+    expect(shared?.gear.map((g) => g.id)).toEqual(['g-stove', 'g-tent'])
+  })
+
+  it('puts Shared first and then people alphabetically', () => {
+    // Not plain alphabetical: `Shared` is not a name, and filing it between
+    // `Mark` and `Zoe` reads as a bug. The same reasoning pins `Loose` to the
+    // top of the Home picker.
+    const result = sliceDepot(anOwnedDepot(), slice({ group: 'owner' }))
+    expect(result.groups.map((g) => g.label)).toEqual(['Shared', 'Els', 'Mark'])
+  })
+
+  it('labels a person group with the recorded name', () => {
+    const result = sliceDepot(anOwnedDepot(), slice({ group: 'owner' }))
+    expect(result.groups.find((g) => g.key === 'els')?.label).toBe('Els')
+  })
+
+  it('never produces the dash bucket, because absence means shared', () => {
+    const result = sliceDepot(anOwnedDepot(), slice({ group: 'owner' }))
+    expect(result.groups.some((g) => g.key === '')).toBe(false)
+  })
+
+  it('keeps the sort order inside each group', () => {
+    const state = fold([
+      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...at(
+        aGear({
+          id: 'g-a',
+          name: 'Anorak',
+          owner: { type: 'person', personId: 'els' },
+        }),
+        2,
+      ),
+      ...at(
+        aGear({
+          id: 'g-z',
+          name: 'Zip-off trousers',
+          owner: { type: 'person', personId: 'els' },
+        }),
+        3,
+      ),
+    ])
+    const result = sliceDepot(
+      state,
+      slice({ group: 'owner', sort: 'name-desc' }),
+    )
+    expect(result.groups[0]?.gear.map((g) => g.id)).toEqual(['g-z', 'g-a'])
+  })
+
+  it('groups only what survived the narrowing', () => {
+    const result = sliceDepot(
+      anOwnedDepot(),
+      slice({ group: 'owner', filters: { ownership: ['personal'] } }),
+    )
+    expect(result.groups.map((g) => g.label)).toEqual(['Els', 'Mark'])
+  })
+
+  it('labels a Person whose op has not arrived as a dash, in its own group', () => {
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Tent' }), 1),
+      ...at(
+        aGear({
+          id: 'g2',
+          name: 'Down jacket',
+          owner: { type: 'person', personId: 'ghost' },
+        }),
+        2,
+      ),
+    ])
+    const result = sliceDepot(state, slice({ group: 'owner' }))
+    // Shared pinned first; the unnamed Person's group is a real group with a
+    // real key, not the ungrouped bucket — which is why its `—` sorts by
+    // label like any other name rather than being forced last.
+    expect(result.groups.map((g) => g.key)).toEqual(['shared', 'ghost'])
+    expect(result.groups.map((g) => g.label)).toEqual(['Shared', '—'])
+  })
+})
+
+describe('the grouping table', () => {
+  it('names every key GROUP BY offers, in the order it draws them', () => {
+    expect(GROUP_KEYS.map(groupLabel)).toEqual(['NONE', 'KIND', 'OWNER'])
+  })
+
+  it('never offers TAG, because a multi-valued dimension cannot partition', () => {
+    expect(GROUP_KEYS).not.toContain('tag')
   })
 })
 
