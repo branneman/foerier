@@ -71,9 +71,9 @@ export async function resetHousehold(
  * Invite means someone added a credential or minted a link.
  *
  * `passkeys === 0` because the route reports what it **deleted**, and the
- * caller's own Passkey is the one it spares. (§3.5's table says `= 1`, counting
- * the survivor rather than the deletions — a wording defect in the spec, being
- * corrected separately; the route is the authority.)
+ * caller's own Passkey is the one it spares. (§3.5's table said `= 1`, counting
+ * the survivor rather than the deletions — a wording defect in the spec, since
+ * corrected; the route is the authority.)
  *
  * The wipe has already happened by the time this runs, so the counts are the
  * only evidence left — which is why a violation stops the run rather than

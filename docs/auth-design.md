@@ -557,8 +557,9 @@ name a Person, and there is no way to pick one before S4 records People.
 
 **One route exists that this table deliberately does not list.**
 `POST /api/v1/test/reset` (`api/src/test/`) empties the Household CI tests
-against — its ops, its other Devices, its outstanding Invites, and every Passkey
-but the caller's. It is **not part of the auth surface**: it authenticates with
+against: it deletes that Household's ops, its outstanding Invites and every
+Passkey but the caller's, and **revokes** its other Devices (`revoked_at`, not
+a delete). It is **not part of the auth surface**: it authenticates with
 an ordinary Device token through the same `requireAuth` as everything marked
 **A** above, adds no auth path and no class of secret, and takes its Household
 from the token and never from a body, so §9.3's tenancy rule applies to it

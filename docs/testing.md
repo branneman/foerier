@@ -219,7 +219,7 @@ unauthenticated file.
 
 **One disposable Household, wiped at the start of every run.** The suite does
 not create a Household and cannot: `admin:bootstrap --disposable --name "E2E"`
-minted it by hand, once, on the box. `POST /api/v1/test/reset`
+mints it by hand, once, on the box. `POST /api/v1/test/reset`
 (`api/src/test/`) is what empties it — it deletes the Household's ops, revokes
 every Device but the caller's, and deletes its outstanding Invites and every
 Passkey but the caller's. Reset is at the **start**, never a teardown, so a
@@ -253,8 +253,9 @@ journey. Deliberately small — edge cases belong in lower tiers.
 
 **Golden path, eventually:** sign in → add gear → find it → build a trip → pack
 an item → close the trip. **Today it stops at the third step** — sign in, record
-gear with the network cut, watch it sync — because the rest of it awaits S6–S10.
-The journey grows a leg per slice; the harness around it does not change.
+gear with the network cut, find it, watch it sync — because the rest of it
+awaits S6–S10. The journey grows a leg per slice; the harness around it does
+not change.
 
 Two PWA-specific twists this project must cover:
 
@@ -326,10 +327,10 @@ Three contexts, three strategies — never shared across contexts.
   the only way a Household's first Login is ever arranged, so a test that
   bypassed it would not notice the front door breaking.
 - **Tier 4's household suite and Tier 5 against production share one Household
-  and one credential**, and neither creates either. The Household was
-  bootstrapped by hand with `--disposable`; the Passkey was captured once, by
-  hand, against the deployed app (`test/e2e/captureCredential.ts`) and lives as
-  two GitHub secrets — a base64url credential id and a base64 PKCS#8 private
+  and one credential**, and neither creates either. The Household is
+  bootstrapped by hand with `--disposable`; the Passkey is captured **once, by
+  hand**, against the deployed app (`test/e2e/captureCredential.ts`) and stored
+  as two GitHub secrets — a base64url credential id and a base64 PKCS#8 private
   key — plus the user handle Chrome's virtual authenticator wants. Each job
   replays that credential and mints a Device token of its own: a token is never
   handed forward as a job output or an artifact, both of which are readable from

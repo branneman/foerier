@@ -114,14 +114,18 @@ it settled.
   resumed — re-signing in builds a new one — so `resumeSync()` stays for a
   future recover-in-place flow.
 
-**Tier 4 and Tier 5 now run against the box after every deploy**
-([spec](docs/specs/2026-08-28-tier-4-and-5-against-production.md),
-[§12.8](docs/architecture-design.md#128-consequences-of-tier-4-and-5-against-production)).
+**Tier 4 and Tier 5 run against the box after every deploy, once the
+Household is bootstrapped and the credential stored** — the two out-of-band
+steps CI cannot take for itself, written up in
+[the spec](docs/specs/2026-08-28-tier-4-and-5-against-production.md) §5 and
+§9.3, with the consequences in
+[§12.8](docs/architecture-design.md#128-consequences-of-tier-4-and-5-against-production).
 Not a slice — no op type, no `shared/` — but it ends a block that had been
 attributed to the golden path being incomplete and was really the absence of a
 **Household CI is allowed to destroy**. `POST /api/v1/test/reset`
-(`api/src/test/`) empties one: its ops, its other Devices, its outstanding
-Invites, and every Passkey but the caller's. It can never *create*, so
+(`api/src/test/`) empties one: it deletes that Household's ops, its
+outstanding Invites and every Passkey but the caller's, and **revokes** its
+other Devices. It can never *create*, so
 [auth-design §3.4](docs/auth-design.md) is untouched, and three gates hold
 it — the route is not mounted unless the server was started with
 `E2E_HOUSEHOLD_ID`, the calling token's Household must equal that value, and
@@ -131,9 +135,9 @@ never as a teardown, so a cancelled run leaves a dirty Household and the next
 run's first act fixes it; its returned counts double as a tripwire, since
 `revoked ≤ 1`, `passkeys = 0`, `invites = 0` is the only thing that would ever
 say the E2E credential had leaked. Three things to know before touching this
-area: the Household and its Passkey were both **created by hand, once** — the
-Passkey lives as GitHub secrets captured by `test/e2e/captureCredential.ts`
-and nothing in CI can mint either; **a Device token never crosses a job
+area: the Household and its Passkey are both **created by hand, once** —
+the Passkey by `test/e2e/captureCredential.ts`, stored as GitHub secrets, and
+nothing in CI can mint either; **a Device token never crosses a job
 boundary**, so `contract` signs in through Tier 2s's software authenticator
 and `e2e-prod` through Chrome's, each from the same credential; and only specs
 tagged **`@production`** run against the box — anything that mints an Invite
