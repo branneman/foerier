@@ -1,6 +1,7 @@
 import {
   createHlcClock,
   gearRecorded,
+  personRecorded,
   tripCreated,
   type Clock,
   type IdSource,
@@ -24,6 +25,7 @@ import {
 import { AddGear } from '../screens/AddGear'
 import { Devices } from '../screens/Devices'
 import { GearDetail } from '../screens/GearDetail'
+import { InviteIssued } from '../screens/InviteIssued'
 import { NewTrip } from '../screens/NewTrip'
 import { People } from '../screens/People'
 import { Trip } from '../screens/Trip'
@@ -59,6 +61,8 @@ const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
 const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const TOKEN = 'foe_test_token'
 const PERSON = 'mark'
+/** The Person a join Invite is minted for — someone other than {@link PERSON}. */
+const ELS = '0f0000aa-0000-4000-8000-0000000000bb'
 
 let nextId = 0
 
@@ -113,19 +117,36 @@ async function seededStore(
  * throws rather than resolving to something invented, exactly as the two
  * per-screen suites' own stubs do.
  */
-const authApi = createAuthApi((input: RequestInfo | URL) => {
-  const url = String(input)
-  if (url.endsWith('/auth/logins')) {
-    return Promise.resolve(new Response(JSON.stringify({ logins: [] })))
-  }
-  if (url.endsWith('/auth/invites')) {
-    return Promise.resolve(new Response(JSON.stringify({ invites: [] })))
-  }
-  if (url.endsWith('/auth/devices')) {
-    return Promise.resolve(new Response(JSON.stringify({ devices: [] })))
-  }
-  throw new Error(`unmocked request: ${url}`)
-})
+const authApi = createAuthApi(
+  (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+    const method = (init?.method ?? 'GET').toUpperCase()
+    // `InviteIssued` mints on mount, and `/auth/invites` is the same path the
+    // two lists are read from — so this stub keys on the method as well as on
+    // the path, or a POST would be answered with `{invites: []}`.
+    if (method === 'POST' && url.endsWith('/auth/invites')) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            id: 'dddddddd-0000-7000-8000-000000000001',
+            secret: 'kJ2nQ7xWpL0aZ4vRtY8sMc1BdF6hGjNe3UiOkPqXwSb',
+            expires_at: new Date(Date.now() + 3_600_000).toISOString(),
+          }),
+        ),
+      )
+    }
+    if (url.endsWith('/auth/logins')) {
+      return Promise.resolve(new Response(JSON.stringify({ logins: [] })))
+    }
+    if (url.endsWith('/auth/invites')) {
+      return Promise.resolve(new Response(JSON.stringify({ invites: [] })))
+    }
+    if (url.endsWith('/auth/devices')) {
+      return Promise.resolve(new Response(JSON.stringify({ devices: [] })))
+    }
+    throw new Error(`unmocked request: ${method} ${url}`)
+  },
+)
 
 /**
  * The whole page: the shell, and the screen the route pushes inside it.
@@ -134,6 +155,10 @@ const authApi = createAuthApi((input: RequestInfo | URL) => {
  * wraps `/account/people` and `/account/devices` in a `Redirect to="/account"`
  * at Desktop, so neither screen is ever mounted at that width. Mounting them
  * here anyway would be a fixture describing an app that does not exist.
+ *
+ * `InviteIssued`'s routes carry no such guard — all three are reachable at
+ * every width, the two below reached from Account's own card and from the
+ * People rows it unfolds inline at Desktop — so it is counted at all three.
  */
 function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
   const location = memoryLocation({ path, record: true })
@@ -159,6 +184,26 @@ function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
             </Route>
             <Route path="/account/devices">
               <Devices api={authApi} token={TOKEN} onSignedOut={() => {}} />
+            </Route>
+            <Route path="/account/device-link">
+              <InviteIssued
+                api={authApi}
+                token={TOKEN}
+                personId={PERSON}
+                subjectPersonId={PERSON}
+                purpose="device"
+              />
+            </Route>
+            <Route path="/account/people/:personId/invite">
+              {(params) => (
+                <InviteIssued
+                  api={authApi}
+                  token={TOKEN}
+                  personId={PERSON}
+                  subjectPersonId={params.personId}
+                  purpose="join"
+                />
+              )}
             </Route>
           </Switch>
         </DepotProvider>
@@ -276,9 +321,9 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
     expect(screen.getByRole('main')).toContainElement(syncLines()[0] ?? null)
   })
 
-  /* Add gear is the one screen here reachable at **every** width —
-     `<Route path="/add">` carries no width guard — so all three modes are
-     counted for it. */
+  /* Unlike `People` and `Devices` below, `<Route path="/add">` carries no
+     width guard, so all three of Add gear's modes are counted — as they are
+     above for a Trip and for gear detail, whose routes are unguarded too. */
 
   it('holds for Add gear on a phone, the width it is used at most', async () => {
     const store = await seededStore()
@@ -356,6 +401,11 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
     expect(syncLines()).toHaveLength(1)
     expect(screen.getByRole('main')).toContainElement(syncLines()[0] ?? null)
   })
+
+  /* `InviteIssued` is counted in the back-link block below and not in this
+     one: it has never drawn a sync line, so the sync half of the rule has
+     nothing to say about it and no width of it can double the shell's word.
+     Only the back-link half is its. */
 })
 
 /**
@@ -443,5 +493,63 @@ describe('the back link — withheld only where its destination is already drawn
     await screen.findByRole('heading', { name: 'Devices' })
 
     expect(screen.getByRole('link', { name: '‹ ACCOUNT' })).toBeVisible()
+  })
+
+  /* `InviteIssued` is the third door off Account, and the only pushed screen
+     whose back link is not one fixed label: `‹ ACCOUNT` for the reader's own
+     device link, `‹ PEOPLE & LOGINS` for a join Invite and for a device link
+     minted against someone else. Where it points is S5's decision; whether it
+     is drawn is this rule's. */
+
+  it('draws ‹ ACCOUNT on the own device link on a phone', async () => {
+    const store = await seededStore()
+    renderInShell(store, '/account/device-link')
+    await screen.findByRole('button', { name: 'Copy link' })
+
+    expect(screen.getByRole('link', { name: '‹ ACCOUNT' })).toBeVisible()
+  })
+
+  it('draws it on the own device link at Split, against an unlabelled rail', async () => {
+    setViewport(SPLIT)
+    const store = await seededStore()
+    renderInShell(store, '/account/device-link')
+    await screen.findByRole('button', { name: 'Copy link' })
+
+    expect(screen.getByRole('link', { name: '‹ ACCOUNT' })).toBeVisible()
+  })
+
+  it('withholds it from the own device link at Desktop, where the sidebar carries Account', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const store = await seededStore()
+    renderInShell(store, '/account/device-link')
+    await screen.findByRole('button', { name: 'Copy link' })
+
+    expect(screen.queryByRole('link', { name: '‹ ACCOUNT' })).toBeNull()
+    // Withheld because the destination is on the page: the sidebar's own
+    // labelled `Account` row points at the same `/account`.
+    const nav = screen.getByRole('navigation', { name: 'Sections' })
+    expect(within(nav).getByRole('link', { name: 'Account' })).toBeVisible()
+  })
+
+  it('draws ‹ PEOPLE & LOGINS on a join Invite at Split', async () => {
+    setViewport(SPLIT)
+    const store = await seededStore([personRecorded(ELS, 'Els')])
+    renderInShell(store, `/account/people/${ELS}/invite`)
+    await screen.findByRole('button', { name: 'Copy link' })
+
+    expect(
+      screen.getByRole('link', { name: '‹ PEOPLE & LOGINS' }),
+    ).toBeVisible()
+  })
+
+  it('withholds it from a join Invite at Desktop, where it would bounce through a redirect', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const store = await seededStore([personRecorded(ELS, 'Els')])
+    renderInShell(store, `/account/people/${ELS}/invite`)
+    await screen.findByRole('button', { name: 'Copy link' })
+
+    // `/account/people` is `Redirect to="/account"` at Desktop, so this link
+    // repeated the sidebar's own `Account` row by way of a redirect.
+    expect(screen.queryByRole('link', { name: '‹ PEOPLE & LOGINS' })).toBeNull()
   })
 })

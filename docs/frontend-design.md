@@ -174,8 +174,9 @@ two-line row at a viewport of 900.
 ### 3.3 Screen headers — the back link and the sync line
 
 A screen reached *from* a destination draws a band above its title: a back link
-(`‹ DEPOT`, `‹ TRIPS`) and the sync marker. **Each is withheld, and neither is
-withheld at a single width**, because the two answer different questions.
+(`‹ DEPOT`, `‹ TRIPS`) and, on every such screen but `InviteIssued`, the sync
+marker. **Each is withheld, and neither is withheld at a single width**,
+because the two answer different questions.
 
 - **The sync line is drawn at Split (`52–64em`), and only there.** `AppShell`
   states the status in **words** in two of its three modes — the phone header
@@ -221,33 +222,41 @@ pushed screen **inside** `AppShell` and counts one visible `SYNCED` at phone
 width, at Split and at Desktop. That is a permanent property of the two suites,
 not a note about one round.
 
-**The hook's reach is every screen that draws a sync line — all seven.**
-`AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`, `People` and `Devices`
-ask it, and no screen spells the rule itself. `splitPane` is true for
-`GearDetail` alone; two of the answers are worth stating, because they are
-about the app as built rather than as drawn:
+**The hook's reach is every screen that draws either half of the band — all
+eight.** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`, `People`,
+`Devices` and `InviteIssued` ask it, and no screen spells the rule itself.
+Seven of the eight draw a sync line; `InviteIssued` never has, so only the
+back-link half is its. `splitPane` is true for `GearDetail` alone. Three of the
+answers are worth stating, because they are about the app as built rather than
+as drawn:
 
 - **`AddGear` answers `splitPane: false`, against its own board frame.**
   `Add gear — split 900` draws it as a pane with the Depot list beside it, and
   that two-pane Add gear has never been built: `<Route path="/add">` renders it
   standalone at every width. So at Split `‹ DEPOT` still points at something
-  not on the page, and the link is drawn. It is also the one of the seven
-  reachable at every width — the route carries no guard — so all three of its
-  modes are counted in the composed suite.
+  not on the page, and the link is drawn.
 - **`People` and `Devices` `Redirect to="/account"` at Desktop**, so their
   Desktop band is never reached and the composed suite counts them at the two
   widths `App.tsx` actually mounts them at. `People` has a second render, the
   `inline` variant Account unfolds into its own card at Desktop, which draws no
-  band at all.
-
-**`InviteIssued` is the one pushed screen that does not ask, and only half the
-rule is its.** It draws a back link and has never drawn a sync line, so the
-sync half has nothing to say to it. The back-link half does: `‹ ACCOUNT` /
-`‹ PEOPLE & LOGINS` is unconditional, and neither route is guarded at Desktop,
-where the sidebar already carries an `Account` row — and where
-`‹ PEOPLE & LOGINS` points at `/account/people`, which redirects to `/account`
-at that width. Open, and smaller than the marker defect the rule was extracted
-for.
+  band at all. They are the **only** two of the eight whose route carries a
+  width guard: `AddGear`, `Trip`, `NewTrip`, `Account`, `InviteIssued`'s three
+  routes, and `GearDetail` by way of `DepotView` — which renders it standalone
+  below Split and at Desktop and as the right-hand pane between — are mounted
+  at every width.
+- **`InviteIssued` gates its `<header>` on `backLink` rather than on `band`.**
+  It draws no sync line, so the back link is the only thing the band could
+  hold, and `band` exists precisely so a wrapper is never rendered empty. (For
+  `splitPane: false` the two answers coincide — `syncLine` is `isSplit &&
+  !isDesktop` and `backLink` is `!isDesktop`, so the first implies the second —
+  but the gate names the half the screen actually draws.) Its label is the one
+  that is not fixed: `‹ ACCOUNT` from Account's own device link,
+  `‹ PEOPLE & LOGINS` from a join Invite and from a device link minted for
+  someone else. Where it points is the screen's own decision; whether it is
+  drawn is this rule's — and at Desktop it is not, where the sidebar carries a
+  labelled `Account` row and `/account/people` redirects to `/account`, so the
+  link would have bounced through a redirect to a row already in the
+  navigation.
 
 **A gap at Split, and no board answers it.** The FAB (`Depot`, `Trips`)
 is gated `!isDesktop` and offset `bottom: 4.625rem` — 74px, which is the 56px

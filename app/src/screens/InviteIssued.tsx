@@ -4,6 +4,7 @@ import { Link, useLocation } from 'wouter'
 
 import type { AuthApi, IssuedInvite } from '../auth/api'
 import { useDepot } from '../depot/store'
+import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './InviteIssued.module.css'
 
 // This file builds **both** halves of boards §14 ("Invite issued, one
@@ -41,6 +42,23 @@ export interface InviteIssuedProps {
  * `REVOKE INVITE` there and `REVOKE LINK` for both device-link entry
  * points, own and another's.
  *
+ * ## The band above the title
+ *
+ * Half of `useScreenHeader`'s rule (`frontend-design.md` §3.3) is this
+ * screen's and half is not. It has never drawn a sync line, so the sync half
+ * has nothing to say to it; the back-link half does, and the answer is the
+ * hook's rather than an unconditional link. All three routes are reachable at
+ * **every** width — none carries the `Redirect to="/account"` that keeps
+ * `People` and `Devices` below Desktop — and at Desktop the sidebar already
+ * carries a labelled `Account` row, so both destinations this link points at
+ * are on the page: `/account` is that row, and `/account/people` redirects to
+ * it. A link that bounces through a redirect to a row already in the
+ * navigation is exactly what the rule withholds.
+ *
+ * The `<header>` is gated on `backLink` rather than on `band`, because for
+ * a screen that draws no sync line the back link is the only thing the band
+ * could hold — and `band` exists so that a wrapper is never rendered empty.
+ *
  * **Issues exactly one Invite, ever, no matter how many times this
  * component renders.** `POST /auth/invites` hands back the secret exactly
  * once, and the Invite it names is single-use — a component that re-issues
@@ -60,6 +78,7 @@ export function InviteIssued({
   purpose,
 }: InviteIssuedProps) {
   const own = subjectPersonId === personId
+  const header = useScreenHeader({ splitPane: false })
   const subjectName = useDepot(
     (depot) => depot.state.people[subjectPersonId]?.name?.value ?? null,
   )
@@ -176,11 +195,13 @@ export function InviteIssued({
 
   return (
     <div className={styles['screen']}>
-      <header className={styles['header']}>
-        <Link href={copy.back.href} className={styles['back']}>
-          {copy.back.label}
-        </Link>
-      </header>
+      {header.backLink && (
+        <header className={styles['header']}>
+          <Link href={copy.back.href} className={styles['back']}>
+            {copy.back.label}
+          </Link>
+        </header>
+      )}
 
       <h1 className={styles['title']}>{copy.title}</h1>
       <p className={styles['lead']}>{copy.lead}</p>
