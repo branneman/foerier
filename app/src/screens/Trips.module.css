@@ -59,6 +59,12 @@
    * has no FAB primitive and two callers is where `GearRow`'s rule says one
    * gets made, not before.
    *
+   * 74px is the Depot boards' number, drawn three times; `Screens B` 02A's own
+   * `Trips — S6 ship state` draws 86px, once, over an identical tab bar. The
+   * two boards disagree and nothing under the control differs, so this follows
+   * the Depot rather than letting the FAB jump between two tabs of one bar.
+   * Open question, stated in `docs/design/README.md` §5.
+   *
    * Rendered as a **sibling** of `.screen`, never inside it — `.screen`
    * declares `container-type`, which applies layout containment and so becomes
    * the containing block for any fixed descendant, and `.screen`'s height is
