@@ -5,7 +5,7 @@
   .band {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-12);
     padding: var(--space-12) var(--space-16);
     border-radius: var(--radius-card);
     background: color-mix(
@@ -15,6 +15,16 @@
     );
     border: var(--stroke-rule) solid
       color-mix(in srgb, var(--color-status-attention) 45%, transparent);
+  }
+
+  /* One line-plus-rows group. Undrawn by any board (fix round F2: two true
+     lines can stand over two disjoint row sets), so this is deliberately the
+     plainest possible stack — the same rhythm as `.band`'s own gap, not a
+     second visual register. */
+  .segment {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
   }
 
   /* A normal sentence, not a mono tag — the boards draw it in running case,
@@ -30,6 +40,9 @@
     flex-direction: column;
   }
 
+  /* Every row carries its own top rule, first included — all three drawn
+     frames put the rule directly under the attention line too (fix round
+     F6; an earlier `:first-child` exception dropped it undocumented). */
   .row {
     display: flex;
     flex-direction: column;
@@ -40,12 +53,6 @@
       color-mix(in srgb, var(--color-status-attention) 18%, transparent);
   }
 
-  .row:first-child {
-    padding-top: 0;
-    margin-top: 0;
-    border-top: none;
-  }
-
   .rowHead {
     display: flex;
     justify-content: space-between;
@@ -54,8 +61,16 @@
   }
 
   /* The Gear's own name, recorded case — never uppercased, unlike the fact
-     beside it. */
+     beside it. `min-width: 0` is what lets a flex item shrink below its
+     content's intrinsic width at all; without it `overflow`/`ellipsis` never
+     engage. This is the item the boards let give way (fix round F5) — the
+     fact beside it holds its full width instead. */
   .gearName {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font: var(--text-secondary) var(--font-ui);
     font-weight: 600;
     color: var(--color-ink-primary);
@@ -66,18 +81,27 @@
      row facts are exact copy the boards specify character-for-character, so
      the component writes it rather than leaning on this rule to produce it —
      but the transform stands anyway, matching the rest of this file's mono
-     tags and guarding against a value that arrives some other case. */
+     tags and guarding against a value that arrives some other case.
+
+     `flex-shrink: 0` — the boards set this on the fact in all four drawn
+     rows, so it is the *name* beside it that shrinks first (fix round F5).
+     No `overflow`/`ellipsis` here on purpose: the fact is the row's reason
+     for existing, and truncating it would cut off the Trip name it exists
+     to carry. */
   .fact {
+    flex-shrink: 0;
     font: var(--text-label) var(--font-mono);
     text-transform: uppercase;
     color: var(--color-ink-muted);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
+  /* Wraps — a Counted row naming an other Trip already has three links, and
+     the full Trip name (fix round F1) makes each one longer than the
+     shortened form did (fix round F10). */
   .settleRow {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-12);
   }
 

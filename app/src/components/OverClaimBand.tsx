@@ -23,8 +23,8 @@ import styles from './OverClaimBand.module.css'
  * the trip header and the `GEAR LIST` band, and is **never dismissible** —
  * there is nothing to dismiss, and the fold would render it again the moment
  * it is. Rendering nothing is the only way it goes away, which is why this
- * component returns `null` outright when `overClaims` is empty rather than
- * drawing an empty shell.
+ * component returns `null` outright when {@link overClaimGroups} finds
+ * nothing to say rather than drawing an empty shell.
  *
  * `overClaims` is a prop, not something this component derives, because two
  * different questions feed the same block: the trip screen asks
@@ -33,6 +33,15 @@ import styles from './OverClaimBand.module.css'
  * caller, never re-derived here. `tripId` still matters to the component: it
  * is what tells "here" from "there" inside each {@link OverClaim}'s
  * `claims`.
+ *
+ * **`overClaimsIfActive` is not filtered by `tripId`** (unlike
+ * `overClaimsFor`) — it answers "what if `tripId` were active", not "what
+ * does `tripId` appear in", so its result can include an `OverClaim` between
+ * two *other* Trips entirely. `overClaimGroups` drops any such `OverClaim`
+ * before it reaches a line or a row, so a caller that hands this component
+ * either selector's output gets a correct band either way — fix round F8:
+ * the obligation is met here, not left to a docstring a future caller could
+ * miss.
  *
  * Gear and Trip names are read from the store directly (`TripCard`'s own
  * precedent), rather than threaded through as a second data shape — an
@@ -63,21 +72,26 @@ export function OverClaimBand({
 }: OverClaimBandProps) {
   // Hooks run unconditionally — the empty-band `null` returns after this.
   const state = useDepot((depot) => depot.state)
+  const groups = overClaimGroups(overClaims, tripId, state)
 
-  if (overClaims.length === 0) return null
+  if (groups.length === 0) return null
 
   return (
     <section className={styles['band']} data-testid="over-claim-band">
-      <p className={styles['attention']} data-testid="over-claim-attention">
-        {attentionLine(overClaims, tripId, state)}
-      </p>
-      <ConflictRows
-        tripId={tripId}
-        overClaims={overClaims}
-        onRemoveHere={onRemoveHere}
-        onRemoveThere={onRemoveThere}
-        onBringFewer={onBringFewer}
-      />
+      {groups.map((group) => (
+        <div key={group.line} className={styles['segment']}>
+          <p className={styles['attention']} data-testid="over-claim-attention">
+            {group.line}
+          </p>
+          <ConflictRows
+            tripId={tripId}
+            overClaims={group.overClaims}
+            onRemoveHere={onRemoveHere}
+            onRemoveThere={onRemoveThere}
+            onBringFewer={onBringFewer}
+          />
+        </div>
+      ))}
     </section>
   )
 }
@@ -102,6 +116,13 @@ const VISIBLE_CAP = 3
  * Caps at {@link VISIBLE_CAP}, then a quiet `+ N MORE` row that **expands in
  * place** — a plain `useState` toggle, never an inner scroll. There is no way
  * back once expanded; no board draws a collapse control.
+ *
+ * Filters out any `OverClaim` naming no claim of `tripId` (fix round F8),
+ * the same defence `overClaimGroups` applies — redundant when this is fed
+ * one of that function's groups, but this component is exported on its own
+ * for Task 14 to mount directly, and a caller that skips `overClaimGroups`
+ * should not be able to reach `hereClaims(...)[0]` being `undefined` and
+ * silently drawing a row with no `REMOVE HERE`/`BRING FEWER` route at all.
  */
 export function ConflictRows({
   tripId,
@@ -113,14 +134,18 @@ export function ConflictRows({
   const state = useDepot((depot) => depot.state)
   const [expanded, setExpanded] = useState(false)
 
+  const relevant = overClaims.filter(
+    (overClaim) => hereClaims(overClaim, tripId).length > 0,
+  )
+
   // Whether a row names its own other Trip, or leaves it to the attention
   // line above — spec §4.5's table: one other Trip overall and the line
   // already named it, so the row would only repeat it; two or more and the
   // line counts instead, so each row is the only place its own Trip is said.
-  const nameEachRow = globalOtherTripIds(overClaims, tripId).length >= 2
+  const nameEachRow = globalOtherTripIds(relevant, tripId).length >= 2
 
-  const visible = expanded ? overClaims : overClaims.slice(0, VISIBLE_CAP)
-  const hiddenCount = overClaims.length - VISIBLE_CAP
+  const visible = expanded ? relevant : relevant.slice(0, VISIBLE_CAP)
+  const hiddenCount = relevant.length - VISIBLE_CAP
 
   return (
     <div className={styles['rows']} data-testid="over-claim-rows">
@@ -178,6 +203,17 @@ function ConflictRow({
   // `claimed > supply` is guaranteed by `claim.ts`'s own detection test, so
   // this is always > 0 for an `OverClaim` this component is ever handed.
   const excess = overClaim.claimed - overClaim.supply
+  // Whether bringing fewer here would actually settle this OverClaim on its
+  // own (fix round F9): `here.count - excess` must not be negative — a
+  // negative value means this claim alone isn't the whole excess, and
+  // clamping it to zero would draw `BRING ×0 HERE` as though it resolved
+  // things when the conflict would still stand afterward. `REMOVE HERE`
+  // carries that case instead: a full removal, honestly labelled.
+  const bringFewerCount = here === undefined ? null : here.count - excess
+  const canBringFewer =
+    overClaim.kind === 'counted' &&
+    bringFewerCount !== null &&
+    bringFewerCount >= 0
 
   return (
     <div
@@ -186,23 +222,21 @@ function ConflictRow({
     >
       <div className={styles['rowHead']}>
         <span className={styles['gearName']}>{name}</span>
-        <span className={styles['fact']}>
+        <span className={styles['fact']} data-testid="over-claim-fact">
           {rowFact(overClaim, tripId, state, nameRow)}
         </span>
       </div>
       <div className={styles['settleRow']}>
-        {here !== undefined && overClaim.kind === 'counted' && (
+        {here !== undefined && canBringFewer && (
           <button
             type="button"
             className={styles['settle']}
-            onClick={() =>
-              onBringFewer(here.entryId, Math.max(here.count - excess, 0))
-            }
+            onClick={() => onBringFewer(here.entryId, bringFewerCount)}
           >
-            BRING ×{Math.max(here.count - excess, 0)} HERE
+            BRING ×{bringFewerCount} HERE
           </button>
         )}
-        {here !== undefined && overClaim.kind !== 'counted' && (
+        {here !== undefined && !canBringFewer && (
           <button
             type="button"
             className={styles['settle']}
@@ -221,7 +255,7 @@ function ConflictRow({
               className={styles['settle']}
               onClick={() => onRemoveThere(otherTripId, claim.entryId)}
             >
-              REMOVE ON {removeOnTarget(state, otherTripId)}
+              REMOVE ON {tripRowLabel(state, otherTripId)}
             </button>
           )
         })}
@@ -232,10 +266,19 @@ function ConflictRow({
 
 // ---------------------------------------------------------------------------
 // Pure helpers — no store read, no op, every one a straight function of the
-// `OverClaim`s and `tripId` handed to it.
+// `OverClaim`s and `tripId` handed to it (`tripSentenceLabel`/`tripRowLabel`/
+// the line-builders take `state` only to resolve a label, never to read a
+// second time what the `OverClaim`s already say).
 
 function hereClaims(overClaim: OverClaim, tripId: string): readonly Claim[] {
   return overClaim.claims.filter((claim) => claim.tripId === tripId)
+}
+
+function entriesIn(overClaims: readonly OverClaim[], tripId: string): number {
+  return overClaims.reduce(
+    (sum, overClaim) => sum + hereClaims(overClaim, tripId).length,
+    0,
+  )
 }
 
 /** Distinct other-Trip ids, in the order `claim.ts`'s own sort produced. */
@@ -260,7 +303,7 @@ function firstClaimOfTrip(
   return overClaim.claims.find((claim) => claim.tripId === otherTripId)
 }
 
-/** The union of every row's other-Trip ids — what the attention line counts. */
+/** The union of every row's other-Trip ids — what a cross-Trip line counts. */
 function globalOtherTripIds(
   overClaims: readonly OverClaim[],
   tripId: string,
@@ -272,6 +315,22 @@ function globalOtherTripIds(
       if (seen.has(id)) continue
       seen.add(id)
       ids.push(id)
+    }
+  }
+  return ids
+}
+
+/** The union of every row's contested People, in first-seen order. */
+function unionContestedPersonIds(
+  overClaims: readonly OverClaim[],
+): readonly string[] {
+  const seen = new Set<string>()
+  const ids: string[] = []
+  for (const overClaim of overClaims) {
+    for (const personId of overClaim.contestedPersonIds) {
+      if (seen.has(personId)) continue
+      seen.add(personId)
+      ids.push(personId)
     }
   }
   return ids
@@ -289,34 +348,19 @@ function tripSentenceLabel(state: DepotState, tripId: string): string {
   return label === undefined || label === '—' ? 'an unnamed trip' : label
 }
 
-/** `tripLabel` in a row: `Unnamed trip`, words, per spec §4.5. */
+/**
+ * `tripLabel` in a row **and in a settle route** — `Unnamed trip`, words,
+ * per spec §4.5, always in its recorded case. Fix round F1 retired the
+ * settle route's separate short-name/uppercase treatment: `REMOVE ON` has
+ * exactly one Trip-name rule now, this one, and `.settle`'s
+ * `text-transform: uppercase` is what turns it into `REMOVE ON ALPS 2026` /
+ * `REMOVE ON UNNAMED TRIP` on screen — the same split `.fact` already drew
+ * between recorded case in source and all-caps on screen.
+ */
 function tripRowLabel(state: DepotState, tripId: string): string {
   const trip = state.trips[tripId]
   const label = trip === undefined ? undefined : tripLabel(trip)
   return label === undefined || label === '—' ? UNNAMED_TRIP : label
-}
-
-/**
- * The settle route's own short form — `Alps 2026` on the row reads `ALPS` on
- * its `REMOVE ON` link, and `Ardennen — Sep` would read `ARDENNEN`: the
- * leading word is the place, and the rest is the date qualifier the link has
- * no room for. `Unnamed trip` is the one name this never shortens (spec
- * §4.5's `REMOVE ON UNNAMED TRIP`, both words) — there is no "rest" to trim
- * off it, and trimming would leave a link reading `REMOVE ON UNNAMED`, which
- * names nothing.
- *
- * Uppercased here, unlike {@link rowFact}'s Trip-name suffix — decision 4's
- * split: `Unnamed trip` is a row's own casing, `REMOVE ON UNNAMED TRIP` is a
- * settle route's, and a settle route carries no other-case content anywhere
- * else (`REMOVE HERE`, `BRING ×1 HERE` are both already-caps constants), so
- * this is the one place a Trip name is baked rather than left to `.settle`'s
- * CSS transform to produce.
- */
-function removeOnTarget(state: DepotState, tripId: string): string {
-  const label = tripRowLabel(state, tripId)
-  if (label === UNNAMED_TRIP) return 'UNNAMED TRIP'
-  const firstWord = label.split(/[\s—]+/).find((part) => part.length > 0)
-  return (firstWord ?? label).toUpperCase()
 }
 
 function pluralize(count: number, singular: string, plural: string): string {
@@ -324,44 +368,165 @@ function pluralize(count: number, singular: string, plural: string): string {
 }
 
 /**
- * The band's headline — spec §4.5's table, the one part "most easily got
- * wrong". `entries` counts **here**-claims (one per conflicting Entry on
- * `tripId`), never a claim's `count` field — the piece count a Counted claim
- * carries is a different number from how many Entries are in conflict.
- *
- * Three shapes:
- * - **No other Trip at all** — decision recorded in the task report: two
- *   offline Devices can add the same Gear to *this* Trip twice, or one
- *   Entry's own Bring-count can already exceed Owned-count, with no other
- *   Trip in sight. No board draws this line; it is written to match the
- *   voice of the two the boards do.
- * - **One other Trip** — named, `already`.
- * - **Two or more** — counted, never `already` (each row names its own).
+ * Verb agreement for a count noun — the mirror of {@link pluralize}, not a
+ * copy of it with the arguments swapped. A noun takes its **plural** spelling
+ * when the count isn't one (`2 entries`), but the verb beside it takes the
+ * **singular**-looking form exactly then (`1 entry claims`, `2 entries
+ * claim`) — `claims` is the singular-count output, `claim` the plural-count
+ * one, and that is correct English, not a mistake in argument order. Named
+ * separately so a call like `verbAgreement(1, 'claims', 'claim')` reads as
+ * intentional instead of inviting a future edit to "fix" it back to
+ * `pluralize`'s order.
  */
-function attentionLine(
+function verbAgreement(
+  count: number,
+  singular: string,
+  plural: string,
+): string {
+  return count === 1 ? singular : plural
+}
+
+function joinNames(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? ''
+  if (names.length === 2) return `${names[0]} and ${names[1]}`
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+}
+
+export interface OverClaimGroup {
+  /** The attention line, true of exactly the `overClaims` beside it. */
+  readonly line: string
+  readonly overClaims: readonly OverClaim[]
+}
+
+/**
+ * Partitions `overClaims` into the lines that are actually true of the rows
+ * beneath them — fix round F2's ruling: **a line counts only what it
+ * names.** Three shapes, each its own group, omitted when empty:
+ *
+ * - **Cross-Trip** — at least one other Trip holds a claim. Named or
+ *   counted exactly as spec §4.5's table (`already claimed by X` /
+ *   `claimed by N other trips`); kind-agnostic, since neither sentence
+ *   states a depot quantity.
+ * - **Here-only, Single/Counted** — no other Trip at all; states the
+ *   depot's supply, a real number for these two Kinds.
+ * - **Here-only, Per-person** — no other Trip at all; **never** states a
+ *   depot quantity (fix round F3 — `claim.ts`'s own docstring: per-person
+ *   has none), so it names the People actually doubled instead.
+ *
+ * A Gear can only ever land in one group (an `OverClaim`'s claims either
+ * include another Trip or they don't, and its `kind` is fixed), so the
+ * groups partition `overClaims` rather than overlap.
+ *
+ * Also the one place that defends against fix round F8: any `OverClaim`
+ * naming no claim of `tripId` at all is dropped before it can reach a line
+ * or a row.
+ */
+export function overClaimGroups(
+  overClaims: readonly OverClaim[],
+  tripId: string,
+  state: DepotState,
+): readonly OverClaimGroup[] {
+  const relevant = overClaims.filter(
+    (overClaim) => hereClaims(overClaim, tripId).length > 0,
+  )
+
+  const crossTrip = relevant.filter(
+    (overClaim) => distinctOtherTripIds(overClaim, tripId).length > 0,
+  )
+  const hereOnly = relevant.filter(
+    (overClaim) => distinctOtherTripIds(overClaim, tripId).length === 0,
+  )
+  const hereOnlyPerson = hereOnly.filter(
+    (overClaim) => overClaim.kind === 'per_person',
+  )
+  const hereOnlyDepot = hereOnly.filter(
+    (overClaim) => overClaim.kind !== 'per_person',
+  )
+
+  const groups: OverClaimGroup[] = []
+  if (crossTrip.length > 0) {
+    groups.push({
+      line: crossTripLine(crossTrip, tripId, state),
+      overClaims: crossTrip,
+    })
+  }
+  if (hereOnlyDepot.length > 0) {
+    groups.push({
+      line: hereOnlyDepotLine(hereOnlyDepot, tripId),
+      overClaims: hereOnlyDepot,
+    })
+  }
+  if (hereOnlyPerson.length > 0) {
+    groups.push({
+      line: hereOnlyPersonLine(hereOnlyPerson, tripId, state),
+      overClaims: hereOnlyPerson,
+    })
+  }
+  return groups
+}
+
+/**
+ * Spec §4.5's table: `1 entry is already claimed by Alps 2026.` /
+ * `5 entries are claimed by 2 other trips.` — one other Trip overall is
+ * named with `already`; two or more are counted instead, never `already`,
+ * since each row then names its own.
+ */
+function crossTripLine(
   overClaims: readonly OverClaim[],
   tripId: string,
   state: DepotState,
 ): string {
-  const entries = overClaims.reduce(
-    (sum, overClaim) => sum + hereClaims(overClaim, tripId).length,
-    0,
-  )
+  const entries = entriesIn(overClaims, tripId)
   const noun = pluralize(entries, 'entry', 'entries')
+  const verb = pluralize(entries, 'is', 'are')
   const otherTripIds = globalOtherTripIds(overClaims, tripId)
 
-  if (otherTripIds.length === 0) {
-    const verb = pluralize(entries, 'claims', 'claim')
-    return `▲ ${entries} ${noun} ${verb} more of this gear than the depot holds.`
-  }
-
-  const verb = pluralize(entries, 'is', 'are')
   if (otherTripIds.length === 1) {
     const label = tripSentenceLabel(state, otherTripIds[0]!)
     return `▲ ${entries} ${noun} ${verb} already claimed by ${label}.`
   }
-
   return `▲ ${entries} ${noun} ${verb} claimed by ${otherTripIds.length} other trips.`
+}
+
+/**
+ * No board draws this line — decision recorded in the task report. Reachable
+ * two ways with no other Trip in sight: two offline Devices add the same
+ * Gear to *this* Trip twice, or one Counted Entry's own Bring-count already
+ * exceeds Owned-count. States the depot's supply, which is a real number for
+ * Single and Counted (never for per-person — see {@link hereOnlyPersonLine}).
+ */
+function hereOnlyDepotLine(
+  overClaims: readonly OverClaim[],
+  tripId: string,
+): string {
+  const entries = entriesIn(overClaims, tripId)
+  const noun = pluralize(entries, 'entry', 'entries')
+  const verb = verbAgreement(entries, 'claims', 'claim')
+  return `▲ ${entries} ${noun} ${verb} more of this gear than the depot holds.`
+}
+
+/**
+ * Fix round F3's line. `claim.ts`'s own docstring on {@link OverClaim}:
+ * per-person's `supply`/`claimed` are a fact of who happens to be claiming,
+ * not of the depot, and invariant 6 gives per-person gear no owned-count at
+ * all — so this never says "the depot holds" anything. It names the People
+ * actually doubled instead, which for this shape (no other Trip, so every
+ * claim is here) is always reachable: an over-claim needs a Person named by
+ * two or more claims, so `contestedPersonIds` is never empty for a group
+ * this function is called on.
+ */
+function hereOnlyPersonLine(
+  overClaims: readonly OverClaim[],
+  tripId: string,
+  state: DepotState,
+): string {
+  const entries = entriesIn(overClaims, tripId)
+  const noun = pluralize(entries, 'entry', 'entries')
+  const verb = verbAgreement(entries, 'claims', 'claim')
+  const names = unionContestedPersonIds(overClaims).map((personId) =>
+    personLabel(state, personId),
+  )
+  return `▲ ${entries} ${noun} ${verb} ${joinNames(names)} more than once.`
 }
 
 /**
@@ -410,7 +575,7 @@ function rowFact(
   if (overClaim.kind === 'single') {
     const parts = [
       'SINGLE',
-      otherTotal > 0 ? 'STILL OUT' : `LISTED ×${hereTotal}`,
+      otherTotal > 0 ? 'STILL OUT' : `×${hereTotal} LISTED`,
     ]
     return [...parts, ...suffix].join(' · ')
   }

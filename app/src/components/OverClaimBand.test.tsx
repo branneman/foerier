@@ -134,14 +134,21 @@ describe('the copy table', () => {
     )
     const row = screen.getByTestId('over-claim-row-tent')
     expect(row).toHaveTextContent('Tent, tunnel 4p')
-    // No Trip name on the row: the line above already named the one Trip.
-    expect(row).toHaveTextContent('SINGLE · STILL OUT')
-    expect(row).not.toHaveTextContent('Alps')
+    // No Trip name in the row's *fact*: the line above already named the one
+    // Trip. (The settle route beside it legitimately names Alps — F1.)
+    expect(within(row).getByTestId('over-claim-fact')).toHaveTextContent(
+      'SINGLE · STILL OUT',
+    )
+    expect(within(row).getByTestId('over-claim-fact')).not.toHaveTextContent(
+      'Alps',
+    )
     expect(
       within(row).getByRole('button', { name: 'REMOVE HERE' }),
     ).toBeVisible()
+    // Full name, never shortened — fix round F1: `Alps 2025` and
+    // `Alps 2026` must never collide on one visible label.
     expect(
-      within(row).getByRole('button', { name: 'REMOVE ON ALPS' }),
+      within(row).getByRole('button', { name: 'REMOVE ON Alps 2026' }),
     ).toBeVisible()
   })
 
@@ -265,7 +272,7 @@ describe('the copy table', () => {
 })
 
 describe('a claim with no other Trip to name', () => {
-  it('states the gear was claimed more than once here, without inventing a Trip name', async () => {
+  it('states the gear was claimed more than once here, without inventing a Trip name (Single)', async () => {
     const store = await seeded(
       gearRecorded('tent', {
         name: 'Tent, tunnel 4p',
@@ -286,13 +293,122 @@ describe('a claim with no other Trip to name', () => {
       '▲ 2 entries claim more of this gear than the depot holds.',
     )
     const row = screen.getByTestId('over-claim-row-tent')
-    expect(row).toHaveTextContent('SINGLE · LISTED ×2')
+    // Fix round F4: the board's only render of this shape is `×2 LISTED`,
+    // gear-agnostic word order — `LISTED ×2` inverted it.
+    expect(row).toHaveTextContent('SINGLE · ×2 LISTED')
     expect(row).not.toHaveTextContent('STILL OUT')
     // No other Trip to remove from: the only settle route is here.
     expect(within(row).getAllByRole('button')).toHaveLength(1)
     expect(
       within(row).getByRole('button', { name: 'REMOVE HERE' }),
     ).toBeVisible()
+  })
+
+  it('states the same, of the depot, for a Counted Entry alone over its own Owned-count', async () => {
+    const store = await seeded(
+      gearRecorded('bag', {
+        name: 'Sleeping bag, winter',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripEntryAdded(HERE, 'e-here', { from: 'depot', gearId: 'bag' }),
+      tripEntryBringCountSet(HERE, 'e-here', 3),
+    )
+
+    renderBand(store, HERE)
+
+    // Singular — one Entry, no other Trip, and still a real depot quantity.
+    expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+      '▲ 1 entry claims more of this gear than the depot holds.',
+    )
+    const row = screen.getByTestId('over-claim-row-bag')
+    expect(row).toHaveTextContent('×3 LISTED · OWNED ×2')
+    expect(row).not.toHaveTextContent('OUT')
+  })
+
+  it('names the People doubled instead of a depot quantity for a per-person Entry (F3)', async () => {
+    const store = await seeded(
+      gearRecorded('headlamp', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      personRecorded('mark', 'Mark'),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripParticipantAdded(HERE, 'mark'),
+      // Two offline Devices both add the headlamp to the same Trip
+      // (claim.ts:236-241's own example) — two Entries, one roster, no
+      // other Trip in sight, and no depot quantity to state (invariant 6).
+      tripEntryAdded(HERE, 'e-first', { from: 'depot', gearId: 'headlamp' }),
+      tripEntryAdded(HERE, 'e-second', { from: 'depot', gearId: 'headlamp' }),
+    )
+
+    renderBand(store, HERE)
+
+    expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+      '▲ 2 entries claim Mark more than once.',
+    )
+    expect(screen.getByTestId('over-claim-attention')).not.toHaveTextContent(
+      'depot',
+    )
+    const row = screen.getByTestId('over-claim-row-headlamp')
+    expect(row).toHaveTextContent('PER-PERSON · CONTESTED Mark')
+  })
+})
+
+describe('a cross-Trip claim and a here-only claim together (F2)', () => {
+  it('draws two lines, each true only of the rows beneath it', async () => {
+    const store = await seeded(
+      gearRecorded('tent', {
+        name: 'Tent, tunnel 4p',
+        container: false,
+        kind: 'single',
+      }),
+      gearRecorded('stove', {
+        name: 'Trangia 25',
+        container: false,
+        kind: 'single',
+      }),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'on_trip'),
+      // Cross-Trip: one Entry here, one on Alps.
+      tripEntryAdded(HERE, 'e-tent-here', { from: 'depot', gearId: 'tent' }),
+      tripEntryAdded(ALPS, 'e-tent-alps', { from: 'depot', gearId: 'tent' }),
+      // Here-only: two Entries here, no other Trip involved at all.
+      tripEntryAdded(HERE, 'e-stove-first', {
+        from: 'depot',
+        gearId: 'stove',
+      }),
+      tripEntryAdded(HERE, 'e-stove-second', {
+        from: 'depot',
+        gearId: 'stove',
+      }),
+    )
+
+    renderBand(store, HERE)
+
+    const lines = screen.getAllByTestId('over-claim-attention')
+    expect(lines).toHaveLength(2)
+    // The cross-Trip line counts only the Alps entry — not all three.
+    expect(lines[0]).toHaveTextContent(
+      '▲ 1 entry is already claimed by Alps 2026.',
+    )
+    // The here-only line counts only the two stove entries.
+    expect(lines[1]).toHaveTextContent(
+      '▲ 2 entries claim more of this gear than the depot holds.',
+    )
+    expect(screen.getByTestId('over-claim-row-tent')).toHaveTextContent(
+      'SINGLE · STILL OUT',
+    )
+    expect(screen.getByTestId('over-claim-row-stove')).toHaveTextContent(
+      'SINGLE · ×2 LISTED',
+    )
   })
 })
 
@@ -331,6 +447,36 @@ describe('the Counted settle route', () => {
     await user.click(within(row).getByRole('button', { name: 'BRING ×1 HERE' }))
     expect(onBringFewer).toHaveBeenCalledWith('e-here', 1)
   })
+
+  it('falls back to REMOVE HERE when bringing fewer here could not settle it alone (F9)', async () => {
+    const onRemoveHere = vi.fn()
+    const store = await seeded(
+      gearRecorded('bag', {
+        name: 'Sleeping bag, winter',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'on_trip'),
+      // Here brings only one; Alps alone brings five — reducing the here
+      // Entry to zero still leaves Alps's five over the Owned-count of two.
+      tripEntryAdded(HERE, 'e-here', { from: 'depot', gearId: 'bag' }),
+      tripEntryBringCountSet(HERE, 'e-here', 1),
+      tripEntryAdded(ALPS, 'e-alps', { from: 'depot', gearId: 'bag' }),
+      tripEntryBringCountSet(ALPS, 'e-alps', 5),
+    )
+
+    renderBand(store, HERE, { onRemoveHere })
+    const row = screen.getByTestId('over-claim-row-bag')
+
+    expect(within(row).queryByRole('button', { name: /BRING/ })).toBeNull()
+    const user = userEvent.setup()
+    await user.click(within(row).getByRole('button', { name: 'REMOVE HERE' }))
+    expect(onRemoveHere).toHaveBeenCalledWith('e-here')
+  })
 })
 
 describe('a per-person over-claim', () => {
@@ -363,7 +509,7 @@ describe('a per-person over-claim', () => {
       within(row).getByRole('button', { name: 'REMOVE HERE' }),
     ).toBeVisible()
     expect(
-      within(row).getByRole('button', { name: 'REMOVE ON ALPS' }),
+      within(row).getByRole('button', { name: 'REMOVE ON Alps 2026' }),
     ).toBeVisible()
   })
 })
@@ -421,21 +567,22 @@ describe('the row cap', () => {
     expect(screen.getByTestId('over-claim-more')).toHaveTextContent('+ 2 MORE')
   })
 
-  it('expands in place when + N MORE is clicked, with no scroll container', async () => {
+  it('expands in place when + N MORE is clicked', async () => {
+    // Not asserted here: that there is "no scroll container". `app/vitest
+    // .config.ts` sets no `css` option, so Vitest's `css: false` default
+    // applies and no stylesheet ever reaches jsdom — a `toHaveStyle`
+    // assertion on `overflowY` would read `visible` unconditionally and pass
+    // whether or not `.rows` grew a scroll container. The behavioural half
+    // below (3 rows becomes 5, the row itself expands rather than scrolling
+    // inside a fixed height) is what this tier can actually hold accountable.
     const store = await seededWithFiveConflicts()
     renderBand(store, HERE)
     const user = userEvent.setup()
-
-    const rowsContainer = screen.getByTestId('over-claim-rows')
-    expect(rowsContainer).not.toHaveStyle({ overflowY: 'auto' })
-    expect(rowsContainer).not.toHaveStyle({ overflowY: 'scroll' })
 
     await user.click(screen.getByTestId('over-claim-more'))
 
     expect(screen.getAllByTestId(/^over-claim-row-/)).toHaveLength(5)
     expect(screen.queryByTestId('over-claim-more')).toBeNull()
-    expect(rowsContainer).not.toHaveStyle({ overflowY: 'auto' })
-    expect(rowsContainer).not.toHaveStyle({ overflowY: 'scroll' })
   })
 })
 
@@ -473,9 +620,11 @@ describe('an unnamed Trip inside a row', () => {
     expect(screen.getByTestId('over-claim-row-g2')).toHaveTextContent(
       'SINGLE · STILL OUT · Unnamed trip',
     )
+    // Full label, natural case — `.settle`'s CSS uppercases it to
+    // `REMOVE ON UNNAMED TRIP` on screen (fix round F1).
     expect(
       within(screen.getByTestId('over-claim-row-g2')).getByRole('button', {
-        name: 'REMOVE ON UNNAMED TRIP',
+        name: 'REMOVE ON Unnamed trip',
       }),
     ).toBeVisible()
   })
@@ -547,7 +696,9 @@ describe('settle callbacks', () => {
     await user.click(screen.getByRole('button', { name: 'REMOVE HERE' }))
     expect(onRemoveHere).toHaveBeenCalledWith('e-here')
 
-    await user.click(screen.getByRole('button', { name: 'REMOVE ON ALPS' }))
+    await user.click(
+      screen.getByRole('button', { name: 'REMOVE ON Alps 2026' }),
+    )
     expect(onRemoveThere).toHaveBeenCalledWith(ALPS, 'e-alps')
   })
 })
