@@ -1,17 +1,24 @@
 import {
   isKnownPhase,
+  overClaimsIfActive,
   phaseLabel,
   phaseOf,
   PHASES,
+  tripEntryBringCountSet,
+  tripEntryRemoved,
+  tripLabel,
   tripPhaseMoved,
+  type OverClaim,
   type PhaseKey,
   type TripState,
 } from '@foerier/shared'
-import { Sheet } from '@foerier/ui'
+import { Confirm, Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
 import { useDepot } from '../depot/store'
+import { ConflictRows, overClaimGroups } from './OverClaimBand'
 import styles from './PhaseSheet.module.css'
+import { RemoveElsewhereConfirm } from './RemoveElsewhereConfirm'
 import { ReopenConfirm } from './ReopenConfirm'
 
 /**
@@ -38,6 +45,12 @@ import { ReopenConfirm } from './ReopenConfirm'
  * stub here would be a claim about a check the app does not perform.
  *
  * **Leaving `closed` confirms** — see {@link ReopenConfirm}.
+ *
+ * **Entering `pack_out` from `draft` previews the over-claim band** — spec
+ * §4.5's second guarded moment, {@link ActivationConfirm} below. Reopening's
+ * three-line comment above states the general shape; activation is the same
+ * shape a level earlier, since a Draft's own row is what triggers it rather
+ * than an already-active phase's.
  */
 export interface PhaseSheetProps {
   trip: TripState
@@ -45,6 +58,7 @@ export interface PhaseSheetProps {
 }
 
 export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
+  const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
 
   // The phase a reopen is waiting on, and `null` when nothing is. Mount is
@@ -52,8 +66,17 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   // `{open && <PhaseSheet …/>}` and a declined reopen cannot come back on the
   // next open.
   const [reopenTo, setReopenTo] = useState<PhaseKey | null>(null)
+  // Whether the Draft → Pack-out preview is up. Set only when there is
+  // something for it to show — see `choose` below.
+  const [activating, setActivating] = useState(false)
 
   const current = phaseOf(trip)
+  // The hypothetical `overClaimsIfActive` asks — spec §4.5: "what if `trip`
+  // were active right now" — recomputed on every render exactly like
+  // `Trip.tsx`'s own `overClaimsFor`, so a settle route taken from inside
+  // `ActivationConfirm` shrinks this list live rather than waiting for a
+  // remount.
+  const activationOverClaims = overClaimsIfActive(state, trip.id)
   // Through `isKnownPhase` rather than a `PHASES.some(…)` of our own: the
   // phase table's own docstring reserves every question about it for a named
   // function beside it, and this is one — "is there a row at all" is the one
@@ -82,6 +105,21 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
     // does not have.
     if (current === 'closed') {
       setReopenTo(phase)
+      return
+    }
+    // Spec §4.5's second guarded moment, and only this one row: "starting
+    // pack-out on a draft" is the domain's own phrase, not "activating a
+    // draft into any active phase" — a Draft that jumps straight to `on_trip`
+    // or `unpack` (any row is tappable, backwards included) is not a case
+    // either the spec or a board draws, and this stays exactly as narrow as
+    // both. Skipped entirely when there is nothing to warn about: "never
+    // blocks" also means never adding a screen nobody needs.
+    if (
+      current === 'draft' &&
+      phase === 'pack_out' &&
+      activationOverClaims.length > 0
+    ) {
+      setActivating(true)
       return
     }
     move(phase)
@@ -152,6 +190,141 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
           onConfirm={() => move(reopenTo)}
         />
       )}
+
+      {activating && (
+        <ActivationConfirm
+          trip={trip}
+          overClaims={activationOverClaims}
+          onCancel={() => setActivating(false)}
+          onConfirm={() => move('pack_out')}
+        />
+      )}
     </Sheet>
+  )
+}
+
+interface ActivationConfirmProps {
+  readonly trip: TripState
+  readonly overClaims: readonly OverClaim[]
+  readonly onCancel: () => void
+  readonly onConfirm: () => void
+}
+
+/**
+ * **The `Start pack-out` preview** — spec §4.5's second sheet, `Screens
+ * B:829-865`'s "Start pack-out — over-claim" frame. Stays local to this
+ * module rather than becoming its own file the way {@link ReopenConfirm}
+ * did: this confirm has exactly one caller, and `ReopenConfirm`'s own
+ * docstring is explicit that two callers is what earned it a module of its
+ * own.
+ *
+ * Anatomy is `Confirm`'s `SignOutThisDeviceSheet` shape: the ▲ block goes in
+ * `children`, rendered between the title and `description`, which is exactly
+ * "above the body" (spec's own words). The block itself is
+ * `OverClaimBand`'s own two building blocks — `overClaimGroups` for the
+ * copy, `ConflictRows` for the rows — so the one-trip/N-trip line and the
+ * settle-route rules are read from one place rather than re-derived here.
+ *
+ * **`overClaims` arrives as a prop**, `OverClaimBand`'s own contract: the
+ * caller decides which question it is asking (`overClaimsFor` for the
+ * standing band, `overClaimsIfActive` for this hypothetical), and this
+ * component never re-derives it.
+ *
+ * **The settle routes are live, not decorative.** `REMOVE HERE` and
+ * `BRING ×N HERE` write against `trip.id` directly, exactly as `Trip.tsx`'s
+ * own handlers do for the standing band — there being two Trips involved
+ * doesn't change that this Trip's own aggregate is one write away.
+ * `REMOVE ON <trip>` writes against a *different* Trip's aggregate, so it
+ * goes through {@link RemoveElsewhereConfirm} exactly as the band's own
+ * route does, nested inside this sheet rather than duplicated: a dead
+ * `REMOVE ON` button would be worse than the one extra `useState`.
+ *
+ * **The primary is `Start pack-out`, filled accent, never attention** — the
+ * over-claim colour stays on the block above it; starting pack-out is not
+ * itself an alarming act, and nothing is discarded to do it.
+ */
+function ActivationConfirm({
+  trip,
+  overClaims,
+  onCancel,
+  onConfirm,
+}: ActivationConfirmProps) {
+  const state = useDepot((depot) => depot.state)
+  const emit = useDepot((depot) => depot.emit)
+
+  // The Entry a `REMOVE ON <trip>` is waiting to confirm, and `null` when
+  // nothing is — the same shape `Trip.tsx` keeps for its own standing band.
+  const [removingElsewhere, setRemovingElsewhere] = useState<{
+    otherTripId: string
+    entryId: string
+  } | null>(null)
+
+  const groups = overClaimGroups(overClaims, trip.id, state)
+
+  function handleRemoveHere(entryId: string) {
+    emit(tripEntryRemoved(trip.id, entryId))
+  }
+
+  function handleBringFewer(entryId: string, count: number) {
+    emit(tripEntryBringCountSet(trip.id, entryId, count))
+  }
+
+  function handleRemoveThere(otherTripId: string, entryId: string) {
+    setRemovingElsewhere({ otherTripId, entryId })
+  }
+
+  return (
+    <>
+      <Confirm
+        variant="sheet"
+        title={`Start pack-out — ${tripLabel(trip)}?`}
+        description="Starting warns, never blocks. Nothing is removed unless you choose it."
+        onClose={onCancel}
+        actions={
+          <>
+            <Confirm.Action>
+              <button
+                type="button"
+                className={styles['activatePrimary']}
+                onClick={onConfirm}
+              >
+                Start pack-out
+              </button>
+            </Confirm.Action>
+            <Confirm.Cancel>
+              <button type="button" className={styles['activateGhost']}>
+                Cancel
+              </button>
+            </Confirm.Cancel>
+          </>
+        }
+      >
+        {groups.map((group) => (
+          <div key={group.line} className={styles['activateSegment']}>
+            <p
+              className={styles['activateAttention']}
+              data-testid="over-claim-attention"
+            >
+              {group.line}
+            </p>
+            <ConflictRows
+              tripId={trip.id}
+              overClaims={group.overClaims}
+              onRemoveHere={handleRemoveHere}
+              onRemoveThere={handleRemoveThere}
+              onBringFewer={handleBringFewer}
+            />
+          </div>
+        ))}
+      </Confirm>
+
+      {removingElsewhere !== null && (
+        <RemoveElsewhereConfirm
+          otherTripId={removingElsewhere.otherTripId}
+          entryId={removingElsewhere.entryId}
+          onClose={() => setRemovingElsewhere(null)}
+        />
+      )}
+    </>
   )
 }

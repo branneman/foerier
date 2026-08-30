@@ -14,7 +14,11 @@
     cursor: pointer;
   }
 
+  /* `flex: 1` — Task 14's card/sheet fix, `RemoveElsewhereConfirm`'s own
+     precedent applied here: the board's action row (`Screens B:891`) grows
+     `Reopen` and leaves `Cancel` its own width. */
   .primary {
+    flex: 1;
     min-height: max(3rem, 48px);
     padding-inline: var(--space-16);
     border: 0;
@@ -24,5 +28,22 @@
     font: var(--text-body) var(--font-ui);
     font-weight: 600;
     cursor: pointer;
+  }
+
+  /* `OverClaimBand.module.css`'s own `.segment`/`.attention`, duplicated
+     whole — Task 14's own precedent (`PhaseSheet.module.css`'s
+     `.activateSegment`/`.activateAttention`): `ConflictRows` carries its own
+     row styling wherever it mounts, and only the attention line and its
+     wrapper are this caller's to draw. */
+  .segment {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .attention {
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-status-attention);
+    margin: 0;
   }
 }

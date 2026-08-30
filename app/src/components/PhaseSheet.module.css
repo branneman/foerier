@@ -78,4 +78,52 @@
     font: var(--text-body) var(--font-ui);
     cursor: pointer;
   }
+
+  /*
+   * `ActivationConfirm`'s own over-claim block — `OverClaimBand.module.css`'s
+   * `.segment`/`.attention` duplicated whole rather than cross-imported
+   * (`RemoveElsewhereConfirm.module.css`'s precedent for a moved-not-shared
+   * rule): `ConflictRows` carries its own row styling wherever it is
+   * mounted, and only the attention line and its wrapper are this caller's
+   * to draw.
+   */
+  .activateSegment {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .activateAttention {
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-status-attention);
+    margin: 0;
+  }
+
+  /* `ReopenConfirm.module.css`'s own two buttons, moved here whole: accent,
+     not attention — starting pack-out is not itself an alarming act, and the
+     over-claim colour stays on the block above. `flex: 1` matches the board's
+     own action row (`Screens B:862-864`), `Start pack-out` grown and `Cancel`
+     left its own width. */
+  .activateGhost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .activatePrimary {
+    flex: 1;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
 }

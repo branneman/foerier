@@ -1,6 +1,8 @@
 import {
   createHlcClock,
+  gearRecorded,
   tripCreated,
+  tripEntryAdded,
   tripPhaseMoved,
   type Clock,
   type IdSource,
@@ -21,6 +23,7 @@ import {
   type EngineFactory,
 } from '../depot/store'
 import { PhaseSheet } from './PhaseSheet'
+import styles from './PhaseSheet.module.css'
 
 /**
  * A **real** store, seeded by emitting real ops — `OwnerPicker.test.tsx`'s
@@ -33,6 +36,8 @@ import { PhaseSheet } from './PhaseSheet'
 const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
 const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const TRIP = 'tttttttt-0000-7000-8000-000000000001'
+const OTHER_TRIP = 'tttttttt-0000-7000-8000-000000000002'
+const GEAR = 'gggggggg-0000-7000-8000-000000000001'
 
 let nextId = 0
 
@@ -86,6 +91,49 @@ async function seededTrip(
   // `draft` is the reducer's own doing at `trip.created` (spec §1.3), so
   // seeding it again would put an op in the log the app never authors.
   if (phase !== 'draft') store.getState().emit(tripPhaseMoved(TRIP, phase))
+  await store.getState().drained()
+
+  const seeded = (await phaseMoves(log)).length
+  return {
+    store,
+    trip: () => store.getState().state.trips[TRIP]!,
+    moves: async () => (await phaseMoves(log)).slice(seeded),
+  }
+}
+
+/**
+ * A Draft (`TRIP`) and an already-active Trip (`OTHER_TRIP`) both holding an
+ * Entry for the same Single Gear — `overClaimsIfActive` reports this pair the
+ * moment `TRIP` is asked to activate, exactly as `claim.test.ts`'s own
+ * "reports a clash a Draft would cause on activation" case does at the
+ * selector tier. `TRIP` stays a Draft here; the test drives the actual
+ * PACK-OUT tap.
+ */
+async function seededDraftClash(): Promise<Seeded> {
+  const log: OpLog = inMemoryOpLog()
+  const store = createDepotStore({
+    log,
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(
+    gearRecorded(GEAR, {
+      name: 'Tent, tunnel 4p',
+      container: false,
+      kind: 'single',
+    }),
+  )
+  store.getState().emit(tripCreated(TRIP, 'Vosges — Oct'))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-here', { from: 'depot', gearId: GEAR }))
+  store.getState().emit(tripCreated(OTHER_TRIP, 'Alps 2026'))
+  store.getState().emit(tripPhaseMoved(OTHER_TRIP, 'pack_out'))
+  store
+    .getState()
+    .emit(
+      tripEntryAdded(OTHER_TRIP, 'e-other', { from: 'depot', gearId: GEAR }),
+    )
   await store.getState().drained()
 
   const seeded = (await phaseMoves(log)).length
@@ -234,7 +282,7 @@ describe('the SET PHASE sheet', () => {
       // this assertion is what says so: the confirm holds its title, its one
       // line and its two buttons, and nothing more.
       expect(confirm.textContent).toBe(
-        'Reopen Alps 2026?It returns to Unpack exactly as it stood. Closing cleared nothing.CancelReopen',
+        'Reopen Alps 2026?It returns to Unpack exactly as it stood. Closing cleared nothing.ReopenCancel',
       )
       expect(await seeded.moves()).toEqual([])
     })
@@ -329,5 +377,80 @@ describe('the SET PHASE sheet', () => {
     // `tripLabel` is the one place a Trip's name is decided; a raw `''` here
     // would render `Reopen ?`.
     expect(screen.getByRole('alertdialog')).toHaveTextContent('Reopen —?')
+  })
+
+  describe('activating a Draft into pack-out', () => {
+    it('renders the over-claim block when a Draft would clash on activation', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededDraftClash()
+      renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
+
+      const confirm = screen.getByRole('alertdialog')
+      expect(confirm).toHaveTextContent('Start pack-out — Vosges — Oct?')
+      expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+        '▲ 1 entry is already claimed by Alps 2026.',
+      )
+      expect(screen.getByTestId('over-claim-row-' + GEAR)).toHaveTextContent(
+        'Tent, tunnel 4p',
+      )
+      // The board's own body sentence, verbatim, still present beside the
+      // block — starting still warns rather than blocks.
+      expect(confirm).toHaveTextContent(
+        'Starting warns, never blocks. Nothing is removed unless you choose it.',
+      )
+      // Not moved yet — a preview states the conflict, it does not decide
+      // for the Quartermaster.
+      expect(await seeded.moves()).toEqual([])
+    })
+
+    it('renders no block when it would not', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededTrip('draft')
+      const { closes } = renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
+      await seeded.store.getState().drained()
+
+      // No conflict, no preview: "never blocks" also means never adding a
+      // screen nobody needs. The move happens exactly as it does for every
+      // other unguarded transition.
+      expect(screen.queryByRole('alertdialog')).toBeNull()
+      expect(screen.queryByTestId('over-claim-attention')).toBeNull()
+      expect(await seeded.moves()).toEqual(['pack_out'])
+      expect(closes()).toBe(1)
+    })
+
+    it('keeps Start pack-out filled accent, never red', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededDraftClash()
+      renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
+
+      const button = screen.getByRole('button', { name: 'Start pack-out' })
+      // `.activatePrimary` is the accent button — background
+      // `var(--color-accent)`, never the attention colour the block above it
+      // carries. Asserting the class rather than a computed style: this
+      // project's Tier 3 runs with `css: false`, so `toHaveStyle` would pass
+      // unconditionally.
+      expect(button).toHaveClass(styles['activatePrimary']!)
+    })
+
+    it('still moves the phase when the primary is pressed', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededDraftClash()
+      const { closes } = renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
+      await user.click(screen.getByRole('button', { name: 'Start pack-out' }))
+      await seeded.store.getState().drained()
+
+      // Warns and allows: the conflict is still there, and the move happens
+      // anyway — nothing here ever blocks it.
+      expect(await seeded.moves()).toEqual(['pack_out'])
+      expect(closes()).toBe(1)
+    })
   })
 })
