@@ -1,5 +1,9 @@
 import {
+  listTotals,
+  overClaimsFor,
   tripDatesSet,
+  tripEntryBringCountSet,
+  tripEntryRemoved,
   tripLabel,
   tripParticipantAdded,
   tripParticipantRemoved,
@@ -10,6 +14,8 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
+import { GearListSection } from '../components/GearListSection'
+import { OverClaimBand } from '../components/OverClaimBand'
 import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { useDepot } from '../depot/store'
@@ -20,29 +26,43 @@ import {
   tripDateRange,
   tripParticipants,
 } from '../depot/trips'
-import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
+import {
+  DESKTOP,
+  SPLIT,
+  useMediaQuery,
+  useScreenHeader,
+} from '../shell/useMediaQuery'
 import styles from './Trip.module.css'
 
 /**
- * **The trip screen** — `Screens B` §02A's `Trip screen` frames, which are
- * §02's `Gear list builder` header minus everything that needs Entries, with
- * the two panes below left to the slice that has a gear list to put in them.
- * That is Find's `S8 · PIECES` pattern and the People screen's missing login
- * half: an element designed final that falls through to a simpler variant
- * until its slice lands.
+ * **The trip screen** — `Screens B` §02A's `Trip screen` frames, extended at
+ * S7 to fill the hole S6 left in the region below them: the gear list itself
+ * (spec `docs/specs/2026-08-29-the-gear-list.md` §4.2). Below Split this
+ * screen *is* the builder — inline steppers, `✕`, the dashed trip-only row,
+ * the pinned `+ Add from the depot` primary. From Split up it **reads**
+ * only, and the `GEAR LIST` section band's trailing `EDIT LIST ›` is where
+ * editing moves to — the builder is its own route, `/trips/:id/list`, not a
+ * second pane grafted onto this screen.
  *
  * The title is **the Trip's name alone**: the builder's `— gear list` names a
  * list that does not exist, and its count, its weight and its `Start pack-out`
  * are all facts about Entries. The primary here is the **phase chip**, which
  * is the board's own rule — *tapping the phase chip opens SET PHASE*.
  *
- * The gear-list region reads `0 GEAR LISTED.`, then says where a gear list
- * comes from, and offers **nothing to add**. The second line is a permanent
- * domain fact rather than meta-text about a future release: it will read the
- * same the day the builder lands, and the empty state gains its add
- * affordances then. An affordance that leads nowhere is worse than a missing
- * one, and one leading to a builder that does not exist would be worse
- * still — it would lead somewhere and lie about it.
+ * The gear-list region reads `0 ENTRIES.` when the Trip has none, then says
+ * where a gear list comes from — a permanent domain fact rather than
+ * meta-text about a future release, true before this slice and after it —
+ * with the add affordances beneath it below Split exactly as they sit
+ * beneath a non-empty list. Once the Trip holds at least one Entry, the
+ * `GEAR LIST` section band and `GearListSection`'s groups take the region
+ * instead.
+ *
+ * **`EDIT LIST ›`, the dashed trip-only row and the pinned primary are drawn
+ * before they are wired.** `/trips/:id/list` (Task 11), `TripOnlySheet`
+ * (Task 12) and `/trips/:id/add` (Task 10) do not exist yet, so each control
+ * is a documented no-op rather than a link to a destination that isn't
+ * there — the empty state's own argument, one slice earlier: a control that
+ * leads somewhere and lies about it is worse than one that leads nowhere.
  *
  * ## There is no `NEXT` line here
  *
@@ -138,9 +158,14 @@ export function Trip() {
   const emit = useDepot((depot) => depot.emit)
   const sync = useDepot((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
-  // `splitPane: false` — `DepotView` is the only two-pane view in `App.tsx`,
-  // and a Trip is not in it: at Split this screen stands alone.
+  const isSplitOrWider = useMediaQuery(SPLIT)
+  // `splitPane: false` because the trip screen is not a pane of a list that
+  // is also on screen — a Trip is nobody's pane, so at Split this screen
+  // stands alone. The builder Task 11 adds (`/trips/:id/list`) is its own
+  // route, not a second pane grafted onto this one.
   const header = useScreenHeader({ splitPane: false })
+  // Below Split this screen edits; from Split up it reads (spec §4.2).
+  const editable = !isSplitOrWider
 
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -241,6 +266,55 @@ export function Trip() {
   const chip = tripChip(trip, Date.now())
 
   const canSave = nameDraft.trim() !== ''
+
+  // The four numbers behind the `GEAR LIST` band's `N ENTRIES · N PIECES`
+  // (spec §4.2) and the over-claims that name this Trip (spec §3.5) — both
+  // pure folds of registers, recomputed on every render like `chip` above.
+  const totals = listTotals(trip, state)
+  const overClaims = overClaimsFor(state, tripId)
+
+  function handleBringCountChange(entryId: string, next: number) {
+    emit(tripEntryBringCountSet(tripId, entryId, next))
+  }
+
+  // The tag-chip rule, restated for this list: one op, the gear untouched,
+  // re-adding two taps. Never confirms — `RemoveElsewhereConfirm` (Task 12)
+  // is a different control for a different write, below.
+  function handleRemoveEntry(entryId: string) {
+    emit(tripEntryRemoved(tripId, entryId))
+  }
+
+  // `OverClaimBand`'s `REMOVE HERE` and `BRING FEWER` settle routes both
+  // write against **this** Trip's own aggregate, so — like the list's own
+  // `✕` above — neither confirms.
+  function handleRemoveHere(entryId: string) {
+    emit(tripEntryRemoved(tripId, entryId))
+  }
+
+  function handleBringFewer(entryId: string, count: number) {
+    emit(tripEntryBringCountSet(tripId, entryId, count))
+  }
+
+  // `REMOVE ON <trip>` writes against a Trip this screen is not showing —
+  // the first write any surface here makes against another aggregate, and
+  // its undo is a navigation away. Spec §4.7 puts a confirm
+  // (`RemoveElsewhereConfirm`) between the click and the op landing; that
+  // sheet is Task 12's, so until it is mounted here this is a documented
+  // no-op rather than an unconfirmed write against a Trip nobody is looking
+  // at. See the task report.
+  function handleRemoveThere(_otherTripId: string, _entryId: string) {}
+
+  // `EDIT LIST ›` opens `/trips/:id/list`, which Task 11 builds. A no-op
+  // until then — see the task report.
+  function handleEditList() {}
+
+  // The dashed row opens `TripOnlySheet` (Task 12). A no-op until then —
+  // see the task report.
+  function handleAddTripOnly() {}
+
+  // The pinned primary opens `/trips/:id/add`, which Task 10 builds. A
+  // no-op until then — see the task report.
+  function handleAddFromDepot() {}
 
   // The header's five pieces, built once and placed by whichever frame is
   // drawn. Each is the *same* element at both widths — same handler, same
@@ -497,16 +571,87 @@ export function Trip() {
         </div>
       )}
 
-      {/* The hole the builder fills. Board copy, and no add affordance: the
-          destination does not exist yet. The second line is a domain fact and
-          not a promise — it is where a gear list comes from, which will still
-          be true when the builder lands and the add affordances arrive here. */}
-      <section className={styles['gear']} data-testid="gear-list">
-        <p className={styles['gearEmpty']}>0 GEAR LISTED.</p>
-        <p className={styles['gearSource']}>
-          The gear list is built from the depot.
-        </p>
-      </section>
+      {/* Never dismissible: rendering nothing is the only way it goes away,
+          which is `OverClaimBand`'s own contract — it returns `null` when
+          `overClaimsFor` finds nothing to say. Sits between the header and
+          the `GEAR LIST` band at every width (spec §4.5). */}
+      <OverClaimBand
+        tripId={tripId}
+        overClaims={overClaims}
+        onRemoveHere={handleRemoveHere}
+        onRemoveThere={handleRemoveThere}
+        onBringFewer={handleBringFewer}
+      />
+
+      {totals.entries === 0 ? (
+        // The noun ruling's empty state: the second line is a domain fact
+        // and not a promise — it is where a gear list comes from, true
+        // before this slice and after it. Below Split the add affordances
+        // still follow it, as the S6 board promised.
+        <section className={styles['gear']} data-testid="gear-list">
+          <p className={styles['gearEmpty']}>0 ENTRIES.</p>
+          <p className={styles['gearSource']}>
+            The gear list is built from the depot.
+          </p>
+        </section>
+      ) : (
+        <div className={styles['gearList']} data-testid="gear-list">
+          {/* `GEAR LIST` left, the count right, and from Split up a trailing
+              `EDIT LIST ›` — typography borrowed from `GearListSection`'s own
+              group bands (`GearListSection.module.css`'s `.groupHeader`), so
+              this one reads as their parent. */}
+          <div className={styles['gearListBand']} data-testid="gear-list-band">
+            <span className={styles['gearListLabel']}>GEAR LIST</span>
+            <span
+              className={styles['gearListCount']}
+              data-testid="gear-list-count"
+            >
+              {entryCountLabel(totals.entries)} ·{' '}
+              {pieceCountLabel(totals.pieces)}
+            </span>
+            {!editable && (
+              <button
+                type="button"
+                className={styles['editList']}
+                onClick={handleEditList}
+              >
+                EDIT LIST ›
+              </button>
+            )}
+          </div>
+          <GearListSection
+            trip={trip}
+            editable={editable}
+            onBringCountChange={handleBringCountChange}
+            onRemove={handleRemoveEntry}
+          />
+        </div>
+      )}
+
+      {/* Below Split only: the one add affordance a trip-only Entry needs
+          (dashed, per Add gear's own rule for an irreversible decision), then
+          a flex spacer and the pinned full-width primary — a flex child,
+          never a fixed FAB (spec §4.2; the S3 Depot FAB `container-type`
+          trap this sidesteps). */}
+      {editable && (
+        <>
+          <button
+            type="button"
+            className={styles['tripOnlyRow']}
+            onClick={handleAddTripOnly}
+          >
+            + TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE
+          </button>
+          <div className={styles['spacer']} aria-hidden="true" />
+          <button
+            type="button"
+            className={styles['addPrimary']}
+            onClick={handleAddFromDepot}
+          >
+            + Add from the depot
+          </button>
+        </>
+      )}
 
       {phaseOpen && (
         <PhaseSheet trip={trip} onClose={() => setPhaseOpen(false)} />
@@ -531,6 +676,22 @@ export function Trip() {
       )}
     </div>
   )
+}
+
+/** `1 ENTRY` / `2 ENTRIES` — `1 ENTRY STILL OPEN`'s own singular, restated for
+ * the `GEAR LIST` band's count. `GearListSection.tsx`'s `pieceLabel` is the
+ * house pattern this mirrors; the two live in different files because
+ * `GearListSection` counts a group's pieces and this counts the whole
+ * Trip's entries, and neither is the other's caller. */
+function entryCountLabel(count: number): string {
+  return `${count} ${count === 1 ? 'ENTRY' : 'ENTRIES'}`
+}
+
+/** `1 PIECE` / `2 PIECES` — `GearListSection.tsx`'s `pieceLabel`, restated
+ * here for the same reason {@link entryCountLabel} is: the band's total and a
+ * group's total are different numbers computed in different files. */
+function pieceCountLabel(count: number): string {
+  return `${count} ${count === 1 ? 'PIECE' : 'PIECES'}`
 }
 
 /**

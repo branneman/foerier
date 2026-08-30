@@ -1,8 +1,11 @@
 import {
   createHlcClock,
+  gearRecorded,
   personRecorded,
   tripCreated,
   tripDatesSet,
+  tripEntryAdded,
+  tripEntryBringCountSet,
   tripParticipantAdded,
   tripPhaseMoved,
   type Clock,
@@ -56,6 +59,7 @@ const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const SEEDED_AT = 1_700_000_000_000
 
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
+const JURA = 'tttttttt-0000-7000-8000-00000000000b'
 
 let nextId = 0
 
@@ -234,23 +238,23 @@ describe('the trip screen — the header the board draws', () => {
 
   /**
    * The gear-list region: the count, then **one permanent domain fact** — the
-   * gear list is built from the depot, which will be as true the day the
-   * builder lands as it is now. Never release meta-text ("coming soon"), and
-   * still **no add affordance**: a control leading to a builder that does not
-   * exist would not lead nowhere, it would lead somewhere and lie about it.
+   * gear list is built from the depot, which is as true now as it was before
+   * this slice. From Split up the screen only ever reads, so an empty list
+   * there draws no control at all — a stronger claim than "no button whose
+   * name says add".
    */
-  it('says the gear list is empty, says where it comes from, and offers nothing to add', async () => {
+  it('says the gear list is empty and says where it comes from, with no control from Split up', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(SPLIT)
     await renderTrip(`/trips/${ALPS}`, ...alps())
 
     const region = screen.getByTestId('gear-list')
-    expect(region).toHaveTextContent('0 GEAR LISTED.')
+    expect(region).toHaveTextContent('0 ENTRIES.')
     expect(region).toHaveTextContent('The gear list is built from the depot.')
-    // Two lines and nothing else — the region holds no control at all, which
-    // is a stronger claim than "no button whose name says add".
     expect(region.querySelectorAll('button, a')).toHaveLength(0)
     expect(screen.queryByRole('button', { name: /add/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /add/i })).toBeNull()
+    expect(screen.queryByText('EDIT LIST ›')).toBeNull()
   })
 
   /**
@@ -376,6 +380,325 @@ describe('the trip screen — the header the board draws', () => {
     await user.click(screen.getByRole('button', { name: 'EDIT' }))
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /remove trip/i })).toBeNull()
+  })
+})
+
+/**
+ * **The gear list itself** — S7's fill of the hole S6 left. A real store,
+ * seeded by emitting real ops, exactly as the rest of this file does:
+ * `listTotals`/`overClaimsFor` are folds of registers, and a hand-shaped
+ * count or conflict would test a shape the reducer might never actually
+ * produce.
+ */
+describe('the trip screen — the gear list (S7)', () => {
+  it('renders the section band with N ENTRIES · N PIECES', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+      gearRecorded('g-counted', {
+        name: 'Tent stake',
+        container: false,
+        kind: 'counted',
+      }),
+      tripEntryAdded(ALPS, 'e-counted', {
+        from: 'depot',
+        gearId: 'g-counted',
+      }),
+      tripEntryBringCountSet(ALPS, 'e-counted', 4),
+    )
+
+    // 2 Entries (one Single, one Counted), 5 Pieces (1 + 4).
+    expect(screen.getByTestId('gear-list-count')).toHaveTextContent(
+      '2 ENTRIES · 5 PIECES',
+    )
+  })
+
+  it('renders the groups with pluralised piece counts, omitting empty ones', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+      gearRecorded('g-counted', {
+        name: 'Tent stake',
+        container: false,
+        kind: 'counted',
+      }),
+      tripEntryAdded(ALPS, 'e-counted', {
+        from: 'depot',
+        gearId: 'g-counted',
+      }),
+      tripEntryBringCountSet(ALPS, 'e-counted', 4),
+    )
+
+    const labels = screen
+      .getAllByTestId('gear-list-group-label')
+      .map((el) => el.textContent)
+    // PER-PERSON and TRIP-ONLY are both empty, so neither group renders —
+    // `GearListSection`'s own rule, exercised here through the screen.
+    expect(labels).toEqual(['SINGLE', 'COUNTED'])
+    expect(screen.queryByText('PER-PERSON')).toBeNull()
+    expect(screen.queryByText('TRIP-ONLY')).toBeNull()
+    expect(screen.getByText('1 PIECE')).toBeInTheDocument()
+    expect(screen.getByText('4 PIECES')).toBeInTheDocument()
+  })
+
+  it('below Split: renders steppers, the remove control, the dashed row and the pinned button', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-counted', {
+        name: 'Tent stake',
+        container: false,
+        kind: 'counted',
+      }),
+      tripEntryAdded(ALPS, 'e-counted', {
+        from: 'depot',
+        gearId: 'g-counted',
+      }),
+      tripEntryBringCountSet(ALPS, 'e-counted', 4),
+    )
+
+    expect(
+      screen.getByRole('textbox', { name: /bring-count for tent stake/i }),
+    ).toHaveValue('4')
+    expect(
+      screen.getByRole('button', { name: 'Remove Tent stake' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', {
+        name: '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: '+ Add from the depot' }),
+    ).toBeVisible()
+    // The reading affordance belongs to the other mode alone.
+    expect(screen.queryByText('EDIT LIST ›')).toBeNull()
+  })
+
+  it('from Split up: renders none of those, and renders EDIT LIST ›', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(SPLIT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-counted', {
+        name: 'Tent stake',
+        container: false,
+        kind: 'counted',
+      }),
+      tripEntryAdded(ALPS, 'e-counted', {
+        from: 'depot',
+        gearId: 'g-counted',
+      }),
+      tripEntryBringCountSet(ALPS, 'e-counted', 4),
+    )
+
+    expect(screen.queryByRole('textbox')).toBeNull()
+    expect(screen.queryByTestId('entry-row-remove')).toBeNull()
+    expect(
+      screen.queryByText(
+        '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
+      ),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: '+ Add from the depot' }),
+    ).toBeNull()
+    expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×4')
+    expect(screen.getByRole('button', { name: 'EDIT LIST ›' })).toBeVisible()
+  })
+
+  it('renders the over-claim band between the header and the section band', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('tent', {
+        name: 'Tent, tunnel 4p',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-here', { from: 'depot', gearId: 'tent' }),
+      tripCreated(JURA, 'Jura'),
+      tripPhaseMoved(JURA, 'on_trip'),
+      tripEntryAdded(JURA, 'e-jura', { from: 'depot', gearId: 'tent' }),
+    )
+
+    const band = screen.getByTestId('over-claim-band')
+    expect(band).toBeVisible()
+    expect(band).toHaveTextContent('already claimed by Jura')
+
+    // "Between" is a claim about DOM order, not merely about presence.
+    const backLink = screen.getByRole('link', { name: '‹ TRIPS' })
+    expect(
+      backLink.compareDocumentPosition(band) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    const gearListBand = screen.getByTestId('gear-list-band')
+    expect(
+      band.compareDocumentPosition(gearListBand) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('renders no band when the fold reports no conflict', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+    )
+
+    expect(screen.queryByTestId('over-claim-band')).toBeNull()
+  })
+
+  it('emits trip.entry_removed on the remove control without confirming', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Remove Headlamp' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(await seed.authored()).toEqual([
+      { type: 'trip.entry_removed', payload: { entry_id: 'e-single' } },
+    ])
+  })
+
+  it('emits nothing when the stepper is set to its current value', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-counted', {
+        name: 'Tent stake',
+        container: false,
+        kind: 'counted',
+      }),
+      tripEntryAdded(ALPS, 'e-counted', {
+        from: 'depot',
+        gearId: 'g-counted',
+      }),
+      tripEntryBringCountSet(ALPS, 'e-counted', 4),
+    )
+
+    const well = screen.getByRole('textbox', {
+      name: /bring-count for tent stake/i,
+    })
+    await user.clear(well)
+    await user.type(well, '4')
+
+    expect(await seed.authored()).toEqual([])
+  })
+
+  it('settles an over-claim REMOVE HERE against this Trip, with no confirm', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('tent', {
+        name: 'Tent, tunnel 4p',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-here', { from: 'depot', gearId: 'tent' }),
+      tripCreated(JURA, 'Jura'),
+      tripPhaseMoved(JURA, 'on_trip'),
+      tripEntryAdded(JURA, 'e-jura', { from: 'depot', gearId: 'tent' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'REMOVE HERE' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(await seed.authored()).toEqual([
+      { type: 'trip.entry_removed', payload: { entry_id: 'e-here' } },
+    ])
+  })
+
+  /**
+   * `REMOVE ON Jura` writes against an aggregate this screen is not
+   * showing, and spec §4.7 puts a confirm between the click and that write
+   * — `RemoveElsewhereConfirm`, which Task 12 mounts. Until it exists, a
+   * click here authors nothing: an unconfirmed cross-Trip write would be
+   * worse than the missing confirm it stands in for.
+   */
+  it('authors nothing yet from REMOVE ON — the cross-trip confirm is Task 12s', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('tent', {
+        name: 'Tent, tunnel 4p',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-here', { from: 'depot', gearId: 'tent' }),
+      tripCreated(JURA, 'Jura'),
+      tripPhaseMoved(JURA, 'on_trip'),
+      tripEntryAdded(JURA, 'e-jura', { from: 'depot', gearId: 'tent' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'REMOVE ON Jura' }))
+
+    expect(await seed.authored()).toEqual([])
+  })
+
+  it('does nothing yet from EDIT LIST, the dashed row or the pinned button', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+    )
+
+    await user.click(
+      screen.getByRole('button', {
+        name: '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: '+ Add from the depot' }),
+    )
+
+    expect(await seed.authored()).toEqual([])
+    // Neither control navigates: both routes are Tasks 10 and 12's to build.
+    expect(screen.getByRole('heading', { name: 'Alps 2026' })).toBeVisible()
   })
 })
 

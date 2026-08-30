@@ -170,8 +170,8 @@
    *
    * 22px is under the 24px minimum a pointer target has to answer for, and the
    * board's own size is not up for renegotiation, so the *drawing* stays 22px
-   * and the ::after grows the hit area to 44px without taking any layout with
-   * it. Sizing the button itself would push the circles out of line with the
+   * and the ::after grows the hit area without taking any layout with it.
+   * Sizing the button itself would push the circles out of line with the
    * board.
    */
   .addParticipant {
@@ -194,10 +194,16 @@
     cursor: pointer;
   }
 
+  /* Global `box-sizing: border-box` makes an absolutely positioned `::after`
+     lay out against the **padding** edge, not the 22px border box: with the
+     1.5px `--stroke-chip` border on both sides that edge is 19px
+     (22 − 2 × 1.5). `inset: -0.78125rem` (−12.5px) grows it from there to the
+     44px floor — 19 + 2 × 12.5 = 44 — where an inset carried over from a
+     22px-box assumption (`-0.6875rem`) only reached 41px. */
   .addParticipant::after {
     content: '';
     position: absolute;
-    inset: -0.6875rem;
+    inset: -0.78125rem;
   }
 
   .phaseRow {
@@ -339,12 +345,14 @@
     cursor: pointer;
   }
 
-  /* The region the gear list builder fills. A rule above it, so the two empty
-     lines read as a section with nothing in it rather than as stray sentences
-     under the header. Centred, as the board draws it: the region *is* the rest
-     of the screen — `flex: 1`, not a padded block — and the count is what the
-     eye should land on. The padding keeps the two lines off the edges when
-     there is no spare height to centre in, and off the sides at any height. */
+  /* The empty-list state — `0 ENTRIES.` plus the domain fact, drawn in place
+     of the `GEAR LIST` band and its groups until the Trip holds an Entry. A
+     rule above it, so the two lines read as a section with nothing in it
+     rather than as stray sentences under the header. Centred, as the board
+     draws it: the region *is* the rest of the screen — `flex: 1`, not a
+     padded block — and the count is what the eye should land on. The
+     padding keeps the two lines off the edges when there is no spare height
+     to centre in, and off the sides at any height. */
   .gear {
     display: flex;
     flex: 1;
@@ -377,6 +385,113 @@
   .gearSource {
     font: var(--text-body) var(--font-ui);
     color: var(--color-ink-muted);
+  }
+
+  /* The non-empty counterpart of `.gear` — the `GEAR LIST` band and
+     `GearListSection`'s groups beneath it. Not `flex: 1`: the region's
+     length now follows its rows, and the pinned primary's own spacer
+     (`.spacer`, below) is what claims the screen's leftover height. The same
+     rule `.gear` carries above the count, dropped at Desktop for the same
+     reason — `.deskHeader`'s own rule already draws it there. */
+  .gearList {
+    display: flex;
+    flex-direction: column;
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  @media (min-width: 64em) {
+    .gearList {
+      border-top: 0;
+    }
+  }
+
+  /* `GEAR LIST` left, the count right, `EDIT LIST ›` trailing from Split up —
+     `GearListSection.module.css`'s `.groupHeader`/`.groupLabel`/`.groupCount`
+     verbatim, so this band reads as their parent rather than a different
+     kind of heading (spec §4.2). */
+  .gearListBand {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-12);
+    padding-block: var(--space-4);
+    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .gearListLabel {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .gearListCount {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* Pushed to the band's trailing edge by the row's own `gap`-then-`auto`
+     margin, the header row's own mechanism (`.deskHeader .participantRow`)
+     rather than a fourth flex property on the row itself. */
+  .editList {
+    margin-left: auto;
+    flex: none;
+    border: 0;
+    padding: 0;
+    background: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  /* The dashed add row for a trip-only Entry — `HomePicker.module.css`'s
+     `.addPlace` anatomy (full width, dashed border, no fill), carrying literal
+     mono ledger copy rather than sentence case: the row states a fact about
+     what it creates, the same register `EntryRow`'s `TRIP-ONLY` badge and
+     `GearListSection`'s group labels are already in. Opens `TripOnlySheet`,
+     which Task 12 mounts — see `Trip.tsx`'s `handleAddTripOnly`. */
+  .tripOnlyRow {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) dashed var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  /* The pinned primary's own spacer — a flex child, not a fixed FAB (spec
+     §4.2): an element declaring a query container is the containing block
+     for its `position: fixed` descendants, which is what broke Depot's FAB
+     at S3. This claims `.screen`'s leftover height instead, so `.addPrimary`
+     sits at the screen's foot without either of them needing `position` at
+     all. */
+  .spacer {
+    flex: 1;
+  }
+
+  .addPrimary {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
   }
 
   .empty {
