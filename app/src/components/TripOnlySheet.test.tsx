@@ -116,6 +116,17 @@ describe('the trip-only entry sheet', () => {
     ).toBeVisible()
   })
 
+  it('focuses Name on open, surviving Sheet’s own container focus', async () => {
+    const seeded = await seededTrip()
+    renderSheet(seeded)
+
+    // `Sheet.tsx`'s own `onOpenAutoFocus` moves focus to the sheet container
+    // first; a plain `autoFocus` on the field would be silently overridden by
+    // it. This is the effect-timing fix's whole point, so it asserts the
+    // field itself ends up focused rather than merely present.
+    expect(screen.getByLabelText('Name')).toHaveFocus()
+  })
+
   it('gates Add entry on a non-empty name', async () => {
     const user = userEvent.setup()
     const seeded = await seededTrip()

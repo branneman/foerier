@@ -9,6 +9,7 @@ import {
 import { useState } from 'react'
 
 import { useDepot } from '../depot/store'
+import { tripNameOrUnnamed } from '../depot/trips'
 import styles from './OverClaimBand.module.css'
 
 /**
@@ -356,11 +357,16 @@ function tripSentenceLabel(state: DepotState, tripId: string): string {
  * `text-transform: uppercase` is what turns it into `REMOVE ON ALPS 2026` /
  * `REMOVE ON UNNAMED TRIP` on screen — the same split `.fact` already drew
  * between recorded case in source and all-caps on screen.
+ *
+ * The substitution itself is `tripNameOrUnnamed`'s (`depot/trips.ts`, beside
+ * `tripChip`) — this only adds the "not yet in the fold at all" case that
+ * function's `TripState` argument can't express, so `RemoveElsewhereConfirm`
+ * (which always holds a resolved Trip) and this row-and-settle-route rule
+ * share one substitution instead of two copies drifting apart.
  */
 function tripRowLabel(state: DepotState, tripId: string): string {
   const trip = state.trips[tripId]
-  const label = trip === undefined ? undefined : tripLabel(trip)
-  return label === undefined || label === '—' ? UNNAMED_TRIP : label
+  return trip === undefined ? UNNAMED_TRIP : tripNameOrUnnamed(trip)
 }
 
 function pluralize(count: number, singular: string, plural: string): string {

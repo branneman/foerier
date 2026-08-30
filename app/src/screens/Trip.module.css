@@ -468,8 +468,8 @@
      `.addPlace` anatomy (full width, dashed border, no fill), carrying literal
      mono ledger copy rather than sentence case: the row states a fact about
      what it creates, the same register `EntryRow`'s `TRIP-ONLY` badge and
-     `GearListSection`'s group labels are already in. Opens `TripOnlySheet`,
-     which Task 12 mounts — see `Trip.tsx`'s `handleAddTripOnly`. */
+     `GearListSection`'s group labels are already in. Opens `TripOnlySheet` —
+     see `Trip.tsx`'s `handleAddTripOnly`. */
   .tripOnlyRow {
     width: 100%;
     min-height: max(3rem, 48px);

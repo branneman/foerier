@@ -1,18 +1,15 @@
 @layer components {
-  /* `AlertDialog.Description` is itself a `<p>`, so the body line is a
-     `<span>` forced to block level rather than a nested `<p>` — invalid HTML
-     otherwise. Inherits `.descriptionCard`'s attention-mono treatment from
-     the wrapping `<p>`, exactly as every other Confirm card's one-line body
-     does (`HomePicker`'s "Remove place"/"Move gear"). */
-  .body {
-    display: block;
-  }
-
   /*
    * `▸ ALPS 2026 · ON TRIP · DAY 12` — the other Trip's own chip, restated
    * inside the confirm. Recorded case in source (`tripChip`/`tripLabel`
    * already carry it); this class is what turns it into the mono all-caps
    * register on screen, `OverClaimBand`'s `.fact` rule applied here too.
+   *
+   * `display: block` is doing real work: `AlertDialog.Description` is itself
+   * a `<p>`, so the body line beside this one is a plain inline `<span>`
+   * (never a nested `<p>` — invalid HTML) with no class of its own, and it is
+   * *this* class's block display that forces the line break after it rather
+   * than letting the two run together.
    */
   .context {
     display: block;
@@ -20,6 +17,13 @@
     font: var(--text-label) var(--font-mono);
     text-transform: uppercase;
     color: var(--color-ink-muted);
+  }
+
+  /* The trip-world glyph, in the trip colour (`Screens B:1121`) rather than
+     `.context`'s own muted ink — `TripCard`'s `▸` carries the identical
+     token. */
+  .glyph {
+    color: var(--color-brand-amber);
   }
 
   /* `ReopenConfirm.module.css`'s own two buttons, moved here whole: accent,
@@ -34,7 +38,11 @@
     cursor: pointer;
   }
 
+  /* `flex: 1` — the board's action row (`Screens B:1117-1125`) grows
+     `Remove entry` and leaves `Cancel` its own width, `Devices.module.css`'s
+     `.confirmAttention` precedent applied to an accent primary instead. */
   .primary {
+    flex: 1;
     min-height: max(3rem, 48px);
     padding-inline: var(--space-16);
     border: 0;

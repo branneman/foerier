@@ -1,13 +1,8 @@
-import {
-  entryLabel,
-  tripEntryRemoved,
-  tripLabel,
-  UNNAMED_TRIP,
-} from '@foerier/shared'
+import { entryLabel, tripEntryRemoved } from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
 
 import { useDepot } from '../depot/store'
-import { tripChip } from '../depot/trips'
+import { tripChip, tripNameOrUnnamed } from '../depot/trips'
 import styles from './RemoveElsewhereConfirm.module.css'
 
 /**
@@ -30,10 +25,20 @@ import styles from './RemoveElsewhereConfirm.module.css'
  * the Entry's name a second time above this component. `otherTripId` and
  * `entryId` are enough to find both in the fold.
  *
- * **An unnamed other Trip reads `Unnamed trip`** in the title and body —
- * `tripLabel`'s `—` is right in a list column and wrong in a sentence, the
- * same split `UNNAMED_PERSON`/`UNNAMED_TRIP` carry throughout `OverClaimBand`
- * (spec §4.5).
+ * **It is a bottom sheet, `variant="sheet"`, not the card default** —
+ * `Screens B:1117-1125` draws it bottom-anchored with a grabber, and
+ * `Confirm.Action` first, `Confirm.Cancel` after (`Devices.tsx`'s own settled
+ * comment: *"Action before Cancel is the boards' own order… Radix gives
+ * initial focus to the Cancel wherever it sits in the DOM"*). It matters past
+ * layout: the card variant's `.descriptionCard` draws its whole description
+ * in amber mono, the colour `▲` owns — which would make *"the gear itself
+ * does not move"*, whose entire job is to say nothing was destroyed, read as
+ * a second alarm inside a band that is already amber. `.descriptionSheet`
+ * carries no such colour.
+ *
+ * **An unnamed other Trip reads `Unnamed trip`**, via `tripNameOrUnnamed`
+ * (`depot/trips.ts`) — the same substitution `OverClaimBand`'s row and settle
+ * route already use, not a third private copy of it.
  *
  * **Mounted is open**, as every `ui/` primitive is: the caller writes
  * `{pending !== null && <RemoveElsewhereConfirm …/>}`, and there is no draft
@@ -55,16 +60,20 @@ export function RemoveElsewhereConfirm({
   const emit = useDepot((depot) => depot.emit)
 
   const otherTrip = state.trips[otherTripId]
-  // Unreachable from `OverClaimBand`'s own `REMOVE ON` route — an `OverClaim`
-  // only ever names a Trip and an Entry both already in this replica's fold —
-  // but the type is `TripState | undefined`, and rendering nothing beats
-  // stating facts about data that is not there.
-  if (otherTrip === undefined) return null
+  // Unreachable from `OverClaimBand`'s own `REMOVE ON` route when it opens —
+  // an `OverClaim` only ever names a Trip and an Entry both already in this
+  // replica's fold — but the type is `TripState | undefined`, and the Entry
+  // can genuinely vanish out from under an *already-open* confirm: this
+  // sheet stays mounted while sync runs, so a `trip.entry_removed` for the
+  // same Entry arriving from another Device through `/sync/pull` folds while
+  // this confirm is still up. Rendering nothing beats stating facts about
+  // data that is not there — the alternative is a body sentence with no
+  // subject, `" comes off the Alps 2026 gear list."`.
+  const entry = otherTrip?.entries?.[entryId]
+  if (otherTrip === undefined || entry === undefined) return null
 
-  const entry = otherTrip.entries?.[entryId]
-  const gearName = entry === undefined ? '' : entryLabel(entry, state)
-  const label = tripLabel(otherTrip)
-  const name = label === '—' ? UNNAMED_TRIP : label
+  const gearName = entryLabel(entry, state)
+  const name = tripNameOrUnnamed(otherTrip)
   // `tripChip` is the one function that composes phase + `DAY N` — the same
   // string the trip screen's own chip and `TripCard` draw, so the other
   // Trip's state reads identically wherever it appears.
@@ -80,12 +89,16 @@ export function RemoveElsewhereConfirm({
 
   return (
     <Confirm
+      variant="sheet"
       title={`Remove from ${name}?`}
       description={
         // Two `<span>`s, not two `<p>`s: `AlertDialog.Description` is itself
         // a `<p>` (Radix's `Primitive.p`), and a `<p>` cannot nest another.
+        // The body carries no class of its own — `.descriptionSheet` already
+        // gives it the right quiet, non-attention treatment, and `.context`'s
+        // own `display: block` is what forces the line break after it.
         <>
-          <span className={styles['body']}>
+          <span>
             {gearName} comes off the {name} gear list. The gear itself does not
             move.
           </span>
@@ -93,18 +106,21 @@ export function RemoveElsewhereConfirm({
             className={styles['context']}
             data-testid="remove-elsewhere-context"
           >
-            ▸ {name} · {chip}
+            {/* The trip-world glyph in its own element, carrying the trip
+                colour (`Screens B:1121`'s amber `▸`) rather than the muted ink
+                around it — the same split every other attention/trip glyph
+                in this codebase draws between the mark and its sentence. */}
+            <span className={styles['glyph']}>▸</span> {name} · {chip}
           </span>
         </>
       }
       onClose={onClose}
       actions={
         <>
-          <Confirm.Cancel>
-            <button type="button" className={styles['ghost']}>
-              Cancel
-            </button>
-          </Confirm.Cancel>
+          {/* Action before Cancel is the boards' own order
+              (`Devices.tsx`'s settled comment) — Radix gives initial focus to
+              the Cancel wherever it sits in the DOM, so this is a DOM-order
+              decision, not a visual one. */}
           <Confirm.Action>
             <button
               type="button"
@@ -114,6 +130,11 @@ export function RemoveElsewhereConfirm({
               Remove entry
             </button>
           </Confirm.Action>
+          <Confirm.Cancel>
+            <button type="button" className={styles['ghost']}>
+              Cancel
+            </button>
+          </Confirm.Cancel>
         </>
       }
     />

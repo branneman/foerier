@@ -177,6 +177,39 @@ describe('the Remove-on-Alps confirm', () => {
     expect(confirm.closes()).toBe(1)
   })
 
+  it('draws Remove entry before Cancel, the boards’ own DOM order', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const seed = await seeded()
+    renderConfirm(seed)
+
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      'Remove entry',
+      'Cancel',
+    ])
+  })
+
+  it('renders nothing when the Entry is gone from the fold — a live race, not a hypothetical', async () => {
+    // The confirm can stay mounted while sync runs: another Device's own
+    // `trip.entry_removed` for the same Entry can fold in through
+    // `/sync/pull` while this confirm is still open. The Trip guard alone
+    // does not cover that — the Entry can vanish while the Trip stays.
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const seed = await seeded()
+    const { container } = render(
+      <DepotProvider value={seed.store}>
+        <RemoveElsewhereConfirm
+          otherTripId={ALPS}
+          entryId="e-does-not-exist"
+          onClose={() => {}}
+        />
+      </DepotProvider>,
+    )
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(container).toBeEmptyDOMElement()
+  })
+
   it('emits nothing on Cancel', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const user = userEvent.setup()
