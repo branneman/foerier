@@ -10,17 +10,11 @@
      * establishes its container for exactly the same reason.
      */
     container-type: inline-size;
-  }
-
-  /*
-   * 76px bottom clearance so the FAB never covers the last card or the last
-   * ledger row (`docs/design/README.md` §3). Carried by a class the screen
-   * adds only where it draws the FAB, rather than by a width query that undoes
-   * it at desktop: the clearance is owed to the control, so it is spelled
-   * against the control's own presence and this file needs no `@media`.
-   */
-  .clearance {
-    padding-bottom: 4.75rem;
+    /* The gap between the last card and the FAB below it, on a list long
+       enough that the button's auto block margin has no free space to take.
+       No clearance beyond it: the button reserves its own space now, so it
+       cannot come to rest on top of the last row. */
+    padding-bottom: var(--space-16);
   }
 
   .titleRow {
@@ -36,8 +30,8 @@
     color: var(--color-ink-primary);
   }
 
-  /* Desktop's step, where the FAB's 74px of tab-bar clearance would be
-     clearing nothing. `Depot`'s `+ Add gear` sits in the same slot. */
+  /* The step from Split up, where there is no bottom tab bar for a floating
+     button to clear. `Depot`'s `+ Add gear` sits in the same slot. */
   .new {
     display: inline-flex;
     align-items: center;
@@ -51,29 +45,42 @@
   }
 
   /*
-   * `Depot`'s FAB, declaration for declaration: 56px, `+`, 74px above the
-   * 3-tab bar. The board hands this screen the same control — "the Trips list
-   * gains the Depot's 56px FAB as `+ NEW`'s drawn control (F3 had the step, no
-   * frame)" — and the two are copies rather than a shared rule because `ui/`
-   * has no FAB primitive and two callers is where `GearRow`'s rule says one
-   * gets made, not before.
+   * `Depot`'s FAB, declaration for declaration: 56px, `+`, clearing the 3-tab
+   * bar by the drawn 18px. The board hands this screen the same control — "the
+   * Trips list gains the Depot's 56px FAB as `+ NEW`'s drawn control (F3 had
+   * the step, no frame)" — and the two are copies rather than a shared rule
+   * because `ui/` has no FAB primitive and two callers is where `GearRow`'s
+   * rule says one gets made, not before.
    *
-   * 74px is the Depot boards' number, drawn three times; `Screens B` 02A's own
-   * `Trips — S6 ship state` draws 86px, once, over an identical tab bar. The
-   * two boards disagree and nothing under the control differs, so this follows
-   * the Depot rather than letting the FAB jump between two tabs of one bar.
-   * Open question, stated in `docs/design/README.md` §5.
+   * **The bar's height is not written down here.** It cannot be: the bar is
+   * `min-height: max(3.5rem, 56px)`, so a large user font size grows it and
+   * any constant offset drifts under it (`docs/design/README.md` §5). Instead
+   * the button is a flow sibling at the end of the shell's main area, whose
+   * bottom edge is the bar's top edge — below Split `ui/styles/layout.css`
+   * puts the two in adjacent grid rows, and a taller bar takes its height out
+   * of the `1fr` row between them. `margin-block-start: auto` parks the button
+   * there on a list shorter than the screen; `position: sticky` lifts it 18px
+   * off the bottom edge while the list is longer and the reader is part-way
+   * down it.
    *
-   * Rendered as a **sibling** of `.screen`, never inside it — `.screen`
-   * declares `container-type`, which applies layout containment and so becomes
-   * the containing block for any fixed descendant, and `.screen`'s height is
-   * the content's. On a one-card list that is ~160px, so `bottom` would land
-   * this beside the title. `Depot` has the same arrangement.
+   * `margin-inline-start: auto` rather than a `right` offset, so the button
+   * rides the main area's own right edge — at Roomy that column is centred and
+   * capped at 45rem, where a viewport offset detaches the button from the list
+   * it belongs to.
+   *
+   * Rendered as a **sibling** of `.screen`, never inside it: its resting place
+   * is the foot of the main area, and inside `.screen` it would rest at the
+   * end of that element's content box instead. (The arrangement predates the
+   * sticky mechanism — `.screen` declares `container-type`, which makes it the
+   * containing block for a *fixed* descendant. A sticky box positions against
+   * the scrollport and is not caught by that.) `Depot` has the same
+   * arrangement.
    */
   .fab {
-    position: fixed;
-    right: var(--space-16);
-    bottom: 4.625rem;
+    position: sticky;
+    bottom: 1.125rem;
+    margin-block-start: auto;
+    margin-inline-start: auto;
     display: flex;
     align-items: center;
     justify-content: center;

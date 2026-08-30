@@ -3,9 +3,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
-    /* 76px bottom list clearance so the FAB never covers the last row
-       (docs/design/README.md §3). */
-    padding-bottom: 4.75rem;
+    /* The gap between the last row and the FAB below it, on a list long
+       enough that the button's auto block margin has no free space to take.
+       No clearance beyond it: the button reserves its own space now, so it
+       cannot come to rest on top of the last row. */
+    padding-bottom: var(--space-16);
     /* The list rows fold against the pane they are handed, not the viewport
        (frontend-design §3.2) — which is what makes Split 900's 308px list
        pane render the folded two-line row. */
@@ -98,16 +100,36 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Rendered as a **sibling** of `.screen`, never inside it: `.screen`
-     declares `container-type`, which applies layout containment and so becomes
-     the containing block for any fixed descendant — `bottom` would then be
-     measured from a content-height box instead of from the viewport.
-     `Depot.tsx` carries the same note, and `Trips` the same arrangement. */
+  /*
+   * **The bar's height is not written down here.** It cannot be: the bar is
+   * `min-height: max(3.5rem, 56px)`, so a large user font size grows it and
+   * any constant offset drifts under it (`docs/design/README.md` §5). Instead
+   * the button is a flow sibling at the end of the shell's main area, whose
+   * bottom edge is the bar's top edge — below Split `ui/styles/layout.css`
+   * puts the two in adjacent grid rows, and a taller bar takes its height out
+   * of the `1fr` row between them. `margin-block-start: auto` parks the button
+   * there on a list shorter than the screen; `position: sticky` lifts it 18px
+   * off the bottom edge while the list is longer and the reader is part-way
+   * down it.
+   *
+   * `margin-inline-start: auto` rather than a `right` offset, so the button
+   * rides the main area's own right edge — at Roomy that column is centred and
+   * capped at 45rem, where a viewport offset detaches the button from the list
+   * it belongs to.
+   *
+   * Rendered as a **sibling** of `.screen`, never inside it: its resting place
+   * is the foot of the main area, and inside `.screen` it would rest at the
+   * end of that element's content box instead. (The arrangement predates the
+   * sticky mechanism — `.screen` declares `container-type`, which makes it the
+   * containing block for a *fixed* descendant. A sticky box positions against
+   * the scrollport and is not caught by that.) `Depot.tsx` carries the same
+   * note, and `Trips` the same arrangement.
+   */
   .fab {
-    position: fixed;
-    right: var(--space-16);
-    /* 74px above the 3-tab bar. */
-    bottom: 4.625rem;
+    position: sticky;
+    bottom: 1.125rem;
+    margin-block-start: auto;
+    margin-inline-start: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -127,6 +149,11 @@
       flex-direction: row;
       align-items: center;
       gap: var(--space-16);
+      /* The row is a title, a search field and — from Split up — the add
+         control, and at Split the Depot is the 308px list pane rather than
+         the full width this query is asking about. Wrapping is what keeps the
+         search field from being squeezed to nothing there. */
+      flex-wrap: wrap;
     }
 
     .search {
@@ -137,12 +164,6 @@
 
   /* ---- Desktop 1024: the table and its 8 columns ---- */
   @media (min-width: 64em) {
-    .screen {
-      /* No second rail: the shell's own 216px labeled nav is the sidebar
-         the ladder promises at this width (`ui/styles/layout.css`). */
-      padding-bottom: var(--space-24);
-    }
-
     .table {
       border: var(--stroke-rule) solid var(--color-rule);
       border-radius: var(--radius-card);

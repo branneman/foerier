@@ -150,29 +150,51 @@ describe('the Trips screen', () => {
     expect(fab.textContent).not.toContain('NEW')
   })
 
-  it('hangs the FAB outside the screens query container', async () => {
+  it('hangs the FAB after the screen, as the last thing in the main area', async () => {
     renderTrips(await seeded())
 
-    // `container-type` applies layout containment, and a contained element is
-    // the **containing block for its `position: fixed` descendants** — so a
-    // FAB inside `.screen` is positioned against a box whose height is the
-    // content's. On an empty or one-card list that box is ~160px tall, which
-    // puts `bottom: 4.625rem` beside the title rather than above the tab bar,
-    // and scrolls it with the page. Sibling, therefore, never child.
+    // The button is `position: sticky`, so where it comes to rest is where
+    // flow puts it — the foot of the shell's main area, whose bottom edge is
+    // the tab bar's top edge (`ui/styles/layout.css` puts the two in adjacent
+    // grid rows). Inside `.screen` it would rest at the end of that element's
+    // content box instead, which the screen's own padding moves.
+    //
+    // The arrangement predates the sticky mechanism: `.screen` declares
+    // `container-type`, which applies layout containment and so makes it the
+    // containing block for a `position: fixed` descendant. That trap does not
+    // catch a sticky box — it positions against the scrollport — so this now
+    // stands on the flow reason above.
     //
     // jsdom computes no layout, so the shape is what holds this — the same
     // argument the `@container` fences below are asserted on.
     const fab = screen.getByRole('link', { name: 'New trip' })
-    expect(screen.getByTestId('trips-screen').contains(fab)).toBe(false)
+    const trips = screen.getByTestId('trips-screen')
+    expect(trips.contains(fab)).toBe(false)
+    expect(fab.parentElement).toBe(trips.parentElement)
+    expect(trips.parentElement?.lastElementChild).toBe(fab)
+  })
+
+  it('docks the step into the title row from Split up, with no FAB left', async () => {
+    setViewport(SPLIT)
+    renderTrips(await seeded())
+
+    // "The FAB renders exactly where the bottom tab bar renders — Compact
+    // through Roomy. From Split up there is no bar to clear and the floating
+    // button was wrong there: the control docks into the list pane's title
+    // row" (`docs/design/README.md` §5).
+    const steps = screen.getAllByRole('link', { name: 'New trip' })
+    expect(steps).toHaveLength(1)
+    expect(steps[0]).toHaveTextContent('+ NEW')
+    expect(steps[0]).toHaveAttribute('href', '/trips/new')
   })
 
   it('keeps the title-row step at desktop, where there is no FAB', async () => {
     setViewport(SPLIT, DESKTOP)
     renderTrips(await seeded())
 
-    // The FAB is drawn 74px above the 3-tab bar, and desktop has a sidebar
-    // instead — so it goes where `Depot`'s goes, and the title row keeps the
-    // control, exactly as `Depot` keeps `+ Add gear` there.
+    // Desktop's withheld FAB and title-row control are confirmed unchanged by
+    // the same entry — the sidebar is the navigation there, and `Depot` keeps
+    // `+ Add gear` in the same slot.
     const step = screen.getByRole('link', { name: 'New trip' })
     expect(step).toHaveTextContent('+ NEW')
     expect(step).toHaveAttribute('href', '/trips/new')
@@ -380,13 +402,50 @@ describe('the container the cards fold against', () => {
     )
     expect(css).toMatch(/\.cardItem\s*\{[^}]*container-type:\s*inline-size/)
     // `.screen`'s own container is what the 40rem query above resolves
-    // against, and it is also the reason the FAB has to be its sibling: a
-    // contained element is the containing block for a fixed descendant.
+    // against.
     expect(css).toMatch(/\.screen\s*\{[^}]*container-type:\s*inline-size/)
     expect(css).toMatch(/\.cards\s*\{[^}]*padding:\s*0/)
     expect(css).toMatch(/\.rows\s*\{[^}]*padding:\s*0/)
     // Container queries throughout: what folds is layout, never which
     // elements exist.
     expect(css).not.toMatch(/^\s*@media\b/m)
+  })
+})
+
+describe('the offset that keeps the FAB clear of the tab bar', () => {
+  const css = (): string =>
+    readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trips.module.css'),
+      'utf8',
+    )
+
+  it('is written against the bar, by naming no height of it at all', () => {
+    // The rule the boards state: "the FAB clears the tab bar by 18px — 74
+    // with the bar at its 56px `min-height` — written against the bar's real
+    // height, so a bar grown by large user font sizes carries the button up
+    // with it instead of drifting under it" (`docs/design/README.md` §5).
+    //
+    // A constant cannot follow a `min-height`, and neither can a custom
+    // property restating it. So the button is a flow sibling parked at the
+    // foot of the main area by an auto block margin and lifted off the bottom
+    // edge by `position: sticky` — the bar's height is not written down
+    // anywhere, and the main area's bottom edge is the bar's top edge.
+    const fab = /\.fab\s*\{[^}]*\}/.exec(css())?.[0] ?? ''
+    expect(fab).toMatch(/position:\s*sticky/)
+    expect(fab).toMatch(/bottom:\s*1\.125rem/)
+    expect(fab).toMatch(/margin-block-start:\s*auto/)
+    expect(fab).not.toMatch(/position:\s*fixed/)
+    // The two numbers the old constant was made of. Neither may return: `74px`
+    // is `4.625rem` and the bar's minimum is `3.5rem`, which the width and
+    // height below are also spelled as — so the fence is on the offset alone.
+    expect(fab).not.toMatch(/bottom:[^;]*(?:4\.625rem|3\.5rem|56px|74px)/)
+  })
+
+  it('leaves the last row uncovered without a clearance to maintain', () => {
+    // The button now reserves its own space at the end of the list, so the
+    // 76px `padding-bottom` that used to hold the last row clear of a fixed
+    // button is gone, and with it the class that carried it.
+    expect(css()).not.toMatch(/4\.75rem/)
+    expect(css()).not.toMatch(/\.clearance\b/)
   })
 })

@@ -14,6 +14,8 @@ import {
 } from '@foerier/shared'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -348,20 +350,90 @@ describe('the Depot list', () => {
     expect(await screen.findByText('Add gear screen')).toBeInTheDocument()
   })
 
-  it('hangs the FAB outside the screens query container', async () => {
+  it('hangs the FAB after the screen, as the last thing in the main area', async () => {
     renderDepot(await seededStore([]))
 
-    // `container-type` applies layout containment, and a contained element is
-    // the **containing block for its `position: fixed` descendants** — so a
-    // FAB inside `.screen` is positioned against a box whose height is the
-    // content's rather than against the viewport, and it scrolls with the
-    // list instead of clearing the tab bar. Sibling, therefore, never child.
+    // The button is `position: sticky`, so where it comes to rest is where
+    // flow puts it — the foot of the shell's main area, whose bottom edge is
+    // the tab bar's top edge (`ui/styles/layout.css` puts the two in adjacent
+    // grid rows). Inside `.screen` it would rest at the end of that element's
+    // content box instead, which the screen's own padding moves.
+    //
+    // The arrangement predates the sticky mechanism: `.screen` declares
+    // `container-type`, which applies layout containment and so makes it the
+    // containing block for a `position: fixed` descendant. That trap does not
+    // catch a sticky box — it positions against the scrollport — so this now
+    // stands on the flow reason above.
     //
     // jsdom computes no layout, so the shape is what holds this — the same
     // argument `Trips.test.tsx`'s `@container` fences are asserted on, and
     // the same test one screen along.
     const fab = screen.getByRole('link', { name: 'Add gear' })
-    expect(screen.getByTestId('depot-screen').contains(fab)).toBe(false)
+    const depot = screen.getByTestId('depot-screen')
+    expect(depot.contains(fab)).toBe(false)
+    expect(fab.parentElement).toBe(depot.parentElement)
+    expect(depot.parentElement?.lastElementChild).toBe(fab)
+  })
+
+  it('docks the step into the list panes title row from Split up', async () => {
+    setViewport(SPLIT)
+    renderDepot(await seededStore([]))
+
+    // "The FAB renders exactly where the bottom tab bar renders — Compact
+    // through Roomy. From Split up there is no bar to clear and the floating
+    // button was wrong there: the control docks into the list pane's title
+    // row … `Depot split` and `Add gear — split 900` gaining the same slot as
+    // `+ Add gear`" (`docs/design/README.md` §5).
+    const steps = screen.getAllByRole('link', { name: 'Add gear' })
+    expect(steps).toHaveLength(1)
+    expect(steps[0]).toHaveTextContent('+ Add gear')
+    expect(steps[0]).toHaveAttribute('href', '/add')
+  })
+
+  it('keeps the title-row step at desktop, where there is no FAB', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderDepot(await seededStore([]))
+
+    const steps = screen.getAllByRole('link', { name: 'Add gear' })
+    expect(steps).toHaveLength(1)
+    expect(steps[0]).toHaveTextContent('+ Add gear')
+  })
+})
+
+describe('the offset that keeps the FAB clear of the tab bar', () => {
+  const css = (): string =>
+    readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Depot.module.css'),
+      'utf8',
+    )
+
+  it('is written against the bar, by naming no height of it at all', () => {
+    // The rule the boards state: "the FAB clears the tab bar by 18px — 74
+    // with the bar at its 56px `min-height` — written against the bar's real
+    // height, so a bar grown by large user font sizes carries the button up
+    // with it instead of drifting under it" (`docs/design/README.md` §5).
+    //
+    // A constant cannot follow a `min-height`, and neither can a custom
+    // property restating it. So the button is a flow sibling parked at the
+    // foot of the main area by an auto block margin and lifted off the bottom
+    // edge by `position: sticky` — the bar's height is not written down
+    // anywhere, and the main area's bottom edge is the bar's top edge.
+    const fab = /\.fab\s*\{[^}]*\}/.exec(css())?.[0] ?? ''
+    expect(fab).toMatch(/position:\s*sticky/)
+    expect(fab).toMatch(/bottom:\s*1\.125rem/)
+    expect(fab).toMatch(/margin-block-start:\s*auto/)
+    expect(fab).not.toMatch(/position:\s*fixed/)
+    // The two numbers the old constant was made of. Neither may return: `74px`
+    // is `4.625rem` and the bar's minimum is `3.5rem`, which the width and
+    // height below are also spelled as — so the fence is on the offset alone.
+    expect(fab).not.toMatch(/bottom:[^;]*(?:4\.625rem|3\.5rem|56px|74px)/)
+  })
+
+  it('leaves the last row uncovered without a clearance to maintain', () => {
+    // The button now reserves its own space at the end of the list, so the
+    // 76px `padding-bottom` that used to hold the last row clear of a fixed
+    // button is gone.
+    expect(css()).not.toMatch(/4\.75rem/)
   })
 })
 

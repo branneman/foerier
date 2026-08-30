@@ -20,7 +20,7 @@ import { Link } from 'wouter'
 import { SliceBar } from '../components/SliceBar'
 import { useDepot } from '../depot/store'
 import { useSliceSpec } from '../depot/useSliceSpec'
-import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
+import { DESKTOP, SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Depot.module.css'
 
 /**
@@ -177,6 +177,7 @@ export function Depot({ selectedId }: DepotProps = {}) {
   const state = useDepot((depot) => depot.state)
   const [spec, setSpec] = useSliceSpec()
   const isDesktop = useMediaQuery(DESKTOP)
+  const isSplit = useMediaQuery(SPLIT)
 
   const view = useMemo(() => containmentView(state), [state])
   const result = useMemo(() => sliceDepot(state, spec), [state, spec])
@@ -228,9 +229,9 @@ export function Depot({ selectedId }: DepotProps = {}) {
                 setSpec({ ...spec, search: event.target.value })
               }
             />
-            {isDesktop && (
-              // The `+` is decoration; the phone FAB and this button are the
-              // same action, so they carry the same accessible name.
+            {isSplit && (
+              // The `+` is decoration; the FAB below Split and this button are
+              // the same action, so they carry the same accessible name.
               <Link
                 href="/add"
                 className={styles['addButton']}
@@ -311,13 +312,13 @@ export function Depot({ selectedId }: DepotProps = {}) {
         </div>
       </div>
 
-      {!isDesktop && (
-        // **Outside `.screen`, and that is load-bearing.** `.screen` declares
-        // `container-type`, which applies layout containment and so makes it
-        // the containing block for any `position: fixed` descendant — its
-        // height is the content's, so a FAB inside it clears the tab bar only
-        // by accident of the list being long, and scrolls with the page. The
-        // container itself stays: it is what the list's own queries resolve
+      {!isSplit && (
+        // **Outside `.screen`, and that is load-bearing.** The button is
+        // `position: sticky`, so it comes to rest where flow puts it — and it
+        // has to rest at the foot of the shell's main area, whose bottom edge
+        // is the tab bar's top edge. Inside `.screen` it would rest at the end
+        // of that element's content box instead. The container `.screen`
+        // declares stays either way: it is what the list's own queries resolve
         // against. `Trips` has the same arrangement for the same reason.
         <Link href="/add" className={styles['fab']} aria-label="Add gear">
           +

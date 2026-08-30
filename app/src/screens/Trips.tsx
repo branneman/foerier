@@ -13,7 +13,7 @@ import { ReopenConfirm } from '../components/ReopenConfirm'
 import { TripCard } from '../components/TripCard'
 import { useDepot } from '../depot/store'
 import { tripStartMonth } from '../depot/trips'
-import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
+import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trips.module.css'
 
 /**
@@ -67,16 +67,17 @@ const REOPEN_TO: PhaseKey = 'unpack'
  * ## The new-trip step is the Depot's FAB
  *
  * "The Trips list gains the Depot's 56px FAB as `+ NEW`'s drawn control (F3
- * had the step, no frame)." It is drawn 74px above the 3-tab bar, so it goes
- * exactly where `Depot`'s goes — and, like `Depot`'s, it is not drawn at
- * desktop, where the bar it clears does not exist and the sidebar is the
- * navigation. There the title row keeps the step, as `Depot`'s keeps
- * `+ Add gear`.
+ * had the step, no frame)." It goes exactly where `Depot`'s goes, at the same
+ * widths: **the FAB accompanies the bottom tab bar**, so it is drawn from
+ * Compact through Roomy and withheld from Split up, where the nav is a rail
+ * or a sidebar and there is no bar for a floating button to clear. From
+ * Split up the title row carries the step instead, as `Depot`'s carries
+ * `+ Add gear` (`docs/design/README.md` §5).
  */
 export function Trips() {
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
-  const isDesktop = useMediaQuery(DESKTOP)
+  const isSplit = useMediaQuery(SPLIT)
 
   // Memoed on the fold, as `Depot` memoes `depotCounts`: the partition and its
   // two orders are pure functions of the state, and the store hands out a new
@@ -108,16 +109,13 @@ export function Trips() {
     // A fragment, because the FAB is the screen's **sibling** — see the note
     // beside it below.
     <>
-      <div
-        className={`${styles['screen']} ${isDesktop ? '' : styles['clearance']}`}
-        data-testid="trips-screen"
-      >
+      <div className={styles['screen']} data-testid="trips-screen">
         <div className={styles['titleRow']}>
           <h1 className={styles['title']}>Trips</h1>
-          {isDesktop && (
-            // The `+` is decoration; this and the FAB below are the same action,
-            // so they carry the same accessible name — `Depot`'s rule for the
-            // same pair.
+          {isSplit && (
+            // The `+` is decoration; this and the FAB it stands in for below
+            // Split are the same action, so they carry the same accessible
+            // name — `Depot`'s rule for the same pair.
             <Link
               href="/trips/new"
               className={styles['new']}
@@ -185,17 +183,17 @@ export function Trips() {
         )}
       </div>
 
-      {!isDesktop && (
+      {!isSplit && (
         // F3's first step is its own screen, following Add gear: the flow is
         // labelled desk work, dense picker, keyboard-friendly.
         //
-        // **Outside `.screen`, and that is load-bearing.** `.screen` declares
-        // `container-type`, which applies layout containment and so makes it
-        // the containing block for any `position: fixed` descendant. Its
-        // height is the content's, so a FAB inside it would be fixed to a
-        // ~160px box on a one-card list — beside the title, scrolling with
-        // the page, rather than 74px above the tab bar. The container itself
-        // stays: the 40rem query the cards fold on resolves against it.
+        // **Outside `.screen`, and that is load-bearing.** The button is
+        // `position: sticky`, so it comes to rest where flow puts it — and it
+        // has to rest at the foot of the shell's main area, whose bottom edge
+        // is the tab bar's top edge. Inside `.screen` it would rest at the end
+        // of that element's content box instead. The container `.screen`
+        // declares stays either way: the 40rem query the cards fold on
+        // resolves against it.
         <Link href="/trips/new" className={styles['fab']} aria-label="New trip">
           +
         </Link>

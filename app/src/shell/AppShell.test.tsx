@@ -1,4 +1,6 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -219,5 +221,51 @@ describe('AppShell — the account affordance', () => {
     setViewport(SPLIT)
     renderShell('/', { accountInitial: 'M' })
     expect(screen.queryByRole('link', { name: /^Account M$/ })).toBeNull()
+  })
+})
+
+/**
+ * The main area is where a screen's floating control comes to rest, so two of
+ * its properties are load-bearing outside this file (`docs/design/README.md`
+ * §5). jsdom computes no layout and applies no stylesheet, so the source is
+ * the only place they can be held.
+ */
+describe('the main area the shell hands a screen', () => {
+  const layout = (): string =>
+    readFileSync(
+      join(
+        dirname(expect.getState().testPath ?? ''),
+        '../../../ui/styles/layout.css',
+      ),
+      'utf8',
+    )
+
+  it('is a column, so a control after the screen can be parked at its foot', () => {
+    // `Depot`'s and `Trips`' add button is a flow sibling of the screen with
+    // `margin-block-start: auto`. An auto block margin absorbs free space only
+    // in a flex or grid container: in a block container it resolves to zero
+    // and the button would sit directly under a one-card list rather than
+    // above the tab bar.
+    expect(layout()).toMatch(
+      /\.shell__main\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/,
+    )
+  })
+
+  it('ends where the tab bar begins, which is what the button follows', () => {
+    // Below Split — the one shape with a bottom bar, and the one where the
+    // button is drawn — the shell is three rows and the nav is the third. So
+    // the main area's bottom edge is the bar's top edge, and a bar grown by a
+    // large user font size takes the height out of the `1fr` row between them
+    // and carries the button up with it. That is the whole of the mechanism:
+    // no height of the bar is written down.
+    expect(layout()).toMatch(
+      /\.shell\s*\{[^}]*grid-template-rows:\s*auto 1fr auto/,
+    )
+    expect(
+      readFileSync(
+        join(dirname(expect.getState().testPath ?? ''), 'AppShell.module.css'),
+        'utf8',
+      ),
+    ).toMatch(/\.nav-tabs\s*\{[^}]*grid-row:\s*3/)
   })
 })

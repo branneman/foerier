@@ -24,7 +24,19 @@
     min-height: 100svh;
   }
 
+  /*
+   * A column, and that is load-bearing beyond the screen it holds. Below
+   * Split the main area is the middle of three rows and the bottom tab bar is
+   * the third, so the main area's bottom edge *is* the bar's top edge — and a
+   * screen that draws a floating control renders it as a sibling after the
+   * screen with `margin-block-start: auto`, which parks it at that edge on a
+   * page shorter than the viewport. An auto block margin absorbs free space
+   * only in a flex or grid container; in a block container it resolves to zero
+   * (`docs/design/README.md` §5).
+   */
   .shell__main {
+    display: flex;
+    flex-direction: column;
     padding-inline: var(--gutter);
     padding-block: var(--space-16);
   }
