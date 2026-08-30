@@ -27,13 +27,14 @@ import styles from './Stepper.module.css'
  * parsing ourselves is what makes the well reliably editable *and* reliably
  * clampable.
  *
- * **A cleared well reports `onChange(NaN)`.** `number` already includes
- * `NaN` — nothing new is added to the signature — and it is the one value
- * that means "nothing chosen" rather than "chosen, and it's `min`": a caller
+ * **`value` and `onChange` are `number | null`, and `null` means the well is
+ * blank** — "nothing chosen" rather than "chosen, and it's `min`". A caller
  * that clamped a blank well to `min` instead would write a value nobody
  * typed, the exact defect invariant 11's `min = 0` exists to avoid one
- * register over. A caller that has no "opens empty" state of its own simply
- * guards with `Number.isFinite` before it emits.
+ * register over. `null` and `0` are never interchangeable: `0` is a real
+ * Bring-count that claims nothing but keeps the row (invariant 11); `null` is
+ * no count at all. A caller with no "opens empty" state of its own simply
+ * guards with `!== null` before it emits.
  *
  * `min` defaults to **`0`**, not `1`. A Bring-count of zero is expressible on
  * the wire (`{entry_id, count: int ≥ 0}`) and is not the same as removing the
@@ -45,10 +46,11 @@ import styles from './Stepper.module.css'
  * props in, callbacks out.
  */
 export interface StepperProps {
-  value: number
+  /** `null` means the well is blank — see above. */
+  value: number | null
   /** Floors both the decrement button and the well. Defaults to `0`. */
   min?: number
-  onChange: (next: number) => void
+  onChange: (next: number | null) => void
   /** `default` is h48; `dense` is h32, for a row. */
   size?: 'default' | 'dense'
   /**
@@ -66,13 +68,11 @@ export function Stepper({
   size = 'default',
   label,
 }: StepperProps) {
-  const atMin = value <= min
-  const [text, setText] = useState(() =>
-    Number.isNaN(value) ? '' : String(value),
-  )
+  const atMin = value !== null && value <= min
+  const [text, setText] = useState(() => (value === null ? '' : String(value)))
 
   useEffect(() => {
-    setText(Number.isNaN(value) ? '' : String(value))
+    setText(value === null ? '' : String(value))
   }, [value])
 
   function handleWellChange(event: ChangeEvent<HTMLInputElement>) {
@@ -81,7 +81,7 @@ export function Stepper({
 
     if (digits === '') {
       // Nothing typed yet — not `min`, which would be a value nobody chose.
-      onChange(Number.NaN)
+      onChange(null)
       return
     }
 
@@ -103,7 +103,7 @@ export function Stepper({
         className={styles['button']}
         aria-label={`Decrease ${label}`}
         disabled={atMin}
-        onClick={() => onChange(Math.max(min, value - 1))}
+        onClick={() => onChange(Math.max(min, (value ?? min) - 1))}
       >
         −
       </button>
@@ -119,7 +119,7 @@ export function Stepper({
         type="button"
         className={styles['button']}
         aria-label={`Increase ${label}`}
-        onClick={() => onChange(value + 1)}
+        onClick={() => onChange((value ?? min) + 1)}
       >
         +
       </button>

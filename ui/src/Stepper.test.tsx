@@ -146,10 +146,13 @@ describe('Stepper', () => {
     expect(well).toHaveValue('2')
   })
 
-  it('reports a cleared well as NaN rather than falling back to min', async () => {
-    // `NaN` is "nothing chosen" — clamping a blank well to `min` instead
+  it('reports a cleared well as null rather than falling back to min', async () => {
+    // `null` is "nothing chosen" — clamping a blank well to `min` instead
     // would commit a value nobody typed, the exact class of defect
     // invariant 11's `min = 0` exists to keep out of a different register.
+    // `null` and `0` must never be confusable: `0` is a real Bring-count
+    // that claims nothing but keeps the row (invariant 11); `null` is no
+    // count at all.
     const onChange = vi.fn()
     const user = userEvent.setup()
     render(<Stepper value={3} onChange={onChange} label="Owned count" />)
@@ -157,7 +160,8 @@ describe('Stepper', () => {
     await user.clear(screen.getByRole('textbox', { name: 'Owned count' }))
 
     expect(onChange).toHaveBeenCalledOnce()
-    expect(onChange.mock.calls[0]?.[0]).toBeNaN()
+    expect(onChange).toHaveBeenCalledWith(null)
+    expect(onChange).not.toHaveBeenCalledWith(0)
   })
 
   it('strips non-digits rather than accepting a decimal, exponent or sign', () => {

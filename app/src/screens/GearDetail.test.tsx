@@ -367,7 +367,7 @@ describe('Gear detail', () => {
     renderGearDetail(store, gearId)
 
     await user.click(screen.getByRole('button', { name: 'EDIT' }))
-    const countField = screen.getByRole('spinbutton', { name: 'Owned count' })
+    const countField = screen.getByRole('textbox', { name: 'Owned count' })
     await user.clear(countField)
     await user.type(countField, '5')
     await user.click(screen.getByRole('button', { name: 'Save' }))

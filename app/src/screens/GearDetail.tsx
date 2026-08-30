@@ -115,7 +115,7 @@ export function GearDetail() {
   const [editOpen, setEditOpen] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [kindDraft, setKindDraft] = useState<KindValue>('single')
-  const [countDraft, setCountDraft] = useState(1)
+  const [countDraft, setCountDraft] = useState<number | null>(1)
   const [ownerDraft, setOwnerDraft] = useState<Owner>({ type: 'shared' })
   const [ownerPickerOpen, setOwnerPickerOpen] = useState(false)
   const [retireOpen, setRetireOpen] = useState(false)
@@ -151,13 +151,13 @@ export function GearDetail() {
       emit(gearKindSet(id, kindDraft))
     }
 
-    // `Number.isFinite` excludes `NaN` — `Stepper`'s report that its well is
-    // currently blank. A silent `×1` is a wrong ledger line whether Add gear
-    // writes it or gear detail does: an emptied well must write nothing,
-    // never fall back to whatever `countDraft` last held.
+    // `null` is `Stepper`'s report that its well is currently blank. A
+    // silent `×1` is a wrong ledger line whether Add gear writes it or gear
+    // detail does: an emptied well must write nothing, never fall back to
+    // whatever `countDraft` last held.
     if (
       kindDraft === 'counted' &&
-      Number.isFinite(countDraft) &&
+      countDraft !== null &&
       countDraft !== current.ownedCount?.value
     ) {
       emit(gearOwnedCountSet(id, countDraft))
