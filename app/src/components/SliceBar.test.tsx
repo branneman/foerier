@@ -90,12 +90,13 @@ describe('SliceBar — the chips', () => {
     renderBar()
     expect(screen.getByRole('button', { name: '+ TAG' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '+ KIND' })).toBeInTheDocument()
-    // S4's two rows, and the whole of what the bar needed to learn to draw
-    // them: nothing. Ghosts come from `DIMENSIONS`.
+    // S4's two rows, S7's one more, and the whole of what the bar needed to
+    // learn to draw any of them: nothing. Ghosts come from `DIMENSIONS`.
     expect(
       screen.getByRole('button', { name: '+ OWNERSHIP' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '+ PERSON' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ TRIP' })).toBeInTheDocument()
     // The retired value-carrying ghost.
     expect(screen.queryByRole('button', { name: /\+ TAG: / })).toBeNull()
   })

@@ -36,20 +36,19 @@ import {
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 
-function at(specs: readonly OpSpec[], counter: number): OpEnvelope[] {
-  return specs.map((s) => anOp(s, { hlc: hlcAt(counter), deviceId: DEV_A }))
-}
-
 function one(spec: OpSpec, counter: number): OpEnvelope {
   return anOp(spec, { hlc: hlcAt(counter), deviceId: DEV_A })
 }
 
 /**
  * Stamps each spec with its **own**, increasing counter starting at `start`.
- * `at` gives every spec in the array the same counter, which is wrong for a
- * multi-op factory like `aTrip({ phase })`: `trip.created` seeds `phase` at
- * its own stamp, and a `trip.phase_moved` sharing that exact stamp loses on
- * the tie (`writeRegister`'s `<= 0` rule) rather than moving it.
+ * The one stamper this file uses for a whole spec array: giving every spec
+ * the *same* counter is wrong the moment a factory returns more than one op
+ * on the same aggregate — `aTrip({ phase })` returns `[trip.created,
+ * trip.phase_moved]`, and a `trip.phase_moved` sharing `trip.created`'s
+ * exact stamp loses on the tie (`writeRegister`'s `<= 0` rule) rather than
+ * moving it. It is a no-op difference for every single-op factory here
+ * (`aGear`, `aPerson`), so one stamper serves both shapes.
  */
 function sequence(specs: readonly OpSpec[], start: number): OpEnvelope[] {
   return specs.map((s, i) =>
@@ -92,10 +91,13 @@ function shownIds(state: DepotState, spec: SliceSpec): string[] {
  */
 function aDepot(): DepotState {
   return fold([
-    ...at(aGear({ id: 'g-pot', name: 'Pot set', kind: 'single' }), 1),
-    ...at(aGear({ id: 'g-axe', name: 'Axe', kind: 'single' }), 2),
-    ...at(aGear({ id: 'g-bag', name: 'Sleeping bag', kind: 'counted' }), 3),
-    ...at(aGear({ id: 'g-mug', name: 'Mug', kind: 'per_person' }), 4),
+    ...sequence(aGear({ id: 'g-pot', name: 'Pot set', kind: 'single' }), 1),
+    ...sequence(aGear({ id: 'g-axe', name: 'Axe', kind: 'single' }), 2),
+    ...sequence(
+      aGear({ id: 'g-bag', name: 'Sleeping bag', kind: 'counted' }),
+      3,
+    ),
+    ...sequence(aGear({ id: 'g-mug', name: 'Mug', kind: 'per_person' }), 4),
     one(gearTagApplied('g-bag', aTag('winter')), 5),
     one(gearTagApplied('g-bag', aTag('sleep')), 6),
     one(gearTagApplied('g-pot', aTag('cooking')), 7),
@@ -121,14 +123,14 @@ function aDepot(): DepotState {
  */
 function anOwnedDepot(): DepotState {
   return fold([
-    ...at(aPerson({ id: 'els', name: 'Els' }), 1),
-    ...at(aPerson({ id: 'mark', name: 'Mark' }), 2),
-    ...at(aGear({ id: 'g-tent', name: 'Tent' }), 3),
-    ...at(
+    ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
+    ...sequence(aPerson({ id: 'mark', name: 'Mark' }), 2),
+    ...sequence(aGear({ id: 'g-tent', name: 'Tent' }), 3),
+    ...sequence(
       aGear({ id: 'g-stove', name: 'Stove', owner: { type: 'shared' } }),
       4,
     ),
-    ...at(
+    ...sequence(
       aGear({
         id: 'g-jacket',
         name: 'Down jacket',
@@ -136,7 +138,7 @@ function anOwnedDepot(): DepotState {
       }),
       5,
     ),
-    ...at(
+    ...sequence(
       aGear({
         id: 'g-boots',
         name: 'Winter boots',
@@ -168,10 +170,10 @@ function anOwnedDepot(): DepotState {
  */
 function aTrippedDepot(): DepotState {
   return fold([
-    ...at(aGear({ id: 'g-tent', name: 'Tent' }), 1),
-    ...at(aGear({ id: 'g-stove', name: 'Stove' }), 2),
-    ...at(aGear({ id: 'g-boots', name: 'Boots' }), 3),
-    ...at(aGear({ id: 'g-axe', name: 'Axe' }), 4),
+    ...sequence(aGear({ id: 'g-tent', name: 'Tent' }), 1),
+    ...sequence(aGear({ id: 'g-stove', name: 'Stove' }), 2),
+    ...sequence(aGear({ id: 'g-boots', name: 'Boots' }), 3),
+    ...sequence(aGear({ id: 'g-axe', name: 'Axe' }), 4),
     ...sequence(aTrip({ id: 't-vosges', name: 'Vosges' }), 10),
     ...sequence(aTrip({ id: 't-alps', name: 'Alps', phase: 'pack_out' }), 20),
     ...sequence(aTrip({ id: 't-old', name: 'Old trip', phase: 'closed' }), 30),
@@ -199,12 +201,11 @@ describe("dimension('trip')", () => {
     // `Alps` sorts before `Vosges` — the same `byNameThenId` total order
     // `visibleTrips` already uses, which is what makes the answer replica-
     // identical rather than an artefact of iteration order.
-    expect(
-      dimension('trip').valuesOf(
-        aTrippedDepot().gear['g-tent']!,
-        aTrippedDepot(),
-      ),
-    ).toEqual(['t-alps', 't-vosges'])
+    const state = aTrippedDepot()
+    expect(dimension('trip').valuesOf(state.gear['g-tent']!, state)).toEqual([
+      't-alps',
+      't-vosges',
+    ])
   })
 
   it('excludes closed Trips, so their gear reads NOT IN ANY TRIP', () => {
@@ -270,11 +271,11 @@ describe("dimension('trip')", () => {
     const tripSpecs = aTrip({ name: 'Alps' })
     const tripId = tripSpecs[0]!.aggregate_id
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Axe' }), 1),
-      ...at(aGear({ id: 'g2', name: 'Boots' }), 2),
-      ...at(aGear({ id: 'g3', name: 'Crampons' }), 3),
-      ...at(aGear({ id: 'g4', name: 'Tent' }), 4),
-      ...at(tripSpecs, 5),
+      ...sequence(aGear({ id: 'g1', name: 'Axe' }), 1),
+      ...sequence(aGear({ id: 'g2', name: 'Boots' }), 2),
+      ...sequence(aGear({ id: 'g3', name: 'Crampons' }), 3),
+      ...sequence(aGear({ id: 'g4', name: 'Tent' }), 4),
+      ...sequence(tripSpecs, 5),
       one(tripEntryAdded(tripId, 'e1', { from: 'depot', gearId: 'g3' }), 6),
       one(tripEntryAdded(tripId, 'e2', { from: 'depot', gearId: 'g4' }), 7),
     ])
@@ -311,7 +312,7 @@ describe('the Trip-membership index', () => {
 
     // Removing Vosges's Entry folds to a *new* `DepotState` object — the
     // memo's key changes, so this is not the same cache entry as `before`'s.
-    const after = fold([one(tripEntryRemoved('t-vosges', 'e1'), 20)], before)
+    const after = fold([one(tripEntryRemoved('t-vosges', 'e1'), 50)], before)
     expect(after).not.toBe(before)
     const afterTent = dimension('trip').valuesOf(after.gear['g-tent']!, after)
     expect(afterTent).toEqual(['t-alps'])
@@ -359,10 +360,10 @@ describe('the ownership dimension', () => {
 
   it('puts the more-used value first when there is no tie', () => {
     const state = fold([
-      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...at(aGear({ id: 'g1', name: 'Tent' }), 2),
-      ...at(aGear({ id: 'g2', name: 'Stove' }), 3),
-      ...at(
+      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...sequence(aGear({ id: 'g1', name: 'Tent' }), 2),
+      ...sequence(aGear({ id: 'g2', name: 'Stove' }), 3),
+      ...sequence(
         aGear({
           id: 'g3',
           name: 'Down jacket',
@@ -418,9 +419,9 @@ describe('the person dimension', () => {
     // Tag vocabulary work with no Tag entity. Narrowing to someone who owns
     // nothing would return zero, so they are not offered.
     const state = fold([
-      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...at(aPerson({ id: 'kees', name: 'Kees' }), 2),
-      ...at(
+      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...sequence(aPerson({ id: 'kees', name: 'Kees' }), 2),
+      ...sequence(
         aGear({
           id: 'g1',
           name: 'Down jacket',
@@ -436,8 +437,8 @@ describe('the person dimension', () => {
 
   it('counts nothing from retired gear', () => {
     const state = fold([
-      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...at(
+      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...sequence(
         aGear({
           id: 'g1',
           name: 'Down jacket',
@@ -476,8 +477,8 @@ describe("story 4's two narrowings", () => {
 
   it('ANDs ownership with another dimension', () => {
     const state = fold([
-      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...at(
+      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...sequence(
         aGear({
           id: 'g1',
           name: 'Down jacket',
@@ -486,7 +487,7 @@ describe("story 4's two narrowings", () => {
         }),
         2,
       ),
-      ...at(
+      ...sequence(
         aGear({
           id: 'g2',
           name: 'Socks',
@@ -541,8 +542,8 @@ describe('sliceDepot — the resting state', () => {
 
   it('counts retired gear in neither', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Tent' }), 1),
-      ...at(aGear({ id: 'g2', name: 'Old tent' }), 2),
+      ...sequence(aGear({ id: 'g1', name: 'Tent' }), 1),
+      ...sequence(aGear({ id: 'g2', name: 'Old tent' }), 2),
       one(gearRetired('g2'), 3),
     ])
     const result = sliceDepot(state, EMPTY_SLICE)
@@ -585,7 +586,7 @@ describe('sliceDepot — one dimension at a time', () => {
 
   it('stops offering gear whose tag was removed', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Tent' }), 1),
+      ...sequence(aGear({ id: 'g1', name: 'Tent' }), 1),
       one(gearTagApplied('g1', aTag('winter')), 2),
       one(gearTagRemoved('g1', aTag('winter')), 3),
     ])
@@ -628,7 +629,7 @@ describe('sliceDepot — combining', () => {
   // search fields in one app disagreeing about `ö` is a bug waiting to be
   // filed.
   it('folds case and diacritics in the search, as Find does', () => {
-    const state = fold(at(aGear({ id: 'g1', name: 'Ölzeug' }), 1))
+    const state = fold(sequence(aGear({ id: 'g1', name: 'Ölzeug' }), 1))
     expect(shownIds(state, slice({ search: 'olz' }))).toEqual(['g1'])
   })
 
@@ -703,7 +704,7 @@ describe('sliceDepot — sorting', () => {
  */
 describe('recordedAt', () => {
   it('is the stamp of the op that first addressed the gear', () => {
-    const state = fold(at(aGear({ id: 'g1', name: 'Tent' }), 7))
+    const state = fold(sequence(aGear({ id: 'g1', name: 'Tent' }), 7))
     expect(recordedAt(state.gear['g1']!).hlc).toBe(hlcAt(7))
   })
 
@@ -711,7 +712,7 @@ describe('recordedAt', () => {
   // accepts a strictly later write, so nothing a Quartermaster does later can
   // move a gear back up a NEWEST FIRST list.
   it('is not moved by a later edit', () => {
-    const before = fold(at(aGear({ id: 'g1', name: 'Tent' }), 7))
+    const before = fold(sequence(aGear({ id: 'g1', name: 'Tent' }), 7))
     const after = fold([one(gearTagApplied('g1', aTag('winter')), 99)], before)
     expect(recordedAt(after.gear['g1']!)).toEqual(
       recordedAt(before.gear['g1']!),
@@ -777,8 +778,8 @@ describe('sliceDepot — grouping', () => {
    */
   it('gives an unrecognised kind its own group, labelled as it arrived', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), 1),
-      ...at(aGear({ id: 'g2', name: 'Tent', kind: 'single' }), 2),
+      ...sequence(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), 1),
+      ...sequence(aGear({ id: 'g2', name: 'Tent', kind: 'single' }), 2),
     ])
     const result = sliceDepot(state, slice({ group: 'kind' }))
     expect(result.groups.map((g) => g.label)).toEqual(['Single', 'sled'])
@@ -795,7 +796,7 @@ describe('sliceDepot — grouping', () => {
         },
         { hlc: hlcAt(1), deviceId: DEV_A },
       ),
-      ...at(aGear({ id: 'g2', name: 'Tent', kind: 'single' }), 2),
+      ...sequence(aGear({ id: 'g2', name: 'Tent', kind: 'single' }), 2),
     ])
     const result = sliceDepot(state, slice({ group: 'kind' }))
     expect(result.groups.map((g) => g.label)).toEqual(['Single', '—'])
@@ -841,8 +842,8 @@ describe('sliceDepot — grouping by owner', () => {
 
   it('keeps the sort order inside each group', () => {
     const state = fold([
-      ...at(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...at(
+      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
+      ...sequence(
         aGear({
           id: 'g-a',
           name: 'Anorak',
@@ -850,7 +851,7 @@ describe('sliceDepot — grouping by owner', () => {
         }),
         2,
       ),
-      ...at(
+      ...sequence(
         aGear({
           id: 'g-z',
           name: 'Zip-off trousers',
@@ -876,8 +877,8 @@ describe('sliceDepot — grouping by owner', () => {
 
   it('labels a Person whose op has not arrived as a dash, in its own group', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Tent' }), 1),
-      ...at(
+      ...sequence(aGear({ id: 'g1', name: 'Tent' }), 1),
+      ...sequence(
         aGear({
           id: 'g2',
           name: 'Down jacket',
@@ -961,9 +962,9 @@ describe('dimensionValues', () => {
    */
   it('orders by count descending, then tag ascending', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
-      ...at(aGear({ id: 'g2', name: 'Pan' }), 2),
-      ...at(aGear({ id: 'g3', name: 'Kettle' }), 3),
+      ...sequence(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...sequence(aGear({ id: 'g2', name: 'Pan' }), 2),
+      ...sequence(aGear({ id: 'g3', name: 'Kettle' }), 3),
       one(gearTagApplied('g1', aTag('cooking')), 4),
       one(gearTagApplied('g2', aTag('cooking')), 5),
       one(gearTagApplied('g3', aTag('cooking')), 6),
@@ -982,7 +983,7 @@ describe('dimensionValues', () => {
 
   it('drops a tag once nothing carries it any more', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...sequence(aGear({ id: 'g1', name: 'Pot set' }), 1),
       one(gearTagApplied('g1', aTag('winter')), 2),
       one(gearTagRemoved('g1', aTag('winter')), 3),
     ])
@@ -997,8 +998,8 @@ describe('dimensionValues', () => {
   // *visible* depot.
   it('does not count retired gear', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
-      ...at(aGear({ id: 'g2', name: 'Old pan' }), 2),
+      ...sequence(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...sequence(aGear({ id: 'g2', name: 'Old pan' }), 2),
       one(gearTagApplied('g1', aTag('cooking')), 3),
       one(gearTagApplied('g2', aTag('cooking')), 4),
       one(gearRetired('g2'), 5),
@@ -1012,7 +1013,7 @@ describe('dimensionValues', () => {
   // vocabulary exactly as it arrived, because the register is.
   it('offers a non-conforming tag exactly as it was folded', () => {
     const state = fold([
-      ...at(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...sequence(aGear({ id: 'g1', name: 'Pot set' }), 1),
       anOp(
         {
           aggregate: 'gear',
@@ -1048,7 +1049,9 @@ describe('dimensionValues', () => {
   // it is in the depot, so it is offered, without any list of known values
   // to be added to.
   it('offers an unrecognised value because it is derived, not declared', () => {
-    const state = fold(at(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), 1))
+    const state = fold(
+      sequence(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), 1),
+    )
     expect(dimensionValues(state, 'kind')).toEqual([
       { value: 'sled', count: 1 },
     ])

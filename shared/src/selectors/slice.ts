@@ -86,6 +86,14 @@ export interface Dimension {
    * into a name.
    */
   format(value: string, state: DepotState): string
+  /**
+   * A value that sorts before every other value whatever its count — the
+   * boards' Loose-first rule. `Grouping.pinned`'s field (below), same name
+   * and the same reason: `NOT_IN_ANY_TRIP` is not a fact about gear the way
+   * a Trip id is, it is this dimension's one reserved word, and filing it by
+   * count would let a busy Trip outrank it.
+   */
+  pinned?: string
 }
 
 /** `SINGLE · PER-PERSON · COUNTED` — the **glossary Kind**, never the
@@ -233,6 +241,12 @@ const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
    * reachable and always empty, exactly `OWNERSHIP: SHARED` + `PERSON: ELS`
    * is (S4, `passesFilters`). Not guarded, for the same reason: one filter
    * rule, and `0 OF N` is the honest answer.
+   *
+   * `pinned` is what makes {@link dimensionValues} draw the sentinel first
+   * regardless of its count — plain count-descending would not: a real
+   * Trip's `systemIdSource` id is hex, and every hex digit sorts *before*
+   * the letter `n`, so a tied or busier Trip would otherwise outrank the
+   * literal string `'none'`.
    */
   trip: {
     id: 'trip',
@@ -256,6 +270,7 @@ const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
       const trip = state.trips[value]
       return trip === undefined ? '—' : tripLabel(trip)
     },
+    pinned: NOT_IN_ANY_TRIP,
   },
 }
 
@@ -296,17 +311,16 @@ export interface DimensionValue {
  * would leave a Quartermaster unable to remove the tag they can plainly see
  * on the gear.
  *
- * **`trip`'s sentinel is pinned first, whatever its count** — the boards'
- * Loose-first rule, and the one exception to "count descending" above.
- * `NOT_IN_ANY_TRIP` is not a fact about gear the way a Trip id is; it is the
- * dimension's one reserved word, so it gets a fixed position exactly as the
- * `—` bucket {@link groupGear} appends does, rather than competing on count.
- * The exception is a value, not a branch on `id`: every other dimension's
- * values pass through untouched, and it has to be applied *after* the
- * generic sort rather than folded into its comparator, because a real Trip's
- * `systemIdSource` id (hex) sorts *before* the literal string `'none'` — the
- * generic ascending tiebreak alone would put a tied or heavier Trip ahead of
- * the sentinel.
+ * **A dimension's `pinned` value sorts first, whatever its count** — the
+ * boards' Loose-first rule, and {@link Dimension.pinned}'s whole reason to
+ * exist. `trip` pins `NOT_IN_ANY_TRIP`: it is not a fact about gear the way
+ * a Trip id is, it is that dimension's one reserved word, and it needs a
+ * fixed position because a real Trip's `systemIdSource` id (hex) sorts
+ * *before* the literal string `'none'` — the generic ascending tiebreak
+ * alone would put a tied or busier Trip ahead of the sentinel. No dimension
+ * without a `pinned` value is affected: the check is on the *value*
+ * `dimension(id).pinned` names, never on `id` itself, which is what keeps a
+ * sixth dimension's row an addition rather than a new branch here.
  */
 export function dimensionValues(
   state: DepotState,
@@ -326,14 +340,14 @@ export function dimensionValues(
       if (a.value === b.value) return 0
       return a.value < b.value ? -1 : 1
     })
-  if (id !== 'trip') return values
-  const sentinelIndex = values.findIndex((v) => v.value === NOT_IN_ANY_TRIP)
-  if (sentinelIndex <= 0) return values
-  const sentinel = values[sentinelIndex]!
+  if (of.pinned === undefined) return values
+  const pinnedIndex = values.findIndex((v) => v.value === of.pinned)
+  if (pinnedIndex <= 0) return values
+  const pinned = values[pinnedIndex]!
   return [
-    sentinel,
-    ...values.slice(0, sentinelIndex),
-    ...values.slice(sentinelIndex + 1),
+    pinned,
+    ...values.slice(0, pinnedIndex),
+    ...values.slice(pinnedIndex + 1),
   ]
 }
 
