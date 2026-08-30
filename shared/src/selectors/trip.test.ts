@@ -11,6 +11,7 @@ import { emptyState, fold } from '../reduce.ts'
 import type { DepotState, TripState } from '../state.ts'
 import {
   isActive,
+  isActivePhase,
   isClosed,
   isKnownPhase,
   participantIds,
@@ -219,6 +220,29 @@ describe('isActive', () => {
   it('is false for an absent register, which reads draft', () => {
     const state = depot([tripParticipantAdded('t1', 'p1')])
     expect(isActive(trip(state, 't1'))).toBe(false)
+  })
+})
+
+describe('isActivePhase', () => {
+  it.each(['pack_out', 'on_trip', 'unpack'])('is true for %s', (phase) => {
+    expect(isActivePhase(phase)).toBe(true)
+  })
+
+  it.each(['draft', 'closed', 'something-later'])(
+    'is false for %s',
+    (phase) => {
+      expect(isActivePhase(phase)).toBe(false)
+    },
+  )
+
+  it('is what isActive delegates to, not a second rule', () => {
+    // `isActive` is `isActivePhase(phaseOf(trip))` — this pins the
+    // delegation itself, so the two cannot drift the way an inline
+    // `phaseRow(...)?.active` at a call site already had (Task 14 review F2).
+    for (const phase of ['draft', 'pack_out', 'on_trip', 'unpack', 'closed']) {
+      const t = trip(depot(aTrip({ id: 't1', phase })), 't1')
+      expect(isActive(t)).toBe(isActivePhase(phase))
+    }
   })
 })
 

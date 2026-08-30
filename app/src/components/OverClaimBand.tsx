@@ -79,6 +79,54 @@ export function OverClaimBand({
 
   return (
     <section className={styles['band']} data-testid="over-claim-band">
+      <OverClaimGroups
+        tripId={tripId}
+        groups={groups}
+        onRemoveHere={onRemoveHere}
+        onRemoveThere={onRemoveThere}
+        onBringFewer={onBringFewer}
+      />
+    </section>
+  )
+}
+
+export interface OverClaimGroupsProps {
+  readonly tripId: string
+  /**
+   * Pre-filtered by the caller, always via {@link overClaimGroups} — never
+   * raw `overClaim`s. `OverClaimBand` computes them to decide whether to
+   * render its own `<section>` at all; `ActivationConfirm` and
+   * `ReopenConfirm` (Task 14) compute them to decide whether to open a sheet
+   * at all, which is exactly why the **filtered** result has to be the one
+   * both questions are asked of — Task 14 review F1's finding, that gating on
+   * the unfiltered `overClaimsIfActive`/`overClaimsFor` renders a warning
+   * about a conflict naming a different Trip entirely.
+   */
+  readonly groups: readonly OverClaimGroup[]
+  readonly onRemoveHere: (entryId: string) => void
+  readonly onRemoveThere: (tripId: string, entryId: string) => void
+  readonly onBringFewer: (entryId: string, count: number) => void
+}
+
+/**
+ * **The line-plus-rows loop**, pulled out from {@link OverClaimBand} in
+ * Task 14's fix round (review F7): the standing band and both §02B previews
+ * pair each {@link OverClaimGroup}'s attention line with its
+ * {@link ConflictRows}, and a third copy of that pairing is what a fourth
+ * caller would otherwise write. `.segment`/`.attention` stay owned by
+ * `OverClaimBand.module.css` — every caller of this component imports the
+ * styling from here rather than duplicating the two rules into its own
+ * module, which is what the first fix round had done twice.
+ */
+export function OverClaimGroups({
+  tripId,
+  groups,
+  onRemoveHere,
+  onRemoveThere,
+  onBringFewer,
+}: OverClaimGroupsProps) {
+  return (
+    <>
       {groups.map((group) => (
         <div key={group.line} className={styles['segment']}>
           <p className={styles['attention']} data-testid="over-claim-attention">
@@ -93,7 +141,7 @@ export function OverClaimBand({
           />
         </div>
       ))}
-    </section>
+    </>
   )
 }
 

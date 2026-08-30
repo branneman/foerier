@@ -22,8 +22,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import activationStyles from './ActivationConfirm.module.css'
 import { PhaseSheet } from './PhaseSheet'
-import styles from './PhaseSheet.module.css'
 
 /**
  * A **real** store, seeded by emitting real ops — `OwnerPicker.test.tsx`'s
@@ -37,6 +37,7 @@ const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
 const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const TRIP = 'tttttttt-0000-7000-8000-000000000001'
 const OTHER_TRIP = 'tttttttt-0000-7000-8000-000000000002'
+const THIRD_TRIP = 'tttttttt-0000-7000-8000-000000000003'
 const GEAR = 'gggggggg-0000-7000-8000-000000000001'
 
 let nextId = 0
@@ -109,7 +110,52 @@ async function seededTrip(
  * selector tier. `TRIP` stays a Draft here; the test drives the actual
  * PACK-OUT tap.
  */
-async function seededDraftClash(): Promise<Seeded> {
+async function seededDraftClash(name = 'Vosges — Oct'): Promise<Seeded> {
+  const log: OpLog = inMemoryOpLog()
+  const store = createDepotStore({
+    log,
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(
+    gearRecorded(GEAR, {
+      name: 'Tent, tunnel 4p',
+      container: false,
+      kind: 'single',
+    }),
+  )
+  store.getState().emit(tripCreated(TRIP, name))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-here', { from: 'depot', gearId: GEAR }))
+  store.getState().emit(tripCreated(OTHER_TRIP, 'Alps 2026'))
+  store.getState().emit(tripPhaseMoved(OTHER_TRIP, 'pack_out'))
+  store
+    .getState()
+    .emit(
+      tripEntryAdded(OTHER_TRIP, 'e-other', { from: 'depot', gearId: GEAR }),
+    )
+  await store.getState().drained()
+
+  const seeded = (await phaseMoves(log)).length
+  return {
+    store,
+    trip: () => store.getState().state.trips[TRIP]!,
+    moves: async () => (await phaseMoves(log)).slice(seeded),
+  }
+}
+
+/**
+ * `TRIP` is a Draft holding no Entry at all. `OTHER_TRIP` and `THIRD_TRIP`
+ * are both already active and clash with **each other** over the same Gear —
+ * `overClaimsIfActive(state, TRIP)` is deliberately unscoped to `TRIP`
+ * (`OverClaimBand`'s own docstring), so it reports this pair even though
+ * `TRIP` names none of it. Task 14 review F1's regression: the gate must
+ * ask the **filtered** block (`overClaimGroups`), which excludes every claim
+ * not naming `TRIP`, or this scenario opens a sheet with an attention line
+ * and nothing beneath it.
+ */
+async function seededUnrelatedClash(): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
   const store = createDepotStore({
     log,
@@ -124,16 +170,16 @@ async function seededDraftClash(): Promise<Seeded> {
     }),
   )
   store.getState().emit(tripCreated(TRIP, 'Vosges — Oct'))
-  store
-    .getState()
-    .emit(tripEntryAdded(TRIP, 'e-here', { from: 'depot', gearId: GEAR }))
   store.getState().emit(tripCreated(OTHER_TRIP, 'Alps 2026'))
   store.getState().emit(tripPhaseMoved(OTHER_TRIP, 'pack_out'))
   store
     .getState()
-    .emit(
-      tripEntryAdded(OTHER_TRIP, 'e-other', { from: 'depot', gearId: GEAR }),
-    )
+    .emit(tripEntryAdded(OTHER_TRIP, 'e-alps', { from: 'depot', gearId: GEAR }))
+  store.getState().emit(tripCreated(THIRD_TRIP, 'Jura 2025'))
+  store.getState().emit(tripPhaseMoved(THIRD_TRIP, 'on_trip'))
+  store
+    .getState()
+    .emit(tripEntryAdded(THIRD_TRIP, 'e-jura', { from: 'depot', gearId: GEAR }))
   await store.getState().drained()
 
   const seeded = (await phaseMoves(log)).length
@@ -422,6 +468,25 @@ describe('the SET PHASE sheet', () => {
       expect(closes()).toBe(1)
     })
 
+    it('does not gate on a conflict naming two other Trips entirely', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededUnrelatedClash()
+      const { closes } = renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
+      await seeded.store.getState().drained()
+
+      // `overClaimsIfActive(state, TRIP)` is non-empty here — Alps and Jura
+      // clash over the same tent — but neither claim names TRIP, so the
+      // filtered block is empty and the gate must not fire (Task 14 review
+      // F1). The un-fixed gate opened a sheet reading `Start pack-out — …?`
+      // with an attention line and nothing beneath it.
+      expect(screen.queryByRole('alertdialog')).toBeNull()
+      expect(screen.queryByTestId('over-claim-attention')).toBeNull()
+      expect(await seeded.moves()).toEqual(['pack_out'])
+      expect(closes()).toBe(1)
+    })
+
     it('keeps Start pack-out filled accent, never red', async () => {
       const user = userEvent.setup()
       const seeded = await seededDraftClash()
@@ -430,12 +495,12 @@ describe('the SET PHASE sheet', () => {
       await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
 
       const button = screen.getByRole('button', { name: 'Start pack-out' })
-      // `.activatePrimary` is the accent button — background
-      // `var(--color-accent)`, never the attention colour the block above it
-      // carries. Asserting the class rather than a computed style: this
-      // project's Tier 3 runs with `css: false`, so `toHaveStyle` would pass
-      // unconditionally.
-      expect(button).toHaveClass(styles['activatePrimary']!)
+      // `.primary` (`ActivationConfirm.module.css`) is the accent button —
+      // background `var(--color-accent)`, never the attention colour the
+      // block above it carries. Asserting the class rather than a computed
+      // style: this project's Tier 3 runs with `css: false`, so
+      // `toHaveStyle` would pass unconditionally.
+      expect(button).toHaveClass(activationStyles['primary']!)
     })
 
     it('still moves the phase when the primary is pressed', async () => {
@@ -451,6 +516,22 @@ describe('the SET PHASE sheet', () => {
       // anyway — nothing here ever blocks it.
       expect(await seeded.moves()).toEqual(['pack_out'])
       expect(closes()).toBe(1)
+    })
+
+    it('titles a nameless Draft with the word tripNameOrUnnamed reads it as', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededDraftClash('')
+      renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
+
+      // `tripLabel` alone would draw `Start pack-out — —?` — the em dash
+      // twice with nothing between (Task 14 review F5). `tripNameOrUnnamed`
+      // is the substitution `RemoveElsewhereConfirm` and `OverClaimBand`
+      // already share.
+      expect(screen.getByRole('alertdialog')).toHaveTextContent(
+        'Start pack-out — Unnamed trip?',
+      )
     })
   })
 })

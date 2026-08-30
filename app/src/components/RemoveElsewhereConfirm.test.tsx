@@ -189,6 +189,20 @@ describe('the Remove-on-Alps confirm', () => {
     ])
   })
 
+  it('renders the sheet variant, with a grabber, not the card default', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const seed = await seeded()
+    renderConfirm(seed)
+
+    // Task 14 review F6, closed here too — no test in this file pinned
+    // `variant="sheet"` itself, only the button classes it happens to
+    // share with the card default's own accent buttons. The grabber
+    // (`Confirm.tsx`'s own `{sheet && <span aria-hidden="true" .../>}`)
+    // renders only under `variant="sheet"`.
+    const confirm = screen.getByRole('alertdialog')
+    expect(confirm.querySelector('[aria-hidden="true"]')).not.toBeNull()
+  })
+
   it('renders nothing when the Entry is gone from the fold — a live race, not a hypothetical', async () => {
     // The confirm can stay mounted while sync runs: another Device's own
     // `trip.entry_removed` for the same Entry can fold in through

@@ -233,13 +233,40 @@ describe('the reopen confirm', () => {
     expect(screen.queryByText(/LOST/)).toBeNull()
   })
 
-  it('keeps the reopen primary flush left, filled accent, and sheet-shaped', async () => {
+  it('keeps the reopen primary flush left and filled accent', async () => {
     const seeded = await aClosedTrip()
     renderConfirm(seeded, { to: 'unpack' })
 
-    // Task 14's card/sheet fix: `variant="sheet"`, not the card default
-    // whose `.descriptionCard` draws the body in attention-amber mono.
     const button = screen.getByRole('button', { name: 'Reopen' })
     expect(button).toHaveClass(styles['primary']!)
+  })
+
+  it('renders the sheet variant, with a grabber, not the card default', async () => {
+    const seeded = await aClosedTrip()
+    renderConfirm(seeded, { to: 'unpack' })
+
+    // Task 14 review F6: `toHaveClass(styles['primary'])` alone covers
+    // `flex: 1` and the accent background, but says nothing about the
+    // variant — a regression to the `card` default draws the whole body in
+    // attention-amber mono (`.descriptionCard`) and would still pass that
+    // assertion. The grabber (`Confirm.tsx`'s own
+    // `{sheet && <span aria-hidden="true" .../>}`) renders only under
+    // `variant="sheet"`, so its presence is what actually pins the variant.
+    const confirm = screen.getByRole('alertdialog')
+    expect(confirm.querySelector('[aria-hidden="true"]')).not.toBeNull()
+  })
+
+  it('reopens into draft without drawing an over-claim block', async () => {
+    const seeded = await aClosedTripClash()
+    renderConfirm(seeded, { to: 'draft' })
+
+    // Invariant 17: drafts overlap freely. `TRIP` and `OTHER_TRIP` clash the
+    // moment either is active, but reopening into `draft` activates
+    // nothing — asking `overClaimsIfActive` anyway would draw a warning
+    // about a conflict this move does not create (Task 14 review F2).
+    expect(screen.queryByTestId('over-claim-attention')).toBeNull()
+    expect(screen.getByRole('alertdialog')).toHaveTextContent(
+      'It returns to Draft exactly as it stood. Closing cleared nothing.',
+    )
   })
 })

@@ -37,6 +37,7 @@ import { GearListBuilder } from './GearListBuilder'
 const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
 const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
+const JURA = 'tttttttt-0000-7000-8000-00000000000b'
 
 let nextId = 0
 
@@ -284,7 +285,7 @@ describe('the gear list builder — Start pack-out', () => {
     expect(screen.queryByRole('button', { name: 'Start pack-out' })).toBeNull()
   })
 
-  it('does nothing yet — the over-claim preview is Task 14s', async () => {
+  it('moves straight to pack-out when there is nothing to warn about', async () => {
     setViewport(SPLIT)
     const user = userEvent.setup()
     const { store, authored } = await seededStore(
@@ -294,10 +295,44 @@ describe('the gear list builder — Start pack-out', () => {
 
     await user.click(screen.getByRole('button', { name: 'Start pack-out' }))
 
-    expect(await authored()).toEqual([])
+    // No conflict, no preview: `PhaseSheet.tsx`'s own rule — "never blocks"
+    // also means never adding a screen nobody needs.
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(await authored()).toEqual([
+      { type: 'trip.phase_moved', payload: { phase: 'pack_out' } },
+    ])
     expect(
       screen.getByRole('heading', { name: 'Alps 2026 — gear list' }),
     ).toBeVisible()
+  })
+
+  it('opens the over-claim preview when a Draft would clash on activation', async () => {
+    setViewport(SPLIT)
+    const user = userEvent.setup()
+    const { store, authored } = await seededStore(
+      gearRecorded('tent', {
+        name: 'Tent, tunnel 4p',
+        container: false,
+        kind: 'single',
+      }),
+      tripCreated(ALPS, 'Alps 2026'),
+      tripEntryAdded(ALPS, 'e-alps', { from: 'depot', gearId: 'tent' }),
+      tripCreated(JURA, 'Jura 2025'),
+      tripPhaseMoved(JURA, 'pack_out'),
+      tripEntryAdded(JURA, 'e-jura', { from: 'depot', gearId: 'tent' }),
+    )
+    renderBuilder(store)
+
+    await user.click(screen.getByRole('button', { name: 'Start pack-out' }))
+
+    const confirm = screen.getByRole('alertdialog')
+    expect(confirm).toHaveTextContent('Start pack-out — Alps 2026?')
+    expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+      '▲ 1 entry is already claimed by Jura 2025.',
+    )
+    // Not moved yet — a preview states the conflict, it does not decide for
+    // the Quartermaster.
+    expect(await authored()).toEqual([])
   })
 })
 

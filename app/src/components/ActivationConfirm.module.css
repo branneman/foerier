@@ -1,0 +1,32 @@
+@layer components {
+  /* `ReopenConfirm.module.css`'s own two buttons, moved here whole: accent,
+     not attention — starting pack-out is not itself an alarming act, and the
+     over-claim colour stays on the block above. `flex: 1` matches the
+     board's own action row (`Screens B:862-864`), `Start pack-out` grown and
+     `Cancel` left its own width. The `.segment`/`.attention` pair those two
+     files also duplicated is gone from here (Task 14 review F7) — the block
+     itself is `OverClaimGroups`, which carries its own styling from
+     `OverClaimBand.module.css`. */
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .primary {
+    flex: 1;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+}

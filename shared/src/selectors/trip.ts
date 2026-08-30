@@ -209,8 +209,14 @@ export function isKnownPhase(phase: PhaseValue): boolean {
 }
 
 /**
- * Whether the Trip is one of invariant 17's three arranging phases — the
- * **only** definition of active-ness in the codebase.
+ * Whether a **phase value** — not yet a Trip — is one of invariant 17's three
+ * arranging phases. `isActive` is `isActivePhase(phaseOf(trip))`; this one
+ * exists on its own for a caller that has a *hypothetical* phase and no Trip
+ * to read it from — `ReopenConfirm`'s `to` prop names the phase a reopen is
+ * headed for, and asking whether reopening *there* creates a claim needs the
+ * phase table's own answer, not a second inline `phaseRow(...)?.active`
+ * mirroring it (Task 14 review F2: a screen re-deriving this is exactly the
+ * failure three separate S6 reviews already caught for its five siblings).
  *
  * An unrecognised phase is **not** active, which is the conservative
  * direction and the one §3.4 argues for: an unknown phase holds no claims and
@@ -218,8 +224,16 @@ export function isKnownPhase(phase: PhaseValue): boolean {
  * doing. The failure mode of the other choice is gear reported as taken by a
  * Trip this build cannot describe.
  */
+export function isActivePhase(phase: PhaseValue): boolean {
+  return phaseRow(phase)?.active ?? false
+}
+
+/**
+ * Whether the Trip is one of invariant 17's three arranging phases — the
+ * **only** definition of active-ness in the codebase.
+ */
 export function isActive(trip: TripState): boolean {
-  return phaseRow(phaseOf(trip))?.active ?? false
+  return isActivePhase(phaseOf(trip))
 }
 
 /**

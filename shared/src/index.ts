@@ -147,6 +147,7 @@ export {
 export type { Phase, PhaseKey, TripSections } from './selectors/trip.ts'
 export {
   isActive,
+  isActivePhase,
   isClosed,
   isKnownPhase,
   participantIds,

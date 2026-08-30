@@ -1,20 +1,24 @@
 import {
   listTotals,
+  overClaimsIfActive,
   phaseOf,
   tripEntryBringCountSet,
   tripEntryRemoved,
   tripLabel,
+  tripPhaseMoved,
   UNNAMED_PERSON,
   type TripState,
 } from '@foerier/shared'
 import { useState } from 'react'
 import { Link, useSearch } from 'wouter'
 
+import { ActivationConfirm } from '../components/ActivationConfirm'
 import {
   entryCountLabel,
   GearListSection,
   pieceLabel,
 } from '../components/GearListSection'
+import { overClaimGroups } from '../components/OverClaimBand'
 import { TripOnlySheet } from '../components/TripOnlySheet'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
@@ -118,16 +122,23 @@ import styles from './GearListBuilder.module.css'
  * draws and carries its own totals in the footer instead. `EST 48.2 KG` is
  * story 16, `LATER` — drawn nowhere here, header or footer, per spec §4.4.
  *
- * ## `Start pack-out` is a documented no-op; the dashed row is wired
+ * ## `Start pack-out` opens `ActivationConfirm`, or moves directly
  *
- * `Start pack-out` renders for a Draft only (`phaseOf(trip) === 'draft'`) and
- * opens the over-claim preview Task 14 builds — over-claim moment #2, spec
- * §4.5. It stays a documented no-op rather than a link to a destination that
- * doesn't exist yet, `Trip.tsx`'s own argument: a control that leads
- * somewhere and lies about it is worse than one that leads nowhere. The
- * dashed trip-only row opens `TripOnlySheet` (Task 12), mirroring `Trip.tsx`'s
- * own identical row — that sheet owns its own `trip.entry_added` emit, so
- * this screen only opens it.
+ * `Start pack-out` renders for a Draft only (`phaseOf(trip) === 'draft'`) —
+ * over-claim moment #2, spec §4.5. Task 14 built `ActivationConfirm`
+ * (`components/ActivationConfirm.tsx`) as `PhaseSheet`'s own preview and left
+ * this button a documented no-op; Task 14's fix round wires it, since the
+ * builder is the only place `Start pack-out` is ever reachable at Split and
+ * above (the phone frame draws no such button at all, spec §4.4) and no
+ * later task in this slice touches `app/`. Exactly `PhaseSheet.tsx`'s own
+ * gate: `overClaimGroups(overClaimsIfActive(state, tripId), tripId, state)`
+ * decides whether there is anything to preview, and a Draft with nothing to
+ * warn about moves straight to `pack_out` — "never blocks" also means never
+ * adding a screen nobody needs.
+ *
+ * The dashed trip-only row opens `TripOnlySheet` (Task 12), mirroring
+ * `Trip.tsx`'s own identical row — that sheet owns its own
+ * `trip.entry_added` emit, so this screen only opens it.
  */
 export interface GearListBuilderProps {
   readonly tripId: string
@@ -139,6 +150,10 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const sync = useDepot((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
   const [tripOnlyOpen, setTripOnlyOpen] = useState(false)
+  // Whether the Draft → Pack-out preview is up — `PhaseSheet.tsx`'s own
+  // field of the same name and the same reason: set only when there is
+  // something for `handleStartPackOut` to show.
+  const [activating, setActivating] = useState(false)
   const search = useSearch()
   const fromTrips = new URLSearchParams(search).get('from') === 'trips'
   // `splitPane: false` — see this file's own docstring on the two-doors
@@ -169,6 +184,15 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const totals = listTotals(trip, state)
   const isDraft = phaseOf(trip) === 'draft'
   const participants = tripParticipants(state, trip)
+  // `PhaseSheet.tsx`'s own gate, verbatim: the **filtered** block, not the
+  // raw `overClaimsIfActive`, decides whether there is anything to preview
+  // (Task 14 review F1) — `overClaimsIfActive` is deliberately unscoped to
+  // `tripId` and can report a conflict naming two other Trips entirely.
+  const activationGroups = overClaimGroups(
+    overClaimsIfActive(state, trip.id),
+    trip.id,
+    state,
+  )
 
   function handleBringCountChange(entryId: string, next: number) {
     emit(tripEntryBringCountSet(tripId, entryId, next))
@@ -182,9 +206,17 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
     emit(tripEntryRemoved(tripId, entryId))
   }
 
-  // Opens the over-claim preview Task 14 builds — over-claim moment #2, spec
-  // §4.5. A documented no-op until then — see the task report.
-  function handleStartPackOut() {}
+  // Over-claim moment #2, spec §4.5 — `PhaseSheet.tsx`'s own `choose`,
+  // narrowed to the one transition this button ever offers (`isDraft` already
+  // gates the button's very existence, so there is no `current` to branch
+  // on here).
+  function handleStartPackOut() {
+    if (activationGroups.length > 0) {
+      setActivating(true)
+      return
+    }
+    emit(tripPhaseMoved(tripId, 'pack_out'))
+  }
 
   // Opens `TripOnlySheet`, which owns its own `trip.entry_added` emit —
   // mirrors `Trip.tsx`'s own dashed row exactly.
@@ -310,6 +342,18 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
 
       {tripOnlyOpen && (
         <TripOnlySheet tripId={tripId} onClose={() => setTripOnlyOpen(false)} />
+      )}
+
+      {activating && (
+        <ActivationConfirm
+          trip={trip}
+          groups={activationGroups}
+          onCancel={() => setActivating(false)}
+          onConfirm={() => {
+            emit(tripPhaseMoved(tripId, 'pack_out'))
+            setActivating(false)
+          }}
+        />
       )}
     </div>
   )

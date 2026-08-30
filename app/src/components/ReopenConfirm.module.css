@@ -29,21 +29,4 @@
     font-weight: 600;
     cursor: pointer;
   }
-
-  /* `OverClaimBand.module.css`'s own `.segment`/`.attention`, duplicated
-     whole — Task 14's own precedent (`PhaseSheet.module.css`'s
-     `.activateSegment`/`.activateAttention`): `ConflictRows` carries its own
-     row styling wherever it mounts, and only the attention line and its
-     wrapper are this caller's to draw. */
-  .segment {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-  }
-
-  .attention {
-    font: var(--text-data) var(--font-mono);
-    color: var(--color-status-attention);
-    margin: 0;
-  }
 }
