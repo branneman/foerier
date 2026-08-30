@@ -8,10 +8,10 @@ import { participantIds } from './trip.ts'
  * surfaces (the builder, the trip screen, the claim selector) must agree on,
  * stated once here rather than at each of them.
  *
- * `bringCountOf` is the **fourth** site gating on `kind === 'counted'`
+ * `bringCountOf` is one of several sites gating on `kind === 'counted'`
  * (`selectors/depot.ts`, `selectors/whereabouts.ts`,
- * `app/src/screens/GearDetail.tsx` are the other three) — the reason the
- * question moves behind one function instead of a fifth copy of the gate.
+ * `app/src/screens/GearDetail.tsx` among them) — the reason the question
+ * moves behind one function instead of yet another copy of the gate.
  */
 
 /** What the builder's footer and the section band count. */
@@ -134,8 +134,8 @@ export function entryKind(
  * aggregate — the reducer cannot gate on it without making the fold
  * order-dependent on whether `gear.kind_set` had arrived, so `bringCount`
  * folds for any Entry (`state.ts`'s own note on the register). The gate lives
- * here instead, on the way out — the fourth site asking "is this Gear
- * Counted", stated once so a fifth never re-derives it.
+ * here instead, on the way out — one of several sites asking "is this Gear
+ * Counted", stated once so the next one never re-derives it.
  *
  * **An absent register on a Counted Entry reads `1`.** Adding Counted gear
  * without touching the stepper means bringing one, and writing a register to

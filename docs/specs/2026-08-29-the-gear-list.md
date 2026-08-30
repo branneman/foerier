@@ -1024,24 +1024,31 @@ own words outran what it had checked. All ten are amended here rather than
 back into the sections that state them.
 
 **§4.8, the glance table's `ui/Stepper` row, and §5.3's `Stepper.test.tsx`
-bullet — `Stepper` ships with two callers, not three.** Gear detail and the
-gear list convert; Add gear's Owned-count well does not, and `AddGear.tsx`
-is untouched by this slice (not even for the stepper — see the §7 entry
-below). But the reason given — *"`Stepper`'s contract has no channel for
-[unset]"* — is no longer true, and stating it that way risks a future slice
-reading the primitive as needing extension it does not. `0c18889` (the
-commit that gave `Stepper` its one caller) recorded the real reason at the
-time: the contract genuinely was `{value: number}`, with no room for a blank
-well, and converting Add gear was tried and reverted on that exact point.
-`d12e89a`, later in the same slice, widened it to `value: number | null` /
-`onChange: (next: number | null) => void` for the gear-list caller's own
-needs — and never circled back to Add gear, whose CTA-gating well had
-already shipped and needed no more attention that slice. **The fold is
-possible and deferred, not impossible.** What Add gear's field still owns
-that `Stepper` does not: a `<label htmlFor>`, the `OPENS EMPTY — GATES THE
-CTA` fact line, and a CTA gate computed from the raw string rather than from
-`Stepper`'s parsed value. A future slice can fold it in without touching the
-primitive; this spec should not be read as saying otherwise.
+bullet — `Stepper` ships with two callers, not three, and one converts while
+the other is new.** Gear detail's hand-rolled Owned-count stepper converts;
+the gear list's Bring-count control (`EntryRow.tsx`) is a new caller, not a
+folded one — S7 is the first slice with a gear list, so there was nothing
+there to convert. Add gear's Owned-count well joins neither, and
+`AddGear.tsx` is untouched by this slice (not even for the stepper — see the
+§7 entry below). But the reason given — *"`Stepper`'s contract has no
+channel for [unset]"* — is no longer true, and stating it that way risks a
+future slice reading the primitive as needing extension it does not.
+`0c18889` (the commit that gave `Stepper` its one caller, gear detail)
+recorded the real reason at the time: the contract was `{value: number}`,
+with no room for a blank well, and converting Add gear was tried and
+reverted on that exact point. `3c0788b` — `Stepper`'s own review round,
+driven by its `type="text"` well and by giving gear detail's Save guard
+something to check — is where a blank well first became expressible, as
+`onChange(NaN)`; `d12e89a` converted that to `onChange(null)`, since NaN
+typechecked but made "blank" a fact every caller had to know to guard
+against. Neither commit has anything to do with the gear list, which does
+not exist yet at either point — `EntryRow.tsx` lands two commits later, at
+`bc632b5`. **The fold is possible and deferred, not impossible.** What Add
+gear's field still owns that `Stepper` does not: a `<label htmlFor>`, the
+`OPENS EMPTY — GATES THE CTA` fact line, and a CTA gate computed from the
+raw string rather than from `Stepper`'s parsed value. A future slice can
+fold it in without touching the primitive; this spec should not be read as
+saying otherwise.
 
 **§5.2, scenario 5 — a concurrent `trip.entry_added` and `trip.entry_removed`
 write two registers, not one.** This section read it as an ordinary
@@ -1063,10 +1070,13 @@ return type, `KindValue | 'trip_only'`, undercounted its own cases:
 `undefined` covers **both** a depot Entry whose Gear has not yet reached this
 replica's fold (the ordinary cross-aggregate sync race between
 `trip.entry_added` and `gear.recorded`) **and** a depot Entry whose Gear has
-folded but carries no `kind` register of its own — `pieceCountOf`'s own table
-already carries a row for the second case ("Gear with an unrecognised Kind"
-sits beside "Depot Entry whose Gear is not yet synced," and both default to
-`1` the same way). The drafted prose named only the first.
+folded but carries no `kind` register of its own —
+`shared/src/selectors/entry.ts`'s own docstrings on `entryKind` and
+`pieceCountOf` already pair these two, since both default to `1` the same
+way. (The spec's own §3.1 table names a third, distinct case — "Gear with an
+unrecognised Kind," a `kind` register holding a value this build does not
+know — which behaves the same but is not this one.) The drafted prose named
+only the first `undefined` cause.
 
 **§4.4 — the Desktop strip's title and back link, not its sync line.** The
 draft had Split's pane-level band and Desktop's full-width strip carrying the
@@ -1117,13 +1127,14 @@ believed would happen and did not; the second half — the CTA-pinning debt
 being untouched — is the only part that was ever true, and it stays true for
 the reason it always did: nobody touched the file.
 
-**§4.3 and §4.4 — the picker's search field carries no `/` hint at either
-width, matching §9.** Both draft the field as "carrying the `/` hint at this
-width," written before the keyboard-surface ruling in §9 landed in this same
-document. §9 is the standing word on this: S7 ships with no keyboard
-shortcuts at all, coherently, and the hint strip goes with them —
-`DepotPicker.tsx`'s placeholder is one literal, shared by both the screen and
-pane variants, and it is silent on `/`.
+**§4.4 — the builder's left pane search field carries no `/` hint, matching
+§9.** The draft describes it as "carrying the `/` hint at this width,"
+written before the keyboard-surface ruling in §9 landed in this same
+document; §4.3's own field makes no such claim to begin with. §9 is the
+standing word on this: S7 ships with no keyboard shortcuts at all,
+coherently, and the hint strip goes with them — `DepotPicker.tsx`'s
+placeholder is one literal, shared by both the screen and pane variants, and
+it is silent on `/`.
 
 **§10's doc-amendments table — the `technical-debt.md` row.** The table
 planned *"the `TripCard` entry narrowed to its remaining half."* What

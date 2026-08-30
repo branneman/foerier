@@ -38,12 +38,17 @@ import styles from './Stepper.module.css'
  * guards with `!== null` before it emits.
  *
  * **This channel is why Add gear's own well is not a third caller, not why
- * it can't be.** `null` was added for the gear list's Bring-count control;
- * Add gear's hand-rolled well predates it and was never revisited once the
- * channel existed. Folding it in is possible and simply undone — what it
- * would still need from its own component is a `<label htmlFor>`, the
- * `OPENS EMPTY — GATES THE CTA` fact line, and a CTA gate computed from
- * `Stepper`'s parsed value rather than from the raw string.
+ * it can't be.** A blank well became expressible before the gear list
+ * existed: `3c0788b` (this component's own review round) reported it as
+ * `onChange(NaN)`, driven by the `type="text"` well and by giving gear
+ * detail's Save guard something to check, and `d12e89a` converted that to
+ * `onChange(null)` — NaN typechecked but made "blank" a fact every caller
+ * had to know to guard against. Add gear's hand-rolled well predates both
+ * and was never revisited once the channel existed. Folding it in is
+ * possible and simply undone — what it would still need from its own
+ * component is a `<label htmlFor>`, the `OPENS EMPTY — GATES THE CTA` fact
+ * line, and a CTA gate computed from `Stepper`'s parsed value rather than
+ * from the raw string.
  *
  * `min` defaults to **`0`**, not `1`. A Bring-count of zero is expressible on
  * the wire (`{entry_id, count: int ≥ 0}`) and is not the same as removing the
