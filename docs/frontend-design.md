@@ -142,6 +142,48 @@ Nav therefore has three treatments — bottom tabs (thumb zone) → icon rail �
 labeled sidebar. **Roomy** is the mode added specifically to kill the wasted side
 space a 393-px-designed single column leaves on a large phone or foldable.
 
+**The shell is one viewport tall in every mode, and the screen scrolls inside
+it.** `.shell` is a fixed `100svh` grid and `.shell__main` is the scroll
+container; in the signed-in app nothing else scrolls, the document included.
+That is what makes each nav treatment *persistent* rather than merely present:
+below Split the bottom tabs stay in the thumb zone on a two-hundred-item Depot,
+and from Split up the nav column's pinned foot — the `ACCOUNT` row above the
+sync marker — stays at the bottom of the screen instead of sliding to the
+bottom of the document, which is where a shell sized by `min-height` put it.
+The same mechanism pins the phone header band, which below Split carries the
+sync line and the only route to Account. Four consequences are worth knowing
+before touching the shell:
+
+- **A screen's floating control is sticky against `.shell__main`, so its inset
+  is `0`.** A sticky inset is resolved against the scrollport reduced by the
+  scroll container's own padding, and `.shell__main`'s bottom padding is
+  already the drawn 18px (`--fab-clearance`). An inset on the control would be
+  added to that padding rather than restate it — measured in Chromium,
+  `bottom: 18px` against an 18px foot floats the control 36px above the bar. So
+  the clearance is said once, at the foot, and the control carries a zero.
+- **A route change resets the offset to the top**, in `AppShell` and nowhere
+  else. A scroll container that outlives the route carries its offset into
+  whatever renders next; the document scroller this replaced reset itself. It
+  is a reset and not a restore: restoring is per history entry rather than per
+  path, and nothing here holds history entries.
+- **The scrollbar belongs to the content column, not the window.**
+  `.shell__main` is what carries the `max-width` cap and the centring at Roomy
+  and Desktop, so where a platform draws a classic scrollbar it lands on the
+  1120px column's right edge.
+- **`svh`, not `dvh`.** With an inner element scrolling, a mobile browser's
+  toolbars never retract, so the small viewport *is* the viewport and a dynamic
+  unit would chase a transition that does not happen. It also matches the unit
+  the sheets' `max-height` already uses.
+
+**Radix's scroll lock still holds.** `react-remove-scroll`, which every `Sheet`
+and `Confirm` sits inside, does two things: `overflow: hidden` on `body`, and
+capture-phase `wheel`/`touchmove` handlers that cancel any such event whose
+target lies outside the locked subtree. The first becomes a no-op once the body
+no longer scrolls; the second is what does the work, and it is indifferent to
+which element the scrollport is. Verified in Chromium against a scrolling
+`.shell__main` with a Radix dialog open: wheel and touch over the background
+both leave the offset where it was.
+
 ### 3.2 Components — container queries
 
 The same list row, trip card, or filter cluster appears in a 393-px phone, a
@@ -272,13 +314,15 @@ never reaches the household. Left open rather than added — adding the
 line without a board to draw it from is exactly the guess this doc keeps
 refusing to make.
 
-**A gap at Split, and no board answers it.** The FAB (`Depot`, `Trips`)
-is gated `!isDesktop` and offset `bottom: 4.625rem` — 74px, which is the 56px
-tab bar plus 18px. At Split there is no tab bar: the nav is the left rail, so
-the offset clears nothing, and on `Depot` the control floats over the detail
-pane rather than sitting in the list pane's box. It is fixed to the viewport
-now and correctly so; what is missing is a drawn answer for where a FAB belongs
-once the nav moves off the bottom edge.
+**The gap at Split has since been drawn and closed.** This section once
+recorded an open question — the FAB was gated `!isDesktop` and offset a literal
+74px, so at Split it cleared a bar that is not there and, on `Depot`, floated
+over the detail pane rather than sitting in the list pane's box. `Screens B`
+02A answered it: **the FAB accompanies the bottom tab bar, and pane modes carry
+the control in the pane's own title row** (`docs/design/README.md` §5). Both
+screens now gate the button on `!isSplit` and dock a title-row control from
+Split up, and the offset names no height of the bar at all — see §3.1's shell
+paragraph for the mechanism that replaced the literal.
 
 ## 4. CSS architecture
 
