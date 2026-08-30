@@ -276,8 +276,9 @@ describe('the trip screen — the header the board draws', () => {
         name: '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
       }),
     ).toBeVisible()
+    // A `<Link>` now that `/trips/:id/add` (Task 10) exists.
     expect(
-      screen.getByRole('button', { name: '+ Add from the depot' }),
+      screen.getByRole('link', { name: '+ Add from the depot' }),
     ).toBeVisible()
     // No `GEAR LIST` band and no `EDIT LIST ›`: those belong to the
     // non-empty branch alone.
@@ -535,8 +536,9 @@ describe('the trip screen — the gear list (S7)', () => {
         name: '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
       }),
     ).toBeVisible()
+    // A `<Link>` now that `/trips/:id/add` (Task 10) exists.
     expect(
-      screen.getByRole('button', { name: '+ Add from the depot' }),
+      screen.getByRole('link', { name: '+ Add from the depot' }),
     ).toBeVisible()
     // The reading affordance belongs to the other mode alone.
     expect(screen.queryByText('EDIT LIST ›')).toBeNull()
@@ -568,7 +570,7 @@ describe('the trip screen — the gear list (S7)', () => {
       ),
     ).toBeNull()
     expect(
-      screen.queryByRole('button', { name: '+ Add from the depot' }),
+      screen.queryByRole('link', { name: '+ Add from the depot' }),
     ).toBeNull()
     expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×4')
     expect(screen.getByRole('button', { name: 'EDIT LIST ›' })).toBeVisible()
@@ -728,7 +730,7 @@ describe('the trip screen — the gear list (S7)', () => {
     expect(await seed.authored()).toEqual([])
   })
 
-  it('does nothing yet from the dashed row or the pinned button, below Split', async () => {
+  it('does nothing yet from the dashed row, below Split', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const user = userEvent.setup()
     const seed = await renderTrip(
@@ -753,13 +755,35 @@ describe('the trip screen — the gear list (S7)', () => {
     // overlay does not remove the page behind it from the DOM.
     expect(screen.queryByRole('dialog')).toBeNull()
 
-    await user.click(
-      screen.getByRole('button', { name: '+ Add from the depot' }),
+    expect(await seed.authored()).toEqual([])
+    // `TripOnlySheet`'s route is Task 12's: no navigation away yet.
+    expect(screen.getByRole('heading', { name: 'Alps 2026' })).toBeVisible()
+  })
+
+  /**
+   * The pinned primary used to be this same file's third documented no-op —
+   * `/trips/:id/add` now exists (Task 10), so the control is a real `<Link>`
+   * and this pins the destination rather than an absence of one. `‹ TRIPS`'s
+   * own assertion above checks a destination the same way, rather than
+   * simulating a navigation this test's own `<Route path="/trips/:id">` has
+   * no page to receive.
+   */
+  it('the pinned button now points at /trips/:id/add', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
     )
 
-    expect(await seed.authored()).toEqual([])
-    // Neither control navigates: both routes are Tasks 10 and 12's to build.
-    expect(screen.getByRole('heading', { name: 'Alps 2026' })).toBeVisible()
+    expect(
+      screen.getByRole('link', { name: '+ Add from the depot' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/add`)
   })
 
   it('does nothing yet from EDIT LIST, from Split up', async () => {

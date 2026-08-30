@@ -27,6 +27,7 @@ import { createSessionDepot, type DepotFactory } from './depot/wiring'
 import { DepotView } from './shell/DepotView'
 import { Account } from './screens/Account'
 import { AddGear } from './screens/AddGear'
+import { DepotPicker } from './screens/DepotPicker'
 import { InviteIssued } from './screens/InviteIssued'
 import { Devices } from './screens/Devices'
 import { People } from './screens/People'
@@ -38,7 +39,7 @@ import { Trip } from './screens/Trip'
 import { Trips } from './screens/Trips'
 import { AppShell } from './shell/AppShell'
 import styles from './shell/AppShell.module.css'
-import { DESKTOP, useMediaQuery } from './shell/useMediaQuery'
+import { DESKTOP, SPLIT, useMediaQuery } from './shell/useMediaQuery'
 
 /**
  * Ask the browser not to evict us.
@@ -219,6 +220,7 @@ export function App({
   const [, navigate] = useLocation()
   const online = useOnline()
   const isDesktop = useMediaQuery(DESKTOP)
+  const isSplitOrWider = useMediaQuery(SPLIT)
   const [depotStore, setDepotStore] =
     useState<StoreApi<DepotStoreState> | null>(null)
   const [unsyncedCount, setUnsyncedCount] = useState(0)
@@ -378,6 +380,21 @@ export function App({
               </Route>
               <Route path="/trips/:id">
                 <Trip />
+              </Route>
+              {/* Below Split only — the `isDesktop ? <X/> : <Redirect/>`
+                  shape `/account/devices` and `/account/people` already use
+                  below, here on `SPLIT` rather than `DESKTOP`. At Split and
+                  up this redirects to `/trips/:id/list`, Task 11's builder
+                  route — not yet built, but landing within this same slice
+                  (spec §4.1). */}
+              <Route path="/trips/:id/add">
+                {(params) =>
+                  isSplitOrWider ? (
+                    <Redirect to={`/trips/${params.id}/list`} />
+                  ) : (
+                    <DepotPicker tripId={params.id} variant="screen" />
+                  )
+                }
               </Route>
               <Route path="/find">
                 <Find />

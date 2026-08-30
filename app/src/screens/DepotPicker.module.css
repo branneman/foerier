@@ -1,0 +1,226 @@
+@layer components {
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+  }
+
+  /* The pane variant has no band and no title of its own — Task 11's page
+     draws one band for both panes together — so its column starts tighter,
+     at the eyebrow's own rhythm. */
+  .pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .sync {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .syncDot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  /* The pane's own eyebrow, in place of the screen's header + title. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .search {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  .search::placeholder {
+    color: var(--color-ink-faint);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+  }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-8);
+    padding-block: var(--space-32);
+    text-align: center;
+  }
+
+  .emptyTitle {
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    color: var(--color-ink-primary);
+  }
+
+  .emptyLine {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .emptyAction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(2.75rem, 44px);
+    padding-inline: var(--space-20);
+    margin-top: var(--space-8);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    min-height: max(3.5rem, 56px);
+    padding-block: var(--space-8);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /* The builder's own pane draws the same rows at a denser 40px
+     (`docs/design/README.md` §5) — the two-pane view has less headroom to
+     spend on each line than the standalone screen does. */
+  .pane .row {
+    min-height: max(2.5rem, 40px);
+  }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    flex: 1;
+  }
+
+  .name {
+    font: var(--text-heading) var(--font-ui);
+    font-weight: 600;
+    color: var(--color-ink-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* A listed row's name (and only its name — the meta stays as it is) reads
+     muted, the same treatment `Depot.tsx`'s own rows never needed because
+     that list has no "already elsewhere" state of its own. */
+  .row.muted .name {
+    color: var(--color-ink-muted);
+  }
+
+  .add {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(2rem, 32px);
+    padding-inline: var(--space-12);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  /* Mono, packed-green — the board's own colour for a Gear already on this
+     Trip's list, `--color-status-packed`'s first caller. */
+  .listed {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-status-packed);
+  }
+
+  .hint {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+    padding-top: var(--space-12);
+  }
+}

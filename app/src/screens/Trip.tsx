@@ -57,12 +57,13 @@ import styles from './Trip.module.css'
  * `GEAR LIST` section band and `GearListSection`'s groups take the region
  * instead.
  *
- * **`EDIT LIST ›`, the dashed trip-only row and the pinned primary are drawn
- * before they are wired.** `/trips/:id/list` (Task 11), `TripOnlySheet`
- * (Task 12) and `/trips/:id/add` (Task 10) do not exist yet, so each control
- * is a documented no-op rather than a link to a destination that isn't
- * there — the empty state's own argument, one slice earlier: a control that
- * leads somewhere and lies about it is worse than one that leads nowhere.
+ * **`EDIT LIST ›` and the dashed trip-only row are drawn before they are
+ * wired.** `/trips/:id/list` (Task 11) and `TripOnlySheet` (Task 12) do not
+ * exist yet, so each stays a documented no-op rather than a link to a
+ * destination that isn't there — the empty state's own argument, one slice
+ * earlier: a control that leads somewhere and lies about it is worse than one
+ * that leads nowhere. **The pinned primary is wired**: `/trips/:id/add`
+ * (Task 10) is a real `<Link>` now that the route exists.
  *
  * ## There is no `NEXT` line here
  *
@@ -311,10 +312,6 @@ export function Trip() {
   // The dashed row opens `TripOnlySheet` (Task 12). A no-op until then —
   // see the task report.
   function handleAddTripOnly() {}
-
-  // The pinned primary opens `/trips/:id/add`, which Task 10 builds. A
-  // no-op until then — see the task report.
-  function handleAddFromDepot() {}
 
   // The header's five pieces, built once and placed by whichever frame is
   // drawn. Each is the *same* element at both widths — same handler, same
@@ -658,13 +655,12 @@ export function Trip() {
             + TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE
           </button>
           <div className={styles['spacer']} aria-hidden="true" />
-          <button
-            type="button"
-            className={styles['addPrimary']}
-            onClick={handleAddFromDepot}
-          >
+          {/* `/trips/:id/add`, Task 10's route — a real `<Link>` now that it
+              exists, following `Depot.tsx`'s own FAB precedent for a
+              button-styled anchor. */}
+          <Link href={`/trips/${tripId}/add`} className={styles['addPrimary']}>
             + Add from the depot
-          </button>
+          </Link>
         </>
       )}
 
