@@ -26,6 +26,9 @@ import {
   placeRenamed,
   tripCreated,
   tripDatesSet,
+  tripEntryAdded,
+  tripEntryBringCountSet,
+  tripEntryRemoved,
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPhaseMoved,
@@ -33,8 +36,15 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import type { OpEnvelope } from './ops.ts'
+import { overClaims } from './selectors/claim.ts'
 import { containmentView } from './selectors/containment.ts'
-import type { KindValue, Owner, PhaseValue, Residence } from './state.ts'
+import type {
+  EntrySource,
+  KindValue,
+  Owner,
+  PhaseValue,
+  Residence,
+} from './state.ts'
 import { normalizeTag, type TagString } from './tags.ts'
 
 /**
@@ -98,6 +108,14 @@ const TRIP_IDS = [
   '50000000-0000-7000-8000-000000000000',
   '50000000-0000-7000-8000-000000000001',
 ] as const
+
+/**
+ * S7's entries, sharing the same "small and shared" reasoning as every pool
+ * above: with two Trips and three entry ids, two devices writing the same
+ * `entries.<id>` register on the same Trip is the common case, not a rare
+ * coincidence.
+ */
+const ENTRY_IDS = ['e1', 'e2', 'e3'] as const
 
 /**
  * Three tags, shared across every device, for exactly the reason the id pools
@@ -229,6 +247,7 @@ const arbOwner: fc.Arbitrary<Owner> = fc.oneof(
 )
 
 const arbTripId = fc.constantFrom(...TRIP_IDS)
+const arbEntryId = fc.constantFrom(...ENTRY_IDS)
 const arbTripName = fc.constantFrom('Ardennes', 'Vosges', 'Sarek')
 /** `shakedown` is deliberately not one of the five known phases — `arbKind`'s
  * rule a second time, and §5.3 obligation 4's whole point: an unrecognised
@@ -256,10 +275,39 @@ const arbDateField = fc.option(
 )
 
 /**
- * S6's six op types, nested under **one** weighted branch of the outer
- * `oneof` rather than spread across six unweighted ones — so the trip share
- * is a number to set rather than a consequence of how many op types the slice
- * happened to add.
+ * A depot Entry three times as often as a trip-only one, mirroring
+ * `arbResidence`'s container bias above: a depot source is what lets
+ * `overClaims` (S7's whole reason for existing) find something to contest,
+ * while a trip-only one still exercises the union side of `EntrySource`.
+ */
+const arbEntrySource: fc.Arbitrary<EntrySource> = fc.oneof(
+  {
+    arbitrary: arbGearId.map((gearId): EntrySource => ({
+      from: 'depot',
+      gearId,
+    })),
+    weight: 3,
+  },
+  {
+    arbitrary: fc
+      .record({
+        name: fc.option(arbName, { nil: null }),
+        container: fc.boolean(),
+      })
+      .map(({ name, container }): EntrySource => ({
+        from: 'trip_only',
+        name,
+        container,
+      })),
+    weight: 1,
+  },
+)
+
+/**
+ * S6's six op types plus S7's three, nested under **one** weighted branch of
+ * the outer `oneof` rather than spread across unweighted ones — so the trip
+ * share is a number to set rather than a consequence of how many op types the
+ * slice happened to add.
  *
  * It is set to 4 in 19 (~21% of ops) because 1 in 16 was measured and found
  * too thin: over 200 runs it put trip ops in 6% of draws and left two devices
@@ -269,7 +317,10 @@ const arbDateField = fc.option(
  * is not real: cycles turn up in 5–15 runs per 200 with no trip ops at all
  * and 11–14 with these, which is seed noise either way. (That also puts
  * `arbResidence`'s "17" where it belongs — a single measurement from a
- * generator with fewer op types in it, not a floor to defend.)
+ * generator with fewer op types in it, not a floor to defend.) S7's three
+ * entry ops share this same branch rather than getting one of their own,
+ * for the identical reason: the trip share stays one number, not a
+ * consequence of how many op types the Trip aggregate has accreted.
  */
 const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc.tuple(arbTripId, arbTripName).map(([id, name]) => tripCreated(id, name)),
@@ -293,10 +344,19 @@ const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbPersonId)
     .map(([id, personId]) => tripParticipantRemoved(id, personId)),
+  fc
+    .tuple(arbTripId, arbEntryId, arbEntrySource)
+    .map(([id, entryId, source]) => tripEntryAdded(id, entryId, source)),
+  fc
+    .tuple(arbTripId, arbEntryId)
+    .map(([id, entryId]) => tripEntryRemoved(id, entryId)),
+  fc
+    .tuple(arbTripId, arbEntryId, fc.nat({ max: 5 }))
+    .map(([id, entryId, count]) => tripEntryBringCountSet(id, entryId, count)),
 )
 
 /**
- * All twenty-one op types this build folds (`sync-protocol.md` §4), authored
+ * All twenty-four op types this build folds (`sync-protocol.md` §4), authored
  * through the real builders — never a hand-shaped payload, so the generator
  * cannot drift from the wire format.
  */
@@ -1068,5 +1128,319 @@ describe('convergence', () => {
       // And the phase the creation seeded is untouched by either.
       expect(t?.phase?.value).toBe('draft')
     }
+  })
+
+  /**
+   * **S7's named scenario, part one** (`docs/specs/2026-08-29-the-gear-list.md`
+   * §5.2, architecture §8.3): *the over-claim is surfaced identically on every
+   * replica … nothing recorded is discarded.*
+   *
+   * The over-claim itself is not a register anything writes — it is
+   * `overClaims`, a selector over two ordinary `trip.entry_added` on two
+   * different Trip aggregates. Per-field LWW has no basis to prevent this: the
+   * two ops never contest the same register, so the fold legitimately reaches
+   * a state the domain forbids (sync §3.6), and both replicas must reach it
+   * identically.
+   */
+  it('surfaces the same over-claim on both replicas after a partition', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const tripAlps = TRIP_IDS[0]
+    const tripAvores = TRIP_IDS[1]
+
+    a.emit(
+      gearRecorded(gear, { name: 'Stove', container: false, kind: 'single' }),
+    )
+    a.emit(tripCreated(tripAlps, 'Alps'))
+    a.emit(tripPhaseMoved(tripAlps, 'pack_out'))
+    a.emit(tripCreated(tripAvores, 'Avores'))
+    a.emit(tripPhaseMoved(tripAvores, 'on_trip'))
+    exchange(a, b)
+
+    // Partitioned: neither device has seen the other's addition when it
+    // authors its own.
+    clock.advance(1000)
+    a.emit(tripEntryAdded(tripAlps, 'e1', { from: 'depot', gearId: gear }))
+    clock.advance(1000)
+    b.emit(tripEntryAdded(tripAvores, 'e2', { from: 'depot', gearId: gear }))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    // Both Entries are retained on both replicas — the forbidden state is
+    // reached and kept, not merged away.
+    for (const r of [a, b]) {
+      expect(r.state().trips[tripAlps]?.entries?.['e1']?.source?.value).toEqual(
+        { from: 'depot', gearId: gear },
+      )
+      expect(
+        r.state().trips[tripAvores]?.entries?.['e2']?.source?.value,
+      ).toEqual({ from: 'depot', gearId: gear })
+    }
+
+    const claimsOnA = overClaims(a.state())
+    const claimsOnB = overClaims(b.state())
+    expect(claimsOnA).toEqual(claimsOnB)
+    expect(claimsOnA).toHaveLength(1)
+    expect(claimsOnA[0]).toMatchObject({
+      gearId: gear,
+      kind: 'single',
+      supply: 1,
+      claimed: 2,
+    })
+    expect(claimsOnA[0]!.claims.map((c) => c.tripId).sort()).toEqual(
+      [tripAlps, tripAvores].sort(),
+    )
+  })
+
+  /**
+   * **S7's named scenario, part two.** The domain gives the over-claim
+   * exactly one resolution — `trip.entry_removed` — and no other op even
+   * mentions it (sync §3.6: "no op for surfacing or resolving it"). The half
+   * easiest to lose: settling one Trip's claim must leave the *other* Trip's
+   * Entry completely untouched, not merely equal — it is a different
+   * aggregate that the removal never addresses.
+   */
+  it('clears the over-claim on both replicas when one removes an entry', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const tripAlps = TRIP_IDS[0]
+    const tripAvores = TRIP_IDS[1]
+
+    a.emit(
+      gearRecorded(gear, { name: 'Stove', container: false, kind: 'single' }),
+    )
+    a.emit(tripCreated(tripAlps, 'Alps'))
+    a.emit(tripPhaseMoved(tripAlps, 'pack_out'))
+    a.emit(tripCreated(tripAvores, 'Avores'))
+    a.emit(tripPhaseMoved(tripAvores, 'on_trip'))
+    a.emit(tripEntryAdded(tripAlps, 'e1', { from: 'depot', gearId: gear }))
+    a.emit(tripEntryAdded(tripAvores, 'e2', { from: 'depot', gearId: gear }))
+    exchange(a, b)
+    expect(overClaims(a.state())).toHaveLength(1)
+
+    // Captured per replica: identity across two different devices' own folds
+    // is never guaranteed, only identity *within* one replica's fold across
+    // an unrelated write. `toEqual` below covers the cross-replica claim;
+    // this covers the within-replica one.
+    const untouchedBefore = new Map(
+      [a, b].map((r) => [r, r.state().trips[tripAvores]?.entries?.['e2']]),
+    )
+
+    clock.advance(1000)
+    a.emit(tripEntryRemoved(tripAlps, 'e1'))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      expect(overClaims(r.state())).toEqual([])
+      expect(r.state().trips[tripAlps]?.entries?.['e1']?.removed?.value).toBe(
+        true,
+      )
+      // Nothing recorded is discarded: the removed Entry is retained as a
+      // tombstone, not deleted from the map.
+      expect(r.state().trips[tripAlps]?.entries?.['e1']?.source).toBeDefined()
+      // The other Trip's aggregate was never addressed by this op, so its
+      // Entry is not merely equal — it is the identical object this replica
+      // already held.
+      expect(r.state().trips[tripAvores]?.entries?.['e2']).toBe(
+        untouchedBefore.get(r),
+      )
+    }
+  })
+
+  /**
+   * **S7's named scenario, part three.** `bringCount` is one register per
+   * Entry, so two concurrent edits contest it exactly like `owner` or
+   * `residence` do — plain LWW, and the loser's op stays in the log rather
+   * than being discarded (`sync-protocol.md` §2, §8.3).
+   */
+  it('resolves two Bring-count edits by plain LWW, keeping the loser in the log', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, { name: 'Mugs', container: false, kind: 'counted' }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripPhaseMoved(trip, 'pack_out'))
+    a.emit(tripEntryAdded(trip, 'e1', { from: 'depot', gearId: gear }))
+    exchange(a, b)
+
+    // Neither device has seen the other's edit when it authors its own.
+    clock.advance(1000)
+    const loser = a.emit(tripEntryBringCountSet(trip, 'e1', 2))
+    clock.advance(1000)
+    const winner = b.emit(tripEntryBringCountSet(trip, 'e1', 5))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    // The register carries the winning op's own stamp, not merely its
+    // value — the same proof every other LWW scenario in this file uses.
+    expect(a.state().trips[trip]?.entries?.['e1']?.bringCount).toEqual({
+      value: 5,
+      hlc: winner.hlc,
+      deviceId: winner.device_id,
+    })
+    // The loser's op is retained in both logs — nothing recorded is
+    // discarded to resolve the conflict.
+    for (const r of [a, b]) {
+      expect(r.log().some((op) => op.id === loser.id)).toBe(true)
+      expect(r.log().some((op) => op.id === winner.id)).toBe(true)
+    }
+  })
+
+  /**
+   * **S7's named scenario, part four.** `writeEntry` creates a bare,
+   * sourceless Entry on first sight of *any* op naming it — `trip.entry_added`
+   * is not privileged as "the" creator. So a Bring-count set and a removal
+   * that arrive before the `entry_added` still fold, through a sourceless
+   * intermediate `entriesOf` excludes, and the final state must not depend on
+   * which of the three orders a replica happened to receive.
+   */
+  it('converges when a bring-count and a removal precede the entry_added', () => {
+    const { clock, a } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, { name: 'Mugs', container: false, kind: 'counted' }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripPhaseMoved(trip, 'pack_out'))
+    clock.advance(1000)
+    const bringCount = a.emit(tripEntryBringCountSet(trip, 'e1', 3))
+    clock.advance(1000)
+    const removed = a.emit(tripEntryRemoved(trip, 'e1'))
+    clock.advance(1000)
+    const added = a.emit(
+      tripEntryAdded(trip, 'e1', { from: 'depot', gearId: gear }),
+    )
+
+    const setup = a.log().slice(0, 3)
+    const ops = a.log()
+    const forward = createReplica({
+      deviceId: DEVICE_IDS[2],
+      householdId: HOUSEHOLD,
+      clock: fakeClock(BASE_MS),
+    })
+    const reversed = createReplica({
+      deviceId: DEVICE_IDS[3],
+      householdId: HOUSEHOLD,
+      clock: fakeClock(BASE_MS),
+    })
+
+    forward.receive(setup)
+    // The sourceless intermediate: with only the Bring-count set and the
+    // removal delivered, the Entry exists but `entriesOf` excludes it — there
+    // is nothing to default `source` to (entry.ts's own rule).
+    forward.receive([bringCount, removed])
+    expect(forward.state().trips[trip]?.entries?.['e1']?.source).toBeUndefined()
+    expect(
+      Object.values(forward.state().trips[trip]?.entries ?? {}),
+    ).toHaveLength(1)
+
+    forward.receive([added])
+    reversed.receive([...ops].reverse())
+
+    expect(forward.state()).toEqual(reversed.state())
+    const settled = forward.state().trips[trip]?.entries?.['e1']
+    expect(settled?.source?.value).toEqual({ from: 'depot', gearId: gear })
+    expect(settled?.removed?.value).toBe(true)
+    expect(settled?.bringCount?.value).toBe(3)
+  })
+
+  /**
+   * **S7's named scenario, part five.** `source` and `removed` are different
+   * registers on the same Entry (`state.ts`), so a concurrent add and remove
+   * never contest one field the way two Bring-count edits do — this is
+   * `sync-protocol.md` §3.5's tombstone rule again: a tombstone is an
+   * ordinary LWW field and the op that creates the Entry never touches it.
+   * Whichever of the two carries the later stamp, **both** writes stand:
+   * deleting an Entry does not erase the fact that it named a piece of Gear,
+   * and adding one after a removal does not resurrect it.
+   */
+  it('resolves a concurrent add and remove without either write being discarded', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, { name: 'Tent', container: false, kind: 'single' }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripPhaseMoved(trip, 'pack_out'))
+    exchange(a, b)
+
+    // Neither device has seen the other's op when it authors its own —
+    // the remove is authored *before* the peer has any Entry to remove.
+    clock.advance(1000)
+    const removed = b.emit(tripEntryRemoved(trip, 'e1'))
+    clock.advance(1000)
+    const added = a.emit(
+      tripEntryAdded(trip, 'e1', { from: 'depot', gearId: gear }),
+    )
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const entry = r.state().trips[trip]?.entries?.['e1']
+      // Delete does not automatically win (sync §3.5): the later add's
+      // `source` is not erased by the earlier remove's tombstone.
+      expect(entry?.source).toEqual({
+        value: { from: 'depot', gearId: gear },
+        hlc: added.hlc,
+        deviceId: added.device_id,
+      })
+      // Nor does the add undo the tombstone — both registers hold, on both
+      // replicas, regardless of which order this replica received them in.
+      expect(entry?.removed).toEqual({
+        value: true,
+        hlc: removed.hlc,
+        deviceId: removed.device_id,
+      })
+    }
+  })
+
+  /**
+   * **S7's named scenario, part six.** Story 6's legitimate case, proven at
+   * the convergence tier rather than only at the selector unit tier
+   * (`selectors/claim.test.ts`): two active Trips claiming one per-person
+   * Gear for **disjoint** Participants must converge with no over-claim on
+   * either replica — comparing People, never counts.
+   */
+  it('reports no over-claim for per-person gear taken for disjoint People', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const els = PERSON_IDS[0]
+    const mark = PERSON_IDS[1]
+    const tripAlps = TRIP_IDS[0]
+    const tripAvores = TRIP_IDS[1]
+
+    a.emit(personRecorded(els, 'Els'))
+    a.emit(personRecorded(mark, 'Mark'))
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+    )
+    a.emit(tripCreated(tripAlps, 'Alps'))
+    a.emit(tripPhaseMoved(tripAlps, 'pack_out'))
+    a.emit(tripParticipantAdded(tripAlps, els))
+    a.emit(tripCreated(tripAvores, 'Avores'))
+    a.emit(tripPhaseMoved(tripAvores, 'on_trip'))
+    a.emit(tripParticipantAdded(tripAvores, mark))
+    exchange(a, b)
+
+    clock.advance(1000)
+    a.emit(tripEntryAdded(tripAlps, 'e1', { from: 'depot', gearId: gear }))
+    clock.advance(1000)
+    b.emit(tripEntryAdded(tripAvores, 'e2', { from: 'depot', gearId: gear }))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) expect(overClaims(r.state())).toEqual([])
   })
 })
