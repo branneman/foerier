@@ -8,9 +8,9 @@ import {
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'

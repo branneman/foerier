@@ -8,9 +8,9 @@ import {
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -26,6 +26,7 @@ import {
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { NewTrip } from './NewTrip'
+import styles from './NewTrip.module.css'
 
 /**
  * **F3 step 1** — `Trips → + NEW → name · dates · participants`, then the trip
@@ -529,11 +530,15 @@ describe('New trip — the fact line under the CTA', () => {
     const fact = screen.getByText('NAME IS THE ONLY REQUIRED INPUT')
     const classes = fact.className.split(' ').filter((name) => name !== '')
 
-    // Two classes: the mono ledger treatment every fact line shares, and the
-    // alignment this one takes from its CTA. Asserted as a count and a
-    // difference rather than against a literal, because the module's own
-    // names are generated.
-    expect(classes).toHaveLength(2)
-    expect(classes[0]).not.toBe(classes[1])
+    // The mono ledger treatment, then the alignment this one takes from its
+    // CTA — named, so a swap or a dropped `.fact` fails here rather than
+    // passing a count.
+    //
+    // `AddGear.test.tsx`'s sibling states the same fact by comparing this
+    // line against a field-level one; this screen has no field-level fact
+    // line to compare against, so it reads the mapping the bundler produced
+    // instead. Never a literal either way: the module's own names are
+    // generated.
+    expect(classes).toEqual([styles['fact'], styles['ctaFact']])
   })
 })
