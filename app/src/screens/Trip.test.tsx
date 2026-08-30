@@ -703,12 +703,12 @@ describe('the trip screen — the gear list (S7)', () => {
 
   /**
    * `REMOVE ON Jura` writes against an aggregate this screen is not
-   * showing, and spec §4.7 puts a confirm between the click and that write
-   * — `RemoveElsewhereConfirm`, which Task 12 mounts. Until it exists, a
-   * click here authors nothing: an unconfirmed cross-Trip write would be
-   * worse than the missing confirm it stands in for.
+   * showing, and spec §4.7 puts a confirm between the click and that write —
+   * `RemoveElsewhereConfirm`. A click opens it naming Jura and authors
+   * nothing by itself; `Cancel` closes it, still authoring nothing; only
+   * `Remove entry` inside it writes, against Jura's own Entry.
    */
-  it('authors nothing yet from REMOVE ON — the cross-trip confirm is Task 12s', async () => {
+  it('REMOVE ON opens a confirm naming the other Trip, and only its own action writes', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const user = userEvent.setup()
     const seed = await renderTrip(
@@ -727,10 +727,24 @@ describe('the trip screen — the gear list (S7)', () => {
 
     await user.click(screen.getByRole('button', { name: 'REMOVE ON Jura' }))
 
+    const confirm = screen.getByRole('alertdialog')
+    expect(confirm).toHaveTextContent('Remove from Jura?')
     expect(await seed.authored()).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(await seed.authored()).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'REMOVE ON Jura' }))
+    await user.click(screen.getByRole('button', { name: 'Remove entry' }))
+
+    expect(await seed.authored()).toEqual([
+      { type: 'trip.entry_removed', payload: { entry_id: 'e-jura' } },
+    ])
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
-  it('does nothing yet from the dashed row, below Split', async () => {
+  it('the dashed row opens Trip-only entry, which owns its own write', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const user = userEvent.setup()
     const seed = await renderTrip(
@@ -749,14 +763,25 @@ describe('the trip screen — the gear list (S7)', () => {
         name: '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
       }),
     )
-    // Stronger than "authors nothing": `TripOnlySheet` (Task 12) is a Radix
-    // `Sheet`, whose `Dialog.Content` carries `role="dialog"` — mounting it
-    // would pass an assertion that only checks the heading, since Radix's
-    // overlay does not remove the page behind it from the DOM.
-    expect(screen.queryByRole('dialog')).toBeNull()
-
+    expect(
+      screen.getByRole('dialog', { name: 'Trip-only entry' }),
+    ).toBeVisible()
     expect(await seed.authored()).toEqual([])
-    // `TripOnlySheet`'s route is Task 12's: no navigation away yet.
+
+    await user.type(screen.getByLabelText('Name'), 'Guy-line kit')
+    await user.click(screen.getByRole('button', { name: 'Add entry' }))
+
+    expect(screen.queryByRole('dialog', { name: 'Trip-only entry' })).toBeNull()
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.entry_added',
+        payload: {
+          entry_id: expect.any(String),
+          source: { from: 'trip_only', name: 'Guy-line kit', container: false },
+        },
+      },
+    ])
+    // Still on the Trip screen: no navigation away.
     expect(screen.getByRole('heading', { name: 'Alps 2026' })).toBeVisible()
   })
 

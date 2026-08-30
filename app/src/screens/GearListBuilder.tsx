@@ -7,6 +7,7 @@ import {
   UNNAMED_PERSON,
   type TripState,
 } from '@foerier/shared'
+import { useState } from 'react'
 import { Link, useSearch } from 'wouter'
 
 import {
@@ -14,6 +15,7 @@ import {
   GearListSection,
   pieceLabel,
 } from '../components/GearListSection'
+import { TripOnlySheet } from '../components/TripOnlySheet'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import { tripParticipants } from '../depot/trips'
@@ -116,15 +118,16 @@ import styles from './GearListBuilder.module.css'
  * draws and carries its own totals in the footer instead. `EST 48.2 KG` is
  * story 16, `LATER` — drawn nowhere here, header or footer, per spec §4.4.
  *
- * ## `Start pack-out` and the dashed row are documented no-ops
+ * ## `Start pack-out` is a documented no-op; the dashed row is wired
  *
  * `Start pack-out` renders for a Draft only (`phaseOf(trip) === 'draft'`) and
  * opens the over-claim preview Task 14 builds — over-claim moment #2, spec
- * §4.5. The dashed trip-only row opens `TripOnlySheet`, Task 12's — mirroring
- * `Trip.tsx`'s own identical row exactly, including the no-op. Both stay
- * documented no-ops rather than links to destinations that don't exist yet,
- * `Trip.tsx`'s own argument: a control that leads somewhere and lies about it
- * is worse than one that leads nowhere.
+ * §4.5. It stays a documented no-op rather than a link to a destination that
+ * doesn't exist yet, `Trip.tsx`'s own argument: a control that leads
+ * somewhere and lies about it is worse than one that leads nowhere. The
+ * dashed trip-only row opens `TripOnlySheet` (Task 12), mirroring `Trip.tsx`'s
+ * own identical row — that sheet owns its own `trip.entry_added` emit, so
+ * this screen only opens it.
  */
 export interface GearListBuilderProps {
   readonly tripId: string
@@ -135,6 +138,7 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const emit = useDepot((depot) => depot.emit)
   const sync = useDepot((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
+  const [tripOnlyOpen, setTripOnlyOpen] = useState(false)
   const search = useSearch()
   const fromTrips = new URLSearchParams(search).get('from') === 'trips'
   // `splitPane: false` — see this file's own docstring on the two-doors
@@ -182,9 +186,11 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   // §4.5. A documented no-op until then — see the task report.
   function handleStartPackOut() {}
 
-  // Opens `TripOnlySheet` (Task 12). A documented no-op until then — mirrors
-  // `Trip.tsx`'s own dashed row exactly. See the task report.
-  function handleAddTripOnly() {}
+  // Opens `TripOnlySheet`, which owns its own `trip.entry_added` emit —
+  // mirrors `Trip.tsx`'s own dashed row exactly.
+  function handleAddTripOnly() {
+    setTripOnlyOpen(true)
+  }
 
   const backHref = fromTrips ? '/trips' : `/trips/${tripId}`
   const backLabel = fromTrips ? 'TRIPS' : label
@@ -301,6 +307,10 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
           {listBody}
         </div>
       </div>
+
+      {tripOnlyOpen && (
+        <TripOnlySheet tripId={tripId} onClose={() => setTripOnlyOpen(false)} />
+      )}
     </div>
   )
 }

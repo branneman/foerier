@@ -302,7 +302,7 @@ describe('the gear list builder — Start pack-out', () => {
 })
 
 describe('the gear list builder — the dashed trip-only row', () => {
-  it('does nothing yet — TripOnlySheet is Task 12s', async () => {
+  it('opens Trip-only entry, which owns its own write', async () => {
     setViewport(SPLIT)
     const user = userEvent.setup()
     const { store, authored } = await seededStore(
@@ -315,8 +315,29 @@ describe('the gear list builder — the dashed trip-only row', () => {
         name: '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
       }),
     )
-
+    expect(
+      screen.getByRole('dialog', { name: 'Trip-only entry' }),
+    ).toBeVisible()
     expect(await authored()).toEqual([])
+
+    await user.type(screen.getByLabelText('Name'), 'Guy-line kit')
+    await user.click(screen.getByRole('button', { name: 'Add entry' }))
+
+    expect(screen.queryByRole('dialog', { name: 'Trip-only entry' })).toBeNull()
+    expect(await authored()).toEqual([
+      {
+        type: 'trip.entry_added',
+        payload: {
+          entry_id: expect.any(String),
+          source: {
+            from: 'trip_only',
+            name: 'Guy-line kit',
+            container: false,
+          },
+        },
+      },
+    ])
+    // Still on the builder: no navigation away.
     expect(
       screen.getByRole('heading', { name: 'Alps 2026 — gear list' }),
     ).toBeVisible()

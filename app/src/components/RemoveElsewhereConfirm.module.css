@@ -1,0 +1,48 @@
+@layer components {
+  /* `AlertDialog.Description` is itself a `<p>`, so the body line is a
+     `<span>` forced to block level rather than a nested `<p>` — invalid HTML
+     otherwise. Inherits `.descriptionCard`'s attention-mono treatment from
+     the wrapping `<p>`, exactly as every other Confirm card's one-line body
+     does (`HomePicker`'s "Remove place"/"Move gear"). */
+  .body {
+    display: block;
+  }
+
+  /*
+   * `▸ ALPS 2026 · ON TRIP · DAY 12` — the other Trip's own chip, restated
+   * inside the confirm. Recorded case in source (`tripChip`/`tripLabel`
+   * already carry it); this class is what turns it into the mono all-caps
+   * register on screen, `OverClaimBand`'s `.fact` rule applied here too.
+   */
+  .context {
+    display: block;
+    margin-top: var(--space-8);
+    font: var(--text-label) var(--font-mono);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  /* `ReopenConfirm.module.css`'s own two buttons, moved here whole: accent,
+     not attention — nothing is destroyed, the body says so. */
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .primary {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+}

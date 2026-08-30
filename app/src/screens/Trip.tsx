@@ -22,6 +22,8 @@ import {
 import { OverClaimBand } from '../components/OverClaimBand'
 import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
+import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
+import { TripOnlySheet } from '../components/TripOnlySheet'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import {
@@ -61,13 +63,12 @@ import styles from './Trip.module.css'
  * `GEAR LIST` section band and `GearListSection`'s groups take the region
  * instead.
  *
- * **The dashed trip-only row is drawn before it is wired.** `TripOnlySheet`
- * (Task 12) does not exist yet, so it stays a documented no-op rather than a
- * link to a destination that isn't there — the empty state's own argument,
- * one slice earlier: a control that leads somewhere and lies about it is
- * worse than one that leads nowhere. **The pinned primary and `EDIT LIST ›`
- * are both wired**: `/trips/:id/add` (Task 10) and `/trips/:id/list`
- * (Task 11) are real `<Link>`s now that both routes exist.
+ * **The dashed trip-only row opens `TripOnlySheet` (Task 12).** The pinned
+ * primary and `EDIT LIST ›` were wired one task earlier: `/trips/:id/add`
+ * (Task 10) and `/trips/:id/list` (Task 11) are real `<Link>`s, and the
+ * over-claim band's `REMOVE ON <trip>` now opens `RemoveElsewhereConfirm`
+ * (Task 12) rather than doing nothing — the last two documented no-ops this
+ * slice's screens carried.
  *
  * ## There is no `NEXT` line here
  *
@@ -178,6 +179,14 @@ export function Trip() {
   const [endDraft, setEndDraft] = useState('')
   const [phaseOpen, setPhaseOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [tripOnlyOpen, setTripOnlyOpen] = useState(false)
+  // The pending cross-Trip removal, or `null` when nothing is — mount is the
+  // reset, same as every other `ui/`-backed sheet on this screen, so a
+  // declined removal cannot come back attached to the next row tapped.
+  const [removingElsewhere, setRemovingElsewhere] = useState<{
+    otherTripId: string
+    entryId: string
+  } | null>(null)
 
   // The `EDIT` button unmounts while editing, so leaving EDIT mode would drop
   // focus to `<body>` and strand a keyboard on the top of the document. The
@@ -303,15 +312,18 @@ export function Trip() {
   // `REMOVE ON <trip>` writes against a Trip this screen is not showing —
   // the first write any surface here makes against another aggregate, and
   // its undo is a navigation away. Spec §4.7 puts a confirm
-  // (`RemoveElsewhereConfirm`) between the click and the op landing; that
-  // sheet is Task 12's, so until it is mounted here this is a documented
-  // no-op rather than an unconfirmed write against a Trip nobody is looking
-  // at. See the task report.
-  function handleRemoveThere(_otherTripId: string, _entryId: string) {}
+  // (`RemoveElsewhereConfirm`) between the click and the op landing; the
+  // confirm owns the actual `tripEntryRemoved` emit once the Quartermaster
+  // decides, so this handler only opens it.
+  function handleRemoveThere(otherTripId: string, entryId: string) {
+    setRemovingElsewhere({ otherTripId, entryId })
+  }
 
-  // The dashed row opens `TripOnlySheet` (Task 12). A no-op until then —
-  // see the task report.
-  function handleAddTripOnly() {}
+  // The dashed row opens `TripOnlySheet`, which owns its own
+  // `trip.entry_added` emit.
+  function handleAddTripOnly() {
+    setTripOnlyOpen(true)
+  }
 
   // The header's five pieces, built once and placed by whichever frame is
   // drawn. Each is the *same* element at both widths — same handler, same
@@ -686,6 +698,18 @@ export function Trip() {
             )
           }
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {tripOnlyOpen && (
+        <TripOnlySheet tripId={tripId} onClose={() => setTripOnlyOpen(false)} />
+      )}
+
+      {removingElsewhere !== null && (
+        <RemoveElsewhereConfirm
+          otherTripId={removingElsewhere.otherTripId}
+          entryId={removingElsewhere.entryId}
+          onClose={() => setRemovingElsewhere(null)}
         />
       )}
     </div>

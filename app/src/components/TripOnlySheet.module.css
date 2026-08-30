@@ -1,0 +1,122 @@
+@layer components {
+  /*
+   * `AddGear.module.css`'s own field vocabulary, duplicated rather than
+   * imported — a `Sheet` and a screen are different anatomies (padding, max
+   * width, scroll), and the two forms sharing a class would make an edit to
+   * one screen's frame a silent edit to this sheet's.
+   */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .input {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  .segmentedField {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    border: 0;
+    padding: 0;
+  }
+
+  /* 48px segmented control — `AddGear`'s own trait control, verbatim. */
+  .segmented {
+    display: flex;
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    overflow: hidden;
+  }
+
+  .segment {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(3rem, 48px);
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .segment + .segment {
+    border-left: var(--stroke-rule) solid var(--color-rule-control);
+  }
+
+  /* The radio itself is the state, not the styling — it stays in the
+     accessibility tree and is simply not drawn. */
+  .segment input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .segment:has(input:checked) {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-primary);
+    font-weight: 600;
+  }
+
+  .segment:has(input:focus-visible) {
+    box-shadow: var(--focus-ring);
+  }
+
+  /*
+   * The mono ledger line — `AddGear.module.css`'s own `.fact`, verbatim.
+   * Flush left under the trait control; centred under the CTA (`.ctaFact`).
+   */
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .ctaFact {
+    text-align: center;
+  }
+
+  .primary {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Disabled is a state of the ledger line, not a failure — the label never
+     changes, so the button never explains itself in place of the name field
+     being empty. */
+  .primary:disabled {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-muted);
+    cursor: default;
+  }
+}
