@@ -13,6 +13,13 @@
  *   Roomy       40–52em  bottom tabs · single column, capped measure · 20–24
  *   Split       52–64em  icon rail   · list + detail two-pane
  *   Desktop     >= 64em  sidebar     · two/three-pane, centred at 1120
+ *
+ * The ladder is for signed-in surfaces only: the signed-out shell keeps one
+ * structure across all five modes (`docs/design/README.md` §8) and is not this
+ * file's business, since `SignIn`, `Join` and `NoPasskey` render outside
+ * `AppShell` entirely and each centres itself in its own module. A
+ * `.shell--signed-out` modifier once stood below describing a shape nothing
+ * ever wore; it is gone rather than carried.
  */
 @layer layout {
   .shell {
@@ -36,7 +43,26 @@
     --fab-clearance: 1.125rem;
 
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    /*
+     * **`minmax`, not a bare `1fr`, and the floor is what keeps the fixed
+     * height honest.** `.shell__main` is a scroll container, so its automatic
+     * minimum size is zero: with a bare `1fr` the middle row is crushed before
+     * anything overflows. Measured at a 600px viewport with a 300px header and
+     * a 400px bar — reachable by zoom, where the CSS viewport shrinks while
+     * both bands keep their `rem` and `min-height` sizes — the reading area
+     * came out **34px tall while the document was scrollable to 734 anyway**:
+     * two scrollers at once, and a bar half off the screen, so the pinning was
+     * not even bought. Under `min-height: 100svh` the same case merely grew the
+     * grid.
+     *
+     * The floor gives that degradation back, and only there. Past it the shell
+     * overflows the viewport, the document scrolls, and the bar is at the
+     * bottom of the document rather than the screen — measured, it lands flush
+     * at the viewport's bottom edge once scrolled to the document's end. A
+     * ratio rather than an invented length: the screen keeps half the viewport,
+     * which is the point at which pinning costs more than it pays.
+     */
+    grid-template-rows: auto minmax(50svh, 1fr) auto;
     /*
      * **One viewport, exactly — the shell does not scroll, the screen does.**
      * A `min-height` lets the grid grow with its content, which takes every
@@ -81,6 +107,15 @@
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    /*
+     * Where the platform draws a classic scrollbar, reserve its width on both
+     * inline edges: this box carries the `max-width` cap and the centring from
+     * Roomy up, so a gutter on one edge alone leaves the capped column off
+     * centre by half a scrollbar, and no gutter at all shifts it sideways the
+     * moment a list grows past the box. Inert where scrollbars are overlay,
+     * which is every touch platform and the macOS default.
+     */
+    scrollbar-gutter: stable both-edges;
     padding-inline: var(--gutter);
     padding-block: var(--space-16) var(--fab-clearance);
   }
@@ -126,18 +161,6 @@
       max-width: 70rem; /* 1120px */
     }
   }
-
-  /*
-   * The signed-out shell keeps one structure across all five modes and the
-   * layout ladder applies to signed-in surfaces only
-   * (`docs/design/README.md` §8) — but it is not this file's business:
-   * `SignIn`, `Join` and `NoPasskey` render outside `AppShell` entirely and
-   * each centres itself in its own module. A `.shell--signed-out` modifier
-   * stood here describing a shape nothing ever wore, and it is gone rather
-   * than carried: with the shell now a fixed height, a rule that resets its
-   * rows for a class no element carries is a claim about the shell that
-   * nothing backs.
-   */
 
   @media print {
     .shell__nav {

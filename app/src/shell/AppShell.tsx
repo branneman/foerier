@@ -1,5 +1,5 @@
 import { IconDepot, IconFind, IconTrips, Logo, Mark } from '@foerier/ui'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useRoute } from 'wouter'
 
 import styles from './AppShell.module.css'
@@ -260,22 +260,44 @@ export function AppShell({
   const mainRef = useRef<HTMLElement>(null)
 
   // The main area is the shell's scroll container (`ui/styles/layout.css`),
-  // and it outlives the route: nothing unmounts it, so its scroll offset is
-  // carried into whatever the next route renders. A reader part-way down a
-  // two-hundred-item Depot who opens a gear would land part-way down the
-  // gear's screen. The document scroller this replaced reset itself, so there
-  // was nothing to say — and one place says it now, rather than each screen,
-  // for `useScreenHeader`'s reason (`frontend-design.md` §3.3): a rule spelled
-  // per screen is one chance per screen to spell it differently.
+  // and it outlives the route: nothing unmounts it, so its offset is carried
+  // into whatever the next route renders, and a reader part-way down a
+  // two-hundred-item Depot who opened a gear would land part-way down the
+  // gear's screen.
   //
-  // Top on every change, never a restore. Restoring is per history entry, not
-  // per path, and nothing here holds history entries — so at Split, where the
-  // Depot list and the gear detail share this one scroller, picking a gear
-  // does take the list back to its top.
-  useEffect(() => {
+  // **This is a new behaviour, not a restoration of the document scroller's.**
+  // `history.pushState` does not reset scroll — measured, an offset of 1200
+  // survives both the call and a full re-render — so the old scroller kept its
+  // offset too and was merely *clamped* by a shorter next screen. Most screens
+  // were shorter, which is why it read as a reset. Chosen because landing at
+  // the top of a screen you have just opened is the behaviour the app wants,
+  // not because anything is being preserved.
+  //
+  // Never a restore: restoring is per history entry rather than per path, and
+  // nothing here holds history entries. One place says it, rather than each
+  // screen, for `useScreenHeader`'s reason (`frontend-design.md` §3.3) — a
+  // rule spelled per screen is one chance per screen to spell it differently.
+  //
+  // **Keyed on a scroll group, not on the path**, because the two are not the
+  // same thing at Split: `DepotView` renders the Depot list and the gear
+  // detail as two panes of one view that never unmounts, so `/` and
+  // `/gear/:id` are two routes over a single scroll offset and resetting on
+  // the route would take the list to the top on every row tap. Below Split
+  // and at Desktop that view renders one screen or the other, so there the
+  // path is the group. (Panes with scrollers of their own would be the more
+  // design-true answer and would move this reset's target with them; that is
+  // left to the task that builds them.)
+  const scrollGroup =
+    isSplit && !isDesktop && (location === '/' || location.startsWith('/gear/'))
+      ? 'depot-split'
+      : location
+
+  // Layout, not passive: an effect lets the browser paint once at the carried
+  // offset — clamped by the new screen's height — before the reset lands.
+  useLayoutEffect(() => {
     const main = mainRef.current
     if (main !== null) main.scrollTop = 0
-  }, [location])
+  }, [scrollGroup])
 
   return (
     <div className="shell">

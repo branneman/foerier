@@ -232,6 +232,10 @@ describe('AppShell — the account affordance', () => {
  * stylesheet, so the source is the only place either can be held.
  */
 describe('the shell that stays put while a screen scrolls', () => {
+  // Declarations only. These fences match across a whole rule with `[^}]*`,
+  // so a comment inside one can satisfy or break them by quoting the very
+  // declaration under discussion — which is exactly what the prose explaining
+  // why `min-height` was rejected went on to do.
   const layout = (): string =>
     readFileSync(
       join(
@@ -239,7 +243,7 @@ describe('the shell that stays put while a screen scrolls', () => {
         '../../../ui/styles/layout.css',
       ),
       'utf8',
-    )
+    ).replace(/\/\*[\s\S]*?\*\//g, '')
 
   it('is exactly one viewport tall, so nothing outside the screen scrolls away', () => {
     // A `min-height` lets the grid grow with its content, which takes every
@@ -276,7 +280,7 @@ describe('the shell that stays put while a screen scrolls', () => {
     // and carries the button up with it. That is the whole of the mechanism:
     // no height of the bar is written down.
     expect(layout()).toMatch(
-      /\.shell\s*\{[^}]*grid-template-rows:\s*auto 1fr auto/,
+      /\.shell\s*\{[^}]*grid-template-rows:\s*auto minmax\([^)]*, 1fr\) auto/,
     )
     expect(
       readFileSync(
@@ -304,9 +308,15 @@ describe('the shell that stays put while a screen scrolls', () => {
 })
 
 /**
- * The document scroller reset itself on every navigation. A scroll container
- * that outlives the route does not — so a reader part-way down a two-hundred
- * item Depot who opens a gear would land part-way down the gear's screen.
+ * A scroll container that outlives the route carries its offset into whatever
+ * renders next, so a reader part-way down a two-hundred-item Depot who opens a
+ * gear would land part-way down the gear's screen.
+ *
+ * **The reset is a behaviour chosen here, not one restored.** `pushState` does
+ * not reset scroll — measured in Chromium, an offset of 1200 survives both the
+ * call and a full re-render — so the document scroller this replaced kept its
+ * offset too and was merely *clamped* by a shorter next screen. Most screens
+ * were shorter, which is what made it read as a reset.
  *
  * One place says it, for every screen: this is a shell concern, and a rule
  * spelled per screen is one chance per screen to spell it differently
@@ -367,5 +377,69 @@ describe('the scroll position across a route change', () => {
     )
 
     expect(scroll.get()).toBe(420)
+  })
+
+  it('holds the offset across the two routes of one Split view', () => {
+    setViewport(SPLIT)
+    const location = memoryLocation({ path: '/', record: true })
+    render(
+      <Router hook={location.hook}>
+        <AppShell>
+          <p>screen</p>
+        </AppShell>
+      </Router>,
+    )
+
+    // At Split `DepotView` draws the Depot list and the gear detail as two
+    // panes of one view that never unmounts, so these two routes share this
+    // one scroll offset. Resetting on the route would take the list to the top
+    // on every row tap — the reader loses their place in the list precisely by
+    // using it.
+    const scroll = watchMainScroll()
+    act(() => {
+      location.navigate('/gear/abc')
+    })
+
+    expect(scroll.get()).toBe(420)
+  })
+
+  it('still resets when a Split reader leaves the Depot entirely', () => {
+    setViewport(SPLIT)
+    const location = memoryLocation({ path: '/gear/abc', record: true })
+    render(
+      <Router hook={location.hook}>
+        <AppShell>
+          <p>screen</p>
+        </AppShell>
+      </Router>,
+    )
+
+    const scroll = watchMainScroll()
+    act(() => {
+      location.navigate('/trips')
+    })
+
+    expect(scroll.get()).toBe(0)
+  })
+
+  it('resets between those same two routes below Split, where they are two screens', () => {
+    setViewport()
+    const location = memoryLocation({ path: '/', record: true })
+    render(
+      <Router hook={location.hook}>
+        <AppShell>
+          <p>screen</p>
+        </AppShell>
+      </Router>,
+    )
+
+    // Below Split — and at Desktop — `DepotView` renders one screen or the
+    // other, so there the path *is* the group.
+    const scroll = watchMainScroll()
+    act(() => {
+      location.navigate('/gear/abc')
+    })
+
+    expect(scroll.get()).toBe(0)
   })
 })
