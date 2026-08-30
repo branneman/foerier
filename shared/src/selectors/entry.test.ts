@@ -136,6 +136,64 @@ describe('entriesOf', () => {
     expect(ids(entriesOf(trip(forward, 't1'), forward))).toEqual(expected)
     expect(ids(entriesOf(trip(backward, 't1'), backward))).toEqual(expected)
   })
+
+  it('sorts by label rather than by id when the two disagree', () => {
+    // Ids run the opposite way from the labels they name, so a comparator
+    // that fell back to `localeCompare` on the id (or dropped the label
+    // half entirely) would draw this list backwards.
+    const state = depot(
+      aTrip({ id: 't1' }),
+      [
+        tripEntryAdded('t1', 'z-apple', {
+          from: 'trip_only',
+          name: 'Apple',
+          container: false,
+        }),
+      ],
+      [
+        tripEntryAdded('t1', 'a-banana', {
+          from: 'trip_only',
+          name: 'Banana',
+          container: false,
+        }),
+      ],
+    )
+    expect(ids(entriesOf(trip(state, 't1'), state))).toEqual([
+      'z-apple',
+      'a-banana',
+    ])
+  })
+
+  it('breaks a label tie by id, identically regardless of arrival order', () => {
+    // Two Entries sharing one label. `Array.prototype.sort` is stable, so
+    // without an id tie-break the arrival order would leak straight through
+    // — which is per-replica and exactly what this function must not draw.
+    const higherFirst = [
+      tripEntryAdded('t1', 'e-2', {
+        from: 'trip_only',
+        name: 'Same',
+        container: false,
+      }),
+    ]
+    const lowerFirst = [
+      tripEntryAdded('t1', 'e-1', {
+        from: 'trip_only',
+        name: 'Same',
+        container: false,
+      }),
+    ]
+
+    const arrivedHighFirst = depot(aTrip({ id: 't1' }), higherFirst, lowerFirst)
+    const arrivedLowFirst = depot(aTrip({ id: 't1' }), lowerFirst, higherFirst)
+
+    const expected = ['e-1', 'e-2']
+    expect(
+      ids(entriesOf(trip(arrivedHighFirst, 't1'), arrivedHighFirst)),
+    ).toEqual(expected)
+    expect(
+      ids(entriesOf(trip(arrivedLowFirst, 't1'), arrivedLowFirst)),
+    ).toEqual(expected)
+  })
 })
 
 describe('entryLabel', () => {
@@ -185,6 +243,55 @@ describe('entryLabel', () => {
       }),
     ])
     expect(entryLabel(entryOf(state, 't1', 'e1')!, state)).toBe('—')
+  })
+
+  it('falls back to — for a depot Entry whose Gear has not been folded', () => {
+    // The ordinary cross-aggregate sync race: `trip.entry_added` named a
+    // `gearId` this replica's `gear.recorded` has not arrived for yet.
+    const state = depot(aTrip({ id: 't1' }), [
+      tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'ghost' }),
+    ])
+    expect(entryOf(state, 't1', 'e1')?.source).toBeDefined()
+    expect(state.gear['ghost']).toBeUndefined()
+    expect(entryLabel(entryOf(state, 't1', 'e1')!, state)).toBe('—')
+  })
+
+  it('falls back to — for a depot Entry whose Gear is unnamed', () => {
+    const state = depot(aTrip({ id: 't1' }), aGear({ id: 'g1', name: '' }), [
+      tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' }),
+    ])
+    expect(entryLabel(entryOf(state, 't1', 'e1')!, state)).toBe('—')
+  })
+})
+
+describe('entryKind', () => {
+  it('reads undefined for a depot Entry whose Gear has not been folded', () => {
+    const state = depot(aTrip({ id: 't1' }), [
+      tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'ghost' }),
+    ])
+    expect(state.gear['ghost']).toBeUndefined()
+    expect(entryKind(entryOf(state, 't1', 'e1')!, state)).toBeUndefined()
+  })
+
+  it('reads undefined for a depot Entry whose Gear carries no kind register', () => {
+    // A hand-shaped `gear.recorded` with no `kind` field at all — reachable
+    // only through a malformed op, since `gearRecorded` in `authoring.ts`
+    // requires `kind`, but the reducer's `writeIfPresent` leaves the
+    // register unwritten rather than defaulting it either way.
+    const bareGearRecorded: OpSpec = {
+      aggregate: 'gear',
+      aggregate_id: 'g1',
+      type: 'gear.recorded',
+      payload: { name: 'Mystery', container: false },
+    }
+    const state = depot(
+      aTrip({ id: 't1' }),
+      [bareGearRecorded],
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
+    )
+    expect(state.gear['g1']).toBeDefined()
+    expect(state.gear['g1']?.kind).toBeUndefined()
+    expect(entryKind(entryOf(state, 't1', 'e1')!, state)).toBeUndefined()
   })
 })
 
@@ -317,6 +424,34 @@ describe('pieceCountOf', () => {
       [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
     )
     expect(entryKind(entryOf(state, 't1', 'e1')!, state)).toBe('weighed')
+    expect(
+      pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
+    ).toBe(1)
+  })
+
+  it('is 1 for a depot Entry whose Gear has not been folded', () => {
+    const state = depot(aTrip({ id: 't1' }), [
+      tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'ghost' }),
+    ])
+    expect(entryKind(entryOf(state, 't1', 'e1')!, state)).toBeUndefined()
+    expect(
+      pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
+    ).toBe(1)
+  })
+
+  it('is 1 for a depot Entry whose Gear carries no kind register', () => {
+    const bareGearRecorded: OpSpec = {
+      aggregate: 'gear',
+      aggregate_id: 'g1',
+      type: 'gear.recorded',
+      payload: { name: 'Mystery', container: false },
+    }
+    const state = depot(
+      aTrip({ id: 't1' }),
+      [bareGearRecorded],
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
+    )
+    expect(entryKind(entryOf(state, 't1', 'e1')!, state)).toBeUndefined()
     expect(
       pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
     ).toBe(1)

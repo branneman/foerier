@@ -1,4 +1,5 @@
 import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
+import { byNameThenId } from './order.ts'
 import { participantIds } from './trip.ts'
 
 /**
@@ -40,12 +41,19 @@ export interface ListTotals {
  *
  * This is the only place that rule is stated.
  *
- * Sorted by {@link entryLabel} then `id` — a **total** order two replicas
- * compute identically, which is what makes the drawn list converge.
- * `byNameThenId` (`selectors/order.ts`) is not reusable here: it sorts on a
- * `name` register `EntryState` does not have, since a depot Entry's name
- * lives on the Gear it references — which is why this function takes `state`
- * at all.
+ * Sorted by {@link entryLabel} then `id`, via `byNameThenId`
+ * (`selectors/order.ts`) — the one comparator every list in this codebase
+ * shares, so two replicas holding identical state draw the same order. Its
+ * case-insensitive, code-point comparison is what a bare `localeCompare`
+ * is not: `localeCompare` resolves against the host's default locale and
+ * ICU collation data, so two devices can order the same two labels
+ * differently — exactly the divergence `order.ts`'s own header warns a
+ * second comparator would reintroduce.
+ *
+ * `byNameThenId` sorts on a `name` register `EntryState` does not have —
+ * a depot Entry's name lives on the Gear it references — so each Entry is
+ * adapted to the `{id, name}` shape it takes, with {@link entryLabel} as
+ * the borrowed `name`. This is why this function takes `state` at all.
  */
 export function entriesOf(
   trip: TripState,
@@ -55,10 +63,12 @@ export function entriesOf(
     .filter(
       (entry) => entry.source !== undefined && entry.removed?.value !== true,
     )
-    .sort((a, b) => {
-      const byLabel = entryLabel(a, state).localeCompare(entryLabel(b, state))
-      return byLabel !== 0 ? byLabel : a.id.localeCompare(b.id)
-    })
+    .sort((a, b) =>
+      byNameThenId(
+        { id: a.id, name: { value: entryLabel(a, state) } },
+        { id: b.id, name: { value: entryLabel(b, state) } },
+      ),
+    )
 }
 
 /**
@@ -86,13 +96,22 @@ export function entryLabel(entry: EntryState, state: DepotState): string {
 }
 
 /**
- * The Kind that governs the row, or `'trip_only'` for an Entry with no
- * Gear — no `source` at all, a trip-only `source`, or a depot `source`
- * whose Gear this replica has not folded (or has folded with no `kind`
- * register of its own, which `gear.recorded` always writes and so is reached
- * only through a malformed op). The three are alike in the one way this
- * question cares about: there is no Gear to read a Kind from, so the row is
- * governed the way a trip-only Entry's always is.
+ * The Kind that governs the row, `'trip_only'` for an Entry with no Gear at
+ * all, or `undefined` for a depot Entry whose Gear this function cannot read
+ * a Kind from.
+ *
+ * `'trip_only'` covers exactly the two cases with no Gear to name: no
+ * `source` at all, and a trip-only `source`.
+ *
+ * `undefined` covers a depot `source` whose Gear either has not reached this
+ * replica's fold yet, or has but carries no `kind` register of its own.
+ * **This is not a malformed op** — `trip.entry_added` and `gear.recorded`
+ * are different aggregates with no ordering between them, so a Gear
+ * genuinely not-yet-synced is the ordinary case, not the exceptional one.
+ * Reading it as `'single'` would assert a Kind nobody has stated, and one
+ * task over the claim selector branches on exactly this value: an unsynced
+ * Gear misread as `'single'` would raise an over-claim the reader cannot
+ * settle, naming a row this build still draws as `—`.
  *
  * `pieceCountOf` is this function's one caller for the branch; nothing else
  * should re-derive "does this Entry have a Gear, and what Kind is it".
@@ -100,10 +119,10 @@ export function entryLabel(entry: EntryState, state: DepotState): string {
 export function entryKind(
   entry: EntryState,
   state: DepotState,
-): KindValue | 'trip_only' {
+): KindValue | 'trip_only' | undefined {
   const source = entry.source?.value
   if (source === undefined || source.from === 'trip_only') return 'trip_only'
-  return state.gear[source.gearId]?.kind?.value ?? 'single'
+  return state.gear[source.gearId]?.kind?.value
 }
 
 /**
@@ -148,6 +167,7 @@ export function bringCountOf(
  * | Per-person depot Entry | {@link participantIds}`(trip).length` |
  * | Trip-only Entry | `1` — no Kind to be Counted by |
  * | Gear with an unrecognised Kind | `1` — the conservative direction |
+ * | Depot Entry whose Gear is not yet synced | `1` — {@link entryKind} reads `undefined`, defaulted exactly like an unrecognised Kind |
  *
  * Per-person is Participants and **all** of it until S8 tombstones some
  * Pieces: a Piece is "derived from the trip's participants, minus those
