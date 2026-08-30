@@ -80,7 +80,16 @@
      F5): `✕` is this row's primary destructive control and the row's
      `editable` state is exactly the below-Split, touch-first mode, so a
      ~7×14px painted glyph is not an adequate target
-     (`frontend-design.md` §2.1's `max(3rem, 48px)` floor). */
+     (`frontend-design.md` §2.1's `max(3rem, 48px)` floor).
+     `min-height` is declared explicitly, not left to `height: 2rem` alone:
+     `ui/styles/base.css`'s `button { min-height: max(3rem, 48px); }` sits in
+     the `base` layer, and `min-height` beats `height` — cascade layers only
+     resolve a conflict *within* one property, not across two. Without this
+     line the box still computes to 48px (verified in Chromium), which grows
+     the `::after` below into the row above and below it — a tap meant for a
+     neighbouring row's own `.remove` lands on this one instead, and `✕` is
+     deliberately unconfirmed. `DepotPicker.module.css`'s `.add` is the
+     pattern this copies. */
   .remove {
     position: relative;
     flex: none;
@@ -89,6 +98,7 @@
     justify-content: center;
     width: 2rem;
     height: 2rem;
+    min-height: max(2rem, 32px);
     padding: 0;
     border: 0;
     background: none;

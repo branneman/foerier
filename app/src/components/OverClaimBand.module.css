@@ -105,8 +105,20 @@
     gap: var(--space-12);
   }
 
+  /* No `::after` here, on purpose: `.settle` sets no `min-height`, so
+     `ui/styles/base.css`'s `button { min-height: max(3rem, 48px); }` —
+     layer `base`, lower than this `components` layer, and never overridden
+     below — already floors the real rendered height to 48px regardless of
+     `--text-label`'s 14px line-height (verified in Chromium). That is
+     already the target the touch-target floor asks for, and these are
+     borderless text buttons, so the extra height reads as whitespace in
+     the band rather than as a control growing. A local `::after` was tried
+     and reverted (fix round F1): `.settleRow`'s `gap` (`--space-12`, 12px)
+     is both the row gap between wrapped lines and the column gap between
+     buttons on one line, so growing vertically through it let two wrapped
+     settle routes' hit areas overlap by 18px — the exact mis-tap risk on an
+     unconfirmed write the growth was meant to avoid. */
   .settle {
-    position: relative;
     padding: 0;
     border: 0;
     background: none;
@@ -116,33 +128,12 @@
     cursor: pointer;
   }
 
-  /* Fix round F1. `.settle` sets no `min-height`, so `ui/styles/base.css`'s
-     `button { min-height: max(3rem, 48px); }` — layer `base`, lower than
-     this `components` layer, and never overridden below — already floors
-     the real rendered height to 48px regardless of `--text-label`'s 14px
-     line-height (verified in Chromium: an unpatched `.settle` measures
-     48px tall). `Stepper`'s `.dense .button`, `EntryRow`'s `.remove` and
-     `DepotPicker`'s `.add` are floored the same way and for the same
-     reason — none of them sets `min-height` either. The `::after` below
-     still earns its place for parity with those three and as the actual
-     hit-area definition should that global floor ever narrow for a
-     `<button>` this plain. It grows vertically only — `inset`'s two-value
-     form leaves left/right at `0` — because `.settleRow` wraps several
-     `.settle` buttons `--space-12` (12px) apart (`REMOVE HERE` beside
-     `REMOVE ON <trip>` beside another `REMOVE ON <trip>`), and growing
-     horizontally as far as the other three do would close that gap and let
-     two different routes' hit areas overlap: a mis-tap risk on an
-     unconfirmed write that this fix must not introduce. */
-  .settle::after {
-    content: '';
-    position: absolute;
-    inset: -0.9375rem 0;
-  }
-
   /* Quiet, not accent — the one row in this band that is not itself a
-     conflict. */
+     conflict. Same reasoning as `.settle` above, no `::after` either: no
+     `min-height` here, so `base.css`'s floor already renders this at 48px
+     — measured, not 23px as an earlier version of this comment claimed
+     while also stating the true 47px two sentences later. */
   .more {
-    position: relative;
     align-self: flex-start;
     margin-top: var(--space-8);
     padding-top: var(--space-8);
@@ -154,20 +145,5 @@
     text-transform: uppercase;
     color: var(--color-ink-muted);
     cursor: pointer;
-  }
-
-  /* Same reasoning as `.settle` above — no `min-height` here either, so
-     `base.css`'s floor already renders this at 48px too — but not the same
-     numbers: `.more` carries `padding-top` (`--space-8`, 8px) and a
-     `border-top` (`--stroke-rule`, 1px) that `.settle` does not, making its
-     padding box 23px tall (1 + 8 + the 14px line-height) rather than 14.
-     44px needs 10.5px each above and below (44 − 23 = 21, halved). `.more`
-     stands alone (`align-self: flex-start`), so unlike `.settle` there is
-     no neighbour to overlap — but the growth stays vertical-only anyway,
-     for the same `inset` shape as its sibling. */
-  .more::after {
-    content: '';
-    position: absolute;
-    inset: -0.65625rem 0;
   }
 }

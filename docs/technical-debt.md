@@ -128,3 +128,13 @@ items under thirty settled ones.
   components are what close it.
   [`architecture-design.md`](architecture-design.md) §12.1, anchor:
   `` until there is a `ui/` worth showing off ``
+- **`Trip.module.css`'s `.addParticipant` renders 22 × 48px, not the 22 × 22px
+  the board draws and the comment above it assumes.** It sets `height: 2rem`
+  with no `min-height`, so `ui/styles/base.css`'s `button { min-height:
+  max(3rem, 48px); }` floor — [`frontend-design.md`](frontend-design.md)
+  §2.1 — still reaches it and drags `.participantRow` to 48px, the same
+  defect S7's Stepper/EntryRow/DepotPicker controls carried and were fixed
+  for on this branch. It shipped in S6, on `main`, before that failure mode
+  was known, and is out of scope for the branch that found it.
+  `app/src/screens/Trip.module.css`, anchor:
+  `22px is under the 24px minimum a pointer target has to answer for`

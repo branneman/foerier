@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -24,7 +27,138 @@ const KINDS: readonly {
   { label: 'Passports', kind: 'trip_only', bringCount: null, pieceCount: 1 },
 ]
 
+/** These files' own docstrings are dense with backticked CSS-shaped prose
+ * (e.g. `.row`'s comment names `min-height: 48px` in running text) — stripped
+ * before any parsing below, or a comment's prose could be mistaken for a
+ * declaration. */
+function stripComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, '')
+}
+
+function entryRowCss(): string {
+  return stripComments(
+    readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'EntryRow.module.css'),
+      'utf8',
+    ),
+  )
+}
+
+function baseCss(): string {
+  return stripComments(
+    readFileSync(
+      join(
+        dirname(expect.getState().testPath ?? ''),
+        '..',
+        '..',
+        '..',
+        'ui',
+        'styles',
+        'base.css',
+      ),
+      'utf8',
+    ),
+  )
+}
+
+/** All lengths in this file are `rem` or `px`; `1rem` is always `16px`
+ * (`frontend-design.md` §2.1 — no `62.5%` trick). Returns the *largest* of
+ * every length token found, so a `max(2rem, 32px)` declaration resolves the
+ * same way a browser would. */
+function maxPx(declaration: string | undefined): number | undefined {
+  if (declaration === undefined) return undefined
+  const tokens = declaration.match(/-?[0-9.]+(?:rem|px)/g) ?? []
+  if (tokens.length === 0) return undefined
+  return Math.max(
+    ...tokens.map((token) =>
+      token.endsWith('rem')
+        ? Number.parseFloat(token) * 16
+        : Number.parseFloat(token),
+    ),
+  )
+}
+
+/** Finds the `{ … }` body of the first rule whose selector is exactly
+ * `selector` (no trailing `,` — a comma-joined selector list, like
+ * `base.css`'s `button, [role='button'], …`, never matches this way on
+ * purpose, since a partial match on one name in the list would silently
+ * read the wrong rule). */
+function ruleBody(css: string, selector: string): string | undefined {
+  const escaped = selector.replace(/[.[\]']/g, '\\$&')
+  return new RegExp(`(?:^|[\\s{}])${escaped}\\s*\\{([^}]*)\\}`).exec(css)?.[1]
+}
+
+/** `base.css`'s touch-target floor sits on a multi-selector list
+ * (`button,\n[role='button'],\n…`), so it is found by the declaration
+ * itself rather than by one selector name in the list. */
+function ruleBodyContaining(css: string, needle: string): string | undefined {
+  const index = css.indexOf(needle)
+  if (index === -1) return undefined
+  const braceStart = css.indexOf('{', index)
+  const braceEnd = css.indexOf('}', braceStart)
+  if (braceStart === -1 || braceEnd === -1) return undefined
+  return css.slice(braceStart + 1, braceEnd)
+}
+
+function declaration(body: string | undefined, property: string) {
+  if (body === undefined) return undefined
+  return new RegExp(`${property}:\\s*([^;]+);`).exec(body)?.[1]
+}
+
 describe('EntryRow', () => {
+  describe("the .remove hit area (regression: overlap into the next row's ✕)", () => {
+    // The defect this pins: `.remove` sets `height: 2rem` with no
+    // `min-height` of its own, so `ui/styles/base.css`'s global
+    // `button { min-height: max(3rem, 48px); }` — a lower cascade layer, but
+    // `min-height` beats `height` regardless of layer order — still floors
+    // the real box to 48px. `.remove::after` then grows a 46×62px hit area
+    // (32 + 2×7 wide, 48 + 2×7 tall) inside a 48px-tall `.row`, and two
+    // consecutive rows' hit areas overlap by 13px: a tap meant for one row's
+    // ✕ lands on the next row's Entry instead, and ✕ is deliberately
+    // unconfirmed (this file's own docstring, `EntryRow.tsx:64`). This test
+    // derives the geometry from the declared CSS values themselves (jsdom
+    // computes no layout, and `toHaveStyle` passes unconditionally here —
+    // `vitest.config.ts` runs `css: false`), so reverting `.remove`'s
+    // `min-height` fails it the same way it fails in a real browser.
+    it('never overlaps the ✕ hit area into the next row', () => {
+      const css = entryRowCss()
+
+      const rowBody = ruleBody(css, '.row')
+      const removeBody = ruleBody(css, '.remove')
+      const afterBody = ruleBody(css, '.remove::after')
+      expect(rowBody).toBeDefined()
+      expect(removeBody).toBeDefined()
+      expect(afterBody).toBeDefined()
+
+      const rowHeight = maxPx(declaration(rowBody, 'min-height'))
+      const declaredHeight = maxPx(declaration(removeBody, 'height'))
+      const declaredMinHeight = maxPx(declaration(removeBody, 'min-height'))
+      const insetToken = declaration(afterBody, 'inset')?.trim().split(/\s+/)[0]
+      const insetPx =
+        insetToken === undefined ? undefined : Math.abs(maxPx(insetToken) ?? 0)
+
+      expect(rowHeight).toBeDefined()
+      expect(declaredHeight).toBeDefined()
+      expect(insetPx).toBeDefined()
+
+      // Same used-value rule the browser applies: a `min-height` (local, or
+      // else `base.css`'s global floor) wins over a smaller `height`.
+      const globalFloor = maxPx(
+        declaration(ruleBodyContaining(baseCss(), 'button'), 'min-height'),
+      )
+      expect(globalFloor).toBeDefined()
+      const effectiveMinHeight = declaredMinHeight ?? globalFloor ?? 0
+      const paintedHeight = Math.max(declaredHeight ?? 0, effectiveMinHeight)
+
+      // `.remove` is centred (`align-items: center`) inside `.row`; the
+      // margin above/below it is what the hit area is allowed to grow into
+      // before it reaches a neighbouring row.
+      const margin = ((rowHeight ?? 0) - paintedHeight) / 2
+
+      expect(margin).toBeGreaterThanOrEqual(insetPx ?? Number.POSITIVE_INFINITY)
+    })
+  })
+
   describe('editable anatomy, by Kind', () => {
     it('draws a dense Stepper on a Counted Entry', () => {
       render(

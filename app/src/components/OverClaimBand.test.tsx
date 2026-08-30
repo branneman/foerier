@@ -43,25 +43,6 @@ function css(): string {
   )
 }
 
-function tokens(): string {
-  return readFileSync(
-    join(
-      dirname(expect.getState().testPath ?? ''),
-      '..',
-      '..',
-      '..',
-      'ui',
-      'styles',
-      'tokens.css',
-    ),
-    'utf8',
-  )
-}
-
-function remToPx(rem: string): number {
-  return Number.parseFloat(rem) * 16
-}
-
 /**
  * A **real** store, seeded by emitting real ops — `TripCard.test.tsx`'s rule:
  * `overClaims(state)` is a fold of registers (spec §3.5), so a hand-shaped
@@ -812,70 +793,37 @@ describe('settle callbacks', () => {
   })
 })
 
-/**
- * The padding box `::after` grows from: `--text-label`'s line-height, plus
- * whatever `padding-top`/`border-top` the rule itself adds (`.settle` adds
- * none; `.more` adds both). Only the `top` side varies across these two
- * rules today, so that is the only extra this resolves.
- */
-function verticalPaddingBoxHeight(rule: string, tokensText: string): number {
-  const lineHeightRem = /--text-label:\s*[0-9.]+rem\/([0-9.]+)rem/.exec(
-    tokensText,
-  )?.[1]
-  let height = remToPx(lineHeightRem ?? '0')
-
-  const paddingTopVar = /padding-top:\s*var\((--[\w-]+)\)/.exec(rule)?.[1]
-  if (paddingTopVar !== undefined) {
-    const rem = new RegExp(`${paddingTopVar}:\\s*([0-9.]+)rem`).exec(
-      tokensText,
-    )?.[1]
-    height += remToPx(rem ?? '0')
-  }
-
-  const borderTopVar = /border-top:\s*var\((--[\w-]+)\)/.exec(rule)?.[1]
-  if (borderTopVar !== undefined) {
-    const px = new RegExp(`${borderTopVar}:\\s*([0-9.]+)px`).exec(
-      tokensText,
-    )?.[1]
-    height += Number.parseFloat(px ?? '0')
-  }
-
-  return height
-}
-
-describe('touch-target hit areas (fix round F1)', () => {
+describe('touch-target hit areas (fix round F3: no local treatment)', () => {
+  // `.settle` and `.more` are both real `<button>`s, so `ui/styles/base.css`'s
+  // global `button { min-height: max(3rem, 48px); }` already floors them to
+  // 48px — well past the 44px hit-area minimum — with no rule of their own.
+  // A `::after` was tried here once (fix round F1) and reverted: `.settleRow`
+  // wraps several `.settle` buttons `--space-12` (12px) apart, and that gap
+  // is both the row gap between wrapped lines and the column gap between
+  // buttons on one line, so growing vertically through it let two wrapped
+  // settle routes' hit areas overlap by 18px. This test pins the revert:
+  // neither rule sets its own `min-height`, and neither carries a `::after`.
   it.each(['settle', 'more'] as const)(
-    '.%s grows its padding box to a ≥44px hit area, vertically only',
+    '.%s carries no min-height and no ::after of its own',
     (className) => {
       const text = css()
-      const tokensText = tokens()
       const rule =
         new RegExp(`\\.${className}\\s*\\{([^}]*)\\}`).exec(text)?.[1] ?? ''
-      const afterRule =
-        new RegExp(`\\.${className}::after\\s*\\{([^}]*)\\}`).exec(text)?.[1] ??
-        ''
+      const afterRule = new RegExp(`\\.${className}::after\\s*\\{`).exec(text)
 
-      expect(rule).toMatch(/position:\s*relative/)
-      expect(afterRule).toMatch(/position:\s*absolute/)
-
-      const paddingBoxHeight = verticalPaddingBoxHeight(rule, tokensText)
-
-      // `inset`'s two-value form: vertical, then horizontal.
-      const inset = /inset:\s*(-?[0-9.]+)rem\s+(-?[0-9.]+)/.exec(afterRule)
-      expect(inset).not.toBeNull()
-      const verticalInsetPx = Math.abs(remToPx(inset?.[1] ?? '0'))
-      const horizontalInset = Number.parseFloat(inset?.[2] ?? 'NaN')
-
-      // The horizontal growth must stay `0`: `.settleRow` wraps several
-      // `.settle` buttons `--space-12` (12px) apart, and any horizontal
-      // growth would close that gap and let two different settle routes'
-      // hit areas overlap — the mis-tap this fix exists to close. `.more`
-      // carries the same shape for consistency, though it has no neighbour
-      // to overlap.
-      expect(horizontalInset).toBe(0)
-
-      const hitAreaHeight = paddingBoxHeight + 2 * verticalInsetPx
-      expect(hitAreaHeight).toBeGreaterThanOrEqual(44)
+      expect(rule).not.toMatch(/min-height/)
+      expect(rule).not.toMatch(/position:\s*relative/)
+      expect(afterRule).toBeNull()
     },
   )
+
+  it('.settleRow wraps buttons with no ::after to overlap across the wrap', () => {
+    // With no `::after`, the only thing that could still overlap two
+    // wrapped `.settle` buttons is `.settleRow`'s own `gap` shrinking to 0
+    // — it must stay a real, positive gap so 48px-tall wrapped rows never
+    // touch.
+    const text = css()
+    const rowRule = /\.settleRow\s*\{([^}]*)\}/.exec(text)?.[1] ?? ''
+    expect(rowRule).toMatch(/gap:\s*var\(--space-12\)/)
+  })
 })
