@@ -53,6 +53,16 @@ export interface Claim {
  *
  * `contestedPersonIds` is empty for Single and Counted — there is no Person
  * to name, only a Gear.
+ *
+ * **`supply` and `claimed` are the two numbers of the detection test, not
+ * depot quantities in general.** For Single and Counted they happen to
+ * coincide with one — the supply really is `1`, or really is `ownedCount` —
+ * but for Per-person `supply` is a fact of who happens to be claiming, not of
+ * the Gear: it rises the moment a fourth Trip joins, and invariant 6 gives
+ * per-person gear no owned-count at all. A surface must not render a
+ * Per-person row from these two fields as though they were `OWNED ×N` — that
+ * is a number nobody recorded. Render Per-person from
+ * {@link contestedPersonIds} and each {@link Claim}'s `personIds` instead.
  */
 export interface OverClaim {
   readonly gearId: string
@@ -68,6 +78,19 @@ type ClaimableKind = 'single' | 'counted' | 'per_person'
 
 function isClaimableKind(kind: unknown): kind is ClaimableKind {
   return kind === 'single' || kind === 'counted' || kind === 'per_person'
+}
+
+/**
+ * A total order over plain id strings, by code point rather than
+ * `localeCompare` — `selectors/order.ts`'s reason applied to a bare string
+ * instead of a named entity: `localeCompare` resolves against the host's
+ * default locale and ICU collation data, so two devices could order the same
+ * pair of ids differently. Every sort in this file goes through this rather
+ * than a second copy of the comparison.
+ */
+function compareIds(a: string, b: string): number {
+  if (a === b) return 0
+  return a < b ? -1 : 1
 }
 
 /**
@@ -114,10 +137,11 @@ function claimingTrips(
   state: DepotState,
   extraTripId?: string,
 ): readonly TripState[] {
-  const active = visibleTrips(state).filter(isActive)
+  const visible = visibleTrips(state)
+  const active = visible.filter(isActive)
   if (extraTripId === undefined) return active
   if (active.some((trip) => trip.id === extraTripId)) return active
-  const extra = state.trips[extraTripId]
+  const extra = visible.find((trip) => trip.id === extraTripId)
   return extra === undefined ? active : [...active, extra]
 }
 
@@ -136,6 +160,14 @@ function claimingTrips(
  * sourceless Entry (already excluded by {@link entriesOf}) and like an
  * Entry whose Kind this build has never heard of: a claim the reader cannot
  * see is a claim they cannot settle, so none of the three is counted.
+ *
+ * **This deliberately diverges from `pieceCountOf`**, which counts an
+ * unrecognised Kind as `1` piece. Both are right in context: `pieceCountOf`
+ * is counting what it can see on a list a reader is already looking at, and
+ * asserting a conflict this file has no rule for is a different and stronger
+ * claim than counting a line. `isClaimableKind` is this file's own answer to
+ * "which Kinds does this build have a supply rule for", and it names only
+ * the three the domain states one for.
  */
 function claimsByGear(
   state: DepotState,
@@ -159,7 +191,7 @@ function claimsByGear(
   for (const bucket of byGear.values()) {
     bucket.claims.sort(
       (a, b) =>
-        a.tripId.localeCompare(b.tripId) || a.entryId.localeCompare(b.entryId),
+        compareIds(a.tripId, b.tripId) || compareIds(a.entryId, b.entryId),
     )
   }
   return byGear
@@ -190,24 +222,29 @@ function supplyAndClaimed(
     const claimed = claims.reduce((sum, claim) => sum + claim.count, 0)
     return { supply, claimed, contestedPersonIds: [] }
   }
-  // Per-person: only a Person present in **two or more** claiming Trips'
-  // Participant sets is contested. Comparing counts instead — "two claims
-  // means an over-claim" — is exactly the bug spec §3.3 warns against: two
-  // active Trips claiming the same Gear for disjoint People is legitimate
-  // and common (story 6), and must report nothing.
-  const tripsByPerson = new Map<string, Set<string>>()
+  // Per-person: a Person named by **two or more claims** is contested —
+  // comparing People, never counts. Two active Trips claiming the same Gear
+  // for disjoint People is legitimate and common (story 6), and must report
+  // nothing: comparing counts instead — "two claims means an over-claim" —
+  // is exactly the bug spec §3.3 warns against.
+  //
+  // The count is of **claims**, not of distinct Trips: two Entries for the
+  // same per-person Gear on the *same* Trip is exactly as reachable as two
+  // Trips each holding one — two offline Devices both add the headlamp to
+  // Alps, producing two `trip.entry_added` with different entry ids — and
+  // one Person cannot bring two of their one headlamp regardless of which
+  // Trip(s) the claims sit on.
+  const claimsByPerson = new Map<string, number>()
   for (const claim of claims) {
     for (const personId of claim.personIds ?? []) {
-      const trips = tripsByPerson.get(personId) ?? new Set<string>()
-      trips.add(claim.tripId)
-      tripsByPerson.set(personId, trips)
+      claimsByPerson.set(personId, (claimsByPerson.get(personId) ?? 0) + 1)
     }
   }
-  const contestedPersonIds = [...tripsByPerson.entries()]
-    .filter(([, trips]) => trips.size >= 2)
+  const contestedPersonIds = [...claimsByPerson.entries()]
+    .filter(([, count]) => count >= 2)
     .map(([personId]) => personId)
-    .sort()
-  const supply = tripsByPerson.size
+    .sort(compareIds)
+  const supply = claimsByPerson.size
   const claimed = claims.reduce((sum, claim) => sum + claim.count, 0)
   return { supply, claimed, contestedPersonIds }
 }
@@ -228,7 +265,7 @@ function overClaimsAmong(
     if (claimed <= supply) continue
     result.push({ gearId, kind, claims, supply, claimed, contestedPersonIds })
   }
-  return result.sort((a, b) => a.gearId.localeCompare(b.gearId))
+  return result.sort((a, b) => compareIds(a.gearId, b.gearId))
 }
 
 /**

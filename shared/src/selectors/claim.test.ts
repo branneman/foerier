@@ -188,6 +188,49 @@ describe('Per-person gear', () => {
     expect(result[0]!.supply).toBe(3)
     expect(result[0]!.claimed).toBe(4)
   })
+
+  it('reports the shared Person when two Entries for the same Gear sit on the same Trip', () => {
+    // Two offline Devices both add the headlamp to Alps, producing two
+    // trip.entry_added ops with different entry ids on the *same* Trip.
+    // A Person cannot bring two of their one headlamp regardless of which
+    // Trip(s) the claims sit on — contestedPersonIds counts claims per
+    // Person, not distinct Trips, and must still name p1 here even though
+    // there is only ever one Trip in play.
+    const state = depot(
+      aGear({ id: 'g1', kind: 'per_person' }),
+      aTrip({ id: 't1', phase: 'pack_out', participants: ['p1'] }),
+      [
+        tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' }),
+        tripEntryAdded('t1', 'e2', { from: 'depot', gearId: 'g1' }),
+      ],
+    )
+
+    const result = overClaims(state)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]!.contestedPersonIds).toEqual(['p1'])
+    expect(result[0]!.supply).toBe(1)
+    expect(result[0]!.claimed).toBe(2)
+  })
+})
+
+describe('an unrecognised Kind holds no claim', () => {
+  it('does not report an over-claim for a Kind this build has never heard of', () => {
+    // Forward compat: a future Kind arrives verbatim (state.ts's KindValue
+    // is `(string & {})`-open) and this file has no supply rule for it.
+    // Diverges from pieceCountOf, which counts an unrecognised Kind as 1
+    // piece — counting what is on the list is a weaker claim than asserting
+    // a conflict this build has no rule for.
+    const state = depot(
+      aGear({ id: 'g1', kind: 'something-later' }),
+      aTrip({ id: 't1', phase: 'pack_out' }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
+      aTrip({ id: 't2', phase: 'on_trip' }),
+      [tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g1' })],
+    )
+
+    expect(overClaims(state)).toEqual([])
+  })
 })
 
 describe('only active Trips claim', () => {
@@ -232,16 +275,63 @@ describe('overClaimsIfActive', () => {
     expect(result[0]!.claims.map((c) => c.tripId).sort()).toEqual(['t1', 't2'])
   })
 
-  it('reports nothing for the same Draft through overClaims', () => {
+  it('reports a clash a closed Trip would cause on reopening', () => {
+    // Reopening is one of domain §5.2's three guarded moments, and
+    // ReopenConfirm is a shipped caller — overClaimsIfActive must answer
+    // this hypothetical for a closed Trip exactly as it does for a Draft.
     const state = depot(
       aGear({ id: 'g1', kind: 'single' }),
       aTrip({ id: 't1', phase: 'pack_out' }),
       [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
-      aTrip({ id: 't2', phase: 'draft' }),
+      aTrip({ id: 't2', phase: 'closed' }),
       [tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g1' })],
     )
 
     expect(overClaims(state)).toEqual([])
+
+    const result = overClaimsIfActive(state, 't2')
+
+    expect(result).toHaveLength(1)
+    expect(result[0]!.claims.map((c) => c.tripId).sort()).toEqual(['t1', 't2'])
+  })
+})
+
+describe('claim order is asserted, never masked by sorting the result', () => {
+  it('lists claims by Trip id regardless of the order the Trips were created in', () => {
+    const state = depot(
+      aGear({ id: 'g1', kind: 'single' }),
+      aTrip({ id: 't3', phase: 'pack_out' }),
+      [tripEntryAdded('t3', 'e3', { from: 'depot', gearId: 'g1' })],
+      aTrip({ id: 't1', phase: 'on_trip' }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
+      aTrip({ id: 't2', phase: 'unpack' }),
+      [tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g1' })],
+    )
+
+    const result = overClaims(state)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]!.claims.map((c) => c.tripId)).toEqual(['t1', 't2', 't3'])
+  })
+
+  it('lists contestedPersonIds in order, not insertion order', () => {
+    // p2 is inserted into the internal map before p1 (t1's claim names only
+    // p2; t2's claim, read in participant-id order, names p1 then p2), so an
+    // un-sorted result would read ['p2', 'p1'].
+    const state = depot(
+      aGear({ id: 'g1', kind: 'per_person' }),
+      aTrip({ id: 't1', phase: 'pack_out', participants: ['p2'] }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
+      aTrip({ id: 't2', phase: 'on_trip', participants: ['p1', 'p2'] }),
+      [tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g1' })],
+      aTrip({ id: 't3', phase: 'unpack', participants: ['p1'] }),
+      [tripEntryAdded('t3', 'e3', { from: 'depot', gearId: 'g1' })],
+    )
+
+    const result = overClaims(state)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]!.contestedPersonIds).toEqual(['p1', 'p2'])
   })
 })
 
@@ -249,8 +339,11 @@ describe('sourceless entries hold no claim', () => {
   it('ignores an Entry whose trip.entry_added has not arrived', () => {
     // trip.entry_bring_count_set arrives before trip.entry_added — Task 1's
     // out-of-order case. writeEntry creates the Entry with no `source`, and
-    // entriesOf excludes it; the claim selector must not choke on it or
-    // count it as a claim on anything.
+    // entriesOf excludes it. A second active Trip genuinely holds g1, on a
+    // *proper* depot Entry of its own — if the sourceless Entry on t1 were
+    // ever counted as a claim (e.g. by reading `state.trips` directly
+    // instead of `entriesOf`), this pair would wrongly read as an
+    // over-claim; it must instead read as exactly one real claim.
     const state = depot(
       aGear({ id: 'g1', kind: 'single' }),
       aTrip({ id: 't1', phase: 'pack_out' }),
@@ -263,6 +356,7 @@ describe('sourceless entries hold no claim', () => {
     // names no Gear, so it cannot clash with anything.
     expect(overClaims(state)).toEqual([])
     expect(overClaimsFor(state, 't1')).toEqual([])
+    expect(overClaimsFor(state, 't2')).toEqual([])
   })
 
   it('holds no claim for a depot Entry whose Gear is not yet in the fold', () => {

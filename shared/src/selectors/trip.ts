@@ -402,7 +402,7 @@ export function tripSections(state: DepotState): TripSections {
   const closed: TripState[] = []
   for (const trip of visibleTrips(state)) {
     if (isActive(trip)) active.push(trip)
-    else if (phaseOf(trip) === 'closed') closed.push(trip)
+    else if (isClosed(trip)) closed.push(trip)
     else planned.push(trip)
   }
   return {
