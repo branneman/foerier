@@ -80,6 +80,23 @@
     color: var(--color-ink-faint);
   }
 
+  /* The builder's own pane draws this field at a denser 40px, the same call
+     `.pane .row` already makes below — the board's two-pane frame has less
+     headroom than the standalone screen. */
+  .pane .search {
+    min-height: max(2.5rem, 40px);
+  }
+
+  /* `Trip.tsx`'s own bare-paragraph `.empty` — no title, no line, no action,
+     just the one sentence `GearDetail.tsx`'s and `Trip.tsx`'s identical
+     guards already draw for an id the fold has never seen. Named apart from
+     this file's own `.empty` (the depot/unmatched block below), which is a
+     different shape entirely. */
+  .notFound {
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+  }
+
   .chips {
     display: flex;
     flex-wrap: wrap;
@@ -122,6 +139,26 @@
     font: var(--text-body) var(--font-ui);
     font-weight: 600;
     text-decoration: none;
+    cursor: pointer;
+  }
+
+  /* `Clear filters` — `Components.dc.html`'s 40px bordered ghost, deliberately
+     not `.emptyAction`'s 44px filled accent: this undoes a narrowing rather
+     than leading to `/add`, `SliceBar.module.css`'s own `.clear` distinction
+     for the identical action (S7 review F8). */
+  .clearFilters {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(2.5rem, 40px);
+    padding-inline: var(--space-16);
+    margin-top: var(--space-8);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-accent);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
     cursor: pointer;
   }
 
@@ -184,7 +221,12 @@
     color: var(--color-ink-muted);
   }
 
+  /* The board paints this at 32px, and the *painting* is right — but a dense
+     in-row control still owes the ≥44px hit area spec §4.8 settled for
+     `Stepper`'s own h32 buttons (S7 review F4): `position: relative` plus the
+     `::after` below, rather than a taller box that would dominate the row. */
   .add {
+    position: relative;
     flex: none;
     display: inline-flex;
     align-items: center;
@@ -201,6 +243,17 @@
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     cursor: pointer;
+  }
+
+  .add::after {
+    content: '';
+    position: absolute;
+    /* `reset.css`'s global `box-sizing: border-box` makes 32px (min-height)
+       minus 2×1px (`--stroke-rule`) a 30px padding box — the box an
+       absolutely positioned `::after` lays out against — so 44px needs
+       (44 - 30) / 2 = 7px = 0.4375rem each side, exactly `Stepper.module.css`'s
+       `.dense .button::after` for the identical 30px-padding-box case. */
+    inset: -0.4375rem;
   }
 
   /* Mono, packed-green — the board's own colour for a Gear already on this

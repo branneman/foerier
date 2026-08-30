@@ -4,7 +4,7 @@ import { aGear, anOp, aPerson, hlcAt } from '../../testUtils/index.ts'
 import { personRenamed, type OpSpec } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
 import type { DepotState } from '../state.ts'
-import { ownerLabel, ownerOf, personLabel } from './owner.ts'
+import { ownerInitial, ownerLabel, ownerOf, personLabel } from './owner.ts'
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 
@@ -71,6 +71,42 @@ describe('ownerLabel', () => {
       aGear({ id: 'g1', owner: { type: 'person', personId: 'p1' } }),
     )
     expect(ownerLabel(state, state.gear['g1']!)).toBe('PERSONAL')
+  })
+})
+
+describe('ownerInitial', () => {
+  it('reads undefined for shared gear — no letter to draw at all', () => {
+    const state = depot(aGear({ id: 'g1' }))
+    expect(ownerInitial(state, state.gear['g1']!)).toBeUndefined()
+  })
+
+  it('reads undefined for an explicit shared owner too', () => {
+    const state = depot(aGear({ id: 'g1', owner: { type: 'shared' } }))
+    expect(ownerInitial(state, state.gear['g1']!)).toBeUndefined()
+  })
+
+  it('reads the bare initial for a personal owner, with no PERSONAL beside it', () => {
+    const state = depot(
+      aPerson({ id: 'p1', name: 'Els' }),
+      aGear({ id: 'g1', owner: { type: 'person', personId: 'p1' } }),
+    )
+    expect(ownerInitial(state, state.gear['g1']!)).toBe('E')
+  })
+
+  it('reads undefined for a Person whose op has not arrived', () => {
+    const state = depot(
+      aGear({ id: 'g1', owner: { type: 'person', personId: 'ghost' } }),
+    )
+    expect(ownerInitial(state, state.gear['g1']!)).toBeUndefined()
+  })
+
+  it('reads undefined for a Person whose name was cleared', () => {
+    const state = depot(
+      aPerson({ id: 'p1', name: 'Els' }),
+      [personRenamed('p1', null)],
+      aGear({ id: 'g1', owner: { type: 'person', personId: 'p1' } }),
+    )
+    expect(ownerInitial(state, state.gear['g1']!)).toBeUndefined()
   })
 })
 

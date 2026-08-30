@@ -1,15 +1,21 @@
 import {
+  containmentView,
   dimension,
   dimensionValues,
+  DIMENSIONS,
   EMPTY_SLICE,
   entriesOf,
   homePath,
+  ownerInitial,
   sliceDepot,
   systemIdSource,
   tripEntryAdded,
   tripLabel,
   visibleGear,
+  type ContainmentView,
+  type DepotState,
   type DimensionId,
+  type GearState,
   type SliceSpec,
 } from '@foerier/shared'
 import { Chip } from '@foerier/ui'
@@ -21,6 +27,7 @@ import { ValueMenu } from '../components/ValueMenu'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
 import { useScreenHeader } from '../shell/useMediaQuery'
+import { qtyFor } from './Depot'
 import styles from './DepotPicker.module.css'
 
 /**
@@ -45,11 +52,14 @@ import styles from './DepotPicker.module.css'
  * at 900 (`+ TAG` `+ KIND`), with no rule stated either way — spec §4.3 rules
  * to follow each board at its own width, which is `+ TRIP` renders in the
  * `'screen'` variant only. `SliceBar` hard-codes the Depot's full
- * `DIMENSIONS` table (tag, kind, ownership, person, trip) and cannot be
- * handed this subset, so this component narrows through `sliceDepot`
- * directly with its own small dimension list rather than reusing that
- * component — the picking mechanics (`ValueMenu`, `TagPicker`, `Chip`) are
- * shared, the chip row is not.
+ * `DIMENSIONS` table and has no prop to narrow it to a subset, so this
+ * component narrows through `sliceDepot` directly with its own small `spec`
+ * — the picking mechanics (`ValueMenu`, `TagPicker`, `Chip`) are shared, the
+ * chip row is not. `dimensionsFor` still **derives** its list from
+ * `DIMENSIONS` rather than enumerating one of its own (S7 review F7): a
+ * later slice's dimension (S8/S9/S10, per `slice.ts`'s own table) reaches
+ * this picker automatically, the same way it reaches the Depot's bar,
+ * unless it is named in `EXCLUDED_DIMENSIONS`.
  *
  * `spec.group` is always `'none'`: `sliceDepot`'s grouping is the Depot
  * list's own feature (Kind/Owner bands), and this picker draws a flat list,
@@ -67,30 +77,125 @@ import styles from './DepotPicker.module.css'
  * any kind; the row's own `IN LIST ✓` is the only feedback, and it is
  * permanent for the sitting rather than transient.
  *
- * ## The meta slot carries the home path, and nothing else
+ * ## The meta slot: the home path, then at most one suffix
  *
- * `Components` §03's "no whereabouts" is confirmed narrowly by the round: no
- * world chip, no status. `docs/design/README.md` §5 states the anatomy as
- * "40px rows (name + home path)" for the pane, and spec §4.3 the same for the
- * screen — home path alone, not the owner initial or the quantity annotations
- * a couple of the board's own row examples happen to draw (`SLAAPKAMER ▸
- * KAST · E`, `KELDER ▸ BAK 3 · ×4`). Those are richer than either the brief
- * or the prose anatomy asks for, and Depot.tsx's own `metaFor` already
- * combines owner + path + count for a *different* screen's meta slot — adding
- * that here would be a wider decision than this task was handed, so the row
- * draws the path alone: `LOOSE` for a piece of gear with no residence,
- * matching `GearDetail.tsx`'s `chipLocation` fallback for the identical
- * question.
+ * Corrected against the boards after review (S7 review F1) — my own first
+ * pass read the brief's "the name, the home path and a trailing `+ ADD` or
+ * `IN LIST ✓`" as "home path alone", which every row *without* a suffix
+ * supports and every row *with* one contradicts. The boards draw a suffix in
+ * four rows out of five, and the suffix is never the same kind of fact twice:
+ * `×<ownedCount>` for Counted (`Depot.tsx`'s own `qtyFor`, reused rather than
+ * copied — it is the **owned** count, which is why `Gas canister 450` still
+ * carries `×4` while reading `+ ADD`, not on the list, since a Bring-count
+ * only exists once an Entry does), the Kind's own label for per-person
+ * (`Per-person`, which `.meta`'s CSS transform draws as `PER-PERSON`), and
+ * the owner's bare initial (`ownerInitial`, `shared/src/selectors/owner.ts`)
+ * for everything else — Single, an absent Kind, an unrecognised one.
+ *
+ * **Undrawn on the boards, ruled here:** no row is both Counted-and-personal
+ * or per-person-and-personal. Where they would collide, Kind wins and the
+ * owner is suppressed — Kind changes what `+ ADD` will actually list (a
+ * per-person add fans out per Participant, a Counted add carries a
+ * Bring-count), where the owner changes nothing about the add.
+ *
+ * `Components` §03's "no whereabouts" still holds narrowly: no world chip, no
+ * status, ever — only the meta slot's own contents changed. `LOOSE` is
+ * spelled in literal caps rather than left to `.meta`'s CSS transform,
+ * matching `Find.tsx`'s `'⌂ LOOSE'` and `GearDetail.tsx`'s `chipLocation`
+ * fallback for the identical question — a third, CSS-dependent spelling here
+ * would have been the drift `owner.ts`'s own docstring warns about, one
+ * screen over.
+ *
+ * ## An unknown `tripId` draws `No such trip.` rather than the picker
+ *
+ * `Trip.tsx` and `GearDetail.tsx` both guard this; this component did not
+ * until S7 review F2 named the consequence. `reduce.ts`'s `writeTrip`
+ * creates the Trip entity for **any** Trip op, so a `+ ADD` against an
+ * unknown id would author a `trip.entry_added` that materialises a
+ * nameless, phaseless Trip no delete op can ever remove before S14 — reads
+ * `draft` (`trip.ts`'s own "an absent phase register reads draft" rule) and
+ * so surfaces under `PLANNED` on `/trips`, forever, on every Device in the
+ * household. Reachable ordinarily, not just by a mistyped URL: a shared or
+ * bookmarked link opened on a replica that has not yet folded that Trip's
+ * own `trip.created` — a different aggregate, no ordering between the two.
  */
 export interface DepotPickerProps {
   tripId: string
   variant: 'screen' | 'pane'
 }
 
+/**
+ * The two dimensions this picker never narrows by, on either variant —
+ * "who owns it" is a different question from "does the Trip already list
+ * it", and the row itself currently answers *that* one, at most, through the
+ * owner's initial in the meta slot rather than through a filter. An
+ * allowlist naming `tag`/`kind`/`trip` would silently miss a later slice's
+ * row (S7 review F7); this exclusion list means a new one defaults to
+ * *included*, matching `SliceBar`'s own behaviour, and only these two are a
+ * deliberate, named departure from it.
+ */
+const EXCLUDED_DIMENSIONS: readonly DimensionId[] = ['ownership', 'person']
+
 /** The dimensions this picker can narrow by, and at which width — spec
- * §4.3's one board inconsistency, followed rather than silently resolved. */
+ * §4.3's one board inconsistency, followed rather than silently resolved.
+ * Derived from `DIMENSIONS` (`shared/src/selectors/slice.ts`), never
+ * enumerated fresh here. */
 function dimensionsFor(variant: 'screen' | 'pane'): readonly DimensionId[] {
-  return variant === 'screen' ? ['tag', 'kind', 'trip'] : ['tag', 'kind']
+  return DIMENSIONS.map((of) => of.id)
+    .filter((id) => !EXCLUDED_DIMENSIONS.includes(id))
+    .filter((id) => variant === 'screen' || id !== 'trip')
+}
+
+/**
+ * `Search the depot…` — a `  /` hint waits on Task 11's own keybinding for
+ * the pane variant (spec §4.4), withheld for now: a hint naming a key that
+ * does nothing yet is spec §4.9's "a button that leads somewhere and lies
+ * about where is worse than a missing one", restated for a hint instead of a
+ * button. Split into a variant branch now (S7 review F6) rather than one
+ * shared literal, so wiring the keybinding later touches only the `'pane'`
+ * case below and this component's own docstring promise — "nothing here is
+ * written for one variant and patched for the other" — stays true.
+ */
+function searchPlaceholder(variant: 'screen' | 'pane'): string {
+  return variant === 'pane' ? 'Search the depot…' : 'Search the depot…'
+}
+
+/** `1 FILTER ACTIVE` / `2 FILTERS ACTIVE` — `result.active`'s own noun,
+ * singularised at exactly one, the same rule `entryCountLabel`/`pieceLabel`
+ * (`Trip.tsx`, `GearListSection.tsx`) already use for this slice's other
+ * counted nouns. No board draws the `N = 1` case literally; review confirmed
+ * the same inference Task 9 made for `1 ENTRY`. */
+function filtersActiveLabel(count: number): string {
+  return `${count} ${count === 1 ? 'FILTER' : 'FILTERS'} ACTIVE`
+}
+
+/**
+ * The meta slot's one optional suffix (see the class docstring's "meta slot"
+ * section for the full rule): `×<ownedCount>` for Counted, the Kind's own
+ * label for per-person, the owner's bare initial for everything else —
+ * `undefined` when there is nothing to draw.
+ */
+function rowSuffix(gear: GearState, state: DepotState): string | undefined {
+  const kind = gear.kind?.value
+  if (kind === 'counted') return qtyFor(gear)
+  if (kind === 'per_person') return dimension('kind').format(kind, state)
+  return ownerInitial(state, gear)
+}
+
+/** `GARAGE ▸ SHELF 1`, `ATTIC ▸ CRATE B · ×2`, `SLAAPKAMER ▸ KAST · E`,
+ * `ATTIC ▸ CRATE D · PER-PERSON`, or `LOOSE` alone for gear with no
+ * residence — the full meta slot, path first and {@link rowSuffix} joined on
+ * with ` · ` only when there is one. `view` is threaded in rather than left
+ * to `homePath`'s own default, per S7 review F3 — see the call site. */
+function rowMeta(
+  gear: GearState,
+  state: DepotState,
+  view: ContainmentView,
+): string {
+  const segments = homePath(state, gear.id, view).map((segment) => segment.name)
+  const location = segments.length === 0 ? 'LOOSE' : segments.join(' ▸ ')
+  const suffix = rowSuffix(gear, state)
+  return suffix === undefined ? location : `${location} · ${suffix}`
 }
 
 export function DepotPicker({ tripId, variant }: DepotPickerProps) {
@@ -113,6 +218,14 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
   const result = useMemo(() => sliceDepot(state, spec), [state, spec])
   const rows = result.groups[0]?.gear ?? []
 
+  // Built once per fold and threaded to every row (S7 review F3) —
+  // `homePath`'s own docstring: "pass `view` when you already have one;
+  // building it is O(depot) and a list screen wants one view, not one per
+  // row." Left as its own default parameter, every keystroke through
+  // `setSpec` would rebuild it once per row shown, on the one screen whose
+  // whole design argument is a batch loop on a phone.
+  const view = useMemo(() => containmentView(state), [state])
+
   // Every Gear this Trip already lists from the depot — `IN LIST ✓`'s whole
   // question. Scoped to entries whose source is a depot reference: a
   // trip-only Entry names no Gear and never reaches this picker either way.
@@ -127,6 +240,23 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
     }
     return ids
   }, [trip, state])
+
+  // S7 review F2: every hook above runs regardless, so this early return —
+  // the one place the whole render short-circuits — costs nothing except the
+  // work below it, exactly `Trip.tsx`'s own `No such trip.` guard. Without
+  // it, a `+ ADD` against an unknown `tripId` would author a
+  // `trip.entry_added` that materialises a Trip no delete op can remove
+  // before S14 — see the class docstring.
+  if (trip === undefined) {
+    return (
+      <div
+        className={variant === 'screen' ? styles['screen'] : styles['pane']}
+        data-testid="depot-picker"
+      >
+        <p className={styles['notFound']}>No such trip.</p>
+      </div>
+    )
+  }
 
   function selectedOf(id: DimensionId): readonly string[] {
     return spec.filters[id] ?? []
@@ -173,7 +303,9 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
     )
   }
 
-  const backLabel = trip === undefined ? '' : tripLabel(trip)
+  // `trip` is narrowed past the guard above, so this is `tripLabel` directly
+  // rather than the ternary an earlier draft needed.
+  const backLabel = tripLabel(trip)
 
   return (
     <div
@@ -208,8 +340,12 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
         type="search"
         className={styles['search']}
         aria-label="Search the depot"
-        placeholder="Search the depot…"
-        autoFocus
+        placeholder={searchPlaceholder(variant)}
+        // Screen variant only (S7 review F6) — neither pane board frame
+        // draws this field focused, and stealing focus into the builder's
+        // left pane on mount would move a keyboard reader away from the
+        // list they came to edit.
+        autoFocus={variant === 'screen'}
         value={spec.search}
         onChange={(event) => setSpec({ ...spec, search: event.target.value })}
       />
@@ -261,11 +397,11 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
         <div className={styles['empty']} data-testid="depot-picker-unmatched">
           <p className={styles['emptyTitle']}>No matches.</p>
           <p className={styles['emptyLine']}>
-            {result.active} {result.active === 1 ? 'FILTER' : 'FILTERS'} ACTIVE
+            {filtersActiveLabel(result.active)}
           </p>
           <button
             type="button"
-            className={styles['emptyAction']}
+            className={styles['clearFilters']}
             onClick={() => setSpec(EMPTY_SLICE)}
           >
             Clear filters
@@ -276,9 +412,6 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
           {rows.map((gear) => {
             const listed = listedIds.has(gear.id)
             const name = gear.name?.value ?? ''
-            const path = homePath(state, gear.id)
-              .map((segment) => segment.name)
-              .join(' ▸ ')
             return (
               <li
                 key={gear.id}
@@ -288,7 +421,7 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
                 <div className={styles['main']}>
                   <span className={styles['name']}>{name}</span>
                   <span className={styles['meta']}>
-                    {path === '' ? 'Loose' : path}
+                    {rowMeta(gear, state, view)}
                   </span>
                 </div>
                 {listed ? (

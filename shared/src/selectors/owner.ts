@@ -53,11 +53,47 @@ export function ownerOf(gear: GearState): Owner {
 export function ownerLabel(state: DepotState, gear: GearState): string {
   const owner = ownerOf(gear)
   if (owner.type === 'shared') return 'SHARED'
-  const initial = (state.people[owner.personId]?.name?.value ?? '')
+  const initial = initialOf(state, owner.personId)
+  return initial === '' ? 'PERSONAL' : `PERSONAL ${initial}`
+}
+
+/** The one place `.trim().charAt(0).toUpperCase()` is computed for a Person's
+ * name — `ownerLabel` and {@link ownerInitial} both call it rather than
+ * carrying their own copy. `App.tsx` and `NewTrip.tsx` each hand-roll the
+ * identical expression for a circle's own initial (a different question —
+ * a Person's, not an owner register's), which is exactly the drift this
+ * module's own header warns a second copy invites; a third one inside this
+ * file would be the same mistake one line closer to home. */
+function initialOf(state: DepotState, personId: string): string {
+  return (state.people[personId]?.name?.value ?? '')
     .trim()
     .charAt(0)
     .toUpperCase()
-  return initial === '' ? 'PERSONAL' : `PERSONAL ${initial}`
+}
+
+/**
+ * The bare letter a **Personal** owner draws — `E`, with no `PERSONAL`
+ * beside it — for a meta slot that isn't the Depot's own OWNER column.
+ * `DepotPicker.tsx`'s row is the first caller: its Kind-vs-Ownership ruling
+ * (S7 review F1) only ever needs the initial alone, once Kind has first
+ * claim on the suffix.
+ *
+ * `undefined` for **Shared** gear — there is no letter to draw at all, which
+ * is a different fact from `ownerLabel`'s `'PERSONAL'` fallback text (that
+ * function always has *something* to say; this one sometimes has nothing) —
+ * and `undefined` for a Personal owner with no folded name, the same "no
+ * letter to invent" rule `ownerLabel` and `AccountAvatar` both already keep.
+ * Either way the caller decides what "nothing to draw" means for its own
+ * layout, which is why this returns `undefined` rather than `''`.
+ */
+export function ownerInitial(
+  state: DepotState,
+  gear: GearState,
+): string | undefined {
+  const owner = ownerOf(gear)
+  if (owner.type === 'shared') return undefined
+  const initial = initialOf(state, owner.personId)
+  return initial === '' ? undefined : initial
 }
 
 /**

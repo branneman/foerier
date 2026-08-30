@@ -71,8 +71,12 @@ function metaFor(
   return meta === '' ? undefined : meta
 }
 
-/** `×N` for counted gear only — a single reads `—` in the table (§03). */
-function qtyFor(gear: GearState): string | undefined {
+/** `×N` for counted gear only — a single reads `—` in the table (§03).
+ * Exported for `DepotPicker.tsx`'s second caller (S7 review F1): the picker's
+ * row draws the same `×N` for a Counted piece of gear, and a second copy of
+ * this exact expression would be the drift `owner.ts`'s own docstring warns
+ * about, just one file over. */
+export function qtyFor(gear: GearState): string | undefined {
   return gear.kind?.value === 'counted' && gear.ownedCount?.value !== undefined
     ? `×${gear.ownedCount.value}`
     : undefined

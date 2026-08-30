@@ -102,6 +102,7 @@ export {
 } from './selectors/depot.ts'
 
 export {
+  ownerInitial,
   ownerLabel,
   ownerOf,
   personLabel,

@@ -2,6 +2,7 @@ import {
   createHlcClock,
   gearRecorded,
   gearRetired,
+  personRecorded,
   placeRecorded,
   tripCreated,
   tripEntryAdded,
@@ -27,6 +28,7 @@ import {
 import { SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { DepotPicker } from './DepotPicker'
+import styles from './DepotPicker.module.css'
 
 /**
  * `Trip.test.tsx`'s fixtures — a **real** store, seeded by emitting real ops,
@@ -134,6 +136,14 @@ function rowNames(): string[] {
     .map((row) => row.querySelector('span')?.textContent ?? '')
 }
 
+/** The meta slot's own text — the second `<span>` in the row, before the
+ * trailing `+ ADD` button or `IN LIST ✓` span — read on its own so a name
+ * that happens to contain the same characters the meta suffix would (an
+ * owner's initial, say) cannot make an assertion pass for the wrong reason. */
+function rowMeta(row: HTMLElement): string | null {
+  return row.querySelectorAll('span')[1]?.textContent ?? null
+}
+
 describe('the depot picker — anatomy', () => {
   it('renders the screen variant: header, title, footer hint, and all three ghost chips', async () => {
     const { store } = await seededStore(tripCreated(ALPS, 'Vosges — Oct'))
@@ -187,7 +197,7 @@ describe('the depot picker — anatomy', () => {
 })
 
 describe('the depot picker — rows', () => {
-  it('lists visible gear with the home path in the meta slot, Loose for gear with none', async () => {
+  it('draws the home path alone for a Single, Shared piece of gear', async () => {
     const { store } = await seededStore(
       tripCreated(ALPS, 'Vosges — Oct'),
       placeRecorded('garage', 'Garage'),
@@ -197,6 +207,54 @@ describe('the depot picker — rows', () => {
         kind: 'single',
         residence: { in: 'place', id: 'garage' },
       }),
+    )
+    renderPicker(store)
+
+    const row = screen.getByTestId('depot-picker-row')
+    expect(row).toHaveTextContent('Tent, tunnel 4p')
+    expect(row).toHaveTextContent('Garage')
+  })
+
+  it('draws LOOSE, in literal caps, for gear with no residence', async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Vosges — Oct'),
+      gearRecorded('gloves', {
+        name: 'Ski gloves',
+        container: false,
+        kind: 'single',
+      }),
+    )
+    renderPicker(store)
+
+    // Literal caps, matching `Find.tsx`'s `'⌂ LOOSE'` and `GearDetail.tsx`'s
+    // `chipLocation` — not a CSS transform of a mixed-case `'Loose'` written
+    // here (S7 review F1).
+    expect(screen.getByTestId('depot-picker-row')).toHaveTextContent('LOOSE')
+  })
+
+  it('appends ×N for Counted gear, from the owned count — even for a row that is not on the list', async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Vosges — Oct'),
+      gearRecorded('canister', {
+        name: 'Gas canister 450',
+        container: false,
+        kind: 'counted',
+        owned_count: 4,
+      }),
+    )
+    renderPicker(store)
+
+    const row = screen.getByTestId('depot-picker-row')
+    // Still `+ ADD` — not on this Trip's list — and still `×4`: the owned
+    // count is a Gear fact, not a Bring-count, which only exists once an
+    // Entry does.
+    expect(row).toHaveTextContent('×4')
+    expect(row).toHaveTextContent('+ ADD')
+  })
+
+  it('draws PER-PERSON for per-person gear, the Kind label CSS upper-cases', async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Vosges — Oct'),
       gearRecorded('gloves', {
         name: 'Ski gloves',
         container: false,
@@ -205,13 +263,67 @@ describe('the depot picker — rows', () => {
     )
     renderPicker(store)
 
-    const rows = screen.getAllByTestId('depot-picker-row')
-    expect(rows).toHaveLength(2)
-    // Alphabetical, `sliceDepot`'s own sort — "Ski gloves" before "Tent...".
-    expect(rows[0]).toHaveTextContent('Ski gloves')
-    expect(rows[0]).toHaveTextContent('Loose')
-    expect(rows[1]).toHaveTextContent('Tent, tunnel 4p')
-    expect(rows[1]).toHaveTextContent('Garage')
+    expect(screen.getByTestId('depot-picker-row')).toHaveTextContent(
+      'Per-person',
+    )
+  })
+
+  it("draws a Personal owner's bare initial, with no PERSONAL word beside it", async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Vosges — Oct'),
+      personRecorded('els', 'Els'),
+      gearRecorded('jacket', {
+        // No "E" in the name itself, so a positive match on the meta slot
+        // proves the owner-initial rule rather than the gear's own name.
+        name: 'Down jacket',
+        container: false,
+        kind: 'single',
+        owner: { type: 'person', personId: 'els' },
+      }),
+    )
+    renderPicker(store)
+
+    const row = screen.getByTestId('depot-picker-row')
+    expect(rowMeta(row)).toBe('LOOSE · E')
+    expect(row).not.toHaveTextContent('PERSONAL')
+  })
+
+  it('lets Kind win over ownership: a Counted, Personal piece of gear reads ×N, not the initial', async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Vosges — Oct'),
+      personRecorded('els', 'Els'),
+      gearRecorded('canister', {
+        name: 'Gas canister 450',
+        container: false,
+        kind: 'counted',
+        owned_count: 4,
+        owner: { type: 'person', personId: 'els' },
+      }),
+    )
+    renderPicker(store)
+
+    const row = screen.getByTestId('depot-picker-row')
+    // The owner is not on the board and not drawn: an undrawn combination
+    // (S7 review F1's ruling), not a silent contradiction — `LOOSE · ×4`,
+    // never `LOOSE · E`.
+    expect(rowMeta(row)).toBe('LOOSE · ×4')
+  })
+
+  it('lets Kind win over ownership: a per-person, Personal piece of gear reads PER-PERSON, not the initial', async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Vosges — Oct'),
+      personRecorded('els', 'Els'),
+      gearRecorded('gloves', {
+        name: 'Ski gloves',
+        container: false,
+        kind: 'per_person',
+        owner: { type: 'person', personId: 'els' },
+      }),
+    )
+    renderPicker(store)
+
+    const row = screen.getByTestId('depot-picker-row')
+    expect(rowMeta(row)).toBe('LOOSE · Per-person')
   })
 
   it('excludes retired gear', async () => {
@@ -252,6 +364,25 @@ describe('the depot picker — rows', () => {
     expect(
       screen.queryByRole('button', { name: 'Add Tent, tunnel 4p' }),
     ).toBeNull()
+    // Against the CSS-module identity map (S7 review F9) — not `toHaveStyle`,
+    // which passes unconditionally under this project's `css: false`.
+    expect(row).toHaveClass(styles['muted']!)
+  })
+
+  it('does not mute a row that is not on the list', async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Vosges — Oct'),
+      gearRecorded('tent', {
+        name: 'Tent, tunnel 4p',
+        container: false,
+        kind: 'single',
+      }),
+    )
+    renderPicker(store)
+
+    expect(screen.getByTestId('depot-picker-row')).not.toHaveClass(
+      styles['muted']!,
+    )
   })
 
   it('offers + ADD for a Gear not on the list', async () => {
@@ -396,7 +527,11 @@ describe('the depot picker — empty and unmatched states', () => {
 })
 
 describe('the depot picker — narrowing', () => {
-  it('renders the + TRIP chip in the screen variant and not in the pane variant', async () => {
+  // The pane half of this claim is the anatomy suite's own
+  // "renders the pane variant" test above — S7 review F9 caught this test's
+  // old name promising both halves while its body only ever asserted this
+  // one.
+  it('offers the + TRIP chip to narrow by, in the screen variant', async () => {
     const { store } = await seededStore(tripCreated(ALPS, 'Vosges — Oct'))
     renderPicker(store, { variant: 'screen' })
     expect(screen.getByRole('button', { name: '+ TRIP' })).toBeVisible()
@@ -444,5 +579,32 @@ describe('the depot picker — narrowing', () => {
 
     await user.click(screen.getByRole('button', { name: '+ TAG' }))
     expect(screen.getByRole('dialog', { name: 'Tags' })).toBeVisible()
+  })
+})
+
+describe('the depot picker — an unknown Trip', () => {
+  // S7 review F2: without this guard a `+ ADD` against a `tripId` this
+  // replica has not folded a `trip.created` for would author a
+  // `trip.entry_added` that materialises a permanent, nameless Trip — a
+  // consequence worth pinning as its own suite, `Trip.tsx`'s and
+  // `GearDetail.tsx`'s own `No such trip.` guards' precedent.
+  it('renders No such trip. rather than the picker, and offers nothing to add', async () => {
+    const { store } = await seededStore()
+    renderPicker(store, { tripId: JURA })
+
+    expect(screen.getByText('No such trip.')).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: 'Add from the depot' }),
+    ).toBeNull()
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Add/ })).toBeNull()
+  })
+
+  it('draws the same guard in the pane variant', async () => {
+    const { store } = await seededStore()
+    renderPicker(store, { tripId: JURA, variant: 'pane' })
+
+    expect(screen.getByText('No such trip.')).toBeVisible()
+    expect(screen.queryByText('FROM THE DEPOT')).toBeNull()
   })
 })

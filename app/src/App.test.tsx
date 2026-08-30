@@ -370,6 +370,38 @@ describe('the Trips routes', () => {
   })
 })
 
+describe('the /trips/:id/add route', () => {
+  // S7 review F5: neither half of this width guard had a test, where both
+  // existing width-guarded routes (`/account/devices`, `/account/people`)
+  // carry a matched pair below.
+  it('is the picker screen below Split', async () => {
+    renderAt(`/trips/${TRIP_ONE}/add`, {
+      log: await aLogOfTrips([{ id: TRIP_ONE, name: 'Alps 2026' }]),
+    })
+
+    expect(
+      await screen.findByRole('heading', { name: 'Add from the depot' }),
+    ).toBeInTheDocument()
+  })
+
+  // `/trips/:id/list` is Task 11's route, not yet mounted — landing on the
+  // shell's catch-all is what proves the redirect actually fired, rather
+  // than the picker simply rendering at every width unguarded.
+  it('redirects to /trips/:id/list at Split and up', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderAt(`/trips/${TRIP_ONE}/add`, {
+      log: await aLogOfTrips([{ id: TRIP_ONE, name: 'Alps 2026' }]),
+    })
+
+    expect(
+      await screen.findByRole('heading', { name: 'Not found.' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Add from the depot' }),
+    ).toBeNull()
+  })
+})
+
 describe('when the device token has expired', () => {
   /** An op this device authored and never got a seq for — the outbox. */
   function anUnpushedOp(): OpEnvelope {
