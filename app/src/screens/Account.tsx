@@ -170,8 +170,9 @@ export function Account({
   )
   const sync = useDepot((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
-  // `splitPane: false` — `/account` is its own screen at every width; the only
-  // two-pane view in `App.tsx` is `DepotView`.
+  // `splitPane: false` — `/account` is its own screen at every width, not a
+  // pane of a list that is also on screen. (`DepotView` and, since S7, the
+  // gear-list builder are the app's two-pane views; this screen is neither.)
   const header = useScreenHeader({ splitPane: false })
   const canAddPasskey = usePlatformAuthenticatorAvailable()
 

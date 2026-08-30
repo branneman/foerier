@@ -315,14 +315,14 @@ superseded, and `docs/design/README.md` §5 is the shipped authority.
   **The round shipped this inverted and review caught it**, which is why
   `app/src/shell/screenBand.test.tsx` renders a screen *inside* `AppShell` and
   counts: the per-screen suites render without the shell, so their absence
-  assertions prove one side of a two-sided fact. **The hook's reach is every
-  screen that draws either half of the band — all eight:** `AddGear`,
-  `GearDetail`, `Trip`, `NewTrip`, `Account`, `People`, `Devices` and
-  `InviteIssued`, the last of which draws a back link and no sync line, so it
-  gates its band on `backLink`. `splitPane` is true for `GearDetail` alone;
-  `AddGear` answers `false` against its own board frame, because
-  `Add gear — split 900` draws a pane the app has never built and
-  `<Route path="/add">` renders it standalone at every width.
+  assertions prove one side of a two-sided fact. **The hook's reach was every
+  screen that draws either half of the band — eight at this point, ten once
+  S7 adds its two:** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`,
+  `People`, `Devices` and `InviteIssued`, the last of which draws a back link
+  and no sync line, so it gates its band on `backLink`. `splitPane` is true
+  for `GearDetail` alone; `AddGear` answers `false` against its own board
+  frame, because `Add gear — split 900` draws a pane the app has never built
+  and `<Route path="/add">` renders it standalone at every width.
 
 **S5, auth 2, has landed** (story 28) — the second Quartermaster is now
 arranged from inside the app rather than by whoever runs the server. No
@@ -416,11 +416,11 @@ the builder:**
   the reducer, because the Kind it depends on lives on the Gear aggregate, a
   different aggregate with no ordering against the Trip's; gating there would
   make the fold order-dependent on whether `gear.kind_set` had arrived first.
-  `bringCountOf` is the fourth site gating on `kind === 'counted'`
+  `bringCountOf` is one of several sites gating on `kind === 'counted'`
   (`shared/src/selectors/depot.ts`, `shared/src/selectors/whereabouts.ts`,
-  `app/src/screens/GearDetail.tsx` are the other three), and the reader folds
-  a Bring-count on any Entry regardless of what the authoring screen would
-  ever offer.
+  `app/src/screens/GearDetail.tsx` and `app/src/screens/Depot.tsx` among the
+  others), and the reader folds a Bring-count on any Entry regardless of what
+  the authoring screen would ever offer.
 - **The over-claim view is a pure function of the fold, with no op, no flag
   and no write of its own.** `overClaims(state)` reads registers only, so
   every replica computes the identical set, and it disappears only when a
@@ -441,15 +441,21 @@ the builder:**
   rather than a change to the dimension table's signature. The next
   cross-aggregate dimension should expect to need the same memo, not a new
   mechanism.
-- **Eight sentences in this spec were found false during implementation, and
-  are corrected in the spec itself rather than left standing** — the shape
-  this document's own S4-fixture lesson already names, restated for a second
-  document instead of a fixture. The one most likely to bite a future reader:
-  `ui/Stepper` ships with **two** callers, gear detail and the gear list, not
-  three — Add gear's Owned-count well must stay representable as *unset* to
-  gate its CTA, and `Stepper`'s contract has no channel for that. The rest are
-  corrected in place across the spec's §1.2, §3.1, §4.3, §4.4, §4.5, §4.8,
-  §4.9 and §5.2, and summarised in
+- **Ten sentences in this spec turned out false once the code existed, and
+  are recorded rather than corrected in place** — the same shape this
+  document's own S4-fixture lesson already names, and the precedent
+  `trips-and-phases.md` §10 sets: a dated spec is left as it was written, and
+  what changed lives in its own new [§11](docs/specs/2026-08-29-the-gear-list.md#11-what-changed-during-implementation),
+  not edited back into the sections it corrects. The one most likely to bite
+  a future reader: `ui/Stepper` ships with **two** callers, gear detail and
+  the gear list, not three — Add gear's Owned-count well must stay
+  representable as *unset* to gate its CTA. **The fold is possible and
+  deferred, not impossible**: `Stepper`'s contract widened to
+  `value: number | null` partway through this same slice, after the
+  not-convert decision was made for a different reason; what Add gear's own
+  field still owns is a label, a fact line and a CTA gate computed from the
+  raw string, not a channel `Stepper` categorically lacks. The rest are
+  listed in full in the spec's own §11 and summarised in
   [§12.13](docs/architecture-design.md#1213-consequences-of-s7-the-gear-list).
 
 Four conventions the code now carries that are easy to trip over:

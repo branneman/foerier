@@ -448,14 +448,20 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   writes `{open && <Sheet …/>}` and mount is what resets a picker's draft
   state. `Stepper` (S7) is **not** a Radix wrapper — Radix ships no number
   field, so it is a plain `{value, min, onChange, size?, label}` component
-  holding no state and importing neither the store nor the router. Two sizes,
-  h48 default and an in-row h32 whose hit area pads to ≥44px beyond the
+  holding no **business** state (it keeps a local text buffer so a keystroke
+  that has not yet resolved to a number stays on screen, but `value` is the
+  one source of truth) and importing neither the store nor the router. Two
+  sizes, h48 default and an in-row h32 whose hit area pads to ≥44px beyond the
   painted box (the status-pill minimum, allowed on touch); `min` defaults to
   `0`, since a Bring-count of zero is expressible on the wire and is not the
-  same as removing the Entry it belongs to. `GearDetail`'s and the gear list's
-  hand-rolled Owned-count steppers fold in as its two callers; Add gear's
-  Owned-count well is not a third — it must stay representable as *unset* to
-  gate the CTA, and `Stepper`'s contract has no channel for that. The rest of
+  same as removing the Entry it belongs to. Two callers: `GearDetail`'s
+  hand-rolled Owned-count stepper folds in, and the gear list's Bring-count
+  control (`EntryRow.tsx`, dense size) is a new caller rather than a folded
+  one — S7 is the first slice with a gear list to hand-roll anything into.
+  Add gear's Owned-count well is not a third: `value`/`onChange` widened to
+  `number | null` partway through S7, so the fold is possible now, but Add
+  gear's field still owns a label, a fact line and a CTA gate `Stepper`
+  does not, and nobody has done the work of folding it in. The rest of
   this list is unbuilt, and `Popover` is the one with a waiting caller: §4a's
   desktop tag picker is approximated by `Sheet`'s `desktopCard` until it
   lands.

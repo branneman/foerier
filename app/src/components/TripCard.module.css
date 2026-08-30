@@ -112,9 +112,10 @@
     color: var(--color-ink-dim);
   }
 
-  /* Its own line under the name, which is where the board's dashed card draws
-     `DRAFT · 0 GEAR LISTED` and where the Roomy 2-up card draws its chip. The
-     active card unfolds it onto the name's line below. */
+  /* Its own line under the name, which is where the dashed card draws
+     `DRAFT · 0 ENTRIES` (S7's noun ruling; drawn `GEAR LISTED` before it) and
+     where the Roomy 2-up card draws its chip. The active card unfolds it
+     onto the name's line below. */
   .phaseLine {
     grid-row: 2;
     grid-column: 1 / -1;
@@ -157,10 +158,11 @@
   }
 
   /*
-   * A Draft's chip is the quiet register: the board draws `DRAFT · 0 GEAR
-   * LISTED` as a plain mono line rather than as an amber pill, because amber
-   * is the trip world and a Draft is not on one. It stays the same control —
-   * same element, same sheet — drawn as what it is.
+   * A Draft's chip is the quiet register: the card draws `DRAFT · 0 ENTRIES`
+   * (S7's noun ruling; drawn `GEAR LISTED` before it) as a plain mono line
+   * rather than as an amber pill, because amber is the trip world and a
+   * Draft is not on one. It stays the same control — same element, same
+   * sheet — drawn as what it is.
    */
   .planned .chip {
     padding-inline: 0;
@@ -271,8 +273,9 @@
      * Wide enough for the phone's card: the active card's chip moves up beside
      * the name, between it and the chevron, which is how `Screens B` §02A
      * draws it at 393. The dashed card keeps its chip on the second line at
-     * every width — that is the board's `DRAFT · 0 GEAR LISTED` line, and it
-     * reads as a line rather than as a pill.
+     * every width — that is the `DRAFT · 0 ENTRIES` line (S7's noun ruling;
+     * drawn `GEAR LISTED` before it), and it reads as a line rather than as
+     * a pill.
      */
     .active .head {
       grid-template-columns: minmax(0, 1fr) auto auto;

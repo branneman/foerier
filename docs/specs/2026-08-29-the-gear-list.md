@@ -53,7 +53,7 @@ slices (S8 · S9 · S10 · S14) write into the one it declares.
 | The over-claim surface | **A standing band on `/trips/:id`**, at every width, never dismissible ([§4.5](#45-the-over-claim-band)) |
 | Trip membership dimension | `dimension('trip')`, label **`TRIP`**, arity **`multi`**, sentinel **first**, `NOT IN ANY TRIP`. Values are every **non-closed** Trip ([§3.6](#36-trip-membership-joins-the-dimension-table)) |
 | The first cross-aggregate dimension | A `WeakMap` keyed on `DepotState` ([§3.7](#37-the-first-cross-aggregate-dimension-needs-an-index)) |
-| `ui/Stepper` | **Built**, two sizes; gear detail and the gear list fold in as callers — not Add gear, whose Owned-count well must stay representable as *unset* ([§4.8](#48-uistepper--one-control-two-sizes-two-callers)) |
+| `ui/Stepper` | **Built**, two sizes; Add gear and gear detail's Owned-count fold in as callers ([§4.8](#48-uistepper--one-control-two-sizes-three-callers)) |
 | Per-person rows | **`×N` alone.** Circles are S8's; the board books them under `CIRCLES — S8 · PIECES` ([§6](#6-what-the-design-round-settled)) |
 | The progress line | **Not S7's, and it lands *below* the NEXT line, not above** ([§4.9](#49-the-count-nouns-reach-back-into-s6s-shipped-strings)) |
 | `useScreenHeader` | **Two new callers.** `screenBand.test.tsx` extends with them ([§4.11](#411-the-header-band-gains-two-callers)) |
@@ -151,7 +151,7 @@ of Gear nor a trip-only name is not a line anybody can draw. It is reachable
 exactly as S6's phaseless Trip is — `trip.entry_bring_count_set` and
 `trip.entry_removed` both create the Entry on sight.
 
-> **`entriesOf(trip, state)` returns Entries that carry a `source` and are not
+> **`entriesOf(trip)` returns Entries that carry a `source` and are not
 > tombstoned.** A sourceless Entry is retained in the fold, excluded from the
 > list, excluded from every count, and holds no claim.
 
@@ -259,30 +259,19 @@ call site re-derives one — the discipline S6 paid for three times over.
 ### 3.1 `entriesOf`, and what each noun counts
 
 ```ts
-entriesOf(trip: TripState, state: DepotState): readonly EntryState[]
+entriesOf(trip: TripState): readonly EntryState[]
 entryLabel(entry: EntryState, state: DepotState): string
-entryKind(entry: EntryState, state: DepotState): KindValue | 'trip_only' | undefined
+entryKind(entry: EntryState, state: DepotState): KindValue | 'trip_only'
 bringCountOf(entry: EntryState, state: DepotState): number | null
 pieceCountOf(entry: EntryState, trip: TripState, state: DepotState): number
 listTotals(trip: TripState, state: DepotState): ListTotals
 ```
 
-`entriesOf` takes `state` as well as `trip` — it needs `entryLabel` to sort by,
-and `entryLabel` needs the Depot to read a referenced Gear's name from.
-It applies [§1.3](#13-an-entry-with-no-source-is-folded-retained-and-not-drawn)'s
+`entriesOf` applies [§1.3](#13-an-entry-with-no-source-is-folded-retained-and-not-drawn)'s
 rule and sorts by `byNameThenId` over `entryLabel`, so two replicas draw the same
 order. `entryLabel` reads the referenced Gear's `name` through the Depot for a
 depot Entry — **invariant 8's single-sourcing is this one line** — and the
 `source`'s own `name` for a trip-only one, falling back as `tripLabel` does.
-
-`entryKind` returns `undefined` for a depot Entry whose Gear this replica has
-not yet folded — **the ordinary cross-aggregate sync race**, not an error:
-`trip.entry_added` and `gear.recorded` are different aggregates with no
-ordering between them, so a Gear genuinely not-yet-synced is the expected
-case. Reading it as `'single'` would assert a Kind nobody has stated, and the
-claim selector branches on this value: an unsynced Gear misread as `'single'`
-would raise an over-claim nobody can settle, naming a row this build still
-draws as `—`.
 
 `pieceCountOf` is where the Kinds diverge:
 
@@ -537,16 +526,9 @@ Three details the boards fix:
 - **Retired Gear is not offered** — the picker reads `visibleGear`. Story 2 makes
   retiring a soft delete so past Trips keep their history, not so retired gear
   can join new ones.
-- **The meta slot carries the home path, then at most one suffix.** The boards
-  draw `<home path>` alone for a Single, shared or uncounted Gear, and
-  `<home path> · <suffix>` for the three cases with something to add: `×N` for
-  Counted (the **owned** count, not a Bring-count — this picker has no Trip
-  context of its own to bring one from), `PER-PERSON`, or the owner's **initial
-  alone** for personal gear. Where Kind and personal ownership collide — a
-  personal, Counted Gear — **Kind wins**: undrawn by the boards, and recorded
-  here as the decision this spec makes rather than one they settle.
-  `Components` §03's "no whereabouts" is confirmed **narrowly** by the round:
-  no world chip and no status; the home path is residence, not world.
+- **The meta slot carries the home path** (`GARAGE ▸ SHELF 1`). `Components` §03's
+  "no whereabouts" is confirmed **narrowly** by the round: no world chip and no
+  status; the home path is residence, not world.
 
 **The picker carries no claim read and the add no flash** — ruled: *"a claim is a
 relationship between two trips, the picker speaks for one, and the band appearing
@@ -573,18 +555,10 @@ folds inside.
 
 Left pane: the same picker component as [§4.3](#43-tripsidadd--the-picker-as-a-screen-below-split), eyebrow
 `FROM THE DEPOT`, its search field carrying the `/` hint at this width. Right
-pane, at Split: the band row (back link + sync), a title row `<Trip> — gear
-list` with `Start pack-out` for a Draft, the groups and rows with their
-editing affordances, the dashed trip-only row, and a **footer totals bar** —
+pane: the band row (back link + sync), a title row `<Trip> — gear list` with
+`Start pack-out` for a Draft, the groups and rows with their editing affordances,
+the dashed trip-only row, and a **footer totals bar** —
 `N ENTRIES · N PIECES · N PER-PERSON · N TRIP-ONLY`.
-
-**At Desktop the band and title are not right-pane content.** The boards draw
-them as a **full-width strip above the grid** — back link, title, Participants,
-`N PIECES` and `Start pack-out` on one row, separated from the two panes by its
-own rule — because a bare pane at this width has no sidebar to carry the back
-link or the sync state in words, the same reason the pane band exists at Split
-at all. The footer stays right-pane content **at both widths**: it is a read,
-not an action, so it has no reason to leave the list it totals.
 
 **There is no `GEAR LIST` section band inside the builder.** It starts at the
 group bands and carries its totals in the footer; the section band belongs to the
@@ -593,15 +567,6 @@ trip screen, where it is also the `EDIT LIST ›` affordance's home.
 **`Start pack-out` renders for a Draft only**, and on the phone not at all: the
 phase chip already opens SET PHASE, and a second control for one register would
 be two ways to do one thing. It is over-claim moment #2 and opens §02B's sheet.
-
-**The gate reads the *filtered* over-claim result, not the raw one.**
-`overClaimsIfActive` is deliberately unscoped to a `tripId` — it can name an
-`OverClaim` between two Trips neither of which is this one — so gating the
-button's decision to open a preview on the raw selector opened a confirm with
-an empty block for a conflict this Trip has no part in. The same filter that
-decides what the band *draws* must also decide whether there is anything to
-warn about; S6's `PhaseSheet` already gates this way for its own
-`draft → pack_out` moment, and this screen's gate copies it verbatim.
 
 **Weight is not built.** `EST 48.2 KG` is story 16, `LATER`, and the boards draw
 the MVP variant of both header and footer beside the frame.
@@ -678,24 +643,13 @@ is a navigation away, so unlike `✕` it confirms, in the deliberate-act registe
 - A mono context line naming the other Trip's state: `▸ ALPS 2026 · ON TRIP · DAY 12`
 - Accent primary `Remove entry` — nothing is destroyed — and ghost `Cancel`.
 
-### 4.8 `ui/Stepper` — one control, two sizes, two callers
+### 4.8 `ui/Stepper` — one control, two sizes, three callers
 
 [Frontend-design §5](../frontend-design.md) lists `Stepper` among the unbuilt
 primitives; `Components` §01 draws it; Add gear and gear detail each hand-roll one
-for Owned-count. S7 builds it in `ui/` and converts **gear detail and the gear
-list**, not Add gear — a correction to this section, which had read the
-round's ruling as "converts both" and named Add gear as a third caller.
-
-**This is a spec-versus-board conflict, not a board-versus-board one.**
-`docs/design/README.md` §3b already settles that Add gear's Owned-count well
-"opens empty and gates the CTA — a silent ×1 is a wrong ledger line," and §5's
-own account of the round never asks Add gear to give it up. `Stepper`'s
-contract — `{ value, min, onChange, size?, label }` — had no channel for
-*unset* at the time this section was first written, only for a numeric floor,
-so folding Add gear in would have meant drawing a silent default the board
-explicitly rules out. §3b and §5 were never in disagreement; it was this
-section's own prop list that flattened two settled decisions into a false
-"three callers."
+for Owned-count. S7 builds it in `ui/` and **converts both**, which the round
+ruled explicitly: *"Add gear's and gear detail's hand-rolled Owned-count steppers
+fold in as callers."*
 
 Two sizes: **h48 default** and **in-row h32**, the dense one padding its hit area
 to **≥44px** beyond the painted box — the status-pill minimum, and allowed on
@@ -716,11 +670,7 @@ slice that makes the count true:
 - `app/src/screens/Trip.tsx:505` — `0 GEAR LISTED.` → **`0 ENTRIES.`**
 - `app/src/components/TripCard.tsx:161` — `· 0 GEAR LISTED` → **`· N ENTRIES`**,
   now a real `listTotals().entries`
-- Closed ledger rows **keep `PIECES`** — they count what went. This presumed a
-  count was already being drawn there; none was. `ClosedRow` gains one:
-  `listTotals(trip, state).pieces`, folded for real rather than presumed,
-  passed as a prop the same way `TripCard`'s own `N ENTRIES` is below. `1 LOST`
-  is still S10's, once outcomes exist to name it.
+- Closed ledger rows **keep `PIECES`** — they count what went.
 
 Three things the first draft of this spec assigned to S7 have **already landed**
 and are not in scope: `NEXT — PACK THE LIST` and `NEXT — SET UNPACK WHEN BACK`
@@ -821,11 +771,9 @@ nothing recorded is discarded.*
 - `trip.entry_bring_count_set` and `trip.entry_removed` arriving **before** the
   `trip.entry_added` that creates the Entry — order-independent, converging to
   the same final state through the sourceless intermediate.
-- A concurrent `trip.entry_added` and `trip.entry_removed` for one Entry:
-  **two** registers (`source`, `removed`), so there is nothing contested and
-  no LWW race to resolve — [sync §3.5](../sync-protocol.md)'s "delete does not
-  automatically win" is satisfied by a stronger route than the one this
-  section originally named: a delete does not win because it never competes.
+- A concurrent `trip.entry_added` and `trip.entry_removed` for one Entry: one
+  register, plain LWW, delete does not automatically win
+  ([sync §3.5](../sync-protocol.md)).
 - Per-person: two active Trips claiming one Gear for **disjoint** Participants
   converge with **no** over-claim on either replica.
 
@@ -854,9 +802,7 @@ nothing recorded is discarded.*
   screens at phone width, at Split and at Desktop
   ([§4.11](#411-the-header-band-gains-two-callers)).
 - `ui/src/Stepper.test.tsx` — both sizes, the `min` floor, the ≥44px target at
-  the dense size. **Not Add gear's Owned-count well** — it keeps its own
-  hand-rolled stepper and its own coverage, since it is not one of `Stepper`'s
-  two callers ([§4.8](#48-uistepper--one-control-two-sizes-two-callers)).
+  the dense size.
 
 ### 5.4 The fixture rule
 
@@ -1061,6 +1007,128 @@ promoting it quietly is what the scope tags exist to prevent.
 | [`sync-protocol.md`](../sync-protocol.md) §4.4 | A note that `trip.entry_bring_count_set`'s "Counted entries only" is an **authoring** rule and the reader folds it regardless ([§1.4](#14-bring-count-is-folded-for-any-entry-and-offered-on-one-kind)) — the `TagString` split restated for a second op; that `source` is one register and a trip-only Entry therefore has no rename ([§1.2](#12-source-is-one-register-and-a-trip-only-entry-cannot-be-renamed)); the payload key `gear_id` against a `gearId` register |
 | [`architecture-design.md`](../architecture-design.md) | §12.13, consequences of S7; §8.3's S7 entry marked landed; §8.5's Trip-membership row marked delivered |
 | [`frontend-design.md`](../frontend-design.md) | §5's primitive list: `Stepper` built, two sizes; §3.3's "all eight" becomes ten and its width-guard sentence gains the two new routes; §3.1 gains the builder's Split-and-up two-pane rule |
-| [`technical-debt.md`](../technical-debt.md) | The `TripCard` entry **unchanged** — S7 held that debt level rather than paying it, the store read for Participants remains ([§7](#7-technical-debt-this-slice-touches)); the two "only one two-pane view" entries reworded; the pane-local-scroller entry gains a second instance |
+| [`technical-debt.md`](../technical-debt.md) | The `TripCard` entry narrowed to its remaining half; the two "only one two-pane view" entries reworded ([§7](#7-technical-debt-this-slice-touches)) |
 | [`testing.md`](../testing.md) | The backward-compatibility fixture list gains `s7-entries` |
 | `CLAUDE.md` | Status: S7 landed, and what is worth knowing before touching Entries, claims or the builder |
+
+---
+
+## 11. What changed during implementation
+
+§§1–10 record the design that was taken, and are left as they were written —
+the precedent [`trips-and-phases.md`](2026-08-29-trips-and-phases.md) §10
+sets in as many words. Ten sentences above turned out false once the code
+existed: some because implementation found a better route than the one
+drafted, some because a review round caught a place where this document's
+own words outran what it had checked. All ten are amended here rather than
+back into the sections that state them.
+
+**§4.8, the glance table's `ui/Stepper` row, and §5.3's `Stepper.test.tsx`
+bullet — `Stepper` ships with two callers, not three.** Gear detail and the
+gear list convert; Add gear's Owned-count well does not, and `AddGear.tsx`
+is untouched by this slice (not even for the stepper — see the §7 entry
+below). But the reason given — *"`Stepper`'s contract has no channel for
+[unset]"* — is no longer true, and stating it that way risks a future slice
+reading the primitive as needing extension it does not. `0c18889` (the
+commit that gave `Stepper` its one caller) recorded the real reason at the
+time: the contract genuinely was `{value: number}`, with no room for a blank
+well, and converting Add gear was tried and reverted on that exact point.
+`d12e89a`, later in the same slice, widened it to `value: number | null` /
+`onChange: (next: number | null) => void` for the gear-list caller's own
+needs — and never circled back to Add gear, whose CTA-gating well had
+already shipped and needed no more attention that slice. **The fold is
+possible and deferred, not impossible.** What Add gear's field still owns
+that `Stepper` does not: a `<label htmlFor>`, the `OPENS EMPTY — GATES THE
+CTA` fact line, and a CTA gate computed from the raw string rather than from
+`Stepper`'s parsed value. A future slice can fold it in without touching the
+primitive; this spec should not be read as saying otherwise.
+
+**§5.2, scenario 5 — a concurrent `trip.entry_added` and `trip.entry_removed`
+write two registers, not one.** This section read it as an ordinary
+tombstone race: "one register, plain LWW, delete does not automatically
+win." The
+reducer does not work that way — `tripEntryAdded` writes `source` and
+`tripEntryRemoved` writes `removed`, two different registers on the same
+Entry, so nothing is contested and there is no LWW race to resolve at all.
+[Sync §3.5](../sync-protocol.md)'s "delete does not automatically win" is
+still satisfied, by a stronger route than the one drafted: a delete does not
+win here because it never competes.
+
+**§1.3 and §3.1 — `entriesOf` takes `state` as well as `trip`, and
+`entryKind` can read `undefined` for two different reasons.** The drafted
+signature, `entriesOf(trip): readonly EntryState[]`, could not sort by
+`entryLabel`, which needs the Depot to read a referenced Gear's name from —
+`entriesOf(trip, state)` is what shipped. Separately, `entryKind`'s drafted
+return type, `KindValue | 'trip_only'`, undercounted its own cases:
+`undefined` covers **both** a depot Entry whose Gear has not yet reached this
+replica's fold (the ordinary cross-aggregate sync race between
+`trip.entry_added` and `gear.recorded`) **and** a depot Entry whose Gear has
+folded but carries no `kind` register of its own — `pieceCountOf`'s own table
+already carries a row for the second case ("Gear with an unrecognised Kind"
+sits beside "Depot Entry whose Gear is not yet synced," and both default to
+`1` the same way). The drafted prose named only the first.
+
+**§4.4 — the Desktop strip's title and back link, not its sync line.** The
+draft had Split's pane-level band and Desktop's full-width strip carrying the
+same two things for the same reason: *"a bare pane at this width has no
+sidebar to carry the back link or the sync state in words."* Half of that is
+backwards. `GearListBuilder.tsx`'s own docstring states the actual rule: the
+Desktop shell **always** draws its labelled sidebar, and that sidebar already
+states sync in words in every mode — which is exactly why the strip does
+**not** redraw it; doing so would say the same fact twice on one composed
+page, the defect `screenBand.test.tsx` exists to catch. The strip exists for
+the back link, the title and Participants, none of which any sidebar row
+carries for one specific Trip — sync was never part of the reason, at either
+width.
+
+**§4.3 — the picker's meta slot carries at most one suffix, not a fixed
+pair.** The draft read `Components` §01's picker as "the name, the home path"
+with no further shape. The boards draw a suffix in four rows out of five, and
+never the same kind of fact twice: `<home path>` alone for a Single, shared
+or uncounted Gear, and `<home path> · <suffix>` otherwise — `×N` for Counted
+(the **owned** count; this picker has no Trip context to read a Bring-count
+from), `PER-PERSON`, or the owner's bare initial for personal gear. Where
+Kind and personal ownership collide, Kind wins and the owner is suppressed —
+undrawn by the boards, and settled here because Kind changes what `+ ADD`
+will actually do (a per-person add fans out per Participant; a Counted add
+carries a Bring-count) where the owner changes nothing about it.
+
+**§4.9 — closed ledger rows draw a real piece count; none was drawn before
+S7.** "Closed ledger rows keep `PIECES`" presumed a count already existed
+there to keep. None did — `ClosedRow` gains one, `listTotals(trip,
+state).pieces`, folded for real and passed as a prop the same way
+`TripCard`'s own `N ENTRIES` is. `1 LOST` is still S10's, once outcomes exist
+to name it.
+
+**§4.5 — the activation gate reads the filtered over-claim result, not the
+raw one.** `overClaimsIfActive` is deliberately unscoped to a `tripId` and
+can name an `OverClaim` between two Trips neither of which is this one.
+Gating the button's decision to preview on the raw selector opened a confirm
+with an empty block for a conflict this Trip has no part in. `PhaseSheet`
+already gates this way for its own `draft → pack_out` moment (S6); this
+screen's gate copies it.
+
+**§7 — S7 does not touch `AddGear` at all, not even for the stepper.** The
+technical-debt entry reads *"S7 touches `AddGear` only to fold its
+hand-rolled stepper into `ui/Stepper`; the CTA is untouched."* `git diff` over
+every commit in this slice against `app/src/screens/AddGear.*` is empty. The
+first half of that sentence describes the conversion §4.8 above once
+believed would happen and did not; the second half — the CTA-pinning debt
+being untouched — is the only part that was ever true, and it stays true for
+the reason it always did: nobody touched the file.
+
+**§4.3 and §4.4 — the picker's search field carries no `/` hint at either
+width, matching §9.** Both draft the field as "carrying the `/` hint at this
+width," written before the keyboard-surface ruling in §9 landed in this same
+document. §9 is the standing word on this: S7 ships with no keyboard
+shortcuts at all, coherently, and the hint strip goes with them —
+`DepotPicker.tsx`'s placeholder is one literal, shared by both the screen and
+pane variants, and it is silent on `/`.
+
+**§10's doc-amendments table — the `technical-debt.md` row.** The table
+planned *"the `TripCard` entry narrowed to its remaining half."* What
+actually happened is narrower still: the entry is **unchanged**. §7 above
+already explains why — the count arrives as a prop rather than deepening the
+store read, so the second caller the debt wants never arrives, and "S7
+touched this component" must not read later as "S7 paid down this debt."
+`technical-debt.md` keeps the entry exactly as it stood before this slice.

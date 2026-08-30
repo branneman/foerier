@@ -5,8 +5,9 @@ import styles from './Stepper.module.css'
 /**
  * The stepper — one control, two sizes (`docs/design/README.md` §5, ruled
  * against `Components` §01 and §06 disagreeing on size): **h48**, the
- * standalone control Add gear's Owned-count draws, and **h32 dense**, the
- * gear list's in-row Bring-count control (S7).
+ * standalone control gear detail's Owned-count draws, and **h32 dense**, the
+ * gear list's in-row Bring-count control (S7). Add gear hand-rolls its own
+ * well rather than using either size — not because it can't; see below.
  *
  * **`value` is the one source of truth; nothing here is business state.**
  * `Stepper` never decides what the count *is* — it only ever asks the
@@ -35,6 +36,14 @@ import styles from './Stepper.module.css'
  * Bring-count that claims nothing but keeps the row (invariant 11); `null` is
  * no count at all. A caller with no "opens empty" state of its own simply
  * guards with `!== null` before it emits.
+ *
+ * **This channel is why Add gear's own well is not a third caller, not why
+ * it can't be.** `null` was added for the gear list's Bring-count control;
+ * Add gear's hand-rolled well predates it and was never revisited once the
+ * channel existed. Folding it in is possible and simply undone — what it
+ * would still need from its own component is a `<label htmlFor>`, the
+ * `OPENS EMPTY — GATES THE CTA` fact line, and a CTA gate computed from
+ * `Stepper`'s parsed value rather than from the raw string.
  *
  * `min` defaults to **`0`**, not `1`. A Bring-count of zero is expressible on
  * the wire (`{entry_id, count: int ≥ 0}`) and is not the same as removing the

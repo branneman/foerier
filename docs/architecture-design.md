@@ -1976,11 +1976,11 @@ aggregate. Three op types, no endpoints, no migration; see its
   entries only" cannot be a reducer gate, because the Entry's Kind lives on the
   Gear aggregate and resolving it in the handler would make the fold
   order-dependent on whether `gear.kind_set` had arrived first. `bringCountOf`
-  is the fourth site gating on `kind === 'counted'`
+  is one of several sites already gating on `kind === 'counted'`
   (`shared/src/selectors/depot.ts`, `shared/src/selectors/whereabouts.ts`,
-  `app/src/screens/GearDetail.tsx` are the other three), and moving the
-  question behind one function is what let this slice add a fourth site
-  without a fourth copy of the gate.
+  `app/src/screens/GearDetail.tsx` and `app/src/screens/Depot.tsx` among
+  them), and moving the question behind one function is what let this slice
+  add another without adding another copy of the gate.
 - **The over-claim view is a pure function of the fold, with no op, no flag and
   no write of its own.** `overClaims(state)` reads registers only, so every
   replica computes the identical set — the containment-cycle argument
@@ -2001,22 +2001,29 @@ aggregate. Three op types, no endpoints, no migration; see its
   DepotState, …>` memo inside `slice.ts` rather than a change to the
   signature — `DepotState`'s immutability is what makes the key exact instead
   of approximate.
-- **Eight sentences in the feature spec were found false during
-  implementation, not before it**, the shape CLAUDE.md's S4-fixture lesson
-  already named: a spec sentence can assert a fact no test then pins.
-  Corrected in the spec itself rather than left standing: `Stepper` shipped
-  with **two** callers, not three — Add gear's Owned-count well must stay
-  representable as *unset* to gate its CTA, and `Stepper`'s contract had no
-  channel for that; a concurrent `trip.entry_added` / `trip.entry_removed`
-  writes **two** registers (`source`, `removed`), not one contested LWW field,
-  so nothing races; `entriesOf` takes `(trip, state)`, not `(trip)` alone; the
-  builder's band, title and footer are right-pane at Split but a **full-width
-  strip above the grid** at Desktop; the picker's meta line carries the home
-  path plus **at most one** suffix, not a fixed pair; closed ledger rows draw
-  a **real** `N PIECES` fold, not a presumed one; the activation gate reads
-  the **filtered** over-claim result, since the raw one can name an unrelated
-  Trip; and the unbuilt keyboard surface belongs in the spec's own "not
-  built" section, not implied to be someone's next task.
+- **Ten sentences in the feature spec turned out false once the code
+  existed, and none of them are corrected in place** — the shape CLAUDE.md's
+  S4-fixture lesson already named, generalised: a spec sentence can assert a
+  fact no test then pins, and the fix belongs beside the sentence, not inside
+  it. `trips-and-phases.md` §10 sets the precedent — a dated spec is left as
+  written — and the gear-list spec's own new §11 is where all ten now live:
+  `Stepper` shipped with **two** callers, not three, and — since its contract
+  widened to accept `null` partway through this same slice — folding Add gear
+  in is possible and deferred, not impossible; a concurrent
+  `trip.entry_added` / `trip.entry_removed` writes **two** registers
+  (`source`, `removed`), not one contested LWW field, so nothing races;
+  `entriesOf` takes `(trip, state)`, not `(trip)` alone, and `entryKind` can
+  read `undefined` for two reasons, not one; the builder's band, title and
+  footer are right-pane at Split but a **full-width strip above the grid** at
+  Desktop, for the back link and the title — never for sync, which the
+  Desktop sidebar already states in words at every width; the picker's meta
+  line carries the home path plus **at most one** suffix, not a fixed pair;
+  closed ledger rows draw a **real** `N PIECES` fold, not a presumed one; the
+  activation gate reads the **filtered** over-claim result, since the raw one
+  can name an unrelated Trip; §7's technical-debt entry overstated what S7
+  does to `AddGear` — the slice does not touch that file at all; and the
+  picker's search field carries no `/` hint at either width, matching the
+  keyboard surface §9 already rules unbuilt.
 - **`useScreenHeader`'s reach is ten callers, both of S7's new ones
   width-guarded.** Before S7, `People` and `Devices` were the only two of
   eight routes whose own path redirects across a width boundary; S7's two new
