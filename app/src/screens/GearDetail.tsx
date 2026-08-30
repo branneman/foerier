@@ -22,7 +22,7 @@ import {
   type PathSegment,
   type WhereaboutsSlice,
 } from '@foerier/shared'
-import { Chip, Confirm, Sheet } from '@foerier/ui'
+import { Chip, Confirm, Sheet, Stepper } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
@@ -115,7 +115,7 @@ export function GearDetail() {
   const [editOpen, setEditOpen] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [kindDraft, setKindDraft] = useState<KindValue>('single')
-  const [countDraft, setCountDraft] = useState('1')
+  const [countDraft, setCountDraft] = useState(1)
   const [ownerDraft, setOwnerDraft] = useState<Owner>({ type: 'shared' })
   const [ownerPickerOpen, setOwnerPickerOpen] = useState(false)
   const [retireOpen, setRetireOpen] = useState(false)
@@ -132,7 +132,7 @@ export function GearDetail() {
   function openEdit(current: GearState) {
     setNameDraft(current.name?.value ?? '')
     setKindDraft(current.kind?.value ?? 'single')
-    setCountDraft(String(current.ownedCount?.value ?? 1))
+    setCountDraft(current.ownedCount?.value ?? 1)
     // Through `ownerOf`, not `current.owner?.value`: an absent register has
     // to seed the draft as `{type:'shared'}` so that an untouched Save
     // compares equal and writes nothing. Reading the raw register here would
@@ -151,12 +151,8 @@ export function GearDetail() {
       emit(gearKindSet(id, kindDraft))
     }
 
-    if (kindDraft === 'counted') {
-      const parsedCount = Number.parseInt(countDraft, 10)
-      const validCount = Number.isSafeInteger(parsedCount) && parsedCount >= 0
-      if (validCount && parsedCount !== current.ownedCount?.value) {
-        emit(gearOwnedCountSet(id, parsedCount))
-      }
+    if (kindDraft === 'counted' && countDraft !== current.ownedCount?.value) {
+      emit(gearOwnedCountSet(id, countDraft))
     }
 
     // Only when it changed, the discipline every field above follows. Both
@@ -408,16 +404,16 @@ export function GearDetail() {
             </button>
 
             {kindDraft === 'counted' && (
-              <label className={styles['field']}>
+              <div className={styles['field']}>
                 <span className={styles['label']}>Owned count</span>
-                <input
-                  type="number"
-                  className={styles['input']}
+                <Stepper
+                  size="default"
                   value={countDraft}
                   min={0}
-                  onChange={(event) => setCountDraft(event.target.value)}
+                  onChange={setCountDraft}
+                  label="Owned count"
                 />
-              </label>
+              </div>
             )}
 
             <div className={styles['sheetActions']}>

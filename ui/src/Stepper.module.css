@@ -1,0 +1,85 @@
+@layer components {
+  .stepper {
+    display: inline-flex;
+    align-items: stretch;
+    gap: var(--space-8);
+  }
+
+  .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-primary);
+    font-family: var(--font-ui);
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .button:disabled {
+    color: var(--color-ink-faint);
+    cursor: default;
+  }
+
+  .well {
+    flex: 1;
+    min-width: 0;
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    color: var(--color-ink-primary);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  /* h48 — Components §01's standalone control (Add gear's Owned-count). */
+  .default .button {
+    min-width: max(3rem, 48px);
+    min-height: max(3rem, 48px);
+    font-size: 1.375rem;
+  }
+
+  .default .well {
+    min-height: max(3rem, 48px);
+    font-size: 1.0625rem;
+  }
+
+  /*
+   * h32, in-row — the gear list's Bring-count control (S7). `frontend-design.md`
+   * §2.1 floors every touch target at `max(3rem, 48px)`; this is the one
+   * deliberate exception. The control sits inside an already-tall row rather
+   * than standing alone, and painting it at 48px would dominate the row the
+   * way a chip does at 44px density (`GearRow.module.css`'s TAGS-column
+   * comment makes the same call). So the *drawing* stays 32px and each
+   * button's `::after` grows its hit area to 44px — the status-pill minimum,
+   * and allowed on touch — without taking any layout with it, exactly as
+   * `Trip.module.css`'s `.addParticipant::after` already does for a 22px
+   * circle.
+   */
+  .dense .button {
+    position: relative;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1rem;
+  }
+
+  .dense .button::after {
+    content: '';
+    position: absolute;
+    /* 32px painted, 44px hit area: (44 - 32) / 2 = 6px = 0.375rem each side. */
+    inset: -0.375rem;
+  }
+
+  .dense .well {
+    width: 2.25rem;
+    height: 2rem;
+    padding-inline: 0;
+    font-size: 0.8125rem;
+  }
+}

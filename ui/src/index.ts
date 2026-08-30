@@ -18,5 +18,8 @@ export type { ConfirmProps } from './Confirm'
 export { GearRow } from './GearRow'
 export type { GearRowProps } from './GearRow'
 
+export { Stepper } from './Stepper'
+export type { StepperProps } from './Stepper'
+
 export { QrCode } from './QrCode'
 export type { QrCodeProps } from './QrCode'
