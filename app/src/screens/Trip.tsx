@@ -14,7 +14,11 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
-import { GearListSection, pieceLabel } from '../components/GearListSection'
+import {
+  entryCountLabel,
+  GearListSection,
+  pieceLabel,
+} from '../components/GearListSection'
 import { OverClaimBand } from '../components/OverClaimBand'
 import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
@@ -57,13 +61,13 @@ import styles from './Trip.module.css'
  * `GEAR LIST` section band and `GearListSection`'s groups take the region
  * instead.
  *
- * **`EDIT LIST ›` and the dashed trip-only row are drawn before they are
- * wired.** `/trips/:id/list` (Task 11) and `TripOnlySheet` (Task 12) do not
- * exist yet, so each stays a documented no-op rather than a link to a
- * destination that isn't there — the empty state's own argument, one slice
- * earlier: a control that leads somewhere and lies about it is worse than one
- * that leads nowhere. **The pinned primary is wired**: `/trips/:id/add`
- * (Task 10) is a real `<Link>` now that the route exists.
+ * **The dashed trip-only row is drawn before it is wired.** `TripOnlySheet`
+ * (Task 12) does not exist yet, so it stays a documented no-op rather than a
+ * link to a destination that isn't there — the empty state's own argument,
+ * one slice earlier: a control that leads somewhere and lies about it is
+ * worse than one that leads nowhere. **The pinned primary and `EDIT LIST ›`
+ * are both wired**: `/trips/:id/add` (Task 10) and `/trips/:id/list`
+ * (Task 11) are real `<Link>`s now that both routes exist.
  *
  * ## There is no `NEXT` line here
  *
@@ -304,10 +308,6 @@ export function Trip() {
   // no-op rather than an unconfirmed write against a Trip nobody is looking
   // at. See the task report.
   function handleRemoveThere(_otherTripId: string, _entryId: string) {}
-
-  // `EDIT LIST ›` opens `/trips/:id/list`, which Task 11 builds. A no-op
-  // until then — see the task report.
-  function handleEditList() {}
 
   // The dashed row opens `TripOnlySheet` (Task 12). A no-op until then —
   // see the task report.
@@ -621,13 +621,16 @@ export function Trip() {
                 {entryCountLabel(totals.entries)} · {pieceLabel(totals.pieces)}
               </span>
               {!editable && (
-                <button
-                  type="button"
+                // A real `<Link>` now that `/trips/:id/list` (Task 11)
+                // exists — carries no door param, so the builder's own
+                // default (the "trip" door) applies, giving `‹ {label}`
+                // back rather than `‹ TRIPS`.
+                <Link
+                  href={`/trips/${tripId}/list`}
                   className={styles['editList']}
-                  onClick={handleEditList}
                 >
                   EDIT LIST ›
-                </button>
+                </Link>
               )}
             </span>
           </div>
@@ -687,15 +690,6 @@ export function Trip() {
       )}
     </div>
   )
-}
-
-/** `1 ENTRY` / `2 ENTRIES` — `1 ENTRY STILL OPEN`'s own singular, restated
- * for the `GEAR LIST` band's count. No shared function to call: `Entries`
- * has no other formatter anywhere in the app, unlike `Pieces` (imported
- * `pieceLabel`, below) — an Entry is this band's own noun, not one a group
- * header also counts. */
-function entryCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'ENTRY' : 'ENTRIES'}`
 }
 
 /**

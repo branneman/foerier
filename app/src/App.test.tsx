@@ -384,9 +384,8 @@ describe('the /trips/:id/add route', () => {
     ).toBeInTheDocument()
   })
 
-  // `/trips/:id/list` is Task 11's route, not yet mounted — landing on the
-  // shell's catch-all is what proves the redirect actually fired, rather
-  // than the picker simply rendering at every width unguarded.
+  // Landing on the builder itself is what proves the redirect actually
+  // fired, rather than the picker simply rendering at every width unguarded.
   it('redirects to /trips/:id/list at Split and up', async () => {
     setViewport(SPLIT, DESKTOP)
     renderAt(`/trips/${TRIP_ONE}/add`, {
@@ -394,11 +393,41 @@ describe('the /trips/:id/add route', () => {
     })
 
     expect(
-      await screen.findByRole('heading', { name: 'Not found.' }),
+      await screen.findByRole('heading', { name: 'Alps 2026 — gear list' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Add from the depot' }),
     ).toBeNull()
+  })
+})
+
+describe('the /trips/:id/list route', () => {
+  // The mirror image of `/trips/:id/add`'s own matched pair above (spec
+  // §4.1): this route exists Split and up, and redirects below it.
+  it('redirects to /trips/:id below Split', async () => {
+    renderAt(`/trips/${TRIP_ONE}/list`, {
+      log: await aLogOfTrips([{ id: TRIP_ONE, name: 'Alps 2026' }]),
+    })
+
+    // Landing on the trip screen itself is what proves the redirect fired —
+    // its heading carries the Trip's name alone, with no `— gear list` suffix.
+    expect(
+      await screen.findByRole('heading', { name: 'Alps 2026' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Alps 2026 — gear list' }),
+    ).toBeNull()
+  })
+
+  it('is the builder screen at Split and up', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderAt(`/trips/${TRIP_ONE}/list`, {
+      log: await aLogOfTrips([{ id: TRIP_ONE, name: 'Alps 2026' }]),
+    })
+
+    expect(
+      await screen.findByRole('heading', { name: 'Alps 2026 — gear list' }),
+    ).toBeInTheDocument()
   })
 })
 

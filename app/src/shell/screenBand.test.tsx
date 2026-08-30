@@ -23,8 +23,10 @@ import {
   type EngineFactory,
 } from '../depot/store'
 import { AddGear } from '../screens/AddGear'
+import { DepotPicker } from '../screens/DepotPicker'
 import { Devices } from '../screens/Devices'
 import { GearDetail } from '../screens/GearDetail'
+import { GearListBuilder } from '../screens/GearListBuilder'
 import { InviteIssued } from '../screens/InviteIssued'
 import { NewTrip } from '../screens/NewTrip'
 import { People } from '../screens/People'
@@ -178,6 +180,17 @@ function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
             </Route>
             <Route path="/trips/:id">
               <Trip />
+            </Route>
+            {/* Width-guarded in opposite directions (spec §4.1): the picker
+                exists below Split only, the builder Split and up only — each
+                is stood up here and counted at the widths it actually
+                renders at in the real app, the `People`/`Devices` precedent
+                below. */}
+            <Route path="/trips/:id/add">
+              {(params) => <DepotPicker tripId={params.id} variant="screen" />}
+            </Route>
+            <Route path="/trips/:id/list">
+              {(params) => <GearListBuilder tripId={params.id} />}
             </Route>
             <Route path="/account/people">
               <People api={authApi} token={TOKEN} personId={PERSON} />
@@ -355,6 +368,45 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
     )
   })
 
+  /* The depot picker (`/trips/:id/add`) exists below Split only — `App.tsx`
+     redirects it to `/trips/:id/list` at Split and up — so it is counted at
+     the one width it actually renders at, the `People`/`Devices` precedent
+     below applied to the opposite guard direction. */
+
+  it('holds for the depot picker on a phone, the only width it exists at', async () => {
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/add`)
+
+    expect(syncLines()).toHaveLength(1)
+    expect(screen.getByRole('main')).not.toContainElement(
+      syncLines()[0] ?? null,
+    )
+  })
+
+  /* The builder (`/trips/:id/list`) exists Split and up only — `App.tsx`
+     redirects it to `/trips/:id` below Split — so it is counted at the two
+     widths it actually renders at and not on a phone. */
+
+  it('holds for the builder at Split', async () => {
+    setViewport(SPLIT)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/list`)
+
+    expect(syncLines()).toHaveLength(1)
+    expect(screen.getByRole('main')).toContainElement(syncLines()[0] ?? null)
+  })
+
+  it('holds for the builder at Desktop', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/list`)
+
+    expect(syncLines()).toHaveLength(1)
+    expect(screen.getByRole('main')).not.toContainElement(
+      syncLines()[0] ?? null,
+    )
+  })
+
   /* People and Devices are counted at the two widths `App.tsx` mounts them
      at. At Desktop it redirects both to `/account`, so there is no composed
      page to count — `renderInShell`'s own comment says why the route is not
@@ -475,6 +527,36 @@ describe('the back link — withheld only where its destination is already drawn
     renderInShell(store, '/add')
 
     expect(screen.queryByRole('link', { name: '‹ DEPOT' })).toBeNull()
+  })
+
+  it('draws it on the depot picker on a phone, the only width it is mounted at', async () => {
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/add`)
+
+    expect(screen.getByRole('link', { name: /‹/ })).toBeVisible()
+  })
+
+  /**
+   * The builder answers `splitPane: false` (spec §4.11) — two panes of
+   * *itself*, not a detail pane of a list also on screen, so unlike
+   * `GearDetail` it draws its own back link at Split. `renderInShell` mounts
+   * it with no door query param, so the "trip" door applies and the link
+   * names the Trip.
+   */
+  it('draws it on the builder at Split, which is nobody’s pane', async () => {
+    setViewport(SPLIT)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/list`)
+
+    expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
+  })
+
+  it('withholds it from the builder at Desktop, where the sidebar carries TRIPS', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/list`)
+
+    expect(screen.queryByRole('link', { name: /‹/ })).toBeNull()
   })
 
   it('draws it on People at Split, the widest width it is mounted at', async () => {

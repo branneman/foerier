@@ -115,6 +115,16 @@ export function pieceLabel(count: number): string {
   return `${count} ${count === 1 ? 'PIECE' : 'PIECES'}`
 }
 
+/** `1 ENTRY` / `2 ENTRIES` — the `GEAR LIST` band's own noun (`Trip.tsx`) and
+ * the builder's footer totals bar's first segment (`GearListBuilder.tsx`,
+ * spec §4.4), moved here from `Trip.tsx` once it gained a second caller —
+ * `pieceLabel`'s own precedent above, for the identical reason: two
+ * functions computing "N ENTRIES" from two files would let the two disagree
+ * the moment either one's spelling changed. */
+export function entryCountLabel(count: number): string {
+  return `${count} ${count === 1 ? 'ENTRY' : 'ENTRIES'}`
+}
+
 export function GearListSection({
   trip,
   editable,

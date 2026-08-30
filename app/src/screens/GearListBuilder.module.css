@@ -1,0 +1,146 @@
+@layer components {
+  /*
+   * Split 900: `minmax(308px, 40%) | 1fr`, the pane `GearRow` already folds
+   * inside. Desktop widens the left column to a fixed 440px
+   * (`docs/design/README.md` §5's "Builder 1024") — `DepotView.module.css`'s
+   * own `19.25rem` list pane, reused for the 308px floor.
+   */
+  .split {
+    display: grid;
+    grid-template-columns: minmax(19.25rem, 40%) 1fr;
+    gap: var(--space-24);
+    align-items: start;
+  }
+
+  @media (min-width: 64em) {
+    .split {
+      grid-template-columns: 27.5rem 1fr;
+    }
+  }
+
+  .picker,
+  .builder {
+    min-width: 0;
+  }
+
+  .builder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    border-left: var(--stroke-rule) solid var(--color-rule);
+    padding-left: var(--space-24);
+  }
+
+  .screen {
+    padding: var(--space-16);
+  }
+
+  .notFound {
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  /* `Trip.tsx`'s `‹ TRIPS` is a fixed literal, drawn upper-case already; the
+     "trip" door's `‹ {label}` is the Trip's own mixed-case name, so the
+     transform is what makes both doors read the same way — `DepotPicker`'s
+     screen-variant `.back` carries the identical rule for the same reason. */
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .sync {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .syncDot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+  }
+
+  .titleRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* The board's accent CTA — `Trip.tsx`'s own `.save` anatomy (filled accent,
+     the 48px floor), sized to its own text rather than to `.save`'s `flex: 1`:
+     this sits beside a title, not alone in a form. */
+  .startPackOut {
+    flex: none;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-20);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* `Trip.tsx`'s own dashed add row, verbatim — the same fact about the
+     same kind of Entry, drawn by two screens with no component between them
+     to share it. */
+  .tripOnlyRow {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) dashed var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  /* The footer totals bar — a read, not an action, so it is a `<p>` rather
+     than any kind of control. Sits after the dashed row rather than pinned:
+     `docs/specs/2026-08-29-the-gear-list.md` §4.4 draws it as the pane's last
+     line, not as a bar claiming the foot of the viewport the way `Depot`'s FAB
+     or `Trip.tsx`'s pinned primary do. */
+  .footer {
+    padding-top: var(--space-12);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+}

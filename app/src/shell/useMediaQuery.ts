@@ -62,9 +62,14 @@ export interface ScreenPlacement {
    * it was pushed from drawn beside it at 52–64em?
    *
    * True for `GearDetail`, which `DepotView` renders in the right-hand pane
-   * with the Depot list in the left — and true for nothing else, because
-   * `DepotView` is the only two-pane view `App.tsx` has. Every other pushed
-   * screen answers `false`, `AddGear` included: `Screens A` §06 draws
+   * with the Depot list in the left — and true for nothing else. `DepotView`
+   * is no longer the only two-pane view `App.tsx` has: `GearListBuilder`
+   * (`/trips/:id/list`, S7) is a second, and it still answers `false` — it is
+   * two panes of *itself*, not a detail pane of a list that is also on
+   * screen, so its own back link is drawn at every width it exists at rather
+   * than withheld the way `GearDetail`'s is (spec
+   * `docs/specs/2026-08-29-the-gear-list.md` §4.11). Every other pushed
+   * screen answers `false` too, `AddGear` included: `Screens A` §06 draws
    * `Add gear — split 900` as a pane with the Depot list beside it, and
    * `<Route path="/add">` renders it standalone, so the answer is about the
    * app as built rather than as drawn.
@@ -129,9 +134,11 @@ export interface ScreenHeader {
  *   `SYNCED 14:32`, and the main column carries neither.
  * - **At Split, it depends on {@link ScreenPlacement.splitPane}.** The rail
  *   draws no labels, so a screen standing alone there still owes the link —
- *   and every caller but `GearDetail` does stand alone, since `DepotView` is
- *   the only two-pane view. A detail pane does not: the list is beside it,
- *   which is why `Depot split` contains no `‹` anywhere.
+ *   and every caller but `GearDetail` does stand alone, `GearListBuilder`
+ *   included: it is two panes of *itself*, not a detail pane of a list also
+ *   on screen, so it owes its own reader the link exactly as a standalone
+ *   screen would. A detail pane does not: the list is beside it, which is why
+ *   `Depot split` contains no `‹` anywhere.
  * - **Below Split, always.** There are no panes and the nav is three tabs.
  */
 export function useScreenHeader({ splitPane }: ScreenPlacement): ScreenHeader {

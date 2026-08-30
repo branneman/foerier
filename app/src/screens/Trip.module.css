@@ -460,6 +460,7 @@
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
+    text-decoration: none;
     cursor: pointer;
   }
 

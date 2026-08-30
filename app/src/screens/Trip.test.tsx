@@ -573,7 +573,7 @@ describe('the trip screen — the gear list (S7)', () => {
       screen.queryByRole('link', { name: '+ Add from the depot' }),
     ).toBeNull()
     expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×4')
-    expect(screen.getByRole('button', { name: 'EDIT LIST ›' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'EDIT LIST ›' })).toBeVisible()
   })
 
   it('renders the over-claim band between the header and the section band', async () => {
@@ -786,11 +786,19 @@ describe('the trip screen — the gear list (S7)', () => {
     ).toHaveAttribute('href', `/trips/${ALPS}/add`)
   })
 
-  it('does nothing yet from EDIT LIST, from Split up', async () => {
+  /**
+   * `EDIT LIST ›` used to be this file's fourth documented no-op —
+   * `/trips/:id/list` now exists (Task 11), so the control is a real
+   * `<Link>` and this pins the destination rather than an absence of one,
+   * exactly as the pinned primary's own test above does for `/trips/:id/add`.
+   * No door param: the builder's own default (the "trip" door,
+   * `GearListBuilder.tsx`) applies from here, giving `‹ Alps 2026` back
+   * rather than `‹ TRIPS`.
+   */
+  it('EDIT LIST › now points at /trips/:id/list', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     setViewport(SPLIT)
-    const user = userEvent.setup()
-    const seed = await renderTrip(
+    await renderTrip(
       `/trips/${ALPS}`,
       ...alps(),
       gearRecorded('g-single', {
@@ -801,11 +809,10 @@ describe('the trip screen — the gear list (S7)', () => {
       tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
     )
 
-    await user.click(screen.getByRole('button', { name: 'EDIT LIST ›' }))
-
-    expect(await seed.authored()).toEqual([])
-    // The route `/trips/:id/list` is Task 11's: no navigation away yet.
-    expect(screen.getByRole('heading', { name: 'Alps 2026' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'EDIT LIST ›' })).toHaveAttribute(
+      'href',
+      `/trips/${ALPS}/list`,
+    )
   })
 })
 

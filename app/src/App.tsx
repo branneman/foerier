@@ -28,6 +28,7 @@ import { DepotView } from './shell/DepotView'
 import { Account } from './screens/Account'
 import { AddGear } from './screens/AddGear'
 import { DepotPicker } from './screens/DepotPicker'
+import { GearListBuilder } from './screens/GearListBuilder'
 import { InviteIssued } from './screens/InviteIssued'
 import { Devices } from './screens/Devices'
 import { People } from './screens/People'
@@ -384,15 +385,26 @@ export function App({
               {/* Below Split only — the `isDesktop ? <X/> : <Redirect/>`
                   shape `/account/devices` and `/account/people` already use
                   below, here on `SPLIT` rather than `DESKTOP`. At Split and
-                  up this redirects to `/trips/:id/list`, Task 11's builder
-                  route — not yet built, but landing within this same slice
-                  (spec §4.1). */}
+                  up this redirects to `/trips/:id/list`, the builder route
+                  below (spec §4.1). */}
               <Route path="/trips/:id/add">
                 {(params) =>
                   isSplitOrWider ? (
                     <Redirect to={`/trips/${params.id}/list`} />
                   ) : (
                     <DepotPicker tripId={params.id} variant="screen" />
+                  )
+                }
+              </Route>
+              {/* The mirror image, Split and up only — the width guard's
+                  other half (spec §4.1). Below Split the trip screen is the
+                  editor and this redirects there instead. */}
+              <Route path="/trips/:id/list">
+                {(params) =>
+                  isSplitOrWider ? (
+                    <GearListBuilder tripId={params.id} />
+                  ) : (
+                    <Redirect to={`/trips/${params.id}`} />
                   )
                 }
               </Route>
