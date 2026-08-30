@@ -144,15 +144,16 @@ space a 393-px-designed single column leaves on a large phone or foldable.
 
 **The shell is one viewport tall in every mode, and the screen scrolls inside
 it.** `.shell` is a fixed `100svh` grid and `.shell__main` is the scroll
-container; in the signed-in app nothing else scrolls, the document included.
-That is what makes each nav treatment *persistent* rather than merely present:
-below Split the bottom tabs stay in the thumb zone on a two-hundred-item Depot,
-and from Split up the nav column's pinned foot — the `ACCOUNT` row above the
-sync marker — stays at the bottom of the screen instead of sliding to the
-bottom of the document, which is where a shell sized by `min-height` put it.
-The same mechanism pins the phone header band, which below Split carries the
-sync line and the only route to Account. Four consequences are worth knowing
-before touching the shell:
+container. The document does not scroll behind it, and no ancestor of a screen
+does — a component may still scroll its own overflow, as the slice bar's chip
+row does below 40em. That is what makes each nav treatment *persistent* rather
+than merely present: below Split the bottom tabs stay in the thumb zone on a
+two-hundred-item Depot, and from Split up the nav column's pinned foot — the
+`ACCOUNT` row above the sync marker — stays at the bottom of the screen instead
+of sliding to the bottom of the document, which is where a shell sized by
+`min-height` put it. The same mechanism pins the phone header band, which below
+Split carries the sync line and the only route to Account. Five consequences
+are worth knowing before touching the shell:
 
 - **A screen's floating control is sticky against `.shell__main`, so its inset
   is `0`.** A sticky inset is resolved against the scrollport reduced by the
@@ -162,10 +163,22 @@ before touching the shell:
   `bottom: 18px` against an 18px foot floats the control 36px above the bar. So
   the clearance is said once, at the foot, and the control carries a zero.
 - **A route change resets the offset to the top**, in `AppShell` and nowhere
-  else. A scroll container that outlives the route carries its offset into
-  whatever renders next; the document scroller this replaced reset itself. It
-  is a reset and not a restore: restoring is per history entry rather than per
-  path, and nothing here holds history entries.
+  else, because a scroll container that outlives the route carries its offset
+  into whatever renders next. **It is a behaviour chosen here, not one
+  restored:** `pushState` does not reset scroll — measured, an offset of 1200
+  survives both the call and a full re-render — so the document scroller this
+  replaced kept its offset too and was merely *clamped* by a shorter next
+  screen. Most next screens were shorter, which is what made it read as a
+  reset. It is a reset and not a restore, either: restoring is per history
+  entry rather than per path, and nothing here holds history entries.
+- **The reset is keyed on a scroll group, not on the path.** At Split
+  `DepotView` draws the Depot list and the gear detail as two panes of one view
+  that never unmounts, so `/` and `/gear/:id` are two routes over a single
+  scroll offset and a per-path reset would take the list to the top on every
+  row tap. They collapse to one key there and to the path everywhere else.
+  Panes with scrollers of their own would be the more design-true answer — and
+  would move this reset's target with them — which is left to the task that
+  builds them.
 - **The scrollbar belongs to the content column, not the window.**
   `.shell__main` is what carries the `max-width` cap and the centring at Roomy
   and Desktop, so where a platform draws a classic scrollbar it lands on the
@@ -175,14 +188,36 @@ before touching the shell:
   unit would chase a transition that does not happen. It also matches the unit
   the sheets' `max-height` already uses.
 
-**Radix's scroll lock still holds.** `react-remove-scroll`, which every `Sheet`
-and `Confirm` sits inside, does two things: `overflow: hidden` on `body`, and
-capture-phase `wheel`/`touchmove` handlers that cancel any such event whose
-target lies outside the locked subtree. The first becomes a no-op once the body
-no longer scrolls; the second is what does the work, and it is indifferent to
+**At large user font sizes the shell stops being pinned, deliberately.** The
+middle row is `minmax(50svh, 1fr)` rather than a bare `1fr`. Without the floor
+a scroll container's automatic minimum size is zero, so the reading area is
+crushed before anything overflows: measured at a 600px viewport with a 300px
+header and a 400px bar — reachable by zoom, where the CSS viewport shrinks
+while both bands keep their `rem` and `min-height` sizes — it came out **34px
+tall while the document was scrollable to 734 anyway**, two scrollers at once
+and the bar half off the screen. With the floor the screen keeps half the
+viewport; past that the shell overflows, the document scrolls, and the bar sits
+at the bottom of the *document*, reached by scrolling to its end. That is the
+`min-height` behaviour this section replaced, given back exactly where pinning
+costs more than it pays.
+
+**Radix's scroll lock still holds, and it takes both halves to say why.**
+`react-remove-scroll`, which every `Sheet` and `Confirm` sits inside, does two
+things: `overflow: hidden` on `body`, and capture-phase `wheel`, `touchmove`
+and `touchstart` handlers on `document` that cancel any such event whose target
+lies outside the locked subtree. The first becomes a no-op once the body no
+longer scrolls; the second is what stops a pointer, and it is indifferent to
 which element the scrollport is. Verified in Chromium against a scrolling
 `.shell__main` with a Radix dialog open: wheel and touch over the background
 both leave the offset where it was.
+
+**There is no `keydown` handler**, so the keyboard is covered by something
+else: `Sheet` and `Confirm` use `Dialog.Portal` with no `container`, which
+mounts them on `document.body` — verified, the parent chain is
+`body › [the dialog]`, outside `.shell` — and the focus trap keeps space,
+PageDown and the arrows on the dialog's own scroll chain, which ends at the
+locked body rather than at `.shell__main`. **Portalling an overlay into the
+shell would break that silently**, and nothing else in the app would notice.
 
 ### 3.2 Components — container queries
 
