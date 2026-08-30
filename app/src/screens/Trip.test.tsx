@@ -839,6 +839,53 @@ describe('the trip screen — the gear list (S7)', () => {
       `/trips/${ALPS}/list`,
     )
   })
+
+  /**
+   * Fix round F2 — `Stepper.test.tsx`'s pattern: jsdom computes no layout
+   * (`css: false`), so the hit area is pinned by reading the declared
+   * numbers and computing the result. `.editList` inherits its line-height
+   * from `body`'s `--text-body` (1.375rem = 22px) rather than deriving one
+   * from its own smaller `font-size`, so 22px — not `--text-label`'s 14px —
+   * is the padding box the `::after` grows from.
+   */
+  it('EDIT LIST › grows to a ≥44px hit area without moving the baseline', () => {
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
+      'utf8',
+    )
+    const rule = /\.editList\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    const afterRule = /\.editList::after\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+
+    expect(rule).toMatch(/position:\s*relative/)
+    expect(afterRule).toMatch(/position:\s*absolute/)
+
+    const insetRem = /inset:\s*(-?[0-9.]+)rem/.exec(afterRule)?.[1]
+    expect(insetRem).toBeDefined()
+    const insetPx = Math.abs(Number.parseFloat(insetRem ?? '0') * 16)
+
+    // `--text-body`'s line-height, not `.editList`'s own `font-size`: a
+    // length-valued `line-height` inherits as that computed length, not
+    // recomputed against a descendant's smaller font.
+    const bodyLineHeightRem = /--text-body:\s*[0-9.]+rem\/([0-9.]+)rem/.exec(
+      readFileSync(
+        join(
+          dirname(expect.getState().testPath ?? ''),
+          '..',
+          '..',
+          '..',
+          'ui',
+          'styles',
+          'tokens.css',
+        ),
+        'utf8',
+      ),
+    )?.[1]
+    expect(bodyLineHeightRem).toBeDefined()
+    const paddingBoxHeight = Number.parseFloat(bodyLineHeightRem ?? '0') * 16
+
+    const hitArea = paddingBoxHeight + 2 * insetPx
+    expect(hitArea).toBeGreaterThanOrEqual(44)
+  })
 })
 
 describe('the trip screen — EDIT', () => {

@@ -128,7 +128,7 @@ export function OverClaimGroups({
   return (
     <>
       {groups.map((group) => (
-        <div key={group.line} className={styles['segment']}>
+        <div key={group.kind} className={styles['segment']}>
           <p className={styles['attention']} data-testid="over-claim-attention">
             {group.line}
           </p>
@@ -447,6 +447,16 @@ function joinNames(names: readonly string[]): string {
 }
 
 export interface OverClaimGroup {
+  /**
+   * Which of the three shapes below produced this group — fix round F7's
+   * React key. The three line-builders below are copy, and copy is exactly
+   * what an editorial pass changes; `line` itself is not structural (two of
+   * the three shapes could plausibly read alike after such a pass), where
+   * `kind` names the partition {@link overClaimGroups} actually computed
+   * and cannot collide by construction — the function pushes at most one
+   * group per kind.
+   */
+  readonly kind: 'cross-trip' | 'here-only-depot' | 'here-only-person'
   /** The attention line, true of exactly the `overClaims` beside it. */
   readonly line: string
   readonly overClaims: readonly OverClaim[]
@@ -500,18 +510,21 @@ export function overClaimGroups(
   const groups: OverClaimGroup[] = []
   if (crossTrip.length > 0) {
     groups.push({
+      kind: 'cross-trip',
       line: crossTripLine(crossTrip, tripId, state),
       overClaims: crossTrip,
     })
   }
   if (hereOnlyDepot.length > 0) {
     groups.push({
+      kind: 'here-only-depot',
       line: hereOnlyDepotLine(hereOnlyDepot, tripId),
       overClaims: hereOnlyDepot,
     })
   }
   if (hereOnlyPerson.length > 0) {
     groups.push({
+      kind: 'here-only-person',
       line: hereOnlyPersonLine(hereOnlyPerson, tripId, state),
       overClaims: hereOnlyPerson,
     })
@@ -638,6 +651,17 @@ function rowFact(
   // for — the same generic template, since both count in pieces.
   const parts = [`×${hereTotal} LISTED`]
   if (otherTotal > 0) parts.push(`×${otherTotal} OUT`)
-  parts.push(`OWNED ×${overClaim.supply}`)
+  // Fix round F6: `overClaim.supply` is `ownedCount?.value ?? 1`
+  // (`claim.ts`'s own `supplyAndClaimed`), so an absent register already
+  // reads as the same `1` a genuinely-owned-one Gear would — printing
+  // `OWNED ×1` either way would state a number nobody recorded for the
+  // absent case, the exact failure the per-person branch above exists to
+  // avoid. Reading the register directly, rather than trusting `supply`
+  // alone, is what tells the two apart; unreachable from this app's own
+  // authoring (Add gear always writes `ownedCount` for a Counted Kind), but
+  // reachable from a peer on a different build.
+  if (state.gear[overClaim.gearId]?.ownedCount !== undefined) {
+    parts.push(`OWNED ×${overClaim.supply}`)
+  }
   return [...parts, ...suffix].join(' · ')
 }

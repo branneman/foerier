@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRef, type ReactNode } from 'react'
 
+import { restoreOpenerFocus } from './restoreOpenerFocus'
 import styles from './Sheet.module.css'
 
 /**
@@ -99,11 +100,12 @@ function SheetRoot({
             event.preventDefault()
             contentRef.current?.focus()
           }}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault()
-            const opened = opener.current
-            if (opened instanceof HTMLElement) opened.focus()
-          }}
+          // See `restoreOpenerFocus` (fix round F3): only claims the
+          // restore — and only cancels Radix `FocusScope`'s own — when the
+          // opener is still on the page.
+          onCloseAutoFocus={(event) =>
+            restoreOpenerFocus(opener.current, event)
+          }
         >
           <span className={styles['grabber']} aria-hidden="true" />
           {titleAction === undefined ? (

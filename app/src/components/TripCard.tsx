@@ -34,13 +34,20 @@ import styles from './TripCard.module.css'
  * `›` with the whole card tappable.
  *
  * S7 builds the first of those two destinations, so the accent mono link
- * returns on the **Draft card alone** (`docs/design/README.md` §5: `BUILD
+ * returns on **every `planned` card** (`docs/design/README.md` §5: `BUILD
  * LIST ›` beats Components §06's bordered `Build gear list`) — and **retires
- * the bare `›` there with it**. `.chevron` now renders on the active card
- * only: no drawn Draft card carries both a bare `›` and `BUILD LIST ›`
- * (`Screens B:207-212`, `:483-487`; `Screens A:626-630`, `:656-660` — each
- * frame draws exactly one), and below Split the two would be separate tap
- * targets landing on the same route anyway.
+ * the bare `›` there with it**. Fix round F10: that is not "the Draft card
+ * alone" — `tripSections`' own docstring (`shared/src/selectors/trip.ts`)
+ * files `draft` **and anything this build's phase table does not
+ * recognise** into `planned`, and this component asks no phase of its own,
+ * only `variant`, so a Trip in an unrecognised phase draws `BUILD LIST ›`
+ * exactly as a Draft does. Harmless and inherited — the boards draw only
+ * Draft in this section, so it is what every drawn planned card happens to
+ * be — but the component's own contract is wider than that. `.chevron` now
+ * renders on the active card only: no drawn Draft card carries both a bare
+ * `›` and `BUILD LIST ›` (`Screens B:207-212`, `:483-487`; `Screens
+ * A:626-630`, `:656-660` — each frame draws exactly one), and below Split
+ * the two would be separate tap targets landing on the same route anyway.
  *
  * The link is a second control, raised beside `.surface` exactly as the
  * phase chip is — never nested inside the stretched link, for the same

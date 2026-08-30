@@ -114,30 +114,56 @@ export function Trips() {
   // media query of its own — `isSplit` above is this screen's, already read
   // for the `+ NEW` slot — so the resolved route arrives as a plain prop,
   // same as the count.
+  //
+  // Fix round F5. Memoed the way `sections` above is: `listTotals` →
+  // `entriesOf` sorts, and its comparator resolves `entryLabel` (a Depot
+  // lookup plus `foldText`) per comparison — unmemoed, that ran again on
+  // every render, including `setPhaseTripId`/`setReopenTripId` clicks that
+  // touch neither `state` nor `isSplit`. `entryCount` is `0`, uncomputed,
+  // on the active card: `TripCard` draws the count for `planned` only, so
+  // an active Trip's `listTotals` call priced a sort nobody was going to
+  // read.
   const cards: readonly {
     trip: TripState
     variant: 'active' | 'planned'
     entryCount: number
     buildListHref: string
-  }[] = [
-    ...sections.active.map((trip) => ({
-      trip,
-      variant: 'active' as const,
-      entryCount: listTotals(trip, state).entries,
-      buildListHref: isSplit
-        ? `/trips/${trip.id}/list?from=trips`
-        : `/trips/${trip.id}`,
-    })),
-    ...sections.planned.map((trip) => ({
-      trip,
-      variant: 'planned' as const,
-      entryCount: listTotals(trip, state).entries,
-      buildListHref: isSplit
-        ? `/trips/${trip.id}/list?from=trips`
-        : `/trips/${trip.id}`,
-    })),
-  ]
+  }[] = useMemo(
+    () => [
+      ...sections.active.map((trip) => ({
+        trip,
+        variant: 'active' as const,
+        entryCount: 0,
+        buildListHref: isSplit
+          ? `/trips/${trip.id}/list?from=trips`
+          : `/trips/${trip.id}`,
+      })),
+      ...sections.planned.map((trip) => ({
+        trip,
+        variant: 'planned' as const,
+        entryCount: listTotals(trip, state).entries,
+        buildListHref: isSplit
+          ? `/trips/${trip.id}/list?from=trips`
+          : `/trips/${trip.id}`,
+      })),
+    ],
+    [sections, state, isSplit],
+  )
   const nothing = cards.length === 0 && sections.closed.length === 0
+
+  // Same fix, for the CLOSED ledger's per-row `listTotals` call: keyed by
+  // id rather than held as a parallel array, since `ClosedRow` looks its
+  // own Trip up by id below.
+  const closedPieces = useMemo(
+    () =>
+      new Map(
+        sections.closed.map((trip) => [
+          trip.id,
+          listTotals(trip, state).pieces,
+        ]),
+      ),
+    [sections, state],
+  )
 
   return (
     // A fragment, because the FAB is the screen's **sibling** — see the note
@@ -193,7 +219,7 @@ export function Trips() {
                     <ClosedRow
                       key={trip.id}
                       trip={trip}
-                      pieces={listTotals(trip, state).pieces}
+                      pieces={closedPieces.get(trip.id) ?? 0}
                       onReopen={() => setReopenTripId(trip.id)}
                     />
                   ))}

@@ -450,7 +450,26 @@
     color: var(--color-ink-faint);
   }
 
+  /* Fix round F2. No `min-height` reaches this: `base.css`'s global floor
+     only catches `button`, `[role='button']` and `a.target` (`Link`
+     renders a bare `<a>` with none of those), and `min-height` itself would
+     be the wrong tool anyway — `.gearListTrailing`/`.gearListBand` are both
+     `align-items: baseline`, and `TripCard.module.css`'s `.buildList` only
+     gets to use `min-height: max(3rem, 48px)` because it stands outside a
+     baseline-aligned row; here it would push the link's box down and break
+     the baseline it shares with `.gearListCount`. `font-size: 0.6875rem`
+     sets no `line-height` of its own, so this inherits the ancestor
+     `body { font: var(--text-body) … }` sets — `--text-body`'s 1.375rem
+     (22px), a length, inherits as that computed length rather than being
+     recomputed against this element's smaller font-size (verified in
+     Chromium: an unpatched `.editList` measures 22px tall). `position:
+     relative` plus `::after` grows the *hit area* without touching layout
+     at all, so the baseline stays put. 44px needs 11px each side
+     (44 − 22 = 22, halved) — symmetric, unlike `OverClaimBand`'s
+     `.settle`: this link has no same-row neighbour of its own kind to
+     overlap, only `.gearListCount`, which is not interactive. */
   .editList {
+    position: relative;
     flex: none;
     border: 0;
     padding: 0;
@@ -462,6 +481,12 @@
     color: var(--color-accent);
     text-decoration: none;
     cursor: pointer;
+  }
+
+  .editList::after {
+    content: '';
+    position: absolute;
+    inset: -0.6875rem;
   }
 
   /* The dashed add row for a trip-only Entry — `HomePicker.module.css`'s

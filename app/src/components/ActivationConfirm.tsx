@@ -105,6 +105,17 @@ export function ActivationConfirm({
   }
 
   // Alternatives, not nested (F4) — see this file's own docstring.
+  //
+  // Fix round F10. `RemoveElsewhereConfirm` returns `null` when its own
+  // `otherTrip` or `entry` lookup misses, which would blank this whole
+  // sheet while `removingElsewhere` stays set — the button that opened it
+  // gone, with no way back. Unreachable at S7: `trip.entry_removed` sets
+  // the `removed` register (`writeEntry` in `shared/reduce.ts`) and never
+  // drops the key from `entries`, and no op deletes a Trip, so neither
+  // lookup can miss for an `otherTripId`/`entryId` pair this sheet itself
+  // just read off a live `OverClaim`. It would go live the day either
+  // changes — a Trip-delete op, or an Entry actually pruned rather than
+  // tombstoned.
   if (removingElsewhere !== null) {
     return (
       <RemoveElsewhereConfirm

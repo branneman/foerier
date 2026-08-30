@@ -1017,10 +1017,10 @@ promoting it quietly is what the scope tags exist to prevent.
 
 §§1–10 record the design that was taken, and are left as they were written —
 the precedent [`trips-and-phases.md`](2026-08-29-trips-and-phases.md) §10
-sets in as many words. Eleven sentences above turned out false once the
+sets in as many words. Twelve sentences above turned out false once the
 code existed: some because implementation found a better route than the one
 drafted, some because a review round caught a place where this document's
-own words outran what it had checked. All eleven are amended here rather
+own words outran what it had checked. All twelve are amended here rather
 than back into the sections that state them.
 
 **§4.8, the glance table's `ui/Stepper` row, and §5.3's `Stepper.test.tsx`
@@ -1158,3 +1158,22 @@ fourth" under any count that includes `Depot.tsx`, and the argument the
 drafted sentence makes — that the question belongs behind one function
 rather than another copy of the gate — holds regardless of which number
 introduces it.
+
+**§4.3's justification for the picker carrying no claim read does not reach
+the builder's `'pane'` variant.** The ruling — *"a claim is a relationship
+between two trips, the picker speaks for one, and the band appearing is the
+signal — a second signal would say it twice"* — is true where it is written:
+the below-Split `/trips/:id/add` screen is reached from, and returns to,
+`/trips/:id`, where the band renders. §4.4 says the builder's left pane is
+"the same picker component as §4.3," but the builder is `/trips/:id/list` —
+a different route from the one §4.5 says the band renders on (*"wherever
+`/trips/:id` renders, at every width"*) — so at Split and up the picker's own
+justification for silence names a signal that is not on the page. The code
+is compliant with §4.5 exactly as written; the gap is that reusing §4.3's
+component carried its reasoning somewhere the reasoning does not hold.
+`design/README.md` §5a lists "adding gear to an active trip's list" as
+over-claim moment #1 — the same numbering §4.4 above already uses for
+`Start pack-out`'s moment #2 — and at Split and up that moment now has no
+surface at all. Recorded here rather than built: the builder's `'pane'`
+variant stays as shipped, and a future slice that gives it a claim read of
+its own should read this entry first rather than rediscover the gap.

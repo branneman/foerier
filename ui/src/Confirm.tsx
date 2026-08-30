@@ -1,6 +1,7 @@
 import * as AlertDialog from '@radix-ui/react-alert-dialog'
 import { useRef, type ReactNode } from 'react'
 
+import { restoreOpenerFocus } from './restoreOpenerFocus'
 import styles from './Sheet.module.css'
 
 /**
@@ -87,11 +88,12 @@ function ConfirmRoot({
           className={
             sheet ? `${styles['sheet']} ${styles['raised']}` : styles['card']
           }
-          onCloseAutoFocus={(event) => {
-            event.preventDefault()
-            const opened = opener.current
-            if (opened instanceof HTMLElement) opened.focus()
-          }}
+          // See `restoreOpenerFocus` (fix round F3): only claims the
+          // restore — and only cancels Radix `FocusScope`'s own — when the
+          // opener is still on the page.
+          onCloseAutoFocus={(event) =>
+            restoreOpenerFocus(opener.current, event)
+          }
         >
           {sheet && <span className={styles['grabber']} aria-hidden="true" />}
           <AlertDialog.Title className={styles['title']}>

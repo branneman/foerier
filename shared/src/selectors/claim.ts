@@ -56,13 +56,17 @@ export interface Claim {
  *
  * **`supply` and `claimed` are the two numbers of the detection test, not
  * depot quantities in general.** For Single and Counted they happen to
- * coincide with one — the supply really is `1`, or really is `ownedCount` —
- * but for Per-person `supply` is a fact of who happens to be claiming, not of
- * the Gear: it rises the moment a fourth Trip joins, and invariant 6 gives
- * per-person gear no owned-count at all. A surface must not render a
- * Per-person row from these two fields as though they were `OWNED ×N` — that
- * is a number nobody recorded. Render Per-person from
- * {@link contestedPersonIds} and each {@link Claim}'s `personIds` instead.
+ * coincide with one — the supply really is `1`, or is `ownedCount` **or its
+ * `1` default when the register is absent** (fix round F6: `supply` alone
+ * cannot tell a genuinely-owned-one Gear from one nobody recorded a count
+ * for, which is exactly why a surface must read the register itself before
+ * printing `OWNED ×N`) — but for Per-person `supply` is a fact of who
+ * happens to be claiming, not of the Gear: it rises the moment a fourth Trip
+ * joins, and invariant 6 gives per-person gear no owned-count at all. A
+ * surface must not render a Per-person row from these two fields as though
+ * they were `OWNED ×N` — that is a number nobody recorded. Render Per-person
+ * from {@link contestedPersonIds} and each {@link Claim}'s `personIds`
+ * instead.
  */
 export interface OverClaim {
   readonly gearId: string

@@ -173,13 +173,17 @@ describe('the reopen confirm', () => {
     )
   })
 
-  it('titles a nameless Trip with the dash tripLabel reads it as', async () => {
+  it('titles a nameless Trip with the word tripNameOrUnnamed reads it as', async () => {
     const seeded = await aClosedTrip('')
     renderConfirm(seeded, { to: 'unpack' })
 
-    // `tripLabel` is the one place a Trip's name is decided; a raw `''` here
-    // would render `Reopen ?`.
-    expect(screen.getByRole('alertdialog')).toHaveTextContent('Reopen —?')
+    // Fix round F4: `tripLabel` alone would draw the bare `—` glyph into a
+    // sentence (`Reopen —?`) — right in a list column, wrong here.
+    // `tripNameOrUnnamed` is the substitution `ActivationConfirm` and
+    // `RemoveElsewhereConfirm` already share.
+    expect(screen.getByRole('alertdialog')).toHaveTextContent(
+      'Reopen Unnamed trip?',
+    )
   })
 
   it('decides only on the primary, and withdraws on Cancel', async () => {

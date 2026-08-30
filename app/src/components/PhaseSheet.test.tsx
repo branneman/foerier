@@ -413,16 +413,20 @@ describe('the SET PHASE sheet', () => {
     })
   })
 
-  it('titles the reopen with the dash a nameless Trip reads as', async () => {
+  it('titles the reopen with the word a nameless Trip reads as', async () => {
     const user = userEvent.setup()
     const seeded = await seededTrip('closed', '')
     renderSheet(seeded)
 
     await user.click(screen.getByRole('button', { name: /DRAFT/ }))
 
-    // `tripLabel` is the one place a Trip's name is decided; a raw `''` here
-    // would render `Reopen ?`.
-    expect(screen.getByRole('alertdialog')).toHaveTextContent('Reopen —?')
+    // Fix round F4: `tripLabel`'s bare `—` is right in a list column and
+    // wrong in a sentence (`Reopen —?`) — `tripNameOrUnnamed` is the
+    // substitution `ActivationConfirm` and `RemoveElsewhereConfirm` already
+    // share, and `ReopenConfirm` now follows it too.
+    expect(screen.getByRole('alertdialog')).toHaveTextContent(
+      'Reopen Unnamed trip?',
+    )
   })
 
   describe('activating a Draft into pack-out', () => {

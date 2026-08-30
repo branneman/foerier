@@ -37,12 +37,18 @@ items under thirty settled ones.
 ## Open
 
 - **Split's two panes share one scroller — now in two places.** `DepotView`
-  draws the Depot list and the gear detail as two panes of one view, and S7's
-  gear-list builder repeats the shape for its picker and list panes; each
-  keys its route-change scroll reset on a scroll group rather than the path —
-  a workaround standing in for panes that scroll themselves, which would also
-  move each reset's own target. Blocks story 38 from doing the honest thing
-  at Split, and doubles what that fix will have to cover.
+  draws the Depot list and the gear detail as two panes of one view that
+  never unmounts, so `/` and `/gear/:id` are two routes over that one
+  scroller and `AppShell.tsx` keys its route-change reset on a scroll group
+  rather than the path there — a workaround standing in for panes that
+  scroll themselves, which would also move each reset's own target. S7's
+  gear-list builder repeats the two-panes-one-scroller shape for its picker
+  and list panes, but both already sit behind the same route
+  (`/trips/:id/list`), so its own reset already keys on the path; the actual
+  gap is `GearListBuilder.module.css` carrying no `overflow` of its own, so
+  the two panes still share the shell's one scroller instead of scrolling
+  independently. Blocks story 38 from doing the honest thing at Split, and
+  doubles what that fix will have to cover.
   [`frontend-design.md`](frontend-design.md) §3.1, anchor:
   `Panes with scrollers of their own`
 - **`AddGear`'s CTA is not pinned to the thumb zone**, where `NewTrip`'s and

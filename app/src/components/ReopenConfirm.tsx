@@ -4,7 +4,6 @@ import {
   phaseName,
   tripEntryBringCountSet,
   tripEntryRemoved,
-  tripLabel,
   type PhaseKey,
   type TripState,
 } from '@foerier/shared'
@@ -12,6 +11,7 @@ import { Confirm } from '@foerier/ui'
 import { useState } from 'react'
 
 import { useDepot } from '../depot/store'
+import { tripNameOrUnnamed } from '../depot/trips'
 import { OverClaimGroups, overClaimGroups } from './OverClaimBand'
 import { RemoveElsewhereConfirm } from './RemoveElsewhereConfirm'
 import styles from './ReopenConfirm.module.css'
@@ -140,6 +140,17 @@ export function ReopenConfirm({
   }
 
   // Alternatives, not nested (F4) — see this file's own docstring.
+  //
+  // Fix round F10. `RemoveElsewhereConfirm` returns `null` when its own
+  // `otherTrip` or `entry` lookup misses, which would blank this whole
+  // sheet while `removingElsewhere` stays set — the button that opened it
+  // gone, with no way back. Unreachable at S7: `trip.entry_removed` sets
+  // the `removed` register (`writeEntry` in `shared/reduce.ts`) and never
+  // drops the key from `entries`, and no op deletes a Trip, so neither
+  // lookup can miss for an `otherTripId`/`entryId` pair this sheet itself
+  // just read off a live `OverClaim`. It would go live the day either
+  // changes — a Trip-delete op, or an Entry actually pruned rather than
+  // tombstoned.
   if (removingElsewhere !== null) {
     return (
       <RemoveElsewhereConfirm
@@ -153,10 +164,13 @@ export function ReopenConfirm({
   return (
     <Confirm
       variant="sheet"
-      // `tripLabel` is the one place a Trip's name is decided, so a Trip
-      // whose `trip.created` has not arrived reads `Reopen —?` rather than
-      // `Reopen ?`.
-      title={`Reopen ${tripLabel(trip)}?`}
+      // Fix round F4: `tripLabel`'s bare `—` is right in a list column and
+      // wrong in a sentence — the rule `ActivationConfirm` and
+      // `RemoveElsewhereConfirm` both already follow. `tripNameOrUnnamed`
+      // is the one substitution (`depot/trips.ts`), so a Trip whose
+      // `trip.created` has not yet arrived reads `Reopen Unnamed trip?`
+      // rather than `Reopen —?`.
+      title={`Reopen ${tripNameOrUnnamed(trip)}?`}
       description={`It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.`}
       onClose={onCancel}
       actions={

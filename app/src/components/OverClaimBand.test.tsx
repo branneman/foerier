@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+
 import {
   createHlcClock,
   gearRecorded,
@@ -26,7 +29,38 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
-import { OverClaimBand } from './OverClaimBand'
+import { OverClaimBand, overClaimGroups } from './OverClaimBand'
+
+/**
+ * `Stepper.test.tsx`'s pattern: jsdom computes no layout (`css: false`), so
+ * a hit area is pinned by reading the declared numbers and computing the
+ * result, not by rendering and measuring.
+ */
+function css(): string {
+  return readFileSync(
+    join(dirname(expect.getState().testPath ?? ''), 'OverClaimBand.module.css'),
+    'utf8',
+  )
+}
+
+function tokens(): string {
+  return readFileSync(
+    join(
+      dirname(expect.getState().testPath ?? ''),
+      '..',
+      '..',
+      '..',
+      'ui',
+      'styles',
+      'tokens.css',
+    ),
+    'utf8',
+  )
+}
+
+function remToPx(rem: string): number {
+  return Number.parseFloat(rem) * 16
+}
 
 /**
  * A **real** store, seeded by emitting real ops — `TripCard.test.tsx`'s rule:
@@ -329,6 +363,32 @@ describe('a claim with no other Trip to name', () => {
     expect(row).not.toHaveTextContent('OUT')
   })
 
+  it('drops OWNED ×N — but keeps the rest of the fact line — when the register is absent (fix round F6)', async () => {
+    const store = await seeded(
+      gearRecorded('bag', {
+        name: 'Sleeping bag, winter',
+        container: false,
+        kind: 'counted',
+        // No `owned_count`: `claim.ts`'s own `supplyAndClaimed` falls back
+        // to `1`, which is indistinguishable from a genuinely-owned-one
+        // Gear unless a reader checks the register itself rather than
+        // trusting `overClaim.supply` alone. Unreachable from this app's
+        // own authoring (Add gear always writes `owned_count` for a
+        // Counted Kind) — reachable from a peer on a different build.
+      }),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripEntryAdded(HERE, 'e-here', { from: 'depot', gearId: 'bag' }),
+      tripEntryBringCountSet(HERE, 'e-here', 2),
+    )
+
+    renderBand(store, HERE)
+
+    const row = screen.getByTestId('over-claim-row-bag')
+    expect(row).toHaveTextContent('×2 LISTED')
+    expect(row).not.toHaveTextContent('OWNED')
+  })
+
   it('names the People doubled instead of a depot quantity for a per-person Entry (F3)', async () => {
     const store = await seeded(
       gearRecorded('headlamp', {
@@ -409,6 +469,55 @@ describe('a cross-Trip claim and a here-only claim together (F2)', () => {
     expect(screen.getByTestId('over-claim-row-stove')).toHaveTextContent(
       'SINGLE · ×2 LISTED',
     )
+  })
+
+  /**
+   * Fix round F7. `group.line` used to be the React key `OverClaimGroups`
+   * rendered with — copy, and copy is exactly what an editorial pass
+   * changes. `kind` is the partition `overClaimGroups` actually computed,
+   * one per shape and never repeated (the function pushes at most one group
+   * per kind), so it survives a copy change that this store's own two
+   * lines happen not to exercise: nothing here makes the cross-Trip and
+   * here-only lines collide, but nothing should have to keep them apart —
+   * the key must not depend on it.
+   */
+  it('keys each group on its kind, not on the copy of its line', async () => {
+    const store = await seeded(
+      gearRecorded('tent', {
+        name: 'Tent, tunnel 4p',
+        container: false,
+        kind: 'single',
+      }),
+      gearRecorded('stove', {
+        name: 'Trangia 25',
+        container: false,
+        kind: 'single',
+      }),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'on_trip'),
+      tripEntryAdded(HERE, 'e-tent-here', { from: 'depot', gearId: 'tent' }),
+      tripEntryAdded(ALPS, 'e-tent-alps', { from: 'depot', gearId: 'tent' }),
+      tripEntryAdded(HERE, 'e-stove-first', {
+        from: 'depot',
+        gearId: 'stove',
+      }),
+      tripEntryAdded(HERE, 'e-stove-second', {
+        from: 'depot',
+        gearId: 'stove',
+      }),
+    )
+
+    const state = store.getState().state
+    const groups = overClaimGroups(overClaimsFor(state, HERE), HERE, state)
+
+    expect(groups.map((group) => group.kind)).toEqual([
+      'cross-trip',
+      'here-only-depot',
+    ])
+    // No duplicate keys — the property React reconciliation actually needs.
+    expect(new Set(groups.map((group) => group.kind)).size).toBe(groups.length)
   })
 })
 
@@ -701,4 +810,72 @@ describe('settle callbacks', () => {
     )
     expect(onRemoveThere).toHaveBeenCalledWith(ALPS, 'e-alps')
   })
+})
+
+/**
+ * The padding box `::after` grows from: `--text-label`'s line-height, plus
+ * whatever `padding-top`/`border-top` the rule itself adds (`.settle` adds
+ * none; `.more` adds both). Only the `top` side varies across these two
+ * rules today, so that is the only extra this resolves.
+ */
+function verticalPaddingBoxHeight(rule: string, tokensText: string): number {
+  const lineHeightRem = /--text-label:\s*[0-9.]+rem\/([0-9.]+)rem/.exec(
+    tokensText,
+  )?.[1]
+  let height = remToPx(lineHeightRem ?? '0')
+
+  const paddingTopVar = /padding-top:\s*var\((--[\w-]+)\)/.exec(rule)?.[1]
+  if (paddingTopVar !== undefined) {
+    const rem = new RegExp(`${paddingTopVar}:\\s*([0-9.]+)rem`).exec(
+      tokensText,
+    )?.[1]
+    height += remToPx(rem ?? '0')
+  }
+
+  const borderTopVar = /border-top:\s*var\((--[\w-]+)\)/.exec(rule)?.[1]
+  if (borderTopVar !== undefined) {
+    const px = new RegExp(`${borderTopVar}:\\s*([0-9.]+)px`).exec(
+      tokensText,
+    )?.[1]
+    height += Number.parseFloat(px ?? '0')
+  }
+
+  return height
+}
+
+describe('touch-target hit areas (fix round F1)', () => {
+  it.each(['settle', 'more'] as const)(
+    '.%s grows its padding box to a ≥44px hit area, vertically only',
+    (className) => {
+      const text = css()
+      const tokensText = tokens()
+      const rule =
+        new RegExp(`\\.${className}\\s*\\{([^}]*)\\}`).exec(text)?.[1] ?? ''
+      const afterRule =
+        new RegExp(`\\.${className}::after\\s*\\{([^}]*)\\}`).exec(text)?.[1] ??
+        ''
+
+      expect(rule).toMatch(/position:\s*relative/)
+      expect(afterRule).toMatch(/position:\s*absolute/)
+
+      const paddingBoxHeight = verticalPaddingBoxHeight(rule, tokensText)
+
+      // `inset`'s two-value form: vertical, then horizontal.
+      const inset = /inset:\s*(-?[0-9.]+)rem\s+(-?[0-9.]+)/.exec(afterRule)
+      expect(inset).not.toBeNull()
+      const verticalInsetPx = Math.abs(remToPx(inset?.[1] ?? '0'))
+      const horizontalInset = Number.parseFloat(inset?.[2] ?? 'NaN')
+
+      // The horizontal growth must stay `0`: `.settleRow` wraps several
+      // `.settle` buttons `--space-12` (12px) apart, and any horizontal
+      // growth would close that gap and let two different settle routes'
+      // hit areas overlap — the mis-tap this fix exists to close. `.more`
+      // carries the same shape for consistency, though it has no neighbour
+      // to overlap.
+      expect(horizontalInset).toBe(0)
+
+      const hitAreaHeight = paddingBoxHeight + 2 * verticalInsetPx
+      expect(hitAreaHeight).toBeGreaterThanOrEqual(44)
+    },
+  )
 })
