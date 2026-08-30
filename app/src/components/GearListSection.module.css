@@ -1,0 +1,46 @@
+@layer components {
+  .section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .group + .group {
+    margin-top: var(--space-12);
+  }
+
+  /* Mono, small caps — the typography the `GEAR LIST` band above this
+     component (Task 9) reads as its parent (spec §4.2: "Its typography is
+     the group bands' exactly"). */
+  .groupHeader {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-block: var(--space-4);
+    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .groupLabel {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .groupCount {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}

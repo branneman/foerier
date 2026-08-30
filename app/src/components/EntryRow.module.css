@@ -1,0 +1,58 @@
+@layer components {
+  .row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    padding-block: var(--space-8);
+  }
+
+  .row + .row {
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: var(--text-secondary) var(--font-ui);
+    color: var(--color-ink-primary);
+  }
+
+  .trailing {
+    flex: none;
+    display: flex;
+    align-items: center;
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-ink-muted);
+  }
+
+  /* The amber `TRIP-ONLY` badge — `TripCard`'s phase-chip anatomy (tinted
+     fill, 1.5px stroke, pill radius), non-interactive here: a trip-only
+     Entry's Kind is not a control, only a fact. */
+  .badge {
+    padding: var(--space-4) var(--space-8);
+    border: var(--stroke-chip) solid var(--color-brand-amber);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--color-brand-amber) 14%, transparent);
+    color: var(--color-brand-amber);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    white-space: nowrap;
+  }
+
+  /* The tag-chip rule: `✕` is one op, never a confirm — `.settle`'s treatment
+     from `OverClaimBand`, borrowed rather than reinvented. */
+  .remove {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: var(--text-label) var(--font-mono);
+    color: var(--color-ink-muted);
+    cursor: pointer;
+  }
+}
