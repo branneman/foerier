@@ -127,6 +127,7 @@ export {
   groupLabel,
   recordedAt,
   sliceDepot,
+  UNGROUPED_LABEL,
 } from './selectors/slice.ts'
 
 export type { Whereabouts, WhereaboutsSlice } from './selectors/whereabouts.ts'

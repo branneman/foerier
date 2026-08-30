@@ -4,6 +4,7 @@ import {
   entryKind,
   entryLabel,
   pieceCountOf,
+  UNGROUPED_LABEL,
   type DepotState,
   type EntryState,
   type TripState,
@@ -37,20 +38,28 @@ import styles from './GearListSection.module.css'
  * `entryKind` reads `'trip_only'`), not on any Kind value, since a trip-only
  * Entry has none.
  *
- * **A Kind this replica cannot resolve groups under `SINGLE`.** `entryKind`
- * reads `undefined` for a depot Entry whose Gear has not yet reached this
- * replica's fold — the ordinary cross-aggregate sync race (spec §3.1), not
- * an error — and can in principle read an unrecognised Kind string, since
- * `KindValue` is deliberately open. Neither is `'trip_only'`: filing either
- * one there would be wrong regardless of which of the other three groups it
- * joined instead (spec's own instruction, and `listTotals.tripOnly` would
- * disagree with the row that landed there). `SINGLE` is the group `entry.ts`
- * itself already treats both cases like — `pieceCountOf`'s default branch
- * (one piece, "the conservative direction") is exactly `single`'s branch —
- * so an unresolved row draws as inert rather than guessing at a stepper or a
- * badge nothing backs up. This mapping is `rowKind`, below, and it is the
- * **only** place that decision is made: both the grouping and the `kind`
- * prop handed to `EntryRow` come from calling it once per Entry.
+ * **A Kind this replica cannot resolve gets a fifth group, `UNGROUPED_LABEL`
+ * (`—`), sorted last — never `SINGLE`.** `entryKind` reads `undefined` for a
+ * depot Entry whose Gear has not yet reached this replica's fold — the
+ * ordinary cross-aggregate sync race (spec §3.1), not an error — and can in
+ * principle read an unrecognised Kind string, since `KindValue` is
+ * deliberately open. Review round F2 corrected an earlier draft that mapped
+ * both into `SINGLE`: `pieceCountOf`'s conservative default answers *how
+ * many pieces*, which has a conservative answer, and does not transfer to
+ * *what Kind*, which does not — filing an unresolved row as `SINGLE` would
+ * re-state, one layer out, exactly the assertion `entryKind`'s own contract
+ * declines to make. `slice.ts`'s `groupGear` is the house pattern for "a
+ * grouping's tail case": it keeps an absent register's bucket
+ * (`UNGROUPED_LABEL`, sorted last) separate from an unrecognised value's own
+ * per-value bucket. This merges those two tail cases into **one** `—` group
+ * rather than reproducing the full three-way split — no board draws a
+ * per-value header, and an unrecognised Kind reaching this replica is itself
+ * reachable only from a peer on a different build — and says so here rather
+ * than silently: `—` on its own means "no value here", and an unrecognised
+ * Kind does carry a value, so this is a smaller, named lie, not an unnoticed
+ * one. `rowKind`, below, is the **only** place this decision is made: both
+ * the grouping and the `kind` prop handed to `EntryRow` come from calling it
+ * once per Entry.
  */
 export interface GearListSectionProps {
   readonly trip: TripState
@@ -61,23 +70,28 @@ export interface GearListSectionProps {
   readonly onRemove: (entryId: string) => void
 }
 
-type GroupKey = 'single' | 'counted' | 'per_person' | 'trip_only'
+type GroupKey = 'single' | 'counted' | 'per_person' | 'trip_only' | 'ungrouped'
 
+/** Verbatim order, `UNGROUPED_LABEL` appended last — see this file's
+ * docstring on why it is a fifth group rather than folded into `SINGLE`. */
 const GROUPS: readonly { key: GroupKey; label: string }[] = [
   { key: 'single', label: 'SINGLE' },
   { key: 'counted', label: 'COUNTED' },
   { key: 'per_person', label: 'PER-PERSON' },
   { key: 'trip_only', label: 'TRIP-ONLY' },
+  { key: 'ungrouped', label: UNGROUPED_LABEL },
 ]
 
 /**
  * The one function that decides what Kind a row behaves as — see this
- * file's docstring. `counted` / `per_person` / `trip_only` pass through
- * unchanged; everything else (`single`, `undefined`, and any Kind string
- * `entry.ts`'s callers do not otherwise branch on) maps to `single`.
+ * file's docstring. `single` / `counted` / `per_person` / `trip_only` pass
+ * through unchanged; everything else — `entryKind` reading `undefined`, or
+ * any Kind string none of the four cases name — maps to `'ungrouped'`.
  */
 function rowKind(entry: EntryState, state: DepotState): GroupKey {
   switch (entryKind(entry, state)) {
+    case 'single':
+      return 'single'
     case 'counted':
       return 'counted'
     case 'per_person':
@@ -85,7 +99,7 @@ function rowKind(entry: EntryState, state: DepotState): GroupKey {
     case 'trip_only':
       return 'trip_only'
     default:
-      return 'single'
+      return 'ungrouped'
   }
 }
 
@@ -119,38 +133,53 @@ export function GearListSection({
 
   return (
     <div className={styles['section']} data-testid="gear-list-section">
-      {groups.map((group) => (
-        <div key={group.key} className={styles['group']}>
-          <div className={styles['groupHeader']}>
-            <span
-              className={styles['groupLabel']}
-              data-testid="gear-list-group-label"
-            >
-              {group.label}
-            </span>
-            <span className={styles['groupCount']}>
-              {pieceLabel(group.pieces)}
-            </span>
+      {groups.map((group) => {
+        // Ties the header's label to its own rows for assistive tech (review
+        // round F3): without it, a screen-reader user hears "list, N items"
+        // with no Kind context at any width — the visible header names the
+        // group, but nothing wires that name to the list beneath it. Scoped
+        // by `trip.id` so two mounted sections (unlikely, but defensive)
+        // never collide on the same id.
+        const headingId = `gear-list-group-${trip.id}-${group.key}`
+        return (
+          <div
+            key={group.key}
+            className={styles['group']}
+            role="group"
+            aria-labelledby={headingId}
+          >
+            <div className={styles['groupHeader']}>
+              <span
+                id={headingId}
+                className={styles['groupLabel']}
+                data-testid="gear-list-group-label"
+              >
+                {group.label}
+              </span>
+              <span className={styles['groupCount']}>
+                {pieceLabel(group.pieces)}
+              </span>
+            </div>
+            <ul className={styles['rows']}>
+              {group.entries.map((entry) => (
+                <li key={entry.id}>
+                  <EntryRow
+                    label={entryLabel(entry, state)}
+                    kind={rowKind(entry, state)}
+                    bringCount={bringCountOf(entry, state)}
+                    pieceCount={pieceCountOf(entry, trip, state)}
+                    editable={editable}
+                    onBringCountChange={(next) =>
+                      onBringCountChange(entry.id, next)
+                    }
+                    onRemove={() => onRemove(entry.id)}
+                  />
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className={styles['rows']}>
-            {group.entries.map((entry) => (
-              <li key={entry.id}>
-                <EntryRow
-                  label={entryLabel(entry, state)}
-                  kind={rowKind(entry, state)}
-                  bringCount={bringCountOf(entry, state)}
-                  pieceCount={pieceCountOf(entry, trip, state)}
-                  editable={editable}
-                  onBringCountChange={(next) =>
-                    onBringCountChange(entry.id, next)
-                  }
-                  onRemove={() => onRemove(entry.id)}
-                />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

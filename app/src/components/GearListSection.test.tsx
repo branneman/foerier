@@ -202,9 +202,11 @@ describe('GearListSection', () => {
       expect(screen.queryByText('TRIP-ONLY')).toBeNull()
     })
 
-    it('files a depot Entry whose Gear has no Kind register yet under SINGLE, not TRIP-ONLY', async () => {
+    it('files a depot Entry whose Gear has no Kind register yet under a trailing — group, not SINGLE or TRIP-ONLY', async () => {
       // `gear.recorded` never landed for this id — the ordinary
       // cross-aggregate sync race (spec §3.1): `entryKind` reads `undefined`.
+      // Review round F2: an unresolved Kind is its own group, never `SINGLE`
+      // — re-stating "single" would assert a fact `entryKind` declines to.
       const seed = await seeded(
         tripCreated(TRIP, 'Alps 2026'),
         tripEntryAdded(TRIP, 'e-unsynced', {
@@ -213,15 +215,28 @@ describe('GearListSection', () => {
         }),
       )
       renderSection(seed)
-      expect(screen.getByText('SINGLE')).toBeInTheDocument()
+      const labels = screen
+        .getAllByTestId('gear-list-group-label')
+        .map((el) => el.textContent)
+      expect(labels).toEqual(['—'])
+      expect(screen.queryByText('SINGLE')).toBeNull()
       expect(screen.queryByText('TRIP-ONLY')).toBeNull()
       // The label falls back to `—`, per `entryLabel`.
       expect(screen.getByTestId('entry-row')).toHaveTextContent('—')
     })
 
-    it('files an unrecognised Kind under SINGLE', async () => {
+    it('files an unrecognised Kind under the same trailing — group as an unsynced one, sorted last', async () => {
       const seed = await seeded(
         tripCreated(TRIP, 'Alps 2026'),
+        gearRecorded('g-single', {
+          name: 'Headlamp',
+          container: false,
+          kind: 'single',
+        }),
+        tripEntryAdded(TRIP, 'e-single', {
+          from: 'depot',
+          gearId: 'g-single',
+        }),
         gearRecorded('g-weird', {
           name: 'Odd gear',
           container: false,
@@ -231,10 +246,34 @@ describe('GearListSection', () => {
         tripEntryAdded(TRIP, 'e-weird', { from: 'depot', gearId: 'g-weird' }),
       )
       renderSection(seed)
-      expect(screen.getByText('SINGLE')).toBeInTheDocument()
+      const labels = screen
+        .getAllByTestId('gear-list-group-label')
+        .map((el) => el.textContent)
+      // SINGLE (the real one) first, the merged tail group last.
+      expect(labels).toEqual(['SINGLE', '—'])
       expect(screen.queryByText('COUNTED')).toBeNull()
       expect(screen.queryByText('PER-PERSON')).toBeNull()
       expect(screen.queryByText('TRIP-ONLY')).toBeNull()
+    })
+  })
+
+  describe('accessibility — the group header names its own rows (review round F3)', () => {
+    it('wires each group as role="group" labelled by its own header', async () => {
+      const seed = await seeded(
+        tripCreated(TRIP, 'Alps 2026'),
+        gearRecorded('g-single', {
+          name: 'Headlamp',
+          container: false,
+          kind: 'single',
+        }),
+        tripEntryAdded(TRIP, 'e-single', {
+          from: 'depot',
+          gearId: 'g-single',
+        }),
+      )
+      renderSection(seed)
+      const group = screen.getByRole('group', { name: 'SINGLE' })
+      expect(within(group).getByText('Headlamp')).toBeInTheDocument()
     })
   })
 
@@ -364,6 +403,70 @@ describe('GearListSection', () => {
       )
       renderSection(seed, { editable: false })
       expect(screen.getByTestId('entry-row-count')).toHaveTextContent('—')
+    })
+
+    it('still draws the TRIP-ONLY badge, even though the trailing slot reads —', async () => {
+      // Review round F1, asserted at the section level (this is what Tasks 9
+      // and 11 actually mount): the badge is a name adjunct, not
+      // trailing-column content, so read-only mode does not drop it.
+      const seed = await seeded(
+        tripCreated(TRIP, 'Alps 2026'),
+        tripEntryAdded(TRIP, 'e-trip-only', {
+          from: 'trip_only',
+          name: 'Passports',
+          container: false,
+        }),
+      )
+      renderSection(seed, { editable: false })
+      expect(screen.getByTestId('entry-row-badge')).toHaveTextContent(
+        'TRIP-ONLY',
+      )
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('—')
+    })
+  })
+
+  describe('the 0 Bring-count (review round F6, invariant 11)', () => {
+    it('keeps a 0-count Counted Entry on the list, under a 0 PIECES header', async () => {
+      const seed = await seeded(
+        tripCreated(TRIP, 'Alps 2026'),
+        gearRecorded('g-counted', {
+          name: 'Tent stake',
+          container: false,
+          kind: 'counted',
+        }),
+        tripEntryAdded(TRIP, 'e-counted', {
+          from: 'depot',
+          gearId: 'g-counted',
+        }),
+        tripEntryBringCountSet(TRIP, 'e-counted', 0),
+      )
+      renderSection(seed)
+      expect(screen.getByTestId('entry-row')).toHaveTextContent('Tent stake')
+      const group = screen.getByRole('group', { name: 'COUNTED' })
+      expect(within(group).getByText('0 PIECES')).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: /bring-count for tent stake/i }),
+      ).toHaveValue('0')
+    })
+
+    it('reads ×0 in read-only mode for a 0-count Counted Entry', async () => {
+      const seed = await seeded(
+        tripCreated(TRIP, 'Alps 2026'),
+        gearRecorded('g-counted', {
+          name: 'Tent stake',
+          container: false,
+          kind: 'counted',
+        }),
+        tripEntryAdded(TRIP, 'e-counted', {
+          from: 'depot',
+          gearId: 'g-counted',
+        }),
+        tripEntryBringCountSet(TRIP, 'e-counted', 0),
+      )
+      renderSection(seed, { editable: false })
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×0')
+      const group = screen.getByRole('group', { name: 'COUNTED' })
+      expect(within(group).getByText('0 PIECES')).toBeInTheDocument()
     })
   })
 })

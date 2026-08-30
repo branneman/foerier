@@ -3,7 +3,21 @@
     display: flex;
     align-items: center;
     gap: var(--space-12);
-    padding-block: var(--space-8);
+    /* Two row heights, both fixed by the boards, not by their content — a
+       Counted row's dense Stepper is 2rem (32px) tall on its own and would
+       otherwise set the floor by accident. `editable` is the below-Split
+       trip screen *and* the Split-and-up builder (Task 11), both touch-first
+       and both drawn at `min-height: 48px`; the read-only pane (Split-and-up
+       `/trips/:id`) is drawn at 44px, `ui/`'s `GearRow` TABLE-44 density's
+       own literal, not `max(3rem, …)`-scaled. */
+    min-height: max(3rem, 48px);
+  }
+
+  /* Overrides `.row`'s floor — declared after it, and always applied
+     alongside it, never alone (`GearRow.module.css`'s `.retired`/`.selected`
+     modifier-class precedent, not a compound selector). */
+  .readOnly {
+    min-height: 2.75rem;
   }
 
   .row + .row {
@@ -11,13 +25,25 @@
   }
 
   .label {
-    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font: var(--text-secondary) var(--font-ui);
     color: var(--color-ink-primary);
+  }
+
+  /* Every row but trip-only: the name takes the row's flexible space, and
+     the trailing slot's own content pushes up against `✕`. */
+  .labelGrow {
+    flex: 1 1 auto;
+  }
+
+  /* The board's own order for a trip-only row (review round F1): the name
+     sits at its own width, the badge follows it, and this — not the name —
+     is what carries the row's flexible space. */
+  .spacer {
+    flex: 1 1 auto;
   }
 
   .trailing {
@@ -30,8 +56,12 @@
 
   /* The amber `TRIP-ONLY` badge — `TripCard`'s phase-chip anatomy (tinted
      fill, 1.5px stroke, pill radius), non-interactive here: a trip-only
-     Entry's Kind is not a control, only a fact. */
+     Entry's Kind is not a control, only a fact. Rendered in both `editable`
+     states (review round F1) — a name adjunct, not trailing-column content,
+     so the read-only trailing rule (`×N` for Counted, `—` otherwise) never
+     touches it. */
   .badge {
+    flex: none;
     padding: var(--space-4) var(--space-8);
     border: var(--stroke-chip) solid var(--color-brand-amber);
     border-radius: var(--radius-pill);
@@ -44,15 +74,37 @@
     white-space: nowrap;
   }
 
-  /* The tag-chip rule: `✕` is one op, never a confirm — `.settle`'s treatment
-     from `OverClaimBand`, borrowed rather than reinvented. */
+  /* The tag-chip rule: `✕` is one op, never a confirm — `.settle`'s
+     treatment from `OverClaimBand`, borrowed rather than reinvented for the
+     glyph itself. The hit area is a second, separate concern (review round
+     F5): `✕` is this row's primary destructive control and the row's
+     `editable` state is exactly the below-Split, touch-first mode, so a
+     ~7×14px painted glyph is not an adequate target
+     (`frontend-design.md` §2.1's `max(3rem, 48px)` floor). */
   .remove {
+    position: relative;
     flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
     padding: 0;
     border: 0;
     background: none;
     font: var(--text-label) var(--font-mono);
     color: var(--color-ink-muted);
     cursor: pointer;
+  }
+
+  /* `ui/src/Stepper.module.css`'s `.dense .button::after` verbatim: the
+     same 32×32 painted box grown to a 44px hit area — the status-pill
+     minimum, allowed on touch — without taking any layout with it. Reused
+     rather than reinvented so the two in-row touch-target exceptions this
+     screen ships carry identical arithmetic. */
+  .remove::after {
+    content: '';
+    position: absolute;
+    inset: -0.4375rem;
   }
 }

@@ -505,8 +505,13 @@ function sortGear(
 /** The group gear with no value in the grouping falls into — reachable for
  * `kind` only, and there only from a peer on a different build. Sorted last
  * rather than by its label, which is a dash and would sort somewhere
- * arbitrary. `owner` never produces it: an absent register reads shared. */
-const UNGROUPED_LABEL = '—'
+ * arbitrary. `owner` never produces it: an absent register reads shared.
+ *
+ * Exported for `GearListSection` (S7): its own "Kind this replica cannot
+ * resolve" bucket borrows this glyph rather than a second hardcoded `'—'`,
+ * so the two ungrouped-tail treatments in this codebase read as one
+ * decision rather than two coincidentally identical strings. */
+export const UNGROUPED_LABEL = '—'
 
 /**
  * **A grouping is a row in a table too** — but a *different* table from
