@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { aGear, anOp, aPerson, hlcAt } from '../../testUtils/index.ts'
+import { aGear, anOp, aPerson, aTrip, hlcAt } from '../../testUtils/index.ts'
 import {
   gearRetired,
   gearTagApplied,
   gearTagRemoved,
+  tripEntryAdded,
+  tripEntryRemoved,
   type OpSpec,
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
@@ -40,6 +42,19 @@ function at(specs: readonly OpSpec[], counter: number): OpEnvelope[] {
 
 function one(spec: OpSpec, counter: number): OpEnvelope {
   return anOp(spec, { hlc: hlcAt(counter), deviceId: DEV_A })
+}
+
+/**
+ * Stamps each spec with its **own**, increasing counter starting at `start`.
+ * `at` gives every spec in the array the same counter, which is wrong for a
+ * multi-op factory like `aTrip({ phase })`: `trip.created` seeds `phase` at
+ * its own stamp, and a `trip.phase_moved` sharing that exact stamp loses on
+ * the tie (`writeRegister`'s `<= 0` rule) rather than moving it.
+ */
+function sequence(specs: readonly OpSpec[], start: number): OpEnvelope[] {
+  return specs.map((s, i) =>
+    anOp(s, { hlc: hlcAt(start + i), deviceId: DEV_A }),
+  )
 }
 
 function aTag(raw: string): TagString {
@@ -131,6 +146,183 @@ function anOwnedDepot(): DepotState {
     ),
   ])
 }
+
+/**
+ * Four pieces of gear and three Trips, arranged so every case the `trip`
+ * dimension has to answer is exercised: a piece on two non-closed Trips, a
+ * piece on one, a piece on a **closed** Trip only, and a piece on none at
+ * all.
+ *
+ * | id | name | in |
+ * | --- | --- | --- |
+ * | `g-tent` | Tent | Vosges (draft), Alps (pack-out) |
+ * | `g-stove` | Stove | Alps (pack-out) only |
+ * | `g-boots` | Boots | Old trip — **closed**, so this reads `NOT IN ANY TRIP` |
+ * | `g-axe` | Axe | no Trip at all |
+ *
+ * Trip ids are hand-named (`t-vosges` etc.) rather than `systemIdSource`
+ * hex, because these fixtures are about membership and exclusion, not about
+ * the sentinel's pinned position — that gets its own fixture below, with a
+ * real hex id, because a hand-named id would not exercise the tiebreak the
+ * pin exists for.
+ */
+function aTrippedDepot(): DepotState {
+  return fold([
+    ...at(aGear({ id: 'g-tent', name: 'Tent' }), 1),
+    ...at(aGear({ id: 'g-stove', name: 'Stove' }), 2),
+    ...at(aGear({ id: 'g-boots', name: 'Boots' }), 3),
+    ...at(aGear({ id: 'g-axe', name: 'Axe' }), 4),
+    ...sequence(aTrip({ id: 't-vosges', name: 'Vosges' }), 10),
+    ...sequence(aTrip({ id: 't-alps', name: 'Alps', phase: 'pack_out' }), 20),
+    ...sequence(aTrip({ id: 't-old', name: 'Old trip', phase: 'closed' }), 30),
+    one(
+      tripEntryAdded('t-vosges', 'e1', { from: 'depot', gearId: 'g-tent' }),
+      40,
+    ),
+    one(
+      tripEntryAdded('t-alps', 'e2', { from: 'depot', gearId: 'g-tent' }),
+      41,
+    ),
+    one(
+      tripEntryAdded('t-alps', 'e3', { from: 'depot', gearId: 'g-stove' }),
+      42,
+    ),
+    one(
+      tripEntryAdded('t-old', 'e4', { from: 'depot', gearId: 'g-boots' }),
+      43,
+    ),
+  ])
+}
+
+describe("dimension('trip')", () => {
+  it('lists every non-closed Trip that carries the gear, in `visibleTrips` order', () => {
+    // `Alps` sorts before `Vosges` — the same `byNameThenId` total order
+    // `visibleTrips` already uses, which is what makes the answer replica-
+    // identical rather than an artefact of iteration order.
+    expect(
+      dimension('trip').valuesOf(
+        aTrippedDepot().gear['g-tent']!,
+        aTrippedDepot(),
+      ),
+    ).toEqual(['t-alps', 't-vosges'])
+  })
+
+  it('excludes closed Trips, so their gear reads NOT IN ANY TRIP', () => {
+    const state = aTrippedDepot()
+    expect(dimension('trip').valuesOf(state.gear['g-boots']!, state)).toEqual([
+      'none',
+    ])
+  })
+
+  it('returns the sentinel for gear no Trip lists at all', () => {
+    const state = aTrippedDepot()
+    expect(dimension('trip').valuesOf(state.gear['g-axe']!, state)).toEqual([
+      'none',
+    ])
+  })
+
+  it('formats the sentinel as NOT IN ANY TRIP and a Trip id as its label', () => {
+    const state = aTrippedDepot()
+    expect(dimension('trip').format('none', state)).toBe('NOT IN ANY TRIP')
+    expect(dimension('trip').format('t-vosges', state)).toBe('Vosges')
+  })
+
+  it('falls back to an em dash for a Trip id this replica has not folded', () => {
+    // The `dimension('person')` precedent for an id whose op has not
+    // arrived — never throws, draws the same glyph an unnamed Trip does.
+    expect(dimension('trip').format('ghost-trip', aTrippedDepot())).toBe('—')
+  })
+
+  it('is multi arity, so two Trips AND together', () => {
+    expect(dimension('trip').arity).toBe('multi')
+    // `g-tent` is on both; `g-stove` only on Alps — ANDing the two narrows
+    // to the piece that carries both.
+    expect(
+      shownIds(
+        aTrippedDepot(),
+        slice({ filters: { trip: ['t-vosges', 't-alps'] } }),
+      ),
+    ).toEqual(['g-tent'])
+  })
+
+  it('returns 0 of N for the sentinel plus a named Trip — S4’s contradictory pair, again', () => {
+    // `NOT IN ANY TRIP` and a Trip's id can never both be *carried* by one
+    // piece of gear, but nothing stops both being *selected*, and the engine
+    // has exactly one filter rule: every selected value must be carried.
+    // `OWNERSHIP: SHARED` + `PERSON: ELS` is the S4 instance of the same
+    // shape; this is not guarded either.
+    const result = sliceDepot(
+      aTrippedDepot(),
+      slice({ filters: { trip: ['none', 't-vosges'] } }),
+    )
+    expect(result.shown).toBe(0)
+    expect(result.total).toBe(4)
+    expect(result.active).toBe(2)
+    expect(result.groups).toEqual([])
+  })
+
+  it('orders the sentinel first even when a tie would otherwise put a real Trip id ahead of it', () => {
+    // `systemIdSource` ids are canonical UUIDs — hex and hyphens — and every
+    // hex digit sorts *before* the letter `n`. So a plain count-desc,
+    // value-asc rule would put a tied (or heavier) Trip ahead of the literal
+    // string `'none'`. `aTrip()`'s default id is exactly such a hex id,
+    // deliberately not overridden here.
+    const tripSpecs = aTrip({ name: 'Alps' })
+    const tripId = tripSpecs[0]!.aggregate_id
+    const state = fold([
+      ...at(aGear({ id: 'g1', name: 'Axe' }), 1),
+      ...at(aGear({ id: 'g2', name: 'Boots' }), 2),
+      ...at(aGear({ id: 'g3', name: 'Crampons' }), 3),
+      ...at(aGear({ id: 'g4', name: 'Tent' }), 4),
+      ...at(tripSpecs, 5),
+      one(tripEntryAdded(tripId, 'e1', { from: 'depot', gearId: 'g3' }), 6),
+      one(tripEntryAdded(tripId, 'e2', { from: 'depot', gearId: 'g4' }), 7),
+    ])
+    // `g1`, `g2` carry no Trip → sentinel count 2, tying the Trip's own
+    // count of 2 (`g3`, `g4`). The pin must hold on the tie, not just when
+    // the sentinel happens to have the higher count.
+    expect(dimensionValues(state, 'trip')).toEqual([
+      { value: 'none', count: 2 },
+      { value: tripId, count: 2 },
+    ])
+  })
+})
+
+describe('the Trip-membership index', () => {
+  it('is memoised: two calls against the same state return the same array', () => {
+    const state = aTrippedDepot()
+    const first = dimension('trip').valuesOf(state.gear['g-tent']!, state)
+    const second = dimension('trip').valuesOf(state.gear['g-tent']!, state)
+    // If the index were rebuilt on every call, `.get('g-tent')` would return
+    // a freshly-allocated array each time — equal in content, but a
+    // different object. Reference equality is only possible if the second
+    // call found the first call's map already cached rather than rebuilding
+    // it from every Trip's Entries again.
+    expect(first).toBe(second)
+  })
+
+  it('rebuilds when the fold produces a new state, and answers the new fact', () => {
+    const before = aTrippedDepot()
+    const beforeTent = dimension('trip').valuesOf(
+      before.gear['g-tent']!,
+      before,
+    )
+    expect(beforeTent).toEqual(['t-alps', 't-vosges'])
+
+    // Removing Vosges's Entry folds to a *new* `DepotState` object — the
+    // memo's key changes, so this is not the same cache entry as `before`'s.
+    const after = fold([one(tripEntryRemoved('t-vosges', 'e1'), 20)], before)
+    expect(after).not.toBe(before)
+    const afterTent = dimension('trip').valuesOf(after.gear['g-tent']!, after)
+    expect(afterTent).toEqual(['t-alps'])
+    // `before`'s own answer is untouched — the memo never overwrites a
+    // superseded state's entry in place.
+    expect(dimension('trip').valuesOf(before.gear['g-tent']!, before)).toEqual([
+      't-alps',
+      't-vosges',
+    ])
+  })
+})
 
 describe('the ownership dimension', () => {
   it('reads gear with no owner register as shared', () => {

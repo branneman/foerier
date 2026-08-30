@@ -3,7 +3,9 @@ import { stampOf, type Register } from '../registers.ts'
 import type { DepotState, GearState } from '../state.ts'
 import { foldText } from '../text.ts'
 import { tagsOf, visibleGear } from './depot.ts'
+import { entriesOf } from './entry.ts'
 import { ownerOf, personLabel } from './owner.ts'
+import { isClosed, tripLabel, visibleTrips } from './trip.ts'
 
 /**
  * **The slicing engine** — story 13's "narrow, sort, and group lists by at
@@ -34,7 +36,7 @@ import { ownerOf, personLabel } from './owner.ts'
  * Every dimension a list can be narrowed by. Widened, never restructured, by
  * each slice in the table above.
  */
-export type DimensionId = 'tag' | 'kind' | 'ownership' | 'person'
+export type DimensionId = 'tag' | 'kind' | 'ownership' | 'person' | 'trip'
 
 /** Components §04's three keys at S3. `newest` is by when gear was recorded. */
 export type SortKey = 'name-asc' | 'name-desc' | 'newest'
@@ -98,6 +100,59 @@ const KIND_LABELS: Readonly<Record<string, string>> = {
 const OWNERSHIP_LABELS: Readonly<Record<string, string>> = {
   shared: 'Shared',
   personal: 'Personal',
+}
+
+/**
+ * `NOT IN ANY TRIP`'s raw filter value — a reserved plain word, the shape
+ * {@link DIMENSION_TABLE}'s `ownership` row already uses for its two values.
+ * Trip ids come from `systemIdSource` (a canonical UUID), so there is no
+ * collision to guard against.
+ */
+const NOT_IN_ANY_TRIP = 'none'
+
+/**
+ * The gear→trips index, memoised on the folded state.
+ *
+ * `valuesOf` is called once per Gear per active dimension on the Depot
+ * list — the app's most-visited screen — and every dimension before this one
+ * answers from the Gear's own registers in constant time. Trip membership
+ * does not: answering per Gear means scanning every Trip's Entries, an
+ * O(gear × entries) cost this screen cannot absorb per render.
+ *
+ * `DepotState` is immutable and its identity changes on exactly the folds
+ * that could change this answer — the reducer returns the same object when a
+ * write loses — so the key is exact rather than approximate, and a
+ * `WeakMap` lets superseded states be collected. No signature changes: S3
+ * passed `state` into `valuesOf` so the table would not be reshaped by the
+ * first dimension that needed it, and this is that dimension.
+ */
+const TRIP_MEMBERSHIP = new WeakMap<
+  DepotState,
+  Map<string, readonly string[]>
+>()
+
+/** Builds (once per state) or returns the cached gear→trips index. */
+function tripMembershipOf(state: DepotState): Map<string, readonly string[]> {
+  const cached = TRIP_MEMBERSHIP.get(state)
+  if (cached !== undefined) return cached
+
+  const index = new Map<string, string[]>()
+  for (const trip of visibleTrips(state)) {
+    // A Draft speaks for gear as surely as a Pack-out does — membership is
+    // every *non-closed* Trip, not every *active* one. Closed Trips are
+    // history: including them would leave NOT IN ANY TRIP permanently empty
+    // for any household with a past.
+    if (isClosed(trip)) continue
+    for (const entry of entriesOf(trip, state)) {
+      const source = entry.source?.value
+      if (source === undefined || source.from !== 'depot') continue
+      const trips = index.get(source.gearId)
+      if (trips === undefined) index.set(source.gearId, [trip.id])
+      else trips.push(trip.id)
+    }
+  }
+  TRIP_MEMBERSHIP.set(state, index)
+  return index
 }
 
 const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
@@ -165,6 +220,43 @@ const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
     },
     format: (value, state) => personLabel(state, value),
   },
+  /**
+   * **Which Trip(s) claim this gear** — the first cross-aggregate dimension
+   * (`tripMembershipOf`'s memo exists because of it) and the first whose
+   * vocabulary includes a sentinel rather than leaving unmatched gear silent
+   * the way Person does for shared gear.
+   *
+   * `NOT IN ANY TRIP` and a named Trip id never both appear in one
+   * `valuesOf` answer — a piece of gear either carries at least one
+   * non-closed Trip or it carries the sentinel alone — but the pair is still
+   * reachable as two separately *selected* filter values, and that pair is
+   * reachable and always empty, exactly `OWNERSHIP: SHARED` + `PERSON: ELS`
+   * is (S4, `passesFilters`). Not guarded, for the same reason: one filter
+   * rule, and `0 OF N` is the honest answer.
+   */
+  trip: {
+    id: 'trip',
+    label: 'TRIP',
+    // Several Trip chips AND together, so the ghost `+ TRIP` stays while one
+    // is active — Tag's arity, not Kind's.
+    arity: 'multi',
+    valuesOf: (gear, state) => {
+      const trips = tripMembershipOf(state).get(gear.id)
+      return trips === undefined || trips.length === 0
+        ? [NOT_IN_ANY_TRIP]
+        : trips
+    },
+    // Checked first: `NOT_IN_ANY_TRIP` is a reserved word, not a Trip id, so
+    // it must never reach `state.trips` lookup. A Trip id this replica has
+    // not folded yet (a peer's `trip.entry_added` arriving before its
+    // `trip.created`) falls back to the same `—` `dimension('person')`
+    // draws for a Person whose op has not arrived.
+    format: (value, state) => {
+      if (value === NOT_IN_ANY_TRIP) return 'NOT IN ANY TRIP'
+      const trip = state.trips[value]
+      return trip === undefined ? '—' : tripLabel(trip)
+    },
+  },
 }
 
 export function dimension(id: DimensionId): Dimension {
@@ -203,6 +295,18 @@ export interface DimensionValue {
  * the register key is the literal string that arrived (§5), and hiding it
  * would leave a Quartermaster unable to remove the tag they can plainly see
  * on the gear.
+ *
+ * **`trip`'s sentinel is pinned first, whatever its count** — the boards'
+ * Loose-first rule, and the one exception to "count descending" above.
+ * `NOT_IN_ANY_TRIP` is not a fact about gear the way a Trip id is; it is the
+ * dimension's one reserved word, so it gets a fixed position exactly as the
+ * `—` bucket {@link groupGear} appends does, rather than competing on count.
+ * The exception is a value, not a branch on `id`: every other dimension's
+ * values pass through untouched, and it has to be applied *after* the
+ * generic sort rather than folded into its comparator, because a real Trip's
+ * `systemIdSource` id (hex) sorts *before* the literal string `'none'` — the
+ * generic ascending tiebreak alone would put a tied or heavier Trip ahead of
+ * the sentinel.
  */
 export function dimensionValues(
   state: DepotState,
@@ -215,13 +319,22 @@ export function dimensionValues(
       counts.set(value, (counts.get(value) ?? 0) + 1)
     }
   }
-  return [...counts]
+  const values = [...counts]
     .map(([value, count]) => ({ value, count }))
     .sort((a, b) => {
       if (a.count !== b.count) return b.count - a.count
       if (a.value === b.value) return 0
       return a.value < b.value ? -1 : 1
     })
+  if (id !== 'trip') return values
+  const sentinelIndex = values.findIndex((v) => v.value === NOT_IN_ANY_TRIP)
+  if (sentinelIndex <= 0) return values
+  const sentinel = values[sentinelIndex]!
+  return [
+    sentinel,
+    ...values.slice(0, sentinelIndex),
+    ...values.slice(sentinelIndex + 1),
+  ]
 }
 
 /** One narrowing, as a screen holds it. */
