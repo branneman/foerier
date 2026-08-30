@@ -124,27 +124,24 @@ export function readOwner(
  * carries no source. Never rejected — §5.3's tolerant reader is absolute.
  */
 export function readSource(
-  payload: Record<string, unknown>,
+  p: Record<string, unknown>,
   key: string,
 ): Read<EntrySource> {
-  const value = raw(payload, key)
-  if (value.kind === 'absent') return { kind: 'absent' }
-  if (value.kind === 'null') return { kind: 'null' }
-  if (typeof value.value !== 'object' || Array.isArray(value.value)) {
-    return { kind: 'absent' }
-  }
-  const source = value.value as Record<string, unknown>
-  if (source['from'] === 'depot') {
-    const gearId = source['gear_id']
-    if (typeof gearId !== 'string' || gearId === '') return { kind: 'absent' }
-    return { kind: 'value', value: { from: 'depot', gearId } }
-  }
-  if (source['from'] === 'trip_only') {
-    const name = source['name']
-    const container = source['container']
-    if (typeof container !== 'boolean') return { kind: 'absent' }
-    if (name !== null && typeof name !== 'string') return { kind: 'absent' }
-    return { kind: 'value', value: { from: 'trip_only', name, container } }
-  }
-  return { kind: 'absent' }
+  return refine(p, key, (v) => {
+    if (!isRecord(v)) return undefined
+    if (v['from'] === 'depot') {
+      const gearId = v['gear_id']
+      return typeof gearId === 'string' && gearId !== ''
+        ? { from: 'depot', gearId }
+        : undefined
+    }
+    if (v['from'] === 'trip_only') {
+      const name = v['name']
+      const container = v['container']
+      if (typeof container !== 'boolean') return undefined
+      if (name !== null && typeof name !== 'string') return undefined
+      return { from: 'trip_only', name, container }
+    }
+    return undefined
+  })
 }

@@ -35,6 +35,16 @@ import { fold } from './reduce.ts'
  * exactly the shape `TripState.phase`'s doc already describes for
  * `trip.phase_moved` arriving ahead of `trip.created`. `writeEntry` creates
  * the stub Entry regardless of which op reaches it first.
+ *
+ * `e-s7-trip-only-container` is the third source shape spec §5.4 asks for —
+ * a trip-only source with a real `name` **and** `container: true`. Neither of
+ * this file's other two `trip_only` probes exercises a `true` `container`:
+ * `e-s7-trip-only` above pins the `null`-name clear, and the malformed one
+ * carries no `container` at all. Without this fourth probe, `container`
+ * folding to `true` on a trip-only source was asserted only by
+ * `reduce.entries.test.ts`, never by the fixture — and a fixture is captured
+ * once (architecture §8.7); a slice that "fixes" this later replays it
+ * against a reducer that has already drifted.
  */
 
 /** The Trip every entry op in the fixture addresses. */
@@ -49,6 +59,8 @@ const MALFORMED_ENTRY = 'e-s7-malformed'
 const PER_PERSON_ENTRY = 'e-s7-per-person'
 /** The Entry whose `trip.entry_removed` has a lower `seq` than its own `trip.entry_added`. */
 const OUT_OF_ORDER_ENTRY = 'e-s7-out-of-order'
+/** The trip-only Entry with a real name and `container: true`. */
+const TRIP_ONLY_CONTAINER_ENTRY = 'e-s7-trip-only-container'
 
 describe('the S7 fixture', () => {
   it('folds to exactly the state it folded to when captured', () => {
@@ -106,6 +118,17 @@ describe('the S7 fixture', () => {
     expect(entry?.source?.value).toEqual({
       from: 'depot',
       gearId: 'g-s7-out-of-order',
+    })
+  })
+
+  it('folds a trip-only source with a real name and container: true', () => {
+    const entry = fold(fixture as OpEnvelope[]).trips[TRIP]?.entries?.[
+      TRIP_ONLY_CONTAINER_ENTRY
+    ]
+    expect(entry?.source?.value).toEqual({
+      from: 'trip_only',
+      name: 'Dry bag',
+      container: true,
     })
   })
 })

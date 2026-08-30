@@ -126,6 +126,18 @@ exports[`the S7 fixture > folds to exactly the state it folded to when captured 
             },
           },
         },
+        "e-s7-trip-only-container": {
+          "id": "e-s7-trip-only-container",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-08-30T09:13:00.000Z-0000",
+            "value": {
+              "container": true,
+              "from": "trip_only",
+              "name": "Dry bag",
+            },
+          },
+        },
       },
       "id": "t-s7-1",
       "name": {

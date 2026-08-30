@@ -193,5 +193,20 @@
     },
     "seq": 13,
     "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-00000000000e",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-08-30T09:13:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s7-trip-only-container",
+      "source": { "from": "trip_only", "name": "Dry bag", "container": true }
+    },
+    "seq": 14,
+    "received_at": "2026-08-30T10:00:00Z"
   }
 ]

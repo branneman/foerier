@@ -6,6 +6,7 @@ import {
   readOpen,
   readOwner,
   readResidence,
+  readSource,
   readString,
 } from './payloads.ts'
 
@@ -102,5 +103,67 @@ describe('readOwner', () => {
     expect(readOwner({ o: { type: 'person' } }, 'o')).toEqual({
       kind: 'absent',
     })
+  })
+})
+
+describe('readSource', () => {
+  it('reads the two shapes of sync-protocol §4.4', () => {
+    expect(readSource({ s: { from: 'depot', gear_id: 'g1' } }, 's')).toEqual({
+      kind: 'value',
+      value: { from: 'depot', gearId: 'g1' },
+    })
+    expect(
+      readSource(
+        { s: { from: 'trip_only', name: 'Passports', container: true } },
+        's',
+      ),
+    ).toEqual({
+      kind: 'value',
+      value: { from: 'trip_only', name: 'Passports', container: true },
+    })
+  })
+
+  it('keeps an explicit null name on a trip-only source', () => {
+    expect(
+      readSource(
+        { s: { from: 'trip_only', name: null, container: false } },
+        's',
+      ),
+    ).toEqual({
+      kind: 'value',
+      value: { from: 'trip_only', name: null, container: false },
+    })
+  })
+
+  it('ignores an unrecognised from, a non-object, an array, and null', () => {
+    expect(
+      readSource({ s: { from: 'elsewhere', gear_id: 'g1' } }, 's'),
+    ).toEqual({ kind: 'absent' })
+    expect(readSource({ s: 'depot' }, 's')).toEqual({ kind: 'absent' })
+    expect(readSource({ s: ['depot'] }, 's')).toEqual({ kind: 'absent' })
+    // An explicit null is a clear, not a malformed value (obligation 5) — the
+    // one outcome this reader does not collapse into `absent`.
+    expect(readSource({ s: null }, 's')).toEqual({ kind: 'null' })
+  })
+
+  it('ignores a depot source with a missing, non-string, or empty gear_id', () => {
+    expect(readSource({ s: { from: 'depot' } }, 's')).toEqual({
+      kind: 'absent',
+    })
+    expect(readSource({ s: { from: 'depot', gear_id: 7 } }, 's')).toEqual({
+      kind: 'absent',
+    })
+    expect(readSource({ s: { from: 'depot', gear_id: '' } }, 's')).toEqual({
+      kind: 'absent',
+    })
+  })
+
+  it('ignores a trip-only source with a non-boolean container', () => {
+    expect(
+      readSource(
+        { s: { from: 'trip_only', name: 'x', container: 'yes' } },
+        's',
+      ),
+    ).toEqual({ kind: 'absent' })
   })
 })

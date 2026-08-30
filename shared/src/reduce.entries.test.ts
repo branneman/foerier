@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fold } from './reduce.ts'
+import { applyOp, emptyState, fold } from './reduce.ts'
 import type { OpEnvelope } from './ops.ts'
 
 function op(
@@ -111,6 +111,44 @@ describe('trip.entry_removed', () => {
     expect(state.trips['t1']?.entries?.['e1']?.removed?.value).toBe(true)
     expect(state.trips['t1']?.entries?.['e1']?.source?.value).toBeDefined()
   })
+})
+
+// F2 (Task 1 review, round 1): the `entry_id` guard on all three handlers
+// (`reduce.ts`'s `tripEntryAdded`, `tripEntryRemoved`, `tripEntryBringCountSet`)
+// was untested — each starts `readString(op.payload, 'entry_id')`, bails
+// unless `.kind === 'value'`, and none of that was pinned. A future refactor
+// that collapses the four copies of this prologue (this one plus S9's
+// `trip.entry_status_set`) into a helper could key a real Entry as `''`
+// via something like `readString(...).value ?? ''` and nothing here would
+// catch it without these tests.
+describe('an unreadable entry_id leaves state untouched', () => {
+  const OP_TYPES: { type: string; extra: Record<string, unknown> }[] = [
+    {
+      type: 'trip.entry_added',
+      extra: { source: { from: 'depot', gear_id: 'g1' } },
+    },
+    { type: 'trip.entry_removed', extra: {} },
+    { type: 'trip.entry_bring_count_set', extra: { count: 3 } },
+  ]
+
+  const BAD_ENTRY_IDS: { label: string; payload: Record<string, unknown> }[] = [
+    { label: 'a missing entry_id', payload: {} },
+    { label: 'an explicitly null entry_id', payload: { entry_id: null } },
+    { label: 'a non-string entry_id', payload: { entry_id: 42 } },
+  ]
+
+  for (const { type, extra } of OP_TYPES) {
+    describe(type, () => {
+      for (const { label, payload } of BAD_ENTRY_IDS) {
+        it(`returns the identical state for ${label}, creating no Entry`, () => {
+          const initial = emptyState()
+          const next = applyOp(initial, op(type, { ...payload, ...extra }))
+          expect(next).toBe(initial)
+          expect(next.trips['t1']).toBeUndefined()
+        })
+      }
+    })
+  }
 })
 
 describe('the fold is order-independent', () => {
