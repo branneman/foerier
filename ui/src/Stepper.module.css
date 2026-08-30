@@ -72,8 +72,14 @@
   .dense .button::after {
     content: '';
     position: absolute;
-    /* 32px painted, 44px hit area: (44 - 32) / 2 = 6px = 0.375rem each side. */
-    inset: -0.375rem;
+    /*
+     * `reset.css` sets `box-sizing: border-box` globally, so `width: 2rem`
+     * with a 1px (`--stroke-rule`) border is a 30×30 *padding* box — the box
+     * an absolutely positioned `::after` lays out against, not the 32×32
+     * border box "32px painted" suggests. 44px needs
+     * (44 - 30) / 2 = 7px = 0.4375rem each side, not 6px.
+     */
+    inset: -0.4375rem;
   }
 
   .dense .well {

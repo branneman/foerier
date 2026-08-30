@@ -151,7 +151,15 @@ export function GearDetail() {
       emit(gearKindSet(id, kindDraft))
     }
 
-    if (kindDraft === 'counted' && countDraft !== current.ownedCount?.value) {
+    // `Number.isFinite` excludes `NaN` — `Stepper`'s report that its well is
+    // currently blank. A silent `×1` is a wrong ledger line whether Add gear
+    // writes it or gear detail does: an emptied well must write nothing,
+    // never fall back to whatever `countDraft` last held.
+    if (
+      kindDraft === 'counted' &&
+      Number.isFinite(countDraft) &&
+      countDraft !== current.ownedCount?.value
+    ) {
       emit(gearOwnedCountSet(id, countDraft))
     }
 

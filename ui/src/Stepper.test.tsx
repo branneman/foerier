@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -22,14 +22,30 @@ function css(): string {
   )
 }
 
+function tokens(): string {
+  return readFileSync(
+    join(
+      dirname(expect.getState().testPath ?? ''),
+      '..',
+      'styles',
+      'tokens.css',
+    ),
+    'utf8',
+  )
+}
+
+function remToPx(rem: string): number {
+  return Number.parseFloat(rem) * 16
+}
+
 describe('Stepper', () => {
   it('renders the value between a decrement and an increment', () => {
     const { container } = render(
       <Stepper value={3} onChange={() => {}} label="Owned count" />,
     )
 
-    const well = screen.getByRole('spinbutton', { name: 'Owned count' })
-    expect(well).toHaveValue(3)
+    const well = screen.getByRole('textbox', { name: 'Owned count' })
+    expect(well).toHaveValue('3')
 
     // Order, not just presence: the well sits between the two buttons.
     const controls = Array.from(
@@ -71,15 +87,25 @@ describe('Stepper', () => {
   it('does not go below min, and min defaults to 0', async () => {
     const onChange = vi.fn()
     const user = userEvent.setup()
-    render(<Stepper value={1} onChange={onChange} label="Bring count" />)
 
-    // No `min` prop given at all — decrementing from 1 should land on the
-    // default floor, 0, and go no lower.
-    await user.click(
+    // No `min` prop given at all: the only thing standing between this and
+    // a negative Bring-count is the *default*, not an explicit floor a
+    // caller remembered to pass — invariant 11's `min = 0` lives here.
+    render(<Stepper value={0} onChange={onChange} label="Bring count" />)
+
+    expect(
       screen.getByRole('button', { name: 'Decrease Bring count' }),
+    ).toBeDisabled()
+
+    // The well agrees: typing a value under the (unstated, default) floor
+    // still clamps to 0, not to whatever a missing `min` would coerce to.
+    const well = screen.getByRole('textbox', { name: 'Bring count' })
+    await user.clear(well)
+    await user.type(well, '0')
+    await user.click(
+      screen.getByRole('button', { name: 'Increase Bring count' }),
     )
-    expect(onChange).toHaveBeenCalledOnce()
-    expect(onChange).toHaveBeenCalledWith(0)
+    expect(onChange).toHaveBeenLastCalledWith(1)
   })
 
   it('clamps a typed value below a non-zero min to that min', async () => {
@@ -91,12 +117,71 @@ describe('Stepper', () => {
 
     // The well clamps too, not just the button: typing a value under the
     // floor commits the floor rather than the literal digits typed.
-    const well = screen.getByRole('spinbutton', { name: 'Owned count' })
+    const well = screen.getByRole('textbox', { name: 'Owned count' })
     await user.clear(well)
     await user.type(well, '1')
 
     expect(onChange).not.toHaveBeenCalledWith(1)
     expect(onChange).toHaveBeenLastCalledWith(2)
+  })
+
+  it('corrects the well to the clamped value even when the value the caller holds does not move', async () => {
+    // The regression: `value` is already sitting at `min` (2), so typing
+    // something below it clamps right back onto the value the caller
+    // already held — `value` never changes, an effect keyed on `[value]`
+    // never fires, and nothing else re-renders `Stepper`. The buffer has to
+    // be corrected at the commit site, or the well is left showing the
+    // rejected digits for the life of the mount.
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Stepper value={2} min={2} onChange={onChange} label="Owned count" />,
+    )
+
+    const well = screen.getByRole('textbox', { name: 'Owned count' })
+    await user.clear(well)
+    await user.type(well, '1')
+
+    expect(onChange).toHaveBeenLastCalledWith(2)
+    expect(well).toHaveValue('2')
+  })
+
+  it('reports a cleared well as NaN rather than falling back to min', async () => {
+    // `NaN` is "nothing chosen" — clamping a blank well to `min` instead
+    // would commit a value nobody typed, the exact class of defect
+    // invariant 11's `min = 0` exists to keep out of a different register.
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Stepper value={3} onChange={onChange} label="Owned count" />)
+
+    await user.clear(screen.getByRole('textbox', { name: 'Owned count' }))
+
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange.mock.calls[0]?.[0]).toBeNaN()
+  })
+
+  it('strips non-digits rather than accepting a decimal, exponent or sign', () => {
+    // `fireEvent`, not `user.type`: typing "2.5" keystroke by keystroke into
+    // a controlled input that rewrites its own value on every change is a
+    // testing-library cursor-tracking hazard unrelated to what this test is
+    // pinning — the strip itself, applied once to a whole pasted-in string.
+    const onChange = vi.fn()
+    render(<Stepper value={2} onChange={onChange} label="Owned count" />)
+
+    const well = screen.getByRole('textbox', { name: 'Owned count' })
+    fireEvent.change(well, { target: { value: '2.5' } })
+
+    // "2.5" strips to "25" — never a fractional commit, and never the
+    // silently-sanitised-to-empty behaviour a `type="number"` well gives
+    // the same input (`AddGear.tsx`'s own reason for avoiding it).
+    expect(onChange).toHaveBeenLastCalledWith(25)
+    expect(well).toHaveValue('25')
+
+    fireEvent.change(well, { target: { value: '-1' } })
+    // A bare sign strips too — with `min` defaulting to `0`, there is no
+    // typed spelling of a negative count at all, not even a clamp to reach.
+    expect(onChange).toHaveBeenLastCalledWith(1)
+    expect(well).toHaveValue('1')
   })
 
   it('disables decrement at min', () => {
@@ -138,8 +223,22 @@ describe('Stepper', () => {
       screen.getByRole('button', { name: 'Increase Bring count' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('spinbutton', { name: 'Bring count' }),
+      screen.getByRole('textbox', { name: 'Bring count' }),
     ).toBeInTheDocument()
+  })
+
+  it('renders the default size with the max(3rem, 48px) floor', () => {
+    const { container } = render(
+      <Stepper value={1} onChange={() => {}} label="Owned count" />,
+    )
+    expect(container.firstElementChild?.className).toMatch(/default/)
+
+    const text = css()
+    const button = /\.default \.button\s*\{([^}]*)\}/.exec(text)?.[1] ?? ''
+    const well = /\.default \.well\s*\{([^}]*)\}/.exec(text)?.[1] ?? ''
+    expect(button).toMatch(/min-width:\s*max\(3rem,\s*48px\)/)
+    expect(button).toMatch(/min-height:\s*max\(3rem,\s*48px\)/)
+    expect(well).toMatch(/min-height:\s*max\(3rem,\s*48px\)/)
   })
 
   it('renders the dense size with a hit area of at least 44px', () => {
@@ -151,26 +250,45 @@ describe('Stepper', () => {
         label="Bring count"
       />,
     )
-
-    // jsdom computes no layout, so the shape is what gets pinned: the dense
-    // class is on the root, and the stylesheet pads the button's hit area to
-    // 44px (32px painted + 2 * 6px) without resizing the paint — the same
-    // `::after` technique `Trip.module.css`'s `.addParticipant` uses for its
-    // 22px circle.
     expect(container.firstElementChild?.className).toMatch(/dense/)
 
+    // jsdom computes no layout, so the *result* is what gets pinned, worked
+    // out from the actual declared numbers rather than asserted as
+    // literals — `--stroke-rule` widening would fail this the way it fails
+    // nothing that just checks `width: 2rem` and `inset: -0.4375rem` stayed
+    // put. `reset.css` makes every box `border-box`, so a bordered button's
+    // painted *padding* box — what an absolutely positioned `::after` lays
+    // out against — is narrower than its declared `width`.
     const text = css()
-    expect(text).toMatch(/\.dense \.button\s*\{[^}]*width:\s*2rem/)
-    expect(text).toMatch(/\.dense \.button\s*\{[^}]*height:\s*2rem/)
-    expect(text).toMatch(/\.dense \.button::after\s*\{[^}]*inset:\s*-0\.375rem/)
-    // -0.375rem (6px) on every side of a 32px (2rem) box is 44px — the
-    // ≥44px floor this dense variant is allowed as its one exception.
+    const sharedButton = /\.button\s*\{([^}]*)\}/.exec(text)?.[1] ?? ''
+    const denseButton = /\.dense \.button\s*\{([^}]*)\}/.exec(text)?.[1] ?? ''
+    const denseAfter =
+      /\.dense \.button::after\s*\{([^}]*)\}/.exec(text)?.[1] ?? ''
+
+    const borderVar = /border:\s*var\((--[\w-]+)\)/.exec(sharedButton)?.[1]
+    const widthRem = /width:\s*([0-9.]+)rem/.exec(denseButton)?.[1]
+    const insetRem = /inset:\s*(-?[0-9.]+)rem/.exec(denseAfter)?.[1]
+    expect(borderVar).toBeDefined()
+    expect(widthRem).toBeDefined()
+    expect(insetRem).toBeDefined()
+
+    const borderPx = Number.parseFloat(
+      new RegExp(`${borderVar}:\\s*([0-9.]+)px`).exec(tokens())?.[1] ?? '0',
+    )
+    const widthPx = remToPx(widthRem ?? '0')
+    const insetPx = Math.abs(remToPx(insetRem ?? '0'))
+
+    const paintedPaddingBoxSide = widthPx - 2 * borderPx
+    const hitArea = paintedPaddingBoxSide + 2 * insetPx
+    expect(hitArea).toBeGreaterThanOrEqual(44)
   })
 
-  it('is driven by value alone — a caller that ignores onChange never moves', async () => {
+  it('is driven by value alone — a caller that ignores onChange never moves via the buttons', async () => {
     // `Stepper` reflects `value` on every render; a caller that does not
     // update it (e.g. a Kind that no longer counts) leaves the well right
-    // where the caller left it, not where the last tap requested.
+    // where the caller left it, not where the last tap requested. The
+    // buttons never touch the text buffer at all, so this alone cannot
+    // catch a buffer-desync regression — the next test does that.
     function Frozen() {
       const [count] = useState(5)
       return <Stepper value={count} onChange={() => {}} label="Owned count" />
@@ -182,8 +300,8 @@ describe('Stepper', () => {
       screen.getByRole('button', { name: 'Increase Owned count' }),
     )
 
-    expect(screen.getByRole('spinbutton', { name: 'Owned count' })).toHaveValue(
-      5,
+    expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue(
+      '5',
     )
   })
 })

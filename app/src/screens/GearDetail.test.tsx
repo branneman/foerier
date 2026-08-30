@@ -376,6 +376,36 @@ describe('Gear detail', () => {
     expect(store.getState().state.gear[gearId]?.ownedCount?.value).toBe(5)
   })
 
+  it('writes no owned_count when the well is emptied before Save', async () => {
+    // The exact scenario `Stepper`'s `NaN`-on-blank exists for: gear with no
+    // owned_count register at all, switched to Counted mid-edit (which seeds
+    // the well from a fallback, not a fact the depot holds), then cleared.
+    // "A silent ×1 is a wrong ledger line" whether Add gear writes it or gear
+    // detail does — clearing the well must leave the register untouched.
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Tent peg',
+        container: false,
+        kind: 'single',
+      }),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    await user.click(screen.getByRole('radio', { name: 'Counted' }))
+    await user.clear(screen.getByRole('textbox', { name: 'Owned count' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await store.getState().drained()
+
+    expect(
+      Object.hasOwn(store.getState().state.gear[gearId]!, 'ownedCount'),
+    ).toBe(false)
+    // The Kind change itself is real and still lands.
+    expect(store.getState().state.gear[gearId]?.kind?.value).toBe('counted')
+  })
+
   it('EDIT changes the kind and emits gear.kind_set', async () => {
     const gearId = anId()
     const store = await seededStore([
