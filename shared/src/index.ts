@@ -145,6 +145,7 @@ export {
 export type { Phase, PhaseKey, TripSections } from './selectors/trip.ts'
 export {
   isActive,
+  isClosed,
   isKnownPhase,
   participantIds,
   phaseDay,
@@ -155,8 +156,16 @@ export {
   PHASES,
   tripLabel,
   tripSections,
+  UNNAMED_TRIP,
   visibleTrips,
 } from './selectors/trip.ts'
+
+export type { Claim, OverClaim } from './selectors/claim.ts'
+export {
+  overClaims,
+  overClaimsFor,
+  overClaimsIfActive,
+} from './selectors/claim.ts'
 
 export type { Match } from './selectors/find.ts'
 export { findGear } from './selectors/find.ts'

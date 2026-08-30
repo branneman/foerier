@@ -11,6 +11,7 @@ import { emptyState, fold } from '../reduce.ts'
 import type { DepotState, TripState } from '../state.ts'
 import {
   isActive,
+  isClosed,
   isKnownPhase,
   participantIds,
   phaseDay,
@@ -21,6 +22,7 @@ import {
   PHASES,
   tripLabel,
   tripSections,
+  UNNAMED_TRIP,
   visibleTrips,
 } from './trip.ts'
 
@@ -217,6 +219,34 @@ describe('isActive', () => {
   it('is false for an absent register, which reads draft', () => {
     const state = depot([tripParticipantAdded('t1', 'p1')])
     expect(isActive(trip(state, 't1'))).toBe(false)
+  })
+})
+
+describe('isClosed', () => {
+  it('is true for closed', () => {
+    expect(
+      isClosed(trip(depot(aTrip({ id: 't1', phase: 'closed' })), 't1')),
+    ).toBe(true)
+  })
+
+  it.each(['draft', 'pack_out', 'on_trip', 'unpack', 'something-later'])(
+    'is false for %s',
+    (phase) => {
+      expect(isClosed(trip(depot(aTrip({ id: 't1', phase })), 't1'))).toBe(
+        false,
+      )
+    },
+  )
+
+  it('is false for an absent register, which reads draft', () => {
+    const state = depot([tripParticipantAdded('t1', 'p1')])
+    expect(isClosed(trip(state, 't1'))).toBe(false)
+  })
+})
+
+describe('UNNAMED_TRIP', () => {
+  it('reads as a sentence, not tripLabel’s glyph', () => {
+    expect(UNNAMED_TRIP).toBe('Unnamed trip')
   })
 })
 

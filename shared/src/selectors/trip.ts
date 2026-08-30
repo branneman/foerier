@@ -223,6 +223,21 @@ export function isActive(trip: TripState): boolean {
 }
 
 /**
+ * Whether a Trip is filed away.
+ *
+ * Beside `isActive` and answering a different question: `isActive` names the
+ * three phases whose packing has effect, and this names the one whose list is
+ * history. An **unrecognised** phase is not closed, for the same reason it is
+ * not active — an old build never over-states what a Trip is doing.
+ *
+ * The Trip-membership dimension needs this and cannot use `isActive`: a Draft
+ * speaks for gear as surely as a Pack-out does.
+ */
+export function isClosed(trip: TripState): boolean {
+  return phaseOf(trip) === 'closed'
+}
+
+/**
  * The next thing to do, for the line the card and the trip screen draw in
  * place of the board's `● 48/61 PIECES` progress bar — which has nothing to
  * count until S7 builds the gear list (spec §6.2).
@@ -259,6 +274,15 @@ export function tripLabel(trip: TripState): string {
   const name = trip.name?.value ?? ''
   return name.trim() === '' ? '—' : name
 }
+
+/**
+ * How a Trip with no name reads **in a sentence**.
+ *
+ * `tripLabel` returns `—`, which is right in a list column and wrong in the
+ * over-claim band's prose. The same split `UNNAMED_PERSON` already carries;
+ * `tripLabel` is deliberately unchanged.
+ */
+export const UNNAMED_TRIP = 'Unnamed trip'
 
 /**
  * The People currently on the Trip, by id.
