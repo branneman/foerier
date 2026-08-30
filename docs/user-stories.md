@@ -676,6 +676,31 @@ Acceptance criteria:
   already carries its contents (story 1). It is an affordance, not a capability,
   which is why it can land in any later slice at no structural cost.
 
+### 38. Come back to where I was
+
+As a Quartermaster, during Inventory management and Packing, I want to return
+from one piece of Gear to the browsing I came from and find it standing where I
+left it, so that checking a record against the thing in my hand does not cost me
+my place in a two-hundred-piece Depot.
+
+Acceptance criteria:
+
+- Going back to something I have already scrolled puts me where I left it, not
+  at the top.
+- The place belongs to the **visit, not to the thing visited**. The same Depot,
+  the same search, the same Trip reached twice in one session may stand in two
+  different places, and going back to each returns that visit's own place.
+- Arriving somewhere forward starts at the top — always, including at something
+  I have looked at before. A place is restored when I go back to it and never
+  inherited by a fresh arrival.
+- What I was looking at can be gone when I return: Gear retired, a Trip closed,
+  a filter narrowing the list under me. The app never claims a place it cannot
+  honour, and starting at the top is the honest answer when it cannot.
+
+Scope note: **Later.** Nothing is unreachable without it — this costs scrolling,
+not information — and it is small enough to ride along with any slice that
+touches the shell.
+
 ### 20. Configurable per-Trip statuses
 
 As a Quartermaster, during Trip planning, I want to add, rename, and remove the
