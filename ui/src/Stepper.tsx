@@ -77,10 +77,10 @@ export function Stepper({
 
   function handleWellChange(event: ChangeEvent<HTMLInputElement>) {
     const digits = event.target.value.replace(/[^0-9]/g, '')
-    setText(digits)
 
     if (digits === '') {
       // Nothing typed yet — not `min`, which would be a value nobody chose.
+      setText('')
       onChange(null)
       return
     }
@@ -88,11 +88,15 @@ export function Stepper({
     const parsed = Number.parseInt(digits, 10)
     if (!Number.isSafeInteger(parsed)) return
     const next = Math.max(min, parsed)
-    // A clamp that lands back on `value` itself would otherwise leave the
-    // well showing the rejected digits for the life of the mount — nothing
-    // re-renders it, because `value` never changed for the effect above to
-    // resync from. Correct the buffer at the commit site instead.
-    if (next !== parsed) setText(String(next))
+    // Always the canonical spelling of `next`, unconditionally — never the
+    // raw digits typed. A clamp is one way a keystroke can parse to a value
+    // the caller already holds, but not the only one: "05" parses to the
+    // same 5 a plain "5" would, and a caller that already sits at 5 sees no
+    // change to apply `onChange(5)` — no re-render, so the `[value]` effect
+    // above never re-fires to correct the buffer. Rewriting the buffer here,
+    // on every keystroke, closes the whole class rather than only the
+    // clamp instance of it.
+    setText(String(next))
     onChange(next)
   }
 

@@ -377,7 +377,7 @@ describe('Gear detail', () => {
   })
 
   it('writes no owned_count when the well is emptied before Save', async () => {
-    // The exact scenario `Stepper`'s `NaN`-on-blank exists for: gear with no
+    // The exact scenario `Stepper`'s `null`-on-blank exists for: gear with no
     // owned_count register at all, switched to Counted mid-edit (which seeds
     // the well from a fallback, not a fact the depot holds), then cleared.
     // "A silent ×1 is a wrong ledger line" whether Add gear writes it or gear

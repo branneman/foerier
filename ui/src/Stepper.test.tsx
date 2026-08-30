@@ -308,4 +308,26 @@ describe('Stepper', () => {
       '5',
     )
   })
+
+  it('canonicalises a non-canonical spelling that parses to the value already held', async () => {
+    // The buffer-desync regression F2's fix left open: no `min`, `value`
+    // held fixed at 5 by a parent that never applies `onChange` (the
+    // `Frozen` shape above). Retyping "05" parses to 5 — the value already
+    // held — so `setState(5)` is a React `Object.is` bailout: no
+    // re-render, `value` never changes, the `[value]` effect never
+    // re-fires. Only a commit-site rewrite to the canonical spelling of
+    // `next`, unconditionally, closes this rather than just the clamp case.
+    function Frozen() {
+      const [count] = useState(5)
+      return <Stepper value={count} onChange={() => {}} label="Owned count" />
+    }
+    const user = userEvent.setup()
+    render(<Frozen />)
+
+    const well = screen.getByRole('textbox', { name: 'Owned count' })
+    await user.clear(well)
+    await user.type(well, '05')
+
+    expect(well).toHaveValue('5')
+  })
 })
