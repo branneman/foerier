@@ -1,0 +1,196 @@
+import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
+import { participantIds } from './trip.ts'
+
+/**
+ * **The gear list's read side** — beside `owner.ts` and `trip.ts`, and the
+ * same shape of problem solved the same way: a handful of facts several
+ * surfaces (the builder, the trip screen, the claim selector) must agree on,
+ * stated once here rather than at each of them.
+ *
+ * `bringCountOf` is the **fourth** site gating on `kind === 'counted'`
+ * (`selectors/depot.ts`, `selectors/whereabouts.ts`,
+ * `app/src/screens/GearDetail.tsx` are the other three) — the reason the
+ * question moves behind one function instead of a fifth copy of the gate.
+ */
+
+/** What the builder's footer and the section band count. */
+export interface ListTotals {
+  /** Lines on the list. */
+  readonly entries: number
+  /** Physical things: a Bring-count, a Participant count, or one. */
+  readonly pieces: number
+  /** The pieces contributed by per-person Entries. */
+  readonly perPerson: number
+  /** Trip-only Entries — one piece each, so this counts both. */
+  readonly tripOnly: number
+}
+
+/**
+ * The Entries a reader may see.
+ *
+ * **An Entry with no `source` is folded, retained, and not drawn.** Unlike
+ * `phase` (which reads `draft`) and `owner` (which reads `SHARED`) there is
+ * nothing to default a source to: an Entry naming neither a piece of Gear nor
+ * a trip-only name is not a line anybody can draw. It is reachable because
+ * `trip.entry_removed` and `trip.entry_bring_count_set` both create the Entry
+ * on sight. It is excluded from the list, from every count, and from every
+ * claim — the conservative direction, since a claim a reader cannot see is a
+ * claim they cannot settle. Nothing is discarded: the moment the
+ * `trip.entry_added` arrives the Entry appears.
+ *
+ * This is the only place that rule is stated.
+ *
+ * Sorted by {@link entryLabel} then `id` — a **total** order two replicas
+ * compute identically, which is what makes the drawn list converge.
+ * `byNameThenId` (`selectors/order.ts`) is not reusable here: it sorts on a
+ * `name` register `EntryState` does not have, since a depot Entry's name
+ * lives on the Gear it references — which is why this function takes `state`
+ * at all.
+ */
+export function entriesOf(
+  trip: TripState,
+  state: DepotState,
+): readonly EntryState[] {
+  return Object.values(trip.entries ?? {})
+    .filter(
+      (entry) => entry.source !== undefined && entry.removed?.value !== true,
+    )
+    .sort((a, b) => {
+      const byLabel = entryLabel(a, state).localeCompare(entryLabel(b, state))
+      return byLabel !== 0 ? byLabel : a.id.localeCompare(b.id)
+    })
+}
+
+/**
+ * The Gear's name for a depot Entry, the source's own name for a trip-only
+ * one — invariant 8's single-sourcing is this one line: a depot Entry is
+ * renamed by renaming the Gear, with no Entry-side op at all.
+ *
+ * Falls back to `tripLabel`'s glyph (`—`) whenever there is no name to draw:
+ * an unset or blank trip-only name, or a depot Entry whose referenced Gear is
+ * unnamed, retired, or not yet in the fold (an id a peer's `trip.entry_added`
+ * named before this replica received that Gear's `gear.recorded`). A
+ * sourceless Entry — excluded from every list by {@link entriesOf} — also
+ * falls back here rather than throwing, since this function has to answer
+ * something for any `EntryState` it is handed.
+ */
+export function entryLabel(entry: EntryState, state: DepotState): string {
+  const source = entry.source?.value
+  const name =
+    source === undefined
+      ? ''
+      : source.from === 'depot'
+        ? (state.gear[source.gearId]?.name?.value ?? '')
+        : (source.name ?? '')
+  return name.trim() === '' ? '—' : name
+}
+
+/**
+ * The Kind that governs the row, or `'trip_only'` for an Entry with no
+ * Gear — no `source` at all, a trip-only `source`, or a depot `source`
+ * whose Gear this replica has not folded (or has folded with no `kind`
+ * register of its own, which `gear.recorded` always writes and so is reached
+ * only through a malformed op). The three are alike in the one way this
+ * question cares about: there is no Gear to read a Kind from, so the row is
+ * governed the way a trip-only Entry's always is.
+ *
+ * `pieceCountOf` is this function's one caller for the branch; nothing else
+ * should re-derive "does this Entry have a Gear, and what Kind is it".
+ */
+export function entryKind(
+  entry: EntryState,
+  state: DepotState,
+): KindValue | 'trip_only' {
+  const source = entry.source?.value
+  if (source === undefined || source.from === 'trip_only') return 'trip_only'
+  return state.gear[source.gearId]?.kind?.value ?? 'single'
+}
+
+/**
+ * The Bring-count, or `null` for every Entry that is not a Counted depot
+ * Entry.
+ *
+ * Domain invariant 6 confines a bring-count to Counted gear, but the payload
+ * carries only `{entry_id, count}` and the Kind lives on a **different**
+ * aggregate — the reducer cannot gate on it without making the fold
+ * order-dependent on whether `gear.kind_set` had arrived, so `bringCount`
+ * folds for any Entry (`state.ts`'s own note on the register). The gate lives
+ * here instead, on the way out — the fourth site asking "is this Gear
+ * Counted", stated once so a fifth never re-derives it.
+ *
+ * **An absent register on a Counted Entry reads `1`.** Adding Counted gear
+ * without touching the stepper means bringing one, and writing a register to
+ * say so would cost an op and move nothing.
+ *
+ * A Gear whose Kind changes away from `counted` leaves any `bringCount`
+ * register on its Entries exactly as it was — clearing it is a write nobody
+ * asked for, and per-field LWW cascades nothing. This function is what stops
+ * that stale register from being read: it answers `null` the moment the Kind
+ * no longer says Counted, whatever the register still holds.
+ */
+export function bringCountOf(
+  entry: EntryState,
+  state: DepotState,
+): number | null {
+  const source = entry.source?.value
+  if (source === undefined || source.from !== 'depot') return null
+  if (state.gear[source.gearId]?.kind?.value !== 'counted') return null
+  return entry.bringCount?.value ?? 1
+}
+
+/**
+ * How many things this Entry is — the spec's table, followed exactly:
+ *
+ * | Entry | Pieces |
+ * | --- | --- |
+ * | Single depot Entry | `1` |
+ * | Counted depot Entry | {@link bringCountOf}, absent reads `1` |
+ * | Per-person depot Entry | {@link participantIds}`(trip).length` |
+ * | Trip-only Entry | `1` — no Kind to be Counted by |
+ * | Gear with an unrecognised Kind | `1` — the conservative direction |
+ *
+ * Per-person is Participants and **all** of it until S8 tombstones some
+ * Pieces: a Piece is "derived from the trip's participants, minus those
+ * explicitly tombstoned" (`sync-protocol.md` §4.4), and at S7 there are no
+ * tombstones yet.
+ */
+export function pieceCountOf(
+  entry: EntryState,
+  trip: TripState,
+  state: DepotState,
+): number {
+  switch (entryKind(entry, state)) {
+    case 'counted':
+      return bringCountOf(entry, state) ?? 1
+    case 'per_person':
+      return participantIds(trip).length
+    default:
+      return 1
+  }
+}
+
+/**
+ * The four numbers the builder's footer and the section band draw:
+ * `4 ENTRIES · 6 PIECES · 2 PER-PERSON · 1 TRIP-ONLY`.
+ *
+ * The field names are the boards' nouns: `entries` counts lines,
+ * `pieces` sums {@link pieceCountOf} over every visible Entry, `perPerson`
+ * sums it over per-person Entries only, `tripOnly` counts trip-only Entries
+ * (each worth one piece, so it is a subset of `pieces` rather than a fifth
+ * number). Formatting the count with its noun — `1 PIECE` vs `2 PIECES` — is
+ * the screens' job, not this one's: this returns numbers.
+ */
+export function listTotals(trip: TripState, state: DepotState): ListTotals {
+  const entries = entriesOf(trip, state)
+  let pieces = 0
+  let perPerson = 0
+  let tripOnly = 0
+  for (const entry of entries) {
+    const count = pieceCountOf(entry, trip, state)
+    pieces += count
+    const kind = entryKind(entry, state)
+    if (kind === 'per_person') perPerson += count
+    if (kind === 'trip_only') tripOnly += 1
+  }
+  return { entries: entries.length, pieces, perPerson, tripOnly }
+}

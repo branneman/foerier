@@ -132,6 +132,16 @@ export {
 export type { Whereabouts, WhereaboutsSlice } from './selectors/whereabouts.ts'
 export { whereabouts } from './selectors/whereabouts.ts'
 
+export type { ListTotals } from './selectors/entry.ts'
+export {
+  bringCountOf,
+  entriesOf,
+  entryKind,
+  entryLabel,
+  listTotals,
+  pieceCountOf,
+} from './selectors/entry.ts'
+
 export type { Phase, PhaseKey, TripSections } from './selectors/trip.ts'
 export {
   isActive,
