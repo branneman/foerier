@@ -197,22 +197,29 @@ while both bands keep their `rem` and `min-height` sizes — it came out **34px
 tall while the document was scrollable to 734 anyway**, two scrollers at once
 and the bar half off the screen. With the floor the screen keeps half the
 viewport; past that the shell overflows, the document scrolls, and the bar sits
-at the bottom of the *document*, reached by scrolling to its end. That is the
-`min-height` behaviour this section replaced, given back exactly where pinning
-costs more than it pays.
+at the bottom of the *document*, reached by scrolling to its end. What is given
+back there is the **unpinned bar**, not the single scroller `min-height` had:
+the reading area keeps its own scrollport, so in that case two are live at
+once. The trade is deliberate — an unpinned bar above a usable screen beats a
+pinned one above a 34px slot.
 
 **Radix's scroll lock still holds, and it takes both halves to say why.**
 `react-remove-scroll`, which every `Sheet` and `Confirm` sits inside, does two
-things: `overflow: hidden` on `body`, and capture-phase `wheel`, `touchmove`
-and `touchstart` handlers on `document` that cancel any such event whose target
-lies outside the locked subtree. The first becomes a no-op once the body no
-longer scrolls; the second is what stops a pointer, and it is indifferent to
-which element the scrollport is. Verified in Chromium against a scrolling
+things: `overflow: hidden` on `body`, and `wheel` and `touchmove` listeners on
+`document` that cancel any such event whose target lies outside the locked
+subtree. Those two are registered non-passive — `{ passive: false }`, which is
+what lets them call `preventDefault` — and in the bubble phase; a third
+listener, `touchstart`, only records the gesture's origin and cancels nothing.
+(The package's capture-phase handlers are React props on the locked subtree
+itself, `onWheelCapture` and `onTouchMoveCapture`, which is a separate
+mechanism.) The `body` rule becomes a no-op once the body no longer scrolls;
+the two `document` listeners are what stop a pointer, and they are indifferent
+to which element the scrollport is. Verified in Chromium against a scrolling
 `.shell__main` with a Radix dialog open: wheel and touch over the background
 both leave the offset where it was.
 
-**There is no `keydown` handler**, so the keyboard is covered by something
-else: `Sheet` and `Confirm` use `Dialog.Portal` with no `container`, which
+**There is no `keydown` listener anywhere in the package**, so the keyboard is
+covered by something else: `Sheet` and `Confirm` use `Dialog.Portal` with no `container`, which
 mounts them on `document.body` — verified, the parent chain is
 `body › [the dialog]`, outside `.shell` — and the focus trap keeps space,
 PageDown and the arrows on the dialog's own scroll chain, which ends at the

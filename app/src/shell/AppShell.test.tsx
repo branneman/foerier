@@ -279,8 +279,14 @@ describe('the shell that stays put while a screen scrolls', () => {
     // large user font size takes the height out of the `1fr` row between them
     // and carries the button up with it. That is the whole of the mechanism:
     // no height of the bar is written down.
+    //
+    // The floor is pinned as well as the shape. `minmax` rather than a bare
+    // `1fr` is what stops a scroll container's zero automatic minimum crushing
+    // this row, and `50svh` is the decision about where pinning stops paying:
+    // below it the shell overflows and the document scrolls, so the number is
+    // the boundary between the two behaviours rather than a spacing value.
     expect(layout()).toMatch(
-      /\.shell\s*\{[^}]*grid-template-rows:\s*auto minmax\([^)]*, 1fr\) auto/,
+      /\.shell\s*\{[^}]*grid-template-rows:\s*auto minmax\(50svh, 1fr\) auto/,
     )
     expect(
       readFileSync(
