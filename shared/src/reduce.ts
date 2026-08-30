@@ -6,12 +6,14 @@ import {
   readOpen,
   readOwner,
   readResidence,
+  readSource,
   readString,
   type Read,
 } from './payloads.ts'
 import { writeRegister, type Register } from './registers.ts'
 import type {
   DepotState,
+  EntryState,
   GearState,
   PersonState,
   PhaseValue,
@@ -124,6 +126,45 @@ function writeTrip(
   const updated = update(current, stamp)
   if (updated === current) return state
   return { ...state, trips: { ...state.trips, [id]: updated } }
+}
+
+/**
+ * The fifth entity writer, and the first at two levels.
+ *
+ * Nested inside `writeTrip` so a Trip is created by an Entry op exactly as it
+ * is by any other Trip op, and with the same identity check at each level: an
+ * update that changes no register returns the object it was given, and the
+ * `writeTrip` above it then returns the state it was given.
+ *
+ * The generic `writeEntity` that would collapse all five is still not taken,
+ * for the reason recorded above `writeTrip`. This is the fifth instance; a
+ * sixth should re-open the argument.
+ *
+ * One departure from the other four writers: an Entry that did **not**
+ * already exist is persisted even when `update` writes no register at all —
+ * a malformed `trip.entry_added` still creates a bare, sourceless Entry
+ * (`tripEntryAdded`'s doc). `writeTrip`, `writeGear` et al. need no such case
+ * because their sole creating op (`trip.created`, `gear.recorded`) always
+ * writes at least one register unconditionally; `trip.entry_added` has no
+ * such unconditional field, so identity alone cannot tell "existed, untouched"
+ * from "just created, untouched" apart. An already-existing Entry that a
+ * later malformed op does not change still returns `trip` unaltered, exactly
+ * like every other writer here.
+ */
+function writeEntry(
+  state: DepotState,
+  tripId: string,
+  entryId: string,
+  stamp: Stamp,
+  update: (entry: EntryState, stamp: Stamp) => EntryState,
+): DepotState {
+  return writeTrip(state, tripId, stamp, (trip, st) => {
+    const existing = trip.entries?.[entryId]
+    const current = existing ?? { id: entryId }
+    const updated = update(current, st)
+    if (updated === current && existing !== undefined) return trip
+    return { ...trip, entries: { ...trip.entries, [entryId]: updated } }
+  })
 }
 
 /**
@@ -563,6 +604,80 @@ const tripParticipantWritten =
     })
 
 /**
+ * `trip.entry_added` (§4.4): creates the Entry and seeds `source`.
+ *
+ * A malformed or unrecognised source writes nothing and leaves an Entry that
+ * `entriesOf` excludes — retained in the fold, drawn nowhere, holding no
+ * claim. There is no defaultable value for `source`, so unlike `phase` it
+ * gets no fallback.
+ */
+const tripEntryAdded: Handler = (state, op, stamp) => {
+  const entryId = readString(op.payload, 'entry_id')
+  if (entryId.kind !== 'value') return state
+  return writeEntry(
+    state,
+    op.aggregate_id,
+    entryId.value,
+    stamp,
+    (entry, st) => {
+      const source = writeIfPresent(
+        entry.source,
+        readSource(op.payload, 'source'),
+        st,
+      )
+      if (source === entry.source) return entry
+      return { ...entry, ...(source === undefined ? {} : { source }) }
+    },
+  )
+}
+
+/**
+ * `trip.entry_removed` (§4.4): the tombstone, and the only way an over-claim
+ * is resolved (§3.6). An ordinary LWW field — delete does not win by being a
+ * delete. No restore op exists in the MVP; re-adding is a new Entry with a
+ * new id.
+ */
+const tripEntryRemoved: Handler = (state, op, stamp) => {
+  const entryId = readString(op.payload, 'entry_id')
+  if (entryId.kind !== 'value') return state
+  return writeEntry(
+    state,
+    op.aggregate_id,
+    entryId.value,
+    stamp,
+    (entry, st) => {
+      const next = writeRegister(entry.removed, true, st)
+      return next === entry.removed ? entry : { ...entry, removed: next }
+    },
+  )
+}
+
+/**
+ * `trip.entry_bring_count_set` (§4.4): sets `bringCount` absolutely.
+ *
+ * The catalogue's "Counted entries only" is an **authoring** rule, not a
+ * reader gate: the Entry's Kind lives on the Gear aggregate, and resolving it
+ * here would make the fold order-dependent on whether `gear.kind_set` had
+ * arrived. Readers gate through `bringCountOf` instead.
+ */
+const tripEntryBringCountSet: Handler = (state, op, stamp) => {
+  const entryId = readString(op.payload, 'entry_id')
+  if (entryId.kind !== 'value') return state
+  const count = readCount(op.payload, 'count')
+  if (count.kind !== 'value') return state
+  return writeEntry(
+    state,
+    op.aggregate_id,
+    entryId.value,
+    stamp,
+    (entry, st) => {
+      const next = writeRegister(entry.bringCount, count.value, st)
+      return next === entry.bringCount ? entry : { ...entry, bringCount: next }
+    },
+  )
+}
+
+/**
  * The op-type dispatch table (`sync-protocol.md` §4.1, §4.3). A `Record`, not
  * a `switch`, so "is this type known?" is a lookup — the same question the
  * tolerant reader asks.
@@ -613,6 +728,11 @@ const handlers: Record<string, Handler> = {
   // exactly the tag pair above.
   'trip.participant_added': tripParticipantWritten(true),
   'trip.participant_removed': tripParticipantWritten(false),
+  // S7 (§4.4): the gear list, keyed by entry id — the first of the Trip's
+  // nested maps. `trip.entry_status_set` stays unfolded until S9.
+  'trip.entry_added': tripEntryAdded,
+  'trip.entry_removed': tripEntryRemoved,
+  'trip.entry_bring_count_set': tripEntryBringCountSet,
 }
 
 /**

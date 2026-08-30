@@ -1,0 +1,160 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the S7 fixture > folds to exactly the state it folded to when captured 1`] = `
+{
+  "gear": {
+    "g-s7-out-of-order": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:05:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s7-out-of-order",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:05:00.000Z-0000",
+        "value": "single",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:05:00.000Z-0000",
+        "value": "Camp stove",
+      },
+    },
+    "g-s7-per-person": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:04:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s7-per-person",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:04:00.000Z-0000",
+        "value": "per_person",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:04:00.000Z-0000",
+        "value": "Sleeping bag",
+      },
+    },
+    "g-s7-tent": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:03:00.000Z-0000",
+        "value": true,
+      },
+      "id": "g-s7-tent",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:03:00.000Z-0000",
+        "value": "counted",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:03:00.000Z-0000",
+        "value": "Tent",
+      },
+      "ownedCount": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:03:00.000Z-0000",
+        "value": 2,
+      },
+    },
+  },
+  "people": {},
+  "places": {},
+  "trips": {
+    "t-s7-1": {
+      "entries": {
+        "e-s7-depot": {
+          "id": "e-s7-depot",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-08-30T09:06:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s7-tent",
+            },
+          },
+        },
+        "e-s7-malformed": {
+          "id": "e-s7-malformed",
+        },
+        "e-s7-out-of-order": {
+          "id": "e-s7-out-of-order",
+          "removed": {
+            "deviceId": "bbbbbbbb-0000-7000-8000-000000000001",
+            "hlc": "2026-08-30T09:11:00.000Z-0000",
+            "value": true,
+          },
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-08-30T09:12:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s7-out-of-order",
+            },
+          },
+        },
+        "e-s7-per-person": {
+          "bringCount": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-08-30T09:10:00.000Z-0000",
+            "value": 2,
+          },
+          "id": "e-s7-per-person",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-08-30T09:09:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s7-per-person",
+            },
+          },
+        },
+        "e-s7-trip-only": {
+          "id": "e-s7-trip-only",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-08-30T09:07:00.000Z-0000",
+            "value": {
+              "container": false,
+              "from": "trip_only",
+              "name": null,
+            },
+          },
+        },
+      },
+      "id": "t-s7-1",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:00:00.000Z-0000",
+        "value": "S7 Fixture Trip",
+      },
+      "participants": {
+        "p-s7-1": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-08-30T09:01:00.000Z-0000",
+          "value": true,
+        },
+        "p-s7-2": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-08-30T09:02:00.000Z-0000",
+          "value": true,
+        },
+      },
+      "phase": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-30T09:00:00.000Z-0000",
+        "value": "draft",
+      },
+    },
+  },
+  "unfolded": {
+    "count": 0,
+    "types": {},
+  },
+}
+`;

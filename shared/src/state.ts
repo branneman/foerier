@@ -28,6 +28,19 @@ export type Residence =
 
 export type Owner = { type: 'shared' } | { type: 'person'; personId: string }
 
+/**
+ * Where an Entry's identity comes from ([sync §3.7](../../docs/sync-protocol.md)).
+ *
+ * One register holds the whole union, so the discriminant is **closed** —
+ * unlike `KindValue` and `PhaseValue` it is not widened with `(string & {})`,
+ * because `readSource` reads an unrecognised `from` as `absent` and it never
+ * reaches state. The tolerance lives at the boundary; the type stays
+ * exhaustive.
+ */
+export type EntrySource =
+  | { from: 'depot'; gearId: string }
+  | { from: 'trip_only'; name: string | null; container: boolean }
+
 export interface PlaceState {
   id: string
   name?: Register<string | null>
@@ -92,10 +105,33 @@ export type PhaseValue =
   'draft' | 'pack_out' | 'on_trip' | 'unpack' | 'closed' | (string & {})
 
 /**
- * The **fourth aggregate** (`sync-protocol.md` §3.7). S6 builds the *root*
- * row of that table and the `participants` row, and nothing else: the four
- * nested maps — entries, pieces, tasks, notes — belong to S7 onward, and a
- * slice adds its own row rather than pre-declaring everyone else's.
+ * One line on a Trip's gear list.
+ *
+ * S7 declares three of the eight registers [sync §3.7] names. `status`,
+ * `residence` and `stage` are S9's; `outcome` and `consumedCount` are S10's;
+ * the `pieces` map is S8's. A register nobody writes is a field every reader
+ * must have an opinion about, so each arrives with the slice that writes it.
+ */
+export interface EntryState {
+  readonly id: string
+  /** One register, not three — the whole union is written as a unit. */
+  readonly source?: Register<EntrySource>
+  /**
+   * Folded for **any** Entry; meaningful on Counted depot Entries only.
+   * The Kind lives on another aggregate, so the reducer cannot gate it and
+   * must not try — see `bringCountOf`.
+   */
+  readonly bringCount?: Register<number>
+  /** Tombstone. No restore op exists in the MVP. */
+  readonly removed?: Register<boolean>
+}
+
+/**
+ * The **fourth aggregate** (`sync-protocol.md` §3.7). S6 built the *root* row
+ * of that table and the `participants` row; S7 adds `entries`, the first of
+ * the three remaining nested maps — pieces, tasks, notes — belong to S8
+ * onward, and a slice adds its own row rather than pre-declaring everyone
+ * else's.
  */
 export interface TripState {
   id: string
@@ -162,6 +198,12 @@ export interface TripState {
    * Piece with **no backfill op**.
    */
   participants?: Readonly<Record<string, Register<boolean>>>
+  /**
+   * The gear list, keyed by entry id. A map of **entities**, not of registers
+   * — deliberately not `participants`' shape, which is a set whose member
+   * carries only presence.
+   */
+  readonly entries?: Readonly<Record<string, EntryState>>
 }
 
 /**

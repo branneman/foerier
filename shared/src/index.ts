@@ -22,6 +22,8 @@ export { stampOf, writeRegister } from './registers.ts'
 
 export type {
   DepotState,
+  EntrySource,
+  EntryState,
   GearState,
   KindValue,
   Owner,
@@ -40,6 +42,7 @@ export {
   readOpen,
   readOwner,
   readResidence,
+  readSource,
   readString,
 } from './payloads.ts'
 
@@ -71,6 +74,9 @@ export {
   placeRenamed,
   tripCreated,
   tripDatesSet,
+  tripEntryAdded,
+  tripEntryBringCountSet,
+  tripEntryRemoved,
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPhaseMoved,

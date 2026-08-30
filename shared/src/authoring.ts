@@ -1,7 +1,13 @@
 import type { Aggregate, OpEnvelope } from './ops.ts'
 import type { HlcClock } from './hlc.ts'
 import type { IdSource } from './boundaries.ts'
-import type { KindValue, Owner, PhaseValue, Residence } from './state.ts'
+import type {
+  EntrySource,
+  KindValue,
+  Owner,
+  PhaseValue,
+  Residence,
+} from './state.ts'
 import type { TagString } from './tags.ts'
 
 /**
@@ -414,5 +420,63 @@ export function tripParticipantRemoved(id: string, personId: string): OpSpec {
     aggregate_id: id,
     type: 'trip.participant_removed',
     payload: { person_id: personId },
+  }
+}
+
+/**
+ * `sync-protocol.md` §4.4: creates the Entry. A depot Entry **references**
+ * gear by identity and copies nothing (invariant 8); a trip-only Entry
+ * carries its own name and containment trait.
+ *
+ * The payload's `gear_id` is the wire's name for the `gearId` the state
+ * holds, the same split `gear.owned_count_set{count}` has over `ownedCount`.
+ */
+export function tripEntryAdded(
+  tripId: string,
+  entryId: string,
+  source: EntrySource,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.entry_added',
+    payload: {
+      entry_id: entryId,
+      source:
+        source.from === 'depot'
+          ? { from: 'depot', gear_id: source.gearId }
+          : {
+              from: 'trip_only',
+              name: source.name,
+              container: source.container,
+            },
+    },
+  }
+}
+
+/** §4.4: the tombstone. Also how an over-claim is settled (§3.6). */
+export function tripEntryRemoved(tripId: string, entryId: string): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.entry_removed',
+    payload: { entry_id: entryId },
+  }
+}
+
+/**
+ * §4.4: sets `bringCount`, absolutely. Counted Entries only — an authoring
+ * rule this builder's callers honour and the reducer does not enforce.
+ */
+export function tripEntryBringCountSet(
+  tripId: string,
+  entryId: string,
+  count: number,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.entry_bring_count_set',
+    payload: { entry_id: entryId, count },
   }
 }

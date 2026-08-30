@@ -1,4 +1,4 @@
-import type { Owner, Residence } from './state.ts'
+import type { EntrySource, Owner, Residence } from './state.ts'
 
 /**
  * The **tolerant** half of the reader (`docs/sync-protocol.md` §5.3). Its
@@ -112,4 +112,39 @@ export function readOwner(
     }
     return undefined
   })
+}
+
+/**
+ * Reads an Entry's `source` ([sync §4.4](../../docs/sync-protocol.md)).
+ *
+ * The wire's `gear_id` becomes `gearId`, the same split `readOwner` already
+ * has over `person_id`. An unrecognised `from`, a depot source with no
+ * `gear_id`, or a trip-only source with a non-boolean `container` all read
+ * `absent`: the op still folds and the Entry is still created, it simply
+ * carries no source. Never rejected — §5.3's tolerant reader is absolute.
+ */
+export function readSource(
+  payload: Record<string, unknown>,
+  key: string,
+): Read<EntrySource> {
+  const value = raw(payload, key)
+  if (value.kind === 'absent') return { kind: 'absent' }
+  if (value.kind === 'null') return { kind: 'null' }
+  if (typeof value.value !== 'object' || Array.isArray(value.value)) {
+    return { kind: 'absent' }
+  }
+  const source = value.value as Record<string, unknown>
+  if (source['from'] === 'depot') {
+    const gearId = source['gear_id']
+    if (typeof gearId !== 'string' || gearId === '') return { kind: 'absent' }
+    return { kind: 'value', value: { from: 'depot', gearId } }
+  }
+  if (source['from'] === 'trip_only') {
+    const name = source['name']
+    const container = source['container']
+    if (typeof container !== 'boolean') return { kind: 'absent' }
+    if (name !== null && typeof name !== 'string') return { kind: 'absent' }
+    return { kind: 'value', value: { from: 'trip_only', name, container } }
+  }
+  return { kind: 'absent' }
 }

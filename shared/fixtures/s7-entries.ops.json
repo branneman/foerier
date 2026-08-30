@@ -1,0 +1,197 @@
+[
+  {
+    "id": "77777777-0000-7000-8000-000000000001",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.created",
+    "hlc": "2026-08-30T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "S7 Fixture Trip"
+    },
+    "seq": 1,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-000000000002",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.participant_added",
+    "hlc": "2026-08-30T09:01:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "person_id": "p-s7-1"
+    },
+    "seq": 2,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-000000000003",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.participant_added",
+    "hlc": "2026-08-30T09:02:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "person_id": "p-s7-2"
+    },
+    "seq": 3,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-000000000004",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s7-tent",
+    "type": "gear.recorded",
+    "hlc": "2026-08-30T09:03:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Tent",
+      "container": true,
+      "kind": "counted",
+      "owned_count": 2
+    },
+    "seq": 4,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-000000000005",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s7-per-person",
+    "type": "gear.recorded",
+    "hlc": "2026-08-30T09:04:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Sleeping bag",
+      "container": false,
+      "kind": "per_person"
+    },
+    "seq": 5,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-000000000006",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s7-out-of-order",
+    "type": "gear.recorded",
+    "hlc": "2026-08-30T09:05:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Camp stove",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 6,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-000000000007",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-08-30T09:06:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s7-depot",
+      "source": { "from": "depot", "gear_id": "g-s7-tent" }
+    },
+    "seq": 7,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-000000000008",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-08-30T09:07:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s7-trip-only",
+      "source": { "from": "trip_only", "name": null, "container": false }
+    },
+    "seq": 8,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-000000000009",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-08-30T09:08:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s7-malformed",
+      "source": { "from": "elsewhere", "gear_id": "g1" }
+    },
+    "seq": 9,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-00000000000a",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-08-30T09:09:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s7-per-person",
+      "source": { "from": "depot", "gear_id": "g-s7-per-person" }
+    },
+    "seq": 10,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-00000000000b",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.entry_bring_count_set",
+    "hlc": "2026-08-30T09:10:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s7-per-person",
+      "count": 2
+    },
+    "seq": 11,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-00000000000c",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.entry_removed",
+    "hlc": "2026-08-30T09:11:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s7-out-of-order"
+    },
+    "seq": 12,
+    "received_at": "2026-08-30T10:00:00Z"
+  },
+  {
+    "id": "77777777-0000-7000-8000-00000000000d",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s7-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-08-30T09:12:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s7-out-of-order",
+      "source": { "from": "depot", "gear_id": "g-s7-out-of-order" }
+    },
+    "seq": 13,
+    "received_at": "2026-08-30T10:00:00Z"
+  }
+]
