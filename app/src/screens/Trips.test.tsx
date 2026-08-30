@@ -153,10 +153,11 @@ describe('the Trips screen', () => {
   it('hangs the FAB after the screen, as the last thing in the main area', async () => {
     renderTrips(await seeded())
 
-    // The button is `position: sticky`, so where it comes to rest is where
-    // flow puts it — the foot of the shell's main area, whose bottom edge is
-    // the tab bar's top edge (`ui/styles/layout.css` puts the two in adjacent
-    // grid rows). Inside `.screen` it would rest at the end of that element's
+    // `sticky` references the scrollport while the button floats, but where it
+    // comes to *rest* is where flow puts it — the foot of the shell's main
+    // area, whose bottom edge is the tab bar's top edge (`ui/styles/layout.css`
+    // puts the two in adjacent grid rows) and whose bottom padding is the
+    // clearance. Inside `.screen` it would rest at the end of that element's
     // content box instead, which the screen's own padding moves.
     //
     // The arrangement predates the sticky mechanism: `.screen` declares
@@ -426,19 +427,29 @@ describe('the offset that keeps the FAB clear of the tab bar', () => {
     // with it instead of drifting under it" (`docs/design/README.md` §5).
     //
     // A constant cannot follow a `min-height`, and neither can a custom
-    // property restating it. So the button is a flow sibling parked at the
-    // foot of the main area by an auto block margin and lifted off the bottom
-    // edge by `position: sticky` — the bar's height is not written down
-    // anywhere, and the main area's bottom edge is the bar's top edge.
+    // property restating it, so two separate facts stand in for it and
+    // `--fab-clearance` is all either one names. **Where it rests:** an auto
+    // block margin parks the button at the foot of the main area, whose own
+    // bottom padding is that clearance and whose bottom edge is the bar's top
+    // edge. **Where it floats:** `position: sticky` references the scrollport,
+    // so `bottom` is the gap from the bottom of the viewport — correct only
+    // while the bar is unpinned, which `AppShell.test.tsx` states.
     const fab = /\.fab\s*\{[^}]*\}/.exec(css())?.[0] ?? ''
     expect(fab).toMatch(/position:\s*sticky/)
-    expect(fab).toMatch(/bottom:\s*1\.125rem/)
+    expect(fab).toMatch(/bottom:\s*var\(--fab-clearance\)/)
     expect(fab).toMatch(/margin-block-start:\s*auto/)
+    // The inline inset is the main column's own right edge, never a viewport
+    // one — which is what keeps the button with the list at Roomy, where that
+    // column is capped and centred.
+    expect(fab).toMatch(/margin-inline-start:\s*auto/)
     expect(fab).not.toMatch(/position:\s*fixed/)
-    // The two numbers the old constant was made of. Neither may return: `74px`
-    // is `4.625rem` and the bar's minimum is `3.5rem`, which the width and
-    // height below are also spelled as — so the fence is on the offset alone.
-    expect(fab).not.toMatch(/bottom:[^;]*(?:4\.625rem|3\.5rem|56px|74px)/)
+    expect(fab).not.toMatch(/\bright:/)
+    // No literal may stand in for the clearance, the drawn 18px included:
+    // `74px` is `4.625rem` and the bar's minimum is `3.5rem`, which the width
+    // and height below also spell — so the fence is on the offset alone.
+    expect(fab).not.toMatch(
+      /bottom:[^;]*(?:4\.625rem|3\.5rem|1\.125rem|56px|74px)/,
+    )
   })
 
   it('leaves the last row uncovered without a clearance to maintain', () => {

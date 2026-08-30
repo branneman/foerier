@@ -18,6 +18,15 @@
   .shell {
     --gutter: var(--space-12);
     --nav-size: 0px;
+    /*
+     * The gap the boards draw between a screen's floating control and the
+     * bottom tab bar: 18px, which with the bar at its 56px `min-height` is
+     * the 74px the frames measure from the bottom edge. One number, read
+     * twice — by `.shell__main`'s foot, which is the gap where the control
+     * rests, and by the control's own `bottom`, which is the gap it keeps
+     * from the scrollport while it floats.
+     */
+    --fab-clearance: 1.125rem;
 
     display: grid;
     grid-template-rows: auto 1fr auto;
@@ -25,20 +34,26 @@
   }
 
   /*
-   * A column, and that is load-bearing beyond the screen it holds. Below
-   * Split the main area is the middle of three rows and the bottom tab bar is
-   * the third, so the main area's bottom edge *is* the bar's top edge — and a
-   * screen that draws a floating control renders it as a sibling after the
-   * screen with `margin-block-start: auto`, which parks it at that edge on a
-   * page shorter than the viewport. An auto block margin absorbs free space
-   * only in a flex or grid container; in a block container it resolves to zero
-   * (`docs/design/README.md` §5).
+   * A column, and that is load-bearing beyond the screen it holds. A screen
+   * that draws a floating control (`Depot`, `Trips`) renders it as a sibling
+   * after the screen with `margin-block-start: auto`, which parks it at the
+   * foot of this box on a page shorter than the viewport — an auto block
+   * margin absorbs free space only in a flex or grid container, and resolves
+   * to zero in a block one.
+   *
+   * The foot is where the control comes to rest, so this box's own bottom
+   * padding *is* the gap the boards draw between that control and the bottom
+   * tab bar. Below Split the main area is the middle of three rows and the bar
+   * is the third, so the box's bottom edge is the bar's top edge and a bar
+   * grown by a large user font size takes its height out of the `1fr` row
+   * between them, carrying the control up. That is why the gap is written here
+   * and not as a distance from the viewport (`docs/design/README.md` §5).
    */
   .shell__main {
     display: flex;
     flex-direction: column;
     padding-inline: var(--gutter);
-    padding-block: var(--space-16);
+    padding-block: var(--space-16) var(--fab-clearance);
   }
 
   @media (min-width: 30em) {

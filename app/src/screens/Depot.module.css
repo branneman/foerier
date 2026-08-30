@@ -27,13 +27,30 @@
     align-items: center;
   }
 
+  /*
+   * Two lines while the pane is under 40rem: the title and the add control on
+   * the first, the search full width beneath. That is what `Depot split`
+   * draws in the 308px list pane — and on a phone, where the add control is a
+   * FAB and the headline is desktop-only, it is the title over the search it
+   * has always been.
+   *
+   * Grid rather than a wrapper element, so the DOM order stays the one the
+   * wide row wants — title, headline, search, add — and only the placement
+   * changes. `.headline` is given no area because it is rendered at Desktop
+   * alone, where the wide template below has replaced this one.
+   */
   .titleRow {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'title add'
+      'search search';
+    align-items: center;
     gap: var(--space-12);
   }
 
   .title {
+    grid-area: title;
     font: var(--text-display) var(--font-display);
     font-weight: 700;
     color: var(--color-ink-primary);
@@ -48,6 +65,7 @@
   }
 
   .search {
+    grid-area: search;
     width: 100%;
     min-height: max(3rem, 48px);
     padding-inline: var(--space-16);
@@ -103,31 +121,44 @@
   /*
    * **The bar's height is not written down here.** It cannot be: the bar is
    * `min-height: max(3.5rem, 56px)`, so a large user font size grows it and
-   * any constant offset drifts under it (`docs/design/README.md` §5). Instead
-   * the button is a flow sibling at the end of the shell's main area, whose
-   * bottom edge is the bar's top edge — below Split `ui/styles/layout.css`
-   * puts the two in adjacent grid rows, and a taller bar takes its height out
-   * of the `1fr` row between them. `margin-block-start: auto` parks the button
-   * there on a list shorter than the screen; `position: sticky` lifts it 18px
-   * off the bottom edge while the list is longer and the reader is part-way
-   * down it.
+   * any constant offset drifts under it (`docs/design/README.md` §5). Two
+   * separate facts stand in for it, and `--fab-clearance` — the drawn 18px,
+   * defined once in `ui/styles/layout.css` — is all either of them names.
+   *
+   * 1. **Where it rests.** The button is a flow sibling at the end of the
+   *    shell's main area, parked at its foot by `margin-block-start: auto`.
+   *    Below Split that box's bottom edge is the bar's top edge, and its own
+   *    bottom padding is the clearance — so a taller bar takes its height out
+   *    of the `1fr` row between them and carries the button up with it.
+   * 2. **Where it floats.** `position: sticky` references the **scrollport**,
+   *    not the main area's edge: `bottom` is the gap kept from the bottom of
+   *    the viewport while the reader is part-way down a longer list. Reading
+   *    the same property is what makes the two states one gap.
+   *
+   * **Standing condition — the tab bar is not pinned.** It is grid row 3 of a
+   * page that scrolls whole, so mid-scroll there is nothing in the bottom 18px
+   * for this to clear. Pin `.nav-tabs` and the button lands behind it: the
+   * floating offset would then have to be the bar's height plus the clearance,
+   * which is exactly the sum no constant can state.
    *
    * `margin-inline-start: auto` rather than a `right` offset, so the button
    * rides the main area's own right edge — at Roomy that column is centred and
    * capped at 45rem, where a viewport offset detaches the button from the list
-   * it belongs to.
+   * it belongs to. The inset is then the shell's gutter rather than a literal
+   * 16px, which is a departure at Compact, recorded in
+   * `docs/design/README.md` §5.
    *
    * Rendered as a **sibling** of `.screen`, never inside it: its resting place
-   * is the foot of the main area, and inside `.screen` it would rest at the
-   * end of that element's content box instead. (The arrangement predates the
-   * sticky mechanism — `.screen` declares `container-type`, which makes it the
-   * containing block for a *fixed* descendant. A sticky box positions against
-   * the scrollport and is not caught by that.) `Depot.tsx` carries the same
-   * note, and `Trips` the same arrangement.
+   * has to be the foot of the main area, and inside `.screen` it would rest at
+   * the end of that element's content box instead. (The arrangement predates
+   * the sticky mechanism — `.screen` declares `container-type`, which makes it
+   * the containing block for a *fixed* descendant. A sticky box positions
+   * against the scrollport and is not caught by that.)
+   * `Depot.tsx` carries the same note, and `Trips` the same arrangement.
    */
   .fab {
     position: sticky;
-    bottom: 1.125rem;
+    bottom: var(--fab-clearance);
     margin-block-start: auto;
     margin-inline-start: auto;
     display: flex;
@@ -143,17 +174,22 @@
     text-decoration: none;
   }
 
-  /* ---- Roomy 540: the title row stops stacking, prose stops sprawling ---- */
-  @media (min-width: 40em) {
+  /*
+   * ---- 40rem of pane: the title row stops stacking ----
+   *
+   * A **container** query, not a media query: which line each control sits on
+   * is how what exists lays out (`frontend-design.md` §3.2), and the two
+   * differ where it matters — at Split the Depot is the 308px list pane at a
+   * viewport of 900, so a width query would give it the desktop row and
+   * squeeze the search field to nothing between the title and the button.
+   * `.main` is the container both this and the row folds resolve against.
+   */
+  @container (min-width: 40rem) {
     .titleRow {
+      display: flex;
       flex-direction: row;
       align-items: center;
       gap: var(--space-16);
-      /* The row is a title, a search field and — from Split up — the add
-         control, and at Split the Depot is the 308px list pane rather than
-         the full width this query is asking about. Wrapping is what keeps the
-         search field from being squeezed to nothing there. */
-      flex-wrap: wrap;
     }
 
     .search {
@@ -211,6 +247,7 @@
   }
 
   .addButton {
+    grid-area: add;
     display: inline-flex;
     align-items: center;
     min-height: max(2.5rem, 40px);

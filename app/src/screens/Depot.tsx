@@ -313,11 +313,12 @@ export function Depot({ selectedId }: DepotProps = {}) {
       </div>
 
       {!isSplit && (
-        // **Outside `.screen`, and that is load-bearing.** The button is
-        // `position: sticky`, so it comes to rest where flow puts it — and it
-        // has to rest at the foot of the shell's main area, whose bottom edge
-        // is the tab bar's top edge. Inside `.screen` it would rest at the end
-        // of that element's content box instead. The container `.screen`
+        // **Outside `.screen`, and that is load-bearing.** `sticky` references
+        // the scrollport while the button floats, but where it comes to *rest*
+        // is where flow puts it — and that has to be the foot of the shell's
+        // main area, whose bottom edge is the tab bar's top edge and whose
+        // bottom padding is the clearance. Inside `.screen` it would rest at
+        // the end of that element's content box instead. The container `.screen`
         // declares stays either way: it is what the list's own queries resolve
         // against. `Trips` has the same arrangement for the same reason.
         <Link href="/add" className={styles['fab']} aria-label="Add gear">

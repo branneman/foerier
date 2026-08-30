@@ -268,4 +268,34 @@ describe('the main area the shell hands a screen', () => {
       ),
     ).toMatch(/\.nav-tabs\s*\{[^}]*grid-row:\s*3/)
   })
+
+  it('sets its own foot to the clearance the button comes to rest in', () => {
+    // The resting gap is this padding and nothing else: the button's box ends
+    // where the main area's content box ends. Zero it and the button sits
+    // flush on the bar with every other assertion still green, which is why
+    // the number is fenced here rather than only at the button.
+    //
+    // 18px, so that with the bar at its 56px `min-height` the button's bottom
+    // edge is the 74px above the viewport's that the frames measure.
+    expect(layout()).toMatch(/--fab-clearance:\s*1\.125rem/)
+    expect(layout()).toMatch(
+      /\.shell__main\s*\{[^}]*padding-block:\s*var\(--space-16\) var\(--fab-clearance\)/,
+    )
+  })
+
+  it('leaves the tab bar unpinned, which the floating offset depends on', () => {
+    // The button floats `--fab-clearance` above the **scrollport**, not above
+    // the bar — sticky references the scrollport. That reads as 18px of
+    // clearance only because the bar is in flow and has scrolled away by
+    // then: nothing in `.nav-tabs` takes it out of flow. Pin it and the
+    // button lands behind it, and the offset has to become the bar's height
+    // plus the clearance — the sum this mechanism exists to avoid naming.
+    const shell = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'AppShell.module.css'),
+      'utf8',
+    )
+    expect(/\.nav-tabs\s*\{[^}]*\}/.exec(shell)?.[0] ?? '').not.toMatch(
+      /position:\s*(?:sticky|fixed)/,
+    )
+  })
 })

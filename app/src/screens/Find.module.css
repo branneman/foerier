@@ -4,8 +4,6 @@
     flex-direction: column;
     gap: var(--space-16);
     padding: var(--space-16);
-    /* 76px bottom clearance under the tab bar, matching Depot. */
-    padding-bottom: 4.75rem;
   }
 
   .header {
