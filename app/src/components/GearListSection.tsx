@@ -18,8 +18,9 @@ import styles from './GearListSection.module.css'
  * **The gear list's body** — the groups and rows both editable `/trips/:id`
  * (below Split) and read-only `/trips/:id` (Split and up) draw, spec §4.2
  * and `docs/design/README.md` §5's S7 round. `Trip.tsx` (Task 9) hosts it
- * between the over-claim band and the `GEAR LIST` section band; the builder
- * (Task 11) hosts it as the right pane. **Neither the dashed
+ * directly beneath the `GEAR LIST` section band, which itself sits beneath
+ * the over-claim band; the builder (Task 11) hosts it as the right pane.
+ * **Neither the dashed
  * `+ TRIP-ONLY ENTRY` row nor the pinned `+ Add from the depot` primary is
  * this component's** — both are drawn by whichever screen mounts it (plan
  * `progress.md` FINDING 2), because they sit *after* the list, not inside
@@ -104,8 +105,13 @@ function rowKind(entry: EntryState, state: DepotState): GroupKey {
 }
 
 /** `1 PIECE` / `2 PIECES` — spec §3.1: the count and its noun, formatted
- * together, never concatenated separately. */
-function pieceLabel(count: number): string {
+ * together, never concatenated separately. Exported: `Trip.tsx`'s `GEAR
+ * LIST` band renders its own `N PIECES` right beside this component's group
+ * headers (spec §4.2: "reads as their parent"), and two functions computing
+ * the same noun from two files would let the two disagree the moment either
+ * one's spelling changed — the `ownerOf`/phase-table failure mode
+ * (`CLAUDE.md`), restated for a formatter instead of a fold. */
+export function pieceLabel(count: number): string {
   return `${count} ${count === 1 ? 'PIECE' : 'PIECES'}`
 }
 

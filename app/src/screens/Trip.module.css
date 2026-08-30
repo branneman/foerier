@@ -405,14 +405,20 @@
     }
   }
 
-  /* `GEAR LIST` left, the count right, `EDIT LIST ›` trailing from Split up —
-     `GearListSection.module.css`'s `.groupHeader`/`.groupLabel`/`.groupCount`
-     verbatim, so this band reads as their parent rather than a different
-     kind of heading (spec §4.2). */
+  /* `GEAR LIST` left, `N ENTRIES · N PIECES` (plus, from Split up,
+     `EDIT LIST ›`) right — `GearListSection.module.css`'s `.groupHeader`
+     verbatim, `justify-content: space-between` between exactly **two**
+     children, so this band reads as their parent rather than the one row on
+     the screen that doesn't line up with them. `EDIT LIST ›` cannot be a
+     third flex child of this row (review F1): `space-between` would then
+     spread the label, the count and the link across the row's full width,
+     stranding the count in the middle instead of beside the link — so the
+     count and the link are wrapped together in `.gearListTrailing`, the
+     board's own grouping at 1024. */
   .gearListBand {
     display: flex;
     align-items: baseline;
-    gap: var(--space-12);
+    justify-content: space-between;
     padding-block: var(--space-4);
     border-bottom: var(--stroke-rule) solid var(--color-rule-row);
   }
@@ -426,6 +432,16 @@
     color: var(--color-ink-muted);
   }
 
+  /* The count alone (below Split) or the count beside `EDIT LIST ›` (from
+     Split up) — one flex item either way, which is what `.gearListBand`'s
+     `space-between` needs to keep the two glued together on the trailing
+     edge rather than spread apart. */
+  .gearListTrailing {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-12);
+  }
+
   .gearListCount {
     font-family: var(--font-mono);
     font-size: 0.6875rem;
@@ -434,11 +450,7 @@
     color: var(--color-ink-faint);
   }
 
-  /* Pushed to the band's trailing edge by the row's own `gap`-then-`auto`
-     margin, the header row's own mechanism (`.deskHeader .participantRow`)
-     rather than a fourth flex property on the row itself. */
   .editList {
-    margin-left: auto;
     flex: none;
     border: 0;
     padding: 0;

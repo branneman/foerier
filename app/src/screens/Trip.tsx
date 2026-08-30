@@ -14,7 +14,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
-import { GearListSection } from '../components/GearListSection'
+import { GearListSection, pieceLabel } from '../components/GearListSection'
 import { OverClaimBand } from '../components/OverClaimBand'
 import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
@@ -595,29 +595,44 @@ export function Trip() {
           </p>
         </section>
       ) : (
-        <div className={styles['gearList']} data-testid="gear-list">
-          {/* `GEAR LIST` left, the count right, and from Split up a trailing
-              `EDIT LIST ›` — typography borrowed from `GearListSection`'s own
-              group bands (`GearListSection.module.css`'s `.groupHeader`), so
-              this one reads as their parent. */}
+        <div
+          className={styles['gearList']}
+          data-testid="gear-list"
+          // `GearListSection`'s own groups each carry `role="group"` +
+          // `aria-labelledby` (Task 8's review round) — without this, a
+          // screen-reader user hears four named groups with no named parent,
+          // the accessibility half of "reads as their parent" spec §4.2
+          // asks for visually.
+          role="group"
+          aria-labelledby="gear-list-label"
+        >
+          {/* `GEAR LIST` left, the count and (from Split up) `EDIT LIST ›`
+              wrapped together on the right — `justify-content: space-between`
+              between the two groups, exactly `GearListSection`'s own group
+              bands (`GearListSection.module.css`'s `.groupHeader`), so this
+              one reads as their parent rather than the one row on the screen
+              that doesn't line up with them. */}
           <div className={styles['gearListBand']} data-testid="gear-list-band">
-            <span className={styles['gearListLabel']}>GEAR LIST</span>
-            <span
-              className={styles['gearListCount']}
-              data-testid="gear-list-count"
-            >
-              {entryCountLabel(totals.entries)} ·{' '}
-              {pieceCountLabel(totals.pieces)}
+            <span id="gear-list-label" className={styles['gearListLabel']}>
+              GEAR LIST
             </span>
-            {!editable && (
-              <button
-                type="button"
-                className={styles['editList']}
-                onClick={handleEditList}
+            <span className={styles['gearListTrailing']}>
+              <span
+                className={styles['gearListCount']}
+                data-testid="gear-list-count"
               >
-                EDIT LIST ›
-              </button>
-            )}
+                {entryCountLabel(totals.entries)} · {pieceLabel(totals.pieces)}
+              </span>
+              {!editable && (
+                <button
+                  type="button"
+                  className={styles['editList']}
+                  onClick={handleEditList}
+                >
+                  EDIT LIST ›
+                </button>
+              )}
+            </span>
           </div>
           <GearListSection
             trip={trip}
@@ -678,20 +693,13 @@ export function Trip() {
   )
 }
 
-/** `1 ENTRY` / `2 ENTRIES` — `1 ENTRY STILL OPEN`'s own singular, restated for
- * the `GEAR LIST` band's count. `GearListSection.tsx`'s `pieceLabel` is the
- * house pattern this mirrors; the two live in different files because
- * `GearListSection` counts a group's pieces and this counts the whole
- * Trip's entries, and neither is the other's caller. */
+/** `1 ENTRY` / `2 ENTRIES` — `1 ENTRY STILL OPEN`'s own singular, restated
+ * for the `GEAR LIST` band's count. No shared function to call: `Entries`
+ * has no other formatter anywhere in the app, unlike `Pieces` (imported
+ * `pieceLabel`, below) — an Entry is this band's own noun, not one a group
+ * header also counts. */
 function entryCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'ENTRY' : 'ENTRIES'}`
-}
-
-/** `1 PIECE` / `2 PIECES` — `GearListSection.tsx`'s `pieceLabel`, restated
- * here for the same reason {@link entryCountLabel} is: the band's total and a
- * group's total are different numbers computed in different files. */
-function pieceCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'PIECE' : 'PIECES'}`
 }
 
 /**

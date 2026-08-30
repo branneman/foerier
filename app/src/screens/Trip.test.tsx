@@ -32,9 +32,10 @@ import { setViewport } from '../testSetup'
 import { Trip } from './Trip'
 
 /**
- * **The trip screen** — the `Gear list builder` board's header, built now,
- * with the two panes below it left to the slice that has a gear list to put
- * there.
+ * **The trip screen** — the `Gear list builder` board's header (S6), plus the
+ * gear list itself below it (S7): the region S6 left empty now edits below
+ * Split and reads from Split up, per
+ * `docs/specs/2026-08-29-the-gear-list.md` §4.2.
  *
  * A real store and the real reducer, seeded by emitting real ops, as every
  * screen test here does. The assertions that matter most read the **log**
@@ -258,6 +259,33 @@ describe('the trip screen — the header the board draws', () => {
   })
 
   /**
+   * The state every *new* Trip opens in: below Split, empty, and editable.
+   * The add affordances sit outside the empty/non-empty ternary in
+   * `Trip.tsx` precisely so they survive both branches — this pins that they
+   * are not accidentally scoped to the non-empty one.
+   */
+  it('below Split: an empty list still offers the dashed row and the pinned button', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    const region = screen.getByTestId('gear-list')
+    expect(region).toHaveTextContent('0 ENTRIES.')
+    expect(region).toHaveTextContent('The gear list is built from the depot.')
+    expect(
+      screen.getByRole('button', {
+        name: '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: '+ Add from the depot' }),
+    ).toBeVisible()
+    // No `GEAR LIST` band and no `EDIT LIST ›`: those belong to the
+    // non-empty branch alone.
+    expect(screen.queryByTestId('gear-list-band')).toBeNull()
+    expect(screen.queryByText('EDIT LIST ›')).toBeNull()
+  })
+
+  /**
    * The redraw's centrepiece. Participants are gear detail's tag chips: the
    * circles are display, the dashed `+` is the one edit affordance on a read
    * surface, and neither is behind EDIT.
@@ -420,6 +448,30 @@ describe('the trip screen — the gear list (S7)', () => {
     )
   })
 
+  /**
+   * `entryCountLabel`/`pieceCountLabel`'s singular branch, unexercised until
+   * now: a Trip with exactly one Single Entry has one Entry and one Piece,
+   * so both nouns take their singular spelling — `1 ENTRY STILL OPEN`'s own
+   * rule, restated for this band.
+   */
+  it('singularises both nouns at exactly one', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+    )
+
+    expect(screen.getByTestId('gear-list-count')).toHaveTextContent(
+      '1 ENTRY · 1 PIECE',
+    )
+  })
+
   it('renders the groups with pluralised piece counts, omitting empty ones', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     await renderTrip(
@@ -542,10 +594,13 @@ describe('the trip screen — the gear list (S7)', () => {
     expect(band).toBeVisible()
     expect(band).toHaveTextContent('already claimed by Jura')
 
-    // "Between" is a claim about DOM order, not merely about presence.
-    const backLink = screen.getByRole('link', { name: '‹ TRIPS' })
+    // "Between" is a claim about DOM order, not merely about presence —
+    // and `‹ TRIPS` is the first element on the whole screen, so following it
+    // is nearly vacuous. Compare against the dates line instead: it is part
+    // of the S6 header content, genuinely above the gear list.
+    const dates = screen.getByTestId('trip-dates')
     expect(
-      backLink.compareDocumentPosition(band) & Node.DOCUMENT_POSITION_FOLLOWING,
+      dates.compareDocumentPosition(band) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     const gearListBand = screen.getByTestId('gear-list-band')
     expect(
@@ -673,7 +728,7 @@ describe('the trip screen — the gear list (S7)', () => {
     expect(await seed.authored()).toEqual([])
   })
 
-  it('does nothing yet from EDIT LIST, the dashed row or the pinned button', async () => {
+  it('does nothing yet from the dashed row or the pinned button, below Split', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const user = userEvent.setup()
     const seed = await renderTrip(
@@ -692,12 +747,40 @@ describe('the trip screen — the gear list (S7)', () => {
         name: '+ TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE',
       }),
     )
+    // Stronger than "authors nothing": `TripOnlySheet` (Task 12) is a Radix
+    // `Sheet`, whose `Dialog.Content` carries `role="dialog"` — mounting it
+    // would pass an assertion that only checks the heading, since Radix's
+    // overlay does not remove the page behind it from the DOM.
+    expect(screen.queryByRole('dialog')).toBeNull()
+
     await user.click(
       screen.getByRole('button', { name: '+ Add from the depot' }),
     )
 
     expect(await seed.authored()).toEqual([])
     // Neither control navigates: both routes are Tasks 10 and 12's to build.
+    expect(screen.getByRole('heading', { name: 'Alps 2026' })).toBeVisible()
+  })
+
+  it('does nothing yet from EDIT LIST, from Split up', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(SPLIT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      ...alps(),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'EDIT LIST ›' }))
+
+    expect(await seed.authored()).toEqual([])
+    // The route `/trips/:id/list` is Task 11's: no navigation away yet.
     expect(screen.getByRole('heading', { name: 'Alps 2026' })).toBeVisible()
   })
 })
