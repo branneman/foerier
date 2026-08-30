@@ -434,6 +434,13 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   `desktopCard` until it lands.
 - **Composites (`ui/`)** — `GearRow`, `TripCard`, `JourneyRail`,
   `WhereaboutsCard`, `LedgerList`. Presentational; take domain data as **props**.
+
+  **Only `GearRow` has moved so far** — `TripCard` and `WhereaboutsCard` are
+  still in `app/src/components/` with one caller each, and a second caller is
+  the bar `GearRow` cleared (`Depot`, `Find`) and `ExpiryChip` after it
+  (`InviteIssued`, `People`). `WhereaboutsCard` is props-in already and wants
+  nothing but that caller, but `TripCard` reads `useDepot` and would have to
+  lift that read to `Trips` before it could clear the hard rule above at all.
 - **Screens / containers (`app/`)** — read Zustand **selectors from `shared/`**,
   then hand plain data down to `ui/`.
 

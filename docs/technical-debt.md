@@ -78,6 +78,13 @@ items under thirty settled ones.
   `desktopCard` until the primitive lands.
   [`frontend-design.md`](frontend-design.md) §5, anchor:
   `§4a's desktop tag picker is approximated by`
+- **Two of §5's `ui/` composites are still in `app/`.** `TripCard` and
+  `WhereaboutsCard` are named there and live in `app/src/components/`, each with
+  one caller — and a second caller is the bar both moves so far have cleared
+  (`GearRow`, `ExpiryChip`). `WhereaboutsCard` wants only that caller;
+  `TripCard` reads the store, which §5's hard rule forbids in `ui/`, so it owes
+  a lifted read as well. [`frontend-design.md`](frontend-design.md) §5, anchor:
+  `` still in `app/src/components/` with one caller each ``
 - **`DepotState` is a misnomer** — it is the fold of everything, Trips included.
   The rename reaches `DepotStoreState`, `DepotProvider`, `useDepot`, `DepotView`
   and every screen in three workspaces; it was held back by S5 being in flight
