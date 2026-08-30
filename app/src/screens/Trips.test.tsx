@@ -163,8 +163,8 @@ describe('the Trips screen', () => {
     // The arrangement predates the sticky mechanism: `.screen` declares
     // `container-type`, which applies layout containment and so makes it the
     // containing block for a `position: fixed` descendant. That trap does not
-    // catch a sticky box — it positions against the scrollport — so this now
-    // stands on the flow reason above.
+    // catch a sticky box — it is offset against the scrollport, which here is
+    // the main area itself — so this now stands on the flow reason above.
     //
     // jsdom computes no layout, so the shape is what holds this — the same
     // argument the `@container` fences below are asserted on.
@@ -428,15 +428,22 @@ describe('the offset that keeps the FAB clear of the tab bar', () => {
     //
     // A constant cannot follow a `min-height`, and neither can a custom
     // property restating it. So the button is a flow sibling parked at the
-    // foot of the main area by an auto block margin and lifted off the bottom
-    // edge by `position: sticky` — the bar's height is not written down
-    // anywhere, and the main area's bottom edge is the bar's top edge. The
-    // 18px itself is `--fab-clearance`, said once in `ui/styles/layout.css`
-    // and read both by that foot, which is the gap the button rests in, and by
-    // this `bottom`, which is the gap it keeps while it floats.
+    // foot of the main area by an auto block margin and held there by
+    // `position: sticky` once the list is longer than the screen — the bar's
+    // height is not written down anywhere, and the main area's bottom edge is
+    // the bar's top edge.
+    //
+    // The 18px is `--fab-clearance` in `ui/styles/layout.css`, said once, as
+    // that foot's own padding. This `bottom` is `0` because the main area is
+    // the scroll container the sticky box is offset against, and the offset is
+    // resolved against the scrollport inset by that padding: an inset here is
+    // *added* to the gap rather than restating it. Measured in Chromium,
+    // `bottom: var(--fab-clearance)` against an 18px foot floats the button
+    // 36px above the bar.
     const fab = /\.fab\s*\{[^}]*\}/.exec(css())?.[0] ?? ''
     expect(fab).toMatch(/position:\s*sticky/)
-    expect(fab).toMatch(/bottom:\s*var\(--fab-clearance\)/)
+    expect(fab).toMatch(/bottom:\s*0;/)
+    expect(fab).not.toMatch(/bottom:[^;]*--fab-clearance/)
     expect(fab).toMatch(/margin-block-start:\s*auto/)
     // The inline inset is the main column's own right edge, never a viewport
     // one — which is what keeps the button with the list at Roomy, where that

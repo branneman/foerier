@@ -126,15 +126,19 @@
    * bottom edge is the bar's top edge — below Split `ui/styles/layout.css`
    * puts the two in adjacent grid rows, and a taller bar takes its height out
    * of the `1fr` row between them. `margin-block-start: auto` parks the button
-   * there on a list shorter than the screen; `position: sticky` lifts it 18px
-   * off the bottom edge while the list is longer and the reader is part-way
-   * down it.
+   * at that foot on a list shorter than the screen; `position: sticky` holds
+   * it there while the list is longer and the reader is part-way down it.
    *
-   * **The 18px is `--fab-clearance`, said once** (`ui/styles/layout.css`) and
-   * read twice: by the main area's own bottom padding, which is the gap the
-   * button comes to rest in, and by this `bottom`, which is the gap it keeps
-   * while it floats. With the bar at its 56px `min-height` that resting gap is
-   * the 74px the frames measure — without 56 being written anywhere.
+   * **`bottom: 0`, because the 18px is already in the foot.** The main area is
+   * the shell's scroll container, so it is the scrollport this sticky box is
+   * offset against — and a sticky inset is resolved against that scrollport
+   * *reduced by the container's own padding*, which is where the 18px lives.
+   * An inset here would be added to it, not restate it: measured in Chromium,
+   * `bottom: var(--fab-clearance)` against an 18px foot floats the button 36px
+   * above the bar. Zero makes the floating gap the same 18px the resting gap
+   * is, and keeps the number said exactly once — `--fab-clearance`,
+   * `ui/styles/layout.css`. With the bar at its 56px `min-height` that gap is
+   * the 74px the frames measure, without 56 being written anywhere.
    *
    * `margin-inline-start: auto` rather than a `right` offset, so the button
    * rides the main area's own right edge — at Roomy that column is centred and
@@ -147,13 +151,14 @@
    * is the foot of the main area, and inside `.screen` it would rest at the
    * end of that element's content box instead. (The arrangement predates the
    * sticky mechanism — `.screen` declares `container-type`, which makes it the
-   * containing block for a *fixed* descendant. A sticky box positions against
-   * the scrollport and is not caught by that.) `Depot.tsx` carries the same
+   * containing block for a *fixed* descendant. A sticky box is offset against
+   * the scrollport, which here is the main area itself, and is not caught by
+   * that.) `Depot.tsx` carries the same
    * note, and `Trips` the same arrangement.
    */
   .fab {
     position: sticky;
-    bottom: var(--fab-clearance);
+    bottom: 0;
     margin-block-start: auto;
     margin-inline-start: auto;
     display: flex;

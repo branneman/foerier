@@ -21,19 +21,44 @@
     /*
      * The gap the boards draw between a screen's floating control and the
      * bottom tab bar: 18px, which with the bar at its 56px `min-height` is
-     * the 74px the frames measure from the bottom edge. One number, read
-     * twice — by `.shell__main`'s foot, which is the gap where the control
-     * rests, and by the control's own `bottom`, which is the gap it keeps
-     * from the scrollport while it floats.
+     * the 74px the frames measure from the bottom edge.
+     *
+     * **Said once, and read once** — by `.shell__main`'s foot below. That one
+     * padding is the gap in both of the control's states, because the main
+     * area is the scroll container the control is sticky against: a sticky
+     * inset is resolved against the scrollport reduced by that padding, so an
+     * inset on the control is *added* to it rather than restating it.
+     * Measured in Chromium: with an 18px foot, `bottom: 18px` floats the
+     * control 36px above the bar and `bottom: 0` floats it at the drawn 18.
+     * The control therefore carries the zero and this is the only place the
+     * number appears (`docs/design/README.md` §5).
      */
     --fab-clearance: 1.125rem;
 
     display: grid;
     grid-template-rows: auto 1fr auto;
-    min-height: 100svh;
+    /*
+     * **One viewport, exactly — the shell does not scroll, the screen does.**
+     * A `min-height` lets the grid grow with its content, which takes every
+     * row down the page with it: on a list longer than the viewport the bottom
+     * tab bar leaves the thumb zone the boards draw it in, and from Split up
+     * the nav column's pinned foot — ACCOUNT, then the sync marker — ends up
+     * at the bottom of the document rather than the bottom of the screen. A
+     * fixed height plus a scrolling `.shell__main` is what pins all three.
+     *
+     * `svh` rather than `dvh`, and not only for consistency with the sheets'
+     * `max-height`: with an inner element scrolling, a mobile browser's
+     * toolbars never retract, so the small viewport *is* the viewport and a
+     * dynamic unit would only chase a transition that never happens.
+     */
+    height: 100svh;
   }
 
   /*
+   * **The shell's scroll container**, which is the whole of the pinning: the
+   * phone header is row 1 and the tab bar is row 3, neither is inside this
+   * box, so neither can move while a screen scrolls.
+   *
    * A column, and that is load-bearing beyond the screen it holds. A screen
    * that draws a floating control (`Depot`, `Trips`) renders it as a sibling
    * after the screen with `margin-block-start: auto`, which parks it at the
@@ -41,17 +66,21 @@
    * margin absorbs free space only in a flex or grid container, and resolves
    * to zero in a block one.
    *
-   * The foot is where the control comes to rest, so this box's own bottom
-   * padding *is* the gap the boards draw between that control and the bottom
-   * tab bar. Below Split the main area is the middle of three rows and the bar
-   * is the third, so the box's bottom edge is the bar's top edge and a bar
-   * grown by a large user font size takes its height out of the `1fr` row
+   * The foot is where the control comes to rest, and — this box being the
+   * scrollport — also the gap it keeps while it floats, so this box's own
+   * bottom padding *is* the gap the boards draw between that control and the
+   * bottom tab bar. Below Split the main area is the middle of three rows and
+   * the bar is the third, so the box's bottom edge is the bar's top edge and a
+   * bar grown by a large user font size takes its height out of the `1fr` row
    * between them, carrying the control up. That is why the gap is written here
-   * and not as a distance from the viewport (`docs/design/README.md` §5).
+   * and not as a distance from the viewport (`docs/design/README.md` §5). It
+   * is also the breathing room every screen gets above the bar at the end of
+   * its own scroll, control or no control.
    */
   .shell__main {
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
     padding-inline: var(--gutter);
     padding-block: var(--space-16) var(--fab-clearance);
   }
@@ -99,15 +128,16 @@
   }
 
   /*
-   * The signed-out shell keeps one structure across all five modes; the
+   * The signed-out shell keeps one structure across all five modes and the
    * layout ladder applies to signed-in surfaces only
-   * (`docs/design/README.md` §8).
+   * (`docs/design/README.md` §8) — but it is not this file's business:
+   * `SignIn`, `Join` and `NoPasskey` render outside `AppShell` entirely and
+   * each centres itself in its own module. A `.shell--signed-out` modifier
+   * stood here describing a shape nothing ever wore, and it is gone rather
+   * than carried: with the shell now a fixed height, a rule that resets its
+   * rows for a class no element carries is a claim about the shell that
+   * nothing backs.
    */
-  .shell--signed-out {
-    grid-template-rows: 1fr;
-    grid-template-columns: 1fr;
-    place-items: center;
-  }
 
   @media print {
     .shell__nav {

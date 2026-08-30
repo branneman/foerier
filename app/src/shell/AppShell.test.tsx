@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -225,12 +225,13 @@ describe('AppShell — the account affordance', () => {
 })
 
 /**
- * The main area is where a screen's floating control comes to rest, so two of
- * its properties are load-bearing outside this file (`docs/design/README.md`
- * §5). jsdom computes no layout and applies no stylesheet, so the source is
- * the only place they can be held.
+ * The shell stays put and the screen scrolls inside it. Two facts hang off
+ * that — the tab bar is in the thumb zone on the app's longest list, and the
+ * main area's foot is where a screen's floating control comes to rest
+ * (`docs/design/README.md` §5). jsdom computes no layout and applies no
+ * stylesheet, so the source is the only place either can be held.
  */
-describe('the main area the shell hands a screen', () => {
+describe('the shell that stays put while a screen scrolls', () => {
   const layout = (): string =>
     readFileSync(
       join(
@@ -239,6 +240,22 @@ describe('the main area the shell hands a screen', () => {
       ),
       'utf8',
     )
+
+  it('is exactly one viewport tall, so nothing outside the screen scrolls away', () => {
+    // A `min-height` lets the grid grow with its content, which takes every
+    // row down the page with it: on a list longer than the viewport the tab
+    // bar leaves the thumb zone entirely, and from Split up the nav column's
+    // pinned foot — ACCOUNT, then the sync line — ends up at the bottom of
+    // the document rather than the bottom of the screen.
+    expect(layout()).toMatch(/\.shell\s*\{[^}]*height:\s*100svh/)
+    expect(layout()).not.toMatch(/\.shell\s*\{[^}]*min-height:/)
+  })
+
+  it('scrolls the main area rather than the document', () => {
+    // This is the whole of the pinning: rows 1 and 3 are not inside this box,
+    // so they cannot move while it scrolls.
+    expect(layout()).toMatch(/\.shell__main\s*\{[^}]*overflow-y:\s*auto/)
+  })
 
   it('is a column, so a control after the screen can be parked at its foot', () => {
     // `Depot`'s and `Trips`' add button is a flow sibling of the screen with
@@ -269,11 +286,13 @@ describe('the main area the shell hands a screen', () => {
     ).toMatch(/\.nav-tabs\s*\{[^}]*grid-row:\s*3/)
   })
 
-  it('sets its own foot to the clearance the button comes to rest in', () => {
-    // The resting gap is this padding and nothing else: the button's box ends
-    // where the main area's content box ends. Zero it and the button sits
-    // flush on the bar with every other assertion still green, which is why
-    // the number is fenced here rather than only at the button.
+  it('sets its own foot to the clearance, which is now the only place it is said', () => {
+    // The main area is the scrollport, so this padding is the gap in both of
+    // the button's states — the one it rests in, and the one it floats at.
+    // Zero it and the button sits flush on the bar with every other assertion
+    // still green, which is why the number is fenced here rather than at the
+    // button, whose own `bottom` is `0` (`Depot.module.css` explains why an
+    // inset there would be added to this padding rather than restate it).
     //
     // 18px, so that with the bar at its 56px `min-height` the button's bottom
     // edge is the 74px above the viewport's that the frames measure.
@@ -281,5 +300,72 @@ describe('the main area the shell hands a screen', () => {
     expect(layout()).toMatch(
       /\.shell__main\s*\{[^}]*padding-block:\s*var\(--space-16\) var\(--fab-clearance\)/,
     )
+  })
+})
+
+/**
+ * The document scroller reset itself on every navigation. A scroll container
+ * that outlives the route does not — so a reader part-way down a two-hundred
+ * item Depot who opens a gear would land part-way down the gear's screen.
+ *
+ * One place says it, for every screen: this is a shell concern, and a rule
+ * spelled per screen is one chance per screen to spell it differently
+ * (`useScreenHeader`'s own reason, `frontend-design.md` §3.3).
+ */
+describe('the scroll position across a route change', () => {
+  function watchMainScroll(): { get: () => number } {
+    const main = screen.getByRole('main')
+    let scrollTop = 420
+    Object.defineProperty(main, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTop,
+      set: (next: number) => {
+        scrollTop = next
+      },
+    })
+    return { get: () => scrollTop }
+  }
+
+  it('returns the main area to the top when the route changes', () => {
+    const location = memoryLocation({ path: '/', record: true })
+    render(
+      <Router hook={location.hook}>
+        <AppShell>
+          <p>screen</p>
+        </AppShell>
+      </Router>,
+    )
+
+    const scroll = watchMainScroll()
+    act(() => {
+      location.navigate('/trips')
+    })
+
+    expect(scroll.get()).toBe(0)
+  })
+
+  it('leaves it alone when the shell re-renders on the same route', () => {
+    // The engine reports a new status every few seconds and the shell draws
+    // it. Resetting on a re-render would jump the list under the reader's
+    // thumb while they are half-way down it.
+    const location = memoryLocation({ path: '/', record: true })
+    const { rerender } = render(
+      <Router hook={location.hook}>
+        <AppShell syncLine="OFFLINE" syncTone="unreachable">
+          <p>screen</p>
+        </AppShell>
+      </Router>,
+    )
+
+    const scroll = watchMainScroll()
+    rerender(
+      <Router hook={location.hook}>
+        <AppShell syncLine="SYNCED 14:32" syncTone="reachable">
+          <p>screen</p>
+        </AppShell>
+      </Router>,
+    )
+
+    expect(scroll.get()).toBe(420)
   })
 })

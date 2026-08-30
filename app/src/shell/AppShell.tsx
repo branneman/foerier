@@ -1,6 +1,6 @@
 import { IconDepot, IconFind, IconTrips, Logo, Mark } from '@foerier/ui'
-import type { ReactNode } from 'react'
-import { Link, useRoute } from 'wouter'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { Link, useLocation, useRoute } from 'wouter'
 
 import styles from './AppShell.module.css'
 import { DESKTOP, SPLIT, useMediaQuery } from './useMediaQuery'
@@ -256,6 +256,27 @@ export function AppShell({
   const isDesktop = useMediaQuery(DESKTOP)
   const mode: NavMode = isDesktop ? 'sidebar' : isSplit ? 'rail' : 'tabs'
 
+  const [location] = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
+
+  // The main area is the shell's scroll container (`ui/styles/layout.css`),
+  // and it outlives the route: nothing unmounts it, so its scroll offset is
+  // carried into whatever the next route renders. A reader part-way down a
+  // two-hundred-item Depot who opens a gear would land part-way down the
+  // gear's screen. The document scroller this replaced reset itself, so there
+  // was nothing to say — and one place says it now, rather than each screen,
+  // for `useScreenHeader`'s reason (`frontend-design.md` §3.3): a rule spelled
+  // per screen is one chance per screen to spell it differently.
+  //
+  // Top on every change, never a restore. Restoring is per history entry, not
+  // per path, and nothing here holds history entries — so at Split, where the
+  // Depot list and the gear detail share this one scroller, picking a gear
+  // does take the list back to its top.
+  useEffect(() => {
+    const main = mainRef.current
+    if (main !== null) main.scrollTop = 0
+  }, [location])
+
   return (
     <div className="shell">
       {/* Below Split the sync line is the header. From Split up it moves into
@@ -268,7 +289,9 @@ export function AppShell({
         </header>
       )}
 
-      <main className="shell__main">{children}</main>
+      <main className="shell__main" ref={mainRef}>
+        {children}
+      </main>
 
       <nav
         className={`${styles['nav']} ${styles[`nav-${mode}`]} shell__nav`}
