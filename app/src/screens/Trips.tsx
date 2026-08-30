@@ -1,4 +1,5 @@
 import {
+  listTotals,
   tripLabel,
   tripPhaseMoved,
   tripSections,
@@ -99,9 +100,27 @@ export function Trips() {
   // section each Trip came out of. The variant travels with the Trip rather
   // than being asked for again at the card: `isActive` is the only definition
   // of active-ness in the codebase and `tripSections` has already asked it.
-  const cards: readonly { trip: TripState; variant: 'active' | 'planned' }[] = [
-    ...sections.active.map((trip) => ({ trip, variant: 'active' as const })),
-    ...sections.planned.map((trip) => ({ trip, variant: 'planned' as const })),
+  //
+  // `entryCount` rides along the same way: `TripCard` does not call
+  // `listTotals` itself (§5's `ui/` rule against a component reading the
+  // store, and the card already owes one such read for `participants` —
+  // `technical-debt.md`), so the screen reads it once per Trip and hands
+  // down the number.
+  const cards: readonly {
+    trip: TripState
+    variant: 'active' | 'planned'
+    entryCount: number
+  }[] = [
+    ...sections.active.map((trip) => ({
+      trip,
+      variant: 'active' as const,
+      entryCount: listTotals(trip, state).entries,
+    })),
+    ...sections.planned.map((trip) => ({
+      trip,
+      variant: 'planned' as const,
+      entryCount: listTotals(trip, state).entries,
+    })),
   ]
   const nothing = cards.length === 0 && sections.closed.length === 0
 
@@ -132,7 +151,7 @@ export function Trips() {
           <>
             {cards.length > 0 && (
               <ul className={styles['cards']}>
-                {cards.map(({ trip, variant }) => (
+                {cards.map(({ trip, variant, entryCount }) => (
                   <li
                     key={trip.id}
                     className={styles['cardItem']}
@@ -142,6 +161,7 @@ export function Trips() {
                     <TripCard
                       trip={trip}
                       variant={variant}
+                      entryCount={entryCount}
                       onOpenPhase={() => setPhaseTripId(trip.id)}
                     />
                   </li>

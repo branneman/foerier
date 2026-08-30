@@ -27,6 +27,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { TripCard } from './TripCard'
 
 /**
@@ -105,12 +107,22 @@ function renderCard(
   { store, trip }: Seeded,
   variant: 'active' | 'planned',
   onOpenPhase: () => void = () => {},
+  // Defaults to 0 rather than being required: most of this file's tests are
+  // about the active card or about facts the count does not touch, and
+  // forcing every call site to spell out an irrelevant 0 would bury the ones
+  // that actually mean something.
+  entryCount = 0,
 ) {
   const location = memoryLocation({ path: '/trips', record: true })
   render(
     <Router hook={location.hook}>
       <DepotProvider value={store}>
-        <TripCard trip={trip()} variant={variant} onOpenPhase={onOpenPhase} />
+        <TripCard
+          trip={trip()}
+          variant={variant}
+          entryCount={entryCount}
+          onOpenPhase={onOpenPhase}
+        />
       </DepotProvider>
     </Router>,
   )
@@ -292,6 +304,22 @@ describe('the active trip card', () => {
     expect(opens).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+
+  it('carries no Continue pack-out and no BUILD LIST — S9s CTA, not built yet', async () => {
+    today(1)
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    renderCard(card, 'active')
+
+    // The rule that let `BUILD LIST ›` land on the Draft card is the same one
+    // that keeps `Continue pack-out` off the active one: a board's CTA copy
+    // lands on the slice that builds its destination, and the packing view is
+    // S9's.
+    expect(screen.queryByText(/Continue pack-out/i)).toBeNull()
+    expect(screen.queryByTestId('build-list-link')).toBeNull()
+  })
 })
 
 describe('the planned trip card', () => {
@@ -308,43 +336,88 @@ describe('the planned trip card', () => {
     expect(screen.getByTestId('trip-name')).toHaveTextContent('Vosges — Oct')
     expect(screen.getByTestId('trip-name').textContent).not.toContain('▸')
     expect(screen.getByTestId('phase-line')).toHaveTextContent(
-      'DRAFT · 0 GEAR LISTED',
+      'DRAFT · 0 ENTRIES',
     )
-    // The `0` is a fact today and stays true until S7 gives it something to
-    // count. The day count is not drawn: a Draft has not started anything.
+    // `0` is what `renderCard`'s own default hands down here; the next test
+    // proves the number is read from that prop and not fixed at 0.
     expect(screen.getByTestId('phase-chip').textContent).not.toContain('DAY')
     // The line lands on every non-closed card, drafts included. It shipped
-    // active-only, on the argument that it restates `0 GEAR LISTED`; that
+    // active-only, on the argument that it restates `0 ENTRIES`; that
     // redundancy is an accident of the count being zero and dies at
-    // `DRAFT · 14 GEAR LISTED`.
+    // `DRAFT · 14 ENTRIES`.
     expect(screen.getByTestId('trip-next')).toHaveTextContent(
       'NEXT — BUILD THE GEAR LIST',
     )
     expect(screen.getByTestId('trip-chevron')).toHaveTextContent('›')
   })
 
-  it('is tappable end to end, with its own chip carved out', async () => {
+  it('renders · N ENTRIES from the prop, not from a store read', async () => {
+    today(0)
+    // The store holds no `trip.entry_*` ops for this Trip at all — `TripCard`
+    // has no register or selector of its own that could produce `14`, so a
+    // phase line reading it can only be echoing the prop `Trips.tsx` computed
+    // with `listTotals` (spec §4.9's rule, and the debt note above it).
+    const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
+    renderCard(card, 'planned', () => {}, 14)
+
+    expect(screen.getByTestId('phase-line')).toHaveTextContent(
+      'DRAFT · 14 ENTRIES',
+    )
+  })
+
+  it('renders BUILD LIST › on a Draft card, as a control distinct from the chip', async () => {
+    today(0)
+    const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
+    renderCard(card, 'planned')
+
+    const buildList = screen.getByTestId('build-list-link')
+    expect(buildList).toHaveTextContent('BUILD LIST ›')
+    expect(buildList.tagName).toBe('A')
+    // Not the phase chip and not nested inside it or the surface link — three
+    // siblings, per the docstring's own rule.
+    expect(buildList).not.toBe(screen.getByTestId('phase-chip'))
+  })
+
+  it('is tappable end to end, with BUILD LIST as a second, visible link', async () => {
     today(0)
     const user = userEvent.setup()
     const opens = vi.fn()
     const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
     const location = renderCard(card, 'planned', opens)
 
-    // The board's `BUILD LIST ›` names the gear list builder, which is S7's,
-    // so the dashed card gets the interim affordance the active one gets: the
-    // `›`, and a card that is tappable end to end.
-    expect(screen.queryByText(/BUILD LIST/)).toBeNull()
+    // `OPEN ›` stays retired: the whole card is still one tap target, and now
+    // carries a second, visible one — `BUILD LIST ›`, discharging S6's
+    // stated debt now that the builder exists.
     expect(screen.queryByText(/OPEN/)).toBeNull()
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(1)
-    expect(links[0]).toHaveAccessibleName('Open Vosges — Oct')
-    expect(links[0]).toHaveAttribute('href', `/trips/${TRIP}`)
+    expect(links).toHaveLength(2)
+
+    const surface = screen.getByRole('link', { name: 'Open Vosges — Oct' })
+    expect(surface).toHaveAttribute('href', `/trips/${TRIP}`)
+
+    const buildList = screen.getByTestId('build-list-link')
+    // Below Split the trip screen is the editor, so both links agree.
+    expect(buildList).toHaveAttribute('href', `/trips/${TRIP}`)
 
     // The chip sits on its own line here rather than beside the name, and is
     // carved out of the target exactly as the active card's is.
     await user.click(screen.getByTestId('phase-chip'))
     expect(opens).toHaveBeenCalledTimes(1)
     expect(location.history).toEqual(['/trips'])
+  })
+
+  it('targets the builder route, with ?from=trips, from Split up', async () => {
+    today(0)
+    setViewport(SPLIT)
+    const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
+    renderCard(card, 'planned')
+
+    // `?from=trips` is the door `GearListBuilder.tsx` reads with
+    // `URLSearchParams` to draw `‹ TRIPS` rather than the Trip's own name.
+    expect(screen.getByTestId('build-list-link')).toHaveAttribute(
+      'href',
+      `/trips/${TRIP}/list?from=trips`,
+    )
   })
 
   it('states no next step for a phase this build has never heard of', async () => {

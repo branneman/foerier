@@ -8,6 +8,8 @@ import { Link } from 'wouter'
 
 import { useDepot } from '../depot/store'
 import { tripChip, tripDateRange, tripParticipants } from '../depot/trips'
+import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
+import { entryCountLabel } from './GearListSection'
 import styles from './TripCard.module.css'
 
 /**
@@ -23,15 +25,38 @@ import styles from './TripCard.module.css'
  * has one. It moves when S7 or S9 gives it a second — the same rule, applied
  * the same way rather than pre-empted (spec §4.1).
  *
- * ## No button, no verb link — the card itself is the target
+ * ## No button, no verb link — except where the destination now exists
  *
  * `OPEN ›` is retired. The board's reason, verbatim: it *"spent the system's
  * strongest element on its flattest verb and taught the accent button to mean
  * nothing"*. A board's CTA copy lands on the slice that builds its
  * destination — `BUILD LIST ›` with the builder, `Continue pack-out` with the
  * packing view — and until then the interim affordance is the closed row's own
- * `›` with the whole card tappable. When the accent button returns, it means
- * something.
+ * `›` with the whole card tappable.
+ *
+ * S7 builds the first of those two destinations, so the accent mono link
+ * returns on the **Draft card alone** (`docs/design/README.md` §5: `BUILD
+ * LIST ›` beats Components §06's bordered `Build gear list`). It is a second
+ * control, raised beside `.surface` exactly as the phase chip is — never
+ * nested inside the stretched link, for the same invalid-HTML-and-live-bug
+ * reason below — and its target follows the same width split as the trip
+ * screen's own `EDIT LIST ›` (`Trip.tsx`, spec §4.4): below Split the trip
+ * screen *is* the editor, so it leads to `/trips/:id`; from Split up the
+ * builder is, so it leads to `/trips/:id/list?from=trips` — the query
+ * `GearListBuilder.tsx` reads to draw `‹ TRIPS` rather than the Trip's own
+ * name. The active card keeps the interim affordance: `Continue pack-out`
+ * names S9's packing view, which does not exist yet, so nothing here invents
+ * it.
+ *
+ * **The link's accessible name is its visible text, `BUILD LIST ›`, and
+ * nothing more.** Every other verb control on this screen invents a
+ * per-Trip `aria-label` (`Open {label}`, `Reopen {label}`) because a list of
+ * identically-named controls is unnavigable by screen reader — the same
+ * argument applies here across two Draft cards, and is not settled by this
+ * task: the boards state the string this control carries and no more, and a
+ * disambiguating sentence is exactly the kind of copy this task was told to
+ * ask about rather than invent. Left as the literal board string; worth
+ * revisiting once the boards or a review states a preferred phrasing.
  *
  * ## The link and the chip are siblings, never nested
  *
@@ -50,9 +75,9 @@ import styles from './TripCard.module.css'
  * sits above it"*, which is why the full-weight variant puts the progress line
  * **under** it rather than in its place. It shipped
  * active-only, on the argument that `NEXT — BUILD THE GEAR LIST` restates
- * `DRAFT · 0 GEAR LISTED`; the board reverses that, because the redundancy is
- * an accident of the count being zero and *"dies at `DRAFT · 14 GEAR
- * LISTED`"*.
+ * `DRAFT · 0 ENTRIES`; the board reverses that, because the redundancy is
+ * an accident of the count being zero and *"dies at `DRAFT · 14 ENTRIES`"*
+ * (`docs/design/README.md` §5, restated in the noun S7 gives the count).
  *
  * So the line is asked for unconditionally, and `phaseNext`'s two nulls answer
  * for themselves: a **closed** Trip has nothing next, and an **unrecognised**
@@ -73,9 +98,18 @@ export interface TripCardProps {
   /**
    * Which section drew it — `tripSections`' own partition, never re-derived
    * here. `active` carries the `▸` glyph and the day count; `planned` is the
-   * dashed outline and carries `0 GEAR LISTED`.
+   * dashed outline and carries the entry count, plus `BUILD LIST ›`.
    */
   variant: 'active' | 'planned'
+  /**
+   * `listTotals(trip, state).entries` — the caller's own read, not this
+   * component's. `Trips.tsx` already reads the store for `tripSections`;
+   * this card reads it too, for `participants` (spec §4.1's own debt,
+   * `technical-debt.md`). Adding a second store read here for the count
+   * would deepen that debt rather than merely carry it, so the number
+   * arrives as a plain prop instead.
+   */
+  entryCount: number
   /**
    * The chip asks; the screen mounts the SET PHASE sheet. `ui/`'s primitives
    * have no `open` prop — mounted is open — so the caller writes
@@ -86,8 +120,14 @@ export interface TripCardProps {
   onOpenPhase: () => void
 }
 
-export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
+export function TripCard({
+  trip,
+  variant,
+  entryCount,
+  onOpenPhase,
+}: TripCardProps) {
   const state = useDepot((depot) => depot.state)
+  const isSplit = useMediaQuery(SPLIT)
 
   const label = tripLabel(trip)
   const participants = tripParticipants(state, trip)
@@ -99,6 +139,15 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
   const chip = tripChip(trip, Date.now())
 
   const next = phaseNext(trip)
+
+  // Below Split the trip screen *is* the editor (`Trip.tsx`); from Split up
+  // editing moves to the builder route, which reads its door from
+  // `?from=trips` (`GearListBuilder.tsx`'s own contract) to draw `‹ TRIPS`
+  // rather than the Trip's own name. A shell breakpoint, not a store read —
+  // it decides which route this link names, not a fact about the Trip.
+  const buildListHref = isSplit
+    ? `/trips/${trip.id}/list?from=trips`
+    : `/trips/${trip.id}`
 
   return (
     <article
@@ -153,12 +202,16 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
             {chip}
           </button>
           {variant === 'planned' && (
-            // The board's `DRAFT · 0 GEAR LISTED`, split so the chip's
+            // The board's `DRAFT · N ENTRIES`, split so the chip's
             // accessible name is the phase and nothing else: the count is a
             // fact about the gear list, not about the control that moves a
-            // Trip. The `0` is true today and stays true until S7 gives it
-            // something to count.
-            <span className={styles['listed']}> · 0 GEAR LISTED</span>
+            // Trip. `entryCountLabel` is the one function this noun is
+            // spelled in (`GearListSection.tsx`), shared with the trip
+            // screen's own `GEAR LIST` band and the builder's footer.
+            <span className={styles['listed']}>
+              {' '}
+              · {entryCountLabel(entryCount)}
+            </span>
           )}
         </span>
       </div>
@@ -219,6 +272,22 @@ export function TripCard({ trip, variant, onOpenPhase }: TripCardProps) {
         <p className={styles['next']} data-testid="trip-next">
           {next}
         </p>
+      )}
+
+      {variant === 'planned' && (
+        // The accent mono link the board names `BUILD LIST ›`
+        // (`docs/design/README.md` §5) — raised above `.surface` exactly as
+        // the phase chip is, so a tap here lands on this link and not on the
+        // whole-card `Open {label}` one underneath it. Its own control,
+        // never the phase chip's or the surface's: three siblings, never
+        // nested, for the reason above.
+        <Link
+          href={buildListHref}
+          className={styles['buildList']}
+          data-testid="build-list-link"
+        >
+          BUILD LIST ›
+        </Link>
       )}
     </article>
   )
