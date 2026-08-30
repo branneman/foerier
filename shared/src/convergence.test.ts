@@ -36,8 +36,10 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import type { OpEnvelope } from './ops.ts'
-import { overClaims } from './selectors/claim.ts'
+import { overClaims, overClaimsFor } from './selectors/claim.ts'
 import { containmentView } from './selectors/containment.ts'
+import { entriesOf } from './selectors/entry.ts'
+import { isActive } from './selectors/trip.ts'
 import type {
   EntrySource,
   KindValue,
@@ -112,8 +114,12 @@ const TRIP_IDS = [
 /**
  * S7's entries, sharing the same "small and shared" reasoning as every pool
  * above: with two Trips and three entry ids, two devices writing the same
- * `entries.<id>` register on the same Trip is the common case, not a rare
- * coincidence.
+ * `entries.<id>` register on the same Trip is meant to be more than a rare
+ * coincidence. This pool alone was not enough to get there — it took
+ * {@link arbTripEntrySpec} getting its own share of the trip budget rather
+ * than sitting as a flat, diluted branch beside S6's six. See that
+ * arbitrary's doc for the measured rate this pool and that split produce
+ * together.
  */
 const ENTRY_IDS = ['e1', 'e2', 'e3'] as const
 
@@ -304,25 +310,24 @@ const arbEntrySource: fc.Arbitrary<EntrySource> = fc.oneof(
 )
 
 /**
- * S6's six op types plus S7's three, nested under **one** weighted branch of
- * the outer `oneof` rather than spread across unweighted ones — so the trip
- * share is a number to set rather than a consequence of how many op types the
- * slice happened to add.
+ * S6's six op types, nested under **one** weighted branch of the outer
+ * `oneof` rather than spread across six unweighted ones — so the trip share
+ * is a number to set rather than a consequence of how many op types the slice
+ * happened to add.
  *
  * It is set to 4 in 19 (~21% of ops) because 1 in 16 was measured and found
  * too thin: over 200 runs it put trip ops in 6% of draws and left two devices
  * contesting one Trip register in **12** runs, against **~70** at this
- * weight. The obvious worry — that diluting the gear ops costs the
- * containment-cycle rate `arbResidence` is tuned for — was measured too and
- * is not real: cycles turn up in 5–15 runs per 200 with no trip ops at all
- * and 11–14 with these, which is seed noise either way. (That also puts
- * `arbResidence`'s "17" where it belongs — a single measurement from a
- * generator with fewer op types in it, not a floor to defend.) S7's three
- * entry ops share this same branch rather than getting one of their own,
- * for the identical reason: the trip share stays one number, not a
- * consequence of how many op types the Trip aggregate has accreted.
+ * weight (both figures from before S7 existed — see {@link arbTripEntrySpec}'s
+ * doc for the current, post-S7 numbers). The obvious worry — that diluting
+ * the gear ops costs the containment-cycle rate `arbResidence` is tuned
+ * for — was measured too and is not real: cycles turn up in 5–15 runs per 200
+ * with no trip ops at all and 11–14 with these, which is seed noise either
+ * way. (That also puts `arbResidence`'s "17" where it belongs — a single
+ * measurement from a generator with fewer op types in it, not a floor to
+ * defend.)
  */
-const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
+const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc.tuple(arbTripId, arbTripName).map(([id, name]) => tripCreated(id, name)),
   // Nullable, so the property exercises the clear as well as the write —
   // `personRenamed`'s rule on the seventh and eighth `name` rows.
@@ -344,6 +349,40 @@ const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbPersonId)
     .map(([id, personId]) => tripParticipantRemoved(id, personId)),
+)
+
+/**
+ * S7's three op types (§4.4). Kept as a **second arm alongside**
+ * {@link arbTripRootSpec} rather than folded in as a seventh through ninth
+ * flat branch of one nine-way `oneof` — a first draft did exactly that, and
+ * it was wrong. Flat inclusion cuts every branch's share from 1/6 of the trip
+ * budget to 1/9 (3.51% of all ops down to 2.34%), and because a specific
+ * `(tripId, entryId)` pair is a further 1-in-6 slice of *that* (`TRIP_IDS` has
+ * two members, `ENTRY_IDS` three), the actual per-register contest rate fell
+ * to roughly 6–7 runs in 200 — thinner than the **12** that got 1-in-16
+ * rejected above, on precisely the registers this slice most needs the
+ * equal-HLC/`device_id`-tiebreak coverage for (three brand-new handlers, and
+ * the pinned scenarios fix arrival order by hand so they cannot substitute).
+ *
+ * Two arms of equal, unweighted share fixes it: `arbTripRootSpec`'s six
+ * branches and this arm's three both draw the *default* `oneof` weight of 1,
+ * so root and entries now split the trip budget 50/50 rather than 6-to-3 (the
+ * same ratio as before — nesting at that ratio would have changed nothing).
+ * The entry branches land back at the density a root branch had **before**
+ * S7 existed (3.51%, one third of the trip budget's now-50% half); the root
+ * branches give up half their old share to buy it (1.75% each).
+ *
+ * Re-measured over 200 runs at this split (see `arbSpec`'s doc for the exact
+ * counter): two devices contesting one **entry** register (any of the 18 —
+ * three fields × two Trips × three entry ids) now happens in roughly
+ * **19 runs in 200** (three repeated passes: 18, 19, 20) — a three-fold
+ * recovery from the flat-branch draft's 6–7, and no longer thinner than the
+ * rejected 1-in-16's 12. The **root** rate this costs falls with it, from the
+ * pre-S7 ~70 to roughly **30 in 200** (three passes: 27, 31, 38) — well clear
+ * of that same 12-run floor, so this is a real trade and not a regression
+ * disguised as one.
+ */
+const arbTripEntrySpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbEntryId, arbEntrySource)
     .map(([id, entryId, source]) => tripEntryAdded(id, entryId, source)),
@@ -353,6 +392,12 @@ const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbEntryId, fc.nat({ max: 5 }))
     .map(([id, entryId, count]) => tripEntryBringCountSet(id, entryId, count)),
+)
+
+/** Equal, unweighted split — see {@link arbTripEntrySpec}'s doc for why. */
+const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
+  arbTripRootSpec,
+  arbTripEntrySpec,
 )
 
 /**
@@ -473,6 +518,23 @@ describe('convergence', () => {
 
           // Idempotence at the log, too: a second delivery adds no entries.
           for (const r of replicas) expect(r.log()).toHaveLength(all.length)
+
+          // Sync §3.6 puts the over-claim beside the containment cycle as the
+          // two conditions the reducer must not resolve, and both are
+          // computed by a selector rather than the fold. The containment half
+          // gets the detailed per-node loop below because `childrenOf`'s
+          // iteration order can perturb it even under identical registers;
+          // `overClaims` carries no such risk (`claimsByGear` iterates the
+          // already-sorted `entriesOf`, and both its own output levels sort by
+          // `compareIds`) — so this is expected to pass by construction, and
+          // its passing is the point: architecture §8.3's "surfaced
+          // identically on every replica", checked at scale across 200
+          // interleavings and 2–4 replicas, not only in the one hand-built
+          // two-replica scenario above.
+          const overClaimsOnFirst = overClaims(first)
+          for (const r of replicas.slice(1)) {
+            expect(overClaims(r.state())).toEqual(overClaimsOnFirst)
+          }
 
           // Folded state is not enough. The cycle break lives in a SELECTOR,
           // downstream of the fold, so two replicas can hold byte-identical
@@ -1399,6 +1461,13 @@ describe('convergence', () => {
         hlc: removed.hlc,
         deviceId: removed.device_id,
       })
+      // The reader-visible consequence, pinned so "the add survived" is not
+      // mistaken for "the Entry is back on the list": `entriesOf` excludes a
+      // removed Entry regardless of what its `source` says, so it holds no
+      // claim either.
+      const tripState = r.state().trips[trip]
+      expect(entriesOf(tripState!, r.state())).toHaveLength(0)
+      expect(overClaims(r.state())).toEqual([])
     }
   })
 
@@ -1408,6 +1477,15 @@ describe('convergence', () => {
    * (`selectors/claim.test.ts`): two active Trips claiming one per-person
    * Gear for **disjoint** Participants must converge with no over-claim on
    * either replica — comparing People, never counts.
+   *
+   * `overClaims(state) === []` is an assertion that *nothing happened*, and
+   * three unrelated regressions could each produce it for the wrong
+   * reason — a Gear kind that stopped folding, an Entry that never reached
+   * the other replica, or a Trip that stopped reading active — so this test
+   * pins the positive facts first, then closes with a second positive
+   * control: the identical fixture, with the shared Person added to the
+   * second Trip too, that *does* report a claim. Without it, a selector that
+   * always returned `[]` would pass this file end to end.
    */
   it('reports no over-claim for per-person gear taken for disjoint People', () => {
     const { clock, a, b } = aWorld()
@@ -1441,6 +1519,33 @@ describe('convergence', () => {
     exchange(a, b)
 
     expect(a.state()).toEqual(b.state())
-    for (const r of [a, b]) expect(overClaims(r.state())).toEqual([])
+    for (const r of [a, b]) {
+      // Both Entries reached the fold, referencing the right Gear, on two
+      // Trips this build actually reads as active — the premises that make
+      // the empty result below mean something.
+      expect(r.state().trips[tripAlps]?.entries?.['e1']?.source?.value).toEqual(
+        { from: 'depot', gearId: gear },
+      )
+      expect(
+        r.state().trips[tripAvores]?.entries?.['e2']?.source?.value,
+      ).toEqual({ from: 'depot', gearId: gear })
+      expect(isActive(r.state().trips[tripAlps]!)).toBe(true)
+      expect(isActive(r.state().trips[tripAvores]!)).toBe(true)
+      expect(overClaims(r.state())).toEqual([])
+    }
+
+    // The positive control: the same fixture, with `els` also on Avores —
+    // the sets are no longer disjoint, and the selector must now find the
+    // shared Person, on both replicas.
+    clock.advance(1000)
+    a.emit(tripParticipantAdded(tripAvores, els))
+    exchange(a, b)
+
+    for (const r of [a, b]) {
+      const claims = overClaimsFor(r.state(), tripAvores)
+      expect(claims).toHaveLength(1)
+      expect(claims[0]!.kind).toBe('per_person')
+      expect(claims[0]!.contestedPersonIds).toEqual([els])
+    }
   })
 })
