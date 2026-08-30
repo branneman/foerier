@@ -364,6 +364,7 @@ a captured one:
 | `shared/fixtures/s3-tags.ops.json` | `gear.tag_applied`, `gear.tag_removed` | S3 |
 | `shared/fixtures/s4-ownership.ops.json` | `person.renamed`, `gear.ownership_set` | **S6 — one slice late** |
 | `shared/fixtures/s6-trips.ops.json` | the six Trip root ops | S6 |
+| `shared/fixtures/s7-entries.ops.json` | `trip.entry_added`, `trip.entry_removed`, `trip.entry_bring_count_set` | S7 |
 
 Most of what each carries is genuinely captured from the app that introduced
 the ops. A handful are **forward-compatibility probes** instead, standing in for
@@ -374,9 +375,16 @@ is `string` and always has been), foreign tags in the S3 one, and four in the S6
 one: a `from_trip_id` no builder yet accepts, a sixth phase, a date in no
 recognised format, and a `null` name placed on `trip.created` precisely because
 that builder — unlike `trip.renamed`, which S6 settled as nullable — cannot
-author one. **Do not read a probe as evidence some old build emitted it**; that
-is the one misreading a fixture invites, and it would give exactly the wrong
-account of what the builders permit.
+author one. The S7 fixture carries three of its own, two of them un-authorable
+by any builder: a malformed `source` (`from: "elsewhere"`), folding to a
+sourceless Entry that is retained and undrawn; and a `trip.entry_bring_count_set`
+on a per-person Entry, which invariant 6 says should not exist and which the
+reader folds anyway ([sync-protocol.md §4.4](sync-protocol.md)). The third pins
+an ordering no builder call sequence can force either: `trip.entry_removed`
+carrying a lower `seq` than the `trip.entry_added` that creates the Entry.
+**Do not read a probe as evidence some old build emitted it**; that is the one
+misreading a fixture invites, and it would give exactly the wrong account of
+what the builders permit.
 
 The obligations under test are enumerated in
 [`sync-protocol.md` §5.3](sync-protocol.md): an unknown op type is retained

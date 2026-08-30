@@ -36,11 +36,13 @@ items under thirty settled ones.
 
 ## Open
 
-- **Split's two panes share one scroller.** `DepotView` draws the Depot list and
-  the gear detail as two panes of one view, so the route-change scroll reset is
-  keyed on a scroll group rather than the path — a workaround standing in for
-  panes that scroll themselves, which would also move that reset's target. Blocks
-  story 38 from doing the honest thing at Split.
+- **Split's two panes share one scroller — now in two places.** `DepotView`
+  draws the Depot list and the gear detail as two panes of one view, and S7's
+  gear-list builder repeats the shape for its picker and list panes; each
+  keys its route-change scroll reset on a scroll group rather than the path —
+  a workaround standing in for panes that scroll themselves, which would also
+  move each reset's own target. Blocks story 38 from doing the honest thing
+  at Split, and doubles what that fix will have to cover.
   [`frontend-design.md`](frontend-design.md) §3.1, anchor:
   `Panes with scrollers of their own`
 - **`AddGear`'s CTA is not pinned to the thumb zone**, where `NewTrip`'s and
@@ -61,14 +63,16 @@ items under thirty settled ones.
   screen at Split at all. [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `sync half has no drawn answer`
 - **The two-pane Trips is drawn and not built.** `Trips — split 900` puts a trip
-  detail beside the list; the app has exactly one two-pane view, so Trips is a
-  single full-width pane at Split and keeps Desktop's `+ NEW` there instead of
+  detail beside the list; `DepotView` and, since S7, the gear-list builder are
+  the app's two-pane views, and Trips is neither of them — it stays a single
+  full-width pane at Split and keeps Desktop's `+ NEW` there instead of
   the frame's dense filled control. That control's copy and treatment land with
   the pane. [`design/README.md`](design/README.md) §5, anchor:
   `two-pane Trips, list left and trip detail right`
 - **The two-pane Add gear is drawn and not built.** `Add gear — split 900` draws
   the form as a pane with the Depot list kept beside it; `<Route path="/add">`
-  renders it standalone at every width. That is why `AddGear` answers
+  renders it standalone at every width — unlike S7's gear-list builder, which
+  the app did build as a second two-pane view. That is why `AddGear` answers
   `splitPane: false` against its own frame and still draws `‹ DEPOT` at Split,
   and why its CTA fact line has only one alignment to say.
   [`frontend-design.md`](frontend-design.md) §3.3, anchor:

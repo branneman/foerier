@@ -424,13 +424,15 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 ### 8.3 The slices
 
-**Landed so far: S0, S1, S2a, S2b, S3, S3.5, S4 and S6**, plus two pieces of
-work carrying no slice number (the Radix conversion, §12.9; Tier 4 and 5 against
-production, §12.8). S2 was the first slice to need the op log, the reducer, and
-`/sync`, and it landed in **two halves rather than one** — see its entry below
-for why, and §12.3 and §12.4 for what each half settled. **S5 is the one gap in
-the order**: it is an auth slice, it shares no file with the Trip, and S6 took
-the float §8.6 grants rather than idling behind it.
+**Landed so far: S0, S1, S2a, S2b, S3, S3.5, S4, S6, S5 and S7**, plus two
+pieces of work carrying no slice number (the Radix conversion, §12.9; Tier 4
+and 5 against production, §12.8). S2 was the first slice to need the op log,
+the reducer, and `/sync`, and it landed in **two halves rather than one** —
+see its entry below for why, and §12.3 and §12.4 for what each half settled.
+**S5 is the one gap in the order**: it is an auth slice, it shares no file
+with the Trip, and S6 took the float §8.6 grants rather than idling behind
+it. S7 landed after S5, back in step with §8's order — it is next after S6
+either way, since it shares no file with an auth slice.
 
 Two properties hold across every slice below and are not repeated in each:
 
@@ -644,8 +646,9 @@ See [its spec](specs/2026-08-29-trips-and-phases.md) and §12.11.
   with the rest of story 14.
 - **Usable?** Trips exist and say where they stand.
 
-**S7 — The gear list.** *Delivers 6. Advances 7 (Bring-count), 32 (overlap
-guard), 13 (Trip-membership dimension).*
+**S7 — The gear list. Landed.** *Delivers 6. Advances 7 (Bring-count), 32
+(overlap guard), 13 (Trip-membership dimension).* See
+[its spec](specs/2026-08-29-the-gear-list.md) and §12.13.
 
 - **Ops (3):** `trip.entry_added`, `trip.entry_removed`,
   `trip.entry_bring_count_set`.
@@ -846,6 +849,10 @@ follow-up:
 | Per-Person grouping of Pieces | S8 |
 | Packing status; Container | S9 |
 | Outcome (`open`, `lost`) | S10 |
+
+**Trip membership landed with S7**, the fifth dimension the table carries —
+see §12.13 for what a cross-aggregate dimension cost the engine that S3 built
+for one that reads only the Gear's own registers.
 
 Story 13 is therefore **complete at S10**, having been touched by six slices and
 owned by one — and story 4's own narrowing criterion is delivered by S4 through
@@ -1931,3 +1938,89 @@ see its [spec](specs/2026-08-29-in-app-invites-and-logins.md).
   decisions taken silently by an implementer, which is exactly the class a
   code review cannot catch, because nothing about them is wrong as code.
   §8.5's later slices should expect the same pass.
+
+### 12.13 Consequences of S7: the gear list
+
+The Trip's first nested entity map, and therefore the slice that decides how
+four later slices (S8 · S9 · S10 · S14) address something smaller than an
+aggregate. Three op types, no endpoints, no migration; see its
+[spec](specs/2026-08-29-the-gear-list.md).
+
+- **`entries` is a `Record` of entities, and that is a new shape in the
+  codebase.** `participants` and `tags` are sets, whose member carries only
+  presence; an Entry carries registers of its own — `source`, `bringCount`,
+  `removed` — so it needed the shape a set cannot hold. `writeEntry` follows
+  `writeTrip` one level deeper, with the same identity check at each level so
+  a lost write returns the original object; the generic `writeEntity`
+  collapsing all five writers into one is **still not taken**, and `writeEntry`
+  being the first two-level instance is the marker for when that argument
+  should reopen.
+- **`source` is one register holding a discriminated union, and a trip-only
+  Entry cannot be renamed.** Renaming would rewrite the whole union, carrying
+  `container` along with `name`, and two Devices renaming concurrently would
+  each clobber the other's trait. The catalogue defines three gear-list ops
+  and none is a rename — recorded as a deliberate omission, on the precedent
+  of the containment trait's own missing mutation op
+  ([sync §4.3](sync-protocol.md)) — and the UI states nothing about it: a
+  missing op is a fact for this document, not release meta-text for a
+  Quartermaster mid-sitting.
+- **An Entry with no `source` gets no default, unlike `phase` and `owner`.** S6
+  reads an absent `phase` as `draft` and S4 reads an absent `owner` as
+  `SHARED`; an Entry naming neither a piece of Gear nor a trip-only name is not
+  a line anybody can draw a default for. It is folded, retained, excluded from
+  the list, from every count and from every claim — the same conservative
+  direction S6 took with an unrecognised phase, stated once in
+  `shared/src/selectors/entry.ts`'s `entriesOf` and read through nothing else.
+- **Invariant 6 is enforced by the authoring screen alone, which is the
+  `TagString` split restated for a second op.** `bring_count`'s "Counted
+  entries only" cannot be a reducer gate, because the Entry's Kind lives on the
+  Gear aggregate and resolving it in the handler would make the fold
+  order-dependent on whether `gear.kind_set` had arrived first. `bringCountOf`
+  is the fourth site gating on `kind === 'counted'`
+  (`shared/src/selectors/depot.ts`, `shared/src/selectors/whereabouts.ts`,
+  `app/src/screens/GearDetail.tsx` are the other three), and moving the
+  question behind one function is what let this slice add a fourth site
+  without a fourth copy of the gate.
+- **The over-claim view is a pure function of the fold, with no op, no flag and
+  no write of its own.** `overClaims(state)` reads registers only, so every
+  replica computes the identical set — the containment-cycle argument
+  ([sync §3.6](sync-protocol.md)) applied to the second condition the reducer
+  must not resolve — and it disappears only when a Quartermaster removes an
+  Entry or lowers a Bring-count, both ordinary ops merging like any other.
+  Nothing is discarded to resolve a forbidden state; the state is retained,
+  reported identically everywhere, and settled by the same op vocabulary as
+  everything else. This is what let the band render with no notification
+  machinery and no server involvement at all.
+- **The first cross-aggregate dimension needed an index, not a reshape.**
+  Trip membership is the first of the five dimensions `sliceDepot` cannot
+  answer from a Gear's own registers in constant time — answering it per Gear
+  means scanning every Trip's Entries, which is O(gear × entries) on the
+  Depot's most-visited screen. S3 passed `state` into the dimension table's
+  signature so it "would not be reshaped by the first dimension that needs
+  it"; S7 is that dimension, and the fix is a module-level `WeakMap<
+  DepotState, …>` memo inside `slice.ts` rather than a change to the
+  signature — `DepotState`'s immutability is what makes the key exact instead
+  of approximate.
+- **Eight sentences in the feature spec were found false during
+  implementation, not before it**, the shape CLAUDE.md's S4-fixture lesson
+  already named: a spec sentence can assert a fact no test then pins.
+  Corrected in the spec itself rather than left standing: `Stepper` shipped
+  with **two** callers, not three — Add gear's Owned-count well must stay
+  representable as *unset* to gate its CTA, and `Stepper`'s contract had no
+  channel for that; a concurrent `trip.entry_added` / `trip.entry_removed`
+  writes **two** registers (`source`, `removed`), not one contested LWW field,
+  so nothing races; `entriesOf` takes `(trip, state)`, not `(trip)` alone; the
+  builder's band, title and footer are right-pane at Split but a **full-width
+  strip above the grid** at Desktop; the picker's meta line carries the home
+  path plus **at most one** suffix, not a fixed pair; closed ledger rows draw
+  a **real** `N PIECES` fold, not a presumed one; the activation gate reads
+  the **filtered** over-claim result, since the raw one can name an unrelated
+  Trip; and the unbuilt keyboard surface belongs in the spec's own "not
+  built" section, not implied to be someone's next task.
+- **`useScreenHeader`'s reach is ten callers, both of S7's new ones
+  width-guarded.** Before S7, `People` and `Devices` were the only two of
+  eight routes whose own path redirects across a width boundary; S7's two new
+  callers, `/trips/:id/add` and `/trips/:id/list`, make it four of ten, each
+  redirecting the other way across Split — the picker collapses into the
+  builder above it, the builder collapses into the trip screen below it.
+

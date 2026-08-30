@@ -142,6 +142,17 @@ Nav therefore has three treatments — bottom tabs (thumb zone) → icon rail �
 labeled sidebar. **Roomy** is the mode added specifically to kill the wasted side
 space a 393-px-designed single column leaves on a large phone or foldable.
 
+**The two-pane unlock is not one screen's alone.** `DepotView` was the first to
+take it — the Depot list and the gear detail, as two panes of one view — and
+until S7 the only one. S7's gear-list builder (`/trips/:id/list`) is the
+second: the depot picker in the left pane, the Trip's own editable list in the
+right, existing **only** from Split up, exactly as `DepotView`'s second pane
+does, and gone below it in favour of the trip screen editing in place and the
+picker as its own route. A comment in `app/src/screens/Trip.tsx` once named
+`DepotView` "the only two-pane view in `App.tsx`"; it no longer is, and the
+comment is corrected. See [technical-debt.md](technical-debt.md) for what this
+means for the pane-local-scroller debt both views now carry.
+
 **The shell is one viewport tall in every mode, and the screen scrolls inside
 it.** `.shell` is a fixed `100svh` grid and `.shell__main` is the scroll
 container. The document does not scroll behind it, and no ancestor of a screen
@@ -305,13 +316,16 @@ pushed screen **inside** `AppShell` and counts one visible `SYNCED` at phone
 width, at Split and at Desktop. That is a permanent property of the two suites,
 not a note about one round.
 
-**The hook's reach is every screen that draws either half of the band — all
-eight.** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`, `People`,
-`Devices` and `InviteIssued` ask it, and no screen spells the rule itself.
-Seven of the eight draw a sync line; `InviteIssued` does not, which is left
-open below rather than settled. `splitPane` is true for `GearDetail` alone.
-Three of the answers are worth stating, because they are about the app as
-built rather than as drawn:
+**The hook's reach is every screen that draws either half of the band — ten,
+since S7.** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`, `People`,
+`Devices` and `InviteIssued` ask it, and no screen spells the rule itself. S7
+adds `GearListBuilder` (`/trips/:id/list`) and `DepotPicker`'s screen variant
+(`/trips/:id/add`), both answering `splitPane: false` — the builder is two
+panes of itself, not a detail pane of a list also on screen, so it does not
+take `GearDetail`'s `true`. Nine of the ten draw a sync line; `InviteIssued`
+does not, which is left open below rather than settled. `splitPane` is true
+for `GearDetail` alone. Three of the answers are worth stating, because they
+are about the app as built rather than as drawn:
 
 - **`AddGear` answers `splitPane: false`, against its own board frame.**
   `Add gear — split 900` draws it as a pane with the Depot list beside it, and
@@ -322,11 +336,14 @@ built rather than as drawn:
   Desktop band is never reached and the composed suite counts them at the two
   widths `App.tsx` actually mounts them at. `People` has a second render, the
   `inline` variant Account unfolds into its own card at Desktop, which draws no
-  band at all. They are the **only** two of the eight whose route carries a
-  width guard: `AddGear`, `Trip`, `NewTrip`, `Account`, `InviteIssued`'s three
-  routes, and `GearDetail` by way of `DepotView` — which renders it standalone
-  below Split and at Desktop and as the right-hand pane between — are mounted
-  at every width.
+  band at all. Before S7 they were the **only** two of the eight whose route
+  carried a width guard; S7 makes it four of ten. `/trips/:id/add` redirects
+  to `/trips/:id/list` at Split and up, and `/trips/:id/list` redirects to
+  `/trips/:id` below it — `App.tsx`'s `isDesktop ? <X/> : <Redirect/>` shape,
+  parameterised on `isSplit` instead. `AddGear`, `Trip`, `NewTrip`, `Account`,
+  `InviteIssued`'s three routes, and `GearDetail` by way of `DepotView` —
+  which renders it standalone below Split and at Desktop and as the
+  right-hand pane between — are mounted at every width.
 - **`InviteIssued` gates its `<header>` on `backLink` rather than on `band`.**
   It draws no sync line, so the back link is the only thing the band could
   hold, and `band` exists precisely so a wrapper is never rendered empty. (For
@@ -421,17 +438,27 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   restyle or replace it. Radix is tree-shakeable per-primitive, respecting the
   app-shell JS budget. Pure props-in, no data access.
 
-  **Built so far: `Sheet` and `Confirm`** — every overlay in the app, converted
-  in one slice
+  **Built so far: `Sheet`, `Confirm` and `Stepper`.** `Sheet` and `Confirm`
+  converted every overlay in the app in one slice
   ([its spec](specs/2026-08-29-radix-conversion.md)). Two primitives rather
   than one because a picker is a `dialog` and a decision is an `alertdialog`,
   and Radix's two packages differ in more than the role: an AlertDialog does
   not dismiss on an outside pointer-down and gives initial focus to its
   Cancel. Both are **mounted-is-open** — there is no `open` prop, so a caller
   writes `{open && <Sheet …/>}` and mount is what resets a picker's draft
-  state. The rest of this list is unbuilt, and `Popover` is the one with a
-  waiting caller: §4a's desktop tag picker is approximated by `Sheet`'s
-  `desktopCard` until it lands.
+  state. `Stepper` (S7) is **not** a Radix wrapper — Radix ships no number
+  field, so it is a plain `{value, min, onChange, size?, label}` component
+  holding no state and importing neither the store nor the router. Two sizes,
+  h48 default and an in-row h32 whose hit area pads to ≥44px beyond the
+  painted box (the status-pill minimum, allowed on touch); `min` defaults to
+  `0`, since a Bring-count of zero is expressible on the wire and is not the
+  same as removing the Entry it belongs to. `GearDetail`'s and the gear list's
+  hand-rolled Owned-count steppers fold in as its two callers; Add gear's
+  Owned-count well is not a third — it must stay representable as *unset* to
+  gate the CTA, and `Stepper`'s contract has no channel for that. The rest of
+  this list is unbuilt, and `Popover` is the one with a waiting caller: §4a's
+  desktop tag picker is approximated by `Sheet`'s `desktopCard` until it
+  lands.
 - **Composites (`ui/`)** — `GearRow`, `TripCard`, `JourneyRail`,
   `WhereaboutsCard`, `LedgerList`. Presentational; take domain data as **props**.
 

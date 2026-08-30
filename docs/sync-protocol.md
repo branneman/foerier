@@ -574,6 +574,22 @@ verbatim rather than reported absent.
 | `trip.entry_removed` | `{entry_id}` | Tombstone. This is also how an over-claim is resolved (§3.6) and how "not bringing it" is expressed — there is no such status (invariant 11) | Entry removed | 6 |
 | `trip.entry_bring_count_set` | `{entry_id, count: int ≥ 0}` | Sets `bring_count`. Counted entries only (invariant 6) | Bring-count set | 7 |
 
+**"Counted entries only" is an authoring rule, not a reader gate (S7).** The
+Entry's Kind lives on the Gear aggregate — a different aggregate, with no
+ordering against this one — so a reducer that resolved the Kind before writing
+`bring_count` would make the fold order-dependent: the same op would land or
+not depending on whether `gear.kind_set` had already arrived. `bring_count`
+therefore folds unconditionally for any Entry, and the authoring screen is the
+whole of the defence, exactly the split `TagString` (§4.3) already draws
+between an authoring rule and a reader obligation. **`source` is one register**
+(§3.7), so a trip-only Entry's `name` and `container` are written and compared
+as a unit and there is no way to change one without rewriting the other — which
+is also why the catalogue defines no rename for a trip-only Entry: the three
+ops above are the whole of the gear list, and none of them is one. And the
+payload key is `gear_id`; the register it sets is `gearId` — the same split
+`gear.owned_count_set{count}` → `owned_count` already has, restated for a
+nested field.
+
 **Per-person Pieces**
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |

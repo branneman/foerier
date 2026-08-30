@@ -380,8 +380,77 @@ which unblocked it (story 28 issues Invites for People recorded under story 4,
 and S6 took the float
 [§8.6](docs/architecture-design.md#86-what-can-be-built-in-parallel) grants
 rather than idling behind it — an auth slice shares no op type and no
-`shared/` file with the Trip, so the two never met. **S7, the gear list,
-follows.**
+`shared/` file with the Trip, so the two never met. S7 landed after S5, back
+in step with §8's order.
+
+**S7, the gear list, has landed** (story 6; advances story 7, Bring-count,
+story 32, the overlap guard, and story 13, the Trip-membership dimension).
+Three op types — `trip.entry_added`, `trip.entry_removed`,
+`trip.entry_bring_count_set` — the Trip's first **nested entity map**
+(`entries`, a `Record` of entities rather than the sets `participants` and
+`tags` use), `shared/src/selectors/entry.ts` and `claim.ts`, three routes
+(`/trips/:id`, `/trips/:id/add`, `/trips/:id/list`), and the **over-claim
+surfaced rather than prevented** — a standing band, never a block, never
+dismissible. No endpoints, no migration. See
+[its spec](docs/specs/2026-08-29-the-gear-list.md) and
+[§12.13](docs/architecture-design.md#1213-consequences-of-s7-the-gear-list).
+
+**Six things about S7 are worth knowing before touching Entries, claims or
+the builder:**
+
+- **`source` is one register holding a discriminated union, and a trip-only
+  Entry cannot be renamed.** Renaming would rewrite `name` and `container`
+  together, and two Devices renaming concurrently would each clobber the
+  other's trait. The catalogue defines three gear-list ops and none is a
+  rename — a deliberate omission, not a gap — and the UI states nothing about
+  it: a missing op is a fact for the docs, not release meta-text for a
+  Quartermaster mid-sitting.
+- **An Entry with no `source` gets no default, unlike `phase` and `owner`.**
+  S6 reads an absent `phase` as `draft`; S4 reads an absent `owner` as
+  `SHARED`. An Entry naming neither a piece of Gear nor a trip-only name is
+  not a line anybody can draw a default for, so it is folded, retained, and
+  excluded from the list, from every count and from every claim —
+  `entriesOf(trip, state)` is the one place this is stated.
+- **Invariant 6 is the authoring screen's job, not the reducer's** — the
+  `TagString` split restated for a second op. A Bring-count cannot be gated in
+  the reducer, because the Kind it depends on lives on the Gear aggregate, a
+  different aggregate with no ordering against the Trip's; gating there would
+  make the fold order-dependent on whether `gear.kind_set` had arrived first.
+  `bringCountOf` is the fourth site gating on `kind === 'counted'`
+  (`shared/src/selectors/depot.ts`, `shared/src/selectors/whereabouts.ts`,
+  `app/src/screens/GearDetail.tsx` are the other three), and the reader folds
+  a Bring-count on any Entry regardless of what the authoring screen would
+  ever offer.
+- **The over-claim view is a pure function of the fold, with no op, no flag
+  and no write of its own.** `overClaims(state)` reads registers only, so
+  every replica computes the identical set, and it disappears only when a
+  Quartermaster removes an Entry or lowers a Bring-count — both ordinary ops.
+  Nothing is discarded to resolve a forbidden state, which is story 6's
+  closing sentence. `overClaimsIfActive` answers the hypothetical three
+  guarded moments ask (adding to an active Trip, activating a Draft,
+  reopening a closed one) and is **deliberately unscoped to a `tripId`**, so
+  every caller that gates a decision on it — `ActivationConfirm`,
+  `ReopenConfirm`, `GearListBuilder`'s `Start pack-out` — must filter through
+  `overClaimGroups` first; gating on the raw result opens a confirm naming a
+  conflict between two other Trips entirely.
+- **Trip membership is the first dimension `sliceDepot` cannot answer from a
+  Gear's own registers in constant time.** Answering it per Gear means
+  scanning every Trip's Entries — O(gear × entries) on the Depot's
+  most-visited screen — so `slice.ts` carries a module-level
+  `WeakMap<DepotState, …>` memo, keyed on the fold's own immutable identity,
+  rather than a change to the dimension table's signature. The next
+  cross-aggregate dimension should expect to need the same memo, not a new
+  mechanism.
+- **Eight sentences in this spec were found false during implementation, and
+  are corrected in the spec itself rather than left standing** — the shape
+  this document's own S4-fixture lesson already names, restated for a second
+  document instead of a fixture. The one most likely to bite a future reader:
+  `ui/Stepper` ships with **two** callers, gear detail and the gear list, not
+  three — Add gear's Owned-count well must stay representable as *unset* to
+  gate its CTA, and `Stepper`'s contract has no channel for that. The rest are
+  corrected in place across the spec's §1.2, §3.1, §4.3, §4.4, §4.5, §4.8,
+  §4.9 and §5.2, and summarised in
+  [§12.13](docs/architecture-design.md#1213-consequences-of-s7-the-gear-list).
 
 Four conventions the code now carries that are easy to trip over:
 
