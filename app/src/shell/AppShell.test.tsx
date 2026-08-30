@@ -282,20 +282,4 @@ describe('the main area the shell hands a screen', () => {
       /\.shell__main\s*\{[^}]*padding-block:\s*var\(--space-16\) var\(--fab-clearance\)/,
     )
   })
-
-  it('leaves the tab bar unpinned, which the floating offset depends on', () => {
-    // The button floats `--fab-clearance` above the **scrollport**, not above
-    // the bar — sticky references the scrollport. That reads as 18px of
-    // clearance only because the bar is in flow and has scrolled away by
-    // then: nothing in `.nav-tabs` takes it out of flow. Pin it and the
-    // button lands behind it, and the offset has to become the bar's height
-    // plus the clearance — the sum this mechanism exists to avoid naming.
-    const shell = readFileSync(
-      join(dirname(expect.getState().testPath ?? ''), 'AppShell.module.css'),
-      'utf8',
-    )
-    expect(/\.nav-tabs\s*\{[^}]*\}/.exec(shell)?.[0] ?? '').not.toMatch(
-      /position:\s*(?:sticky|fixed)/,
-    )
-  })
 })

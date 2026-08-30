@@ -353,12 +353,12 @@ describe('the Depot list', () => {
   it('hangs the FAB after the screen, as the last thing in the main area', async () => {
     renderDepot(await seededStore([]))
 
-    // `sticky` references the scrollport while the button floats, but where it
-    // comes to *rest* is where flow puts it — the foot of the shell's main
-    // area, whose bottom edge is the tab bar's top edge (`ui/styles/layout.css`
-    // puts the two in adjacent grid rows) and whose bottom padding is the
-    // clearance. Inside `.screen` it would rest at the end of that element's
-    // content box instead, which the screen's own padding moves.
+    // The button is `position: sticky`, so where it comes to rest is where
+    // flow puts it — the foot of the shell's main area, whose bottom edge is
+    // the tab bar's top edge (`ui/styles/layout.css` puts the two in adjacent
+    // grid rows) and whose bottom padding is the clearance it rests in. Inside
+    // `.screen` it would rest at the end of that element's content box
+    // instead, which the screen's own padding moves.
     //
     // The arrangement predates the sticky mechanism: `.screen` declares
     // `container-type`, which applies layout containment and so makes it the
@@ -415,13 +415,13 @@ describe('the offset that keeps the FAB clear of the tab bar', () => {
     // with it instead of drifting under it" (`docs/design/README.md` §5).
     //
     // A constant cannot follow a `min-height`, and neither can a custom
-    // property restating it, so two separate facts stand in for it and
-    // `--fab-clearance` is all either one names. **Where it rests:** an auto
-    // block margin parks the button at the foot of the main area, whose own
-    // bottom padding is that clearance and whose bottom edge is the bar's top
-    // edge. **Where it floats:** `position: sticky` references the scrollport,
-    // so `bottom` is the gap from the bottom of the viewport — correct only
-    // while the bar is unpinned, which `AppShell.test.tsx` states.
+    // property restating it. So the button is a flow sibling parked at the
+    // foot of the main area by an auto block margin and lifted off the bottom
+    // edge by `position: sticky` — the bar's height is not written down
+    // anywhere, and the main area's bottom edge is the bar's top edge. The
+    // 18px itself is `--fab-clearance`, said once in `ui/styles/layout.css`
+    // and read both by that foot, which is the gap the button rests in, and by
+    // this `bottom`, which is the gap it keeps while it floats.
     const fab = /\.fab\s*\{[^}]*\}/.exec(css())?.[0] ?? ''
     expect(fab).toMatch(/position:\s*sticky/)
     expect(fab).toMatch(/bottom:\s*var\(--fab-clearance\)/)

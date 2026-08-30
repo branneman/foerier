@@ -121,25 +121,20 @@
   /*
    * **The bar's height is not written down here.** It cannot be: the bar is
    * `min-height: max(3.5rem, 56px)`, so a large user font size grows it and
-   * any constant offset drifts under it (`docs/design/README.md` §5). Two
-   * separate facts stand in for it, and `--fab-clearance` — the drawn 18px,
-   * defined once in `ui/styles/layout.css` — is all either of them names.
+   * any constant offset drifts under it (`docs/design/README.md` §5). Instead
+   * the button is a flow sibling at the end of the shell's main area, whose
+   * bottom edge is the bar's top edge — below Split `ui/styles/layout.css`
+   * puts the two in adjacent grid rows, and a taller bar takes its height out
+   * of the `1fr` row between them. `margin-block-start: auto` parks the button
+   * there on a list shorter than the screen; `position: sticky` lifts it 18px
+   * off the bottom edge while the list is longer and the reader is part-way
+   * down it.
    *
-   * 1. **Where it rests.** The button is a flow sibling at the end of the
-   *    shell's main area, parked at its foot by `margin-block-start: auto`.
-   *    Below Split that box's bottom edge is the bar's top edge, and its own
-   *    bottom padding is the clearance — so a taller bar takes its height out
-   *    of the `1fr` row between them and carries the button up with it.
-   * 2. **Where it floats.** `position: sticky` references the **scrollport**,
-   *    not the main area's edge: `bottom` is the gap kept from the bottom of
-   *    the viewport while the reader is part-way down a longer list. Reading
-   *    the same property is what makes the two states one gap.
-   *
-   * **Standing condition — the tab bar is not pinned.** It is grid row 3 of a
-   * page that scrolls whole, so mid-scroll there is nothing in the bottom 18px
-   * for this to clear. Pin `.nav-tabs` and the button lands behind it: the
-   * floating offset would then have to be the bar's height plus the clearance,
-   * which is exactly the sum no constant can state.
+   * **The 18px is `--fab-clearance`, said once** (`ui/styles/layout.css`) and
+   * read twice: by the main area's own bottom padding, which is the gap the
+   * button comes to rest in, and by this `bottom`, which is the gap it keeps
+   * while it floats. With the bar at its 56px `min-height` that resting gap is
+   * the 74px the frames measure — without 56 being written anywhere.
    *
    * `margin-inline-start: auto` rather than a `right` offset, so the button
    * rides the main area's own right edge — at Roomy that column is centred and
@@ -149,12 +144,12 @@
    * `docs/design/README.md` §5.
    *
    * Rendered as a **sibling** of `.screen`, never inside it: its resting place
-   * has to be the foot of the main area, and inside `.screen` it would rest at
-   * the end of that element's content box instead. (The arrangement predates
-   * the sticky mechanism — `.screen` declares `container-type`, which makes it
-   * the containing block for a *fixed* descendant. A sticky box positions
-   * against the scrollport and is not caught by that.)
-   * `Depot.tsx` carries the same note, and `Trips` the same arrangement.
+   * is the foot of the main area, and inside `.screen` it would rest at the
+   * end of that element's content box instead. (The arrangement predates the
+   * sticky mechanism — `.screen` declares `container-type`, which makes it the
+   * containing block for a *fixed* descendant. A sticky box positions against
+   * the scrollport and is not caught by that.) `Depot.tsx` carries the same
+   * note, and `Trips` the same arrangement.
    */
   .fab {
     position: sticky;
