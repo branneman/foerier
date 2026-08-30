@@ -147,18 +147,19 @@ function dimensionsFor(variant: 'screen' | 'pane'): readonly DimensionId[] {
 }
 
 /**
- * `Search the depot…` — a `  /` hint waits on Task 11's own keybinding for
- * the pane variant (spec §4.4), withheld for now: a hint naming a key that
- * does nothing yet is spec §4.9's "a button that leads somewhere and lies
- * about where is worse than a missing one", restated for a hint instead of a
- * button. Split into a variant branch now (S7 review F6) rather than one
- * shared literal, so wiring the keybinding later touches only the `'pane'`
- * case below and this component's own docstring promise — "nothing here is
- * written for one variant and patched for the other" — stays true.
+ * `Search the depot…` — one literal, both variants. An earlier draft (S7
+ * review F6) split this into a per-variant branch in anticipation of a `/`
+ * focus-search hint the pane variant's board frame draws, with a comment
+ * pointing at "Task 11's own keybinding" as the thing that would fill the
+ * second branch in. Task 11 is the slice's last task and built no
+ * keybinding, because none was ever assigned one: spec §9 records that the
+ * whole keyboard surface — `↑↓ ROW · ENTER ADD/REMOVE · T TRIP-ONLY`, `/` in
+ * both pane searches, `P` (S8) — ships unbuilt at S7, coherently, rather than
+ * shipping one hint ahead of a control it names. So this is one constant, not
+ * a conditional waiting on a caller that will never arrive; a future slice
+ * that builds the keyboard surface reintroduces the branch then, not before.
  */
-function searchPlaceholder(variant: 'screen' | 'pane'): string {
-  return variant === 'pane' ? 'Search the depot…' : 'Search the depot…'
-}
+const SEARCH_PLACEHOLDER = 'Search the depot…'
 
 /** `1 FILTER ACTIVE` / `2 FILTERS ACTIVE` — `result.active`'s own noun,
  * singularised at exactly one, the same rule `entryCountLabel`/`pieceLabel`
@@ -340,7 +341,7 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
         type="search"
         className={styles['search']}
         aria-label="Search the depot"
-        placeholder={searchPlaceholder(variant)}
+        placeholder={SEARCH_PLACEHOLDER}
         // Screen variant only (S7 review F6) — neither pane board frame
         // draws this field focused, and stealing focus into the builder's
         // left pane on mount would move a keyboard reader away from the

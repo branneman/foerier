@@ -4,6 +4,7 @@ import {
   tripEntryBringCountSet,
   tripEntryRemoved,
   tripLabel,
+  UNNAMED_PERSON,
   type TripState,
 } from '@foerier/shared'
 import { Link, useSearch } from 'wouter'
@@ -15,7 +16,8 @@ import {
 } from '../components/GearListSection'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
-import { useScreenHeader } from '../shell/useMediaQuery'
+import { tripParticipants } from '../depot/trips'
+import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import { DepotPicker } from './DepotPicker'
 import styles from './GearListBuilder.module.css'
 
@@ -35,16 +37,44 @@ import styles from './GearListBuilder.module.css'
  * the pane width `GearRow` already folds inside — `DepotView.module.css`'s
  * own `19.25rem` list pane, reused verbatim.
  *
- * ## One band, housed in the right pane
+ * ## Two headers, not one flattened across both widths
  *
- * `DepotPicker`'s `'pane'` variant draws no header of its own — its own
- * docstring says so — because this screen draws **one** band (back link +
- * sync) for both panes together, per spec §4.4. It is drawn here, at the top
- * of the right pane's own column, rather than spanning both: the left pane
- * needs nothing above its `FROM THE DEPOT` eyebrow, and a full-width band
- * would separate that eyebrow from the search field beneath it for no reason.
+ * Task 11's first draft drew one header — back link + sync — inside the
+ * right pane's own column at every width, following spec §4.4's prose
+ * literally ("Right pane, top to bottom: the band row…"). Review (S7 review
+ * F1) found the boards disagree with that flattening: at 900 the band, title
+ * and footer do all sit inside the right pane, but at 1024 the band and
+ * title are a **full-width strip above the grid** (`Screens B:292-299`),
+ * carrying the back link, the title, Participants, `N PIECES`, and
+ * `Start pack-out` on one row, separated from the panes by its own rule —
+ * `.deskHeader`, below. The footer stays right-pane at both widths; dates and
+ * weight are the MVP-variant's own held-back segments (spec §4.4), so
+ * neither is drawn in the strip either. `isDesktop` (not `useScreenHeader`'s
+ * `band`) is what switches between the two layouts, since the strip's title
+ * and Participants are content the pane header never carried at all.
  *
- * ## Two doors, one query param
+ * **Sync is not redrawn in the strip.** The board's own 1024 mockup states it
+ * there because that frame draws no sidebar (`docs/design/README.md` §5: "a
+ * bare pane has no sidebar to carry it") — but the app's actual Desktop
+ * shell always draws the labelled sidebar, which already states sync in
+ * words, the same reason every other `splitPane: false` screen withholds its
+ * own sync line at Desktop ([frontend-design §3.3](../../../docs/frontend-design.md)).
+ * Redrawing it here would say the same fact twice on the one composed page,
+ * exactly the defect `screenBand.test.tsx` exists to catch. Not requested by
+ * review; recorded here since it is a real per-element decision this task
+ * took rather than one review made for it.
+ *
+ * ## One band, housed in the right pane at Split
+ *
+ * At Split, `DepotPicker`'s `'pane'` variant draws no header of its own —
+ * its own docstring says so — because this screen draws **one** band (back
+ * link + sync) for both panes together, per spec §4.4. It is drawn at the
+ * top of the right pane's own column there, rather than spanning both: the
+ * left pane needs nothing above its `FROM THE DEPOT` eyebrow, and a
+ * full-width band would separate that eyebrow from the search field beneath
+ * it for no reason. At Desktop the strip above takes over this role instead.
+ *
+ * ## Two doors, one query param, and one asymmetric back link
  *
  * `BUILD LIST ›` on a Trips card (Task 13) gives `‹ TRIPS`; `EDIT LIST ›` on
  * the trip screen's section band (`Trip.tsx`) gives `‹ {label}`, the Trip's
@@ -55,28 +85,29 @@ import styles from './GearListBuilder.module.css'
  * The door travels as `?from=trips` in the URL — `useSearch`, `Devices.tsx`'s
  * own precedent for a single-flag query param (`?signout`) rather than route
  * state, which wouter has no first-class carrier for across a navigation.
- * Its absence is the default: `Trip.tsx`'s `EDIT LIST ›` links here with no
- * query at all, so a bookmarked or directly-typed URL also falls back to the
- * "trip" door rather than to nothing. **Task 13's `BUILD LIST ›` is the only
- * caller expected to append it** — this task builds the mechanism and proves
- * it by navigating straight to the query string in its own tests, since
+ * Read with `URLSearchParams`, not a raw string-equality check (S7 review,
+ * "also fix" list) — `search === 'from=trips'` would silently misread
+ * `?x=1&from=trips` as the trip door, a trap for Task 13, which owns
+ * appending it and may one day compose it with another param. Its absence is
+ * the default: `Trip.tsx`'s `EDIT LIST ›` links here with no query at all,
+ * so a bookmarked or directly-typed URL also falls back to the "trip" door
+ * rather than to nothing. **Task 13's `BUILD LIST ›` is the only caller
+ * expected to append it** — this task builds the mechanism and proves it by
+ * navigating straight to the query string in its own tests, since
  * `TripCard.tsx` gains that link in a later task (spec's own plan, Task 13).
  *
- * ## `splitPane: false`, and why it agrees with the board rather than
- * conflicting
- *
- * The builder is two panes of *itself*, not a detail pane of a list also on
- * screen — `GearDetail` answers `true` because the Depot list sits beside it
- * and `Depot split` draws no back link at all, whereas the builder's own back
- * link is drawn at every width it exists at (spec §4.11). `useScreenHeader`
- * still computes `false` at Desktop for a `splitPane: false` screen — the
- * sidebar there carries `TRIPS`, the same destination `Trip.tsx` withholds
- * its own `‹ TRIPS` for — so this screen's back link goes at Split and not at
- * Desktop, exactly like every other `splitPane: false` screen. The board
- * draws `‹ TRIPS` at 1024 anyway because that frame is a bare pane with no
- * sidebar in the mockup; `docs/design/README.md` §5 names this "drawn but not
- * built" and calls it agreement rather than conflict, the same shape as
- * `Trips — split 900` and `Add gear — split 900` elsewhere in that doc.
+ * **`splitPane: false`, but the back link's Desktop answer is not derived
+ * from width alone (S7 review F4).** §3.3's rule — "the back link is drawn
+ * unless its destination is already on the page" — used `splitPane` as a
+ * proxy for that question, sound for every caller before this one because
+ * each has exactly one back link and it always names a sidebar row (`‹
+ * DEPOT`, `‹ TRIPS`, `‹ ACCOUNT`). This screen is the first where the proxy
+ * fails: the `?from=trips` door's `‹ TRIPS` names the sidebar's own `TRIPS`
+ * row (withheld at Desktop, same as every other caller), but the "trip"
+ * door's `‹ {label}` names one specific Trip, which no sidebar row ever
+ * carries (kept at Desktop). `useScreenHeader` takes an explicit
+ * `atDesktopSidebarCarriesDestination` for exactly this — `fromTrips` here,
+ * so the "trips" door still withholds and the "trip" door still shows.
  *
  * ## No `GEAR LIST` band, and no weight
  *
@@ -103,11 +134,16 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
   const sync = useDepot((depot) => depot.sync)
-  // `splitPane: false` — see this file's own docstring on why that still
-  // agrees with the board's `‹ TRIPS` at 1024 rather than conflicting with it.
-  const header = useScreenHeader({ splitPane: false })
+  const isDesktop = useMediaQuery(DESKTOP)
   const search = useSearch()
-  const fromTrips = search === 'from=trips'
+  const fromTrips = new URLSearchParams(search).get('from') === 'trips'
+  // `splitPane: false` — see this file's own docstring on the two-doors
+  // section for why `atDesktopSidebarCarriesDestination` is not left at its
+  // default here (S7 review F4).
+  const header = useScreenHeader({
+    splitPane: false,
+    atDesktopSidebarCarriesDestination: fromTrips,
+  })
 
   // Every hook above runs regardless (S7 review F2's own guard, transplanted
   // from `DepotPicker.tsx`), so this early return costs nothing except the
@@ -128,6 +164,7 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const label = tripLabel(trip)
   const totals = listTotals(trip, state)
   const isDraft = phaseOf(trip) === 'draft'
+  const participants = tripParticipants(state, trip)
 
   function handleBringCountChange(entryId: string, next: number) {
     emit(tripEntryBringCountSet(tripId, entryId, next))
@@ -152,61 +189,117 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const backHref = fromTrips ? '/trips' : `/trips/${tripId}`
   const backLabel = fromTrips ? 'TRIPS' : label
 
+  const backLinkElement = header.backLink && (
+    <Link href={backHref} className={styles['back']}>
+      ‹ {backLabel}
+    </Link>
+  )
+
+  const startPackOutButton = isDraft && (
+    <button
+      type="button"
+      className={styles['startPackOut']}
+      onClick={handleStartPackOut}
+    >
+      Start pack-out
+    </button>
+  )
+
+  // The right pane's own body — identical at both widths, so it is computed
+  // once rather than duplicated across the two layouts below.
+  const listBody = (
+    <>
+      <GearListSection
+        trip={trip}
+        editable
+        onBringCountChange={handleBringCountChange}
+        onRemove={handleRemoveEntry}
+      />
+
+      <button
+        type="button"
+        className={styles['tripOnlyRow']}
+        onClick={handleAddTripOnly}
+      >
+        + TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE
+      </button>
+
+      <p className={styles['footer']} data-testid="gear-list-builder-footer">
+        {entryCountLabel(totals.entries)} · {pieceLabel(totals.pieces)} ·{' '}
+        {totals.perPerson} PER-PERSON · {totals.tripOnly} TRIP-ONLY
+      </p>
+    </>
+  )
+
   return (
-    <div className={styles['split']} data-testid="gear-list-builder">
-      <div className={styles['picker']}>
-        <DepotPicker tripId={tripId} variant="pane" />
-      </div>
-
-      <div className={styles['builder']}>
-        {header.band && (
-          <header className={styles['header']}>
-            {header.backLink && (
-              <Link href={backHref} className={styles['back']}>
-                ‹ {backLabel}
-              </Link>
-            )}
-            {header.syncLine && (
-              <span className={styles['sync']}>
-                <span className={styles['syncDot']} aria-hidden="true" />
-                {syncLabel(sync)}
-              </span>
-            )}
-          </header>
-        )}
-
-        <div className={styles['titleRow']}>
+    <div className={styles['screen']} data-testid="gear-list-builder">
+      {isDesktop && (
+        <header
+          className={styles['deskHeader']}
+          data-testid="gear-list-builder-desk-header"
+        >
+          {backLinkElement}
           <h1 className={styles['title']}>{label} — gear list</h1>
-          {isDraft && (
-            <button
-              type="button"
-              className={styles['startPackOut']}
-              onClick={handleStartPackOut}
+          {participants.length > 0 && (
+            // `Trip.tsx`'s own cluster, read-only here: this screen edits the
+            // gear list, not Participants, so there is no trailing `+` ghost.
+            <span
+              className={styles['circles']}
+              role="img"
+              aria-label={`Participants: ${participants
+                .map((person) => person.label)
+                .join(', ')}`}
             >
-              Start pack-out
-            </button>
+              {participants.map((person) => (
+                <span
+                  key={person.id}
+                  className={styles['circle']}
+                  aria-hidden="true"
+                >
+                  {person.label === UNNAMED_PERSON
+                    ? ''
+                    : person.label.charAt(0).toUpperCase()}
+                </span>
+              ))}
+            </span>
           )}
+          <span
+            className={styles['pieces']}
+            data-testid="gear-list-builder-pieces"
+          >
+            {pieceLabel(totals.pieces)}
+          </span>
+          {startPackOutButton}
+        </header>
+      )}
+
+      <div className={styles['split']}>
+        <div className={styles['picker']}>
+          <DepotPicker tripId={tripId} variant="pane" />
         </div>
 
-        <GearListSection
-          trip={trip}
-          editable
-          onBringCountChange={handleBringCountChange}
-          onRemove={handleRemoveEntry}
-        />
+        <div className={styles['builder']}>
+          {!isDesktop && header.band && (
+            <header className={styles['header']}>
+              {backLinkElement}
+              {header.syncLine && (
+                <span className={styles['sync']}>
+                  <span className={styles['syncDot']} aria-hidden="true" />
+                  {syncLabel(sync)}
+                </span>
+              )}
+            </header>
+          )}
 
-        <button
-          type="button"
-          className={styles['tripOnlyRow']}
-          onClick={handleAddTripOnly}
-        >
-          + TRIP-ONLY ENTRY — NOT KEPT IN THE DEPOT, CLEARED AT CLOSE
-        </button>
+          {!isDesktop && (
+            <div className={styles['titleRow']}>
+              <h1 className={styles['title']}>{label} — gear list</h1>
+              {startPackOutButton}
+            </div>
+          )}
 
-        <p className={styles['footer']} data-testid="gear-list-builder-footer">
-          {entryCountLabel(totals.entries)} · {pieceLabel(totals.pieces)} ·{' '}
-          {totals.perPerson} PER-PERSON · {totals.tripOnly} TRIP-ONLY
-        </p>
+          {listBody}
+        </div>
       </div>
     </div>
   )

@@ -1,8 +1,10 @@
 import {
   createHlcClock,
   gearRecorded,
+  personRecorded,
   tripCreated,
   tripEntryAdded,
+  tripParticipantAdded,
   tripPhaseMoved,
   type Clock,
   type IdSource,
@@ -100,17 +102,20 @@ async function seededStore(...specs: readonly OpSpec[]): Promise<Seeded> {
  * mounts it: inside a `Router` with `searchHook` wired (`Devices.tsx`'s own
  * `?signout` precedent) so the door query param resolves, and with `/trips`
  * and `/trips/:id` as destinations a test can assert the back link's `href`
- * against without simulating full navigation.
+ * against without simulating full navigation. `path` overrides the door
+ * shorthand entirely, for a query string a door alone can't express (S7
+ * review, the multi-param regression below).
  */
 function renderBuilder(
   store: StoreApi<DepotStoreState>,
-  props: { tripId?: string; door?: 'trips' | 'trip' } = {},
+  props: { tripId?: string; door?: 'trips' | 'trip'; path?: string } = {},
 ) {
   const tripId = props.tripId ?? ALPS
   const path =
-    props.door === 'trips'
+    props.path ??
+    (props.door === 'trips'
       ? `/trips/${tripId}/list?from=trips`
-      : `/trips/${tripId}/list`
+      : `/trips/${tripId}/list`)
   const location = memoryLocation({ path, record: true })
   render(
     <Router hook={location.hook} searchHook={location.searchHook}>
@@ -131,7 +136,7 @@ function renderBuilder(
 }
 
 describe('the gear list builder — two panes', () => {
-  it('renders both panes at Split', async () => {
+  it('renders both panes at Split, with the header in the right pane and no Desktop strip', async () => {
     setViewport(SPLIT)
     const { store } = await seededStore(tripCreated(ALPS, 'Alps 2026'))
     renderBuilder(store)
@@ -140,14 +145,18 @@ describe('the gear list builder — two panes', () => {
     expect(
       screen.getByRole('heading', { name: 'Alps 2026 — gear list' }),
     ).toBeVisible()
+    // S7 review F1: below Desktop the band lives in the right pane, not as a
+    // full-width strip above the grid.
+    expect(screen.queryByTestId('gear-list-builder-desk-header')).toBeNull()
   })
 
-  it('renders both panes at Desktop', async () => {
+  it('renders both panes at Desktop, with a full-width strip above the grid', async () => {
     setViewport(SPLIT, DESKTOP)
     const { store } = await seededStore(tripCreated(ALPS, 'Alps 2026'))
     renderBuilder(store)
 
     expect(screen.getByText('FROM THE DEPOT')).toBeVisible()
+    expect(screen.getByTestId('gear-list-builder-desk-header')).toBeVisible()
     expect(
       screen.getByRole('heading', { name: 'Alps 2026 — gear list' }),
     ).toBeVisible()
@@ -159,6 +168,39 @@ describe('the gear list builder — two panes', () => {
 
     expect(screen.getByText('No such trip.')).toBeVisible()
     expect(screen.queryByText('FROM THE DEPOT')).toBeNull()
+  })
+})
+
+describe('the gear list builder — the Desktop strip (S7 review F1)', () => {
+  const ELS = '0f0000aa-0000-4000-8000-0000000000bb'
+
+  it('carries participant initials and the N PIECES read', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store } = await seededStore(
+      personRecorded(ELS, 'Els'),
+      tripCreated(ALPS, 'Alps 2026'),
+      tripParticipantAdded(ALPS, ELS),
+      gearRecorded('g-single', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+    )
+    renderBuilder(store)
+
+    expect(screen.getByRole('img', { name: 'Participants: Els' })).toBeVisible()
+    expect(screen.getByTestId('gear-list-builder-pieces')).toHaveTextContent(
+      '1 PIECE',
+    )
+  })
+
+  it('omits the Participants cluster for a Trip with none', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store } = await seededStore(tripCreated(ALPS, 'Alps 2026'))
+    renderBuilder(store)
+
+    expect(screen.queryByRole('img', { name: /Participants/ })).toBeNull()
   })
 })
 
@@ -217,11 +259,25 @@ describe('the gear list builder — Start pack-out', () => {
     expect(screen.getByRole('button', { name: 'Start pack-out' })).toBeVisible()
   })
 
-  it('renders it for no other phase', async () => {
+  it('renders it for no other phase — pack_out', async () => {
     setViewport(SPLIT)
     const { store } = await seededStore(
       tripCreated(ALPS, 'Alps 2026'),
       tripPhaseMoved(ALPS, 'pack_out'),
+    )
+    renderBuilder(store)
+
+    expect(screen.queryByRole('button', { name: 'Start pack-out' })).toBeNull()
+  })
+
+  // S7 review, "also fix": the previous version of this suite only ever
+  // covered `pack_out`, so a `phaseOf` regression that returned `'draft'`
+  // for a closed Trip would have passed unnoticed.
+  it('renders it for no other phase — closed', async () => {
+    setViewport(SPLIT)
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'closed'),
     )
     renderBuilder(store)
 
@@ -308,21 +364,91 @@ describe('the gear list builder — the two doors', () => {
     expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
   })
 
-  it('withholds the back link at Desktop, where the sidebar carries TRIPS', async () => {
+  /**
+   * S7 review F4: `splitPane` alone is the wrong proxy at Desktop for this
+   * screen specifically, because its two doors don't agree on whether the
+   * sidebar already carries their destination. `/trips` (the "trips" door)
+   * is the sidebar's own `TRIPS` row — withheld, same as every other
+   * `splitPane: false` screen. `/trips/:id` (the "trip" door) names one
+   * specific Trip, which no sidebar row ever carries — kept.
+   */
+  it('withholds the back link at Desktop for the trips door', async () => {
     setViewport(SPLIT, DESKTOP)
     const { store } = await seededStore(tripCreated(ALPS, 'Alps 2026'))
-    renderBuilder(store)
+    renderBuilder(store, { door: 'trips' })
+
+    expect(screen.queryByRole('link', { name: /‹/ })).toBeNull()
+  })
+
+  it('draws the back link at Desktop for the trip door, unlike every other splitPane: false screen', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store } = await seededStore(tripCreated(ALPS, 'Alps 2026'))
+    renderBuilder(store, { door: 'trip' })
+
+    expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toHaveAttribute(
+      'href',
+      `/trips/${ALPS}`,
+    )
+  })
+
+  it('draws the trip-door back link exactly once at Desktop — the right pane does not also draw its own', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store } = await seededStore(tripCreated(ALPS, 'Alps 2026'))
+    renderBuilder(store, { door: 'trip' })
+
+    expect(screen.getAllByRole('link', { name: /‹/ })).toHaveLength(1)
+  })
+
+  // S7 review, "also fix": `search === 'from=trips'` matched the whole query
+  // string, so a second param ahead of `from` would silently fall back to
+  // the trip door — a trap for Task 13, which owns appending it and may one
+  // day compose it with another param.
+  it('reads the door correctly out of a multi-param query string', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store } = await seededStore(tripCreated(ALPS, 'Alps 2026'))
+    renderBuilder(store, { path: `/trips/${ALPS}/list?x=1&from=trips` })
 
     expect(screen.queryByRole('link', { name: /‹/ })).toBeNull()
   })
 })
 
 describe('the gear list builder — no weight anywhere', () => {
-  it('draws no EST … KG at any width', async () => {
-    const { store } = await seededStore(tripCreated(ALPS, 'Alps 2026'))
+  // S7 review, "also fix": the previous version of this test set one width
+  // and seeded a Trip with **zero** Entries, so no computation that could
+  // ever produce a weight (or read a Draft's `Start pack-out`, or draw the
+  // Desktop strip's `N PIECES`) actually ran — it could not have failed
+  // against a real regression. Seeded with a Counted Entry (so `pieceLabel`
+  // has a real, non-zero count to format) and checked at both widths the
+  // builder renders at.
+  function withEntries(): readonly OpSpec[] {
+    return [
+      tripCreated(ALPS, 'Alps 2026'),
+      gearRecorded('g-counted', {
+        name: 'Tent stake',
+        container: false,
+        kind: 'counted',
+      }),
+      tripEntryAdded(ALPS, 'e-counted', {
+        from: 'depot',
+        gearId: 'g-counted',
+      }),
+    ]
+  }
 
+  it('draws no EST … KG at Split', async () => {
     setViewport(SPLIT)
+    const { store } = await seededStore(...withEntries())
     renderBuilder(store)
+
+    expect(screen.queryByText(/EST/)).toBeNull()
+    expect(screen.queryByText(/KG/)).toBeNull()
+  })
+
+  it('draws no EST … KG at Desktop', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store } = await seededStore(...withEntries())
+    renderBuilder(store)
+
     expect(screen.queryByText(/EST/)).toBeNull()
     expect(screen.queryByText(/KG/)).toBeNull()
   })

@@ -79,6 +79,26 @@ export interface ScreenPlacement {
    * to that list.
    */
   splitPane: boolean
+
+  /**
+   * At Desktop, does the 216px sidebar already carry the destination this
+   * screen's own back link would point at? Defaults to `true`, because every
+   * caller before S7 has exactly one back link and it always names a sidebar
+   * row (`‹ DEPOT`, `‹ TRIPS`, `‹ ACCOUNT`, both of `InviteIssued`'s) — for
+   * all of them `splitPane` alone was a sound proxy for "is the destination
+   * already on the page", since the two questions happened to have the same
+   * answer at every existing call site.
+   *
+   * `GearListBuilder` is the first screen where the two questions come
+   * apart: it has two doors (spec §4.11), and only one of them
+   * (`?from=trips`, `‹ TRIPS`) names the sidebar's own `TRIPS` row — the
+   * other (the "trip" door, `‹ <name>`) names one specific Trip, which no
+   * sidebar row ever carries. Passing `false` for that door keeps the back
+   * link at Desktop rather than stranding the reader on browser Back, with
+   * no route from the builder to the Trip they opened it from — S7 review
+   * F4.
+   */
+  atDesktopSidebarCarriesDestination?: boolean
 }
 
 /** What {@link useScreenHeader} answers: the band, and the two things in it. */
@@ -99,13 +119,18 @@ export interface ScreenHeader {
 /**
  * Whether a pushed screen draws its own back link and its own sync line.
  * **Every screen that draws either half asks** — `AddGear`, `GearDetail`,
- * `Trip`, `NewTrip`, `Account`, `People`, `Devices` and `InviteIssued`, all
- * eight of them — because a rule spelled eight times is seven chances to spell
- * it differently, and that is exactly how `Account` came to carry `Trip`'s
- * defect from a different slice. Seven draw a sync line; `InviteIssued` draws
- * only the back link, and gates its band on {@link ScreenHeader.backLink}
- * rather than on {@link ScreenHeader.band}, since for a screen with no sync
- * line the link is the only thing the band could hold.
+ * `Trip`, `NewTrip`, `Account`, `People`, `Devices`, `InviteIssued`,
+ * `DepotPicker` and `GearListBuilder`, all ten of them — because a rule
+ * spelled ten times is nine chances to spell it differently, and that is
+ * exactly how `Account` came to carry `Trip`'s defect from a different
+ * slice. Nine draw a sync line; `InviteIssued` draws only the back link,
+ * and gates its band on {@link ScreenHeader.backLink} rather than on
+ * {@link ScreenHeader.band}, since for a screen with no sync line the link
+ * is the only thing the band could hold. (`DepotPicker`'s own `'pane'`
+ * variant asks too but draws neither half itself — its band belongs to
+ * `GearListBuilder`, which draws it for both panes together — so it is
+ * counted here as a caller, not as a second `InviteIssued`-shaped
+ * exception.)
  *
  * ## The sync line: at Split, and only at Split
  *
@@ -128,10 +153,14 @@ export interface ScreenHeader {
  * `‹ DEPOT` points at the Depot. A screen owes the reader that link only where
  * the Depot is not already in front of them.
  *
- * - **At Desktop, never.** The 216px sidebar is labeled navigation and the row
- *   the link points at is *in* it — which is what `Screens B` §02A's
- *   `Trip screen — S6 desktop` draws: the sidebar carries `TRIPS` and
- *   `SYNCED 14:32`, and the main column carries neither.
+ * - **At Desktop, never — unless {@link ScreenPlacement.atDesktopSidebarCarriesDestination}
+ *   says the sidebar does not carry it.** The 216px sidebar is labeled
+ *   navigation and the row the link points at is usually *in* it — which is
+ *   what `Screens B` §02A's `Trip screen — S6 desktop` draws: the sidebar
+ *   carries `TRIPS` and `SYNCED 14:32`, and the main column carries neither.
+ *   `GearListBuilder`'s "trip" door is the one caller for which that is
+ *   false, and it says so explicitly rather than being derived wrong from
+ *   `splitPane` alone (S7 review F4).
  * - **At Split, it depends on {@link ScreenPlacement.splitPane}.** The rail
  *   draws no labels, so a screen standing alone there still owes the link —
  *   and every caller but `GearDetail` does stand alone, `GearListBuilder`
@@ -141,14 +170,26 @@ export interface ScreenHeader {
  *   `Depot split` contains no `‹` anywhere.
  * - **Below Split, always.** There are no panes and the nav is three tabs.
  */
-export function useScreenHeader({ splitPane }: ScreenPlacement): ScreenHeader {
+export function useScreenHeader({
+  splitPane,
+  atDesktopSidebarCarriesDestination = true,
+}: ScreenPlacement): ScreenHeader {
   const isSplit = useMediaQuery(SPLIT)
   const isDesktop = useMediaQuery(DESKTOP)
 
   // Desktop is inside Split, so `!isSplit` already withholds the pane's link
   // at Desktop too — the sidebar's reason and the pane's reason happen to
   // agree there.
-  const backLink = splitPane ? !isSplit : !isDesktop
+  //
+  // The `splitPane: false` branch used to be `!isDesktop` alone, which reads
+  // "never at Desktop" — sound for every caller through S3.5, wrong for
+  // `GearListBuilder`'s "trip" door (S7 review F4): `!atDesktopSidebarCarries-
+  // Destination` is `false` for every existing caller (the default), so this
+  // is unchanged for all of them, and `true` only for the one door whose
+  // destination the sidebar cannot name.
+  const backLink = splitPane
+    ? !isSplit
+    : !isDesktop || !atDesktopSidebarCarriesDestination
   const syncLine = isSplit && !isDesktop
 
   return { band: backLink || syncLine, backLink, syncLine }

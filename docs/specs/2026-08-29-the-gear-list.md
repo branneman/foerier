@@ -986,6 +986,17 @@ promoting it quietly is what the scope tags exist to prevent.
 - **Weight totals** — `EST 48.2 KG`, story 16, `LATER`.
 - **Renaming `DepotState`**, and the rest of [§7](#7-technical-debt-this-slice-touches)'s
   untouched list.
+- **The whole keyboard surface** — `↑↓ ROW · ENTER ADD/REMOVE · T TRIP-ONLY`
+  under the 1024 builder, the `/` focus-search hint in both pane search
+  fields, and `P` (already booked to S8 with the inclusion circles). The
+  boards draw all of it; no task in this slice's plan built any of it, and
+  none was ever going to — a grep of the plan finds no keybinding task. Task
+  11's review caught `DepotPicker.tsx`'s search placeholder pointing at "Task
+  11's own keybinding" as though a later step of this same slice would still
+  add the `/` hint; that promise belonged to nobody. **Ruling: S7 ships with
+  no keyboard shortcuts, coherently, and the hint strip goes with them** — a
+  future slice picks the whole surface up as one package, not `/` alone
+  ahead of the rest.
 
 ---
 

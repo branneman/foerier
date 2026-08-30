@@ -165,7 +165,12 @@ const authApi = createAuthApi(
 function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
   const location = memoryLocation({ path, record: true })
   render(
-    <Router hook={location.hook}>
+    // `searchHook` wired (not just `hook`) so `GearListBuilder`'s own
+    // `useSearch` reads the door query param off this memory location rather
+    // than jsdom's real `window.location.search` — without it every render
+    // here would silently read the default "trip" door regardless of what
+    // `path` actually asks for.
+    <Router hook={location.hook} searchHook={location.searchHook}>
       <AppShell syncLine="SYNCED" syncTone="reachable">
         <DepotProvider value={store}>
           <Switch>
@@ -551,12 +556,29 @@ describe('the back link — withheld only where its destination is already drawn
     expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
   })
 
-  it('withholds it from the builder at Desktop, where the sidebar carries TRIPS', async () => {
+  /**
+   * S7 review F4: the two doors disagree at Desktop, and only a composed
+   * suite like this one can prove a two-sided rule — a per-screen suite
+   * proves one side and calls it done, `screenBand.test.tsx`'s own reason for
+   * existing. The "trips" door's `‹ TRIPS` names the sidebar's own `TRIPS`
+   * row (withheld, same as every other `splitPane: false` screen); the
+   * "trip" door's `‹ Alps 2026` names one specific Trip, which no sidebar row
+   * ever carries (kept).
+   */
+  it('withholds it from the builder at Desktop for the trips door, where the sidebar carries TRIPS', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/list?from=trips`)
+
+    expect(screen.queryByRole('link', { name: /‹/ })).toBeNull()
+  })
+
+  it('draws it on the builder at Desktop for the trip door, which the sidebar cannot name', async () => {
     setViewport(SPLIT, DESKTOP)
     const { store, id } = await aTrip()
     renderInShell(store, `/trips/${id}/list`)
 
-    expect(screen.queryByRole('link', { name: /‹/ })).toBeNull()
+    expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
   })
 
   it('draws it on People at Split, the widest width it is mounted at', async () => {
