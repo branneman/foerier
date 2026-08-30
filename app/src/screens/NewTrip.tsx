@@ -299,8 +299,14 @@ export function NewTrip() {
           the disabled CTA is waiting for: the label never changes, so the
           button cannot explain itself. Add gear's `RECORDED ON THIS DEVICE ·
           SYNCS IN THE BACKGROUND` is the same slot spent on the other fact
-          this screen has to state, and this one is the scarcer. */}
-      <p className={styles['fact']}>NAME IS THE ONLY REQUIRED INPUT</p>
+          this screen has to state, and this one is the scarcer.
+
+          Centred, because it follows its CTA block and that block is
+          full-width and pinned (boards' README §5). Two classes: the mono
+          treatment, and the alignment. */}
+      <p className={`${styles['fact']} ${styles['ctaFact']}`}>
+        NAME IS THE ONLY REQUIRED INPUT
+      </p>
 
       {pickerOpen && (
         <ParticipantPicker

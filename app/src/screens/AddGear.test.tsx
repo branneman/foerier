@@ -8,6 +8,8 @@ import {
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -605,5 +607,65 @@ describe('Add gear — the band above the title', () => {
 
     expect(screen.queryByRole('link', { name: '‹ DEPOT' })).toBeNull()
     expect(screen.queryByText('SYNCED')).toBeNull()
+  })
+})
+
+describe('Add gear — the fact line under the CTA', () => {
+  /**
+   * `docs/design/README.md` §5, settled: **the fact line follows its CTA
+   * block.** `Add gear — phone 393, fresh` and `roomy 540, counted gate`
+   * centre `RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND` under a
+   * full-width pinned primary; `Add gear — split 900` sets it inline beside a
+   * 40px button in a two-pane form. `App.tsx` routes `/add` to a standalone
+   * screen at every width and that pane has never been built, so only the
+   * first treatment exists here — the line centres unconditionally, and the
+   * stylesheet gains no width gate.
+   *
+   * The **field-level** fact lines are a different slot and do not move:
+   * `CONTAINERS HOLD OTHER GEAR · FIXED WHEN RECORDED` is drawn flush left on
+   * all four frames, `split 900` included, and `OPENS EMPTY — GATES THE CTA`
+   * flush left on the one frame that draws it.
+   */
+  function css(): string {
+    return readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'AddGear.module.css'),
+      'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '')
+  }
+
+  it('centres the CTA line and leaves the field-level lines flush left', () => {
+    expect(css()).toMatch(/\.ctaFact\s*\{[^}]*text-align:\s*center/)
+    expect(css()).not.toMatch(/\.fact\s*\{[^}]*text-align/)
+  })
+
+  it('gates the alignment on no width at all', () => {
+    // The board changes the alignment exactly where it changes the CTA — the
+    // Split boundary, 52em, where the form becomes a pane. `/add` is never a
+    // pane, so there is nothing here for the line to ride. The one media
+    // query in the file is the Roomy 40em measure cap.
+    expect(css().match(/@media[^{]*/g)).toEqual(['@media (min-width: 40em) '])
+  })
+
+  it('carries the alignment on the CTA line alone', async () => {
+    renderAddGear(await seededStore())
+
+    const cta = screen.getByText(
+      'RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND',
+    )
+    const trait = screen.getByText(
+      'CONTAINERS HOLD OTHER GEAR · FIXED WHEN RECORDED',
+    )
+
+    // The two share the mono ledger treatment; the CTA line carries one class
+    // more, and that class is the alignment fenced above. Asserted as a
+    // containment rather than against a literal, because the module's own
+    // names are generated.
+    const ctaClasses = cta.className.split(' ').filter((name) => name !== '')
+    const traitClasses = trait.className
+      .split(' ')
+      .filter((name) => name !== '')
+    expect(traitClasses).toHaveLength(1)
+    expect(ctaClasses).toHaveLength(2)
+    expect(ctaClasses).toEqual(expect.arrayContaining(traitClasses))
   })
 })

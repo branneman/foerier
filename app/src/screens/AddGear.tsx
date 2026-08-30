@@ -385,8 +385,12 @@ export function AddGear() {
         Add gear
       </button>
 
-      {/* No failure state: one local `gear.recorded` carrying every field. */}
-      <p className={styles['fact']}>
+      {/* No failure state: one local `gear.recorded` carrying every field.
+
+          Centred, because it follows its CTA block, and that block is the
+          full-width primary above it (boards' README §5). The two field-level
+          fact lines above stay flush left: the board moves only this one. */}
+      <p className={`${styles['fact']} ${styles['ctaFact']}`}>
         RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND
       </p>
 

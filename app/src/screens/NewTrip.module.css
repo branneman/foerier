@@ -198,6 +198,20 @@
     color: var(--color-ink-faint);
   }
 
+  /*
+   * The fact line follows its CTA block (boards' README §5). `New trip` draws
+   * the line centred because the primary above it is full-width and pinned to
+   * the thumb zone; `Add gear — split 900` draws the matching line inline
+   * beside a 40px button because there the form is a pane. Alignment is part
+   * of the CTA treatment, so it changes where the CTA changes — and this
+   * screen has one CTA treatment at every width it renders. Hence no width
+   * gate: a query here would be a free-standing rule about text, which is
+   * exactly what the boards' answer refuses.
+   */
+  .ctaFact {
+    text-align: center;
+  }
+
   /* Roomy 540 centres a 448 measure, exactly as Add gear does — the two
      screens are the same form at the same width, and the flow moves from one
      to the other. */

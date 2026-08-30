@@ -8,6 +8,8 @@ import {
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -478,5 +480,60 @@ describe('New trip — the create', () => {
       'href',
       '/trips',
     )
+  })
+})
+
+describe('New trip — the fact line under the CTA', () => {
+  /**
+   * `docs/design/README.md` §5, settled: **the fact line follows its CTA
+   * block.** The board draws the CTA two ways — full-width and pinned to the
+   * thumb zone below Split, an inline 40px button in a pane from Split up —
+   * and gives the line the alignment of whichever one it sits under. This
+   * screen has only the first treatment, at every width `/trips/new` renders,
+   * so the line centres unconditionally and no width gate enters the
+   * stylesheet.
+   *
+   * jsdom computes no cascade, so the rules are asserted where they are
+   * written (`Trip.test.tsx`'s shape); the DOM test below is what ties them to
+   * the element that carries them.
+   */
+  function css(): string {
+    return readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'NewTrip.module.css'),
+      'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '')
+  }
+
+  it('centres the line, under a primary that is full-width and parked at the foot', () => {
+    expect(css()).toMatch(/\.ctaFact\s*\{[^}]*text-align:\s*center/)
+
+    // The premise the centring rests on, and the reason it is not merely a
+    // taste: the line centres under a *block* that spans the measure, not
+    // beside a button that does not.
+    expect(css()).toMatch(/\.primary\s*\{[^}]*width:\s*100%/)
+    expect(css()).toMatch(/\.primary\s*\{[^}]*margin-top:\s*auto/)
+  })
+
+  it('gates the alignment on no width at all', () => {
+    // The board changes the alignment exactly where it changes the CTA — the
+    // Split boundary, 52em — and this screen has no Split treatment to ride.
+    // The one media query in the file is the Roomy 40em measure cap, which
+    // moves no CTA. A second query here would be a width rule about text,
+    // which is what the board's answer refuses.
+    expect(css().match(/@media[^{]*/g)).toEqual(['@media (min-width: 40em) '])
+  })
+
+  it('carries the alignment on the line itself, over the shared mono treatment', async () => {
+    renderNewTrip(await seeded())
+
+    const fact = screen.getByText('NAME IS THE ONLY REQUIRED INPUT')
+    const classes = fact.className.split(' ').filter((name) => name !== '')
+
+    // Two classes: the mono ledger treatment every fact line shares, and the
+    // alignment this one takes from its CTA. Asserted as a count and a
+    // difference rather than against a literal, because the module's own
+    // names are generated.
+    expect(classes).toHaveLength(2)
+    expect(classes[0]).not.toBe(classes[1])
   })
 })

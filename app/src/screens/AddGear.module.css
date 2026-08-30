@@ -212,6 +212,13 @@
     color: var(--color-ink-primary);
   }
 
+  /*
+   * The mono ledger line, in two slots. Under a *field* it stays flush left:
+   * `CONTAINERS HOLD OTHER GEAR · FIXED WHEN RECORDED` is drawn left on all
+   * four Add gear frames, `split 900` included, and `OPENS EMPTY — GATES THE
+   * CTA` left on the one frame that draws it. Under the CTA it takes that
+   * block's alignment instead; see `.ctaFact`.
+   */
   .fact {
     font-family: var(--font-mono);
     font-size: 0.53125rem;
@@ -219,6 +226,20 @@
     line-height: 1.7;
     text-transform: uppercase;
     color: var(--color-ink-faint);
+  }
+
+  /*
+   * The fact line follows its CTA block (boards' README §5). `Add gear —
+   * phone 393, fresh` and `roomy 540, counted gate` centre `RECORDED ON THIS
+   * DEVICE · SYNCS IN THE BACKGROUND` under a full-width primary;
+   * `Add gear — split 900` sets it inline beside a 40px button, in a two-pane
+   * form `App.tsx` does not build — `/add` renders standalone at every width.
+   * So the app has one CTA treatment and the line takes its alignment
+   * unconditionally. No width gate: the alignment rides the CTA's own layout
+   * change, and where that change is absent so is the gate.
+   */
+  .ctaFact {
+    text-align: center;
   }
 
   .primary {
