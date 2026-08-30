@@ -8,7 +8,6 @@ import { Link } from 'wouter'
 
 import { useDepot } from '../depot/store'
 import { tripChip, tripDateRange, tripParticipants } from '../depot/trips'
-import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import { entryCountLabel } from './GearListSection'
 import styles from './TripCard.module.css'
 
@@ -36,27 +35,49 @@ import styles from './TripCard.module.css'
  *
  * S7 builds the first of those two destinations, so the accent mono link
  * returns on the **Draft card alone** (`docs/design/README.md` §5: `BUILD
- * LIST ›` beats Components §06's bordered `Build gear list`). It is a second
- * control, raised beside `.surface` exactly as the phase chip is — never
- * nested inside the stretched link, for the same invalid-HTML-and-live-bug
- * reason below — and its target follows the same width split as the trip
- * screen's own `EDIT LIST ›` (`Trip.tsx`, spec §4.4): below Split the trip
- * screen *is* the editor, so it leads to `/trips/:id`; from Split up the
- * builder is, so it leads to `/trips/:id/list?from=trips` — the query
- * `GearListBuilder.tsx` reads to draw `‹ TRIPS` rather than the Trip's own
- * name. The active card keeps the interim affordance: `Continue pack-out`
- * names S9's packing view, which does not exist yet, so nothing here invents
- * it.
+ * LIST ›` beats Components §06's bordered `Build gear list`) — and **retires
+ * the bare `›` there with it**. `.chevron` now renders on the active card
+ * only: no drawn Draft card carries both a bare `›` and `BUILD LIST ›`
+ * (`Screens B:207-212`, `:483-487`; `Screens A:626-630`, `:656-660` — each
+ * frame draws exactly one), and below Split the two would be separate tap
+ * targets landing on the same route anyway.
  *
- * **The link's accessible name is its visible text, `BUILD LIST ›`, and
- * nothing more.** Every other verb control on this screen invents a
- * per-Trip `aria-label` (`Open {label}`, `Reopen {label}`) because a list of
- * identically-named controls is unnavigable by screen reader — the same
- * argument applies here across two Draft cards, and is not settled by this
- * task: the boards state the string this control carries and no more, and a
- * disambiguating sentence is exactly the kind of copy this task was told to
- * ask about rather than invent. Left as the literal board string; worth
- * revisiting once the boards or a review states a preferred phrasing.
+ * The link is a second control, raised beside `.surface` exactly as the
+ * phase chip is — never nested inside the stretched link, for the same
+ * invalid-HTML-and-live-bug reason below. **Its `href` is `Trips.tsx`'s to
+ * decide, not this component's**: below Split the trip screen *is* the
+ * editor, so it leads to `/trips/:id`; from Split up the builder is, so it
+ * leads to `/trips/:id/list?from=trips` — the query `GearListBuilder.tsx`
+ * reads to draw `‹ TRIPS` rather than the Trip's own name. That is *not* the
+ * same mechanism as the trip screen's own `EDIT LIST ›` (`Trip.tsx`, spec
+ * §4.4), even though both switch on `SPLIT`: that link is **withheld** below
+ * Split (`useScreenHeader`'s gate — the `GEAR LIST` band's trailing link
+ * never appears there, because the screen itself is the editor), while this
+ * one is always drawn and **retargeted**. Two callers of the same breakpoint
+ * reaching opposite answers, correctly, because the questions differ: "is
+ * the destination already on the page" against "which page is the
+ * destination." `Trips.tsx` already asks `useMediaQuery(SPLIT)` for its own
+ * `+ NEW` slot, so the computed route arrives here as a plain prop — the
+ * component asks no media query of its own, and `@container, never a media
+ * query` below stays true with no exception carved out for this link.
+ *
+ * The active card keeps the interim affordance: `Continue pack-out` names
+ * S9's packing view, which does not exist yet, so nothing here invents it.
+ *
+ * **`aria-label={`Build list for ${label}`}`, not the link's bare text as its
+ * accessible name.** `.card` is an `<article>` with no accessible name, and
+ * the `<li>` `Trips.tsx` wraps it in carries none either — an unnamed
+ * ancestor gives a descendant's name nothing to borrow, so a list of Draft
+ * cards would otherwise announce `BUILD LIST ›`, `BUILD LIST ›`, `BUILD LIST
+ * ›` indistinguishably, exactly the ambiguity `Open {label}` and `Reopen
+ * {label}` already exist to avoid on this same card and `ClosedRow`. The
+ * label keeps `BUILD LIST` as a substring — WCAG 2.5.3 Label in Name, so
+ * voice control saying "click build list" still finds it — and it doubles as
+ * the fix for the `›` glyph: read as plain text content the accessible name
+ * would include it too, spoken as "greater-than sign", where every other
+ * chevron on this screen sits in an `aria-hidden` span instead. `aria-label`
+ * overrides content wholesale, so one attribute does both jobs and the
+ * visible text stays the board's own uniform `BUILD LIST ›` mono span.
  *
  * ## The link and the chip are siblings, never nested
  *
@@ -111,6 +132,16 @@ export interface TripCardProps {
    */
   entryCount: number
   /**
+   * `Trips.tsx`'s own `useMediaQuery(SPLIT)`, already resolved into a route:
+   * `/trips/{id}` below Split, `/trips/{id}/list?from=trips` from Split up.
+   * Handed down rather than asked for here, so that `@container, never a
+   * media query` above stays true of this component with no exception
+   * carved out for `BUILD LIST ›`. Unused on the active card, which draws no
+   * such link — see `entryCount` above for why the caller computes it
+   * unconditionally anyway.
+   */
+  buildListHref: string
+  /**
    * The chip asks; the screen mounts the SET PHASE sheet. `ui/`'s primitives
    * have no `open` prop — mounted is open — so the caller writes
    * `{open && <PhaseSheet …/>}` and mount is what resets the sheet's own
@@ -124,10 +155,10 @@ export function TripCard({
   trip,
   variant,
   entryCount,
+  buildListHref,
   onOpenPhase,
 }: TripCardProps) {
   const state = useDepot((depot) => depot.state)
-  const isSplit = useMediaQuery(SPLIT)
 
   const label = tripLabel(trip)
   const participants = tripParticipants(state, trip)
@@ -139,15 +170,6 @@ export function TripCard({
   const chip = tripChip(trip, Date.now())
 
   const next = phaseNext(trip)
-
-  // Below Split the trip screen *is* the editor (`Trip.tsx`); from Split up
-  // editing moves to the builder route, which reads its door from
-  // `?from=trips` (`GearListBuilder.tsx`'s own contract) to draw `‹ TRIPS`
-  // rather than the Trip's own name. A shell breakpoint, not a store read —
-  // it decides which route this link names, not a fact about the Trip.
-  const buildListHref = isSplit
-    ? `/trips/${trip.id}/list?from=trips`
-    : `/trips/${trip.id}`
 
   return (
     <article
@@ -179,17 +201,19 @@ export function TripCard({
           {label}
         </span>
 
-        {/* Beside the chip on the active card and beside the name on the
-            dashed one — one element either way, placed by the grid, because a
-            container query decides how what exists lays out and never which
-            elements exist. */}
-        <span
-          className={styles['chevron']}
-          data-testid="trip-chevron"
-          aria-hidden="true"
-        >
-          ›
-        </span>
+        {/* Active-card only: the Draft card's own trailing `›` moved into
+            `BUILD LIST ›` below, and no board draws both together — a bare
+            chevron beside a `BUILD LIST ›` link would be a second, redundant
+            tap target for the same route. */}
+        {variant === 'active' && (
+          <span
+            className={styles['chevron']}
+            data-testid="trip-chevron"
+            aria-hidden="true"
+          >
+            ›
+          </span>
+        )}
 
         <span className={styles['phaseLine']} data-testid="phase-line">
           <button
@@ -285,6 +309,7 @@ export function TripCard({
           href={buildListHref}
           className={styles['buildList']}
           data-testid="build-list-link"
+          aria-label={`Build list for ${label}`}
         >
           BUILD LIST ›
         </Link>

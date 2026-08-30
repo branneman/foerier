@@ -3,6 +3,7 @@ import {
   personRecorded,
   tripCreated,
   tripDatesSet,
+  tripEntryAdded,
   tripParticipantAdded,
   tripPhaseMoved,
   type Clock,
@@ -245,6 +246,59 @@ describe('the Trips screen', () => {
     )
   })
 
+  it('supplies the Draft card a real entry count, not a literal 0', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    // The exact shape this test guards against: `cards`'s own
+    // `entryCount: listTotals(trip, state).entries` silently simplified back
+    // to a literal `0`, the shape the code had before this task landed — a
+    // change every other test in this file would still pass under, since
+    // none of them seed a Draft with real Entries.
+    renderTrips(
+      await seeded(
+        tripCreated(VOSGES, 'Vosges — Oct'),
+        tripEntryAdded(VOSGES, anId(), {
+          from: 'trip_only',
+          name: 'Tent',
+          container: false,
+        }),
+        tripEntryAdded(VOSGES, anId(), {
+          from: 'trip_only',
+          name: 'Stove',
+          container: false,
+        }),
+      ),
+    )
+
+    expect(screen.getByTestId(`trip-card-${VOSGES}`)).toHaveTextContent(
+      'DRAFT · 2 ENTRIES',
+    )
+  })
+
+  it('targets the trip screen below Split, where it is the editor', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    renderTrips(await seeded(tripCreated(VOSGES, 'Vosges — Oct')))
+
+    expect(screen.getByTestId('build-list-link')).toHaveAttribute(
+      'href',
+      `/trips/${VOSGES}`,
+    )
+  })
+
+  it('targets the builder route, with ?from=trips, from Split up', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(SPLIT)
+    renderTrips(await seeded(tripCreated(VOSGES, 'Vosges — Oct')))
+
+    // `?from=trips` is the door `GearListBuilder.tsx` reads with
+    // `URLSearchParams` to draw `‹ TRIPS` rather than the Trip's own name —
+    // `TripCard` no longer decides this itself (F4 review); `Trips.tsx`'s own
+    // `useMediaQuery(SPLIT)` does, and hands the route down as a prop.
+    expect(screen.getByTestId('build-list-link')).toHaveAttribute(
+      'href',
+      `/trips/${VOSGES}/list?from=trips`,
+    )
+  })
+
   it('renders every active Trip, not just the one the board drew', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     renderTrips(
@@ -281,25 +335,42 @@ describe('the Trips screen', () => {
     expect(drawn()).toEqual([TESSIN, SCOTLAND])
   })
 
-  it('takes the closed rows meta from the dates that exist, and no others', async () => {
+  it('draws the closed rows date and piece count, but not the date that is missing', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     renderTrips(
       await seeded(
         tripCreated(TESSIN, 'Tessin 2025'),
         tripDatesSet(TESSIN, { start: '2025-07-04', end: '2025-07-19' }),
+        tripEntryAdded(TESSIN, anId(), {
+          from: 'trip_only',
+          name: 'Tent',
+          container: false,
+        }),
+        tripEntryAdded(TESSIN, anId(), {
+          from: 'trip_only',
+          name: 'Stove',
+          container: false,
+        }),
         tripPhaseMoved(TESSIN, 'closed'),
         tripCreated(SCOTLAND, 'Scotland 2024'),
         tripPhaseMoved(SCOTLAND, 'closed'),
       ),
     )
 
-    // The board's `JUL 2025 · 54 PIECES · 1 LOST` needs S7's Entries and S10's
-    // outcomes; the segment that exists today is the date, and a Trip with no
-    // start date simply has none rather than a fabricated one.
+    // The board's `JUL 2025 · 54 PIECES · 1 LOST` — S7 supplies the piece
+    // count (`listTotals().pieces`, real trip-only Entries here, one piece
+    // each); `1 LOST` still waits on S10's outcomes, so it is absent from
+    // both rows.
     const tessin = screen.getByTestId(`closed-meta-${TESSIN}`)
-    expect(tessin).toHaveTextContent('JUL 2025')
-    expect(tessin.textContent).not.toContain('PIECES')
-    expect(screen.queryByTestId(`closed-meta-${SCOTLAND}`)).toBeNull()
+    expect(tessin).toHaveTextContent('JUL 2025 · 2 PIECES')
+    expect(tessin.textContent).not.toContain('LOST')
+
+    // Scotland has no start date, so that segment drops — but it still has a
+    // real piece count (zero, since it never held an Entry), so the row is no
+    // longer absent the way it was before S7 gave it something to say.
+    const scotland = screen.getByTestId(`closed-meta-${SCOTLAND}`)
+    expect(scotland).toHaveTextContent('0 PIECES')
+    expect(scotland.textContent).not.toContain('2025')
   })
 
   it('reopens a closed Trip into Unpack, once the decision is taken', async () => {

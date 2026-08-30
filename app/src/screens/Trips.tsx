@@ -9,6 +9,7 @@ import {
 import { useMemo, useState } from 'react'
 import { Link } from 'wouter'
 
+import { pieceLabel } from '../components/GearListSection'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { ReopenConfirm } from '../components/ReopenConfirm'
 import { TripCard } from '../components/TripCard'
@@ -106,20 +107,34 @@ export function Trips() {
   // store, and the card already owes one such read for `participants` —
   // `technical-debt.md`), so the screen reads it once per Trip and hands
   // down the number.
+  //
+  // `buildListHref` too: below Split the trip screen *is* the editor
+  // (`/trips/:id`); from Split up the builder is (`/trips/:id/list`, with
+  // `?from=trips` for `GearListBuilder.tsx`'s own door). `TripCard` asks no
+  // media query of its own — `isSplit` above is this screen's, already read
+  // for the `+ NEW` slot — so the resolved route arrives as a plain prop,
+  // same as the count.
   const cards: readonly {
     trip: TripState
     variant: 'active' | 'planned'
     entryCount: number
+    buildListHref: string
   }[] = [
     ...sections.active.map((trip) => ({
       trip,
       variant: 'active' as const,
       entryCount: listTotals(trip, state).entries,
+      buildListHref: isSplit
+        ? `/trips/${trip.id}/list?from=trips`
+        : `/trips/${trip.id}`,
     })),
     ...sections.planned.map((trip) => ({
       trip,
       variant: 'planned' as const,
       entryCount: listTotals(trip, state).entries,
+      buildListHref: isSplit
+        ? `/trips/${trip.id}/list?from=trips`
+        : `/trips/${trip.id}`,
     })),
   ]
   const nothing = cards.length === 0 && sections.closed.length === 0
@@ -151,7 +166,7 @@ export function Trips() {
           <>
             {cards.length > 0 && (
               <ul className={styles['cards']}>
-                {cards.map(({ trip, variant, entryCount }) => (
+                {cards.map(({ trip, variant, entryCount, buildListHref }) => (
                   <li
                     key={trip.id}
                     className={styles['cardItem']}
@@ -162,6 +177,7 @@ export function Trips() {
                       trip={trip}
                       variant={variant}
                       entryCount={entryCount}
+                      buildListHref={buildListHref}
                       onOpenPhase={() => setPhaseTripId(trip.id)}
                     />
                   </li>
@@ -177,6 +193,7 @@ export function Trips() {
                     <ClosedRow
                       key={trip.id}
                       trip={trip}
+                      pieces={listTotals(trip, state).pieces}
                       onReopen={() => setReopenTripId(trip.id)}
                     />
                   ))}
@@ -227,19 +244,32 @@ export function Trips() {
  * `REOPEN` — "closing clears nothing, so a trip closed too early, or one whose
  * lost gear turns up months later, returns to Unpack exactly as it stood".
  *
- * The board's meta reads `JUL 2025 · 54 PIECES · 1 LOST`. The two counts need
- * S7's Entries and S10's outcomes; the date is the segment that exists today,
- * and a Trip with no start date carries no meta rather than a fabricated one.
+ * The board's meta reads `JUL 2025 · 54 PIECES · 1 LOST`. S7 supplies the
+ * piece count — `listTotals(trip, state).pieces`, read once in `Trips()` and
+ * handed down rather than read here, the same reason `TripCard`'s
+ * `entryCount` arrives as a prop rather than a second store read in a
+ * component with none of its own. `1 LOST` still waits on S10's outcomes.
+ *
+ * Only the **date** segment is ever absent: a Trip closed with no start date
+ * drops it rather than fabricating one. The piece count is not in the same
+ * position — it is a real fold of whatever Entries the Trip held, zero
+ * included — so the meta line no longer disappears entirely the way it did
+ * before S7, when a missing date left nothing else to show.
  */
 function ClosedRow({
   trip,
+  pieces,
   onReopen,
 }: {
   trip: TripState
+  pieces: number
   onReopen: () => void
 }) {
   const label = tripLabel(trip)
-  const meta = tripStartMonth(trip)
+  const month = tripStartMonth(trip)
+  const meta = [month, pieceLabel(pieces)]
+    .filter((part): part is string => part !== null)
+    .join(' · ')
 
   return (
     <li className={styles['row']} data-testid="trip-entry" data-trip={trip.id}>
@@ -252,14 +282,15 @@ function ClosedRow({
         aria-label={`Open ${label}`}
       >
         <span className={styles['rowName']}>{label}</span>
-        {meta !== null && (
-          <span
-            className={styles['rowMeta']}
-            data-testid={`closed-meta-${trip.id}`}
-          >
-            {meta}
-          </span>
-        )}
+        {/* `pieceLabel` always returns a string, so `meta` is never empty —
+            unlike the old date-only line, this row always has something to
+            say. */}
+        <span
+          className={styles['rowMeta']}
+          data-testid={`closed-meta-${trip.id}`}
+        >
+          {meta}
+        </span>
       </Link>
 
       <button

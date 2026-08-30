@@ -27,8 +27,6 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
-import { SPLIT } from '../shell/useMediaQuery'
-import { setViewport } from '../testSetup'
 import { TripCard } from './TripCard'
 
 /**
@@ -112,6 +110,12 @@ function renderCard(
   // forcing every call site to spell out an irrelevant 0 would bury the ones
   // that actually mean something.
   entryCount = 0,
+  // `TripCard` asks no media query of its own (F4 review) — `Trips.tsx`
+  // resolves the route and hands it down, so the default here is that
+  // screen's own below-Split answer, and a test proving the Split-and-up one
+  // passes a different string explicitly rather than flipping a viewport
+  // this component no longer reads.
+  buildListHref: string = `/trips/${trip().id}`,
 ) {
   const location = memoryLocation({ path: '/trips', record: true })
   render(
@@ -121,6 +125,7 @@ function renderCard(
           trip={trip()}
           variant={variant}
           entryCount={entryCount}
+          buildListHref={buildListHref}
           onOpenPhase={onOpenPhase}
         />
       </DepotProvider>
@@ -348,7 +353,9 @@ describe('the planned trip card', () => {
     expect(screen.getByTestId('trip-next')).toHaveTextContent(
       'NEXT — BUILD THE GEAR LIST',
     )
-    expect(screen.getByTestId('trip-chevron')).toHaveTextContent('›')
+    // The bare `›` moved into `BUILD LIST ›` below: no board draws both on
+    // the same Draft card.
+    expect(screen.queryByTestId('trip-chevron')).toBeNull()
   })
 
   it('renders · N ENTRIES from the prop, not from a store read', async () => {
@@ -365,13 +372,18 @@ describe('the planned trip card', () => {
     )
   })
 
-  it('renders BUILD LIST › on a Draft card, as a control distinct from the chip', async () => {
+  it('renders BUILD LIST › on a Draft card, named per-Trip for the AT rotor', async () => {
     today(0)
     const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
     renderCard(card, 'planned')
 
     const buildList = screen.getByTestId('build-list-link')
+    // Visible text stays the board's literal string; the accessible name is
+    // overridden so a list of Draft cards doesn't announce `BUILD LIST ›`
+    // identically for every one of them — `.card` is a nameless `<article>`
+    // and the `<li>` around it is nameless too, so nothing else disambiguates.
     expect(buildList).toHaveTextContent('BUILD LIST ›')
+    expect(buildList).toHaveAccessibleName('Build list for Vosges — Oct')
     expect(buildList.tagName).toBe('A')
     // Not the phase chip and not nested inside it or the surface link — three
     // siblings, per the docstring's own rule.
@@ -395,8 +407,11 @@ describe('the planned trip card', () => {
     const surface = screen.getByRole('link', { name: 'Open Vosges — Oct' })
     expect(surface).toHaveAttribute('href', `/trips/${TRIP}`)
 
-    const buildList = screen.getByTestId('build-list-link')
-    // Below Split the trip screen is the editor, so both links agree.
+    const buildList = screen.getByRole('link', {
+      name: 'Build list for Vosges — Oct',
+    })
+    // `renderCard`'s own default — the below-Split answer `Trips.tsx` would
+    // compute for this route.
     expect(buildList).toHaveAttribute('href', `/trips/${TRIP}`)
 
     // The chip sits on its own line here rather than beside the name, and is
@@ -406,14 +421,15 @@ describe('the planned trip card', () => {
     expect(location.history).toEqual(['/trips'])
   })
 
-  it('targets the builder route, with ?from=trips, from Split up', async () => {
+  it('renders BUILD LIST at whatever href it is given, not one computed here', async () => {
     today(0)
-    setViewport(SPLIT)
+    // `TripCard` asks no media query of its own (F4 review) — the
+    // Split-vs-below-Split choice is `Trips.tsx`'s, tested there. This proves
+    // the link is a straight prop echo, the same shape as `entryCount`'s own
+    // proof above: a string this component could not have derived itself.
     const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
-    renderCard(card, 'planned')
+    renderCard(card, 'planned', () => {}, 0, `/trips/${TRIP}/list?from=trips`)
 
-    // `?from=trips` is the door `GearListBuilder.tsx` reads with
-    // `URLSearchParams` to draw `‹ TRIPS` rather than the Trip's own name.
     expect(screen.getByTestId('build-list-link')).toHaveAttribute(
       'href',
       `/trips/${TRIP}/list?from=trips`,
