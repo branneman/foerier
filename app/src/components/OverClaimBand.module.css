@@ -1,0 +1,109 @@
+@layer components {
+  /* The derived attention fill — never a filled red anything (spec §4.5).
+     `color-mix` rather than a literal alpha value, so the tint tracks the
+     token across both themes, the way `GearRow`'s and `Join`'s tints do. */
+  .band {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-16);
+    border-radius: var(--radius-card);
+    background: color-mix(
+      in srgb,
+      var(--color-status-attention) 6%,
+      transparent
+    );
+    border: var(--stroke-rule) solid
+      color-mix(in srgb, var(--color-status-attention) 45%, transparent);
+  }
+
+  /* A normal sentence, not a mono tag — the boards draw it in running case,
+     coloured but not capitalised, unlike the fact line beneath it. */
+  .attention {
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-status-attention);
+    margin: 0;
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding-top: var(--space-8);
+    margin-top: var(--space-8);
+    border-top: var(--stroke-rule) solid
+      color-mix(in srgb, var(--color-status-attention) 18%, transparent);
+  }
+
+  .row:first-child {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+  }
+
+  .rowHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-8);
+  }
+
+  /* The Gear's own name, recorded case — never uppercased, unlike the fact
+     beside it. */
+  .gearName {
+    font: var(--text-secondary) var(--font-ui);
+    font-weight: 600;
+    color: var(--color-ink-primary);
+  }
+
+  /* `--text-label` is mono caps by its own docstring. The text itself is
+     already baked uppercase in `OverClaimBand.tsx` — the settle routes and
+     row facts are exact copy the boards specify character-for-character, so
+     the component writes it rather than leaning on this rule to produce it —
+     but the transform stands anyway, matching the rest of this file's mono
+     tags and guarding against a value that arrives some other case. */
+  .fact {
+    font: var(--text-label) var(--font-mono);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .settleRow {
+    display: flex;
+    gap: var(--space-12);
+  }
+
+  .settle {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: var(--text-label) var(--font-mono);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  /* Quiet, not accent — the one row in this band that is not itself a
+     conflict. */
+  .more {
+    align-self: flex-start;
+    margin-top: var(--space-8);
+    padding-top: var(--space-8);
+    border: 0;
+    border-top: var(--stroke-rule) solid
+      color-mix(in srgb, var(--color-status-attention) 18%, transparent);
+    background: none;
+    font: var(--text-label) var(--font-mono);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    cursor: pointer;
+  }
+}
