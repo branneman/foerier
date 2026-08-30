@@ -1017,11 +1017,11 @@ promoting it quietly is what the scope tags exist to prevent.
 
 §§1–10 record the design that was taken, and are left as they were written —
 the precedent [`trips-and-phases.md`](2026-08-29-trips-and-phases.md) §10
-sets in as many words. Ten sentences above turned out false once the code
-existed: some because implementation found a better route than the one
+sets in as many words. Eleven sentences above turned out false once the
+code existed: some because implementation found a better route than the one
 drafted, some because a review round caught a place where this document's
-own words outran what it had checked. All ten are amended here rather than
-back into the sections that state them.
+own words outran what it had checked. All eleven are amended here rather
+than back into the sections that state them.
 
 **§4.8, the glance table's `ui/Stepper` row, and §5.3's `Stepper.test.tsx`
 bullet — `Stepper` ships with two callers, not three, and one converts while
@@ -1042,7 +1042,7 @@ something to check — is where a blank well first became expressible, as
 `onChange(NaN)`; `d12e89a` converted that to `onChange(null)`, since NaN
 typechecked but made "blank" a fact every caller had to know to guard
 against. Neither commit has anything to do with the gear list, which does
-not exist yet at either point — `EntryRow.tsx` lands two commits later, at
+not exist yet at either point — `EntryRow.tsx` lands four commits later, at
 `bc632b5`. **The fold is possible and deferred, not impossible.** What Add
 gear's field still owns that `Stepper` does not: a `<label htmlFor>`, the
 `OPENS EMPTY — GATES THE CTA` fact line, and a CTA gate computed from the
@@ -1071,12 +1071,14 @@ return type, `KindValue | 'trip_only'`, undercounted its own cases:
 replica's fold (the ordinary cross-aggregate sync race between
 `trip.entry_added` and `gear.recorded`) **and** a depot Entry whose Gear has
 folded but carries no `kind` register of its own —
-`shared/src/selectors/entry.ts`'s own docstrings on `entryKind` and
-`pieceCountOf` already pair these two, since both default to `1` the same
-way. (The spec's own §3.1 table names a third, distinct case — "Gear with an
-unrecognised Kind," a `kind` register holding a value this build does not
-know — which behaves the same but is not this one.) The drafted prose named
-only the first `undefined` cause.
+`shared/src/selectors/entry.ts`'s own `entryKind` docstring already pairs
+these two. `pieceCountOf`'s table does not: it names "Gear with an
+unrecognised Kind" (a `kind` register holding a value this build does not
+know) — a third, distinct case, not the second one — and covers the
+no-`kind`-register case only silently, through its `default: return 1`
+branch. All three default to `1` the same way, which is what let the
+drafted prose's omission go unnoticed. The drafted prose named only the
+first `undefined` cause.
 
 **§4.4 — the Desktop strip's title and back link, not its sync line.** The
 draft had Split's pane-level band and Desktop's full-width strip carrying the
@@ -1143,3 +1145,16 @@ already explains why — the count arrives as a prop rather than deepening the
 store read, so the second caller the debt wants never arrives, and "S7
 touched this component" must not read later as "S7 paid down this debt."
 `technical-debt.md` keeps the entry exactly as it stood before this slice.
+
+**§1.4 — the pre-existing count of `kind === 'counted'` gates was already at
+least five, not three.** The drafted text names `depot.ts:107`,
+`whereabouts.ts:62` and `GearDetail.tsx:78` as the three sites `bringCountOf`
+joins as a fourth. `app/src/screens/Depot.tsx` gates the identical question
+twice more — once inline in `metaFor`, once in `qtyFor` — and both predate
+this slice: S7's only touch to that file is exporting `qtyFor` and widening
+its docstring (`615a08c`), not adding either gate. The count this slice
+joined was already at least five; `bringCountOf` is not literally "the
+fourth" under any count that includes `Depot.tsx`, and the argument the
+drafted sentence makes — that the question belongs behind one function
+rather than another copy of the gate — holds regardless of which number
+introduces it.
