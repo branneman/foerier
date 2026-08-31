@@ -520,6 +520,52 @@ drawn beats derived; and the seventeen floor-orphans split as described below.
   and **no tier can prove that timing**, since `await user.click` drains the
   queue; it lives in `KEYBOARD-PASS.md` instead.
 
+**S8, per-person Pieces, has landed** (story 8). Two op types —
+`trip.piece_removed`, `trip.piece_restored` — the derivation in
+`shared/src/selectors/piece.ts`, per-person claims reading Pieces instead of
+Participants, `ui/PersonCircle` and `ui/PersonCluster`, the Piece picker, and
+the over-claim band's per-person settle routes. No endpoints, no migration,
+and — after a ruling retired the first draft's dimension — the slicing engine
+untouched. See [its spec](docs/specs/2026-08-31-per-person-pieces.md) and
+[§12.14](docs/architecture-design.md#1214-consequences-of-s8-per-person-pieces).
+
+**Four things about S8 are worth knowing before touching Pieces:**
+
+- **A Piece is derived, never enumerated, and its tombstone follows two rules
+  that cut against each other.** There is no `piece_added`: a Piece exists
+  because a Person is a Participant, minus whoever `trip.piece_removed` has
+  tombstoned, so a Participant added later gets a Piece with no backfill op.
+  A tombstone **outlives** its Participant — remove Kim's Piece, drop Kim from
+  the Trip, re-add her, and her Piece is still tombstoned, because the two ops
+  address different registers on different entity paths and a tombstone never
+  cascades. A tombstone naming a **non**-Participant is the mirror case: inert,
+  not an error, shows nowhere — invariant 10 falls out of the derivation
+  rather than a reducer gate, the same shape invariant 6 already took.
+- **A slice number on a board is a claim, not a licence, and ruling H is why
+  that sentence exists.** The first draft added a sixth `slice.ts` dimension,
+  `PIECES BY PERSON`, reading a dashed rung the way `TRIP · S7` had been read
+  a slice earlier — but the rung contradicted the standing two-worlds rule
+  (Pieces exist only in trip contexts) and story 13's own criteria never named
+  it. The round overturned it, and S8 touches `slice.ts` not at all — worth
+  remembering the next time a board's dashed line looks like a decision.
+- **The cluster and `×N` are one control; circles are never individual
+  targets.** 44px hit areas on 32px centres let a tap meant for one Person
+  land on their neighbour, so the whole cluster-and-count opens the Piece
+  picker together, with one accessible name carrying the fact
+  (`Who brings one — Headlamp, 2 of 3 bring one`). `ui/PersonCircle` takes a
+  `tone`, not a `state` — S5's login ring, S8's inclusion and S9's packing
+  fills are three different meanings for the same border, and the caller owns
+  which one applies.
+- **Per-person claims read Pieces now, and the over-claim band's per-person
+  routes are the only surface that settles one.** `SettleRoutes` grew two
+  callbacks, `onRemovePieceHere` and `onRemovePieceThere`; `ActivationConfirm`
+  and `ReopenConfirm` pass neither, staying facts-only. The F9 fallback
+  (`REMOVE HERE` replacing the Piece route when the contested Person is an
+  Entry's only included Piece) is applied **symmetrically** to both the
+  `HERE` and `REMOVE ON <trip>` sides, which the design ruling names only for
+  the `HERE` side — a deliberate widening, recorded in the spec's §9, not a
+  gap.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**

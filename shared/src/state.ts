@@ -219,10 +219,6 @@ export interface TripState {
    * dropping the key would let a concurrent re-add win by arrival order. An
    * absent `participants` key is the different fact that no participant op
    * has ever addressed this Trip.
-   *
-   * It has to be a map for a reason beyond merge safety — S8 derives one
-   * Piece per Participant, which is what lets a Participant added late get a
-   * Piece with **no backfill op**.
    */
   participants?: Readonly<Record<string, Register<boolean>>>
   /**

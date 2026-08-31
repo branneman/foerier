@@ -1226,3 +1226,8 @@ Depot's column heads, and `SIGN OUT` / `REMOVE` as §11's attention text) got
 their drawn sizes back plus a clamped `::after`; the rest keep the explicit 48
 that stating the value gave them. No new numbers were invented — the drawn size
 is the number.
+
+**S8 falsified §3.3.** "Per-person claims are Participants until S8 subtracts"
+is no longer true — `claimFor`'s per-person branch reads `piecesOf`, not
+`participantIds(trip)`; see
+[its spec](2026-08-31-per-person-pieces.md#33-per-person-claims-stop-being-participants).

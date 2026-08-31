@@ -663,12 +663,14 @@ See [its spec](specs/2026-08-29-trips-and-phases.md) and §12.11.
 - **Usable?** A Trip has a real list. This is the slice that starts replacing the
   per-trip sheet.
 
-**S8 — Per-person Pieces.** *Delivers 8.*
+**S8 — Per-person Pieces. Landed.** *Delivers 8.* See
+[its spec](specs/2026-08-31-per-person-pieces.md) and §12.14.
 
 - **Ops (2):** `trip.piece_removed`, `trip.piece_restored`.
-- **UI:** Pieces derived one-per-Participant; remove one Person's Piece; the
-  per-Person packed view ("headlamp — me: packed; partner: not yet") — which is
-  a story-13 grouping riding along.
+- **UI:** Pieces derived one-per-Participant; remove or restore one Person's
+  Piece from the cluster-and-`×N` control; the over-claim band's per-person
+  settle routes. The per-Person **packed** view is not this slice's — S8
+  delivers the Piece it needs, and S9 draws the view on top of it.
 - **Tests:** Tier 1 — Pieces derived from participants minus tombstones, so a
   Participant added later gets a Piece **with no backfill op**; at most one Piece
   per Participant. Tier 2 — remove-vs-restore ordering; a Participant added
@@ -684,7 +686,8 @@ One slice, because [sync §3.7](sync-protocol.md) makes 9 and 10 one mechanism.
   `trip.entry_moved`, `trip.piece_moved`, `trip.container_stage_set`.
 - **UI:** F4 Pack-out — status per Entry and per Piece, trip residence, the
   Container journey board, and the **disagreement shown, not forbidden** when a
-  packed Container holds a not-packed Entry.
+  packed Container holds a not-packed Entry. Also **Find's per-person answer
+  card**, work S8 held back — `Screens B` 03 is restaged `S8 · PIECES` → `S9`.
 - **Tests:** Tier 1 — Whereabouts reconciling home against trip residence for
   Active Trips only, and the **quantity split** for Counted and Per-person gear
   with the Home slot kept; moving a Container moving its contents through the
@@ -846,7 +849,6 @@ follow-up:
 | --- | --- |
 | Person; Ownership (Personal / Shared) | S4 |
 | Trip membership ("Gear not in any Trip") | S7 |
-| Per-Person grouping of Pieces | S8 |
 | Packing status; Container | S9 |
 | Outcome (`open`, `lost`) | S10 |
 
@@ -854,11 +856,18 @@ follow-up:
 see §12.13 for what a cross-aggregate dimension cost the engine that S3 built
 for one that reads only the Gear's own registers.
 
-Story 13 is therefore **complete at S10**, having been touched by six slices and
-owned by one — and story 4's own narrowing criterion is delivered by S4 through
-this engine rather than beside it. Story 34 (naming a slice) is Later and
-attaches to the same engine with no structural change, which is the test that
-the engine was built at the right altitude.
+**S8 added no row.** Its first draft did — `PIECES BY PERSON · S8`, read off
+`Components §04`'s dashed rung the way `TRIP · S7` had been read a slice
+earlier — but the round's ruling H overturned it: the rung contradicted the
+standing two-worlds rule (Pieces exist only in trip contexts, never on the
+Depot) and story 13's own criterion list had never named it. See §12.14.
+
+Story 13 is therefore **complete at S10**, having been touched by **five**
+slices — S3, S4, S7, S9, S10 — and owned by one, and story 4's own narrowing
+criterion is delivered by S4 through this engine rather than beside it. Story
+34 (naming a slice) is Later and attaches to the same engine with no
+structural change, which is the test that the engine was built at the right
+altitude.
 
 ### 8.6 What can be built in parallel
 
@@ -2030,4 +2039,62 @@ aggregate. Three op types, no endpoints, no migration; see its
   callers, `/trips/:id/add` and `/trips/:id/list`, make it four of ten, each
   redirecting the other way across Split — the picker collapses into the
   builder above it, the builder collapses into the trip screen below it.
+
+### 12.14 Consequences of S8: per-person Pieces
+
+Two op types, no endpoints, no migration, and — after a ruling removed the one
+dimension the first draft had proposed — the slicing engine untouched. See its
+[spec](specs/2026-08-31-per-person-pieces.md).
+
+- **A Piece is derived, never enumerated, and carries two tombstone rules a
+  future caller could easily get backwards.** `trip.entry_added` names no
+  Pieces; a Piece exists because a Person is a Participant, minus whoever
+  `trip.piece_removed` has tombstoned (`pieceInclusion` in
+  `shared/src/selectors/piece.ts`), so a Participant added after the Entry
+  gets a Piece with no backfill op, and one removed loses every Piece the same
+  way. The first rule: **a tombstone outlives its Participant.** Removing
+  Kim's Piece, then dropping Kim from the Trip, then re-adding her leaves her
+  Piece tombstoned — `trip.piece_removed` and `trip.participant_removed`
+  address different registers on different entity paths, and
+  [sync §3.5](sync-protocol.md)'s "a tombstone never cascades" forbids the
+  re-add from clearing it. The second: **a tombstone naming a non-Participant
+  is inert, not an error.** It shows nowhere and needs no reducer gate —
+  invariant 10 falls out of the derivation itself, the same shape invariant 6
+  already took at `bringCountOf`, and for the same reason: gating in the
+  reducer would make the fold order-dependent on which op arrived first.
+- **Per-person claims read Pieces now, not Participants, so removing a Piece
+  releases that Person's claim** at the granularity
+  [domain §5.2](domain-model.md) states it in. `supplyAndClaimed` needed no
+  change at all — it already compared People rather than counts, so narrowing
+  the claimed set narrowed the conflict for free, which is the sign S7 put the
+  rule in the right place the first time. An Entry with no included Pieces
+  holds no claim and is skipped by `claimsByGear`, the same "a claim the
+  reader cannot see is a claim they cannot settle" rule `entriesOf` already
+  states.
+- **Ruling H retired a ladder rung that had never been a decision, and the
+  lesson outlasts this slice.** The first draft added a sixth `slice.ts`
+  dimension, reading `Components §04`'s dashed `PIECES BY PERSON · S8` rung
+  the way `TRIP · S7` had been read one slice earlier. The round overturned it:
+  the rung contradicted the standing two-worlds rule — Pieces exist only in
+  trip contexts, never on the Depot — and story 13's own criterion list had
+  never named it. S8 therefore touches `slice.ts` not at all: no dimension
+  row, no second memo, no chip, no picker. The generalisation for the next
+  reader of that ladder: **a slice number on a board is a claim that has to
+  survive the standing rules, not a licence that overrides them.**
+- **Ruling B makes the cluster and `×N` one control; circles are never
+  individual targets.** Every alternative the round considered failed on
+  ground S7's own ruling O had already surveyed: 44px hit areas on 32px
+  centres are ruling O's own counter-example — a tap meant for one Person
+  lands on their neighbour — and clamping so targets cannot overlap caps them
+  under the 44 floor anyway. So the cluster and the `×N` beside it open the
+  Piece picker together, one accessible name carrying the whole fact (`Who
+  brings one — Headlamp, 2 of 3 bring one`), and the standing clamped
+  `::after` grows to the row's 48 once instead of once per circle.
+- **Ruling E gives every cluster surface one overflow rule, retroactively.**
+  Four painted slots; from five, three circles plus a `+N`; and — the part
+  worth remembering — **dashed, excluded circles sort to the front**, so the
+  one Person declining is never the one hidden behind the count. The rule
+  reaches `TripCard`, the trip screen header and the builder header as well as
+  the Piece cluster, none of which had ever handled a roster past three
+  before this slice.
 

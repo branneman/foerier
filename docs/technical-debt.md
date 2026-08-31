@@ -83,10 +83,10 @@ items under thirty settled ones.
   and why its CTA fact line has only one alignment to say.
   [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `two-pane Add gear has never been built`
-- **`ui/`'s `Popover` is unbuilt and has a waiting caller.** §4a's desktop tag
-  picker is a popover on the boards and is approximated by `Sheet`'s
-  `desktopCard` until the primitive lands.
-  [`frontend-design.md`](frontend-design.md) §5, anchor:
+- **`ui/`'s `Popover` is unbuilt and has two waiting callers.** §4a's desktop
+  tag picker and S8's Piece picker (Split and up) are both popovers on the
+  boards, and both are approximated by `Sheet`'s `desktopCard` until the
+  primitive lands. [`frontend-design.md`](frontend-design.md) §5, anchor:
   `§4a's desktop tag picker is approximated by`
 - **Two of §5's `ui/` composites are still in `app/`.** `TripCard` and
   `WhereaboutsCard` are named there and live in `app/src/components/`, each with
@@ -137,17 +137,17 @@ items under thirty settled ones.
   a Counted Gear reading `×1` on one surface and nothing on another.
   [`architecture-design.md`](architecture-design.md) §12.13, anchor:
   `one of several sites`
-- **`sequence()` is the fifth hand-rolled clock-stamper in `shared/`.**
-  `trip.test.ts`, `claim.test.ts` and `entry.test.ts` each carry a byte-identical
-  `foldAt` that flattens factory specs and stamps increasing HLCs, and
-  `slice.test.ts` now carries a fourth spelling of it. The contract they all
-  implement is stated once, in `aTrip`'s own docstring — *"they come back in
-  authoring order, so a caller stamping increasing clocks over the flattened
-  list gets exactly the log a screen would have written"* — so the right home is
-  `shared/testUtils/`, beside that sentence. S5 found the cost: a helper that
-  stamped one HLC across a multi-op factory silently produced Draft Trips where
-  the author wrote `phase: 'pack_out'`. [`testing.md`](testing.md), anchor:
-  `foldAt`
+- **`sequence()` is the sixth hand-rolled clock-stamper in `shared/`.**
+  `trip.test.ts`, `claim.test.ts`, `entry.test.ts` and `piece.test.ts` each
+  carry a byte-identical `foldAt` that flattens factory specs and stamps
+  increasing HLCs, and `slice.test.ts` now carries a fourth spelling of it.
+  The contract they all implement is stated once, in `aTrip`'s own
+  docstring — *"they come back in authoring order, so a caller stamping
+  increasing clocks over the flattened list gets exactly the log a screen
+  would have written"* — so the right home is `shared/testUtils/`, beside
+  that sentence. S5 found the cost: a helper that stamped one HLC across a
+  multi-op factory silently produced Draft Trips where the author wrote
+  `phase: 'pack_out'`. [`testing.md`](testing.md), anchor: `foldAt`
 - **`SliceBar`'s filter plumbing is reproduced in `DepotPicker`.** About
   fifty-five lines — `withFilters`, `apply`, `remove` and both chip-row
   blocks — near-verbatim. Reusing `SliceBar` itself is genuinely wrong (it also

@@ -1309,10 +1309,6 @@ describe('trips', () => {
  * keyed `(trip_id, "participants", <person_id>)`. The handler is
  * `gearTagWritten`'s with `person_id` for `tag`, and the whole concurrency
  * story is again the register key rather than the code.
- *
- * It has to be a map for a reason beyond merge safety: S8 derives a Piece per
- * Participant, so adding a Participant later gives them a Piece with **no
- * backfill op**.
  */
 describe('trip participants', () => {
   const TRIP = 'trip-participants'

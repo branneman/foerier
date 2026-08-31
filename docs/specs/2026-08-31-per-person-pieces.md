@@ -895,3 +895,94 @@ names the retirement.
   explicitly — *"Niche and possibly hypothetical — parked, not built"* — with a
   Trip-only Entry as the MVP escape hatch.
 - **Any change to `/sync`, the API workspace, or the schema.**
+
+## 9. What changed during implementation
+
+§§1–8 record the design that was taken, and are left as they were
+written — the precedent [`trips-and-phases.md`](2026-08-29-trips-and-phases.md)
+§10 and [`the-gear-list.md`](2026-08-29-the-gear-list.md) §11/§12 set. Six
+things below either turned out different from what §§4.3 and 4.9 describe, or
+are decisions the implementation took that no board had reached. All six are
+recorded here rather than back into the sections they correct; two are flagged
+for the next design round.
+
+**§4.9 — the copy count was six, not five.** The table names `TripCard` ·
+`Trip` · `GearListBuilder`, `ParticipantPicker` and `People` — five callers
+across three rows. `app/src/screens/NewTrip.tsx`'s Participants picker is a
+sixth near-identical hand-rolled circle that the table missed, and it folds
+into `ui/PersonCircle` along with the rest. Two further one-line initial
+expressions stand at `app/src/App.tsx:177` and
+`app/src/screens/Account.tsx:331` — the signed-in-user avatar, with its own
+sizing and its own rules, not a roster circle — and were left out of scope
+deliberately, not missed.
+
+**[design] §4.9/ruling E — `NewTrip` is a fifth cluster surface ruling E does
+not enumerate.** Ruling E names "one rule for all four cluster surfaces": the
+builder row, `TripCard`, the trip screen header and the builder header
+(`docs/design/README.md` §5d E). `NewTrip`'s Participants picker is the same
+shape with the same overflow failure past four people, and it was folded into
+`PersonCluster` under that same rule regardless — the ruling's own stated
+intent, "one rule for all cluster surfaces", covers it in spirit even though
+the enumeration does not name it. The omission is because the brief the
+ruling was drawn against undercounted the circles by exactly the one this
+section corrects. Flagged for the next design round to fold `NewTrip` into
+ruling E's list explicitly.
+
+**[design] §4.3 — the Piece picker's rows draw 30px circles, not the boards'
+24px.** `Screens A` §03 fixes 24px for the *read pane* — the display
+clusters, at TABLE-44 density. The Piece picker is a picker, not a display
+cluster, and its structural sibling `ParticipantPicker` already draws 30px
+rows on its own stated reason: a picker row's height sets its circle's size,
+not the read pane's. Ruling C names no picker-row circle size at all, so
+30px is the sibling's precedent applied rather than a number the round chose.
+Flagged for the next design round to state a picker-row circle size
+explicitly, the way §4.1 states the read pane's.
+
+**A cluster inside an already-labelled control is wrapped in an
+`aria-hidden` span carrying `display: contents`.** `NewTrip`'s Participants
+button and the gear-list row's cluster-and-`×N` control both name the whole
+fact in their own accessible name (`Participants: Els, Mies` and `Who brings
+one — Headlamp, 2 of 3 bring one`), so the `PersonCluster` nested inside each
+would otherwise add a redundant `role="img"` name to the same accessible
+description. An `aria-hidden` ancestor removes the whole subtree from the
+accessibility tree regardless of a descendant's own role, which suppresses
+that without widening `PersonCluster`'s props to take a "don't announce
+yourself" flag; `display: contents` generates no box of its own, so wrapping
+introduces no layout shift. This is now the established pattern at two call
+sites (`app/src/screens/NewTrip.tsx`, `app/src/components/EntryRow.tsx`) and
+should be reached for again rather than re-solved, the next time a labelled
+control needs a `PersonCluster` inside it.
+
+**§4.6/ruling F — the F9 fallback was applied symmetrically, to
+`REMOVE ON <trip>` as well as `HERE`.** Ruling F's drawn example and its
+text name the fallback only for the `HERE` side: when the contested Person is
+an Entry's only included Piece, `REMOVE HERE` replaces the Piece route
+because removing the Piece and removing the Entry are the same act.
+`OverClaimBand.tsx`'s implementation applies the identical reasoning to the
+other Trip's side — whichever Entry holds the contested Person as its only
+included Piece gets the plain Entry route through `onRemoveHere` /
+`onRemoveThere`, not a Piece-specific one — on the argument that the domain
+gives no reason to treat the two sides differently. The reasoning holds and
+the ruling's own drawn example is unaffected by it either way, but the two
+acts are **not** literally identical: `trip.piece_removed` leaves a `×0`
+Entry standing (ruling D), while `trip.entry_removed` deletes the Entry
+outright. The symmetry was previously recorded only in `OverClaimBand.tsx`'s
+own JSDoc; it belongs here so a design audit of ruling F sees the widening
+rather than discovering it in the code.
+
+**§4.6 — an empty `.settleRow` is reachable, and it is a new symptom of a
+pre-existing simplification, not a pre-existing symptom.** `PersonSettleRoutes`
+carries forward the generic branch's existing simplification of taking at
+most one claim per Trip (`here?.[0]` via `ConflictRow`'s `hereClaims`, and
+`firstClaimOfTrip` for each other Trip) rather than widening it. What is new
+at S8 is the *symptom*: the generic branch renders `REMOVE HERE` /
+`REMOVE ON <trip>` unconditionally for every contested Person, so it can
+never produce a routeless row, while the per-person branch renders one
+`.settleRow` per contested Person and can render one with no button in it at
+all — reachable only when one Gear has two Entries on one Trip, each claiming
+the same Person, with a second Trip also claiming them; constructible
+offline, not through this app's own screens. The no-route outcome is
+arguably safer than the generic branch's pre-existing wrong-Entry route in
+the same corner, so the code stands as written. It should be read as a new
+symptom of a simplification the generic branch already carried, not as a
+pre-existing issue this slice merely inherited.

@@ -607,10 +607,7 @@ const tripPhaseMoved: Handler = (state, op, stamp) =>
  * resolving by `writeRegister` like every other field.
  *
  * `false` is a real value carrying a real clock, never a dropped key —
- * dropping it would let a concurrent re-add win by arrival order. And the map
- * has to *be* a map for a second reason: S8 derives one Piece per
- * Participant, which is what lets a Participant added late get a Piece with
- * no backfill op.
+ * dropping it would let a concurrent re-add win by arrival order.
  */
 const tripParticipantWritten =
   (present: boolean): Handler =>

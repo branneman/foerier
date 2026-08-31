@@ -14,7 +14,7 @@ import { isClosed, tripLabel, visibleTrips } from './trip.ts'
  *
  * [Architecture §8.5](../../docs/architecture-design.md) is the constraint
  * that shapes this file. Story 13's core lands at S3 carrying the only two
- * dimensions that exist — Tag and Kind — and five later slices each extend
+ * dimensions that exist — Tag and Kind — and four later slices each extend
  * *this* engine with the dimension they introduce, as part of their own
  * definition of done rather than as a follow-up:
  *
@@ -23,9 +23,14 @@ import { isClosed, tripLabel, visibleTrips } from './trip.ts'
  * | Tag; Kind | S3 |
  * | Ownership; Person | **S4** |
  * | Trip membership | S7 |
- * | Per-Person grouping of Pieces | S8 |
  * | Packing status; Container | S9 |
  * | Outcome | S10 |
+ *
+ * S8 (per-person Pieces) adds no row: its first draft's `PIECES BY PERSON`
+ * dimension was overturned before it landed — the rung contradicted the
+ * two-worlds rule (Pieces exist only in trip contexts), and story 13's own
+ * criterion list never named it. See
+ * [architecture §12.14](../../docs/architecture-design.md#1214-consequences-of-s8-per-person-pieces).
  *
  * So a dimension is a **row in a table**, never a branch in a predicate. That
  * is the whole design, and story 34 (a saved slice, Later) attaching with no
