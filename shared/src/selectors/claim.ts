@@ -1,6 +1,7 @@
 import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
 import { bringCountOf, entriesOf, entryKind } from './entry.ts'
-import { isActive, participantIds, visibleTrips } from './trip.ts'
+import { piecesOf } from './piece.ts'
+import { isActive, visibleTrips } from './trip.ts'
 
 /**
  * **The over-claim** — domain §5.2's supply rule, read once per kind
@@ -26,9 +27,10 @@ import { isActive, participantIds, visibleTrips } from './trip.ts'
  * "how many things is this line" for *any* Entry and this one only ever asks
  * it of a depot Entry whose Kind is already known.
  *
- * `personIds` is present only for a Per-person claim, and is the full
- * Participant set of the claiming Trip — Pieces are exactly Participants
- * until S8 tombstones some (spec §3.3).
+ * `personIds` is present only for a Per-person claim, and is the Entry's
+ * **included Pieces** — the claiming Trip's Participants minus whoever's
+ * Piece {@link piecesOf} reads as tombstoned, so removing one Person's Piece
+ * releases exactly that Person's claim.
  */
 export interface Claim {
   readonly tripId: string
@@ -103,9 +105,10 @@ function compareIds(a: string, b: string): number {
  * Single reads no register at all — its supply is a fact of the *kind*, not
  * of the Gear (see {@link supplyAndClaimed}'s note on invariant 6). Counted
  * reads {@link bringCountOf}, which already defaults an absent register to
- * `1`. Per-person reads {@link participantIds} of the *claiming* Trip, not of
- * the Entry — a per-person Entry has no Participant of its own, it draws the
- * whole Trip's roster (spec §3.3).
+ * `1`. Per-person reads {@link piecesOf} of the Entry against the *claiming*
+ * Trip — Pieces, not Participants: removing a Piece releases that Person's
+ * claim, which is what makes domain §5.2's per-person rule settleable at the
+ * granularity it is stated in (spec §3.3, §4.4).
  */
 function claimFor(
   kind: ClaimableKind,
@@ -123,7 +126,10 @@ function claimFor(
       count: bringCountOf(entry, state) ?? 1,
     }
   }
-  const personIds = participantIds(trip)
+  // Pieces, not Participants: removing a Piece releases that Person's claim,
+  // which is what makes domain §5.2's per-person rule settleable at the
+  // granularity it is stated in.
+  const personIds = piecesOf(entry, trip)
   return {
     tripId: trip.id,
     entryId: entry.id,
@@ -187,8 +193,19 @@ function claimsByGear(
       // it rather than re-deriving `entryKind`'s own test.
       const source = entry.source?.value
       if (source === undefined || source.from !== 'depot') continue
+      const claim = claimFor(kind, trip, entry, state)
+      // A claim naming nobody is not a claim. Reachable when every Piece of a
+      // per-person Entry has been removed: it raises no false conflict either
+      // way (it adds 0 to `claimed`), but left in `claims` it would give a
+      // settle route pointing at an Entry that is not part of the problem —
+      // `entriesOf`'s rule one step on, that a claim the reader cannot see is
+      // a claim they cannot settle. Single and Counted claims carry no
+      // `personIds` at all, so they are untouched by this check.
+      if (claim.personIds !== undefined && claim.personIds.length === 0) {
+        continue
+      }
       const bucket = byGear.get(source.gearId) ?? { kind, claims: [] }
-      bucket.claims.push(claimFor(kind, trip, entry, state))
+      bucket.claims.push(claim)
       byGear.set(source.gearId, bucket)
     }
   }

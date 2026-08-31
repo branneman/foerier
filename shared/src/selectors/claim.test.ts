@@ -5,6 +5,7 @@ import {
   gearKindSet,
   tripEntryAdded,
   tripEntryBringCountSet,
+  tripPieceRemoved,
   type OpSpec,
 } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
@@ -397,5 +398,64 @@ describe('overClaimsFor', () => {
 
     const forT3 = overClaimsFor(state, 't3')
     expect(forT3).toEqual([])
+  })
+})
+
+describe('per-person claims read Pieces', () => {
+  // Spec §4.6's canonical case. Alps and Vosges both list the per-person
+  // GEAR. Mark is on both Trips; Els is only on Alps and Kim only on
+  // Vosges — so Mark is the entire conflict, and Els's and Kim's claims are
+  // each held once and are legitimate (domain §5.2 permits two active Trips
+  // claiming the same per-person gear for *different* people).
+  const GEAR = 'g1'
+  const ALPS = 't-alps'
+  const ALPS_ENTRY = 'e-alps'
+  const VOSGES = 't-vosges'
+  const VOSGES_ENTRY = 'e-vosges'
+  const MARK = 'p-mark'
+  const ELS = 'p-els'
+  const KIM = 'p-kim'
+
+  function twoTripFold(...extra: readonly OpSpec[]): DepotState {
+    return depot(
+      aGear({ id: GEAR, kind: 'per_person' }),
+      aTrip({ id: ALPS, phase: 'pack_out', participants: [MARK, ELS] }),
+      [tripEntryAdded(ALPS, ALPS_ENTRY, { from: 'depot', gearId: GEAR })],
+      aTrip({ id: VOSGES, phase: 'on_trip', participants: [MARK, KIM] }),
+      [tripEntryAdded(VOSGES, VOSGES_ENTRY, { from: 'depot', gearId: GEAR })],
+      extra,
+    )
+  }
+
+  it('names the included Pieces, not the roster', () => {
+    const state = twoTripFold()
+
+    const [conflict] = overClaims(state)
+
+    expect(conflict?.contestedPersonIds).toEqual([MARK])
+  })
+
+  it("settles when the contested Person's Piece comes off one Trip", () => {
+    const state = twoTripFold(tripPieceRemoved(ALPS, ALPS_ENTRY, MARK))
+
+    expect(overClaims(state)).toEqual([])
+  })
+
+  it("does not settle when an uncontested Person's Piece comes off", () => {
+    const state = twoTripFold(tripPieceRemoved(ALPS, ALPS_ENTRY, ELS))
+
+    expect(overClaims(state)).toHaveLength(1)
+  })
+
+  it('holds no claim at all when every Piece is removed', () => {
+    // Alps's roster is only Mark and Els — removing both empties its
+    // claim entirely. Vosges still claims normally, but a claim naming
+    // nobody is not a claim, so there is nothing left to over-claim.
+    const state = twoTripFold(
+      tripPieceRemoved(ALPS, ALPS_ENTRY, MARK),
+      tripPieceRemoved(ALPS, ALPS_ENTRY, ELS),
+    )
+
+    expect(overClaims(state)).toEqual([])
   })
 })
