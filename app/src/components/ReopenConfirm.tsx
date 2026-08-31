@@ -2,18 +2,14 @@ import {
   isActivePhase,
   overClaimsIfActive,
   phaseName,
-  tripEntryBringCountSet,
-  tripEntryRemoved,
   type PhaseKey,
   type TripState,
 } from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
-import { useState } from 'react'
 
 import { useDepot } from '../depot/store'
 import { tripNameOrUnnamed } from '../depot/trips'
 import { OverClaimGroups, overClaimGroups } from './OverClaimBand'
-import { RemoveElsewhereConfirm } from './RemoveElsewhereConfirm'
 import styles from './ReopenConfirm.module.css'
 
 /**
@@ -94,12 +90,13 @@ import styles from './ReopenConfirm.module.css'
  * `Cancel` wherever it sits, so this is a DOM-order decision, not a visual
  * one — and `.primary` grows `flex: 1` to match.
  *
- * **`REMOVE ON <trip>` renders as an alternative to this sheet, not nested
- * inside it** (Task 14 review F4) — see `ActivationConfirm`'s own docstring
- * for the full reasoning (three compounding scrims, two indistinguishable
- * bottom sheets). Declining `RemoveElsewhereConfirm` restores this sheet
- * exactly where it was, since the caller (`PhaseSheet` or `Trips.tsx`) still
- * holds the `to`/`onCancel`/`onConfirm` this component was mounted with.
+ * **This sheet carries no settle routes** (amendment ruling I), for the same
+ * reason `ActivationConfirm` does not: a control that emits inside a
+ * cancellable confirm makes `Cancel` state something false. It passes
+ * `OverClaimGroups` no `settle`, so the block is facts-only — the attention
+ * line and the conflict rows — and the standing band on the trip screen is
+ * the only surface that settles. `RemoveElsewhereConfirm` is no longer
+ * mounted from here at all.
  */
 export interface ReopenConfirmProps {
   trip: TripState
@@ -116,50 +113,9 @@ export function ReopenConfirm({
   onConfirm,
 }: ReopenConfirmProps) {
   const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-
-  // See `ActivationConfirm`'s own field of the same name.
-  const [removingElsewhere, setRemovingElsewhere] = useState<{
-    otherTripId: string
-    entryId: string
-  } | null>(null)
 
   const overClaims = isActivePhase(to) ? overClaimsIfActive(state, trip.id) : []
   const groups = overClaimGroups(overClaims, trip.id, state)
-
-  function handleRemoveHere(entryId: string) {
-    emit(tripEntryRemoved(trip.id, entryId))
-  }
-
-  function handleBringFewer(entryId: string, count: number) {
-    emit(tripEntryBringCountSet(trip.id, entryId, count))
-  }
-
-  function handleRemoveThere(otherTripId: string, entryId: string) {
-    setRemovingElsewhere({ otherTripId, entryId })
-  }
-
-  // Alternatives, not nested (F4) — see this file's own docstring.
-  //
-  // Fix round F10. `RemoveElsewhereConfirm` returns `null` when its own
-  // `otherTrip` or `entry` lookup misses, which would blank this whole
-  // sheet while `removingElsewhere` stays set — the button that opened it
-  // gone, with no way back. Unreachable at S7: `trip.entry_removed` sets
-  // the `removed` register (`writeEntry` in `shared/reduce.ts`) and never
-  // drops the key from `entries`, and no op deletes a Trip, so neither
-  // lookup can miss for an `otherTripId`/`entryId` pair this sheet itself
-  // just read off a live `OverClaim`. It would go live the day either
-  // changes — a Trip-delete op, or an Entry actually pruned rather than
-  // tombstoned.
-  if (removingElsewhere !== null) {
-    return (
-      <RemoveElsewhereConfirm
-        otherTripId={removingElsewhere.otherTripId}
-        entryId={removingElsewhere.entryId}
-        onClose={() => setRemovingElsewhere(null)}
-      />
-    )
-  }
 
   return (
     <Confirm
@@ -192,13 +148,8 @@ export function ReopenConfirm({
         </>
       }
     >
-      <OverClaimGroups
-        tripId={trip.id}
-        groups={groups}
-        onRemoveHere={handleRemoveHere}
-        onRemoveThere={handleRemoveThere}
-        onBringFewer={handleBringFewer}
-      />
+      {/* Facts only — no `settle` (ruling I). */}
+      <OverClaimGroups tripId={trip.id} groups={groups} />
     </Confirm>
   )
 }

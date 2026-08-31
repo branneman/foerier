@@ -224,6 +224,15 @@ describe('the reopen confirm', () => {
     expect(confirm).toHaveTextContent(
       'It returns to Unpack exactly as it stood. Closing cleared nothing.',
     )
+
+    // Amendment ruling I, the same rule `ActivationConfirm` follows: this
+    // sheet states the conflict and offers no route out of it, because a
+    // control that emits inside a cancellable confirm makes `Cancel` state
+    // something false. The standing band on the trip screen is the only
+    // surface that settles.
+    expect(screen.queryByRole('button', { name: /REMOVE HERE/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /REMOVE ON/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /BRING ×/ })).toBeNull()
   })
 
   it('renders no ENTRY STILL OPEN block — that needs outcomes', async () => {

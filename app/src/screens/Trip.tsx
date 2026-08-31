@@ -587,9 +587,11 @@ export function Trip() {
       <OverClaimBand
         tripId={tripId}
         overClaims={overClaims}
-        onRemoveHere={handleRemoveHere}
-        onRemoveThere={handleRemoveThere}
-        onBringFewer={handleBringFewer}
+        settle={{
+          onRemoveHere: handleRemoveHere,
+          onRemoveThere: handleRemoveThere,
+          onBringFewer: handleBringFewer,
+        }}
       />
 
       {totals.entries === 0 ? (

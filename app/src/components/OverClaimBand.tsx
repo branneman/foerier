@@ -49,9 +49,21 @@ import styles from './OverClaimBand.module.css'
  * `OverClaim` names ids, not labels, and a label is a fact of the fold like
  * any other.
  */
-export interface OverClaimBandProps {
-  readonly tripId: string
-  readonly overClaims: readonly OverClaim[]
+/**
+ * The three writes a conflict row can offer. **Optional wherever it appears**,
+ * and its absence is the read-only mode, not a degraded one.
+ *
+ * Amendment ruling I: a control that emits inside a cancellable confirm makes
+ * `Cancel` state something false — tapping `REMOVE HERE` inside the activation
+ * sheet and then cancelling left the Entry gone while the phase never moved.
+ * So the two preview sheets render the block facts-only and **the standing
+ * band is the only surface that settles**.
+ *
+ * Grouped into one prop rather than three so the type system enforces
+ * all-or-nothing: there is no such thing as a row that can remove but not
+ * bring fewer, and a caller cannot accidentally supply two of the three.
+ */
+export interface SettleRoutes {
   /** Emits `trip.entry_removed` against **this** Trip. */
   readonly onRemoveHere: (entryId: string) => void
   /**
@@ -64,12 +76,17 @@ export interface OverClaimBandProps {
   readonly onBringFewer: (entryId: string, count: number) => void
 }
 
+export interface OverClaimBandProps {
+  readonly tripId: string
+  readonly overClaims: readonly OverClaim[]
+  /** The band always settles — it is the only surface that does (ruling I). */
+  readonly settle: SettleRoutes
+}
+
 export function OverClaimBand({
   tripId,
   overClaims,
-  onRemoveHere,
-  onRemoveThere,
-  onBringFewer,
+  settle,
 }: OverClaimBandProps) {
   // Hooks run unconditionally — the empty-band `null` returns after this.
   const state = useDepot((depot) => depot.state)
@@ -79,13 +96,7 @@ export function OverClaimBand({
 
   return (
     <section className={styles['band']} data-testid="over-claim-band">
-      <OverClaimGroups
-        tripId={tripId}
-        groups={groups}
-        onRemoveHere={onRemoveHere}
-        onRemoveThere={onRemoveThere}
-        onBringFewer={onBringFewer}
-      />
+      <OverClaimGroups tripId={tripId} groups={groups} settle={settle} />
     </section>
   )
 }
@@ -103,9 +114,8 @@ export interface OverClaimGroupsProps {
    * about a conflict naming a different Trip entirely.
    */
   readonly groups: readonly OverClaimGroup[]
-  readonly onRemoveHere: (entryId: string) => void
-  readonly onRemoveThere: (tripId: string, entryId: string) => void
-  readonly onBringFewer: (entryId: string, count: number) => void
+  /** Absent renders the block facts-only — ruling I. */
+  readonly settle?: SettleRoutes | undefined
 }
 
 /**
@@ -121,9 +131,7 @@ export interface OverClaimGroupsProps {
 export function OverClaimGroups({
   tripId,
   groups,
-  onRemoveHere,
-  onRemoveThere,
-  onBringFewer,
+  settle,
 }: OverClaimGroupsProps) {
   return (
     <>
@@ -135,9 +143,7 @@ export function OverClaimGroups({
           <ConflictRows
             tripId={tripId}
             overClaims={group.overClaims}
-            onRemoveHere={onRemoveHere}
-            onRemoveThere={onRemoveThere}
-            onBringFewer={onBringFewer}
+            settle={settle}
           />
         </div>
       ))}
@@ -148,9 +154,8 @@ export function OverClaimGroups({
 export interface ConflictRowsProps {
   readonly tripId: string
   readonly overClaims: readonly OverClaim[]
-  readonly onRemoveHere: (entryId: string) => void
-  readonly onRemoveThere: (tripId: string, entryId: string) => void
-  readonly onBringFewer: (entryId: string, count: number) => void
+  /** Absent renders the block facts-only — ruling I. */
+  readonly settle?: SettleRoutes | undefined
 }
 
 /** Rows cap at three, then one row. Spec §4.5, verbatim. */
@@ -176,9 +181,7 @@ const VISIBLE_CAP = 3
 export function ConflictRows({
   tripId,
   overClaims,
-  onRemoveHere,
-  onRemoveThere,
-  onBringFewer,
+  settle,
 }: ConflictRowsProps) {
   const state = useDepot((depot) => depot.state)
   const [expanded, setExpanded] = useState(false)
@@ -205,9 +208,7 @@ export function ConflictRows({
           tripId={tripId}
           state={state}
           nameRow={nameEachRow}
-          onRemoveHere={onRemoveHere}
-          onRemoveThere={onRemoveThere}
-          onBringFewer={onBringFewer}
+          settle={settle}
         />
       ))}
       {!expanded && hiddenCount > 0 && (
@@ -230,9 +231,8 @@ interface ConflictRowProps {
   readonly state: DepotState
   /** See {@link ConflictRows}'s `nameEachRow`. */
   readonly nameRow: boolean
-  readonly onRemoveHere: (entryId: string) => void
-  readonly onRemoveThere: (tripId: string, entryId: string) => void
-  readonly onBringFewer: (entryId: string, count: number) => void
+  /** Absent renders the block facts-only — ruling I. */
+  readonly settle?: SettleRoutes | undefined
 }
 
 function ConflictRow({
@@ -240,9 +240,7 @@ function ConflictRow({
   tripId,
   state,
   nameRow,
-  onRemoveHere,
-  onRemoveThere,
-  onBringFewer,
+  settle,
 }: ConflictRowProps) {
   // `entry.ts`'s own rule for a Gear name: an absent register reads empty,
   // never invented.
@@ -275,40 +273,48 @@ function ConflictRow({
           {rowFact(overClaim, tripId, state, nameRow)}
         </span>
       </div>
-      <div className={styles['settleRow']}>
-        {here !== undefined && canBringFewer && (
-          <button
-            type="button"
-            className={styles['settle']}
-            onClick={() => onBringFewer(here.entryId, bringFewerCount)}
-          >
-            BRING ×{bringFewerCount} HERE
-          </button>
-        )}
-        {here !== undefined && !canBringFewer && (
-          <button
-            type="button"
-            className={styles['settle']}
-            onClick={() => onRemoveHere(here.entryId)}
-          >
-            REMOVE HERE
-          </button>
-        )}
-        {otherTripIds.map((otherTripId) => {
-          const claim = firstClaimOfTrip(overClaim, otherTripId)
-          if (claim === undefined) return null
-          return (
+      {/*
+        No `settle` is the facts-only mode the two preview sheets render
+        (ruling I) — the whole row of routes is absent, not disabled. A
+        disabled control still states that the action belongs here, and it
+        does not: it belongs on the trip screen's standing band.
+      */}
+      {settle !== undefined && (
+        <div className={styles['settleRow']}>
+          {here !== undefined && canBringFewer && (
             <button
-              key={otherTripId}
               type="button"
               className={styles['settle']}
-              onClick={() => onRemoveThere(otherTripId, claim.entryId)}
+              onClick={() => settle.onBringFewer(here.entryId, bringFewerCount)}
             >
-              REMOVE ON {tripRowLabel(state, otherTripId)}
+              BRING ×{bringFewerCount} HERE
             </button>
-          )
-        })}
-      </div>
+          )}
+          {here !== undefined && !canBringFewer && (
+            <button
+              type="button"
+              className={styles['settle']}
+              onClick={() => settle.onRemoveHere(here.entryId)}
+            >
+              REMOVE HERE
+            </button>
+          )}
+          {otherTripIds.map((otherTripId) => {
+            const claim = firstClaimOfTrip(overClaim, otherTripId)
+            if (claim === undefined) return null
+            return (
+              <button
+                key={otherTripId}
+                type="button"
+                className={styles['settle']}
+                onClick={() => settle.onRemoveThere(otherTripId, claim.entryId)}
+              >
+                REMOVE ON {tripRowLabel(state, otherTripId)}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

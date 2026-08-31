@@ -1,16 +1,9 @@
-import {
-  tripEntryBringCountSet,
-  tripEntryRemoved,
-  type TripState,
-} from '@foerier/shared'
+import { type TripState } from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
-import { useState } from 'react'
 
-import { useDepot } from '../depot/store'
 import { tripNameOrUnnamed } from '../depot/trips'
 import styles from './ActivationConfirm.module.css'
 import { OverClaimGroups, type OverClaimGroup } from './OverClaimBand'
-import { RemoveElsewhereConfirm } from './RemoveElsewhereConfirm'
 
 /**
  * **The `Start pack-out` preview** — spec §4.5's second sheet, `Screens
@@ -45,30 +38,29 @@ import { RemoveElsewhereConfirm } from './RemoveElsewhereConfirm'
  * the one substitution this codebase already shares for exactly this
  * (`depot/trips.ts`).
  *
- * **The settle routes render as alternatives, not nested** (Task 14 review
- * F4). `REMOVE ON <trip>` used to mount `RemoveElsewhereConfirm` *inside*
- * this `Confirm`, which — reached from `PhaseSheet`'s own `Sheet` — stacked
- * three Radix overlays: three compounding 62%-alpha scrims (≈94.5% dim where
- * the board draws one), and two pixel-identical bottom sheets with no offset,
- * so a reader could not tell a second one had opened at all. Rendering
- * `removingElsewhere !== null ? <RemoveElsewhereConfirm …/> : <Confirm …/>`
- * keeps the nesting at two deep — the existing S6 precedent
- * (`PhaseSheet` → `ReopenConfirm`) — since the two dialogs are visually
- * identical bottom sheets and swapping one for the other reads as the same
- * sheet's own content changing, not as a new layer opening. `PhaseSheet`
- * still owns `activating`, so declining `RemoveElsewhereConfirm` (its
- * `onClose`) restores this sheet exactly where it was.
+ * **This sheet carries no settle routes at all** (amendment ruling I). It
+ * renders the conflict block facts-only — attention line and conflict rows —
+ * by passing `OverClaimGroups` no `settle`, and the whole row of routes is
+ * absent rather than disabled: a disabled control would still state that the
+ * action belongs here, and it does not.
  *
- * **The settle routes emit immediately, inside a cancellable confirm.**
- * `REMOVE HERE`/`BRING ×N HERE` write the moment they're tapped, so tapping
- * one and then this sheet's own `Cancel` leaves the Entry gone (or the
- * bring-count lowered) while the phase itself never moves. The tag-chip rule
- * — one op, no confirm, re-adding is two taps — holds for the standing band
- * these routes were built for; it does not extend cleanly to a route drawn
- * *inside* a decision the Quartermaster can still back out of. Recorded
- * rather than fixed (Task 14 review, "record, do not build"): Story 36
- * (Undo) is `Later`, and a confirm nested inside this confirm is exactly the
- * kind of extra modal the boards never draw for a settle route.
+ * The reason is the one S7 recorded and did not fix. `REMOVE HERE` and
+ * `BRING ×N HERE` write the moment they are tapped, so tapping one and then
+ * this sheet's own `Cancel` left the Entry gone — or the Bring-count lowered
+ * — while the phase never moved. **A control that emits inside a cancellable
+ * confirm makes `Cancel` state something false.** The tag-chip rule (one op,
+ * no confirm, re-adding is two taps) holds for the standing band these routes
+ * were built for; it never extended to a route drawn *inside* a decision the
+ * Quartermaster can still back out of.
+ *
+ * Two things fall out of the routes leaving. `RemoveElsewhereConfirm` is no
+ * longer mounted here, which retires the whole three-overlay problem Task 14
+ * review F4 worked around: `REMOVE ON <trip>` reached from `PhaseSheet`'s own
+ * `Sheet` used to stack three Radix overlays — three compounding 62%-alpha
+ * scrims, ≈94.5% dim where the board draws one, and two pixel-identical
+ * bottom sheets with no offset, so a reader could not tell a second had
+ * opened. And the standing band on the trip screen is now **the only surface
+ * that settles**, which is what this sheet's body says in as many words.
  */
 export interface ActivationConfirmProps {
   readonly trip: TripState
@@ -83,54 +75,11 @@ export function ActivationConfirm({
   onCancel,
   onConfirm,
 }: ActivationConfirmProps) {
-  const emit = useDepot((depot) => depot.emit)
-
-  // The Entry a `REMOVE ON <trip>` is waiting to confirm, and `null` when
-  // nothing is — the same shape `Trip.tsx` keeps for its own standing band.
-  const [removingElsewhere, setRemovingElsewhere] = useState<{
-    otherTripId: string
-    entryId: string
-  } | null>(null)
-
-  function handleRemoveHere(entryId: string) {
-    emit(tripEntryRemoved(trip.id, entryId))
-  }
-
-  function handleBringFewer(entryId: string, count: number) {
-    emit(tripEntryBringCountSet(trip.id, entryId, count))
-  }
-
-  function handleRemoveThere(otherTripId: string, entryId: string) {
-    setRemovingElsewhere({ otherTripId, entryId })
-  }
-
-  // Alternatives, not nested (F4) — see this file's own docstring.
-  //
-  // Fix round F10. `RemoveElsewhereConfirm` returns `null` when its own
-  // `otherTrip` or `entry` lookup misses, which would blank this whole
-  // sheet while `removingElsewhere` stays set — the button that opened it
-  // gone, with no way back. Unreachable at S7: `trip.entry_removed` sets
-  // the `removed` register (`writeEntry` in `shared/reduce.ts`) and never
-  // drops the key from `entries`, and no op deletes a Trip, so neither
-  // lookup can miss for an `otherTripId`/`entryId` pair this sheet itself
-  // just read off a live `OverClaim`. It would go live the day either
-  // changes — a Trip-delete op, or an Entry actually pruned rather than
-  // tombstoned.
-  if (removingElsewhere !== null) {
-    return (
-      <RemoveElsewhereConfirm
-        otherTripId={removingElsewhere.otherTripId}
-        entryId={removingElsewhere.entryId}
-        onClose={() => setRemovingElsewhere(null)}
-      />
-    )
-  }
-
   return (
     <Confirm
       variant="sheet"
       title={`Start pack-out — ${tripNameOrUnnamed(trip)}?`}
-      description="Starting warns, never blocks. Nothing is removed unless you choose it."
+      description="Starting warns, never blocks. Nothing changes here — the settle routes are on the trip screen."
       onClose={onCancel}
       actions={
         <>
@@ -151,13 +100,8 @@ export function ActivationConfirm({
         </>
       }
     >
-      <OverClaimGroups
-        tripId={trip.id}
-        groups={groups}
-        onRemoveHere={handleRemoveHere}
-        onRemoveThere={handleRemoveThere}
-        onBringFewer={handleBringFewer}
-      />
+      {/* Facts only — no `settle` (ruling I). */}
+      <OverClaimGroups tripId={trip.id} groups={groups} />
     </Confirm>
   )
 }

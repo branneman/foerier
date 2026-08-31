@@ -117,9 +117,11 @@ function renderBand(
       <OverClaimBand
         tripId={tripId}
         overClaims={overClaims}
-        onRemoveHere={overrides.onRemoveHere ?? vi.fn()}
-        onRemoveThere={overrides.onRemoveThere ?? vi.fn()}
-        onBringFewer={overrides.onBringFewer ?? vi.fn()}
+        settle={{
+          onRemoveHere: overrides.onRemoveHere ?? vi.fn(),
+          onRemoveThere: overrides.onRemoveThere ?? vi.fn(),
+          onBringFewer: overrides.onBringFewer ?? vi.fn(),
+        }}
       />
     </DepotProvider>,
   )
@@ -832,9 +834,11 @@ describe('when there is nothing to settle', () => {
         <OverClaimBand
           tripId={HERE}
           overClaims={[]}
-          onRemoveHere={vi.fn()}
-          onRemoveThere={vi.fn()}
-          onBringFewer={vi.fn()}
+          settle={{
+            onRemoveHere: vi.fn(),
+            onRemoveThere: vi.fn(),
+            onBringFewer: vi.fn(),
+          }}
         />
       </DepotProvider>,
     )

@@ -446,10 +446,22 @@ describe('the SET PHASE sheet', () => {
         'Tent, tunnel 4p',
       )
       // The board's own body sentence, verbatim, still present beside the
-      // block — starting still warns rather than blocks.
+      // block — starting still warns rather than blocks. Amendment ruling I
+      // rewrote its second half: the block here is facts-only, because a
+      // settle route that emits inside a cancellable confirm makes `Cancel`
+      // state something false.
       expect(confirm).toHaveTextContent(
-        'Starting warns, never blocks. Nothing is removed unless you choose it.',
+        'Starting warns, never blocks. Nothing changes here — the settle routes are on the trip screen.',
       )
+      // Amendment ruling I: facts, and no routes. The whole row of settle
+      // controls is *absent*, not disabled — a disabled control would still
+      // state that the action belongs here, and the ruling's point is that it
+      // belongs on the trip screen's standing band instead. Asserted by role
+      // rather than by text so a renamed route cannot slip through.
+      expect(screen.queryByRole('button', { name: /REMOVE HERE/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /REMOVE ON/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /BRING ×/ })).toBeNull()
+
       // Not moved yet — a preview states the conflict, it does not decide
       // for the Quartermaster.
       expect(await seeded.moves()).toEqual([])
