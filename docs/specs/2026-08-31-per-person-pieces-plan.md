@@ -165,7 +165,7 @@ describe('trip.piece_removed / trip.piece_restored', () => {
         {
           type: 'trip.piece_removed',
           aggregate: 'trip',
-          aggregateId: TRIP,
+          aggregate_id: TRIP,
           payload: { entry_id: ENTRY },
         } as unknown as OpSpec,
       ],
@@ -311,7 +311,7 @@ export function tripPieceRemoved(
   return {
     type: 'trip.piece_removed',
     aggregate: 'trip',
-    aggregateId: tripId,
+    aggregate_id: tripId,
     payload: { entry_id: entryId, person_id: personId },
   }
 }
@@ -325,7 +325,7 @@ export function tripPieceRestored(
   return {
     type: 'trip.piece_restored',
     aggregate: 'trip',
-    aggregateId: tripId,
+    aggregate_id: tripId,
     payload: { entry_id: entryId, person_id: personId },
   }
 }
@@ -598,12 +598,12 @@ describe('per-person claims read Pieces', () => {
     expect(conflict?.contestedPersonIds).toEqual([MARK])
   })
 
-  it('settles when the contested Person's Piece comes off one Trip', () => {
+  it("settles when the contested Person's Piece comes off one Trip", () => {
     // …the same fold plus tripPieceRemoved(ALPS, ALPS_ENTRY, MARK)
     expect(overClaims(state)).toEqual([])
   })
 
-  it('does not settle when an uncontested Person's Piece comes off', () => {
+  it("does not settle when an uncontested Person's Piece comes off", () => {
     // …the same fold plus tripPieceRemoved(ALPS, ALPS_ENTRY, ELS)
     expect(overClaims(state)).toHaveLength(1)
   })
