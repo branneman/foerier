@@ -225,10 +225,26 @@
       color: var(--color-ink-faint);
     }
 
+    /*
+     * Ruling O, round-2 closeout: the drawn band height is the paint. This
+     * carried `min-height: max(3rem, 48px)` while the global floor existed,
+     * which forced the whole `.columnHeads` band to 48px — the floor sizing a
+     * control the boards draw as an 8.5 mono label inside a `--space-8` band.
+     *
+     * The hit area grows toward 44 through a non-painting `::after` and
+     * **clamps at the band's own bounds**: `inset-block: -0.5rem` is exactly
+     * the band's vertical padding, so the target reaches the band edge and
+     * stops. `.list > li` rows sit immediately adjacent with no gap, so any
+     * further growth would land a header tap on the first gear row — ruling
+     * O's third clause, and the same 13px defect `EntryRow`'s `✕` had.
+     *
+     * Where the clamp keeps this under 44, the full-width target compensates:
+     * the head spans its whole grid column, which is the compensation the
+     * ruling names for exactly this case. A desk pointer is also what reaches
+     * it — this band exists only from Desktop up.
+     */
     .columnHead {
-      /* Paint stated explicitly, so retiring the base layer's floor
-         (ruling O) cannot resize it. */
-      min-height: max(3rem, 48px);
+      position: relative;
       justify-self: start;
       padding: 0;
       border: 0;
@@ -238,6 +254,12 @@
       letter-spacing: inherit;
       text-transform: inherit;
       cursor: pointer;
+    }
+
+    .columnHead::after {
+      content: '';
+      position: absolute;
+      inset: -0.5rem 0;
     }
 
     .list > li {

@@ -228,22 +228,46 @@
    * chip carries: it is the same control opening the same sheet, and the board
    * draws it once.
    */
+  /*
+   * Ruling O, round-2 closeout: the drawn size returns. This painted at 48px
+   * for the whole of S6 and S7 — not by decision, but because the retired
+   * global floor overrode whatever it declared — where the boards draw a
+   * ~24px pill at 4/9 padding and 8.5 mono. The drawn size IS the number; no
+   * new one was invented here.
+   *
+   * The hit area reaches 48 through a non-painting `::after`, and extends
+   * **vertically only**. Horizontally, `.phaseRow`'s `gap` is the whole
+   * separation between this chip and the control beside it, so growing
+   * sideways would put two targets on top of each other — the defect ruling
+   * O's third clause forbids, and the one `OverClaimBand`'s `.settle` already
+   * hit once by growing through a wrap gap.
+   */
   .chip {
-    /* Paint stated explicitly, so retiring the base layer's floor
-       (ruling O) cannot resize it. */
-    min-height: max(3rem, 48px);
+    position: relative;
+    min-height: 1.5rem;
     flex: none;
-    padding: var(--space-8) var(--space-12);
+    padding: var(--space-4) 9px;
     border: var(--stroke-chip) solid var(--color-brand-amber);
     border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--color-brand-amber) 14%, transparent);
     color: var(--color-brand-amber);
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font-size: 0.53125rem;
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     white-space: nowrap;
     cursor: pointer;
+  }
+
+  /* 24px painted + 12px each side = the 48px target, clamped at the header
+     row it belongs to. `box-sizing: border-box` makes an absolutely
+     positioned `::after` lay out against the padding edge, so the inset is
+     measured from there — `Trip.module.css`'s `.addParticipant::after` and
+     `Stepper.module.css` both carry the same note. */
+  .chip::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem 0;
   }
 
   .edit {
