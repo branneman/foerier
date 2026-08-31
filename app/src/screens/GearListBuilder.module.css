@@ -157,12 +157,22 @@
     overflow-wrap: anywhere;
   }
 
-  /* The board's accent CTA — `Trip.tsx`'s own `.save` anatomy (filled accent,
-     the 48px floor), sized to its own text rather than to `.save`'s `flex: 1`:
-     this sits beside a title, not alone in a form. */
+  /*
+   * The board's accent CTA — `Trip.tsx`'s own `.save` anatomy (filled accent),
+   * sized to its own text rather than to `.save`'s `flex: 1`: this sits beside
+   * a title, not alone in a form.
+   *
+   * **40px, at Split and Desktop both** (amendment ruling N). This is a
+   * title-row control, and `Depot.module.css`'s `.addButton` already set what
+   * a title-row control measures on a desk — the two now agree. The 48 that
+   * shipped was not a decision: it was the global paint floor sizing the
+   * button, and the 900 frame's 36 was drift toward the chip size. A desk
+   * pointer does not need a thumb's target, which is the whole reason the
+   * floor is a *hit* floor and not a paint one (ruling O).
+   */
   .startPackOut {
     flex: none;
-    min-height: max(3rem, 48px);
+    min-height: max(2.5rem, 40px);
     padding-inline: var(--space-20);
     border: 0;
     border-radius: var(--radius-control);
