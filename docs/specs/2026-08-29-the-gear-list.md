@@ -1216,3 +1216,13 @@ The other rulings that touched this slice's surfaces:
 - **O** — the global `min-height` touch floor retires in favour of a hit-area
   rule. §4.8's `ui/Stepper` dense treatment and `EntryRow`'s `✕` become
   instances of that rule rather than exceptions to a floor.
+
+A **round-2 closeout** (`README` §5c) settled the three questions the A–O round
+left open. **C** and **J** were blessed exactly as implemented — the
+glyph/prose split is the intent, and `pack_out` keeps its drawn
+`Start pack-out` phrase because drawn beats derived. **O**'s seventeen
+floor-orphans split: the three the boards draw smaller (the phase chip, the
+Depot's column heads, and `SIGN OUT` / `REMOVE` as §11's attention text) got
+their drawn sizes back plus a clamped `::after`; the rest keep the explicit 48
+that stating the value gave them. No new numbers were invented — the drawn size
+is the number.

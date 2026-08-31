@@ -426,9 +426,11 @@ the builder:**
   every replica computes the identical set, and it disappears only when a
   Quartermaster removes an Entry or lowers a Bring-count — both ordinary ops.
   Nothing is discarded to resolve a forbidden state, which is story 6's
-  closing sentence. `overClaimsIfActive` answers the hypothetical three
-  guarded moments ask (adding to an active Trip, activating a Draft,
-  reopening a closed one) and is **deliberately unscoped to a `tripId`**, so
+  closing sentence. `overClaimsIfActive` answers the hypothetical the
+  guarded moments ask (adding to an active Trip; **any** move into an Active
+  phase from a non-Active one, widened from `draft → pack_out` by amendment
+  ruling J; reopening a closed one) and is **deliberately unscoped to a
+  `tripId`**, so
   every caller that gates a decision on it — `ActivationConfirm`,
   `ReopenConfirm`, `GearListBuilder`'s `Start pack-out` — must filter through
   `overClaimGroups` first; gating on the raw result opens a confirm naming a
@@ -465,6 +467,12 @@ types, no endpoints, no migration. The dated spec is not rewritten —
 [its §12](docs/specs/2026-08-29-the-gear-list.md) lists what the round settled,
 and §5b is the shipped authority.
 
+A **round-2 closeout** (§5c) then blessed the two places where the ruling's
+wording and the boards disagreed, and ruled the leftovers: the
+glyph/prose split is the intent and a Person keeps `—` in list columns, group
+headers and circles; `pack_out` keeps its drawn `Start pack-out` phrase because
+drawn beats derived; and the seventeen floor-orphans split as described below.
+
 **Five things from it are worth knowing before touching these surfaces:**
 
 - **There is no global touch-target floor any more, and there must not be
@@ -478,8 +486,16 @@ and §5b is the shipped authority.
   extension **clamps at its owning row's bounds**; a standalone control is
   simply drawn ≥48. It cannot be one declaration — what a hit area may grow
   into is a fact about the owning row, and `input`/`select` render no
-  pseudo-element at all. Seventeen controls had been leaning on the floor and
-  now state their own paint.
+  pseudo-element at all. Seventeen controls had been leaning on the floor.
+  Fourteen state their own explicit 48 — stating it *was* the fix. Three the
+  boards draw smaller got their drawn size back plus a clamped `::after`: the
+  **phase chip** (~24px), the **Depot's column heads**, and **`SIGN OUT` /
+  `REMOVE`**, which §11 draws as attention text rather than as buttons. Each
+  clamp is chosen against what actually sits beside the control — the chip
+  grows vertically only, because its row's gap is all that separates it from
+  its neighbour. `app/src/screens/drawnSizes.test.ts` is the net, and it works
+  by parsing the stylesheet text, the only technique that sees CSS under
+  `css: false`.
 - **`UNNAMED_PERSON` is the prose sentinel; the glyph is
   `UNNAMED_PERSON_GLYPH`.** The Person now carries the split the Trip always
   had: `—` is right in a list column, a group header and a circle, and wrong in
