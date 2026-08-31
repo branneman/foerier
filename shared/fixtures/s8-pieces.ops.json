@@ -1,0 +1,135 @@
+[
+  {
+    "id": "cccccccc-0000-7000-8000-000000000001",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s8-1",
+    "type": "trip.created",
+    "hlc": "2026-08-31T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "S8 Fixture Trip"
+    },
+    "seq": 1,
+    "received_at": "2026-08-31T10:00:00Z"
+  },
+  {
+    "id": "cccccccc-0000-7000-8000-000000000002",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s8-1",
+    "type": "trip.participant_added",
+    "hlc": "2026-08-31T09:01:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "person_id": "p-s8-1"
+    },
+    "seq": 2,
+    "received_at": "2026-08-31T10:00:00Z"
+  },
+  {
+    "id": "cccccccc-0000-7000-8000-000000000003",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s8-1",
+    "type": "trip.participant_added",
+    "hlc": "2026-08-31T09:02:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "person_id": "p-s8-2"
+    },
+    "seq": 3,
+    "received_at": "2026-08-31T10:00:00Z"
+  },
+  {
+    "id": "cccccccc-0000-7000-8000-000000000004",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s8-per-person",
+    "type": "gear.recorded",
+    "hlc": "2026-08-31T09:03:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Rain jacket",
+      "container": false,
+      "kind": "per_person"
+    },
+    "seq": 4,
+    "received_at": "2026-08-31T10:00:00Z"
+  },
+  {
+    "id": "cccccccc-0000-7000-8000-000000000005",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s8-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-08-31T09:04:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s8-per-person",
+      "source": { "from": "depot", "gear_id": "g-s8-per-person" }
+    },
+    "seq": 5,
+    "received_at": "2026-08-31T10:00:00Z"
+  },
+  {
+    "id": "cccccccc-0000-7000-8000-000000000006",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s8-1",
+    "type": "trip.piece_removed",
+    "hlc": "2026-08-31T09:05:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s8-per-person",
+      "person_id": "p-s8-1"
+    },
+    "seq": 6,
+    "received_at": "2026-08-31T10:00:00Z"
+  },
+  {
+    "id": "cccccccc-0000-7000-8000-000000000007",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s8-1",
+    "type": "trip.piece_restored",
+    "hlc": "2026-08-31T09:06:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s8-per-person",
+      "person_id": "p-s8-2"
+    },
+    "seq": 7,
+    "received_at": "2026-08-31T10:00:00Z"
+  },
+  {
+    "id": "cccccccc-0000-7000-8000-000000000008",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s8-1",
+    "type": "trip.piece_removed",
+    "hlc": "2026-08-31T09:07:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s8-per-person",
+      "person_id": "p-s8-3"
+    },
+    "seq": 8,
+    "received_at": "2026-08-31T10:00:00Z"
+  },
+  {
+    "id": "cccccccc-0000-7000-8000-000000000009",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s8-1",
+    "type": "trip.piece_removed",
+    "hlc": "2026-08-31T09:08:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s8-orphan",
+      "person_id": "p-s8-1"
+    },
+    "seq": 9,
+    "received_at": "2026-08-31T10:00:00Z"
+  }
+]

@@ -1,0 +1,111 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the S8 fixture > folds to exactly the state it folded to when captured 1`] = `
+{
+  "gear": {
+    "g-s8-per-person": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-31T09:03:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s8-per-person",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-31T09:03:00.000Z-0000",
+        "value": "per_person",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-31T09:03:00.000Z-0000",
+        "value": "Rain jacket",
+      },
+    },
+  },
+  "people": {},
+  "places": {},
+  "trips": {
+    "t-s8-1": {
+      "entries": {
+        "e-s8-orphan": {
+          "id": "e-s8-orphan",
+          "pieces": {
+            "p-s8-1": {
+              "id": "p-s8-1",
+              "removed": {
+                "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+                "hlc": "2026-08-31T09:08:00.000Z-0000",
+                "value": true,
+              },
+            },
+          },
+        },
+        "e-s8-per-person": {
+          "id": "e-s8-per-person",
+          "pieces": {
+            "p-s8-1": {
+              "id": "p-s8-1",
+              "removed": {
+                "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+                "hlc": "2026-08-31T09:05:00.000Z-0000",
+                "value": true,
+              },
+            },
+            "p-s8-2": {
+              "id": "p-s8-2",
+              "removed": {
+                "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+                "hlc": "2026-08-31T09:06:00.000Z-0000",
+                "value": false,
+              },
+            },
+            "p-s8-3": {
+              "id": "p-s8-3",
+              "removed": {
+                "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+                "hlc": "2026-08-31T09:07:00.000Z-0000",
+                "value": true,
+              },
+            },
+          },
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-08-31T09:04:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s8-per-person",
+            },
+          },
+        },
+      },
+      "id": "t-s8-1",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-31T09:00:00.000Z-0000",
+        "value": "S8 Fixture Trip",
+      },
+      "participants": {
+        "p-s8-1": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-08-31T09:01:00.000Z-0000",
+          "value": true,
+        },
+        "p-s8-2": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-08-31T09:02:00.000Z-0000",
+          "value": true,
+        },
+      },
+      "phase": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-08-31T09:00:00.000Z-0000",
+        "value": "draft",
+      },
+    },
+  },
+  "unfolded": {
+    "count": 0,
+    "types": {},
+  },
+}
+`;
