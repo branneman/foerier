@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import { aGear, anOp, aPlace, hlcAt } from '../../testUtils/index.ts'
 import {
-  gearKindSet,
   gearRehomed,
   gearRetired,
   gearTagApplied,
@@ -59,7 +58,7 @@ describe('depot selectors', () => {
     expect(ids(retiredGear(state))).toEqual(['g-billy'])
   })
 
-  it('depotCounts sums ownedCount for counted gear and 1 for everything else', () => {
+  it('depotCounts counts visible gear, whatever each item is worth in pieces', () => {
     const ops = [
       ...at(
         aGear({
@@ -85,26 +84,11 @@ describe('depot selectors', () => {
       one(gearRetired('g-old'), 5),
     ]
 
-    expect(depotCounts(fold(ops))).toEqual({ gear: 3, pieces: 6 })
-  })
-
-  it('depotCounts counts a piece as 1 once counted gear is edited back to single', () => {
-    // Same defect as `selectors/whereabouts.ts`, and the same fix: a
-    // `gear.kind_set` leaves `ownedCount` in place (per-field LWW cascades
-    // nothing, §5.3 obligation 4), and both selectors must agree with
-    // `GearDetail.tsx`'s `metaLine` about what a no-longer-counted item
-    // counts as.
-    const ops = [
-      ...at(
-        aGear({ id: 'g-mug', name: 'Mug', kind: 'counted', ownedCount: 6 }),
-        1,
-      ),
-      one(gearKindSet('g-mug', 'single'), 2),
-    ]
-    const state = fold(ops)
-
-    expect(state.gear['g-mug']?.ownedCount?.value).toBe(6)
-    expect(depotCounts(state)).toEqual({ gear: 1, pieces: 1 })
+    // Amendment ruling L: the headline's `· 214 PIECES` retired with the
+    // arithmetic behind it, so the mixed Kinds above are here to prove the
+    // count is indifferent to them — three visible items is three, whether
+    // one of them is four tent pegs and another is a per-person mug.
+    expect(depotCounts(fold(ops))).toEqual({ gear: 3 })
   })
 
   it('looseGear reports gear whose holder is gone as well as gear recorded loose', () => {

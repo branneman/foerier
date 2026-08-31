@@ -90,9 +90,8 @@ function NavItem({
               count in made the link's accessible name change as gear was
               recorded — "Depot 0", then "Depot 1". Announced, that is as
               easily a room number as a tally. The count is a glance
-              affordance; the Depot screen's own `128 GEAR · 214 PIECES`
-              headline is where the fact is actually stated, and stated
-              unambiguously. */}
+              affordance; the Depot screen's own `128 GEAR` headline is where
+              the fact is actually stated, and stated unambiguously. */}
           {mode === 'sidebar' && count !== undefined && (
             <span className={styles['count']} aria-hidden="true">
               {count}

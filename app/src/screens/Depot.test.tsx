@@ -663,6 +663,24 @@ describe('the Depot at desktop width', () => {
     ])
   }
 
+  /**
+   * Amendment ruling L. The headline read `128 GEAR · 214 PIECES`, and the
+   * second number summed owned-counts with a 1-per-line stand-in for
+   * everything without one — a number nobody recorded (invariant 6). The
+   * fixture here is what makes this test mean something: `Sleeping bag` is
+   * Counted with `owned_count: 2`, so the retired segment would have read
+   * `3 PIECES` beside `2 GEAR`. Asserting the absence of the *word* rather
+   * than of one rendered string is deliberate — the sum is gone from the
+   * selector, so nothing on this screen may spell it at any count.
+   */
+  it('states the gear count alone, the PIECES sum having retired (L)', async () => {
+    setViewport(SPLIT, DESKTOP)
+    renderDepot(await aHomedDepot())
+
+    expect(screen.getByText('2 GEAR')).toBeInTheDocument()
+    expect(screen.queryByText(/PIECES/)).toBeNull()
+  })
+
   // Tags appear in the table's own column and nowhere else — at 44px density
   // chips would dominate the row, and the full set is on gear detail.
   it('shows tags in the table column that the folded row hides', async () => {

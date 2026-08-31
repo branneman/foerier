@@ -87,24 +87,25 @@ export function tagsOf(gear: GearState): readonly string[] {
 }
 
 /**
- * The headline pair: how many distinct pieces of gear the household owns, and
- * how many physical things that adds up to. Only counted gear carries an
- * owned-count (invariant 6); everything else is one thing, so it counts as
- * one. Retired gear counts for neither.
+ * How many distinct pieces of gear the household owns. Retired gear counts
+ * for nothing.
+ *
+ * **There is deliberately no `pieces` here.** The Depot headline used to read
+ * `128 GEAR · 214 PIECES`, and that second number was not a fact: it summed
+ * the owned-counts of Counted gear with a **1-per-line stand-in** for
+ * everything else — and invariant 6 gives per-person gear no owned-count at
+ * all, so the stand-in stood in for nothing anybody had recorded. A household
+ * of four reading `1` for its four headlamps is not a smaller number than the
+ * truth; it is a different question's answer. The amendment round retired the
+ * segment (`README` §5b, L) and the arithmetic with it, so no later caller
+ * can render the sum back by reaching for a field that is simply there.
+ *
+ * `PIECES` is **trip arithmetic only** — `pieceCountOf` and `listTotals` in
+ * `selectors/entry.ts`, where a Bring-count is a number a Quartermaster
+ * actually authored. Trip surfaces are untouched by this.
  */
 export function depotCounts(state: DepotState): {
   gear: number
-  pieces: number
 } {
-  const gear = visibleGear(state)
-  let pieces = 0
-  for (const item of gear) {
-    // `ownedCount` is its own register and outlives a `kind_set` back to
-    // `single` untouched (per-field LWW cascades nothing, §5.3 obligation 4).
-    // Gated the same way `GearDetail.tsx`'s `metaLine` and
-    // `selectors/whereabouts.ts` are, so all three agree on what a
-    // no-longer-counted item counts as.
-    pieces += item.kind?.value === 'counted' ? (item.ownedCount?.value ?? 1) : 1
-  }
-  return { gear: gear.length, pieces }
+  return { gear: visibleGear(state).length }
 }

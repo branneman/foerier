@@ -38,8 +38,10 @@ import styles from './Depot.module.css'
  *   reason to extract.
  *
  * **One count line.** `9 OF 128` covers search and filters together, so S2's
- * `4 MATCHES` read is gone. `128 GEAR · 214 PIECES` survives as the desktop
- * title row's headline, where the board puts it.
+ * `4 MATCHES` read is gone. `128 GEAR` survives as the desktop title row's
+ * headline, where the board puts it — the `· 214 PIECES` segment it used to
+ * carry retired with amendment ruling L, which moved all PIECES arithmetic to
+ * the Trip, the only place a piece count is a number somebody authored.
  */
 
 /**
@@ -219,9 +221,7 @@ export function Depot({ selectedId }: DepotProps = {}) {
           <div className={styles['titleRow']}>
             <h1 className={styles['title']}>Depot</h1>
             {isDesktop && (
-              <span className={styles['headline']}>
-                {counts.gear} GEAR · {counts.pieces} PIECES
-              </span>
+              <span className={styles['headline']}>{counts.gear} GEAR</span>
             )}
             <input
               type="search"
