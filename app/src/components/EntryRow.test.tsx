@@ -1,31 +1,72 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { EntryRow, type EntryRowProps } from './EntryRow'
+import { EntryRow, type EntryRowPiece, type EntryRowProps } from './EntryRow'
 
 /** Every editable Kind gets the same remove-control assertion (promoted
  * review fix: the rule is "every editable row ends in ✕", and only Single
- * was exercised). */
+ * was exercised). `pieces` is read only by `per_person` (`EntryRow`'s own
+ * docstring); the other three Kinds carry an empty array because nothing
+ * reads it there. */
 const KINDS: readonly {
   label: string
   kind: EntryRowProps['kind']
   bringCount: number | null
   pieceCount: number
+  pieces: readonly EntryRowPiece[]
 }[] = [
-  { label: 'Tent, tunnel 4p', kind: 'counted', bringCount: 2, pieceCount: 2 },
+  {
+    label: 'Tent, tunnel 4p',
+    kind: 'counted',
+    bringCount: 2,
+    pieceCount: 2,
+    pieces: [],
+  },
   {
     label: 'Trekking pole',
     kind: 'per_person',
     bringCount: null,
     pieceCount: 3,
+    pieces: [
+      { personId: 'p1', label: 'Bran', included: true },
+      { personId: 'p2', label: 'Els', included: true },
+      { personId: 'p3', label: 'Mark', included: true },
+    ],
   },
-  { label: 'Headlamp', kind: 'single', bringCount: null, pieceCount: 1 },
-  { label: 'Passports', kind: 'trip_only', bringCount: null, pieceCount: 1 },
+  {
+    label: 'Headlamp',
+    kind: 'single',
+    bringCount: null,
+    pieceCount: 1,
+    pieces: [],
+  },
+  {
+    label: 'Passports',
+    kind: 'trip_only',
+    bringCount: null,
+    pieceCount: 1,
+    pieces: [],
+  },
 ]
+
+/** Rulings A–D's own fixture: three Participants, one excluded — "2 of 3
+ * bring one" is `docs/design/README.md` §5d ruling B's own accessible-name
+ * example, verbatim, and this is what produces it against the default
+ * `label: 'Headlamp'` `renderRow` below carries. */
+const THREE_PIECES: readonly EntryRowPiece[] = [
+  { personId: 'p1', label: 'Bran', included: true },
+  { personId: 'p2', label: 'Els', included: true },
+  { personId: 'p3', label: 'Mark', included: false },
+]
+
+/** Ruling D's fixture: the same three Participants, every Piece removed. */
+const THREE_ALL_EXCLUDED: readonly EntryRowPiece[] = THREE_PIECES.map(
+  (piece) => ({ ...piece, included: false }),
+)
 
 /** These files' own docstrings are dense with backticked CSS-shaped prose
  * (e.g. `.row`'s comment names `min-height: 48px` in running text) — stripped
@@ -140,9 +181,11 @@ describe('EntryRow', () => {
           kind="counted"
           bringCount={2}
           pieceCount={2}
+          pieces={[]}
           editable
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       expect(
@@ -153,19 +196,30 @@ describe('EntryRow', () => {
       ).toHaveValue('2')
     })
 
-    it('draws ×N mono on a per-person Entry, no Stepper and no badge', () => {
+    it('draws the cluster + ×N control on a per-person Entry, no Stepper and no badge', () => {
       render(
         <EntryRow
           label="Trekking pole"
           kind="per_person"
           bringCount={null}
           pieceCount={3}
+          pieces={[
+            { personId: 'p1', label: 'Bran', included: true },
+            { personId: 'p2', label: 'Els', included: true },
+            { personId: 'p3', label: 'Mark', included: true },
+          ]}
           editable
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×3')
+      expect(
+        screen.getByRole('button', {
+          name: 'Who brings one — Trekking pole, 3 of 3 bring one',
+        }),
+      ).toBeInTheDocument()
       expect(screen.queryByRole('textbox')).toBeNull()
       expect(screen.queryByTestId('entry-row-badge')).toBeNull()
     })
@@ -177,9 +231,11 @@ describe('EntryRow', () => {
           kind="single"
           bringCount={null}
           pieceCount={1}
+          pieces={[]}
           editable
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       expect(screen.queryByTestId('entry-row-count')).toBeNull()
@@ -194,9 +250,11 @@ describe('EntryRow', () => {
           kind="trip_only"
           bringCount={null}
           pieceCount={1}
+          pieces={[]}
           editable
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       expect(screen.getByTestId('entry-row-badge')).toHaveTextContent(
@@ -211,7 +269,7 @@ describe('EntryRow', () => {
   describe('editable rows end in a remove control, on every Kind', () => {
     it.each(KINDS)(
       'renders ✕ for $kind and calls onRemove without a confirm',
-      async ({ label, kind, bringCount, pieceCount }) => {
+      async ({ label, kind, bringCount, pieceCount, pieces }) => {
         const user = userEvent.setup()
         const onRemove = vi.fn()
         render(
@@ -220,9 +278,11 @@ describe('EntryRow', () => {
             kind={kind}
             bringCount={bringCount}
             pieceCount={pieceCount}
+            pieces={pieces}
             editable
             onBringCountChange={vi.fn()}
             onRemove={onRemove}
+            onOpenPiecePicker={vi.fn()}
           />,
         )
         await user.click(
@@ -236,16 +296,18 @@ describe('EntryRow', () => {
   describe('read-only mode (editable={false})', () => {
     it.each(KINDS)(
       'renders no remove control for $kind',
-      ({ label, kind, bringCount, pieceCount }) => {
+      ({ label, kind, bringCount, pieceCount, pieces }) => {
         render(
           <EntryRow
             label={label}
             kind={kind}
             bringCount={bringCount}
             pieceCount={pieceCount}
+            pieces={pieces}
             editable={false}
             onBringCountChange={vi.fn()}
             onRemove={vi.fn()}
+            onOpenPiecePicker={vi.fn()}
           />,
         )
         expect(screen.queryByTestId('entry-row-remove')).toBeNull()
@@ -259,28 +321,39 @@ describe('EntryRow', () => {
           kind="counted"
           bringCount={4}
           pieceCount={4}
+          pieces={[]}
           editable={false}
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×4')
       expect(screen.queryByRole('textbox')).toBeNull()
     })
 
-    it('reads — for a per-person Entry, not ×N', () => {
+    it("draws the cluster + ×N for a per-person Entry too — ruling A's amendment to the — rule", () => {
       render(
         <EntryRow
           label="Trekking pole"
           kind="per_person"
           bringCount={null}
-          pieceCount={3}
+          pieceCount={2}
+          pieces={THREE_PIECES}
           editable={false}
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
-      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('—')
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×2')
+      // Not a control here — `role="img"`, not `"button"` — but the same
+      // fact, stated the same way.
+      expect(
+        screen.getByRole('img', {
+          name: 'Who brings one — Trekking pole, 2 of 3 bring one',
+        }),
+      ).toBeVisible()
     })
 
     it('reads — in the trailing slot for a trip-only Entry, but still draws the badge', () => {
@@ -290,9 +363,11 @@ describe('EntryRow', () => {
           kind="trip_only"
           bringCount={null}
           pieceCount={1}
+          pieces={[]}
           editable={false}
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       // Review round F1: the badge is a name adjunct, not trailing-column
@@ -312,9 +387,11 @@ describe('EntryRow', () => {
           kind="single"
           bringCount={null}
           pieceCount={1}
+          pieces={[]}
           editable={false}
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       expect(screen.getByTestId('entry-row-count')).toHaveTextContent('—')
@@ -331,9 +408,11 @@ describe('EntryRow', () => {
           kind="counted"
           bringCount={2}
           pieceCount={2}
+          pieces={[]}
           editable
           onBringCountChange={onBringCountChange}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       const well = screen.getByRole('textbox', {
@@ -355,9 +434,11 @@ describe('EntryRow', () => {
           kind="counted"
           bringCount={2}
           pieceCount={2}
+          pieces={[]}
           editable
           onBringCountChange={onBringCountChange}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       const well = screen.getByRole('textbox', {
@@ -376,9 +457,11 @@ describe('EntryRow', () => {
           kind="counted"
           bringCount={2}
           pieceCount={2}
+          pieces={[]}
           editable
           onBringCountChange={onBringCountChange}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       await user.click(
@@ -397,9 +480,11 @@ describe('EntryRow', () => {
           kind="counted"
           bringCount={1}
           pieceCount={1}
+          pieces={[]}
           editable
           onBringCountChange={onBringCountChange}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       await user.click(
@@ -419,9 +504,11 @@ describe('EntryRow', () => {
           kind="counted"
           bringCount={0}
           pieceCount={0}
+          pieces={[]}
           editable
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       expect(
@@ -442,12 +529,137 @@ describe('EntryRow', () => {
           kind="counted"
           bringCount={0}
           pieceCount={0}
+          pieces={[]}
           editable={false}
           onBringCountChange={vi.fn()}
           onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
         />,
       )
       expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×0')
+    })
+  })
+
+  /**
+   * `docs/design/README.md` §5d — rulings A, B, C's empty case and D, all on
+   * the one anatomy `EntryRow.tsx`'s docstring argues for. `renderRow`
+   * derives `pieceCount` from `pieces` unless a test overrides it, matching
+   * how `GearListSection` actually wires the two (`pieceCountOf` sums the
+   * included Pieces `pieceInclusion` names) — so a test only ever states the
+   * roster once.
+   */
+  describe("per-person Pieces (rulings A, B, C's empty case, D)", () => {
+    function renderRow(overrides: Partial<EntryRowProps> = {}) {
+      const pieces = overrides.pieces ?? THREE_PIECES
+      const pieceCount =
+        overrides.pieceCount ?? pieces.filter((piece) => piece.included).length
+      const props: EntryRowProps = {
+        label: 'Headlamp',
+        kind: 'per_person',
+        bringCount: null,
+        editable: true,
+        onBringCountChange: vi.fn(),
+        onRemove: vi.fn(),
+        onOpenPiecePicker: vi.fn(),
+        ...overrides,
+        pieces,
+        pieceCount,
+      }
+      render(<EntryRow {...props} />)
+      return props
+    }
+
+    it('draws the cluster and ×N in both modes', () => {
+      const editableProps: EntryRowProps = {
+        label: 'Headlamp',
+        kind: 'per_person',
+        bringCount: null,
+        pieceCount: 2,
+        pieces: THREE_PIECES,
+        editable: true,
+        onBringCountChange: vi.fn(),
+        onRemove: vi.fn(),
+        onOpenPiecePicker: vi.fn(),
+      }
+      const editableRender = render(<EntryRow {...editableProps} />)
+      expect(
+        screen.getByRole('button', {
+          name: 'Who brings one — Headlamp, 2 of 3 bring one',
+        }),
+      ).toHaveTextContent('×2')
+      // `screen` queries the whole document, so the first row is unmounted
+      // before the second is mounted, or both would answer every query
+      // below.
+      editableRender.unmount()
+
+      render(<EntryRow {...editableProps} editable={false} />)
+      // The `role="img"` element is `PersonCluster`'s own root and covers
+      // only the circles — `×N` is its sibling inside `.pieceDisplay`, not
+      // its descendant, exactly as `×N` sits beside the hidden cluster in
+      // the editable button rather than duplicating its label. So this
+      // reads the display wrapper's text and the image's name separately.
+      expect(screen.getByTestId('entry-row-pieces')).toHaveTextContent('×2')
+      expect(
+        screen.getByRole('img', {
+          name: 'Who brings one — Headlamp, 2 of 3 bring one',
+        }),
+      ).toBeVisible()
+    })
+
+    it('makes the cluster and ×N one control, never the circles', async () => {
+      renderRow({ editable: true })
+      const control = screen.getByRole('button', {
+        name: 'Who brings one — Headlamp, 2 of 3 bring one',
+      })
+      expect(control).toBeInTheDocument()
+      // The circles inside are not targets.
+      expect(within(control).queryAllByRole('button')).toHaveLength(0)
+    })
+
+    it('is inert above Split', () => {
+      renderRow({ editable: false })
+      expect(
+        screen.queryByRole('button', { name: /who brings one/i }),
+      ).not.toBeInTheDocument()
+      // Still stated, just not a control — `role="img"`, the read pane's
+      // own anatomy for the identical fact.
+      expect(
+        screen.getByRole('img', { name: /who brings one/i }),
+      ).toBeInTheDocument()
+    })
+
+    it('reads NO PARTICIPANTS with an empty roster, and mounts no control', () => {
+      renderRow({ editable: true, pieces: [] })
+      expect(screen.getByText('NO PARTICIPANTS')).toBeInTheDocument()
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×0')
+      expect(
+        screen.queryByRole('button', { name: /who brings one/i }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('img', { name: /who brings one/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('says ×0 silently when every Piece is removed', () => {
+      renderRow({ editable: true, pieces: THREE_ALL_EXCLUDED })
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×0')
+      expect(screen.queryByText(/nobody/i)).not.toBeInTheDocument()
+      // Not an empty roster — the two draw differently (ruling D): the
+      // control still mounts, over an all-dashed cluster.
+      expect(
+        screen.getByRole('button', {
+          name: 'Who brings one — Headlamp, 0 of 3 bring one',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('opens the picker from the control and from nowhere else', async () => {
+      const user = userEvent.setup()
+      const onOpenPiecePicker = vi.fn()
+      renderRow({ onOpenPiecePicker })
+      expect(onOpenPiecePicker).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: /who brings one/i }))
+      expect(onOpenPiecePicker).toHaveBeenCalledOnce()
     })
   })
 })

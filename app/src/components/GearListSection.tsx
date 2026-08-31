@@ -4,15 +4,19 @@ import {
   entryKind,
   entryLabel,
   pieceCountOf,
+  pieceInclusion,
   UNGROUPED_LABEL,
   type DepotState,
   type EntryState,
   type TripState,
 } from '@foerier/shared'
+import { useState } from 'react'
 
 import { useDepot } from '../depot/store'
-import { EntryRow } from './EntryRow'
+import { tripParticipants } from '../depot/trips'
+import { EntryRow, type EntryRowPiece } from './EntryRow'
 import styles from './GearListSection.module.css'
+import { PiecePicker } from './PiecePicker'
 
 /**
  * **The gear list's body** — the groups and rows both editable `/trips/:id`
@@ -104,6 +108,35 @@ function rowKind(entry: EntryState, state: DepotState): GroupKey {
   }
 }
 
+/**
+ * A `per_person` Entry's pieces, in the one order every surface agrees on.
+ * `pieceInclusion`'s own order is by id — deliberately not the drawn one,
+ * its own docstring says so (`shared/src/selectors/piece.ts`) — so this
+ * rebuilds it against `tripParticipants`'s display order exactly the way
+ * `PiecePicker` already does, rather than handing `EntryRow` the id order
+ * and letting a second place re-decide it.
+ */
+function entryPieces(
+  entry: EntryState,
+  trip: TripState,
+  state: DepotState,
+): readonly EntryRowPiece[] {
+  const included = new Map(
+    pieceInclusion(entry, trip).map((piece) => [
+      piece.personId,
+      piece.included,
+    ]),
+  )
+  return tripParticipants(state, trip).map((person) => ({
+    personId: person.id,
+    label: person.label,
+    // Every row here comes from `trip`'s own Participant set, and so does
+    // `pieceInclusion`'s map — the same agreement `PiecePicker`'s `!` rests
+    // on, restated here.
+    included: included.get(person.id)!,
+  }))
+}
+
 /** `1 PIECE` / `2 PIECES` — spec §3.1: the count and its noun, formatted
  * together, never concatenated separately. Exported: `Trip.tsx`'s `GEAR
  * LIST` band renders its own `N PIECES` right beside this component's group
@@ -133,6 +166,12 @@ export function GearListSection({
 }: GearListSectionProps) {
   const state = useDepot((depot) => depot.state)
   const entries = entriesOf(trip, state)
+
+  // Which Entry's `PiecePicker` is open, if any — held here rather than by
+  // the row, because the picker itself (ruling C) needs the Entry and the
+  // Trip, and `EntryRow` stays presentational (this file's own docstring).
+  const [openPieceEntryId, setOpenPieceEntryId] = useState<string | null>(null)
+  const openPieceEntry = entries.find((entry) => entry.id === openPieceEntryId)
 
   const groups = GROUPS.map((group) => {
     const groupEntries = entries.filter(
@@ -177,25 +216,44 @@ export function GearListSection({
               </span>
             </div>
             <ul className={styles['rows']}>
-              {group.entries.map((entry) => (
-                <li key={entry.id}>
-                  <EntryRow
-                    label={entryLabel(entry, state)}
-                    kind={rowKind(entry, state)}
-                    bringCount={bringCountOf(entry, state)}
-                    pieceCount={pieceCountOf(entry, trip, state)}
-                    editable={editable}
-                    onBringCountChange={(next) =>
-                      onBringCountChange(entry.id, next)
-                    }
-                    onRemove={() => onRemove(entry.id)}
-                  />
-                </li>
-              ))}
+              {group.entries.map((entry) => {
+                const kind = rowKind(entry, state)
+                return (
+                  <li key={entry.id}>
+                    <EntryRow
+                      label={entryLabel(entry, state)}
+                      kind={kind}
+                      bringCount={bringCountOf(entry, state)}
+                      pieceCount={pieceCountOf(entry, trip, state)}
+                      // Only a `per_person` row reads `pieces` (`EntryRow`'s
+                      // own docstring) — skipped for every other Kind rather
+                      // than computed and ignored.
+                      pieces={
+                        kind === 'per_person'
+                          ? entryPieces(entry, trip, state)
+                          : []
+                      }
+                      editable={editable}
+                      onBringCountChange={(next) =>
+                        onBringCountChange(entry.id, next)
+                      }
+                      onRemove={() => onRemove(entry.id)}
+                      onOpenPiecePicker={() => setOpenPieceEntryId(entry.id)}
+                    />
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )
       })}
+      {openPieceEntry && (
+        <PiecePicker
+          trip={trip}
+          entry={openPieceEntry}
+          onClose={() => setOpenPieceEntryId(null)}
+        />
+      )}
     </div>
   )
 }

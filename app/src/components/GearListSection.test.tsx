@@ -8,6 +8,7 @@ import {
   tripEntryBringCountSet,
   tripEntryRemoved,
   tripParticipantAdded,
+  tripPieceRemoved,
   type Clock,
   type IdSource,
   type OpAuthor,
@@ -23,6 +24,7 @@ import { inMemoryOpLog } from '../depot/opLog'
 import {
   createDepotStore,
   DepotProvider,
+  useDepot,
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
@@ -104,6 +106,30 @@ function renderSection(
         onRemove={overrides.onRemove ?? vi.fn()}
       />
     </DepotProvider>,
+  )
+}
+
+/**
+ * `renderSection`'s own `trip` prop is a **snapshot**, taken once at render
+ * time (`seed.trip()`), which is right for every test above: none of them
+ * emits an op that changes the *Trip's own registers* after mounting. The
+ * one below does — `PiecePicker`'s toggle authors `trip.piece_removed`,
+ * nested on `trip.entries` — and `entriesOf` reads `trip.entries` directly
+ * (`shared/src/selectors/entry.ts`), so a stale `trip` prop would never see
+ * it fold. `Trip.tsx` avoids this by deriving `trip` fresh from
+ * `state.trips[tripId]` on every render (`state` itself is a live
+ * `useDepot` subscription); this wrapper is that same shape, reused here so
+ * the test exercises the real re-fold path rather than a frozen snapshot.
+ */
+function ReactiveGearListSection({ tripId }: { tripId: string }) {
+  const trip = useDepot((depot) => depot.state.trips[tripId]!)
+  return (
+    <GearListSection
+      trip={trip}
+      editable
+      onBringCountChange={() => {}}
+      onRemove={() => {}}
+    />
   )
 }
 
@@ -386,7 +412,7 @@ describe('GearListSection', () => {
       expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×4')
     })
 
-    it('reads — for a per-person row rather than ×N', async () => {
+    it("draws the cluster and ×N for a per-person row, ruling A's amendment to the — rule", async () => {
       const seed = await seeded(
         tripCreated(TRIP, 'Alps 2026'),
         personRecorded('p1', 'Bran'),
@@ -402,7 +428,17 @@ describe('GearListSection', () => {
         }),
       )
       renderSection(seed, { editable: false })
-      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('—')
+      // Amended by ruling A (`docs/design/README.md` §5d): unlike every
+      // other Kind, `per_person` draws the identical circles + `×N` above
+      // Split — display needs no target's air — rather than falling back to
+      // the read pane's general `—` rule.
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×1')
+      expect(screen.getByRole('img', { name: /who brings one/i })).toBeVisible()
+      // Inert, not a control: this is the Split-and-up read pane, and
+      // ruling B withholds the control there entirely.
+      expect(
+        screen.queryByRole('button', { name: /who brings one/i }),
+      ).toBeNull()
     })
 
     it('still draws the TRIP-ONLY badge, even though the trailing slot reads —', async () => {
@@ -467,6 +503,126 @@ describe('GearListSection', () => {
       expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×0')
       const group = screen.getByRole('group', { name: 'COUNTED' })
       expect(within(group).getByText('0 PIECES')).toBeInTheDocument()
+    })
+  })
+
+  describe('per-person Pieces (S8, rulings A–D)', () => {
+    it("orders pieces by tripParticipants (display, by label) rather than pieceInclusion's id order", async () => {
+      // Recorded out of the ids' own order — `personRecorded` is emitted for
+      // "Zara" before "Ansel", and `participantAdded` for "Zara" first too,
+      // so a row drawing id order or arrival order would read Zara, Ansel;
+      // the display order is alphabetical by label.
+      const seed = await seeded(
+        tripCreated(TRIP, 'Alps 2026'),
+        personRecorded('p-zara', 'Zara'),
+        personRecorded('p-ansel', 'Ansel'),
+        tripParticipantAdded(TRIP, 'p-zara'),
+        tripParticipantAdded(TRIP, 'p-ansel'),
+        gearRecorded('g-person', {
+          name: 'Trekking pole',
+          container: false,
+          kind: 'per_person',
+        }),
+        tripEntryAdded(TRIP, 'e-person', {
+          from: 'depot',
+          gearId: 'g-person',
+        }),
+      )
+      renderSection(seed)
+      const control = screen.getByRole('button', { name: /who brings one/i })
+      expect(control).toHaveTextContent('AZ')
+    })
+
+    it('opens PiecePicker from the one control, and a toggle there updates the row', async () => {
+      const user = userEvent.setup()
+      const seed = await seeded(
+        tripCreated(TRIP, 'Alps 2026'),
+        personRecorded('p1', 'Bran'),
+        personRecorded('p2', 'Els'),
+        tripParticipantAdded(TRIP, 'p1'),
+        tripParticipantAdded(TRIP, 'p2'),
+        gearRecorded('g-person', {
+          name: 'Trekking pole',
+          container: false,
+          kind: 'per_person',
+        }),
+        tripEntryAdded(TRIP, 'e-person', {
+          from: 'depot',
+          gearId: 'g-person',
+        }),
+      )
+      render(
+        <DepotProvider value={seed.store}>
+          <ReactiveGearListSection tripId={TRIP} />
+        </DepotProvider>,
+      )
+
+      expect(screen.queryByTestId('piece-row')).toBeNull()
+      await user.click(
+        screen.getByRole('button', {
+          name: 'Who brings one — Trekking pole, 2 of 2 bring one',
+        }),
+      )
+      expect(screen.getAllByTestId('piece-row')).toHaveLength(2)
+
+      await user.click(screen.getByRole('button', { name: /Els/ }))
+      // `emit` folds on the store's queue (`EntryRow.tsx`'s own docstring on
+      // the S7 precedent) — `await user.click` alone does not prove the
+      // fold has caught up, only that the click handler ran.
+      await seed.store.getState().drained()
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+
+      // The toggle in the picker authored `trip.piece_removed`, and the row
+      // re-folds from the same store — one op, no separate refresh.
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×1')
+      expect(
+        screen.getByRole('button', {
+          name: 'Who brings one — Trekking pole, 1 of 2 bring one',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('reads NO PARTICIPANTS beside ×0 with no Participants on the Trip, and mounts no control', async () => {
+      const seed = await seeded(
+        tripCreated(TRIP, 'Alps 2026'),
+        gearRecorded('g-person', {
+          name: 'Trekking pole',
+          container: false,
+          kind: 'per_person',
+        }),
+        tripEntryAdded(TRIP, 'e-person', {
+          from: 'depot',
+          gearId: 'g-person',
+        }),
+      )
+      renderSection(seed)
+      expect(screen.getByText('NO PARTICIPANTS')).toBeInTheDocument()
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×0')
+      expect(
+        screen.queryByRole('button', { name: /who brings one/i }),
+      ).toBeNull()
+    })
+
+    it('says ×0 silently when every Piece is removed, with no offer to remove', async () => {
+      const seed = await seeded(
+        tripCreated(TRIP, 'Alps 2026'),
+        personRecorded('p1', 'Bran'),
+        tripParticipantAdded(TRIP, 'p1'),
+        gearRecorded('g-person', {
+          name: 'Trekking pole',
+          container: false,
+          kind: 'per_person',
+        }),
+        tripEntryAdded(TRIP, 'e-person', {
+          from: 'depot',
+          gearId: 'g-person',
+        }),
+        tripPieceRemoved(TRIP, 'e-person', 'p1'),
+      )
+      renderSection(seed)
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×0')
+      expect(screen.queryByText(/nobody/i)).toBeNull()
+      expect(screen.queryByText('NO PARTICIPANTS')).toBeNull()
     })
   })
 })

@@ -122,4 +122,64 @@
     position: absolute;
     inset: -0.4375rem;
   }
+
+  /* Ruling B's one control (`EntryRow.tsx`'s docstring): the cluster (hidden
+     inside `.clusterWrap`) plus `×N` together, never the circles
+     individually. No border, no background — this reads as the row's own
+     mono trailing content, not as a bordered button — but `position:
+     relative` plus the `::after` below is still `.remove`'s pattern, grown
+     to the row's own 48px floor rather than 44: this is the row's *primary*
+     control for a `per_person` row, not a secondary action beside it. */
+  .pieceControl {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-height: 1.5rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  /* Grows the 24px-tall painted control to the row's 48px floor —
+     (48 - 24) / 2 = 12px = 0.75rem each side — vertically only. `Depot.-
+     module.css`'s `.columnHead::after` is the precedent for the same
+     asymmetry: the row's own flex `gap` already separates this control from
+     `✕` horizontally, so there is nothing to clamp sideways; growing up or
+     down into the row above or below is the real risk, the one ruling O's
+     own 13px-overlap counter-example names. */
+  .pieceControl::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem 0;
+  }
+
+  /* The `aria-hidden`, `display: contents` wrapper `NewTrip.tsx` established
+     (commit `83e2d6f`): `.pieceControl` already carries the whole fact as
+     its own `aria-label`, so an unhidden `PersonCluster` nested inside would
+     double-announce it through its own `role="img"`. `display: contents`
+     generates no box, so `PersonCluster`'s root (itself `inline-flex`)
+     participates directly in `.pieceControl`'s flex row — the layout-shift
+     failure a plain wrapper `<span>` would reintroduce
+     (`PersonCircle.tsx`'s own docstring). */
+  .clusterWrap {
+    display: contents;
+  }
+
+  /* `!editable`: the identical cluster + `×N`, un-hidden and un-controlled —
+     ruling B's other half. No `position: relative` and no `::after`:
+     nothing here is a target, so there is nothing for ruling O to floor. */
+  .pieceDisplay {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+  }
+
+  /* Ruling C's empty case — a domain fact, not an empty state, so it reads
+     like the row's other mono facts (`.trailing`'s own font/colour, both
+     inherited) rather than like a placeholder. */
+  .noParticipants {
+    white-space: nowrap;
+  }
 }

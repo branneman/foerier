@@ -1,7 +1,15 @@
-import type { KindValue } from '@foerier/shared'
-import { Stepper } from '@foerier/ui'
+import { UNNAMED_PERSON_GLYPH, type KindValue } from '@foerier/shared'
+import { PersonCluster, Stepper } from '@foerier/ui'
 
 import styles from './EntryRow.module.css'
+
+/** One Participant's Piece, as `GearListSection` resolves it via
+ * `pieceInclusion` — {@link EntryRowProps.pieces}' element shape. */
+export interface EntryRowPiece {
+  readonly personId: string
+  readonly label: string
+  readonly included: boolean
+}
 
 /**
  * **One line on a Trip's gear list** — the row `GearListSection` groups by
@@ -25,18 +33,57 @@ import styles from './EntryRow.module.css'
  *
  * **Anatomy is `kind` × `editable`, and the two do not compose the way a
  * single switch would suggest.** Below Split (`editable`) the trailing slot
- * is kind-specific — a dense `Stepper` on `counted`, a plain `×N` on
- * `per_person`, nothing on every other Kind (`single`, `trip_only`, and
- * anything `GearListSection`'s `rowKind` has mapped to `'ungrouped'`) — and
- * a row ends in `✕`. From Split up (`!editable`) none of that survives: no
- * `✕`, no stepper, and the trailing slot reads `×N` for `counted` alone and
- * `—` for every other Kind, `trip_only` included. That second rule is the
- * spec's own wording (§4.2: "the trailing column reads `×4` for a Counted
- * Entry and `—` for everything else") and is deliberately **not** "the
- * editable anatomy minus the interactive controls" — the read-only pane
- * states less about *quantity* than the editable one, which is a narrower
- * claim than "states nothing about this row's Kind": the `TRIP-ONLY` badge
- * and the group headers both still say so.
+ * is kind-specific — a dense `Stepper` on `counted`, the cluster + `×N`
+ * control on `per_person` (rulings A/B, below), nothing on every other Kind
+ * (`single`, `trip_only`, and anything `GearListSection`'s `rowKind` has
+ * mapped to `'ungrouped'`) — and a row ends in `✕`. From Split up
+ * (`!editable`) most of that does not survive: no `✕`, no stepper, and the
+ * trailing slot reads `×N` for `counted` alone and `—` for every other Kind
+ * — **except `per_person`**, which draws the identical cluster + `×N` in
+ * both modes (`docs/design/README.md` §5d, ruling A). That `—`-for-the-rest
+ * rule is the spec's own wording (§4.2: "the trailing column reads `×4` for
+ * a Counted Entry and `—` for everything else") and is deliberately **not**
+ * "the editable anatomy minus the interactive controls" for `counted`,
+ * `single` and `trip_only` — the read-only pane states less about
+ * *quantity* than the editable one there, which is a narrower claim than
+ * "states nothing about this row's Kind": the `TRIP-ONLY` badge and the
+ * group headers both still say so. Ruling A carves `per_person` out of that
+ * general rule on purpose: the circles are the fact the read pane exists to
+ * show, not an editing affordance, so "display needs no target's air" and
+ * **no extra dimming** — dim already means excluded (ruling E's `dashed`
+ * tone), and one encoding never carries two meanings.
+ *
+ * **Ruling B: the circles are never individual targets.** A 44px hit area on
+ * 32px circle centres is ruling O's own counter-example — a tap meant for
+ * Els lands on Mark and removes the wrong Person's Piece; clamped to the row
+ * a target reaches only ~32px; spacing circles far enough apart to clear 44
+ * outright costs ~132px of a 393px row. So the cluster and `×N` are **one
+ * control**, `onOpenPiecePicker`, which opens `PiecePicker` — that picker,
+ * not this row, is where a tap on one Person's Piece happens. Its accessible
+ * name states the whole fact (`Who brings one — Headlamp, 2 of 3 bring
+ * one`) precisely so nothing needs to read the circles individually; the
+ * cluster itself is wrapped `aria-hidden` inside it (`NewTrip.tsx`'s
+ * `display: contents` pattern, commit `83e2d6f`) so `PersonCluster`'s own
+ * `role="img"` never double-announces the same roster a second time. In
+ * `!editable` mode the cluster is **not a control at all** — a plain
+ * `<span>`, no button, no hit extension, nothing for ruling O to floor —
+ * exactly the distinction this row already draws for the Bring-count
+ * (`Stepper` when `editable`, plain `×N` above Split).
+ *
+ * **Ruling C's empty case: no Participants, no cluster, no control.** A
+ * `per_person` row whose `pieces` is empty draws the mono `NO PARTICIPANTS`
+ * beside `×0` instead — a domain fact (Pieces derive from Participants, and
+ * there is nobody to derive one from), not an ordinary empty state, so
+ * `onOpenPiecePicker` never fires and nothing mounts to fire it from.
+ *
+ * **Ruling D: `×0` stands, silently.** A `per_person` row whose every Piece
+ * is removed draws an all-dashed cluster and `×0`, with no quiet line and no
+ * offer to remove — an offer would gate a reversible op (the tag-chip rule)
+ * and a nag would editorialize a state the Quartermaster chose on purpose.
+ * Invariant 11's right expression of "nobody is bringing it" stays where it
+ * always was: the `✕` at the row's edge. This is why the two ways to reach
+ * `×0` draw *differently* — an all-dashed cluster is three people who each
+ * declined; `NO PARTICIPANTS` is nobody to decline in the first place.
  *
  * **`onBringCountChange` never fires for a no-op edit.** `Stepper` reports
  * its well's value as `number | null` and can call back with the value
@@ -58,11 +105,30 @@ export interface EntryRowProps {
   /** `null` only ever arrives for a non-`counted` Kind — see `bringCountOf`. */
   readonly bringCount: number | null
   readonly pieceCount: number
+  /**
+   * Every Participant on this Entry's Trip and whether their Piece is
+   * included — read only for `per_person` rows, ignored by every other
+   * Kind. Ordered by `GearListSection` through `tripParticipants` (display
+   * order), **not** `pieceInclusion`'s own id order (`shared/src/selectors/-
+   * piece.ts`'s own docstring says why the two differ). An empty array is
+   * ruling C's domain fact — no Participants, so no Pieces to picture — and
+   * draws `NO PARTICIPANTS` rather than an empty cluster; see this file's
+   * docstring.
+   */
+  readonly pieces: readonly EntryRowPiece[]
   readonly editable: boolean
   /** Emits `trip.entry_bring_count_set`. Never called with the current value. */
   readonly onBringCountChange: (next: number) => void
   /** Emits `trip.entry_removed`. Does not confirm — the tag-chip rule. */
   readonly onRemove: () => void
+  /**
+   * Opens `PiecePicker` for this Entry. Fires from ruling B's one control —
+   * the cluster + `×N` together — never from an individual circle. Unused
+   * when `!editable` (the cluster there is a plain, uncontrolled `<span>`)
+   * and unused when `pieces` is empty (ruling C: no control mounts to fire
+   * it from).
+   */
+  readonly onOpenPiecePicker: () => void
 }
 
 export function EntryRow({
@@ -70,9 +136,11 @@ export function EntryRow({
   kind,
   bringCount,
   pieceCount,
+  pieces,
   editable,
   onBringCountChange,
   onRemove,
+  onOpenPiecePicker,
 }: EntryRowProps) {
   const isTripOnly = kind === 'trip_only'
 
@@ -86,9 +154,11 @@ export function EntryRow({
     kind,
     bringCount,
     pieceCount,
+    pieces,
     editable,
     label,
     handleStepperChange,
+    onOpenPiecePicker,
   )
 
   const rowClassName = editable
@@ -134,13 +204,28 @@ function trailing(
   kind: KindValue | 'trip_only',
   bringCount: number | null,
   pieceCount: number,
+  pieces: readonly EntryRowPiece[],
   editable: boolean,
   label: string,
   handleStepperChange: (next: number | null) => void,
+  onOpenPiecePicker: () => void,
 ) {
+  // Ruling A carves `per_person` out ahead of the `editable` split below:
+  // it is the one Kind that draws the identical anatomy in both modes, so
+  // there is exactly one place that decides its content rather than two.
+  if (kind === 'per_person') {
+    return perPersonTrailing(
+      pieces,
+      pieceCount,
+      label,
+      editable,
+      onOpenPiecePicker,
+    )
+  }
+
   if (!editable) {
-    // The spec's own rule: `×N` for Counted alone, `—` for everything else —
-    // per_person and trip_only included. Not "the editable anatomy minus the
+    // The spec's own rule for everything but `per_person`: `×N` for Counted
+    // alone, `—` for everything else. Not "the editable anatomy minus the
     // controls"; see this file's docstring.
     return (
       <span data-testid="entry-row-count">
@@ -160,12 +245,99 @@ function trailing(
           label={`Bring-count for ${label}`}
         />
       )
-    case 'per_person':
-      return <span data-testid="entry-row-count">×{pieceCount}</span>
     default:
       // `single`, `trip_only` (whose badge is a name adjunct, not trailing
       // content — see this file's docstring), and any Kind `GearListSection`
       // has already mapped to `'ungrouped'` — nothing to draw here.
       return null
   }
+}
+
+/** `label.charAt(0).toUpperCase()`, or `undefined` for the sentinel — the
+ * transform every `PersonCircle` caller in `app/` repeats rather than
+ * shares (`PiecePicker.tsx`, `Trip.tsx`, `TripCard.tsx`, `NewTrip.tsx`,
+ * `People.tsx`, `GearListBuilder.tsx`, `ParticipantPicker.tsx`), because a
+ * shared helper for one line of arithmetic would be a longer name than the
+ * line it replaces. */
+function personInitial(label: string): string | undefined {
+  return label === UNNAMED_PERSON_GLYPH
+    ? undefined
+    : label.charAt(0).toUpperCase()
+}
+
+/**
+ * The `per_person` trailing slot, both modes — rulings A, B, C's empty case
+ * and D, all four in one place because they are one anatomy: see this
+ * file's docstring for the reasoning each ruling number argues.
+ */
+function perPersonTrailing(
+  pieces: readonly EntryRowPiece[],
+  pieceCount: number,
+  label: string,
+  editable: boolean,
+  onOpenPiecePicker: () => void,
+) {
+  if (pieces.length === 0) {
+    // Ruling C's empty case: a domain fact, not an empty state — Pieces
+    // derive from Participants, so with none there is nothing to picture
+    // and nothing to open a picker onto.
+    return (
+      <>
+        <span className={styles['noParticipants']}>NO PARTICIPANTS</span>
+        <span data-testid="entry-row-count">×{pieceCount}</span>
+      </>
+    )
+  }
+
+  const includedCount = pieces.filter((piece) => piece.included).length
+  // Ruling B's exact accessible name — states the whole fact once so
+  // nothing needs to read the circles individually.
+  const accessibleName = `Who brings one — ${label}, ${includedCount} of ${pieces.length} bring one`
+
+  const cluster = (
+    <PersonCluster
+      people={pieces.map((piece) => ({
+        key: piece.personId,
+        label: personInitial(piece.label),
+        // Dashed (excluded) sorts to the front — `PersonCluster`'s own
+        // ruling-E job, not this row's. `tone` is only ever set when
+        // excluded (`exactOptionalPropertyTypes`: an omitted key and a key
+        // present as `undefined` are different types under it).
+        ...(piece.included ? {} : { tone: 'dashed' as const }),
+      }))}
+      size={24}
+      label={accessibleName}
+    />
+  )
+
+  if (!editable) {
+    // Ruling B's other half: display only, above Split — a plain `<span>`,
+    // no button, no hit extension, nothing for ruling O to floor.
+    return (
+      <span className={styles['pieceDisplay']} data-testid="entry-row-pieces">
+        {cluster}
+        <span data-testid="entry-row-count">×{pieceCount}</span>
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className={styles['pieceControl']}
+      aria-label={accessibleName}
+      data-testid="entry-row-piece-control"
+      onClick={onOpenPiecePicker}
+    >
+      {/* `aria-hidden` + `display: contents` (`.clusterWrap`): this button
+          already carries `accessibleName` as its own label, so an unhidden
+          `PersonCluster` nested inside would double-announce the same
+          roster via its own `role="img"` — `NewTrip.tsx`'s pattern (commit
+          `83e2d6f`), applied here rather than reinvented. */}
+      <span aria-hidden="true" className={styles['clusterWrap']}>
+        {cluster}
+      </span>
+      <span data-testid="entry-row-count">×{pieceCount}</span>
+    </button>
+  )
 }

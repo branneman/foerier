@@ -103,4 +103,55 @@ describe("ruling O's drawn sizes", () => {
     expect(ruleBody(css, '.settle')).toMatch(FLOOR)
     expect(ruleBody(css, '.more')).toMatch(FLOOR)
   })
+
+  /**
+   * **S8 ruling A/B** (`docs/design/README.md` §5d), the fourth of these —
+   * later than the round-2 closeout's original seventeen, but the identical
+   * shape: a 24px circle stays 24px even in the read pane's TABLE-44 density
+   * ("display needs no target's air"), and the cluster + `×N` control that
+   * wraps it grows to the *row's* own 48, not the 44 every other dense
+   * control here reaches for — this is `EntryRow`'s primary control for a
+   * `per_person` row, not a secondary action beside it.
+   */
+  it("paints the piece cluster at 24px in both modes, and clamps the control at the row's 48", () => {
+    const circleCss = moduleCss(
+      '..',
+      '..',
+      '..',
+      'ui',
+      'src',
+      'PersonCircle.module.css',
+    )
+    const size24 = ruleBody(circleCss, '.size24')
+
+    expect(size24).toBeDefined()
+    expect(size24).not.toMatch(FLOOR)
+    expect(size24).toMatch(/width:\s*1\.5rem/)
+    expect(size24).toMatch(/height:\s*1\.5rem/)
+
+    const entryRowCss = moduleCss('..', 'components', 'EntryRow.module.css')
+    const control = ruleBody(entryRowCss, '.pieceControl')
+
+    expect(control).toBeDefined()
+    expect(control).not.toMatch(FLOOR)
+    expect(control).toMatch(/position:\s*relative/)
+
+    // Vertical-only, unlike every other dense control's symmetric
+    // `inset: -0.4375rem` — the row's own flex `gap` already separates this
+    // control from `✕`, so there is nothing to clamp sideways; the row
+    // above/below is the real risk (`.remove`'s own 13px-overlap
+    // counter-example, restated at the row's 48 instead of the status-pill
+    // minimum's 44).
+    expect(ruleBody(entryRowCss, '.pieceControl::after')).toMatch(
+      /inset:\s*-0\.75rem 0/,
+    )
+
+    // Ruling B's other half: above Split the cluster is a plain `<span>`,
+    // not a control — no `position: relative` of its own and no `::after`,
+    // so there is nothing here for ruling O to floor.
+    const display = ruleBody(entryRowCss, '.pieceDisplay')
+    expect(display).toBeDefined()
+    expect(display).not.toMatch(/position:\s*relative/)
+    expect(ruleBody(entryRowCss, '.pieceDisplay::after')).toBeUndefined()
+  })
 })
