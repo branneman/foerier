@@ -81,15 +81,20 @@
      `editable` state is exactly the below-Split, touch-first mode, so a
      ~7×14px painted glyph is not an adequate target
      (`frontend-design.md` §2.1's `max(3rem, 48px)` floor).
-     `min-height` is declared explicitly, not left to `height: 2rem` alone:
-     `ui/styles/base.css`'s `button { min-height: max(3rem, 48px); }` sits in
-     the `base` layer, and `min-height` beats `height` — cascade layers only
-     resolve a conflict *within* one property, not across two. Without this
-     line the box still computes to 48px (verified in Chromium), which grows
-     the `::after` below into the row above and below it — a tap meant for a
-     neighbouring row's own `.remove` lands on this one instead, and `✕` is
-     deliberately unconfirmed. `DepotPicker.module.css`'s `.add` is the
-     pattern this copies. */
+     `min-height` is declared explicitly, not left to `height: 2rem` alone.
+     It began as a defence: `base.css` used to floor every `button` at
+     `max(3rem, 48px)`, and `min-height` beats `height` — cascade layers
+     resolve a conflict *within* one property, never across two — so without
+     this line the box computed to 48px however small it was drawn (verified
+     in Chromium), growing the `::after` below into the rows above and below.
+     A tap meant for a neighbouring row's `.remove` landed on this one
+     instead, and `✕` is deliberately unconfirmed: that is the 13px overlap
+     amendment ruling O names as the counter-example for why a hit extension
+     must clamp at its owning row.
+     The floor is retired now, so this line is no longer a defence against
+     anything — it is simply this control's stated paint, which is what the
+     ruling asks of every dense control.
+     `DepotPicker.module.css`'s `.add` is the pattern this copies. */
   .remove {
     position: relative;
     flex: none;

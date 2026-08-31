@@ -62,13 +62,14 @@
    * `Trip.module.css`'s `.addParticipant::after` already does for a 22px
    * circle.
    *
-   * `min-height` is declared explicitly here, not left implicit in
-   * `height: 2rem`: `ui/styles/base.css`'s `button { min-height: max(3rem,
-   * 48px); }` lives in the `base` layer, and `min-height` beats `height` —
-   * cascade layers only resolve a conflict *within* one property, not across
-   * two. Without this line the box still computes to 48px regardless of the
-   * `height` declared below (verified in Chromium), which is exactly the
-   * defect `DepotPicker.module.css`'s `.add` already avoids the same way.
+   * `min-height` is declared explicitly here rather than left implicit in
+   * `height: 2rem`. It began as a defence against `base.css`'s global floor,
+   * which beat `height` outright — layers resolve a conflict within one
+   * property, never across two — and painted this 32px control at 48
+   * regardless of what it declared. Ruling O retired that floor, so the line
+   * now states the paint rather than defending it; the ruling's first clause
+   * is that a drawn size is the painted size, and this is where this control
+   * says its own.
    */
   .dense .button {
     position: relative;
@@ -91,9 +92,11 @@
     inset: -0.4375rem;
   }
 
-  /* Same `min-height` reasoning as `.dense .button` above — `input` is one
-     of `base.css`'s floored elements too, and `height: 2rem` alone would
-     still compute to 48px. */
+  /* Same reasoning as `.dense .button` above: the paint is stated, not
+     inherited. `input` was one of the floored elements too, and — unlike a
+     `button` — it can never carry a `::after` of its own, being a replaced
+     element. That is one of the two reasons ruling O's hit extension cannot
+     be a global rule. */
   .dense .well {
     width: 2.25rem;
     height: 2rem;

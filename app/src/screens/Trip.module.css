@@ -453,10 +453,11 @@
     color: var(--color-ink-faint);
   }
 
-  /* Fix round F2. No `min-height` reaches this: `base.css`'s global floor
-     only catches `button`, `[role='button']` and `a.target` (`Link`
-     renders a bare `<a>` with none of those), and `min-height` itself would
-     be the wrong tool anyway — `.gearListTrailing`/`.gearListBand` are both
+  /* Fix round F2. No `min-height` reaches this — nothing supplies one at
+     all now that ruling O has retired the global floor, and even when that
+     floor existed it caught only `button`, `[role='button']` and `a.target`,
+     none of which a `Link`'s bare `<a>` is. `min-height` would be the wrong
+     tool here regardless — `.gearListTrailing`/`.gearListBand` are both
      `align-items: baseline`, and `TripCard.module.css`'s `.buildList` only
      gets to use `min-height: max(3rem, 48px)` because it stands outside a
      baseline-aligned row; here it would push the link's box down and break

@@ -27,18 +27,40 @@
   }
 
   /*
-   * Touch targets have a physical floor: minimum tap size is about finger
-   * size, which does not shrink when a reader picks a smaller font. Targets
-   * may grow with text but never fall below 48px
-   * (`frontend-design.md` §2.1).
+   * **There is deliberately no global touch-target floor here.**
+   *
+   * There was one — `button, [role='button'], a.target, input, select
+   * { min-height: max(3rem, 48px); }` — and it was wrong in a way that took a
+   * slice to see. A floor written as `min-height` does not floor a *hit
+   * area*; it floors the *paint*. And `min-height` beats `height` no matter
+   * which cascade layer each sits in, because layers resolve a conflict
+   * within one property, never across two. So every control that drew itself
+   * smaller than 48px — a 32px stepper button, a 22px participant circle, a
+   * phase chip, a column head — was silently painted at 48 instead, and the
+   * declaration that said otherwise looked like it was working.
+   *
+   * Amendment ruling O replaces it with a rule that cannot be stated in one
+   * global declaration (`docs/design/README.md` §5b, O):
+   *
+   *   1. A drawn size is the painted size.
+   *   2. 48 floors the **hit area**, never the paint — 44 the minimum, 48 the
+   *      target.
+   *   3. A hit extension **clamps at the owning row's bounds**, so two
+   *      targets can never overlap. The 13px overlap that deleted a
+   *      neighbouring Entry (`EntryRow.module.css`) is the counter-example
+   *      the rule exists to forbid.
+   *   4. A standalone control is simply drawn ≥48 and needs no extension at
+   *      all.
+   *
+   * Point 3 is why this cannot live here: what a hit area may grow into is a
+   * fact about the row that owns the control, which the base layer cannot
+   * know. And `input`/`select` are replaced elements that render no
+   * pseudo-element, so there is no global mechanism to give them one either.
+   * A dense control therefore states its own paint and grows its own
+   * `::after` — `Stepper.module.css` and `Trip.module.css`'s
+   * `.addParticipant` are the worked examples — and a standalone control
+   * states a paint of at least 48 and stops there.
    */
-  button,
-  [role='button'],
-  a.target,
-  input,
-  select {
-    min-height: max(3rem, 48px);
-  }
 
   /* Reduced motion and reduced data are gated in exactly one place. */
   @media (prefers-reduced-motion: reduce) {

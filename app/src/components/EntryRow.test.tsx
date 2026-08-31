@@ -44,23 +44,6 @@ function entryRowCss(): string {
   )
 }
 
-function baseCss(): string {
-  return stripComments(
-    readFileSync(
-      join(
-        dirname(expect.getState().testPath ?? ''),
-        '..',
-        '..',
-        '..',
-        'ui',
-        'styles',
-        'base.css',
-      ),
-      'utf8',
-    ),
-  )
-}
-
 /** All lengths in this file are `rem` or `px`; `1rem` is always `16px`
  * (`frontend-design.md` §2.1 — no `62.5%` trick). Returns the *largest* of
  * every length token found, so a `max(2rem, 32px)` declaration resolves the
@@ -79,25 +62,12 @@ function maxPx(declaration: string | undefined): number | undefined {
 }
 
 /** Finds the `{ … }` body of the first rule whose selector is exactly
- * `selector` (no trailing `,` — a comma-joined selector list, like
- * `base.css`'s `button, [role='button'], …`, never matches this way on
- * purpose, since a partial match on one name in the list would silently
- * read the wrong rule). */
+ * `selector` (no trailing `,` — a comma-joined selector list never matches
+ * this way on purpose, since a partial match on one name in the list would
+ * silently read the wrong rule). */
 function ruleBody(css: string, selector: string): string | undefined {
   const escaped = selector.replace(/[.[\]']/g, '\\$&')
   return new RegExp(`(?:^|[\\s{}])${escaped}\\s*\\{([^}]*)\\}`).exec(css)?.[1]
-}
-
-/** `base.css`'s touch-target floor sits on a multi-selector list
- * (`button,\n[role='button'],\n…`), so it is found by the declaration
- * itself rather than by one selector name in the list. */
-function ruleBodyContaining(css: string, needle: string): string | undefined {
-  const index = css.indexOf(needle)
-  if (index === -1) return undefined
-  const braceStart = css.indexOf('{', index)
-  const braceEnd = css.indexOf('}', braceStart)
-  if (braceStart === -1 || braceEnd === -1) return undefined
-  return css.slice(braceStart + 1, braceEnd)
 }
 
 function declaration(body: string | undefined, property: string) {
@@ -141,14 +111,17 @@ describe('EntryRow', () => {
       expect(declaredHeight).toBeDefined()
       expect(insetPx).toBeDefined()
 
-      // Same used-value rule the browser applies: a `min-height` (local, or
-      // else `base.css`'s global floor) wins over a smaller `height`.
-      const globalFloor = maxPx(
-        declaration(ruleBodyContaining(baseCss(), 'button'), 'min-height'),
+      // Same used-value rule the browser applies: a `min-height` wins over a
+      // smaller `height`. There is no longer a global floor standing behind
+      // this — amendment ruling O retired it, so a control paints at the size
+      // it declares and nothing else supplies one. That is precisely why
+      // `.remove` must keep its own `min-height`: without it the paint would
+      // now *shrink* rather than silently grow, and the geometry below would
+      // be measuring a box the browser never draws.
+      const paintedHeight = Math.max(
+        declaredHeight ?? 0,
+        declaredMinHeight ?? 0,
       )
-      expect(globalFloor).toBeDefined()
-      const effectiveMinHeight = declaredMinHeight ?? globalFloor ?? 0
-      const paintedHeight = Math.max(declaredHeight ?? 0, effectiveMinHeight)
 
       // `.remove` is centred (`align-items: center`) inside `.row`; the
       // margin above/below it is what the hit area is allowed to grow into
