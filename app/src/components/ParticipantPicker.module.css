@@ -4,8 +4,8 @@
    * — the same argument that file makes about the Home picker, one twin
    * further along. The divergence the duplication was there for has arrived:
    * a Participant row leads with a person circle and an owner row does not,
-   * so `.row`, `.circle` and `.name` below are this file's and changing them
-   * cannot reach the owner picker's rendering.
+   * so `.row`, `.circleWrap` and `.name` below are this file's and changing
+   * them cannot reach the owner picker's rendering.
    */
   .rows {
     display: flex;
@@ -29,6 +29,15 @@
     font-weight: 600;
     text-align: left;
     cursor: pointer;
+  }
+
+  /* `flex`, not the `<span>`'s default inline: unstyled, a wrapper around a
+     single inline-flex child (`ui/`'s `PersonCircle`) blockifies into a line
+     box a few px taller than the circle, off-centring it inside `.row`. Flex
+     sizes this wrapper to exactly the circle's own box instead (review round
+     F1, `PersonCircle`'s own fold). */
+  .circleWrap {
+    display: flex;
   }
 
   /* Takes the slack, so the marker stays at the trailing edge rather than

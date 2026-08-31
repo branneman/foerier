@@ -112,6 +112,17 @@
      place "THE PERSON CIRCLE — THREE STATES" (Screens C §08, S5) is
      written down. */
 
+  /* `flex`, not the `<span>`'s default inline: unstyled, a wrapper around a
+     single inline-flex child blockifies into a line box a few px taller
+     than the circle, off-centring it inside `.row`. Flex sizes this wrapper
+     to exactly the circle's own box instead (review round F1, `PersonCircle`'s
+     own fold). This row's `min-height: max(3rem, 48px)` had already absorbed
+     the difference, so nothing here was visibly wrong — fixed for
+     consistency with every other caller. */
+  .circleWrap {
+    display: flex;
+  }
+
   .name {
     font-size: 1rem;
     line-height: 1.375rem;

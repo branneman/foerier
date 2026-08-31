@@ -386,8 +386,13 @@ export function People({
                   say "no login" about every Person on screen, including the
                   reader, whose own Login is the reason the screen is open. A
                   third colour was tried and flattened in the parchment
-                  theme — see `PersonCircle.module.css`'s own comment. */}
-              <span aria-hidden="true">
+                  theme — see `PersonCircle.module.css`'s own comment.
+
+                  `.circleWrap` (`display: flex`) rather than an unstyled
+                  wrapper: a plain `<span>` around a single inline-flex child
+                  blockifies into a line box a few px taller than the circle,
+                  off-centring it inside `.row` (review round F1). */}
+              <span className={styles['circleWrap']} aria-hidden="true">
                 <PersonCircle
                   label={
                     person.label === UNNAMED_PERSON_GLYPH

@@ -282,19 +282,21 @@ export function TripCard({
                 .join(', ')}`}
             >
               {participants.map((person) => (
-                // The wrapper, not `PersonCircle` itself, carries
-                // `aria-hidden` — `ui/` never owns accessibility, only the
-                // caller does (see the cluster's own `role="img"` above).
-                <span key={person.id} aria-hidden="true">
-                  <PersonCircle
-                    label={
-                      person.label === UNNAMED_PERSON_GLYPH
-                        ? undefined
-                        : person.label.charAt(0).toUpperCase()
-                    }
-                    size={22}
-                  />
-                </span>
+                // No wrapper: the cluster's own `role="img"` above already
+                // makes it a single leaf in the accessibility tree, so a
+                // per-circle `aria-hidden` buys nothing — and a wrapper
+                // `<span>` here would blockify into a line box a few px
+                // taller than the circle (review round F1), reflowing
+                // `.circles`' `align-items: stretch` height against it.
+                <PersonCircle
+                  key={person.id}
+                  label={
+                    person.label === UNNAMED_PERSON_GLYPH
+                      ? undefined
+                      : person.label.charAt(0).toUpperCase()
+                  }
+                  size={22}
+                />
               ))}
             </span>
           )}

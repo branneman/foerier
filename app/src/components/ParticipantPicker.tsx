@@ -124,8 +124,18 @@ export function ParticipantPicker({
                     Person with no folded name draws an **empty** circle rather
                     than a placeholder letter. No login ring: that encoding is
                     the People screen's statement about Logins, and this sheet
-                    knows nothing about them. */}
-                <span aria-hidden="true">
+                    knows nothing about them.
+
+                    `aria-hidden` is load-bearing here — this row carries no
+                    `role="img"`, so without it the initial would read as a
+                    stray letter beside the name — and the wrapper it sits on
+                    carries `.circleWrap` (`display: flex`) rather than
+                    staying an unstyled `<span>`: an unstyled wrapper around a
+                    single inline-flex child blockifies into a *line box* a
+                    few px taller than the circle, off-centring it. Flex
+                    sizes the wrapper to exactly the circle's own box
+                    instead (review round F1). */}
+                <span className={styles['circleWrap']} aria-hidden="true">
                   <PersonCircle
                     label={
                       person.label === UNNAMED_PERSON_GLYPH
