@@ -1,5 +1,6 @@
 import {
   listTotals,
+  overClaimsFor,
   overClaimsIfActive,
   phaseOf,
   tripEntryBringCountSet,
@@ -18,7 +19,8 @@ import {
   GearListSection,
   pieceLabel,
 } from '../components/GearListSection'
-import { overClaimGroups } from '../components/OverClaimBand'
+import { overClaimGroups, OverClaimBand } from '../components/OverClaimBand'
+import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
 import { TripOnlySheet } from '../components/TripOnlySheet'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
@@ -172,6 +174,19 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   // materialises a Trip no delete op can remove before S14.
   const trip: TripState | undefined = state.trips[tripId]
 
+  // The Entry a `REMOVE ON <trip>` is waiting to confirm — the same shape
+  // `Trip.tsx` keeps, because this screen now draws the same standing band
+  // (ruling H) and a write against another Trip's aggregate needs the same
+  // confirm between the click and the op wherever it is reached from.
+  //
+  // Declared above the `trip === undefined` return with this screen's other
+  // hooks: a hook after an early return runs in a different order on the
+  // render where the Trip is missing.
+  const [removingElsewhere, setRemovingElsewhere] = useState<{
+    otherTripId: string
+    entryId: string
+  } | null>(null)
+
   if (trip === undefined) {
     return (
       <div className={styles['screen']} data-testid="gear-list-builder">
@@ -204,6 +219,13 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   // in common to hold it.
   function handleRemoveEntry(entryId: string) {
     emit(tripEntryRemoved(tripId, entryId))
+  }
+
+  // `REMOVE ON <trip>` writes against a Trip this screen is not showing —
+  // `Trip.tsx`'s own reasoning, verbatim: its undo is a navigation away, so
+  // spec §4.7's confirm sits between the click and the op landing.
+  function handleRemoveThere(otherTripId: string, entryId: string) {
+    setRemovingElsewhere({ otherTripId, entryId })
   }
 
   // Over-claim moment #2, spec §4.5 — `PhaseSheet.tsx`'s own `choose`,
@@ -247,6 +269,25 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   // once rather than duplicated across the two layouts below.
   const listBody = (
     <>
+      {/*
+        Ruling H: the band is a property of the **gear list**, not of a route.
+        It renders above the list wherever the list renders — `/trips/:id` and
+        this builder's right pane from Split up — so a Quartermaster building a
+        list sees the conflict they are building into, rather than meeting it
+        only on the way back out. The picker beside it stays claim-free: §4.3's
+        one-signal rule still holds, because the page carrying the list now
+        always carries the first signal. Adding is still never gated.
+      */}
+      <OverClaimBand
+        tripId={tripId}
+        overClaims={overClaimsFor(state, tripId)}
+        settle={{
+          onRemoveHere: handleRemoveEntry,
+          onRemoveThere: handleRemoveThere,
+          onBringFewer: handleBringCountChange,
+        }}
+      />
+
       <GearListSection
         trip={trip}
         editable
@@ -342,6 +383,14 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
 
       {tripOnlyOpen && (
         <TripOnlySheet tripId={tripId} onClose={() => setTripOnlyOpen(false)} />
+      )}
+
+      {removingElsewhere !== null && (
+        <RemoveElsewhereConfirm
+          otherTripId={removingElsewhere.otherTripId}
+          entryId={removingElsewhere.entryId}
+          onClose={() => setRemovingElsewhere(null)}
+        />
       )}
 
       {activating && (

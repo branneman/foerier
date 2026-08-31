@@ -1177,3 +1177,42 @@ over-claim moment #1 — the same numbering §4.4 above already uses for
 surface at all. Recorded here rather than built: the builder's `'pane'`
 variant stays as shipped, and a future slice that gives it a claim read of
 its own should read this entry first rather than rediscover the gap.
+
+## 12. What the amendment round settled
+
+The design round of 2026-08-31 ruled on fifteen decisions this slice's code had
+taken because no board reached them (`docs/design/README.md` §5b, items A–O).
+Sections 1–11 above are left exactly as they were written; this section records
+only what those rulings changed, in the same spirit §11 records what
+implementation changed.
+
+**Ruling H closes §11's entry 12.** That entry recorded a gap rather than
+building anything: §4.3's justification for the picker carrying no claim read —
+*"a claim is a relationship between two trips, the picker speaks for one, and
+the band appearing is the signal"* — named a signal that was not on the page at
+Split and up, because the builder is `/trips/:id/list` and §4.5 put the band on
+`/trips/:id`. Over-claim moment #1, adding gear to an active Trip's list, had
+no surface there at all.
+
+The ruling resolves it by moving the question rather than answering it as
+posed: **the band is a property of the gear list, not of a route.** It renders
+above the list wherever the list renders — `/trips/:id` and the builder's right
+pane from Split up — so §4.3's reasoning becomes true again where it was
+borrowed, the picker stays claim-free, and adding is still never gated. Below
+Split nothing changes: the band greets the back-tap the batch loop already ends
+with.
+
+The other rulings that touched this slice's surfaces:
+
+- **I** — the settle routes leave `ActivationConfirm` and `ReopenConfirm`
+  entirely. §4.5's two preview sheets render the conflict block facts-only, and
+  the standing band is the only surface that settles. This supersedes the
+  write-on-tap behaviour §4.5 shipped and `design/README.md` §3c recorded.
+- **C** — `CONTESTED —` retires for the new prose sentinel `Unnamed person`.
+- **L** — the Depot's `· N PIECES` headline segment retires; `PIECES` is trip
+  arithmetic only. No trip surface changes.
+- **N** — `Start pack-out` is 40px at Split and Desktop, matching the Depot's
+  own title-row control.
+- **O** — the global `min-height` touch floor retires in favour of a hit-area
+  rule. §4.8's `ui/Stepper` dense treatment and `EntryRow`'s `✕` become
+  instances of that rule rather than exceptions to a floor.

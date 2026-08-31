@@ -11,7 +11,7 @@ import {
   type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -333,6 +333,77 @@ describe('the gear list builder — Start pack-out', () => {
     // Not moved yet — a preview states the conflict, it does not decide for
     // the Quartermaster.
     expect(await authored()).toEqual([])
+  })
+})
+
+/**
+ * Amendment ruling H: the over-claim band is a property of the **gear list**,
+ * not of a route. It had rendered only on `/trips/:id`, so a Quartermaster
+ * building a list in this screen met the conflict they were building into
+ * only on the way back out — spec §11 entry 12's open question, closed here.
+ */
+describe('the gear list builder — the standing over-claim band (H)', () => {
+  async function aClashingPackOut() {
+    return seededStore(
+      gearRecorded('tent', {
+        name: 'Tent, tunnel 4p',
+        container: false,
+        kind: 'single',
+      }),
+      // Both Active: a Draft claims nothing, so the *standing* band needs a
+      // Trip that is actually holding the gear, unlike the activation
+      // preview's hypothetical.
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'pack_out'),
+      tripEntryAdded(ALPS, 'e-alps', { from: 'depot', gearId: 'tent' }),
+      tripCreated(JURA, 'Jura 2025'),
+      tripPhaseMoved(JURA, 'pack_out'),
+      tripEntryAdded(JURA, 'e-jura', { from: 'depot', gearId: 'tent' }),
+    )
+  }
+
+  it('draws the band above the list, with its settle routes', async () => {
+    setViewport(SPLIT)
+    const { store } = await aClashingPackOut()
+    renderBuilder(store)
+
+    const band = screen.getByTestId('over-claim-band')
+    expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+      '▲ 1 entry is already claimed by Jura 2025.',
+    )
+
+    // Above the list, not merely somewhere on the page: DOCUMENT_POSITION_
+    // FOLLOWING (4) means the section comes after the band.
+    const section = screen.getByTestId('gear-list-section')
+    expect(band.compareDocumentPosition(section)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+
+    // It settles here, unlike the two preview sheets (ruling I).
+    expect(screen.getByRole('button', { name: 'REMOVE HERE' })).toBeVisible()
+    // Recorded case in the DOM — `.settle`'s `text-transform` is what draws
+    // it in caps, and ruling G keeps the trip's full name rather than an
+    // abbreviation (`UNNAMED TRIP` and same-first-word households falsify a
+    // first-word rule).
+    expect(
+      screen.getByRole('button', { name: 'REMOVE ON Jura 2025' }),
+    ).toBeVisible()
+  })
+
+  it('leaves the picker claim-free, and never gates adding', async () => {
+    setViewport(SPLIT)
+    const { store } = await aClashingPackOut()
+    renderBuilder(store)
+
+    // §4.3's one-signal rule still holds: the page carrying the list now
+    // always carries the first signal, so the picker beside it says nothing
+    // about claims and adding stays ungated.
+    const picker = screen.getAllByTestId('depot-picker')[0]
+    expect(picker).toBeDefined()
+    expect(
+      within(picker as HTMLElement).queryByTestId('over-claim-band'),
+    ).toBeNull()
+    expect(screen.getAllByTestId('over-claim-band')).toHaveLength(1)
   })
 })
 
