@@ -86,14 +86,49 @@ in this document.
 Tab to a `Stepper` in the gear list, type `10` over the existing value, then
 **Tab away** rather than pressing Enter.
 
-- **Expect:** `10` is committed as **one** op — the sync indicator ticks once.
+- **Expect:** `10` is committed as **one** op — the sync indicator ticks once,
+  and no phantom `1` is authored on the way. Pressing **Enter** commits the same
+  way.
 - **Failure:** several ops, or the typed value silently reverting.
 
 Then repeat, pressing **Escape** instead of Tab.
 
-- **Expect:** the committed value is restored.
+- **Expect:** the committed value is restored and nothing is authored.
 
-### 5. Focus stays inside an open overlay
+Stepper `+` / `−` taps stay per-tap — each press is a finished statement, so
+each is its own op. Only the typed well defers to blur or Enter.
+
+### 5. A tapped row says `IN LIST ✓` immediately
+
+In the depot picker, add a piece of gear to the list.
+
+- **Expect:** the row reads `IN LIST ✓` at the tap, with no perceptible delay.
+- **Why manual:** `emit` is durable-first — append to the log, fold, then nudge
+  the outbox — so the folded answer arrives a queue-turn after the tap. The
+  picker unions an optimistic set to answer immediately. No test here can prove
+  it: `await user.click` drains the microtask queue, so a Tier 3 test passes
+  identically with the optimistic read removed (checked, not assumed).
+
+### 6. Control sizes match their drawn sizes
+
+Amendment ruling O retired the global `min-height` floor that was silently
+painting every control at 48px. Every control now states its own paint, so this
+is a sweep rather than one check: nothing should have visibly changed size, and
+anything that looks wrong is a control whose declared size was being overridden.
+
+Worth a specific look, since these were the ones the floor was overriding:
+
+- The participant `+` circle on a trip screen — should be **22 × 22**, in line
+  with the person circles beside it, not 22 wide and 48 tall.
+- `Start pack-out` in the gear list builder — **40px**, matching the Depot's
+  `+ Add gear`.
+- The Depot's column heads, the phase chip, and `SIGN OUT` / `REMOVE` as
+  attention text.
+
+Also check no two hit areas overlap: tapping one row's `✕` must never remove a
+neighbouring row's Entry.
+
+### 7. Focus stays inside an open overlay
 
 With any sheet or confirm open, hold **Tab** through roughly fifteen stops.
 

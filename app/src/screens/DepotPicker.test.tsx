@@ -437,6 +437,23 @@ describe('the depot picker — rows', () => {
     )
   })
 
+  /**
+   * Amendment ruling K's other half — `IN LIST ✓` rendering from the local op
+   * **at the tap, in front of the work queue** — has no test here, and the
+   * absence is deliberate rather than an omission.
+   *
+   * `emit` is durable-first by design (append, fold, nudge the outbox), so
+   * the folded answer to "is this listed" arrives a queue-turn after the tap
+   * that caused it, and `DepotPicker` now unions an optimistic set into
+   * `listedIds` so the row answers immediately. But `await user.click`
+   * drains the microtask queue, so by the time any assertion runs the fold
+   * has caught up regardless — a test written here passes identically with
+   * the optimistic set removed, which was checked rather than assumed.
+   *
+   * The test above ('adds without navigating away') covers that the row ends
+   * up marked. The *timing* wants a real browser, and is listed in
+   * `KEYBOARD-PASS.md` for that reason.
+   */
   it('shows no claim read on any row — no world chip, no status, home path only', async () => {
     const { store } = await seededStore(
       tripCreated(ALPS, 'Vosges — Oct'),

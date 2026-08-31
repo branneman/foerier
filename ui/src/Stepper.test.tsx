@@ -116,10 +116,13 @@ describe('Stepper', () => {
     )
 
     // The well clamps too, not just the button: typing a value under the
-    // floor commits the floor rather than the literal digits typed.
+    // floor commits the floor rather than the literal digits typed. The
+    // clamp happens at the commit (ruling K), so the blur is what asks for
+    // it — while typing, the buffer holds exactly what was typed.
     const well = screen.getByRole('textbox', { name: 'Owned count' })
     await user.clear(well)
     await user.type(well, '1')
+    await user.tab()
 
     expect(onChange).not.toHaveBeenCalledWith(1)
     expect(onChange).toHaveBeenLastCalledWith(2)
@@ -141,6 +144,7 @@ describe('Stepper', () => {
     const well = screen.getByRole('textbox', { name: 'Owned count' })
     await user.clear(well)
     await user.type(well, '1')
+    await user.tab()
 
     expect(onChange).toHaveBeenLastCalledWith(2)
     expect(well).toHaveValue('2')
@@ -158,6 +162,7 @@ describe('Stepper', () => {
     render(<Stepper value={3} onChange={onChange} label="Owned count" />)
 
     await user.clear(screen.getByRole('textbox', { name: 'Owned count' }))
+    await user.tab()
 
     expect(onChange).toHaveBeenCalledOnce()
     expect(onChange).toHaveBeenCalledWith(null)
@@ -175,13 +180,20 @@ describe('Stepper', () => {
     const well = screen.getByRole('textbox', { name: 'Owned count' })
     fireEvent.change(well, { target: { value: '2.5' } })
 
+    // The strip is immediate — it is what the well will accept at all, not
+    // what it will commit — so the buffer shows "25" before any commit.
+    expect(well).toHaveValue('25')
+    expect(onChange).not.toHaveBeenCalled()
+
     // "2.5" strips to "25" — never a fractional commit, and never the
     // silently-sanitised-to-empty behaviour a `type="number"` well gives
     // the same input (`AddGear.tsx`'s own reason for avoiding it).
+    fireEvent.blur(well)
     expect(onChange).toHaveBeenLastCalledWith(25)
     expect(well).toHaveValue('25')
 
     fireEvent.change(well, { target: { value: '-1' } })
+    fireEvent.blur(well)
     // A bare sign strips too — with `min` defaulting to `0`, there is no
     // typed spelling of a negative count at all, not even a clamp to reach.
     expect(onChange).toHaveBeenLastCalledWith(1)
@@ -309,6 +321,78 @@ describe('Stepper', () => {
     )
   })
 
+  /**
+   * Amendment ruling K, and the defect it names. Committing per keystroke
+   * made every intermediate spelling an op: editing `2` to `10` authored a
+   * `1` first, so a count nobody ever chose entered the log permanently,
+   * replicated to every Device, and — for a Bring-count — moved `recordedAt`
+   * twice. The keystroke is not the statement; the finished number is.
+   */
+  it('commits a typed number once, with no phantom intermediate (K)', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Stepper value={2} onChange={onChange} label="Bring count" />)
+
+    const well = screen.getByRole('textbox', { name: 'Bring count' })
+    await user.clear(well)
+    await user.type(well, '10')
+
+    // Nothing authored yet, and specifically not the `1` that `10` passes
+    // through on its way to being typed.
+    expect(onChange).not.toHaveBeenCalled()
+
+    await user.tab()
+
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenCalledWith(10)
+  })
+
+  it('commits on Enter as well as on blur (K)', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Stepper value={2} onChange={onChange} label="Bring count" />)
+
+    const well = screen.getByRole('textbox', { name: 'Bring count' })
+    await user.clear(well)
+    await user.type(well, '10{Enter}')
+
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenCalledWith(10)
+  })
+
+  it('restores the committed value on Escape, authoring nothing (K)', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Stepper value={7} onChange={onChange} label="Bring count" />)
+
+    const well = screen.getByRole('textbox', { name: 'Bring count' })
+    await user.clear(well)
+    await user.type(well, '3{Escape}')
+
+    // The edit is abandoned, not authored — and the well says so rather than
+    // leaving a number on screen that the log does not hold.
+    expect(well).toHaveValue('7')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The taps are a different act from the typing, and ruling K keeps them
+   * per-tap: each press of `+` is a finished statement on its own, so there
+   * is no buffer to flush and nothing to defer.
+   */
+  it('keeps stepper taps per-tap, not deferred to blur (K)', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Stepper value={2} onChange={onChange} label="Bring count" />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'Increase Bring count' }),
+    )
+
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenCalledWith(3)
+  })
+
   it('canonicalises a non-canonical spelling that parses to the value already held', async () => {
     // The buffer-desync regression F2's fix left open: no `min`, `value`
     // held fixed at 5 by a parent that never applies `onChange` (the
@@ -328,6 +412,12 @@ describe('Stepper', () => {
     await user.clear(well)
     await user.type(well, '05')
 
+    // While typing, the buffer holds what was typed — ruling K moved the
+    // commit to blur, and a well that rewrote itself mid-edit could not be
+    // typed into at all (`2` → `10` needs the intermediate `1` to survive).
+    expect(well).toHaveValue('05')
+
+    await user.tab()
     expect(well).toHaveValue('5')
   })
 })

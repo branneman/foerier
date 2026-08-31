@@ -1,4 +1,9 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import {
+  useEffect,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from 'react'
 
 import styles from './Stepper.module.css'
 
@@ -89,29 +94,64 @@ export function Stepper({
     setText(value === null ? '' : String(value))
   }, [value])
 
+  /**
+   * Typing edits the **buffer only** — amendment ruling K. Committing per
+   * keystroke made every intermediate spelling an op: editing `2` to `10`
+   * authored `1` and then `10`, so a count nobody ever chose entered the log
+   * permanently, replicated to every Device, and — for a Bring-count — moved
+   * `recordedAt` twice. The keystroke is not the statement; the finished
+   * number is.
+   */
   function handleWellChange(event: ChangeEvent<HTMLInputElement>) {
-    const digits = event.target.value.replace(/[^0-9]/g, '')
+    setText(event.target.value.replace(/[^0-9]/g, ''))
+  }
+
+  /**
+   * The finished number, on blur or Enter. Ruling K again: `2 → 10` is one
+   * op, and the phantom `1` never reaches the log.
+   *
+   * The buffer is rewritten to the canonical spelling of what was committed,
+   * unconditionally, because the `[value]` effect above cannot be relied on to
+   * do it: `05` parses to the same 5 a plain `5` would, so a caller already
+   * sitting at 5 sees no change, does not re-render, and the effect never
+   * fires to correct `05` in the well. A clamp is one way a commit can land on
+   * the value already held; it is not the only one.
+   */
+  function commit() {
+    const digits = text.replace(/[^0-9]/g, '')
 
     if (digits === '') {
-      // Nothing typed yet — not `min`, which would be a value nobody chose.
+      // Nothing typed — not `min`, which would be a value nobody chose.
       setText('')
       onChange(null)
       return
     }
 
     const parsed = Number.parseInt(digits, 10)
-    if (!Number.isSafeInteger(parsed)) return
+    if (!Number.isSafeInteger(parsed)) {
+      // Unrepresentable: keep what is committed rather than author a number
+      // the reader did not get to see.
+      setText(value === null ? '' : String(value))
+      return
+    }
+
     const next = Math.max(min, parsed)
-    // Always the canonical spelling of `next`, unconditionally — never the
-    // raw digits typed. A clamp is one way a keystroke can parse to a value
-    // the caller already holds, but not the only one: "05" parses to the
-    // same 5 a plain "5" would, and a caller that already sits at 5 sees no
-    // change to apply `onChange(5)` — no re-render, so the `[value]` effect
-    // above never re-fires to correct the buffer. Rewriting the buffer here,
-    // on every keystroke, closes the whole class rather than only the
-    // clamp instance of it.
     setText(String(next))
     onChange(next)
+  }
+
+  function handleWellKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') {
+      // A Stepper is not in a form here, but Enter must not submit one if a
+      // caller ever puts it in a form either.
+      event.preventDefault()
+      commit()
+      return
+    }
+    if (event.key === 'Escape') {
+      // Restores the committed value — the edit is abandoned, not authored.
+      setText(value === null ? '' : String(value))
+    }
   }
 
   return (
@@ -132,6 +172,8 @@ export function Stepper({
         aria-label={label}
         value={text}
         onChange={handleWellChange}
+        onBlur={commit}
+        onKeyDown={handleWellKeyDown}
       />
       <button
         type="button"

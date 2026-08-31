@@ -227,11 +227,31 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
   // whole design argument is a batch loop on a phone.
   const view = useMemo(() => containmentView(state), [state])
 
+  /**
+   * Gear added by a tap on *this* mount, ahead of the fold.
+   *
+   * Amendment ruling K: `IN LIST ✓` renders from the local op **at the tap,
+   * in front of the work queue**. `emit` is deliberately durable-first —
+   * append to the log, then fold, then nudge the outbox (`depot/store.ts`) —
+   * and that ordering is not up for renegotiation, because reversing it turns
+   * a lost render into a lost fact. But it does mean the folded answer to
+   * "is this in the list" arrives a queue-turn after the tap that put it
+   * there, and this row's `✓` is the only feedback the tap gets at all.
+   *
+   * So the read is optimistic and the write is not. This set only ever *adds*
+   * to what the fold says; it never subtracts, so it cannot hide a removal
+   * that arrived from anywhere else, and a refused append surfaces through
+   * `refusal` exactly as before.
+   */
+  const [addedHere, setAddedHere] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
+
   // Every Gear this Trip already lists from the depot — `IN LIST ✓`'s whole
   // question. Scoped to entries whose source is a depot reference: a
   // trip-only Entry names no Gear and never reaches this picker either way.
   const listedIds = useMemo(() => {
-    const ids = new Set<string>()
+    const ids = new Set<string>(addedHere)
     if (trip === undefined) return ids
     for (const entry of entriesOf(trip, state)) {
       const source = entry.source?.value
@@ -240,7 +260,7 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
       }
     }
     return ids
-  }, [trip, state])
+  }, [trip, state, addedHere])
 
   // S7 review F2: every hook above runs regardless, so this early return —
   // the one place the whole render short-circuits — costs nothing except the
@@ -296,6 +316,8 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
   }
 
   function addToTrip(gearId: string) {
+    // Ruling K: the row says so now, not a queue-turn from now.
+    setAddedHere((current) => new Set(current).add(gearId))
     emit(
       tripEntryAdded(tripId, systemIdSource.next(), {
         from: 'depot',
