@@ -71,12 +71,9 @@
 
   /* `Trip.tsx`'s own Participants cluster, read-only here: this screen edits
      the gear list, not who is on the Trip, so there is no trailing `+`
-     ghost. */
-  .circles {
-    display: inline-flex;
-    gap: var(--space-4);
-    flex: none;
-  }
+     ghost. `PersonCluster` (`ui/`) is now the flex row this used to be — its
+     own module CSS carries `display: inline-flex; gap; flex: none;`, and
+     nothing here ever pushed it further, so there is nothing left to fold. */
 
   /* `N PIECES` — the strip's own read, `GearListSection.tsx`'s `pieceLabel`
      formatted exactly as `Trip.tsx`'s `GEAR LIST` band already draws it. */

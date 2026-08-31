@@ -230,11 +230,15 @@
     color: var(--color-status-attention);
   }
 
-  .circles {
-    display: inline-flex;
-    gap: var(--space-4);
+  /* `PersonCluster` (`ui/`) is now the flex row `.circles` used to be — its
+     own module CSS carries `display: inline-flex; gap; flex: none;`, so this
+     file has nothing left to fold except the one thing that was ever
+     `.meta`'s business: pushing the cluster to the row's trailing edge. It
+     reaches in by the one attribute `PersonCluster` always carries,
+     `role="img"`, rather than by a modifier prop — this is a fact about
+     `.meta`'s own layout, not about the cluster. */
+  .meta [role='img'] {
     margin-left: auto;
-    flex: none;
   }
 
   /* The board's slot for `● 48/61 PIECES · 13 LEFT`, which lands **under**

@@ -140,11 +140,11 @@
     color: var(--color-ink-faint);
   }
 
-  .circles {
-    display: inline-flex;
-    gap: var(--space-4);
-    flex: none;
-  }
+  /* `PersonCluster` (`ui/`) is now the flex row this used to be — its own
+     module CSS carries `display: inline-flex; gap; flex: none;`. Nothing
+     left to fold here: `.participantRow`'s `margin-left: auto` above already
+     positions it, and unlike `TripCard`'s `.meta` this file never styled the
+     cluster's own row. */
 
   /*
    * The dashed `+` — gear detail's trailing ghost chip, drawn as a circle

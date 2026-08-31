@@ -4,7 +4,7 @@ import {
   UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
-import { PersonCircle } from '@foerier/ui'
+import { PersonCluster } from '@foerier/ui'
 import { Link } from 'wouter'
 
 import { useDepot } from '../depot/store'
@@ -268,37 +268,24 @@ export function TripCard({
             </span>
           )}
           {participants.length > 0 && (
-            // One `role="img"` over the whole cluster rather than a label on
-            // each circle: the initials are a single piece of information —
-            // who is on this Trip — and read out one letter at a time they
-            // are as easily a stray alphabet as a roster. The circles
-            // themselves stay `aria-hidden`, which is the People screen's
-            // treatment and `AccountAvatar`'s before it.
-            <span
-              className={styles['circles']}
-              role="img"
-              aria-label={`Participants: ${participants
+            // `PersonCluster` owns the `role="img"` over the whole cluster —
+            // the initials are a single piece of information (who is on this
+            // Trip) and read out one letter at a time they are as easily a
+            // stray alphabet as a roster — and caps painted circles at four,
+            // `+N` beyond that (ruling E, `docs/design/README.md` §5d E).
+            <PersonCluster
+              people={participants.map((person) => ({
+                key: person.id,
+                label:
+                  person.label === UNNAMED_PERSON_GLYPH
+                    ? undefined
+                    : person.label.charAt(0).toUpperCase(),
+              }))}
+              size={22}
+              label={`Participants: ${participants
                 .map((person) => person.label)
                 .join(', ')}`}
-            >
-              {participants.map((person) => (
-                // No wrapper: the cluster's own `role="img"` above already
-                // makes it a single leaf in the accessibility tree, so a
-                // per-circle `aria-hidden` buys nothing — and a wrapper
-                // `<span>` here would blockify into a line box a few px
-                // taller than the circle (review round F1), reflowing
-                // `.circles`' `align-items: stretch` height against it.
-                <PersonCircle
-                  key={person.id}
-                  label={
-                    person.label === UNNAMED_PERSON_GLYPH
-                      ? undefined
-                      : person.label.charAt(0).toUpperCase()
-                  }
-                  size={22}
-                />
-              ))}
-            </span>
+            />
           )}
         </div>
       )}

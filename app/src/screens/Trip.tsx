@@ -11,7 +11,7 @@ import {
   UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
-import { PersonCircle } from '@foerier/ui'
+import { PersonCluster } from '@foerier/ui'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
@@ -389,36 +389,26 @@ export function Trip() {
   const participantCluster = (
     <div className={styles['participantRow']}>
       {participants.length > 0 && (
-        // One `role="img"` over the whole cluster, `TripCard`'s treatment and
-        // `AccountAvatar`'s before it: the initials are a single piece of
-        // information — who is on this Trip — and read out one letter at a
-        // time they are as easily a stray alphabet as a roster. An empty
+        // `PersonCluster` owns the `role="img"` over the whole cluster,
+        // `TripCard`'s treatment and `AccountAvatar`'s before it: the
+        // initials are a single piece of information — who is on this Trip
+        // — and read out one letter at a time they are as easily a stray
+        // alphabet as a roster. It also caps painted circles at four, `+N`
+        // beyond that (ruling E, `docs/design/README.md` §5d E). An empty
         // cluster is not drawn at all: a picture of nobody.
-        <span
-          className={styles['circles']}
-          role="img"
-          aria-label={`Participants: ${participants
+        <PersonCluster
+          people={participants.map((person) => ({
+            key: person.id,
+            label:
+              person.label === UNNAMED_PERSON_GLYPH
+                ? undefined
+                : person.label.charAt(0).toUpperCase(),
+          }))}
+          size={22}
+          label={`Participants: ${participants
             .map((person) => person.label)
             .join(', ')}`}
-        >
-          {participants.map((person) => (
-            // No wrapper: the cluster's own `role="img"` above already makes
-            // it a single leaf in the accessibility tree, so a per-circle
-            // `aria-hidden` buys nothing — and a wrapper `<span>` here would
-            // blockify into a line box a few px taller than the circle
-            // (review round F1), reflowing `.circles`' `align-items: stretch`
-            // height against it.
-            <PersonCircle
-              key={person.id}
-              label={
-                person.label === UNNAMED_PERSON_GLYPH
-                  ? undefined
-                  : person.label.charAt(0).toUpperCase()
-              }
-              size={22}
-            />
-          ))}
-        </span>
+        />
       )}
       {/* Named for the surface it opens rather than for the glyph, and named
           `Participants` rather than `Add participants` because the sheet

@@ -1,0 +1,22 @@
+@layer components {
+  /*
+   * Folded from the three display clusters' identical `.circles` rule
+   * (`TripCard`, `Trip`'s header, `GearListBuilder`'s desk header) —
+   * `display: inline-flex; gap: var(--space-4); flex: none;`, verbatim. A
+   * caller that needs the whole cluster pushed to a row's trailing edge
+   * (`TripCard`'s `.meta` did, via `margin-left: auto` on `.circles` itself)
+   * now reaches in from outside by the one attribute this element always
+   * carries — `role="img"` — rather than by a modifier prop: positioning
+   * within a caller's own row is that caller's layout, not a fact about the
+   * cluster.
+   *
+   * No `flex-wrap` and no `overflow`: ruling E's "never wrap, never
+   * inner-scroll" is enforced by capping the *count* rendered (`PersonCluster.tsx`),
+   * not by squeezing what four or five circles' worth of row would take.
+   */
+  .cluster {
+    display: inline-flex;
+    gap: var(--space-4);
+    flex: none;
+  }
+}

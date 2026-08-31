@@ -24,5 +24,8 @@ export type { StepperProps } from './Stepper'
 export { PersonCircle } from './PersonCircle'
 export type { PersonCircleProps } from './PersonCircle'
 
+export { PersonCluster } from './PersonCluster'
+export type { PersonClusterEntry, PersonClusterProps } from './PersonCluster'
+
 export { QrCode } from './QrCode'
 export type { QrCodeProps } from './QrCode'

@@ -10,7 +10,7 @@ import {
   UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
-import { PersonCircle } from '@foerier/ui'
+import { PersonCluster } from '@foerier/ui'
 import { useState } from 'react'
 import { Link, useSearch } from 'wouter'
 
@@ -323,31 +323,22 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
           {participants.length > 0 && (
             // `Trip.tsx`'s own cluster, read-only here: this screen edits the
             // gear list, not Participants, so there is no trailing `+` ghost.
-            <span
-              className={styles['circles']}
-              role="img"
-              aria-label={`Participants: ${participants
+            // `PersonCluster` owns the `role="img"` and caps painted circles
+            // at four, `+N` beyond that (ruling E,
+            // `docs/design/README.md` §5d E).
+            <PersonCluster
+              people={participants.map((person) => ({
+                key: person.id,
+                label:
+                  person.label === UNNAMED_PERSON_GLYPH
+                    ? undefined
+                    : person.label.charAt(0).toUpperCase(),
+              }))}
+              size={22}
+              label={`Participants: ${participants
                 .map((person) => person.label)
                 .join(', ')}`}
-            >
-              {participants.map((person) => (
-                // No wrapper: the cluster's own `role="img"` above already
-                // makes it a single leaf in the accessibility tree, so a
-                // per-circle `aria-hidden` buys nothing — and a wrapper
-                // `<span>` here would blockify into a line box a few px
-                // taller than the circle (review round F1), reflowing
-                // `.circles`' `align-items: stretch` height against it.
-                <PersonCircle
-                  key={person.id}
-                  label={
-                    person.label === UNNAMED_PERSON_GLYPH
-                      ? undefined
-                      : person.label.charAt(0).toUpperCase()
-                  }
-                  size={22}
-                />
-              ))}
-            </span>
+            />
           )}
           <span
             className={styles['pieces']}
