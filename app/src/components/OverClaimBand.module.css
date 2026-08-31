@@ -105,6 +105,21 @@
     gap: var(--space-12);
   }
 
+  /* Ruling F: "the routes stack one wrapped row per person, gap 6" — a
+     per-person `OverClaim` naming several contested People stacks one
+     `.settleRow` per Person rather than interleaving their routes into one
+     wrapped line, so a Person's `HERE`/`ON <trip>` pair stays adjacent. Real
+     6px, not a `--space-*` token — the scale has no rung there and this is
+     the one place the boards draw a number the scale doesn't carry. No
+     `::after`, matching `.settle`/`.settleRow` above: each row's buttons are
+     already 48px real paint, so a plain positive gap between rows is enough
+     to keep two stacked hit areas from touching. */
+  .personSettle {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   /* No `::after` here, on purpose. `.settle` states its own 48px paint
      (ruling O retired the global floor this used to inherit it from), which
      is already the target the hit-area rule asks for, and these are

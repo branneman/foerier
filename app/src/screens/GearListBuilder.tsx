@@ -7,6 +7,7 @@ import {
   tripEntryRemoved,
   tripLabel,
   tripPhaseMoved,
+  tripPieceRemoved,
   UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
@@ -179,6 +180,9 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   // `Trip.tsx` keeps, because this screen now draws the same standing band
   // (ruling H) and a write against another Trip's aggregate needs the same
   // confirm between the click and the op wherever it is reached from.
+  // `personId` carries ruling F's `REMOVE <name>'S PIECE ON <trip>` route
+  // through to `RemoveElsewhereConfirm`'s Piece variant (ruling G),
+  // `Trip.tsx`'s own field, mirrored.
   //
   // Declared above the `trip === undefined` return with this screen's other
   // hooks: a hook after an early return runs in a different order on the
@@ -186,6 +190,7 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const [removingElsewhere, setRemovingElsewhere] = useState<{
     otherTripId: string
     entryId: string
+    personId?: string
   } | null>(null)
 
   if (trip === undefined) {
@@ -227,6 +232,23 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   // spec §4.7's confirm sits between the click and the op landing.
   function handleRemoveThere(otherTripId: string, entryId: string) {
     setRemovingElsewhere({ otherTripId, entryId })
+  }
+
+  // Ruling F's per-person routes — `Trip.tsx`'s own two handlers, mirrored:
+  // `onRemovePieceHere` writes against this Trip's own aggregate and never
+  // confirms; `onRemovePieceThere` opens the same confirm as
+  // `handleRemoveThere` above, now carrying `personId` so
+  // `RemoveElsewhereConfirm` renders its Piece variant (ruling G).
+  function handleRemovePieceHere(entryId: string, personId: string) {
+    emit(tripPieceRemoved(tripId, entryId, personId))
+  }
+
+  function handleRemovePieceThere(
+    otherTripId: string,
+    entryId: string,
+    personId: string,
+  ) {
+    setRemovingElsewhere({ otherTripId, entryId, personId })
   }
 
   // Over-claim moment #2, spec §4.5 — `PhaseSheet.tsx`'s own `choose`,
@@ -286,6 +308,8 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
           onRemoveHere: handleRemoveEntry,
           onRemoveThere: handleRemoveThere,
           onBringFewer: handleBringCountChange,
+          onRemovePieceHere: handleRemovePieceHere,
+          onRemovePieceThere: handleRemovePieceThere,
         }}
       />
 
@@ -387,6 +411,7 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
         <RemoveElsewhereConfirm
           otherTripId={removingElsewhere.otherTripId}
           entryId={removingElsewhere.entryId}
+          personId={removingElsewhere.personId}
           onClose={() => setRemovingElsewhere(null)}
         />
       )}

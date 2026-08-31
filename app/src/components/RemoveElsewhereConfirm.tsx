@@ -1,4 +1,10 @@
-import { entryLabel, tripEntryRemoved } from '@foerier/shared'
+import {
+  entryLabel,
+  personNameOrUnnamed,
+  piecesOf,
+  tripEntryRemoved,
+  tripPieceRemoved,
+} from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
 
 import { useDepot } from '../depot/store'
@@ -43,18 +49,37 @@ import styles from './RemoveElsewhereConfirm.module.css'
  * **Mounted is open**, as every `ui/` primitive is: the caller writes
  * `{pending !== null && <RemoveElsewhereConfirm …/>}`, and there is no draft
  * here to reset — the confirm reads the fold fresh on every mount.
+ *
+ * **Ruling G's Piece variant** (S8): `personId`, present only for
+ * `OverClaimBand`'s `REMOVE <name>'S PIECE ON <trip>` route, retitles the
+ * sheet and swaps the emit from `trip.entry_removed` to `trip.piece_removed`
+ * rather than a second component being written beside this one — the same
+ * write-against-another-aggregate, deliberate-act shape either way, only the
+ * *subject* changes. The body copy is **not** the spec draft's
+ * `"Mark isn't bringing one on Vosges"`, which the design round overturned
+ * for inferring the actor's intent (nobody here knows *why* Mark isn't
+ * bringing one, only that the op removes his Piece); it follows the Entry
+ * variant's own construction instead — *"X comes off the Y gear list. The
+ * gear itself does not move."* — states what the op does, not a guess at
+ * what it means.
  */
 export interface RemoveElsewhereConfirmProps {
   /** The Trip this confirm's own write lands against — not the screen behind it. */
   readonly otherTripId: string
   readonly entryId: string
   readonly onClose: () => void
+  /**
+   * Present only for the Piece variant (ruling G). Absent is the Entry
+   * variant, unchanged from before S8.
+   */
+  readonly personId?: string | undefined
 }
 
 export function RemoveElsewhereConfirm({
   otherTripId,
   entryId,
   onClose,
+  personId,
 }: RemoveElsewhereConfirmProps) {
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
@@ -72,25 +97,52 @@ export function RemoveElsewhereConfirm({
   const entry = otherTrip?.entries?.[entryId]
   if (otherTrip === undefined || entry === undefined) return null
 
+  // Ruling G's extra clause on the same guard: the Piece's Person can leave
+  // the other Trip's roster — or have this very Piece removed by a peer —
+  // while this sheet is still open, exactly the live race above but one
+  // level deeper. `piecesOf` already derives both cases (a Participant
+  // removed from the Trip, and an explicit tombstone) into one
+  // included/not fact, so reading it here is `piece.ts`'s own rule, not a
+  // second guard invented for this sheet. Rendering nothing leaves the
+  // body's subject as absent as a removed Entry does, the same reasoning as
+  // the guard above, one step further in.
+  if (
+    personId !== undefined &&
+    !piecesOf(entry, otherTrip).includes(personId)
+  ) {
+    return null
+  }
+
   const gearName = entryLabel(entry, state)
   const name = tripNameOrUnnamed(otherTrip)
   // `tripChip` is the one function that composes phase + `DAY N` — the same
   // string the trip screen's own chip and `TripCard` draw, so the other
   // Trip's state reads identically wherever it appears.
   const chip = tripChip(otherTrip, Date.now())
+  const personName =
+    personId === undefined ? undefined : personNameOrUnnamed(state, personId)
 
   // `Confirm.Action` is `DialogPrimitive.Close` underneath (Radix's own
   // `AlertDialogAction`), so clicking it already triggers `onClose` through
   // `onOpenChange` — calling it again here would close twice. Only the emit
   // is this handler's job.
   function confirmRemove() {
-    emit(tripEntryRemoved(otherTripId, entryId))
+    if (personId !== undefined) {
+      emit(tripPieceRemoved(otherTripId, entryId, personId))
+    } else {
+      emit(tripEntryRemoved(otherTripId, entryId))
+    }
   }
+
+  const title =
+    personName === undefined
+      ? `Remove from ${name}?`
+      : `Remove ${personName}’s piece from ${name}?`
 
   return (
     <Confirm
       variant="sheet"
-      title={`Remove from ${name}?`}
+      title={title}
       description={
         // Two `<span>`s, not two `<p>`s: `AlertDialog.Description` is itself
         // a `<p>` (Radix's `Primitive.p`), and a `<p>` cannot nest another.
@@ -99,8 +151,17 @@ export function RemoveElsewhereConfirm({
         // own `display: block` is what forces the line break after it.
         <>
           <span>
-            {gearName} comes off the {name} gear list. The gear itself does not
-            move.
+            {personName === undefined ? (
+              <>
+                {gearName} comes off the {name} gear list. The gear itself does
+                not move.
+              </>
+            ) : (
+              <>
+                {personName}’s piece comes off the {name} gear list. The entry
+                stays for everyone else; the gear itself does not move.
+              </>
+            )}
           </span>
           <span
             className={styles['context']}
@@ -127,7 +188,7 @@ export function RemoveElsewhereConfirm({
               className={styles['primary']}
               onClick={confirmRemove}
             >
-              Remove entry
+              {personName === undefined ? 'Remove entry' : 'Remove piece'}
             </button>
           </Confirm.Action>
           <Confirm.Cancel>

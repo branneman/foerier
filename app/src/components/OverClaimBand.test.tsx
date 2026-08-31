@@ -29,7 +29,11 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
-import { OverClaimBand, overClaimGroups } from './OverClaimBand'
+import {
+  OverClaimBand,
+  OverClaimGroups,
+  overClaimGroups,
+} from './OverClaimBand'
 
 /**
  * `Stepper.test.tsx`'s pattern: jsdom computes no layout (`css: false`), so
@@ -108,6 +112,12 @@ function renderBand(
     onRemoveHere?: (entryId: string) => void
     onRemoveThere?: (tripId: string, entryId: string) => void
     onBringFewer?: (entryId: string, count: number) => void
+    onRemovePieceHere?: (entryId: string, personId: string) => void
+    onRemovePieceThere?: (
+      tripId: string,
+      entryId: string,
+      personId: string,
+    ) => void
   } = {},
 ) {
   const state = store.getState().state
@@ -121,6 +131,8 @@ function renderBand(
           onRemoveHere: overrides.onRemoveHere ?? vi.fn(),
           onRemoveThere: overrides.onRemoveThere ?? vi.fn(),
           onBringFewer: overrides.onBringFewer ?? vi.fn(),
+          onRemovePieceHere: overrides.onRemovePieceHere ?? vi.fn(),
+          onRemovePieceThere: overrides.onRemovePieceThere ?? vi.fn(),
         }}
       />
     </DepotProvider>,
@@ -679,12 +691,201 @@ describe('a per-person over-claim', () => {
     const row = screen.getByTestId('over-claim-row-headlamp')
     expect(row).toHaveTextContent('PER-PERSON · CONTESTED Mark')
     expect(row).not.toHaveTextContent('OWNED')
+    // Mark is each roster's *only* Participant here, so F9's fallback fires
+    // on both sides at once (Task 9) — the honest label for either side is
+    // the plain Entry route, not a Piece-specific one, because removing
+    // Mark's one Piece and removing the whole Entry are the same act either
+    // way. This is what pins the fallback still applies unchanged from
+    // before Task 9's Piece routes existed.
     expect(
       within(row).getByRole('button', { name: 'REMOVE HERE' }),
     ).toBeVisible()
     expect(
       within(row).getByRole('button', { name: 'REMOVE ON Alps 2026' }),
     ).toBeVisible()
+    expect(
+      within(row).queryByRole('button', { name: /PIECE/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  /**
+   * Task 9, ruling F. The S8 spec's §4.6 worked case: Alps (Mark + Els,
+   * pack-out) and Vosges (Mark + Kim, on trip) both claim the Headlamp.
+   * `claimsByPerson` is `Mark: 2, Els: 1, Kim: 1` — Mark is the *entire*
+   * conflict, and Els's and Kim's claims are each held once and stay
+   * legitimate (domain §5.2's "different People" case). Both rosters carry
+   * two Participants, so neither side hits the F9 fallback — this is the
+   * case the Piece-specific routes exist for at all.
+   */
+  it('offers a route per contested Person per side, naming the other Trip always', async () => {
+    const store = await seeded(
+      gearRecorded('headlamp', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      personRecorded('mark', 'Mark'),
+      personRecorded('els', 'Els'),
+      personRecorded('kim', 'Kim'),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripParticipantAdded(HERE, 'mark'),
+      tripParticipantAdded(HERE, 'els'),
+      tripCreated(ALPS, 'Vosges 2026'),
+      tripPhaseMoved(ALPS, 'on_trip'),
+      tripParticipantAdded(ALPS, 'mark'),
+      tripParticipantAdded(ALPS, 'kim'),
+      tripEntryAdded(HERE, 'e-here', { from: 'depot', gearId: 'headlamp' }),
+      tripEntryAdded(ALPS, 'e-alps', { from: 'depot', gearId: 'headlamp' }),
+    )
+
+    renderBand(store, HERE)
+
+    const row = screen.getByTestId('over-claim-row-headlamp')
+    // Ruling F's correction: the row fact names the other Trip *always*,
+    // not only from two or more — this line class counts claims and can
+    // never name a Trip itself, so with only Vosges in play the row is the
+    // only place its name is ever said.
+    expect(row).toHaveTextContent('PER-PERSON · CONTESTED Mark · Vosges 2026')
+    expect(
+      within(row).getByRole('button', { name: 'REMOVE Mark’s PIECE HERE' }),
+    ).toBeVisible()
+    expect(
+      within(row).getByRole('button', {
+        name: 'REMOVE Mark’s PIECE ON Vosges 2026',
+      }),
+    ).toBeVisible()
+    // Els and Kim are each held once — no route names either of them, and
+    // no plain `REMOVE HERE`/`REMOVE ON` survives beside Mark's Piece ones.
+    expect(
+      within(row).queryByRole('button', { name: /Els/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(row).queryByRole('button', { name: /Kim/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(row).queryByRole('button', { name: 'REMOVE HERE' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(row).queryByRole('button', { name: 'REMOVE ON Vosges 2026' }),
+    ).not.toBeInTheDocument()
+  })
+
+  /**
+   * Task 9, F9's fallback. Alps carries only Mark — the Entry's only
+   * included Piece — while Vosges carries Mark and Kim. Removing Mark's one
+   * Piece here and removing the Entry here are the same act, so the honest
+   * label on this side is the plain `REMOVE HERE`, not
+   * `REMOVE Mark's PIECE HERE`.
+   */
+  it("falls back to REMOVE HERE when the contested Person is the Entry's only Piece", async () => {
+    const store = await seeded(
+      gearRecorded('headlamp', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      personRecorded('mark', 'Mark'),
+      personRecorded('kim', 'Kim'),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripParticipantAdded(HERE, 'mark'),
+      tripCreated(ALPS, 'Vosges 2026'),
+      tripPhaseMoved(ALPS, 'on_trip'),
+      tripParticipantAdded(ALPS, 'mark'),
+      tripParticipantAdded(ALPS, 'kim'),
+      tripEntryAdded(HERE, 'e-here', { from: 'depot', gearId: 'headlamp' }),
+      tripEntryAdded(ALPS, 'e-alps', { from: 'depot', gearId: 'headlamp' }),
+    )
+
+    renderBand(store, HERE)
+
+    const row = screen.getByTestId('over-claim-row-headlamp')
+    expect(
+      within(row).getByRole('button', { name: 'REMOVE HERE' }),
+    ).toBeVisible()
+    expect(
+      within(row).queryByRole('button', { name: /PIECE HERE/ }),
+    ).not.toBeInTheDocument()
+    // Vosges keeps its normal Piece route — Mark isn't its only Piece.
+    expect(
+      within(row).getByRole('button', {
+        name: 'REMOVE Mark’s PIECE ON Vosges 2026',
+      }),
+    ).toBeVisible()
+  })
+
+  it('renders no routes at all in the facts-only mode', async () => {
+    const store = await seeded(
+      gearRecorded('headlamp', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      personRecorded('mark', 'Mark'),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripParticipantAdded(HERE, 'mark'),
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'on_trip'),
+      tripParticipantAdded(ALPS, 'mark'),
+      tripEntryAdded(HERE, 'e-here', { from: 'depot', gearId: 'headlamp' }),
+      tripEntryAdded(ALPS, 'e-alps', { from: 'depot', gearId: 'headlamp' }),
+    )
+    const state = store.getState().state
+    const groups = overClaimGroups(overClaimsFor(state, HERE), HERE, state)
+
+    render(
+      <DepotProvider value={store}>
+        <OverClaimGroups tripId={HERE} groups={groups} />
+      </DepotProvider>,
+    )
+
+    expect(screen.getByTestId('over-claim-attention')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('wires the Piece routes to the right entry, Trip and Person', async () => {
+    const onRemovePieceHere = vi.fn()
+    const onRemovePieceThere = vi.fn()
+    const store = await seeded(
+      gearRecorded('headlamp', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      personRecorded('mark', 'Mark'),
+      personRecorded('els', 'Els'),
+      personRecorded('kim', 'Kim'),
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripParticipantAdded(HERE, 'mark'),
+      tripParticipantAdded(HERE, 'els'),
+      tripCreated(ALPS, 'Vosges 2026'),
+      tripPhaseMoved(ALPS, 'on_trip'),
+      tripParticipantAdded(ALPS, 'mark'),
+      tripParticipantAdded(ALPS, 'kim'),
+      tripEntryAdded(HERE, 'e-here', { from: 'depot', gearId: 'headlamp' }),
+      tripEntryAdded(ALPS, 'e-alps', { from: 'depot', gearId: 'headlamp' }),
+    )
+
+    renderBand(store, HERE, { onRemovePieceHere, onRemovePieceThere })
+    const user = userEvent.setup()
+
+    await user.click(
+      screen.getByRole('button', { name: 'REMOVE Mark’s PIECE HERE' }),
+    )
+    expect(onRemovePieceHere).toHaveBeenCalledWith('e-here', 'mark')
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'REMOVE Mark’s PIECE ON Vosges 2026',
+      }),
+    )
+    // A mixed-up here/there pair would still pass a test that only counted
+    // calls — this pins the *right* Trip id and the *right* Entry id
+    // together, `e-alps` on `ALPS`, never `e-here` or `HERE`.
+    expect(onRemovePieceThere).toHaveBeenCalledWith(ALPS, 'e-alps', 'mark')
   })
 })
 
@@ -838,6 +1039,8 @@ describe('when there is nothing to settle', () => {
             onRemoveHere: vi.fn(),
             onRemoveThere: vi.fn(),
             onBringFewer: vi.fn(),
+            onRemovePieceHere: vi.fn(),
+            onRemovePieceThere: vi.fn(),
           }}
         />
       </DepotProvider>,

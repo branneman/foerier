@@ -7,6 +7,7 @@ import {
   tripLabel,
   tripParticipantAdded,
   tripParticipantRemoved,
+  tripPieceRemoved,
   tripRenamed,
   UNNAMED_PERSON_GLYPH,
   type TripState,
@@ -184,9 +185,12 @@ export function Trip() {
   // The pending cross-Trip removal, or `null` when nothing is — mount is the
   // reset, same as every other `ui/`-backed sheet on this screen, so a
   // declined removal cannot come back attached to the next row tapped.
+  // `personId` is present only for ruling F's `REMOVE <name>'S PIECE ON
+  // <trip>` route — `RemoveElsewhereConfirm`'s Piece variant (ruling G).
   const [removingElsewhere, setRemovingElsewhere] = useState<{
     otherTripId: string
     entryId: string
+    personId?: string
   } | null>(null)
 
   // The `EDIT` button unmounts while editing, so leaving EDIT mode would drop
@@ -318,6 +322,24 @@ export function Trip() {
   // decides, so this handler only opens it.
   function handleRemoveThere(otherTripId: string, entryId: string) {
     setRemovingElsewhere({ otherTripId, entryId })
+  }
+
+  // Ruling F's per-person routes. `onRemovePieceHere` mirrors
+  // `handleRemoveHere`'s reasoning exactly — this Trip's own aggregate,
+  // never confirms — and `onRemovePieceThere` mirrors `handleRemoveThere`'s:
+  // a write against a Trip this screen is not showing goes through the same
+  // confirm, now carrying `personId` so `RemoveElsewhereConfirm` renders its
+  // Piece variant (ruling G) instead of the Entry one.
+  function handleRemovePieceHere(entryId: string, personId: string) {
+    emit(tripPieceRemoved(tripId, entryId, personId))
+  }
+
+  function handleRemovePieceThere(
+    otherTripId: string,
+    entryId: string,
+    personId: string,
+  ) {
+    setRemovingElsewhere({ otherTripId, entryId, personId })
   }
 
   // The dashed row opens `TripOnlySheet`, which owns its own
@@ -585,6 +607,8 @@ export function Trip() {
           onRemoveHere: handleRemoveHere,
           onRemoveThere: handleRemoveThere,
           onBringFewer: handleBringFewer,
+          onRemovePieceHere: handleRemovePieceHere,
+          onRemovePieceThere: handleRemovePieceThere,
         }}
       />
 
@@ -705,6 +729,7 @@ export function Trip() {
         <RemoveElsewhereConfirm
           otherTripId={removingElsewhere.otherTripId}
           entryId={removingElsewhere.entryId}
+          personId={removingElsewhere.personId}
           onClose={() => setRemovingElsewhere(null)}
         />
       )}

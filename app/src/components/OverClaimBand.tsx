@@ -50,7 +50,7 @@ import styles from './OverClaimBand.module.css'
  * any other.
  */
 /**
- * The three writes a conflict row can offer. **Optional wherever it appears**,
+ * The five writes a conflict row can offer. **Optional wherever it appears**,
  * and its absence is the read-only mode, not a degraded one.
  *
  * Amendment ruling I: a control that emits inside a cancellable confirm makes
@@ -59,9 +59,17 @@ import styles from './OverClaimBand.module.css'
  * So the two preview sheets render the block facts-only and **the standing
  * band is the only surface that settles**.
  *
- * Grouped into one prop rather than three so the type system enforces
+ * Grouped into one prop rather than five so the type system enforces
  * all-or-nothing: there is no such thing as a row that can remove but not
- * bring fewer, and a caller cannot accidentally supply two of the three.
+ * bring fewer, and a caller cannot accidentally supply some but not all of
+ * them.
+ *
+ * **S8 grew this from three callbacks to five, and `ActivationConfirm` /
+ * `ReopenConfirm` needed no change at all.** Both pass no `settle` — ruling
+ * I's facts-only mode, unaffected by how many routes the grouped type
+ * carries — so the two new callbacks below are routes those two sheets gain
+ * and never render. If touching either of them turned out to be necessary
+ * for this task, something upstream had gone wrong.
  */
 export interface SettleRoutes {
   /** Emits `trip.entry_removed` against **this** Trip. */
@@ -74,6 +82,28 @@ export interface SettleRoutes {
   readonly onRemoveThere: (tripId: string, entryId: string) => void
   /** Emits `trip.entry_bring_count_set` against **this** Trip's Entry. */
   readonly onBringFewer: (entryId: string, count: number) => void
+  /**
+   * Emits `trip.piece_removed` against **this** Trip — the per-person
+   * counterpart to `onRemoveHere`, ruling F. Reached only when the
+   * contested Person is *one of several* included Pieces on the Entry;
+   * when they are its only Piece, `ConflictRow`'s F9 fallback renders
+   * `onRemoveHere` instead, because removing the one Piece and removing
+   * the Entry are then the same act — the honest label is the Entry one.
+   */
+  readonly onRemovePieceHere: (entryId: string, personId: string) => void
+  /**
+   * Emits `trip.piece_removed` against a Trip this screen is not showing —
+   * the per-person counterpart to `onRemoveThere`, and the same
+   * confirm-first rule: `RemoveElsewhereConfirm`'s Piece variant (ruling G)
+   * sits between this route and the op landing. F9's fallback applies here
+   * too, symmetrically — the Entry on the *other* Trip can just as well
+   * hold only this one Piece, and the honest label is then `onRemoveThere`.
+   */
+  readonly onRemovePieceThere: (
+    tripId: string,
+    entryId: string,
+    personId: string,
+  ) => void
 }
 
 export interface OverClaimBandProps {
@@ -278,8 +308,23 @@ function ConflictRow({
         (ruling I) — the whole row of routes is absent, not disabled. A
         disabled control still states that the action belongs here, and it
         does not: it belongs on the trip screen's standing band.
+
+        Per-person splits into its own branch (ruling F) rather than joining
+        the generic one below: a per-person `OverClaim` can name several
+        contested People, each needing its own `HERE`/`ON <trip>` pair, where
+        Single and Counted only ever have the one `here` claim and the one
+        route per other Trip the generic branch already draws.
       */}
-      {settle !== undefined && (
+      {settle !== undefined && overClaim.kind === 'per_person' && (
+        <PersonSettleRoutes
+          overClaim={overClaim}
+          here={here}
+          otherTripIds={otherTripIds}
+          state={state}
+          settle={settle}
+        />
+      )}
+      {settle !== undefined && overClaim.kind !== 'per_person' && (
         <div className={styles['settleRow']}>
           {here !== undefined && canBringFewer && (
             <button
@@ -315,6 +360,124 @@ function ConflictRow({
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * **The per-person settle routes** — ruling F, split out of `ConflictRow`
+ * because a per-person `OverClaim`'s `contestedPersonIds` can name more than
+ * one Person (two Trips each doubling a *different* one is exactly the case
+ * this task exists to fix — the worked example in the S8 spec's §4.6, Mark
+ * contested between Alps and Vosges while Els's and Kim's own claims stay
+ * legitimate and untouched). Each contested Person gets **their own** row of
+ * routes, stacked with a 6px gap so one Person's `HERE`/`ON <trip>` pair
+ * stays visually adjacent rather than interleaved with another Person's —
+ * ruling F, drawn: "the routes stack one wrapped row per person, gap 6".
+ *
+ * **F9's fallback applies on both sides, not only `HERE`.** The spec names
+ * it for `HERE` because that is the shape the Counted branch's own F9
+ * (`bringFewerCount`, above) already carries, but the underlying rule is
+ * side-agnostic: whichever Entry — this Trip's or the other Trip's — holds
+ * the contested Person as its **only** included Piece, removing that one
+ * Piece and removing the whole Entry are the same act, so the honest label
+ * is the plain Entry route (`REMOVE HERE` / `REMOVE ON <trip>`) through the
+ * pre-existing `onRemoveHere`/`onRemoveThere` callbacks, not the new Piece
+ * ones. Symmetry is what "read that code and follow its shape" means here —
+ * a fallback that only fired on one side of an otherwise-identical write
+ * would be an arbitrary asymmetry the domain gives no reason for.
+ *
+ * `here` is at most one claim (`ConflictRow`'s own `hereClaims(...)[0]`) and
+ * each other Trip contributes at most one (`firstClaimOfTrip`) — the same
+ * simplification the generic branch already makes, carried over rather than
+ * widened by this task.
+ */
+function PersonSettleRoutes({
+  overClaim,
+  here,
+  otherTripIds,
+  state,
+  settle,
+}: {
+  readonly overClaim: OverClaim
+  readonly here: Claim | undefined
+  readonly otherTripIds: readonly string[]
+  readonly state: DepotState
+  readonly settle: SettleRoutes
+}) {
+  return (
+    <div className={styles['personSettle']}>
+      {overClaim.contestedPersonIds.map((personId) => {
+        const name = personNameOrUnnamed(state, personId)
+        const herePersonIds = here?.personIds
+        const hereIncludesPerson = herePersonIds?.includes(personId) ?? false
+        // F9: this Entry's only included Piece, so `REMOVE HERE` (the
+        // Entry route) is the honest label rather than a Piece one.
+        const hereIsOnlyPiece =
+          hereIncludesPerson && herePersonIds!.length === 1
+
+        return (
+          <div key={personId} className={styles['settleRow']}>
+            {hereIncludesPerson &&
+              (hereIsOnlyPiece ? (
+                <button
+                  type="button"
+                  className={styles['settle']}
+                  onClick={() => settle.onRemoveHere(here!.entryId)}
+                >
+                  REMOVE HERE
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles['settle']}
+                  onClick={() =>
+                    settle.onRemovePieceHere(here!.entryId, personId)
+                  }
+                >
+                  REMOVE {name}’s PIECE HERE
+                </button>
+              ))}
+            {otherTripIds.map((otherTripId) => {
+              const claim = firstClaimOfTrip(overClaim, otherTripId)
+              const claimPersonIds = claim?.personIds
+              if (!(claimPersonIds?.includes(personId) ?? false)) return null
+              // F9, the other side: the same fallback, this time against the
+              // other Trip's own Entry.
+              if (claimPersonIds!.length === 1) {
+                return (
+                  <button
+                    key={otherTripId}
+                    type="button"
+                    className={styles['settle']}
+                    onClick={() =>
+                      settle.onRemoveThere(otherTripId, claim!.entryId)
+                    }
+                  >
+                    REMOVE ON {tripRowLabel(state, otherTripId)}
+                  </button>
+                )
+              }
+              return (
+                <button
+                  key={otherTripId}
+                  type="button"
+                  className={styles['settle']}
+                  onClick={() =>
+                    settle.onRemovePieceThere(
+                      otherTripId,
+                      claim!.entryId,
+                      personId,
+                    )
+                  }
+                >
+                  REMOVE {name}’s PIECE ON {tripRowLabel(state, otherTripId)}
+                </button>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -626,7 +789,16 @@ function rowFact(
   state: DepotState,
   nameRow: boolean,
 ): string {
-  const suffix = nameRow
+  // Ruling F's correction: `nameRow` is the caller's multi-Trip heuristic
+  // (`ConflictRows`' `nameEachRow`), right for Single/Counted because their
+  // *line* already names the one other Trip when there is only one — but
+  // the per-person line (`hereOnlyPersonLine`) counts claims and can never
+  // name a Trip, and the cross-Trip line's plural branch counts too. Either
+  // way the per-person **row** is the only place its Trip is ever said, so
+  // it forces the suffix on rather than inheriting the heuristic built for
+  // a different line class.
+  const effectiveNameRow = overClaim.kind === 'per_person' ? true : nameRow
+  const suffix = effectiveNameRow
     ? distinctOtherTripIds(overClaim, tripId).map((id) =>
         tripRowLabel(state, id),
       )
