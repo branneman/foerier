@@ -36,6 +36,24 @@ import styles from './PersonCircle.module.css'
  * would already be out of names by S9 and need renaming across every
  * caller.
  *
+ * **A circle is sized by the density of the band it sits in, never by the
+ * screen** — `design/README.md` §5d K, which named the scale rather than
+ * answering the one number S8 asked about, so S9 adds its two against a
+ * system instead of picking per screen:
+ *
+ * | px | Band |
+ * | --- | --- |
+ * | 22 | chrome clusters — participant clusters riding card/header meta |
+ * | 24 | dense display rows — clusters at TABLE-44 read density |
+ * | 28 | group headers (S9) |
+ * | 30 | roster rows — 48px picker and People rows, circle leads the row |
+ * | 34 | working rows (S9) — where the circle carries status at glance speed |
+ *
+ * That is why the picker rows draw 30 and the gear-list row's cluster draws
+ * 24 while both sit on the same screen: the row's own density decides, not
+ * the surface that opened it. S9's 28 and 34 join the union above; no
+ * caller renames.
+ *
  * `ui/` never imports the store or a router (`frontend-design.md` §5): this
  * takes a label, not a Person id, and a caller's own `aria-hidden` / one
  * cluster-level `role="img"` stays with the caller — moving accessibility in

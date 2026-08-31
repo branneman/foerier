@@ -172,21 +172,3 @@ items under thirty settled ones.
   Counted gate and the count out again. Two computations of one drawn value, in
   one file. [`frontend-design.md`](frontend-design.md) §5, anchor:
   `` `metaFor` ``
-- **`NewTrip` was folded into `PersonCluster` though ruling E's own
-  enumeration names only four cluster surfaces** (the builder row, `TripCard`,
-  the trip screen header and the builder header). It is a fifth of the same
-  shape, folded in on the ruling's stated intent rather than its literal
-  list — omitted only because the brief ruling E was drawn against
-  undercounted the circles by exactly the one this omits. The next design
-  round should bless or overturn it.
-  [`specs/2026-08-31-per-person-pieces.md`](specs/2026-08-31-per-person-pieces.md)
-  §9, anchor: `` `NewTrip` is a fifth cluster surface ``
-- **The Piece picker's rows draw 30px circles where the boards' figure is
-  24px.** 24px is scoped to the read pane's display density; `ParticipantPicker`
-  (the picker's structural sibling) draws 30px on its own stated reason, and
-  ruling C names no picker-row size at all — so 30 is a sibling's precedent
-  applied, not a number the round chose. The next design round should state
-  one explicitly, the way §4.1 states the read pane's.
-  [`specs/2026-08-31-per-person-pieces.md`](specs/2026-08-31-per-person-pieces.md)
-  §9, anchor:
-  `Flagged for the next design round to state a picker-row circle size`

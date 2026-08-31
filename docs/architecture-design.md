@@ -2093,8 +2093,18 @@ dimension the first draft had proposed — the slicing engine untouched. See its
 - **Ruling E gives every cluster surface one overflow rule, retroactively.**
   Four painted slots; from five, three circles plus a `+N`; and — the part
   worth remembering — **dashed, excluded circles sort to the front**, so the
-  one Person declining is never the one hidden behind the count. The rule
-  reaches `TripCard`, the trip screen header, the builder header and
-  `NewTrip`'s Participants row as well as the Piece cluster, none of which had
-  ever handled a roster past three before this slice.
+  one Person declining is never the one hidden behind the count. Five callers
+  carry it at S8 — `TripCard`, the trip screen header, the builder header,
+  `NewTrip`'s Participants row and the Piece cluster — none of which had ever
+  handled a roster past three before this slice.
+
+  **The rule attaches to `PersonCluster`, not to that list**, and the round
+  said so on its second pass (`design/README.md` §5d J) because the first pass
+  had said "all four cluster surfaces" and the four was a **miscount** — the
+  brief ruling E was drawn against listed five hand-rolled circles where there
+  were six, omitting `NewTrip` exactly. Counting surfaces was the error, not
+  the count: a rule stated as an enumeration is only ever as complete as
+  whoever last counted. So every caller inherits cap-at-four,
+  exceptions-first and `+N` at its own drawn size, and **a new caller needs a
+  design round only to _depart_ from that, never to be allowed it.**
 
