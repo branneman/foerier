@@ -17,6 +17,7 @@ import type {
   GearState,
   PersonState,
   PhaseValue,
+  PieceState,
   PlaceState,
   TripState,
 } from './state.ts'
@@ -164,6 +165,31 @@ function writeEntry(
     const updated = update(current, st)
     if (updated === current && existing !== undefined) return trip
     return { ...trip, entries: { ...trip.entries, [entryId]: updated } }
+  })
+}
+
+/**
+ * Nested inside {@link writeEntry} exactly as that is nested inside
+ * `writeTrip` — the third level of one pattern, not a new one.
+ *
+ * The identity guard is the same and matters for the same reason: a losing
+ * write must return the identical object so `slice.ts`'s `WeakMap` memo is
+ * not invalidated by an op that changed nothing.
+ */
+function writePiece(
+  state: DepotState,
+  tripId: string,
+  entryId: string,
+  personId: string,
+  stamp: Stamp,
+  update: (piece: PieceState, stamp: Stamp) => PieceState,
+): DepotState {
+  return writeEntry(state, tripId, entryId, stamp, (entry, st) => {
+    const existing = entry.pieces?.[personId]
+    const current = existing ?? { id: personId }
+    const updated = update(current, st)
+    if (updated === current && existing !== undefined) return entry
+    return { ...entry, pieces: { ...entry.pieces, [personId]: updated } }
   })
 }
 
@@ -678,6 +704,34 @@ const tripEntryBringCountSet: Handler = (state, op, stamp) => {
 }
 
 /**
+ * `trip.piece_removed` / `trip.piece_restored` (`sync-protocol.md` §4.4): an
+ * ordinary LWW pair on one register (§3.5). Delete does not win by being a
+ * delete; a restore wins only by being strictly later.
+ *
+ * `false` is a real value carrying a real clock, never a dropped key — the
+ * rule `participants` and `tags` already keep.
+ */
+const tripPieceWritten =
+  (removed: boolean): Handler =>
+  (state, op, stamp) => {
+    const entryId = readString(op.payload, 'entry_id')
+    if (entryId.kind !== 'value') return state
+    const personId = readString(op.payload, 'person_id')
+    if (personId.kind !== 'value') return state
+    return writePiece(
+      state,
+      op.aggregate_id,
+      entryId.value,
+      personId.value,
+      stamp,
+      (piece, st) => {
+        const next = writeRegister(piece.removed, removed, st)
+        return next === piece.removed ? piece : { ...piece, removed: next }
+      },
+    )
+  }
+
+/**
  * The op-type dispatch table (`sync-protocol.md` §4.1, §4.3). A `Record`, not
  * a `switch`, so "is this type known?" is a lookup — the same question the
  * tolerant reader asks.
@@ -733,6 +787,11 @@ const handlers: Record<string, Handler> = {
   'trip.entry_added': tripEntryAdded,
   'trip.entry_removed': tripEntryRemoved,
   'trip.entry_bring_count_set': tripEntryBringCountSet,
+  // S8 (§4.4): one Piece per Participant, keyed by person id on the Entry —
+  // present and absent, not create and delete, exactly the participant and
+  // tag pairs above.
+  'trip.piece_removed': tripPieceWritten(true),
+  'trip.piece_restored': tripPieceWritten(false),
 }
 
 /**

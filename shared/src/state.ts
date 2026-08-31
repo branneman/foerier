@@ -105,12 +105,29 @@ export type PhaseValue =
   'draft' | 'pack_out' | 'on_trip' | 'unpack' | 'closed' | (string & {})
 
 /**
+ * One Participant's copy of a per-person Entry
+ * (`sync-protocol.md` §3.7).
+ *
+ * S8 declares **one** of §3.7's four registers. `status` and `residence` are
+ * S9's (`trip.piece_status_set`, `trip.piece_moved`); `outcome` is S10's. A
+ * register nobody writes is a field every reader must have an opinion about,
+ * so each arrives with the slice that writes it — `EntryState`'s own rule,
+ * one level deeper.
+ */
+export interface PieceState {
+  /** The Person id. The map key and this field are the same value. */
+  readonly id: string
+  /** Tombstone. `trip.piece_restored` clears it, if strictly later. */
+  readonly removed?: Register<boolean>
+}
+
+/**
  * One line on a Trip's gear list.
  *
  * S7 declares three of the eight registers [sync §3.7] names. `status`,
- * `residence` and `stage` are S9's; `outcome` and `consumedCount` are S10's;
- * the `pieces` map is S8's. A register nobody writes is a field every reader
- * must have an opinion about, so each arrives with the slice that writes it.
+ * `residence` and `stage` are S9's; `outcome` and `consumedCount` are S10's.
+ * A register nobody writes is a field every reader must have an opinion
+ * about, so each arrives with the slice that writes it.
  */
 export interface EntryState {
   readonly id: string
@@ -124,6 +141,16 @@ export interface EntryState {
   readonly bringCount?: Register<number>
   /** Tombstone. No restore op exists in the MVP. */
   readonly removed?: Register<boolean>
+  /**
+   * Per-Person entities, keyed by Person id — a map of **entities**, like
+   * `entries` and unlike `participants`, whose members carry only presence.
+   *
+   * A key here is a Piece some op has *addressed*, which is a different fact
+   * from a Piece **existing**: existence is the Trip's Participants minus
+   * these tombstones, and `selectors/piece.ts` is the only place that says
+   * so.
+   */
+  readonly pieces?: Readonly<Record<string, PieceState>>
 }
 
 /**

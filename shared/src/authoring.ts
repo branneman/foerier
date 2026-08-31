@@ -480,3 +480,35 @@ export function tripEntryBringCountSet(
     payload: { entry_id: entryId, count },
   }
 }
+
+/**
+ * §4.4: tombstones one Participant's Piece. *This is* "that Person isn't
+ * bringing one" (invariant 10) — there is no "not coming" status anywhere
+ * (invariant 11).
+ */
+export function tripPieceRemoved(
+  tripId: string,
+  entryId: string,
+  personId: string,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.piece_removed',
+    payload: { entry_id: entryId, person_id: personId },
+  }
+}
+
+/** §4.4: clears {@link tripPieceRemoved}'s tombstone, if strictly later. */
+export function tripPieceRestored(
+  tripId: string,
+  entryId: string,
+  personId: string,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.piece_restored',
+    payload: { entry_id: entryId, person_id: personId },
+  }
+}

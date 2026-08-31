@@ -29,6 +29,7 @@ export type {
   Owner,
   PersonState,
   PhaseValue,
+  PieceState,
   PlaceState,
   Residence,
   TripState,
@@ -80,6 +81,8 @@ export {
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPhaseMoved,
+  tripPieceRemoved,
+  tripPieceRestored,
   tripRenamed,
 } from './authoring.ts'
 
