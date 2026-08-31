@@ -2,6 +2,7 @@ import {
   isKnownPhase,
   overClaimsIfActive,
   phaseLabel,
+  isActivePhase,
   phaseOf,
   PHASES,
   tripPhaseMoved,
@@ -42,7 +43,8 @@ import { ReopenConfirm } from './ReopenConfirm'
  *
  * **Leaving `closed` confirms** — see {@link ReopenConfirm}.
  *
- * **Entering `pack_out` from `draft` previews the over-claim band** — spec
+ * **Entering an Active phase from a non-Active one previews the over-claim
+ * band** (widened from `draft → pack_out` alone by amendment ruling J) — spec
  * §4.5's second guarded moment, {@link ActivationConfirm}. Reopening's
  * three-line comment above states the general shape; activation is the same
  * shape a level earlier, since a Draft's own row is what triggers it rather
@@ -71,9 +73,12 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   // `{open && <PhaseSheet …/>}` and a declined reopen cannot come back on the
   // next open.
   const [reopenTo, setReopenTo] = useState<PhaseKey | null>(null)
-  // Whether the Draft → Pack-out preview is up. Set only when there is
-  // something for it to show — see `choose` below.
-  const [activating, setActivating] = useState(false)
+  // The phase an activation preview is waiting on, and `null` when none is
+  // up. It holds the **target phase** rather than a boolean (ruling J): the
+  // preview now mounts for any transition entering Active, so the sheet has
+  // to name the phase it would move to and the confirm has to move to that
+  // same one.
+  const [activating, setActivating] = useState<PhaseKey | null>(null)
 
   const current = phaseOf(trip)
   // The hypothetical `overClaimsIfActive` asks — spec §4.5: "what if `trip`
@@ -118,22 +123,29 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
       setReopenTo(phase)
       return
     }
-    // Spec §4.5's second guarded moment, and only this one row: "starting
-    // pack-out on a draft" is the domain's own phrase, not "activating a
-    // draft into any active phase" — a Draft that jumps straight to `on_trip`
-    // or `unpack` (any row is tappable, backwards included) is not a case
-    // either the spec or a board draws, and this stays exactly as narrow as
-    // both (recorded for `design/README.md` §5a per Task 14 review — invariant
-    // 17 and domain §5.2 name activation more broadly than the boards draw
-    // it, and the standing band still catches whatever this guard misses).
+    // Spec §4.5's second guarded moment, widened by amendment ruling J to
+    // **any transition whose target is Active and whose source is not**.
+    // S7 shipped this as `draft → pack_out` alone, on the grounds that
+    // "starting pack-out on a draft" was the domain's own phrase and a Draft
+    // jumping straight to `on_trip` or `unpack` was a case no board drew. But
+    // every row of this sheet is tappable, invariant 17 makes all three active
+    // phases equally activating, and so the narrow guard simply missed two
+    // one-tap routes into exactly the state it exists to preview.
+    //
+    // `isActivePhase` is the one definition of active-ness in the codebase
+    // and both halves of this ask it — re-deriving either side is the defect
+    // three separate S6 reviews caught. `closed` is already handled above, so
+    // closed → Active keeps the reopen confirm and never reaches here.
+    // Active → Active mounts nothing, because the source is Active.
+    //
     // Skipped entirely when there is nothing to warn about: "never blocks"
     // also means never adding a screen nobody needs.
     if (
-      current === 'draft' &&
-      phase === 'pack_out' &&
+      !isActivePhase(current) &&
+      isActivePhase(phase) &&
       activationGroups.length > 0
     ) {
-      setActivating(true)
+      setActivating(phase)
       return
     }
     move(phase)
@@ -205,12 +217,13 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
         />
       )}
 
-      {activating && (
+      {activating !== null && (
         <ActivationConfirm
           trip={trip}
+          to={activating}
           groups={activationGroups}
-          onCancel={() => setActivating(false)}
-          onConfirm={() => move('pack_out')}
+          onCancel={() => setActivating(null)}
+          onConfirm={() => move(activating)}
         />
       )}
     </Sheet>

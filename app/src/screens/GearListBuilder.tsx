@@ -396,6 +396,9 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
       {activating && (
         <ActivationConfirm
           trip={trip}
+          // This screen's own button is `Start pack-out` and reaches no other
+          // phase — ruling J widened `PhaseSheet`'s gate, not this one.
+          to="pack_out"
           groups={activationGroups}
           onCancel={() => setActivating(false)}
           onConfirm={() => {

@@ -429,6 +429,58 @@ describe('the SET PHASE sheet', () => {
     )
   })
 
+  /**
+   * Amendment ruling J. S7 gated the preview on `draft → pack_out` alone,
+   * reasoning that "starting pack-out on a draft" was the domain's own phrase
+   * and a Draft jumping straight to `on_trip` or `unpack` was a case no board
+   * drew. But every row of this sheet is tappable, and invariant 17 makes all
+   * three active phases equally activating — so the narrow guard missed two
+   * one-tap routes into exactly the state it exists to preview.
+   */
+  describe('the widened activation guard (J)', () => {
+    it.each(['on_trip', 'unpack'] as const)(
+      'previews a Draft moving straight to %s',
+      async (phase) => {
+        const user = userEvent.setup()
+        const seeded = await seededDraftClash()
+        renderSheet(seeded)
+
+        await user.click(
+          screen.getByRole('button', {
+            name: new RegExp(phase === 'on_trip' ? 'ON TRIP' : 'UNPACK'),
+          }),
+        )
+
+        // The title takes the phase row's own `name` field, with no casing
+        // transform — the same rule the reopen body follows.
+        expect(screen.getByRole('alertdialog')).toHaveTextContent(
+          phase === 'on_trip'
+            ? 'On trip — Vosges — Oct?'
+            : 'Unpack — Vosges — Oct?',
+        )
+        // A preview states the conflict; it does not decide.
+        expect(await seeded.moves()).toEqual([])
+      },
+    )
+
+    it('moves an already-Active Trip without previewing anything', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededDraftClash()
+      seeded.store.getState().emit(tripPhaseMoved(TRIP, 'pack_out'))
+      // `emit` lands asynchronously; without flushing it first the sheet
+      // renders against the Draft and the gate reads the wrong source phase.
+      await seeded.moves()
+      renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /ON TRIP/ }))
+
+      // Active → Active is not an activation: the claim already stands, and
+      // the standing band on the trip screen is where it is stated.
+      expect(screen.queryByRole('alertdialog')).toBeNull()
+      expect(await seeded.moves()).toEqual(['pack_out', 'on_trip'])
+    })
+  })
+
   describe('activating a Draft into pack-out', () => {
     it('renders the over-claim block when a Draft would clash on activation', async () => {
       const user = userEvent.setup()

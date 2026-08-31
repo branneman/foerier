@@ -1,4 +1,4 @@
-import { type TripState } from '@foerier/shared'
+import { phaseName, type PhaseKey, type TripState } from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
 
 import { tripNameOrUnnamed } from '../depot/trips'
@@ -64,6 +64,12 @@ import { OverClaimGroups, type OverClaimGroup } from './OverClaimBand'
  */
 export interface ActivationConfirmProps {
   readonly trip: TripState
+  /**
+   * The phase this would move to. Ruling J widened the preview from
+   * `draft → pack_out` alone to any transition entering Active, so the sheet
+   * can no longer assume which phase it is naming.
+   */
+  readonly to: PhaseKey
   readonly groups: readonly OverClaimGroup[]
   readonly onCancel: () => void
   readonly onConfirm: () => void
@@ -71,6 +77,7 @@ export interface ActivationConfirmProps {
 
 export function ActivationConfirm({
   trip,
+  to,
   groups,
   onCancel,
   onConfirm,
@@ -78,7 +85,7 @@ export function ActivationConfirm({
   return (
     <Confirm
       variant="sheet"
-      title={`Start pack-out — ${tripNameOrUnnamed(trip)}?`}
+      title={`${activationVerb(to)} — ${tripNameOrUnnamed(trip)}?`}
       description="Starting warns, never blocks. Nothing changes here — the settle routes are on the trip screen."
       onClose={onCancel}
       actions={
@@ -89,7 +96,7 @@ export function ActivationConfirm({
               className={styles['primary']}
               onClick={onConfirm}
             >
-              Start pack-out
+              {activationVerb(to)}
             </button>
           </Confirm.Action>
           <Confirm.Cancel>
@@ -104,4 +111,21 @@ export function ActivationConfirm({
       <OverClaimGroups tripId={trip.id} groups={groups} />
     </Confirm>
   )
+}
+
+/**
+ * How a transition into `to` is named, in the title and on the primary alike —
+ * one function so the two can never drift, and the sheet never asks a reader
+ * to confirm one phrase by pressing another.
+ *
+ * Ruling J: the name comes from **the phase row's own `name` field**, with no
+ * casing transform — the same rule the reopen body follows. `pack_out` is the
+ * one exception, and it is drawn rather than reasoned: the boards render
+ * `Start pack-out — Vosges?`, including on the frame this very round redrew
+ * for ruling I, so the established phrase stands where a board still draws it.
+ * Everything else takes `phaseName` as written: `On trip — Vosges?`,
+ * `Unpack — Vosges?`.
+ */
+function activationVerb(to: PhaseKey): string {
+  return to === 'pack_out' ? 'Start pack-out' : phaseName(to)
 }
