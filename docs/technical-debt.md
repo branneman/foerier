@@ -128,6 +128,51 @@ items under thirty settled ones.
   components are what close it.
   [`architecture-design.md`](architecture-design.md) §12.1, anchor:
   `` until there is a `ui/` worth showing off ``
+- **"an absent owned-count reads 1" is stated at five sites across two
+  workspaces.** `shared/src/selectors/whereabouts.ts`, `depot.ts` and
+  `claim.ts` each spell the default, and `app/`'s `Depot.tsx` and `Find.tsx`
+  gate the same question again. The one-function form is an `ownedCountOf(gear)`
+  beside `ownerOf` and `phaseOf`; the extraction reaches four files across two
+  workspaces, which is why S7 named it rather than took it. The drift symptom is
+  a Counted Gear reading `×1` on one surface and nothing on another.
+  [`architecture-design.md`](architecture-design.md) §12.13, anchor:
+  `one of several sites`
+- **`sequence()` is the fifth hand-rolled clock-stamper in `shared/`.**
+  `trip.test.ts`, `claim.test.ts` and `entry.test.ts` each carry a byte-identical
+  `foldAt` that flattens factory specs and stamps increasing HLCs, and
+  `slice.test.ts` now carries a fourth spelling of it. The contract they all
+  implement is stated once, in `aTrip`'s own docstring — *"they come back in
+  authoring order, so a caller stamping increasing clocks over the flattened
+  list gets exactly the log a screen would have written"* — so the right home is
+  `shared/testUtils/`, beside that sentence. S5 found the cost: a helper that
+  stamped one HLC across a multi-op factory silently produced Draft Trips where
+  the author wrote `phase: 'pack_out'`. [`testing.md`](testing.md), anchor:
+  `foldAt`
+- **`SliceBar`'s filter plumbing is reproduced in `DepotPicker`.** About
+  fifty-five lines — `withFilters`, `apply`, `remove` and both chip-row
+  blocks — near-verbatim. Reusing `SliceBar` itself is genuinely wrong (it also
+  draws the count line, `CLEAR (n)` and the arrange readout, none of which the
+  picker wants), but the *logic* could be extracted. `dimensionsFor` already
+  derives from `DIMENSIONS` with a named exclusion list, so a later slice's
+  dimension reaches both bars — this is duplication, not divergence.
+  [`frontend-design.md`](frontend-design.md) §5, anchor: `withFilters`
+- **One control answers to two accessible names.** Add gear's hand-rolled
+  Owned-count stepper says `Fewer` / `More`; `ui/Stepper` says
+  `Decrease {label}` / `Increase {label}`. A screen-reader user meets two names
+  for one control on two screens of one app — worse than before S7, when both
+  were hand-rolled and incoherent in the same way. It closes when Add gear folds
+  into `Stepper`, which is possible today and merely undone (`Stepper`'s
+  contract takes `number | null`); what Add gear still needs from its own
+  component is a `<label htmlFor>`, its `OPENS EMPTY — GATES THE CTA` fact line,
+  and a CTA gate computed from the parsed value.
+  [`frontend-design.md`](frontend-design.md) §5, anchor: `aria-label="Fewer"`
+- **`Depot.tsx`'s `metaFor` computes `×N` inline rather than calling the
+  `qtyFor` beside it.** S7 exported `qtyFor` so `DepotPicker` could draw the same
+  suffix; `metaFor`, four lines above it in the same file, still spells the
+  Counted gate and the count out again. Two computations of one drawn value, in
+  one file. [`frontend-design.md`](frontend-design.md) §5, anchor:
+  `` `metaFor` ``
+
 - **`Trip.module.css`'s `.addParticipant` renders 22 × 48px, not the 22 × 22px
   the board draws and the comment above it assumes.** It sets `height: 2rem`
   with no `min-height`, so `ui/styles/base.css`'s `button { min-height:
