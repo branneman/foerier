@@ -1,0 +1,88 @@
+@layer components {
+  /*
+   * `ParticipantPicker.module.css`'s vocabulary, duplicated for the same
+   * reason that file gives for duplicating `OwnerPicker`'s: a shared class
+   * would tie two rosters' rendering together for no gain, since nothing
+   * else here composes across the two pickers.
+   */
+
+  /* `TagPicker.module.css`'s `.fact` line, verbatim — the mono count beneath
+     the title, and this picker's one departure from `ParticipantPicker`'s
+     anatomy: a picker with nothing else to state besides the roster gets a
+     fact line where that one gets none. */
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.06em;
+    line-height: 1.7;
+    color: var(--color-ink-faint);
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  /* Rows are standalone controls, drawn at their own explicit 48 rather than
+     leaning on a hit-area extension (ruling O's fourth clause) — there is
+     no neighbour within the row for an `::after` to reach past. */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  /* `flex`, not the `<span>`'s default inline: unstyled, a wrapper around a
+     single inline-flex child (`ui/`'s `PersonCircle`) blockifies into a line
+     box a few px taller than the circle, off-centring it inside `.row`
+     (`ParticipantPicker`'s own fold, review round F1). */
+  .circleWrap {
+    display: flex;
+  }
+
+  /* Takes the slack, so the marker stays at the trailing edge rather than
+     being spread evenly with the circle by the row's `space-between`. */
+  .name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * The included marker — the builder's `IN LIST ✓` grammar
+   * (`ParticipantPicker`'s `PARTICIPANT ✓`, this picker's word). The circle
+   * carries the same fact as a tone; this is the sighted-and-read-aloud half
+   * of it, not a second decoration.
+   */
+  .marker {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+
+  .close {
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}
