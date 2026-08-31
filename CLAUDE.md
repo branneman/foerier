@@ -458,6 +458,52 @@ the builder:**
   listed in full in the spec's own §11 and summarised in
   [§12.13](docs/architecture-design.md#1213-consequences-of-s7-the-gear-list).
 
+**A design round has since ruled on all fifteen decisions S7's code took
+because no board reached them** (`docs/design/README.md` §5b, items A–O;
+`S7 Amendments - Rulings A-O.dc.html`). Nine were blessed, six redrawn. No op
+types, no endpoints, no migration. The dated spec is not rewritten —
+[its §12](docs/specs/2026-08-29-the-gear-list.md) lists what the round settled,
+and §5b is the shipped authority.
+
+**Five things from it are worth knowing before touching these surfaces:**
+
+- **There is no global touch-target floor any more, and there must not be
+  one.** `base.css` used to carry
+  `button, … { min-height: max(3rem, 48px) }`, which floors the *paint* rather
+  than the hit area — and `min-height` beats `height` regardless of cascade
+  layer, since layers resolve a conflict within one property and never across
+  two. Every control drawn smaller was painted at 48 while its own declaration
+  looked like it worked. The rule now: a drawn size is the painted size; 48
+  floors the **hit area** (44 minimum) through a non-painting `::after`; that
+  extension **clamps at its owning row's bounds**; a standalone control is
+  simply drawn ≥48. It cannot be one declaration — what a hit area may grow
+  into is a fact about the owning row, and `input`/`select` render no
+  pseudo-element at all. Seventeen controls had been leaning on the floor and
+  now state their own paint.
+- **`UNNAMED_PERSON` is the prose sentinel; the glyph is
+  `UNNAMED_PERSON_GLYPH`.** The Person now carries the split the Trip always
+  had: `—` is right in a list column, a group header and a circle, and wrong in
+  a sentence. `personNameOrUnnamed` decides the substitution once, exactly as
+  `tripNameOrUnnamed` does.
+- **The standing band is the only surface that settles.** `ActivationConfirm`
+  and `ReopenConfirm` render the conflict block facts-only, because a control
+  that emits inside a cancellable confirm makes `Cancel` state something false.
+  `OverClaimGroups` takes one optional `SettleRoutes` prop, and its absence
+  *is* read-only — grouped rather than three optional callbacks so the type
+  system enforces all-or-nothing. The band itself is a property of the **gear
+  list, not a route**, so it renders in the builder's right pane too.
+- **The activation preview fires on any transition entering Active from
+  non-Active**, both halves asking `isActivePhase` — invariant 17 makes
+  pack-out, on trip and unpack equally activating, and every SET PHASE row is
+  one tap. Closed → Active still gets the reopen confirm.
+- **A typed `Stepper` value commits on blur or Enter, never per keystroke.**
+  Per-keystroke commits authored every intermediate spelling, so `2` → `10`
+  put a `1` in the log permanently. Taps stay per-tap. Relatedly, `IN LIST ✓`
+  reads an optimistic set unioned into the fold, because `emit` is
+  durable-first and the folded answer arrives a queue-turn after the tap —
+  and **no tier can prove that timing**, since `await user.click` drains the
+  queue; it lives in `KEYBOARD-PASS.md` instead.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**
