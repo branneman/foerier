@@ -5,6 +5,7 @@ import {
   tripParticipantAdded,
   UNNAMED_PERSON_GLYPH,
 } from '@foerier/shared'
+import { PersonCircle } from '@foerier/ui'
 import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
 
@@ -269,14 +270,15 @@ export function NewTrip() {
           ) : (
             <span className={styles['circles']} aria-hidden="true">
               {chosen.map((person) => (
-                <span key={person.id} className={styles['circle']}>
-                  {/* A Person with no folded name draws an **empty** circle
-                      rather than a placeholder letter — inventing one would
-                      be a fact the app does not have (`TripCard`'s rule). */}
-                  {person.label === UNNAMED_PERSON_GLYPH
-                    ? ''
-                    : person.label.charAt(0).toUpperCase()}
-                </span>
+                <PersonCircle
+                  key={person.id}
+                  label={
+                    person.label === UNNAMED_PERSON_GLYPH
+                      ? undefined
+                      : person.label.charAt(0).toUpperCase()
+                  }
+                  size={22}
+                />
               ))}
             </span>
           )}

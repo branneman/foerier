@@ -3,7 +3,7 @@ import {
   systemIdSource,
   UNNAMED_PERSON_GLYPH,
 } from '@foerier/shared'
-import { Sheet } from '@foerier/ui'
+import { PersonCircle, Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
 import { sortedPeople } from '../depot/people'
@@ -125,10 +125,15 @@ export function ParticipantPicker({
                     than a placeholder letter. No login ring: that encoding is
                     the People screen's statement about Logins, and this sheet
                     knows nothing about them. */}
-                <span className={styles['circle']} aria-hidden="true">
-                  {person.label === UNNAMED_PERSON_GLYPH
-                    ? ''
-                    : person.label.charAt(0).toUpperCase()}
+                <span aria-hidden="true">
+                  <PersonCircle
+                    label={
+                      person.label === UNNAMED_PERSON_GLYPH
+                        ? undefined
+                        : person.label.charAt(0).toUpperCase()
+                    }
+                    size={30}
+                  />
                 </span>
                 <span className={styles['name']}>{person.label}</span>
                 {chosen && (

@@ -106,56 +106,11 @@
     border-bottom: 0;
   }
 
-  /*
-   * 30px, three states — and the third is a **withdrawal, not a third
-   * claim** (Screens C §08, "THE PERSON CIRCLE — THREE STATES", S5).
-   *
-   *   ring accent, initial accent      holds a Login
-   *   ring control, initial ink/muted  holds none
-   *   **no ring**, initial ink/muted   login state is not known
-   *
-   * The ring *is* the statement "login state is known". When the list cannot
-   * load, the ring goes with it. That is why the third state adds no colour:
-   * a third border token would have to stay legible against both palettes
-   * forever, and the first attempt at one flattened in parchment, where every
-   * `--color-rule*` resolved to the same value — so "unknown" and "no login"
-   * were the same pixel and the offline fallback said "nobody in this
-   * Household holds a login", false even for the reader's own row.
-   * Withdrawing the ring cannot flatten in any theme.
-   *
-   * The two appearances it does not take are already taken: **dashed** is an
-   * add affordance (`+ NEW PERSON`, `+ TAG`) and **fill** belongs to packing.
-   *
-   * The border stays in the box model as `transparent` rather than being
-   * removed, so a row does not resize by 3px when the login list lands.
-   *
-   * **Screen-level, never per-row.** `data-login` is absent on every row at
-   * once while `status !== 'loaded'`, which is what makes the one quiet line
-   * under the count line read as the explanation for the whole list.
-   */
-  .circle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.875rem;
-    height: 1.875rem;
-    flex-shrink: 0;
-    border: var(--stroke-chip) solid transparent;
-    border-radius: var(--radius-pill);
-    color: var(--color-ink-muted);
-    font: var(--text-label) var(--font-mono);
-    font-weight: 600;
-  }
-
-  /* Neither rule fires while `data-login` carries no attribute at all, which
-     leaves the transparent border showing — the withdrawn ring. */
-  .circle[data-login='yes'] {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-  }
-  .circle[data-login='no'] {
-    border-color: var(--color-rule-control);
-  }
+  /* The person circle itself moved to `ui/`'s `PersonCircle` — the three
+     `tone` states it draws (`'accent'` | `'control'` | `'none'`) are
+     documented there and in `PersonCircle.module.css`, which is now the one
+     place "THE PERSON CIRCLE — THREE STATES" (Screens C §08, S5) is
+     written down. */
 
   .name {
     font-size: 1rem;

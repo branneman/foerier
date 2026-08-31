@@ -10,6 +10,7 @@ import {
   UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
+import { PersonCircle } from '@foerier/ui'
 import { useState } from 'react'
 import { Link, useSearch } from 'wouter'
 
@@ -330,14 +331,18 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
                 .join(', ')}`}
             >
               {participants.map((person) => (
-                <span
-                  key={person.id}
-                  className={styles['circle']}
-                  aria-hidden="true"
-                >
-                  {person.label === UNNAMED_PERSON_GLYPH
-                    ? ''
-                    : person.label.charAt(0).toUpperCase()}
+                // The wrapper, not `PersonCircle` itself, carries
+                // `aria-hidden` — `ui/` never owns accessibility, only the
+                // caller does (see the cluster's own `role="img"` above).
+                <span key={person.id} aria-hidden="true">
+                  <PersonCircle
+                    label={
+                      person.label === UNNAMED_PERSON_GLYPH
+                        ? undefined
+                        : person.label.charAt(0).toUpperCase()
+                    }
+                    size={22}
+                  />
                 </span>
               ))}
             </span>

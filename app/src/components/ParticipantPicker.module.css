@@ -31,30 +31,6 @@
     cursor: pointer;
   }
 
-  /*
-   * The board's 30px initial circle at the head of each row — the People
-   * screen's size (`People.module.css`'s `.circle`), because both are rows and
-   * it is the row's height that sets it; the trip card's 22px belongs to a
-   * cluster of circles with no row around them.
-   *
-   * No `data-login` ring: that encoding is the People screen's statement about
-   * Logins, and this sheet is about a Trip. A border here would say something
-   * about a Login that this surface has not asked and cannot answer.
-   */
-  .circle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.875rem;
-    height: 1.875rem;
-    flex-shrink: 0;
-    border: var(--stroke-chip) solid var(--color-rule-control);
-    border-radius: var(--radius-pill);
-    color: var(--color-ink-muted);
-    font: var(--text-label) var(--font-mono);
-    font-weight: 600;
-  }
-
   /* Takes the slack, so the marker stays at the trailing edge rather than
      being spread evenly with the circle by the row's `space-between`. */
   .name {

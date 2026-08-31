@@ -1,0 +1,90 @@
+@layer components {
+  /*
+   * One primitive, three sizes and four tones — folded from six hand-rolled
+   * `.circle` rules (`TripCard`, `Trip`'s header cluster, `GearListBuilder`'s
+   * desk header, `NewTrip`'s Participants row, `ParticipantPicker`, `People`)
+   * that had drifted to two diameters and, on `People` alone, a login-state
+   * border S4's siblings never grew.
+   *
+   * The border is keyed off `data-tone` rather than a class per state — the
+   * same attribute-selector technique `ExpiryChip`'s `data-urgent` already
+   * uses. `PersonCircle.tsx` renders the attribute unconditionally (default
+   * `control`), so every instance matches exactly one of the four rules
+   * below and the base `.circle` rule carries no border colour of its own.
+   */
+  .circle {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-style: solid;
+    border-width: var(--stroke-chip);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--color-ink-muted);
+  }
+
+  /* control — the default: a Person circle with nothing more to say. Every
+     display-only caller (`TripCard`, `Trip`, `GearListBuilder`,
+     `ParticipantPicker`) passes no `tone` at all and lands here. */
+  .circle[data-tone='control'] {
+    border-color: var(--color-rule-control);
+  }
+
+  /* accent — S5's login ring: "this Person holds a login." */
+  .circle[data-tone='accent'] {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  /* dashed — an add/edit affordance rather than a stated fact, `Chip`'s
+     ghost carried over to a circle shape. No caller folds into this tone
+     yet; it exists because the prop's own union promises it. */
+  .circle[data-tone='dashed'] {
+    border-style: dashed;
+    color: var(--color-ink-faint);
+  }
+
+  /* none — S5's withdrawal (Screens C §08, "THE PERSON CIRCLE — THREE
+     STATES"; `docs/design/README.md` §13). The border stays in the box
+     model, just transparent, so a row does not resize the instant login
+     state becomes unknown: the ring *is* the claim "login state is known",
+     and it goes rather than turning a third colour. A third colour was
+     tried first and flattened in the parchment theme, where every
+     `--color-rule*` resolved to one value — "unknown" and "no login" became
+     the same pixel, false even for the reader's own row. */
+  .circle[data-tone='none'] {
+    border-color: transparent;
+  }
+
+  /* 22px — the trip world's cluster rows: `TripCard`, `Trip`'s header,
+     `GearListBuilder`'s desk header. No line-height override, as none of
+     the five originals set one at this size. */
+  .size22 {
+    width: 1.375rem;
+    height: 1.375rem;
+    font-size: 0.5625rem;
+  }
+
+  /* 24px — S8's own new size. No caller folded in this task draws it; it
+     exists because the prop's own union promises it (spec §4.9: "S8 adds
+     24 and S9 adds 28 and 34"). */
+  .size24 {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.625rem;
+  }
+
+  /* 30px — a picker or list row: `ParticipantPicker`, `People`. Both
+     originals set `font: var(--text-label) var(--font-mono)`; the line-height
+     is restated explicitly here rather than through the shorthand, which
+     would reset `.circle`'s `font-weight: 600` back to `normal` since a
+     same-specificity class declared later in the file wins the cascade. */
+  .size30 {
+    width: 1.875rem;
+    height: 1.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+  }
+}

@@ -4,6 +4,7 @@ import {
   UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
+import { PersonCircle } from '@foerier/ui'
 import { Link } from 'wouter'
 
 import { useDepot } from '../depot/store'
@@ -281,17 +282,18 @@ export function TripCard({
                 .join(', ')}`}
             >
               {participants.map((person) => (
-                <span
-                  key={person.id}
-                  className={styles['circle']}
-                  aria-hidden="true"
-                >
-                  {/* A Person with no folded name draws an **empty** circle
-                      rather than a placeholder letter — inventing one would
-                      be a fact the app does not have. */}
-                  {person.label === UNNAMED_PERSON_GLYPH
-                    ? ''
-                    : person.label.charAt(0).toUpperCase()}
+                // The wrapper, not `PersonCircle` itself, carries
+                // `aria-hidden` — `ui/` never owns accessibility, only the
+                // caller does (see the cluster's own `role="img"` above).
+                <span key={person.id} aria-hidden="true">
+                  <PersonCircle
+                    label={
+                      person.label === UNNAMED_PERSON_GLYPH
+                        ? undefined
+                        : person.label.charAt(0).toUpperCase()
+                    }
+                    size={22}
+                  />
                 </span>
               ))}
             </span>

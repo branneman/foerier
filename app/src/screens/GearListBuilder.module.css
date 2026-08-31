@@ -78,20 +78,6 @@
     flex: none;
   }
 
-  .circle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.375rem;
-    height: 1.375rem;
-    border: var(--stroke-chip) solid var(--color-rule-control);
-    border-radius: var(--radius-pill);
-    color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
-    font-weight: 600;
-  }
-
   /* `N PIECES` — the strip's own read, `GearListSection.tsx`'s `pieceLabel`
      formatted exactly as `Trip.tsx`'s `GEAR LIST` band already draws it. */
   .pieces {

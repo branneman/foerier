@@ -334,8 +334,11 @@ describe('the People screen', () => {
       </DepotProvider>,
     )
 
-    await screen.findByTestId('person-initial-ghost')
-    expect(screen.getByTestId('person-initial-ghost')).toBeEmptyDOMElement()
+    // The circle itself moved to `ui/`'s `PersonCircle`, whose fixed
+    // `person-circle` testid replaces the per-person `person-initial-{id}`
+    // one — scoped through the row, which is still unique per Person.
+    const row = await screen.findByTestId('person-row-ghost')
+    expect(within(row).getByTestId('person-circle')).toBeEmptyDOMElement()
     // And the name itself reads as the dash every other surface draws. It
     // sorts **last**, which falls out of the em dash's code point rather
     // than from a rule anybody wrote — and is the right place for it.
@@ -645,8 +648,14 @@ describe('the People screen', () => {
    * The circle's three states (Screens C §08, "THE PERSON CIRCLE — THREE
    * STATES"), and the third is a **withdrawal**: ring accent = holds a
    * Login, ring control = holds none, **no ring** = login state is not
-   * known. The CSS keys entirely off `data-login`'s three values (`'yes'`,
-   * `'no'`, absent), so this is where the three-way distinction is pinned.
+   * known. The circle is now `ui/`'s `PersonCircle`, whose CSS keys off
+   * `data-tone`'s four values rather than `People`'s own `data-login` — the
+   * three-way distinction this test pins now reads `'accent'` | `'control'`
+   * | `'none'`. Unlike the retired `data-login`, `PersonCircle` always
+   * renders the attribute (see its own docstring), so "the ring is
+   * withdrawn" is asserted as `data-tone === 'none'` rather than as the
+   * attribute's absence — the visual and domain meaning is identical, only
+   * the mechanism moved.
    *
    * The first attempt gave "unknown" a third *colour*, which flattened in
    * the parchment theme where every `--color-rule*` resolved to one value —
@@ -654,20 +663,22 @@ describe('the People screen', () => {
    * false even for the reader's own row. Withdrawing the ring cannot flatten
    * in any theme, because it adds no colour to flatten.
    */
-  it('gives loaded-with-login, loaded-without and unknown three distinct data-login states, not two', async () => {
+  it('gives loaded-with-login, loaded-without and unknown three distinct person-circle tones, not two', async () => {
     renderPeople({
       logins: [
         { id: 'L1', person_id: ELS, device_count: 1, last_seen_at: NOW_ISO },
       ],
     })
 
-    expect(await screen.findByTestId(`person-initial-${ELS}`)).toHaveAttribute(
-      'data-login',
-      'yes',
+    const elsRow = await screen.findByTestId(`person-row-${ELS}`)
+    expect(within(elsRow).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'accent',
     )
-    expect(screen.getByTestId(`person-initial-${KEES}`)).toHaveAttribute(
-      'data-login',
-      'no',
+    const keesRow = screen.getByTestId(`person-row-${KEES}`)
+    expect(within(keesRow).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'control',
     )
 
     cleanup()
@@ -683,8 +694,10 @@ describe('the People screen', () => {
     // somebody else's row. A per-row fallback would leave `MARK` ringed and
     // silently claim the fetch had told us something about him.
     for (const id of [MARK, ELS, KEES]) {
-      expect(screen.getByTestId(`person-initial-${id}`)).not.toHaveAttribute(
-        'data-login',
+      const row = screen.getByTestId(`person-row-${id}`)
+      expect(within(row).getByTestId('person-circle')).toHaveAttribute(
+        'data-tone',
+        'none',
       )
     }
   })

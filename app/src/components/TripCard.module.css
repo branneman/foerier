@@ -237,23 +237,6 @@
     flex: none;
   }
 
-  /* 22px on the trip card, against the People screen's 30px rows
-     (`docs/design/README.md` — person circles). No login encoding and no
-     fill: fill belongs to packing. */
-  .circle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.375rem;
-    height: 1.375rem;
-    border: var(--stroke-chip) solid var(--color-rule-control);
-    border-radius: var(--radius-pill);
-    color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
-    font-weight: 600;
-  }
-
   /* The board's slot for `● 48/61 PIECES · 13 LEFT`, which lands **under**
      this line rather than in its place when Entries exist — quiet mono either
      way, a statement and never a call to action. */

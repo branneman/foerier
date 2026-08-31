@@ -21,5 +21,8 @@ export type { GearRowProps } from './GearRow'
 export { Stepper } from './Stepper'
 export type { StepperProps } from './Stepper'
 
+export { PersonCircle } from './PersonCircle'
+export type { PersonCircleProps } from './PersonCircle'
+
 export { QrCode } from './QrCode'
 export type { QrCodeProps } from './QrCode'

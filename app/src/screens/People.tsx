@@ -4,7 +4,7 @@ import {
   systemIdSource,
   UNNAMED_PERSON_GLYPH,
 } from '@foerier/shared'
-import { Confirm, ExpiryChip } from '@foerier/ui'
+import { Confirm, ExpiryChip, PersonCircle } from '@foerier/ui'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'wouter'
 
@@ -373,36 +373,36 @@ export function People({
             >
               {/* `aria-hidden`, following `AppShell`'s `AccountAvatar`: an
                   initial read aloud is as easily a stray letter as a name, and
-                  the row's own text already carries the name. A Person with no
-                  folded name draws an **empty** circle rather than a
-                  placeholder letter — inventing one would be a fact the app
-                  does not have.
+                  the row's own text already carries the name. `ui/`'s
+                  `PersonCircle` draws the empty circle for a Person with no
+                  folded name on its own — see its docstring — so this file
+                  states only which `tone` the ring carries.
 
-                  `data-login` carries the board's accent-vs-control ring
-                  encoding, and carries **no attribute at all** while the
-                  login half is not `'loaded'` — which is what withdraws the
-                  ring, because neither rule fires and the base border stays
-                  `transparent`. **Do not give the base rule a colour.** The
-                  ring is the statement "login state is known"; painting one
-                  here would say "no login" about every Person on screen,
-                  including the reader, whose own Login is the reason the
-                  screen is open. A third colour was tried and flattened in
-                  the parchment theme — see the CSS's own comment. */}
-              <span
-                className={styles['circle']}
-                data-testid={`person-initial-${person.id}`}
-                data-login={
-                  rowState.kind === 'unknown'
-                    ? undefined
-                    : rowState.kind === 'own' || rowState.kind === 'login'
-                      ? 'yes'
-                      : 'no'
-                }
-                aria-hidden="true"
-              >
-                {person.label === UNNAMED_PERSON_GLYPH
-                  ? ''
-                  : person.label.charAt(0).toUpperCase()}
+                  `tone` carries the board's accent-vs-control ring encoding,
+                  and is `'none'` — a **transparent** border — while the login
+                  half is not `'loaded'`. **Do not give `'unknown'` an
+                  accent or control tone as a stand-in.** The ring is the
+                  statement "login state is known"; painting one here would
+                  say "no login" about every Person on screen, including the
+                  reader, whose own Login is the reason the screen is open. A
+                  third colour was tried and flattened in the parchment
+                  theme — see `PersonCircle.module.css`'s own comment. */}
+              <span aria-hidden="true">
+                <PersonCircle
+                  label={
+                    person.label === UNNAMED_PERSON_GLYPH
+                      ? undefined
+                      : person.label.charAt(0).toUpperCase()
+                  }
+                  size={30}
+                  tone={
+                    rowState.kind === 'unknown'
+                      ? 'none'
+                      : rowState.kind === 'own' || rowState.kind === 'login'
+                        ? 'accent'
+                        : 'control'
+                  }
+                />
               </span>
 
               {renamingId === person.id ? (

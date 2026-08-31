@@ -146,23 +146,6 @@
     flex: none;
   }
 
-  /* 22px, the trip card's size rather than the People screen's 30px: this is
-     a meta row, not a list of People (`docs/design/README.md` — person
-     circles). No login encoding and no fill; fill belongs to packing. */
-  .circle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.375rem;
-    height: 1.375rem;
-    border: var(--stroke-chip) solid var(--color-rule-control);
-    border-radius: var(--radius-pill);
-    color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
-    font-weight: 600;
-  }
-
   /*
    * The dashed `+` — gear detail's trailing ghost chip, drawn as a circle
    * because a Participant is drawn as one. Same 22px as its neighbours, so the
