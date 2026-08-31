@@ -27,7 +27,7 @@ The conceptual [domain model](domain-model.md),
 | Scaling philosophy | **Fluid, user-respecting, accessible.** Not classic progressive enhancement — the app is unapologetically a JS SPA — but it scales beautifully and honours the reader's font-size and zoom |
 | Styling approach | **Hand-authored CSS Modules** + design **tokens as CSS custom properties** (in `rem`), under declared `@layer`s. **No Tailwind, no styled kit** (MUI/Chakra/Mantine) |
 | Interactive widgets | **Radix UI** headless primitives (sheets, popovers, menus, tabs, checkboxes) — wrapped **exactly once** in `ui/`, styled entirely by our CSS |
-| Units | `rem` for the global grid (type, spacing, radii); `em` for intrinsically-local component internals; touch targets floored at `max(3rem, 48px)` |
+| Units | `rem` for the global grid (type, spacing, radii); `em` for intrinsically-local component internals; touch **hit areas** floored at 44px minimum / 48px target, never the paint (§2.1) |
 | Root font-size | `:root { font-size: 100% }` — respect the user. **No `62.5%` trick.** Tokens authored by dividing design-doc px by 16 |
 | Type scaling | **Discrete + rem** with responsive bumps at breakpoints (matches the design's discrete sizes); fluid `clamp()` deferred as a later per-size upgrade |
 | Theming | Dark default; `prefers-color-scheme` auto-detect **plus** a persisted manual override via `[data-theme]` on `<html>`, swapping the semantic-token layer |
@@ -75,10 +75,28 @@ proxies, blocked third parties, stale installed clients — without a rebuild.
   relative to its own text; an inline icon sized `1em` to track its adjacent
   label. Keeps a component proportioned if its local font-size ever changes,
   without a second token.
-- **Touch targets get a physical floor: `min-height: max(3rem, 48px)`.** Minimum
-  tap size is about *finger* size, which does **not** shrink when a user picks a
-  smaller font. Targets may *grow* with text (`3rem`) but never fall below the
-  physical `48px` minimum.
+- **Touch targets get a physical floor — on the *hit area*, never on the
+  paint.** Minimum tap size is about *finger* size, which does **not** shrink
+  when a user picks a smaller font: 44px is the minimum, 48px the target. But
+  the floor is not `min-height`, and was until the S7 amendment round
+  (`docs/design/README.md` §5b, O). Written that way it floors the *painted*
+  box, and `min-height` beats `height` regardless of cascade layer — layers
+  resolve a conflict within one property, never across two — so a control drawn
+  at 22px or 32px was silently painted at 48 while its own declaration looked
+  like it was working. The rule now reads:
+  1. **A drawn size is the painted size.** A control states its own paint.
+  2. **48 floors the hit area.** A dense in-row control keeps its drawn size
+     and grows a non-painting `::after` — `Stepper.module.css`,
+     `EntryRow.module.css` and `Trip.module.css`'s `.addParticipant` are the
+     worked examples.
+  3. **A hit extension clamps at its owning row's bounds**, so two targets can
+     never overlap. The counter-example is real: a `✕` whose hit area reached
+     13px into the next row deleted the neighbouring Entry, unconfirmed.
+  4. **A standalone control is simply drawn ≥48** and needs no extension.
+
+  There is deliberately no global declaration for this. What a hit area may
+  grow into is a fact about the owning row, which a base layer cannot know, and
+  `input`/`select` are replaced elements that render no pseudo-element at all.
 
 ### 2.2 Token layers (CSS custom properties)
 

@@ -173,6 +173,14 @@
    * and the ::after grows the hit area without taking any layout with it.
    * Sizing the button itself would push the circles out of line with the
    * board.
+   *
+   * This comment described what the file *declared* rather than what the
+   * browser drew, for the whole of S6 and S7. `base.css` used to floor every
+   * `button` at `min-height: max(3rem, 48px)`, and `min-height` beats
+   * `height`, so the circle painted 22 wide and **48 tall** — dragging
+   * `.participantRow` to 48px with it. Amendment ruling O retired that floor,
+   * and the declarations here became true as written: no line below changed.
+   * That is the whole fix for the debt this carried.
    */
   .addParticipant {
     position: relative;
