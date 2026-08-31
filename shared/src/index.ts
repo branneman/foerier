@@ -149,6 +149,9 @@ export {
   pieceCountOf,
 } from './selectors/entry.ts'
 
+export type { PieceInclusion } from './selectors/piece.ts'
+export { pieceInclusion, piecesOf } from './selectors/piece.ts'
+
 export type { Phase, PhaseKey, TripSections } from './selectors/trip.ts'
 export {
   isActive,

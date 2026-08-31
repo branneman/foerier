@@ -1,6 +1,6 @@
 import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
 import { byNameThenId } from './order.ts'
-import { participantIds } from './trip.ts'
+import { piecesOf } from './piece.ts'
 
 /**
  * **The gear list's read side** — beside `owner.ts` and `trip.ts`, and the
@@ -164,15 +164,10 @@ export function bringCountOf(
  * | --- | --- |
  * | Single depot Entry | `1` |
  * | Counted depot Entry | {@link bringCountOf}, absent reads `1` |
- * | Per-person depot Entry | {@link participantIds}`(trip).length` |
+ * | Per-person depot Entry | {@link piecesOf}`(entry, trip).length` |
  * | Trip-only Entry | `1` — no Kind to be Counted by |
  * | Gear with an unrecognised Kind | `1` — the conservative direction |
  * | Depot Entry whose Gear is not yet synced | `1` — {@link entryKind} reads `undefined`, defaulted exactly like an unrecognised Kind |
- *
- * Per-person is Participants and **all** of it until S8 tombstones some
- * Pieces: a Piece is "derived from the trip's participants, minus those
- * explicitly tombstoned" (`sync-protocol.md` §4.4), and at S7 there are no
- * tombstones yet.
  */
 export function pieceCountOf(
   entry: EntryState,
@@ -183,7 +178,7 @@ export function pieceCountOf(
     case 'counted':
       return bringCountOf(entry, state) ?? 1
     case 'per_person':
-      return participantIds(trip).length
+      return piecesOf(entry, trip).length
     default:
       return 1
   }
