@@ -32,6 +32,8 @@ import {
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPhaseMoved,
+  tripPieceRemoved,
+  tripPieceRestored,
   tripRenamed,
   type OpSpec,
 } from './authoring.ts'
@@ -39,6 +41,7 @@ import type { OpEnvelope } from './ops.ts'
 import { overClaims, overClaimsFor } from './selectors/claim.ts'
 import { containmentView } from './selectors/containment.ts'
 import { entriesOf } from './selectors/entry.ts'
+import { piecesOf } from './selectors/piece.ts'
 import { isActive } from './selectors/trip.ts'
 import type {
   EntrySource,
@@ -1546,6 +1549,181 @@ describe('convergence', () => {
       expect(claims).toHaveLength(1)
       expect(claims[0]!.kind).toBe('per_person')
       expect(claims[0]!.contestedPersonIds).toEqual([els])
+    }
+  })
+
+  /**
+   * **S8's named scenario** (§8.3): *remove-vs-restore is an ordinary LWW
+   * pair.* `trip.piece_removed` and `trip.piece_restored` both write the same
+   * `entries.<id>.pieces.<personId>.removed` register (spec §4.4), so this is
+   * `tags.ts`'s "an apply racing a remove" test transplanted one level
+   * deeper — and it earns the same defence: whichever op is later wins, on
+   * its own stamp, **regardless of which of the two it is**. A delete-wins
+   * special case (the ordinary bias for a tombstone) would make the `false`
+   * branch below fail, because there restore is the later op and must win
+   * anyway.
+   */
+  it('converges a piece removal against a restore, in either delivery order', () => {
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+    const person = PERSON_IDS[0]
+
+    const race = (restoreIsLater: boolean) => {
+      const { clock, a, b } = aWorld()
+      a.emit(tripCreated(trip, 'Ardennes'))
+      a.emit(tripParticipantAdded(trip, person))
+      a.emit(
+        tripEntryAdded(trip, entry, {
+          from: 'trip_only',
+          name: 'Stove',
+          container: false,
+        }),
+      )
+      exchange(a, b)
+
+      // Neither device has seen the other's op when it authors its own.
+      clock.advance(1000)
+      const first = restoreIsLater
+        ? a.emit(tripPieceRemoved(trip, entry, person))
+        : b.emit(tripPieceRestored(trip, entry, person))
+      clock.advance(1000)
+      const second = restoreIsLater
+        ? b.emit(tripPieceRestored(trip, entry, person))
+        : a.emit(tripPieceRemoved(trip, entry, person))
+      // `exchange` hands each replica the pair in the opposite order to the
+      // other, so both arrival orders are exercised in the one round.
+      exchange(a, b)
+
+      expect(a.state()).toEqual(b.state())
+      expect(first.hlc < second.hlc).toBe(true)
+      for (const r of [a, b]) {
+        // The register carries the winning op's own stamp, not merely its
+        // value — proof the loser arrived and lost rather than never
+        // arriving at all. `value` pins *which* op won: were a delete-wins
+        // special case in force, this would read `true` regardless of
+        // `restoreIsLater`.
+        expect(
+          r.state().trips[trip]?.entries?.[entry]?.pieces?.[person]?.removed,
+        ).toEqual({
+          value: !restoreIsLater,
+          hlc: second.hlc,
+          deviceId: second.device_id,
+        })
+      }
+      return a.state()
+    }
+
+    // Restore later: the later stamp wins, and it happens to be a restore —
+    // the Piece is back on both replicas.
+    const restored = race(true)
+    expect(
+      piecesOf(restored.trips[trip]!.entries![entry]!, restored.trips[trip]!),
+    ).toEqual([person])
+
+    // Removal later: the later stamp wins again, and this time it is a
+    // removal — the Piece is out. Same rule, opposite outcome, which is what
+    // proves the win is about the stamp and not about which op it is.
+    const removed = race(false)
+    expect(
+      piecesOf(removed.trips[trip]!.entries![entry]!, removed.trips[trip]!),
+    ).toEqual([])
+  })
+
+  /**
+   * S8's second named scenario: **a Participant added concurrently with a
+   * Piece removal survives both writes** — the same "different aggregates,
+   * different registers" shape as "a rename racing an ownership set", one
+   * level deeper. `participants.<personId>` and
+   * `entries.<id>.pieces.<personId>.removed` are different registers on
+   * different entity paths, so neither write is contested: the union is not
+   * computed, it is the absence of a conflict.
+   */
+  it('keeps both a Participant added and a Piece removed concurrently', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+    const els = PERSON_IDS[0]
+    const mark = PERSON_IDS[1]
+
+    a.emit(tripCreated(trip, 'Ardennes'))
+    a.emit(tripParticipantAdded(trip, els))
+    a.emit(
+      tripEntryAdded(trip, entry, {
+        from: 'trip_only',
+        name: 'Stove',
+        container: false,
+      }),
+    )
+    exchange(a, b)
+
+    // A adds Mark as a Participant; B, on the other Device, removes Els's
+    // Piece of the same Entry — neither has seen the other's op.
+    clock.advance(1000)
+    a.emit(tripParticipantAdded(trip, mark))
+    clock.advance(1000)
+    b.emit(tripPieceRemoved(trip, entry, els))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const state = r.state()
+      expect(state.trips[trip]?.participants?.[mark]?.value).toBe(true)
+      expect(
+        state.trips[trip]?.entries?.[entry]?.pieces?.[els]?.removed?.value,
+      ).toBe(true)
+      // Restated through the selector: Mark's Piece survives (added, never
+      // tombstoned) and Els's does not — the two writes did not interact.
+      expect(
+        piecesOf(state.trips[trip]!.entries![entry]!, state.trips[trip]!),
+      ).toEqual([mark])
+    }
+  })
+
+  /**
+   * S8's third named scenario, and the per-key register property one level
+   * deeper than "concurrent tagging unions rather than clobbering": two
+   * Devices tombstoning **different** Pieces of the **same** Entry address
+   * different `pieces.<personId>` registers, so there is nothing for LWW to
+   * decide between them — both tombstones stand, and the result is a union
+   * of two writes that were never in conflict.
+   */
+  it('unions two Devices removing different Pieces of one Entry', () => {
+    const { a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+    const els = PERSON_IDS[0]
+    const mark = PERSON_IDS[1]
+
+    a.emit(tripCreated(trip, 'Ardennes'))
+    a.emit(tripParticipantAdded(trip, els))
+    a.emit(tripParticipantAdded(trip, mark))
+    a.emit(
+      tripEntryAdded(trip, entry, {
+        from: 'trip_only',
+        name: 'Stove',
+        container: false,
+      }),
+    )
+    exchange(a, b)
+
+    // Neither device has seen the other's removal when it authors its own.
+    a.emit(tripPieceRemoved(trip, entry, els))
+    b.emit(tripPieceRemoved(trip, entry, mark))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const state = r.state()
+      expect(
+        state.trips[trip]?.entries?.[entry]?.pieces?.[els]?.removed?.value,
+      ).toBe(true)
+      expect(
+        state.trips[trip]?.entries?.[entry]?.pieces?.[mark]?.removed?.value,
+      ).toBe(true)
+      // Both Pieces are out — the union, not a coin-flip between them.
+      expect(
+        piecesOf(state.trips[trip]!.entries![entry]!, state.trips[trip]!),
+      ).toEqual([])
     }
   })
 })
