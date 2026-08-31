@@ -32,7 +32,7 @@ import styles from './Depot.module.css'
  *
  * - **`sliceDepot`**, the shared slicing engine. S2's name-substring filter
  *   lived inside this component; it is now one dimension-free case of a
- *   selector five later slices extend.
+ *   selector four later slices extend.
  * - **`ui/`'s `GearRow`**, which `Find` shares — the duplication
  *   [architecture §12.4](../../../docs/architecture-design.md) named as the
  *   reason to extract.

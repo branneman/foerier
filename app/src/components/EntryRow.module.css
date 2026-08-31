@@ -171,11 +171,11 @@
      un-hidden and un-controlled — ruling B's other half; no `position:
      relative` and no `::after`, since nothing here is a target for ruling O
      to floor) and ruling C's empty case (`NO PARTICIPANTS` + `×0`, editable
-     or not). Both need is this rule's whole reason to exist: `.trailing`
-     itself declares no `gap` — it never needed one, since every other
-     branch has exactly one child — so two bare sibling spans dropped
-     straight into it read as one run-on token with nothing between them
-     (review finding F1: `NO PARTICIPANTS×0`). */
+     or not). Both need a gap between their two children — this rule's whole
+     reason to exist: `.trailing` itself declares no `gap` — it never needed
+     one, since every other branch has exactly one child — so two bare
+     sibling spans dropped straight into it read as one run-on token with
+     nothing between them (review finding F1: `NO PARTICIPANTS×0`). */
   .pieceDisplay {
     display: flex;
     align-items: center;

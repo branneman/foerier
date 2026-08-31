@@ -62,7 +62,7 @@ arrived as *departures* to be justified rather than as choices to be made. The
 three worth knowing before touching this area:
 
 - **A dimension is a row in a table** (`shared/src/selectors/slice.ts`), and
-  §8.5's five later slices each add one. Arity already decides add-or-replace
+  §8.5's four later slices each add one. Arity already decides add-or-replace
   and whether a ghost chip survives; there is exactly one filter rule (every
   selected value must be carried) and deliberately no second combinator.
 - **`TagString` is branded**, because there is no Tag entity and no rename op,

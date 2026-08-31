@@ -27,7 +27,7 @@ import {
 /**
  * **The slicing engine** — story 13's "filter, sort, and group any list from
  * many angles", built once at S3 carrying the two dimensions that exist
- * (Tag and Kind) and extended by five later slices
+ * (Tag and Kind) and extended by four later slices
  * ([architecture §8.5](../../docs/architecture-design.md)).
  *
  * Everything here folds real ops through the real reducer. The engine is a

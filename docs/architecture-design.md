@@ -1281,7 +1281,7 @@ byte-exact.
 
 - **A dimension is a row in a table, never a branch in a predicate.**
   `shared/src/selectors/slice.ts` holds `DIMENSION_TABLE`, and each dimension
-  declares an `arity`, a `valuesOf` and a `format`. §8.5's five later slices
+  declares an `arity`, a `valuesOf` and a `format`. §8.5's four later slices
   add a row there. Two things already fall out of `arity` rather than being
   special-cased: whether picking a value **adds or replaces**, and whether a
   ghost add-chip survives an active value. `valuesOf` takes `state` as well
@@ -2094,7 +2094,7 @@ dimension the first draft had proposed — the slicing engine untouched. See its
   Four painted slots; from five, three circles plus a `+N`; and — the part
   worth remembering — **dashed, excluded circles sort to the front**, so the
   one Person declining is never the one hidden behind the count. The rule
-  reaches `TripCard`, the trip screen header and the builder header as well as
-  the Piece cluster, none of which had ever handled a roster past three
-  before this slice.
+  reaches `TripCard`, the trip screen header, the builder header and
+  `NewTrip`'s Participants row as well as the Piece cluster, none of which had
+  ever handled a roster past three before this slice.
 

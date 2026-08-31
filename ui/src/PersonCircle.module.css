@@ -38,9 +38,9 @@
     color: var(--color-accent);
   }
 
-  /* dashed — an add/edit affordance rather than a stated fact, `Chip`'s
-     ghost carried over to a circle shape. No caller folds into this tone
-     yet; it exists because the prop's own union promises it. */
+  /* dashed — `Chip`'s ghost carried over to a circle shape. Two callers fold
+     into it: `EntryRow`'s per-person cluster and `PiecePicker`'s rows, both
+     meaning "this Person is not bringing one" (S8). */
   .circle[data-tone='dashed'] {
     border-style: dashed;
     color: var(--color-ink-faint);
@@ -67,9 +67,8 @@
     font-size: 0.5625rem;
   }
 
-  /* 24px — S8's own new size. No caller folded in this task draws it; it
-     exists because the prop's own union promises it (spec §4.9: "S8 adds
-     24 and S9 adds 28 and 34"). */
+  /* 24px — S8's own new size, drawn by `EntryRow`'s per-person cluster
+     (spec §4.9: "S8 adds 24 and S9 adds 28 and 34"). */
   .size24 {
     width: 1.5rem;
     height: 1.5rem;

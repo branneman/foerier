@@ -20,7 +20,7 @@ import styles from './SliceBar.module.css'
  * The slice bar at its **S3 ship state** (Components §04).
  *
  * Chips row · one count line · `CLEAR (n)` · the arrange readout. Everything
- * it renders comes from `shared/`'s dimension table, so the five later slices
+ * it renders comes from `shared/`'s dimension table, so the four later slices
  * that add a dimension add a row there and nothing here.
  *
  * ## The rules Components §04 settles, and where each lives

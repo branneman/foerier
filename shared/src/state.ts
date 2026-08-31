@@ -219,6 +219,15 @@ export interface TripState {
    * dropping the key would let a concurrent re-add win by arrival order. An
    * absent `participants` key is the different fact that no participant op
    * has ever addressed this Trip.
+   *
+   * **This per-key shape is also what S8's Pieces derive from.** A Piece is
+   * never enumerated by its own op (`shared/src/selectors/piece.ts`) — it is
+   * every current Participant minus those explicitly tombstoned — so a
+   * Participant added after Pieces already exist on an Entry gets a Piece
+   * with no backfill op. One register holding an array could not support
+   * that: reading "every current Participant" would mean re-parsing the
+   * whole array's history rather than folding one key at a time, and a late
+   * add would need its own retroactive write into every Entry's Piece list.
    */
   participants?: Readonly<Record<string, Register<boolean>>>
   /**

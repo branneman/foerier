@@ -50,7 +50,7 @@ import styles from './PiecePicker.module.css'
  *
  * A Trip with no Participants has no Pieces to picture, so this component
  * never mounts on one — the gate is the row's, which draws `NO PARTICIPANTS`
- * + `×0` instead (a later task). Writing an empty branch here would be a
+ * + `×0` instead. Writing an empty branch here would be a
  * second copy of a decision that belongs at the one call site that can see
  * whether there is anything to open.
  *

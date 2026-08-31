@@ -13,7 +13,7 @@ import {
   type OpSpec,
   type TripState,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
@@ -131,19 +131,11 @@ async function allPieceOps(
 }
 
 function renderPicker(seed: Seeded) {
-  let closed = 0
   render(
     <DepotProvider value={seed.store}>
-      <PiecePicker
-        trip={seed.trip()}
-        entry={seed.entry()}
-        onClose={() => {
-          closed += 1
-        }}
-      />
+      <PiecePicker trip={seed.trip()} entry={seed.entry()} onClose={() => {}} />
     </DepotProvider>,
   )
-  return { closes: () => closed }
 }
 
 describe('the piece picker', () => {
@@ -156,6 +148,35 @@ describe('the piece picker', () => {
 
     expect(screen.getByText('Headlamp')).toBeInTheDocument()
     expect(screen.getByText('WHO BRINGS ONE · 2 OF 3')).toBeInTheDocument()
+  })
+
+  // Whole-branch review I1: `aria-pressed`, the `BRINGS ONE ✓` marker and
+  // the circle's `tone` (`PiecePicker.tsx:115`) all come from `row.included`
+  // independently, and nothing pinned any of them to the roster's actual
+  // state — an inversion of any one would still pass "states rather than
+  // asks" above, since that test never looks at a specific row.
+  it('follows inclusion in aria-pressed, the BRINGS ONE mark and the circle tone, not the reverse', async () => {
+    const seed = await seeded(tripPieceRemoved(TRIP, ENTRY, 'kim'))
+    renderPicker(seed)
+
+    const kimRow = screen.getByRole('button', { name: /Kim/ })
+    const markRow = screen.getByRole('button', { name: /Mark/ })
+
+    // Kim's Piece is out: not pressed, no marker, dashed circle.
+    expect(kimRow).toHaveAttribute('aria-pressed', 'false')
+    expect(within(kimRow).queryByText('BRINGS ONE ✓')).not.toBeInTheDocument()
+    expect(within(kimRow).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'dashed',
+    )
+
+    // Mark's Piece is in: pressed, marker drawn, control circle.
+    expect(markRow).toHaveAttribute('aria-pressed', 'true')
+    expect(within(markRow).getByText('BRINGS ONE ✓')).toBeInTheDocument()
+    expect(within(markRow).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'control',
+    )
   })
 
   it('emits one op per tap, in both directions', async () => {

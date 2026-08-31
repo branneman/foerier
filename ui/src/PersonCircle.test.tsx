@@ -2,10 +2,11 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { PersonCircle } from './PersonCircle'
+import styles from './PersonCircle.module.css'
 
 /**
- * The primitive that replaces five hand-rolled `.circle` rules
- * (`TripCard`, `Trip`, `GearListBuilder`, `ParticipantPicker`, `People`).
+ * The primitive that replaces six hand-rolled `.circle` rules (`TripCard`,
+ * `Trip`, `GearListBuilder`, `NewTrip`, `ParticipantPicker`, `People`).
  * `tone` is a border, not a meaning — each caller's own test still covers
  * what that border says on that screen.
  */
@@ -23,5 +24,30 @@ describe('PersonCircle', () => {
   it('renders an overflow slot from a +N label', () => {
     render(<PersonCircle label="+3" size={22} tone="control" />)
     expect(screen.getByText('+3')).toBeInTheDocument()
+  })
+
+  // Spec §5.3's obligation, unmet until now: the CSS keys the border off
+  // `data-tone` (`PersonCircle.module.css`'s own comment), so a caller's
+  // `tone` prop reaching the DOM at all is the fact every caller test above
+  // it in the file tree assumes rather than proves.
+  it('renders the tone as data-tone, defaulting to control', () => {
+    render(<PersonCircle label="M" size={22} />)
+    expect(screen.getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'control',
+    )
+  })
+
+  it('renders an explicit tone as data-tone', () => {
+    render(<PersonCircle label="E" size={22} tone="dashed" />)
+    expect(screen.getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'dashed',
+    )
+  })
+
+  it('draws the size as its own class', () => {
+    render(<PersonCircle label="M" size={30} />)
+    expect(screen.getByTestId('person-circle')).toHaveClass(styles['size30']!)
   })
 })

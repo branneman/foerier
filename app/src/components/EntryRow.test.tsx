@@ -691,5 +691,33 @@ describe('EntryRow', () => {
       await user.click(screen.getByRole('button', { name: /who brings one/i }))
       expect(onOpenPiecePicker).toHaveBeenCalledOnce()
     })
+
+    // Whole-branch review I1: no test anywhere wired `piece.included` to
+    // `tone`, so the two calls `EntryRow` and `PiecePicker` each make into
+    // that mapping could invert — dashed drawn for who *is* bringing one,
+    // the opposite of story 8's whole visual claim — and every existing
+    // assertion (including `PersonCluster.test.tsx`'s own dashed-first
+    // ordering proof) still passed, because `includedCount` is derived
+    // independently of `tone` and the ordering test only ever fed
+    // `PersonCluster` its own already-correct props. This is the one test
+    // that reads the mapping from the source of truth (`THREE_PIECES`:
+    // Mark alone excluded) through to the rendered circles, so an
+    // inversion at `EntryRow.tsx:327` fails here even though nothing else
+    // in the suite notices.
+    it('draws the excluded Person dashed, sorted ahead of the included ones', () => {
+      renderRow({ editable: true })
+      const control = screen.getByRole('button', {
+        name: 'Who brings one — Headlamp, 2 of 3 bring one',
+      })
+      const circles = within(control).getAllByTestId('person-circle')
+      expect(circles).toHaveLength(3)
+      // Mark (`THREE_PIECES`'s only `included: false`) sorts first —
+      // `PersonCluster`'s ruling-E job — and carries the dashed tone;
+      // Bran and Els, both included, carry no tone override and so fall
+      // back to `PersonCircle`'s default, `control`.
+      expect(circles[0]).toHaveAttribute('data-tone', 'dashed')
+      expect(circles[1]).toHaveAttribute('data-tone', 'control')
+      expect(circles[2]).toHaveAttribute('data-tone', 'control')
+    })
   })
 })

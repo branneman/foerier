@@ -36,11 +36,16 @@ export interface PersonClusterEntry {
  * the picker the cluster opens — truncation loses no fact, only paint.
  *
  * **One `role="img"` over the whole cluster, and this component owns it.**
- * The `label` prop is the accessible name — every one of S8's four callers
- * used to render its own `<span role="img" aria-label="…">` around a bare
- * row of `PersonCircle`s; this takes that span over, so a caller passes the
- * same label text it always composed and drops the wrapper. Individual
- * circles stay unlabelled leaves under it, exactly as they were: initials
+ * The `label` prop is the accessible name — four of S8's five callers
+ * (`TripCard`, `Trip`, `GearListBuilder`, `EntryRow`) used to render their
+ * own `<span role="img" aria-label="…">` around a bare row of
+ * `PersonCircle`s; this takes those spans over, so each caller passes the
+ * same label text it always composed and drops the wrapper. `NewTrip` is
+ * the fifth caller and never rendered `role="img"` at all — its cluster
+ * sits `aria-hidden` inside a button that already carries `Participants:
+ * …` as its own accessible name, so this component's own role is
+ * suppressed there rather than replaced. Individual circles stay
+ * unlabelled leaves under it, exactly as they were: initials
  * read out one at a time are as easily a stray alphabet as a roster.
  *
  * **This element is the flex row**, not a wrapper around one — no extra
