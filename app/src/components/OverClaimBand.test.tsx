@@ -875,25 +875,34 @@ describe('settle callbacks', () => {
   })
 })
 
-describe('touch-target hit areas (fix round F3: no local treatment)', () => {
-  // `.settle` and `.more` are both real `<button>`s, so `ui/styles/base.css`'s
-  // global `button { min-height: max(3rem, 48px); }` already floors them to
-  // 48px — well past the 44px hit-area minimum — with no rule of their own.
-  // A `::after` was tried here once (fix round F1) and reverted: `.settleRow`
-  // wraps several `.settle` buttons `--space-12` (12px) apart, and that gap
-  // is both the row gap between wrapped lines and the column gap between
-  // buttons on one line, so growing vertically through it let two wrapped
-  // settle routes' hit areas overlap by 18px. This test pins the revert:
-  // neither rule sets its own `min-height`, and neither carries a `::after`.
+describe('touch-target hit areas (F3, as amended by ruling O)', () => {
+  // `.settle` and `.more` are both real `<button>`s, and used to take their
+  // 48px from `ui/styles/base.css`'s global
+  // `button { min-height: max(3rem, 48px); }` with no rule of their own —
+  // fix round F3 pinned exactly that absence. Amendment ruling O retires the
+  // global floor (a drawn size is the painted size; 48 floors the *hit* area,
+  // never the paint), so the absence stopped meaning "48px" and started
+  // meaning "as tall as its text". Both rules now state their paint
+  // themselves, which is what the ruling asks of every control that used to
+  // lean on the floor.
+  //
+  // The `::after` half of F3 is untouched and still load-bearing. One was
+  // tried in fix round F1 and reverted: `.settleRow` wraps several `.settle`
+  // buttons `--space-12` (12px) apart, and that gap is both the row gap
+  // between wrapped lines and the column gap between buttons on one line, so
+  // growing vertically through it let two wrapped settle routes' hit areas
+  // overlap by 18px. That is the same defect ruling O names as its own
+  // counter-example — a hit extension must clamp at the owning row's bounds —
+  // and here the row *is* the wrap, so the extension stays absent.
   it.each(['settle', 'more'] as const)(
-    '.%s carries no min-height and no ::after of its own',
+    '.%s states its own paint and still carries no ::after',
     (className) => {
       const text = css()
       const rule =
         new RegExp(`\\.${className}\\s*\\{([^}]*)\\}`).exec(text)?.[1] ?? ''
       const afterRule = new RegExp(`\\.${className}::after\\s*\\{`).exec(text)
 
-      expect(rule).not.toMatch(/min-height/)
+      expect(rule).toMatch(/min-height:\s*max\(3rem,\s*48px\)/)
       expect(rule).not.toMatch(/position:\s*relative/)
       expect(afterRule).toBeNull()
     },

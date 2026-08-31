@@ -65,6 +65,9 @@
   }
 
   .remove {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     display: inline-flex;
     align-items: center;
     justify-content: center;

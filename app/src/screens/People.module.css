@@ -222,6 +222,9 @@
      text, never a filled button — the same rule `Devices.module.css`'s own
      `.signOut` follows for a Device's own revoke. */
   .revoke {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     flex-shrink: 0;
     border: 0;
     background: none;
@@ -233,6 +236,9 @@
   }
 
   .rename {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     margin-inline-start: auto;
     flex-shrink: 0;
     border: 0;

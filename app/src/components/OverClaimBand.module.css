@@ -119,6 +119,9 @@
      settle routes' hit areas overlap by 18px — the exact mis-tap risk on an
      unconfirmed write the growth was meant to avoid. */
   .settle {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     padding: 0;
     border: 0;
     background: none;
@@ -134,6 +137,9 @@
      — measured, not 23px as an earlier version of this comment claimed
      while also stating the true 47px two sentences later. */
   .more {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     align-self: flex-start;
     margin-top: var(--space-8);
     padding-top: var(--space-8);

@@ -121,6 +121,9 @@
   }
 
   .placeSelect {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     flex: 1;
     text-align: left;
     border: 0;
@@ -138,6 +141,9 @@
   }
 
   .minor {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     flex: none;
     border: 0;
     background: none;
@@ -149,6 +155,9 @@
   }
 
   .remove {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     flex: none;
     border: 0;
     background: none;

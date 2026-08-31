@@ -221,6 +221,9 @@
    * draws it once.
    */
   .chip {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     flex: none;
     padding: var(--space-8) var(--space-12);
     border: var(--stroke-chip) solid var(--color-brand-amber);

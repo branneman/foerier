@@ -121,6 +121,9 @@
   /* RETIRE rule (`docs/design/README.md` §4, Voice): attention-coloured
      text, never a filled button — applied here to the per-row SIGN OUT. */
   .signOut {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     flex-shrink: 0;
     border: 0;
     background: none;

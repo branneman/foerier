@@ -64,6 +64,9 @@
   /* The confirmation line, under the title. Tapping it opens the record —
      the only route out of the sitting, and never a forced one. */
   .confirmation {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     display: block;
     width: 100%;
     padding: var(--space-8) var(--space-12);

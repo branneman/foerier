@@ -102,6 +102,9 @@
   }
 
   .input {
+    /* Paint stated explicitly, so retiring the base layer's floor
+       (ruling O) cannot resize it. */
+    min-height: max(3rem, 48px);
     flex: 1;
     min-width: 0;
     border: 0;

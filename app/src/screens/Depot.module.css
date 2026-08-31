@@ -226,6 +226,9 @@
     }
 
     .columnHead {
+      /* Paint stated explicitly, so retiring the base layer's floor
+         (ruling O) cannot resize it. */
+      min-height: max(3rem, 48px);
       justify-self: start;
       padding: 0;
       border: 0;
