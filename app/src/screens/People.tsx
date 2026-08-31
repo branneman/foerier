@@ -2,7 +2,7 @@ import {
   personRecorded,
   personRenamed,
   systemIdSource,
-  UNNAMED_PERSON,
+  UNNAMED_PERSON_GLYPH,
 } from '@foerier/shared'
 import { Confirm, ExpiryChip } from '@foerier/ui'
 import { useCallback, useEffect, useState } from 'react'
@@ -265,7 +265,7 @@ export function People({
     // Seeded with the label, so `—` never becomes a literal name: a Person
     // with no name starts from an empty field, which the disabled Save then
     // holds until something real is typed.
-    setRenameValue(current === UNNAMED_PERSON ? '' : current)
+    setRenameValue(current === UNNAMED_PERSON_GLYPH ? '' : current)
   }
 
   function submitRename() {
@@ -400,7 +400,7 @@ export function People({
                 }
                 aria-hidden="true"
               >
-                {person.label === UNNAMED_PERSON
+                {person.label === UNNAMED_PERSON_GLYPH
                   ? ''
                   : person.label.charAt(0).toUpperCase()}
               </span>

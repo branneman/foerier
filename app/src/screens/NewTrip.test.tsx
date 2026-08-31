@@ -356,7 +356,7 @@ describe('New trip — the create', () => {
     // A Person whose name the fold holds as **cleared** — `person.renamed`
     // accepts an explicit `null` and the reader folds it, so a peer clearing
     // a name is an ordinary arrival rather than a broken op. `personLabel`
-    // reads that as `UNNAMED_PERSON`, which is the branch this asserts.
+    // reads that as `UNNAMED_PERSON_GLYPH`, which is the branch this asserts.
     //
     // It is stated this way rather than through the picker's own
     // `+ NEW PERSON` — the other route to a label-less Person, an id in the

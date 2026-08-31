@@ -6,7 +6,7 @@ import {
   tripEntryRemoved,
   tripLabel,
   tripPhaseMoved,
-  UNNAMED_PERSON,
+  UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
 import { useState } from 'react'
@@ -294,7 +294,7 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
                   className={styles['circle']}
                   aria-hidden="true"
                 >
-                  {person.label === UNNAMED_PERSON
+                  {person.label === UNNAMED_PERSON_GLYPH
                     ? ''
                     : person.label.charAt(0).toUpperCase()}
                 </span>

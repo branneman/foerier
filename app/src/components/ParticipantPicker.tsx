@@ -1,4 +1,8 @@
-import { personRecorded, systemIdSource, UNNAMED_PERSON } from '@foerier/shared'
+import {
+  personRecorded,
+  systemIdSource,
+  UNNAMED_PERSON_GLYPH,
+} from '@foerier/shared'
 import { Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
@@ -122,7 +126,7 @@ export function ParticipantPicker({
                     the People screen's statement about Logins, and this sheet
                     knows nothing about them. */}
                 <span className={styles['circle']} aria-hidden="true">
-                  {person.label === UNNAMED_PERSON
+                  {person.label === UNNAMED_PERSON_GLYPH
                     ? ''
                     : person.label.charAt(0).toUpperCase()}
                 </span>

@@ -4,7 +4,15 @@ import { aGear, anOp, aPerson, hlcAt } from '../../testUtils/index.ts'
 import { personRenamed, type OpSpec } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
 import type { DepotState } from '../state.ts'
-import { ownerInitial, ownerLabel, ownerOf, personLabel } from './owner.ts'
+import {
+  ownerInitial,
+  ownerLabel,
+  ownerOf,
+  personLabel,
+  personNameOrUnnamed,
+  UNNAMED_PERSON,
+  UNNAMED_PERSON_GLYPH,
+} from './owner.ts'
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 
@@ -124,5 +132,30 @@ describe('personLabel', () => {
   it('reads an em dash for a name that is only whitespace', () => {
     const state = depot(aPerson({ id: 'p1', name: '   ' }))
     expect(personLabel(state, 'p1')).toBe('—')
+  })
+})
+
+/**
+ * The Person half of the glyph/prose split the Trip already carries. The
+ * glyph is right in a list column, a group header and a circle; it is wrong
+ * in a sentence, where a dash after a word reads as punctuation. Both
+ * sentinels are pinned here so a future edit cannot quietly collapse them
+ * back into one.
+ */
+describe('personNameOrUnnamed', () => {
+  it('reads the recorded name unchanged, exactly as personLabel does', () => {
+    const state = depot(aPerson({ id: 'p1', name: 'Els' }))
+    expect(personNameOrUnnamed(state, 'p1')).toBe('Els')
+  })
+
+  it('reads the words, never the glyph, for a Person no op has named', () => {
+    const state = depot(aGear({ id: 'g1' }))
+    expect(personNameOrUnnamed(state, 'ghost')).toBe('Unnamed person')
+    expect(personNameOrUnnamed(state, 'ghost')).not.toBe(UNNAMED_PERSON_GLYPH)
+  })
+
+  it('reads the words for a name that is only whitespace', () => {
+    const state = depot(aPerson({ id: 'p1', name: '   ' }))
+    expect(personNameOrUnnamed(state, 'p1')).toBe(UNNAMED_PERSON)
   })
 })

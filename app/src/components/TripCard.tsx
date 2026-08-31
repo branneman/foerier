@@ -1,7 +1,7 @@
 import {
   phaseNext,
   tripLabel,
-  UNNAMED_PERSON,
+  UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
 import { Link } from 'wouter'
@@ -289,7 +289,7 @@ export function TripCard({
                   {/* A Person with no folded name draws an **empty** circle
                       rather than a placeholder letter — inventing one would
                       be a fact the app does not have. */}
-                  {person.label === UNNAMED_PERSON
+                  {person.label === UNNAMED_PERSON_GLYPH
                     ? ''
                     : person.label.charAt(0).toUpperCase()}
                 </span>

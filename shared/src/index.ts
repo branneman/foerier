@@ -106,7 +106,9 @@ export {
   ownerLabel,
   ownerOf,
   personLabel,
+  personNameOrUnnamed,
   UNNAMED_PERSON,
+  UNNAMED_PERSON_GLYPH,
 } from './selectors/owner.ts'
 
 export type {

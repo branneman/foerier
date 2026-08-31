@@ -17,7 +17,7 @@ import {
   type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
@@ -398,6 +398,88 @@ describe('a claim with no other Trip to name', () => {
     )
     const row = screen.getByTestId('over-claim-row-headlamp')
     expect(row).toHaveTextContent('PER-PERSON · CONTESTED Mark')
+  })
+
+  /**
+   * Amendment round, ruling B. The two-name join and the Oxford join are
+   * separate branches of `joinNames`, and only the one-name branch was
+   * pinned — the board blessed the grammar **conditional on a test reaching
+   * the Oxford path**, which is this one. Three claimants is the smallest
+   * roster that reaches it.
+   *
+   * Names arrive **sorted**, not in roster order, which is why the roster
+   * here is passed `Mark` first and asserted `Els` first. That ordering is
+   * load-bearing rather than incidental: every replica folds the same log,
+   * so the line has to read identically on every Device.
+   */
+  it('joins two contested People with "and", and three with an Oxford comma (B)', async () => {
+    const roster = async (...people: readonly (readonly [string, string])[]) =>
+      seeded(
+        gearRecorded('headlamp', {
+          name: 'Headlamp',
+          container: false,
+          kind: 'per_person',
+        }),
+        ...people.map(([id, name]) => personRecorded(id, name)),
+        tripCreated(HERE, 'Ardennen — Sep'),
+        tripPhaseMoved(HERE, 'pack_out'),
+        ...people.map(([id]) => tripParticipantAdded(HERE, id)),
+        tripEntryAdded(HERE, 'e-first', { from: 'depot', gearId: 'headlamp' }),
+        tripEntryAdded(HERE, 'e-second', { from: 'depot', gearId: 'headlamp' }),
+      )
+
+    const two = await roster(['mark', 'Mark'], ['els', 'Els'])
+    renderBand(two, HERE)
+    expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+      '▲ 2 entries claim Els and Mark more than once.',
+    )
+    cleanup()
+
+    const three = await roster(
+      ['mark', 'Mark'],
+      ['els', 'Els'],
+      ['tess', 'Tess'],
+    )
+    renderBand(three, HERE)
+    expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+      '▲ 2 entries claim Els, Mark, and Tess more than once.',
+    )
+  })
+
+  /**
+   * Amendment round, ruling C. `CONTESTED —` retires: the slot after
+   * `CONTESTED` is a name slot, not a list column, and a dash after a word
+   * mid-line reads as punctuation rather than as an empty cell. The sentinel
+   * renders in **both** prose slots — the attention line and the row fact —
+   * which is the drift `personNameOrUnnamed` exists to prevent.
+   */
+  it('reads an unrecorded claimant as `Unnamed person` in line and fact alike (C)', async () => {
+    const store = await seeded(
+      gearRecorded('headlamp', {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      // No `personRecorded` — the Person's own op is still queued on
+      // someone else's phone, `personLabel`'s more common reachable case.
+      tripCreated(HERE, 'Ardennen — Sep'),
+      tripPhaseMoved(HERE, 'pack_out'),
+      tripParticipantAdded(HERE, 'ghost'),
+      tripEntryAdded(HERE, 'e-first', { from: 'depot', gearId: 'headlamp' }),
+      tripEntryAdded(HERE, 'e-second', { from: 'depot', gearId: 'headlamp' }),
+    )
+
+    renderBand(store, HERE)
+
+    expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+      '▲ 2 entries claim Unnamed person more than once.',
+    )
+    expect(screen.getByTestId('over-claim-row-headlamp')).toHaveTextContent(
+      'PER-PERSON · CONTESTED Unnamed person',
+    )
+    expect(screen.getByTestId('over-claim-attention')).not.toHaveTextContent(
+      'CONTESTED —',
+    )
   })
 })
 

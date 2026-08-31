@@ -1,5 +1,5 @@
 import {
-  personLabel,
+  personNameOrUnnamed,
   tripLabel,
   UNNAMED_TRIP,
   type Claim,
@@ -591,7 +591,7 @@ function hereOnlyPersonLine(
   const noun = pluralize(entries, 'entry', 'entries')
   const verb = verbAgreement(entries, 'claims', 'claim')
   const names = unionContestedPersonIds(overClaims).map((personId) =>
-    personLabel(state, personId),
+    personNameOrUnnamed(state, personId),
   )
   return `▲ ${entries} ${noun} ${verb} ${joinNames(names)} more than once.`
 }
@@ -628,7 +628,7 @@ function rowFact(
 
   if (overClaim.kind === 'per_person') {
     const names = overClaim.contestedPersonIds.map((personId) =>
-      personLabel(state, personId),
+      personNameOrUnnamed(state, personId),
     )
     return ['PER-PERSON', `CONTESTED ${names.join(', ')}`, ...suffix].join(
       ' · ',

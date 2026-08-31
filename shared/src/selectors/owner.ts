@@ -109,14 +109,14 @@ export function ownerInitial(
  * sentinel lives beside the label it is a value of, and every reader imports
  * it.
  */
-export const UNNAMED_PERSON = '—'
+export const UNNAMED_PERSON_GLYPH = '—'
 
 /**
  * A Person's name for a chip, a picker row or a group header — sentence case,
  * as recorded, never upper-cased here (CAPS is a CSS transform where a surface
  * wants it, matching how the rest of this codebase renders label text).
  *
- * An unnamed or unknown Person reads {@link UNNAMED_PERSON}, the same glyph
+ * An unnamed or unknown Person reads {@link UNNAMED_PERSON_GLYPH}, the same glyph
  * the ungrouped bucket uses. Both are reachable: a `person.recorded` carrying
  * an explicit `null`, and — more often — a gear op naming a Person whose own
  * op is still queued on someone else's phone. A chip with an empty label would
@@ -125,5 +125,35 @@ export const UNNAMED_PERSON = '—'
  */
 export function personLabel(state: DepotState, personId: string): string {
   const name = state.people[personId]?.name?.value ?? ''
-  return name.trim() === '' ? UNNAMED_PERSON : name
+  return name.trim() === '' ? UNNAMED_PERSON_GLYPH : name
+}
+
+/**
+ * How a Person with no folded name reads **in a sentence**.
+ *
+ * `personLabel` returns {@link UNNAMED_PERSON_GLYPH}, which is right in a
+ * list column, a group header and a circle, and wrong in the over-claim
+ * band's prose: a dash after a word mid-line reads as punctuation, not as a
+ * column's empty cell. `personLabel` is deliberately unchanged — this is the
+ * exact split `UNNAMED_TRIP` already carries for the Trip, ruled for the
+ * Person by the S7 amendments round (`README` §5b, C).
+ */
+export const UNNAMED_PERSON = 'Unnamed person'
+
+/**
+ * `personLabel`'s glyph substituted for the words an unnamed Person reads as
+ * anywhere their name stands as a name rather than a glyph — a sentence's
+ * object, the name slot after `CONTESTED`.
+ *
+ * The one place this substitution is decided, for the same reason
+ * `tripNameOrUnnamed` is: the drift it guards against is a Person reading
+ * `Unnamed person` in the band's attention line and `—` in the row fact
+ * directly beneath it.
+ */
+export function personNameOrUnnamed(
+  state: DepotState,
+  personId: string,
+): string {
+  const label = personLabel(state, personId)
+  return label === UNNAMED_PERSON_GLYPH ? UNNAMED_PERSON : label
 }
