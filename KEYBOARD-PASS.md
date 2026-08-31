@@ -122,8 +122,16 @@ Worth a specific look, since these were the ones the floor was overriding:
   with the person circles beside it, not 22 wide and 48 tall.
 - `Start pack-out` in the gear list builder — **40px**, matching the Depot's
   `+ Add gear`.
-- The Depot's column heads, the phase chip, and `SIGN OUT` / `REMOVE` as
-  attention text.
+- The **phase chip** on a trip screen — a small ~24px pill, not a 48px slab.
+  Check its tap target still feels generous: the hit area extends vertically
+  only, because the row's gap is all that separates it from the control beside
+  it.
+- The **Depot's column heads** at Desktop — the header band should be short,
+  not 48px tall. Tapping one must sort, and must never hit the first gear row
+  beneath it.
+- **`SIGN OUT`** (Account and Devices) and **`REMOVE`** (Account ▸ Passkeys) —
+  attention *text*, not buttons in a box. Both should still be comfortably
+  tappable; both open a confirm, so an over-generous target costs nothing.
 
 Also check no two hit areas overlap: tapping one row's `✕` must never remove a
 neighbouring row's Entry.
