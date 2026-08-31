@@ -3,12 +3,15 @@ import {
   createHlcClock,
   emptyState,
   fold,
+  gearRecorded,
   personRecorded,
   tripCreated,
   tripDatesSet,
+  tripEntryAdded,
   tripParticipantAdded,
   tripPhaseMoved,
   tripParticipantRemoved,
+  tripPieceRemoved,
   type DepotState,
   type OpAuthor,
   type OpSpec,
@@ -21,6 +24,7 @@ import {
   tripChip,
   tripDateRange,
   tripParticipants,
+  tripPieces,
   tripStartMonth,
 } from './trips'
 
@@ -131,6 +135,59 @@ describe('tripParticipants', () => {
       tripCreated(TRIP, 'Alps 2026'),
     )
     expect(tripParticipants(state, theTrip(state))).toEqual([])
+  })
+})
+
+/**
+ * Review finding F3: `EntryRow`'s trailing slot and `PiecePicker` both call
+ * this — a direct test of the join itself, on top of the two components'
+ * own integration coverage, because `pieceInclusion`'s id order and
+ * `tripParticipants`'s display order disagreeing is exactly the drift this
+ * function exists to close off in one place rather than two.
+ */
+describe('tripPieces', () => {
+  it('joins pieceInclusion against display order, not id order', () => {
+    // Ids ascend (p1, p2) while the display order does not (Ansel before
+    // Zara) — the same disagreement `tripParticipants`'s own first test
+    // pins, restated here so a caller reading id order by accident would
+    // fail this test too.
+    const state = depot(
+      personRecorded('p1', 'Zara'),
+      personRecorded('p2', 'Ansel'),
+      tripCreated(TRIP, 'Alps 2026'),
+      tripParticipantAdded(TRIP, 'p1'),
+      tripParticipantAdded(TRIP, 'p2'),
+      gearRecorded('g1', {
+        name: 'Trekking pole',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(TRIP, 'e1', { from: 'depot', gearId: 'g1' }),
+      tripPieceRemoved(TRIP, 'e1', 'p1'),
+    )
+    const trip = theTrip(state)
+    const entry = trip.entries!['e1']!
+
+    expect(tripPieces(state, trip, entry)).toEqual([
+      { personId: 'p2', label: 'Ansel', included: true },
+      { personId: 'p1', label: 'Zara', included: false },
+    ])
+  })
+
+  it('is empty for a Trip nobody is on', () => {
+    const state = depot(
+      tripCreated(TRIP, 'Alps 2026'),
+      gearRecorded('g1', {
+        name: 'Trekking pole',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(TRIP, 'e1', { from: 'depot', gearId: 'g1' }),
+    )
+    const trip = theTrip(state)
+    const entry = trip.entries!['e1']!
+
+    expect(tripPieces(state, trip, entry)).toEqual([])
   })
 })
 

@@ -104,16 +104,26 @@ export interface EntryRowProps {
   readonly kind: KindValue | 'trip_only'
   /** `null` only ever arrives for a non-`counted` Kind — see `bringCountOf`. */
   readonly bringCount: number | null
+  /**
+   * The full answer for every Kind but a populated `per_person` row, which
+   * derives its own `×N` from `pieces` instead (review finding F3) — so
+   * that digit and ruling B's accessible name agree by construction rather
+   * than by the coincidence that `pieceCountOf` for `per_person` happens to
+   * equal `piecesOf().length`. Still the only answer for the `per_person`
+   * empty case (`×0` beside `NO PARTICIPANTS`), where there is no `pieces`
+   * array to derive a count from.
+   */
   readonly pieceCount: number
   /**
    * Every Participant on this Entry's Trip and whether their Piece is
    * included — read only for `per_person` rows, ignored by every other
-   * Kind. Ordered by `GearListSection` through `tripParticipants` (display
-   * order), **not** `pieceInclusion`'s own id order (`shared/src/selectors/-
-   * piece.ts`'s own docstring says why the two differ). An empty array is
-   * ruling C's domain fact — no Participants, so no Pieces to picture — and
-   * draws `NO PARTICIPANTS` rather than an empty cluster; see this file's
-   * docstring.
+   * Kind. Ordered by `GearListSection` through `tripPieces`
+   * (`app/src/depot/trips.ts`), the one join `PiecePicker` also calls, in
+   * display order — **not** `pieceInclusion`'s own id order
+   * (`shared/src/selectors/piece.ts`'s own docstring says why the two
+   * differ). An empty array is ruling C's domain fact — no Participants, so
+   * no Pieces to picture — and draws `NO PARTICIPANTS` rather than an empty
+   * cluster; see this file's docstring.
    */
   readonly pieces: readonly EntryRowPiece[]
   readonly editable: boolean
@@ -280,18 +290,29 @@ function perPersonTrailing(
   if (pieces.length === 0) {
     // Ruling C's empty case: a domain fact, not an empty state — Pieces
     // derive from Participants, so with none there is nothing to picture
-    // and nothing to open a picker onto.
+    // and nothing to open a picker onto. `.pieceDisplay` supplies the row's
+    // own gap — review finding F1: two bare sibling spans in `.trailing`
+    // (which declares none, since every other branch has a single child)
+    // render as one run-on token, `NO PARTICIPANTS×0`, with nothing between
+    // them.
     return (
-      <>
+      <span className={styles['pieceDisplay']} data-testid="entry-row-pieces">
         <span className={styles['noParticipants']}>NO PARTICIPANTS</span>
         <span data-testid="entry-row-count">×{pieceCount}</span>
-      </>
+      </span>
     )
   }
 
   const includedCount = pieces.filter((piece) => piece.included).length
   // Ruling B's exact accessible name — states the whole fact once so
-  // nothing needs to read the circles individually.
+  // nothing needs to read the circles individually. `includedCount` is also
+  // what the visible `×N` below reads, in both modes: review finding F3 —
+  // deriving the digit and the visible count from the same local rather
+  // than from the separate `pieceCount` prop is what makes them agree *by
+  // construction*, not by the coincidence that `pieceCountOf` for
+  // `per_person` happens to equal `piecesOf().length` today. `pieceCount`
+  // still serves the empty branch above, where there is no `pieces` array
+  // to derive a count from.
   const accessibleName = `Who brings one — ${label}, ${includedCount} of ${pieces.length} bring one`
 
   const cluster = (
@@ -316,7 +337,7 @@ function perPersonTrailing(
     return (
       <span className={styles['pieceDisplay']} data-testid="entry-row-pieces">
         {cluster}
-        <span data-testid="entry-row-count">×{pieceCount}</span>
+        <span data-testid="entry-row-count">×{includedCount}</span>
       </span>
     )
   }
@@ -337,7 +358,7 @@ function perPersonTrailing(
       <span aria-hidden="true" className={styles['clusterWrap']}>
         {cluster}
       </span>
-      <span data-testid="entry-row-count">×{pieceCount}</span>
+      <span data-testid="entry-row-count">×{includedCount}</span>
     </button>
   )
 }

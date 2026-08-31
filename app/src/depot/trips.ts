@@ -5,9 +5,11 @@ import {
   phaseDay,
   phaseLabel,
   phaseOf,
+  pieceInclusion,
   tripLabel,
   UNNAMED_TRIP,
   type DepotState,
+  type EntryState,
   type TripState,
 } from '@foerier/shared'
 
@@ -102,6 +104,49 @@ export function peopleOn(
     .map((id) => ({ id, label: personLabel(state, id) }))
 
   return [...folded, ...unfolded]
+}
+
+/** One row of {@link tripPieces}' join — the shape `EntryRow`'s `pieces`
+ * prop and `PiecePicker`'s own rows both carry. */
+export interface TripPieceRow {
+  readonly personId: string
+  readonly label: string
+  readonly included: boolean
+}
+
+/**
+ * **The one join `EntryRow`'s trailing slot and `PiecePicker` must agree
+ * on** — ruling C's "the circle mirrors the row's state" is a promise about
+ * two surfaces, not one, and `pieceInclusion` alone does not keep it: its
+ * own order is by id, deliberately not the drawn one
+ * (`shared/src/selectors/piece.ts`'s own docstring), so every caller that
+ * wants to *draw* a roster has to re-join it against display order. This is
+ * the `ownerOf`/`phaseOf` failure mode restated for a join instead of a
+ * register default — `piece.ts`'s own words: "a call site re-deriving it
+ * will drift, and the symptom is a row whose `×N` disagrees with the
+ * circles beside it" — so the join lives here once, and `GearListSection`
+ * and `PiecePicker` both call it rather than each rebuilding the same
+ * `Map`.
+ */
+export function tripPieces(
+  state: DepotState,
+  trip: TripState,
+  entry: EntryState,
+): readonly TripPieceRow[] {
+  const included = new Map(
+    pieceInclusion(entry, trip).map((piece) => [
+      piece.personId,
+      piece.included,
+    ]),
+  )
+  // Every row here comes from `trip`'s own Participant set
+  // (`tripParticipants` from `participantIds`), and so does `pieceInclusion`
+  // from the same — the `!` is that agreement, not an assumption.
+  return tripParticipants(state, trip).map((person) => ({
+    personId: person.id,
+    label: person.label,
+    included: included.get(person.id)!,
+  }))
 }
 
 /** The meta line's pieces — {@link tripDateRange}'s whole answer. */

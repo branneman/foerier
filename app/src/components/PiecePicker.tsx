@@ -1,6 +1,5 @@
 import {
   entryLabel,
-  pieceInclusion,
   tripPieceRemoved,
   tripPieceRestored,
   UNNAMED_PERSON_GLYPH,
@@ -10,7 +9,7 @@ import {
 import { PersonCircle, Sheet } from '@foerier/ui'
 
 import { useDepot } from '../depot/store'
-import { tripParticipants } from '../depot/trips'
+import { tripPieces } from '../depot/trips'
 import styles from './PiecePicker.module.css'
 
 /**
@@ -70,17 +69,13 @@ export function PiecePicker({ trip, entry, onClose }: PiecePickerProps) {
   const state = useDepot((depot) => depot.state)
   const emit = useDepot((depot) => depot.emit)
 
-  // `pieceInclusion`'s own order is by id, deliberately not the drawn one
-  // (`shared/src/selectors/piece.ts`) — so it is read here only as a lookup,
-  // and `tripParticipants` supplies the row order every surface agrees on.
-  const included = new Map(
-    pieceInclusion(entry, trip).map((piece) => [
-      piece.personId,
-      piece.included,
-    ]),
-  )
-  const rows = tripParticipants(state, trip)
-  const includedCount = rows.filter((person) => included.get(person.id)).length
+  // `tripPieces` (`depot/trips.ts`) is the one join this row and
+  // `EntryRow`'s trailing slot both call — `pieceInclusion`'s own order is
+  // by id, deliberately not the drawn one
+  // (`shared/src/selectors/piece.ts`), so a second, separate re-join here
+  // would risk drifting from the row's own.
+  const rows = tripPieces(state, trip, entry)
+  const includedCount = rows.filter((row) => row.included).length
 
   function toggle(personId: string, isIncluded: boolean) {
     emit(
@@ -97,43 +92,36 @@ export function PiecePicker({ trip, entry, onClose }: PiecePickerProps) {
       </p>
 
       <ul className={styles['rows']}>
-        {rows.map((person) => {
-          // `rows` and `included` are both built from `trip`'s own
-          // Participant set (`tripParticipants` from `participantIds`,
-          // `pieceInclusion` from the same), so every row here has an entry
-          // in the map — the `!` is that agreement, not an assumption.
-          const isIncluded = included.get(person.id)!
-          return (
-            <li key={person.id}>
-              <button
-                type="button"
-                className={styles['row']}
-                data-testid="piece-row"
-                aria-pressed={isIncluded}
-                onClick={() => toggle(person.id, isIncluded)}
-              >
-                {/* `ParticipantPicker`'s wrapper: `flex` rather than an
-                    unstyled `<span>`, which blockifies into a line box a few
-                    px taller than the circle and off-centres it. */}
-                <span className={styles['circleWrap']} aria-hidden="true">
-                  <PersonCircle
-                    label={
-                      person.label === UNNAMED_PERSON_GLYPH
-                        ? undefined
-                        : person.label.charAt(0).toUpperCase()
-                    }
-                    size={30}
-                    tone={isIncluded ? 'control' : 'dashed'}
-                  />
-                </span>
-                <span className={styles['name']}>{person.label}</span>
-                {isIncluded && (
-                  <span className={styles['marker']}>BRINGS ONE ✓</span>
-                )}
-              </button>
-            </li>
-          )
-        })}
+        {rows.map((row) => (
+          <li key={row.personId}>
+            <button
+              type="button"
+              className={styles['row']}
+              data-testid="piece-row"
+              aria-pressed={row.included}
+              onClick={() => toggle(row.personId, row.included)}
+            >
+              {/* `ParticipantPicker`'s wrapper: `flex` rather than an
+                  unstyled `<span>`, which blockifies into a line box a few
+                  px taller than the circle and off-centres it. */}
+              <span className={styles['circleWrap']} aria-hidden="true">
+                <PersonCircle
+                  label={
+                    row.label === UNNAMED_PERSON_GLYPH
+                      ? undefined
+                      : row.label.charAt(0).toUpperCase()
+                  }
+                  size={30}
+                  tone={row.included ? 'control' : 'dashed'}
+                />
+              </span>
+              <span className={styles['name']}>{row.label}</span>
+              {row.included && (
+                <span className={styles['marker']}>BRINGS ONE ✓</span>
+              )}
+            </button>
+          </li>
+        ))}
       </ul>
 
       <Sheet.Close>

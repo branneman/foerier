@@ -612,8 +612,18 @@ describe('EntryRow', () => {
         name: 'Who brings one — Headlamp, 2 of 3 bring one',
       })
       expect(control).toBeInTheDocument()
-      // The circles inside are not targets.
-      expect(within(control).queryAllByRole('button')).toHaveLength(0)
+      // The circles inside are not targets. Queried structurally, not via
+      // `within(control).queryAllByRole('button')` — that call defaults to
+      // `hidden: false`, and dom-testing-library's accessibility-tree walk
+      // excludes anything under `aria-hidden="true"` (`.clusterWrap`, which
+      // wraps every circle here) regardless of its own role. So the very
+      // regression this test exists to catch — a `PersonCircle` turned into
+      // a real `<button>` — would still return `[]` from that query and the
+      // test would keep passing. `querySelectorAll` reads the DOM directly,
+      // aria-hidden or not.
+      expect(control.querySelectorAll('button, [role="button"]')).toHaveLength(
+        0,
+      )
     })
 
     it('is inert above Split', () => {
@@ -638,6 +648,26 @@ describe('EntryRow', () => {
       expect(
         screen.queryByRole('img', { name: /who brings one/i }),
       ).not.toBeInTheDocument()
+    })
+
+    // Review finding F1: `NO PARTICIPANTS` and `×0` used to land as two bare
+    // sibling spans directly inside `.trailing`, which declares no `gap` —
+    // it never needed one, since every other branch has a single child — so
+    // the DOM text read as one run-on token, `NO PARTICIPANTS×0`, with
+    // `getByText('NO PARTICIPANTS')` still passing regardless (each span is
+    // its own element). No tier here can see the *visual* gap
+    // (`vitest.config.ts` runs `css: false`, jsdom computes no layout — the
+    // same limitation `drawnSizes.test.ts`'s own docstring names), but this
+    // at least pins the two under one `.pieceDisplay` container rather than
+    // as bare `.trailing` children, so a regression back to two loose spans
+    // fails this even though `getByText` alone would not catch it.
+    it('draws NO PARTICIPANTS and ×0 inside one flex container, not as two bare spans', () => {
+      renderRow({ editable: true, pieces: [] })
+      const container = screen.getByTestId('entry-row-pieces')
+      expect(within(container).getByText('NO PARTICIPANTS')).toBeInTheDocument()
+      expect(
+        within(container).getByTestId('entry-row-count'),
+      ).toHaveTextContent('×0')
     })
 
     it('says ×0 silently when every Piece is removed', () => {

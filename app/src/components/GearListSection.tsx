@@ -4,7 +4,6 @@ import {
   entryKind,
   entryLabel,
   pieceCountOf,
-  pieceInclusion,
   UNGROUPED_LABEL,
   type DepotState,
   type EntryState,
@@ -13,8 +12,8 @@ import {
 import { useState } from 'react'
 
 import { useDepot } from '../depot/store'
-import { tripParticipants } from '../depot/trips'
-import { EntryRow, type EntryRowPiece } from './EntryRow'
+import { tripPieces } from '../depot/trips'
+import { EntryRow } from './EntryRow'
 import styles from './GearListSection.module.css'
 import { PiecePicker } from './PiecePicker'
 
@@ -108,35 +107,6 @@ function rowKind(entry: EntryState, state: DepotState): GroupKey {
   }
 }
 
-/**
- * A `per_person` Entry's pieces, in the one order every surface agrees on.
- * `pieceInclusion`'s own order is by id — deliberately not the drawn one,
- * its own docstring says so (`shared/src/selectors/piece.ts`) — so this
- * rebuilds it against `tripParticipants`'s display order exactly the way
- * `PiecePicker` already does, rather than handing `EntryRow` the id order
- * and letting a second place re-decide it.
- */
-function entryPieces(
-  entry: EntryState,
-  trip: TripState,
-  state: DepotState,
-): readonly EntryRowPiece[] {
-  const included = new Map(
-    pieceInclusion(entry, trip).map((piece) => [
-      piece.personId,
-      piece.included,
-    ]),
-  )
-  return tripParticipants(state, trip).map((person) => ({
-    personId: person.id,
-    label: person.label,
-    // Every row here comes from `trip`'s own Participant set, and so does
-    // `pieceInclusion`'s map — the same agreement `PiecePicker`'s `!` rests
-    // on, restated here.
-    included: included.get(person.id)!,
-  }))
-}
-
 /** `1 PIECE` / `2 PIECES` — spec §3.1: the count and its noun, formatted
  * together, never concatenated separately. Exported: `Trip.tsx`'s `GEAR
  * LIST` band renders its own `N PIECES` right beside this component's group
@@ -227,10 +197,13 @@ export function GearListSection({
                       pieceCount={pieceCountOf(entry, trip, state)}
                       // Only a `per_person` row reads `pieces` (`EntryRow`'s
                       // own docstring) — skipped for every other Kind rather
-                      // than computed and ignored.
+                      // than computed and ignored. `tripPieces` is the one
+                      // join `PiecePicker` also calls (`depot/trips.ts`), so
+                      // the row's circles and the picker's rows can never
+                      // drift from each other.
                       pieces={
                         kind === 'per_person'
-                          ? entryPieces(entry, trip, state)
+                          ? tripPieces(state, trip, entry)
                           : []
                       }
                       editable={editable}
