@@ -129,15 +129,21 @@
   }
 
   /*
-   * The chosen People, as the trip card draws them — display is circles and a
-   * picker is rows, and this row is display until it is tapped. Duplicated
-   * from `TripCard.module.css` rather than shared for that file's own stated
-   * reason: the two agree today and answer to different boards.
+   * The `aria-hidden` wrapper `PersonCluster` (`ui/`) sits inside — kept from
+   * before ruling E folded this row in, because `.pickRow`'s own
+   * `aria-label` already states the roster (`NewTrip.tsx`), so an unhidden
+   * `role="img"` nested inside it would repeat that string a second time.
+   * `display: contents` generates no box of its own, so `PersonCluster`'s
+   * root (itself `display: inline-flex; gap; flex: none;`) participates
+   * directly in `.pickRow`'s flex row — this element used to *be* that flex
+   * row, and now only forwards it. `overflow: hidden` is gone with it:
+   * ruling E's own cap (four painted circles, then `+N`) is what keeps this
+   * row from overflowing now, not clipping — "never inner-scroll" is a
+   * ruling E requirement `PersonCluster` enforces, that this rule used to
+   * work around instead.
    */
   .circles {
-    display: inline-flex;
-    gap: var(--space-4);
-    overflow: hidden;
+    display: contents;
   }
 
   .chevron {

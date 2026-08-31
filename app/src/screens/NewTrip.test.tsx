@@ -7,7 +7,7 @@ import {
   type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -379,8 +379,14 @@ describe('New trip — the create', () => {
     // names them, because a Participant must never silently vanish.
     const row = screen.getByRole('button', { name: 'Participants: —' })
     expect(row).toBeVisible()
-    const circle = row.querySelector('span span')
-    expect(circle?.textContent).toBe('')
+    // `PersonCircle`'s own `data-testid`, not `'span span'`: the ruling-E
+    // fold nested one more `<span>` between this row and the circle (the
+    // `aria-hidden` wrapper now holds `PersonCluster`'s own `role="img"`
+    // span, and `PersonCircle` sits a level under that), so a structural
+    // selector would silently start matching the wrong ancestor instead of
+    // the circle itself.
+    const circle = within(row).getByTestId('person-circle')
+    expect(circle.textContent).toBe('')
   })
 
   /**

@@ -5,7 +5,7 @@ import {
   tripParticipantAdded,
   UNNAMED_PERSON_GLYPH,
 } from '@foerier/shared'
-import { PersonCircle } from '@foerier/ui'
+import { PersonCluster } from '@foerier/ui'
 import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
 
@@ -268,18 +268,33 @@ export function NewTrip() {
           {chosen.length === 0 ? (
             <span className={styles['pickValue']}>None</span>
           ) : (
+            // `aria-hidden`, not a suppressible prop on `PersonCluster`: the
+            // button above already carries `Participants: …` as its own
+            // accessible name, so an unhidden `role="img"` nested inside it
+            // would announce the identical roster a second time — the same
+            // failure the `Participants` label span avoids two elements up.
+            // An `aria-hidden` ancestor drops the whole subtree from the
+            // accessibility tree regardless of what role a descendant
+            // claims, so `PersonCluster`'s own `role="img"` is suppressed
+            // without this component needing to know it is nested here.
+            // `display: contents` (below) is what keeps that wrapper from
+            // costing a box: it generates none, so `PersonCluster`'s root
+            // participates directly in `.pickRow`'s flex row exactly as a
+            // bare `.circles` span used to — the layout-shift failure a
+            // plain wrapper `<span>` would reintroduce (`PersonCircle`'s own
+            // docstring; Task 5 review), sidestepped rather than repeated.
             <span className={styles['circles']} aria-hidden="true">
-              {chosen.map((person) => (
-                <PersonCircle
-                  key={person.id}
-                  label={
+              <PersonCluster
+                people={chosen.map((person) => ({
+                  key: person.id,
+                  label:
                     person.label === UNNAMED_PERSON_GLYPH
                       ? undefined
-                      : person.label.charAt(0).toUpperCase()
-                  }
-                  size={22}
-                />
-              ))}
+                      : person.label.charAt(0).toUpperCase(),
+                }))}
+                size={22}
+                label={`Participants: ${roster}`}
+              />
             </span>
           )}
           <span className={styles['chevron']} aria-hidden="true">
