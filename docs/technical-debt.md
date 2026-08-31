@@ -180,7 +180,7 @@ items under thirty settled ones.
   undercounted the circles by exactly the one this omits. The next design
   round should bless or overturn it.
   [`specs/2026-08-31-per-person-pieces.md`](specs/2026-08-31-per-person-pieces.md)
-  §9, anchor: `is a fifth cluster surface ruling E does not enumerate`
+  §9, anchor: `` `NewTrip` is a fifth cluster surface ``
 - **The Piece picker's rows draw 30px circles where the boards' figure is
   24px.** 24px is scoped to the read pane's display density; `ParticipantPicker`
   (the picker's structural sibling) draws 30px on its own stated reason, and
