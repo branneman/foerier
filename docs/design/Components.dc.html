@@ -61,7 +61,7 @@
           <sc-if value="{{ c.current }}"><span onClick="{{ advance }}" style="padding:8px 12px; border-radius:99px; background:#E8E5D5; color:#151A15; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; cursor:pointer">{{ c.label }} ●</span></sc-if>
           <sc-if value="{{ c.future }}"><span onClick="{{ advance }}" style="padding:8px 12px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9.5px; letter-spacing:.06em; cursor:pointer">{{ c.label }}</span></sc-if>
         </sc-for>
-        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em">← CONTAINER JOURNEY, TAP TO ADVANCE</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em">← TAP A CHIP = SET THAT STAGE · BACKWARDS INCLUDED · THE CURRENT CHIP WRITES NOTHING (S9 A15)</span>
       </div>
       <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; color:#D3A344; letter-spacing:.05em">▲ IN CAR · 3 INSIDE NOT PACKED — STATUS AND JOURNEY MAY DISAGREE; SAY IT, DON'T HIDE IT</div>
       <div style="display:flex; align-items:center; gap:8px">
@@ -81,7 +81,7 @@
           <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-left:4px">{{ packedText }}</span>
         </div>
       </div>
-      <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; letter-spacing:.04em">PER-PERSON · 1 PIECE EACH · TAP A DOT = CYCLE THAT PERSON</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; letter-spacing:.04em">PER-PERSON · 1 PIECE EACH · THE CLUSTER + COUNT IS ONE CONTROL AND OPENS THE SHEET (S9 A1)</div>
       <div style="border-top:1px solid #2A3129; padding-top:12px; display:flex; flex-direction:column; gap:8px">
         <div style="display:flex; justify-content:space-between; align-items:center; min-height:34px">
           <span style="font-size:14px">Mark</span>
@@ -92,11 +92,11 @@
           <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; color:#D3A344">◐ STAGED</span>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; min-height:34px">
-          <span style="font-size:14px">Kees <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161">PARTICIPANT</span></span>
+          <span style="font-size:14px">Kees</span>
           <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; color:#97A08C">○ NOT PACKED</span>
         </div>
       </div>
-      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em">EXPANDED SHEET VIEW — LONG-PRESS THE ROW SETS ALL PEOPLE AT ONCE</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em">THE PIECE STATUS SHEET — OPENED BY THE CLUSTER · 48PX ROWS, 30PX CIRCLES, A TRAILING MOVE, AND A SET EVERYONE CONTROL (S9 A1 · ANATOMY ON THE S9 ROUND BOARD)</div>
     </div>
   </div>
 
@@ -203,11 +203,11 @@
       <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; color:#6A7161; letter-spacing:.08em; margin-left:auto">SEARCH + FILTERS COMBINE WITH AND · COUNT UPDATES PER TAP</span>
     </div>
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; border-top:1px solid #2A3129; padding-top:12px">
-      <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#6A7161">FUTURE DIMENSIONS — NEVER AVAILABLE EARLY · TRIP WENT LIVE AT S7 (PICKER: SCREENS B 02C) · PIECES BY PERSON RETIRED AT S8 — A DRAFTING ARTEFACT, NOT A DECISION (SCREENS B 02D · README §5d H)</span>
+      <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#6A7161">FUTURE DIMENSIONS — NEVER AVAILABLE EARLY · TRIP WENT LIVE AT S7 (PICKER: SCREENS B 02C) · PIECES BY PERSON RETIRED AT S8 — A DRAFTING ARTEFACT, NOT A DECISION (SCREENS B 02D · README §5d H) · STATUS RETIRED AT S9 — THE DEPOT NEVER SHOWS PACKING STATUS, AND THE CAPABILITY LANDS ON F4 (S9 ROUND · README §5e B4)</span>
       <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">PERSON · S4</span>
       <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">OWNERSHIP · S4</span>
-      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">STATUS · S9</span>
-      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">CONTAINER · S9</span>
+      
+      <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">CONTAINER · S9b</span>
       <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px dashed #47523F; color:#5E6857; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em">OUTCOME · S10</span>
     </div>
   </div>
