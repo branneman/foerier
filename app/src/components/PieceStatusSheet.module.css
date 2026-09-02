@@ -1,0 +1,157 @@
+@layer components {
+  /* `PiecePicker.module.css`'s `.fact` line, verbatim: the mono count that
+     doubles as `Sheet`'s `description` (one node doing both jobs — see the
+     component's own docblock). */
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.06em;
+    line-height: 1.7;
+    color: var(--color-ink-faint);
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  .rows > li + li {
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /* The row: two sibling controls, never one nested in the other — a
+     `<button>` cannot contain a second one, and `MOVE` addresses a
+     different register (residence) than the body (status). */
+  .row {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-8);
+  }
+
+  /* Drawn at 48 explicitly, ruling O's "stating it was the fix": this is the
+     row's primary control, not a secondary action leaning on a floor. */
+  .rowButton {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    flex: 1;
+    min-width: 0;
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    padding-inline: var(--space-4);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  /* `flex`, not the `<span>`'s default inline — `PiecePicker`'s own note:
+     an unstyled wrapper around a single inline-flex child blockifies into a
+     line box a few px taller than the circle, off-centring it. */
+  .circleWrap {
+    display: flex;
+    flex: none;
+  }
+
+  .statusName {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* The row's own residence — `▸ DUFFEL 90 L`, or `LOOSE`. Mono, and it is
+     the one part of the row allowed to truncate: a name is short and fixed,
+     a container's ancestry is not. */
+  .residence {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
+  /*
+   * The trailing accent `MOVE` — the People-row idiom: accent text at the
+   * row's far edge, painted at its own size rather than leaning on the
+   * retired global floor (ruling O), with a non-painting `::after` reaching
+   * the row's own 48px so the tap target is still ≥44. Vertical-only,
+   * `EntryRow`'s `.pieceControl` precedent: the row's own flex `gap` already
+   * separates this from the body button, so there is nothing to clamp
+   * sideways, and the row above/below — separated only by `.rows > li + li`'s
+   * border, no gap — is the real risk.
+   */
+  .move {
+    position: relative;
+    flex: none;
+    align-self: center;
+    margin-inline-end: var(--space-4);
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  .move::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem 0;
+  }
+
+  .setEveryone {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding-top: var(--space-8);
+  }
+
+  .setEveryoneLabel {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
+  .chips {
+    display: flex;
+    gap: var(--space-8);
+  }
+
+  /* Drawn at 44 explicitly — the status pill's own grammar, and the pill's
+     own floor: no clamp needed because the paint already reaches it. */
+  .chip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    flex: 1;
+    min-height: max(2.75rem, 44px);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-primary);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  .close {
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}

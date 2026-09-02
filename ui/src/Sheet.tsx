@@ -23,7 +23,8 @@ import styles from './Sheet.module.css'
  *
  * **The accessible name is the visible title.** `Dialog.Title` carries it, so
  * a name cannot drift away from the words on screen the way a parallel
- * `aria-label` can.
+ * `aria-label` can. {@link description} extends what a reader hears on open
+ * without touching the name itself — see its own doc.
  */
 export interface SheetProps {
   /** Drawn as the heading, and the sheet's accessible name. */
@@ -32,6 +33,22 @@ export interface SheetProps {
   onClose: () => void
   /** Sits opposite the title. Only `HomePicker`'s EDIT/DONE toggle uses it. */
   titleAction?: ReactNode
+  /**
+   * The sheet's single describing paragraph, wired to `Dialog.Description`
+   * so a screen reader reads it right after the title on open — name plus
+   * description, the platform-idiomatic way to announce "what this is and
+   * how far along it is" without folding the second fact into the name
+   * itself (which would make the name a superset of the visible title and
+   * spend the invariant above).
+   *
+   * **One node doing both jobs.** Pass the caller's own visible fact line
+   * (`PieceStatusSheet`'s `PACKING STATUS · 1 OF 3 PACKED`) directly —
+   * `Sheet` renders it `asChild`, wiring Radix's id and `aria-describedby`
+   * onto that element rather than wrapping it in a second one. A caller
+   * with no such line omits this, exactly as every caller did before it
+   * existed.
+   */
+  description?: ReactNode
   /**
    * From Split (52em) up, draw a centred bordered card with no scrim and no
    * grabber instead of a bottom sheet.
@@ -51,6 +68,7 @@ function SheetRoot({
   title,
   onClose,
   titleAction,
+  description,
   desktopCard = false,
   children,
 }: SheetProps) {
@@ -88,9 +106,14 @@ function SheetRoot({
               : styles['sheet']
           }
           tabIndex={-1}
-          // Our pickers have no single describing paragraph, and Radix warns
-          // about a missing `Description` unless it is told so explicitly.
-          aria-describedby={undefined}
+          // The default, for pickers with no describing paragraph — Radix
+          // warns about a missing `Description` unless told so explicitly.
+          // A caller with one passes `description`, and then this is
+          // omitted so Radix wires its own `Dialog.Description` id here
+          // instead.
+          {...(description === undefined
+            ? { 'aria-describedby': undefined }
+            : {})}
           // Radix focuses the first tabbable control. In `HomePicker` that is
           // the EDIT toggle — the one control that suspends the task the
           // sheet was opened for. Focus the sheet instead: the reader hears
@@ -115,6 +138,9 @@ function SheetRoot({
               <Dialog.Title className={styles['title']}>{title}</Dialog.Title>
               {titleAction}
             </div>
+          )}
+          {description !== undefined && (
+            <Dialog.Description asChild>{description}</Dialog.Description>
           )}
           {children}
         </Dialog.Content>

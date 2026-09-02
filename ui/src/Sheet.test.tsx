@@ -141,4 +141,38 @@ describe('Sheet', () => {
     expect(screen.getByRole('button', { name: 'EDIT' })).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Home' })).toBeInTheDocument()
   })
+
+  it('wires a description without touching the accessible name', async () => {
+    const user = userEvent.setup()
+    function WithDescription() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open
+          </button>
+          {open && (
+            <Sheet
+              title="Home"
+              onClose={() => setOpen(false)}
+              description={<p>2 of 3 packed</p>}
+            >
+              <p>rows</p>
+            </Sheet>
+          )}
+        </>
+      )
+    }
+    render(<WithDescription />)
+    await user.click(screen.getByRole('button', { name: 'Open' }))
+
+    // The name is still exactly the title — `description` adds a second,
+    // separate announcement rather than folding into the first.
+    const sheet = screen.getByRole('dialog', { name: 'Home' })
+    const description = screen.getByText('2 of 3 packed')
+    expect(sheet).toHaveAttribute('aria-describedby', description.id)
+    // `asChild`: the caller's own `<p>` carries the wiring, so there is no
+    // second wrapper node duplicating its text.
+    expect(description.tagName).toBe('P')
+  })
 })
