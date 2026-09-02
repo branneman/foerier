@@ -77,7 +77,9 @@ import styles from './PackPicker.module.css'
  *
  * ## Selection moves and closes; the confirm is the caller's
  *
- * A tap calls `onSelect` and then `onClose`. Whether a confirm is owed is
+ * A tap calls `onSelect` and then `onClose` — **including a tap on the
+ * `● NOW` row**, which the caller is the one that must drop; see
+ * {@link PackPickerProps.onSelect}. Whether a confirm is owed is
  * ruling A2b's question and it is decided by *what is moving* — a container
  * move confirms, a plain Entry or Piece move does not — which is a fact the
  * caller holds and this sheet does not. {@link ContainerMoveConfirm} is
@@ -87,18 +89,39 @@ export interface PackPickerProps {
   /** The Trip whose containers are the destinations. */
   tripId: string
   onClose: () => void
+  /**
+   * The destination that was tapped, followed immediately by `onClose`.
+   *
+   * **A selection equal to {@link current} is still reported, and suppressing
+   * it is the caller's job.** This sheet is pure selection: it holds no Trip,
+   * emits nothing, and a tap on the `● NOW` row is a legitimate thing for a
+   * Quartermaster to do — the sheet cannot know whether the caller means to
+   * author an op from it. But a redundant `trip.entry_moved` **moves the
+   * stamp LWW compares** and reorders nothing for the better, so the caller
+   * must drop a residence equal to the one it passed as `current` — exactly
+   * as the trip screen's SET PHASE emits nothing when the phase tapped is
+   * the phase the Trip is already in. `HomePicker` has the identical gap and
+   * the identical contract.
+   */
   onSelect: (residence: TripResidence) => void
   /** The sheet's heading: the name of the thing being placed. */
   title: string
   /**
    * The Entry being moved, when it is a container. It and its whole subtree
-   * are not offered — invariant 3. Omit when the thing being placed cannot
-   * hold anything (a plain Entry, a Piece), where there is no cycle to author.
+   * are not offered — invariant 3 — and it is what the `… ARE NOT OFFERED.`
+   * footer names. Omit when the thing being placed cannot hold anything (a
+   * plain Entry, a Piece), where there is no cycle to author: the footer goes
+   * with it, because there is then no exclusion for it to describe.
    */
   excludeEntryId?: string
   /** Where it rides right now, marked `● NOW`. */
   current?: TripResidence
-  /** The context line, and what a container move's confirm will restate. */
+  /**
+   * The context line, and what a container move's confirm will restate.
+   *
+   * **Independent of {@link excludeEntryId}**: a plain Entry or a Piece move
+   * passes this and no exclusion, because neither can hold anything.
+   */
   moving?: { name: string; insideCount: number }
 }
 
@@ -111,8 +134,10 @@ interface ContainerRow {
   depth: number
   /** The ancestry the cap hid, `CRATE B ▸ STUFF SACK`, or `''`. */
   skipped: string
-  /** `stageLabel`'s answer, or `null` for a row with no journey to state. */
-  stage: string | null
+  /** `stageLabel`'s answer. Never absent: every row here is a container, and
+   * a container always has a journey (`stageOf` reads an unset register as
+   * `home`). */
+  stage: string
 }
 
 /** Indent 16px per level, capped at **two** — `HomePicker`'s own constant and
@@ -175,6 +200,12 @@ function containerRowsUnder(
     .map((id) => trip.entries?.[id])
     .filter((entry): entry is EntryState => entry !== undefined)
     .filter((entry) => isContainerEntry(entry, state))
+    // The `??` arms are **unreachable** and exist for `Map.get`'s signature,
+    // not for a real case: `childrenOf` only ever yields ids
+    // `tripContainmentView` took from `entriesOf`, and `order` indexes that
+    // same list. Kept rather than asserted away — nothing here comes through
+    // a cast — and named so the next reader does not go looking for the
+    // input that produces them.
     .sort(
       (a, b) =>
         (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
@@ -184,6 +215,12 @@ function containerRowsUnder(
   const rows: ContainerRow[] = []
   for (const entry of here) {
     const stage = stageOf(entry, state)
+    // `stageOf` answers `null` for a non-container and nothing else, and
+    // `here` is filtered to containers one block above — so this is a
+    // **narrowing, not a case**, exactly as `tripContainment.ts`'s own
+    // `lowestEdgeOf` skip is. Dropping a row here would be a bug; there is
+    // no row to drop.
+    if (stage === null) continue
     const source = entry.source?.value
     rows.push({
       entryId: entry.id,
@@ -199,7 +236,7 @@ function containerRowsUnder(
               .map((segment) => segment.name)
               .join(' ▸ ')
           : '',
-      stage: stage === null ? null : stageLabel(stage),
+      stage: stageLabel(stage),
     })
     rows.push(
       ...containerRowsUnder(
@@ -235,18 +272,26 @@ export function PackPicker({
   moving,
 }: PackPickerProps) {
   const state = useDepot((depot) => depot.state)
-  const trip: TripState | undefined = state.trips[tripId]
 
-  const { rows, hasContainer } = useMemo<{
+  // The Trip is looked up **inside** the memo: it is derived from `state` and
+  // never varies independently of it, so naming both in the dependency list
+  // would state a variation that cannot happen.
+  const { rows, hasContainer, excludedName } = useMemo<{
     rows: readonly ContainerRow[]
     hasContainer: boolean
+    excludedName: string | null
   }>(() => {
-    if (trip === undefined) return { rows: [], hasContainer: false }
+    const trip: TripState | undefined = state.trips[tripId]
+    if (trip === undefined) {
+      return { rows: [], hasContainer: false, excludedName: null }
+    }
     const view = tripContainmentView(trip, state)
     const entries = entriesOf(trip, state)
     const order = new Map<string, number>(
       entries.map((entry, index): [string, number] => [entry.id, index]),
     )
+    const excludedEntry =
+      excludeEntryId === undefined ? undefined : trip.entries?.[excludeEntryId]
     return {
       rows: containerRowsUnder(
         trip,
@@ -261,8 +306,14 @@ export function PackPicker({
       // leaves nothing to offer, and `No containers on this trip yet.` would
       // then be false. The footer already says why that list is short.
       hasContainer: entries.some((entry) => isContainerEntry(entry, state)),
+      // The footer's subject is the **excluded Entry**, so its name comes
+      // from that Entry rather than from `moving` — see the footer itself.
+      // An Entry this replica cannot see gets no footer at all: a line
+      // reading `— AND EVERYTHING INSIDE IT …` names nothing.
+      excludedName:
+        excludedEntry === undefined ? null : entryLabel(excludedEntry, state),
     }
-  }, [trip, state, excludeEntryId])
+  }, [state, tripId, excludeEntryId])
 
   function choose(residence: TripResidence) {
     onSelect(residence)
@@ -345,7 +396,7 @@ export function PackPicker({
                     the stage everywhere else. */}
                 {isNow ? (
                   nowMark
-                ) : row.stage === null ? null : (
+                ) : (
                   <span className={styles['stage']}>{row.stage}</span>
                 )}
               </button>
@@ -365,9 +416,17 @@ export function PackPicker({
         </>
       )}
 
-      {moving !== undefined && (
+      {/* Gated on the **exclusion**, not on `moving`, and named by the
+          excluded Entry rather than by `moving.name`. The two props do not
+          travel together: `moving` supplies the context line for a plain
+          Entry or a Piece move too, and those pass no `excludeEntryId`
+          because they can hold nothing — so a footer drawn on `moving` would
+          state something false about the list beneath it. `HomePicker`'s
+          identical line is safe only because its one `MOVE` caller always
+          sets both. */}
+      {excludedName !== null && (
         <p className={styles['fact']} data-testid="moving-footer">
-          {moving.name} AND EVERYTHING INSIDE IT ARE NOT OFFERED.
+          {excludedName} AND EVERYTHING INSIDE IT ARE NOT OFFERED.
         </p>
       )}
 

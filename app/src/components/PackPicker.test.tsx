@@ -317,19 +317,82 @@ describe('the Pack picker', () => {
     expect(within(rowFor('Duffel 90 L')).queryByText('TRIP-ONLY')).toBeNull()
   })
 
+  /**
+   * **The one test in this file whose failure mode is a cycle authored on a
+   * single Device** — invariant 3 for the trip world — so it goes three
+   * levels deep on purpose. `Stuff sack` alone would prove nothing beyond a
+   * one-level `childrenOf(…).filter`: `Pouch` is the **grandchild**, and it
+   * is what separates a transitive walk from a single hop.
+   */
   it('omits the moved Entry and its whole subtree, at any depth', async () => {
-    const { store, crate } = await aTripWithContainers()
+    const { store, crate, sack } = await aTripWithContainers()
+    const pouchGear = anId()
+    const pouch = anId()
+    for (const spec of [
+      gearRecorded(pouchGear, {
+        name: 'Pouch',
+        container: true,
+        kind: 'single',
+      }),
+      tripEntryAdded(TRIP, pouch, { from: 'depot', gearId: pouchGear }),
+      // Crate B ▸ Stuff sack ▸ Pouch: two levels below the excluded Entry.
+      tripEntryMoved(TRIP, pouch, { in: 'container', entryId: sack }),
+    ]) {
+      store.getState().emit(spec)
+    }
+    await store.getState().drained()
+
     renderPicker(store, {
       excludeEntryId: crate,
       moving: { name: 'Crate B', insideCount: 5 },
     })
 
-    // Invariant 3 for the trip world — and the one thing that stops a cycle
-    // being authored on a single Device at all. Scoped to the rows: the
-    // sheet's own title *is* the moved gear's name, and the context line and
-    // the footer both state it too.
+    // Scoped to the rows: the sheet's own title *is* the moved gear's name,
+    // and the context line and the footer both state it too.
     expect(rowNames()).not.toContain('Crate B')
     expect(rowNames()).not.toContain('Stuff sack')
+    expect(rowNames()).not.toContain('Pouch')
+    // The rest of the Trip is untouched by the exclusion.
+    expect(rowNames()).toEqual(['Loose', 'Duffel 90 L'])
+    expect(screen.getByTestId('moving-footer')).toHaveTextContent(
+      'Crate B AND EVERYTHING INSIDE IT ARE NOT OFFERED.',
+    )
+  })
+
+  /**
+   * **The footer is about the exclusion, not about `moving`.** The two props
+   * do not travel together: a plain Entry or a Piece move passes `moving`
+   * for its context line and **no** `excludeEntryId`, because neither can
+   * hold anything. A footer drawn on `moving` would then state something
+   * false about the list beneath it — every container is offered, and the
+   * line would claim one was withheld.
+   */
+  it('draws no exclusion footer for a move that excludes nothing', async () => {
+    const { store } = await aTripWithContainers()
+    renderPicker(store, { moving: { name: 'Headlamp', insideCount: 0 } })
+
+    expect(screen.getByTestId('moving-context')).toHaveTextContent(
+      'MOVING Headlamp · 0 INSIDE RIDE ALONG',
+    )
+    expect(screen.queryByTestId('moving-footer')).toBeNull()
+    // Nothing was withheld, and the list says so.
+    expect(rowNames()).toEqual([
+      'Loose',
+      'Crate B',
+      'Stuff sack',
+      'Duffel 90 L',
+    ])
+  })
+
+  /**
+   * And the mirror: the footer names the **excluded Entry**, from the Entry
+   * itself, so it stands without `moving` at all.
+   */
+  it('names the excluded Entry in the footer without a context line', async () => {
+    const { store, crate } = await aTripWithContainers()
+    renderPicker(store, { excludeEntryId: crate })
+
+    expect(screen.queryByTestId('moving-context')).toBeNull()
     expect(screen.getByTestId('moving-footer')).toHaveTextContent(
       'Crate B AND EVERYTHING INSIDE IT ARE NOT OFFERED.',
     )
@@ -435,6 +498,29 @@ describe('the Pack picker', () => {
     const { store, duffel } = await aTripWithContainers()
     const user = userEvent.setup()
     const { selected, closes } = renderPicker(store)
+
+    await user.click(within(rowFor('Duffel 90 L')).getByRole('button'))
+
+    expect(selected).toEqual([{ in: 'container', entryId: duffel }])
+    expect(closes()).toBe(1)
+  })
+
+  /**
+   * **A no-op selection is reported, not swallowed.** This sheet is pure
+   * selection — it holds no Trip and emits nothing — so it cannot know
+   * whether the caller means to author an op from a tap on the `● NOW` row.
+   * The caller drops a residence equal to the `current` it passed, exactly as
+   * the trip screen's SET PHASE emits nothing for the phase a Trip is already
+   * in; a redundant `trip.entry_moved` would move the stamp LWW compares.
+   * `HomePicker` has the identical gap and the identical contract, and Task
+   * 10's caller carries the test that proves the suppression.
+   */
+  it('reports a tap on the current residence, leaving the caller to drop it', async () => {
+    const { store, duffel } = await aTripWithContainers()
+    const user = userEvent.setup()
+    const { selected, closes } = renderPicker(store, {
+      current: { in: 'container', entryId: duffel },
+    })
 
     await user.click(within(rowFor('Duffel 90 L')).getByRole('button'))
 

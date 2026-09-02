@@ -71,6 +71,10 @@ export function ContainerMoveConfirm({
 }: ContainerMoveConfirmProps) {
   return (
     <Confirm
+      // Stated rather than inherited: this docblock claims the card, and a
+      // claim that rests on another component's default rots silently the
+      // day that default changes.
+      variant="card"
       title={`Move ${movingName} into ${destinationName}?`}
       description={
         <>
