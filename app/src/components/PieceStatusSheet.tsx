@@ -126,8 +126,16 @@ interface StatusRow {
  * unrecognised status (the open-enum case `isKnownStatus` names elsewhere)
  * draws `control`, the same bordered default `not_packed` draws — there is
  * no fill to invent for a status this build has never heard of.
+ *
+ * **Exported so that it stays one place.** `PackingRow`'s 34px cluster
+ * paints the same three fills for the same three statuses, and a second
+ * copy would drift the way `ownerOf` and `phaseOf` keep warning about: the
+ * symptom is a circle drawn half-filled on the row and solid in the sheet
+ * that row opens, for one Piece, at the same instant.
  */
-function toneForStatus(status: StatusValue): 'control' | 'filled' | 'half' {
+export function toneForStatus(
+  status: StatusValue,
+): 'control' | 'filled' | 'half' {
   if (isPacked(status)) return 'filled'
   if (status === 'staged') return 'half'
   return 'control'
@@ -146,8 +154,13 @@ function toneForStatus(status: StatusValue): 'control' | 'filled' | 'half' {
  * 90 L`), the same single-name form ALL mode's meta line uses for a trip
  * residence. A nested `▸ Crate B ▸ Duffel 90 L` would be a different read
  * from the one drawn, so do not "improve" this into `tripPath`'s ancestry.
+ *
+ * **Exported for {@link toneForStatus}'s reason.** A per-Piece packing row
+ * draws the identical segment, and two copies of "what does an absent
+ * container read as" is exactly the drift this file's own header warns
+ * about one paragraph up.
  */
-function residenceLabel(
+export function residenceLabel(
   trip: TripState,
   state: DepotState,
   residence: TripResidence,

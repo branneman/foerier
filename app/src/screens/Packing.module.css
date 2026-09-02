@@ -257,6 +257,174 @@
     font: var(--text-body) var(--font-ui);
   }
 
+  /* CONTAINER mode's groups. No gap between them: a group is a surface band
+     followed by its rows, and the next band's own top border is the seam. */
+  .groups {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /*
+   * **The indent, as a step.** 16px per level, capped at two levels below
+   * the top container (ruling A4, the Home picker's rule verbatim). It rides
+   * a custom property rather than a padding of its own, because the value
+   * has to reach `PackingRow.module.css`'s `.row` — CSS modules scope class
+   * names, and custom properties inherit straight through that boundary.
+   * Past the cap the header states its skipped ancestry instead.
+   */
+  .group {
+    --packing-indent: 0px;
+  }
+
+  .group[data-indent='1'] {
+    --packing-indent: 1rem;
+  }
+
+  .group[data-indent='2'] {
+    --packing-indent: 2rem;
+  }
+
+  /*
+   * The group header: surface, a 48px body row, then the rail, then the
+   * optional ▲ line — one 12px-gapped column, and the gaps are what the
+   * rail chip's hit extension grows into.
+   *
+   * **No `overflow` here.** A clipped descendant is not hit-testable, and
+   * every chip in the rail below depends on an `::after` that starts
+   * outside this element's padding box.
+   */
+  .groupHeader {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    padding-inline-start: calc(var(--space-16) + var(--packing-indent));
+    background: var(--color-bg-surface);
+    border-top: var(--stroke-rule) solid var(--color-rule);
+  }
+
+  /*
+   * *Where it goes* for the container itself — the header's own body, and
+   * the group's half of the row's two targets.
+   *
+   * Drawn ≥48 rather than at the board's text height, and that is ruling
+   * O's standalone rule rather than an exception to it: no board draws a
+   * control here at all, so there is no drawn size to preserve, and a
+   * clamped extension would have to grow into the 12px gap the rail chip's
+   * own extension already occupies. `Loose` renders the same box as a plain
+   * `<div>` — a holder is not an Entry, so there is nothing to move.
+   */
+  .headerBody {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    min-height: max(3rem, 48px);
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .headerBody:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  .headerMain {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .headerNameLine {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+  }
+
+  /* 16/600 — the board's group name. */
+  .groupName {
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-ink-primary);
+    overflow-wrap: anywhere;
+  }
+
+  /* `Loose` is muted: it names the absence of a container rather than one. */
+  .looseName {
+    color: var(--color-ink-muted);
+  }
+
+  /* `NOT IN A CONTAINER`, and the ancestry a capped indent no longer says. */
+  .groupMeta {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* `9/12` — contents at any depth for a container, its own rows for
+     `Loose`. Tabular so the numerator does not shuffle as it is tapped. */
+  .groupCount {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Ruling A14's amber tag, `EntryRow`'s encoding: a trip-only container is
+     an ordinary group plus this. */
+  .badge {
+    padding: 2px 5px;
+    border: var(--stroke-rule) solid
+      color-mix(in srgb, var(--color-brand-amber) 50%, transparent);
+    border-radius: var(--radius-badge);
+    color: var(--color-brand-amber);
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+
+  /* `▲ IN CAR · 3 INSIDE NOT PACKED` — the board's mono amber line. */
+  .disagreement {
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--color-status-staged);
+  }
+
+  /* The system's attention class — *missing, lost, disagreement*, never
+     progress — on the mark alone, so the count beside it stays the ledger
+     stating a number. `TripCard.module.css` carries the identical pair. */
+  .attention {
+    color: var(--color-status-attention);
+  }
+
+  .rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Where a group comes from, for a Trip that has none. The `0 ENTRIES.`
+     register: a domain fact, stated once under the last row. */
+  .fact {
+    padding: var(--space-16);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
   /* `No such trip.` — gear detail's `No such gear.` in this screen's voice. A
      Trip the fold has never seen, which is a different fact from one that
      exists and carries nothing. */

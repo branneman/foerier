@@ -253,7 +253,17 @@ function containerRowsUnder(
   return rows
 }
 
-function sameTripResidence(
+/**
+ * Two `TripResidence`es naming the same place — `loose` carries no id, so
+ * two loose pointers are equal by their `in` alone.
+ *
+ * **Exported because the suppression it serves is the caller's job.**
+ * {@link PackPickerProps.onSelect} reports a tap on the `● NOW` row like any
+ * other, and every caller has to drop a selection equal to the `current` it
+ * passed; sharing the comparison is what stops one of them deciding
+ * *equal* differently from the sheet that drew the mark.
+ */
+export function sameTripResidence(
   a: TripResidence | undefined,
   b: TripResidence,
 ): boolean {

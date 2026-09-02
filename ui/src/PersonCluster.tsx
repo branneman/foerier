@@ -61,7 +61,9 @@ export interface PersonClusterEntry {
 export interface PersonClusterProps {
   /** The roster, in arrival order — see the dashed-sorts-first note above. */
   people: readonly PersonClusterEntry[]
-  /** 22 · 24 · 30 — passed straight through to every `PersonCircle`. */
+  /** 22 · 24 · 28 · 30 · 34 — passed straight through to every
+   * `PersonCircle`, whose own docblock carries the scale and what each
+   * band is for. */
   size: PersonCircleProps['size']
   /** The cluster's accessible name, rendered as this element's `aria-label`. */
   label: string

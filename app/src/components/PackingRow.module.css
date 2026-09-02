@@ -1,0 +1,183 @@
+@layer components {
+  /*
+   * Rows are ≥64 (`docs/design/README.md`'s list-row anatomy: "packing rows
+   * ≥64"), side padding 16, and the two targets sit at opposite ends of it.
+   *
+   * **No `overflow` anywhere in this file.** Both controls carry ruling O's
+   * hit extensions, and a clipped descendant is not hit-testable — the trap
+   * `Packing.module.css`'s `.segmented` records in full.
+   */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    min-height: 4rem;
+    padding: var(--space-12) var(--space-16);
+    /* The nesting indent, handed down by the group this row sits in
+       (`Packing.module.css`'s `.group`). A custom property crosses the CSS
+       modules boundary that a class name cannot, and the border still spans
+       the full width because padding is inside the border box — the board's
+       own nested-row anatomy. */
+    padding-inline-start: calc(var(--space-16) + var(--packing-indent, 0px));
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /* *Where it goes* — the row body, and the whole of the row that the right
+     edge does not take. It needs no hit extension of its own: it is the
+     ≥64px row minus its own padding, which is already past 48. */
+  .body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .body:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  .nameLine {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  /* HEADING at list density — 16/22, the board's own row title. */
+  .name {
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    line-height: 1.375rem;
+    font-weight: 600;
+    color: var(--color-ink-primary);
+    overflow-wrap: anywhere;
+  }
+
+  /* `— ELS'S PIECE`, faint mono beside the name: whose Piece this row is,
+     drawn only on a per-Piece row. */
+  .piece {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* `EntryRow`'s badge, same encoding: amber, bordered, radius 3 — a name
+     adjunct rather than trailing-column content. */
+  .badge {
+    padding: 2px 5px;
+    border: var(--stroke-rule) solid
+      color-mix(in srgb, var(--color-brand-amber) 50%, transparent);
+    border-radius: var(--radius-badge);
+    color: var(--color-brand-amber);
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+
+  /* `SHARED · ×1`, `PER-PERSON · 1/3`, `NOT IN DEPOT`, `▸ DUFFEL 90 L` —
+     mono 11, muted, tabular so a count does not shuffle as it is tapped. */
+  .meta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+  }
+
+  /*
+   * *How far along* — the status pill at the row's right edge, the thumb
+   * side.
+   *
+   * **It states its own 44** (`docs/design/README.md`'s touch rule: "status
+   * pill min 44") rather than leaning on any floor, and it paints that 44,
+   * so there is no extension to clamp and nothing that can reach across the
+   * row body beside it. The board's own padding is 11px 14px.
+   */
+  .pill {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-height: max(2.75rem, 44px);
+    padding: 11px 14px;
+    border: var(--stroke-chip) solid var(--color-status-not-packed);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-status-not-packed);
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .pill:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* Never colour alone: the glyph and the word already carry the state, and
+     these two tint the pill the status grammar's own way. */
+  .pill[data-status='staged'] {
+    border-color: var(--color-status-staged);
+    background: color-mix(in srgb, var(--color-status-staged) 8%, transparent);
+    color: var(--color-status-staged);
+  }
+
+  .pill[data-status='packed'] {
+    border-color: var(--color-status-packed);
+    background: color-mix(in srgb, var(--color-status-packed) 8%, transparent);
+    color: var(--color-status-packed);
+  }
+
+  /*
+   * The per-person row's other track: the cluster **and nothing smaller**.
+   * Ruling B at 34px — a 44px target on a 39px pitch puts a tap meant for
+   * one Person on their neighbour — so this one control wraps every circle
+   * and no circle is a target.
+   *
+   * Circles paint 34 (`display needs no target's air`); the control grows to
+   * the row's own 48 through a clamped, non-painting `::after`, exactly as
+   * `EntryRow`'s cluster control does. The clamp is vertical only: the row
+   * body sits immediately beside it, and a horizontal extension would take
+   * taps meant for *where it goes*.
+   */
+  .cluster {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  /* 34 painted + 7 above and below = 48, clamped inside a ≥64px row. */
+  .cluster::after {
+    content: '';
+    position: absolute;
+    inset: -0.4375rem 0;
+  }
+
+  .cluster:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* `display: contents` so the wrapper adds no line box of its own —
+     `PersonCircle`'s own layout-shift note, and `NewTrip.tsx`'s pattern. */
+  .clusterWrap {
+    display: contents;
+  }
+}

@@ -1,0 +1,71 @@
+@layer components {
+  /* Four chips on one line, wrapping only where a narrow container forces
+     it. **No `overflow` of any kind**: the chips' hit extensions are
+     `::after` pseudo-elements, and a clipped descendant is not
+     hit-testable — the trap Task 9 paid for on `.segmented`. */
+  .rail {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  /* Painted at the phase chip's own drawn size (ruling O: a drawn size is
+     the painted size), never floored to 48. */
+  .chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    flex: none;
+    padding: var(--space-4) var(--space-8);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  /* 24px painted + 12px above and below = the 48px target — the phase
+     chip's answer (§5c O), and clamped at the header row: the group
+     header is a 12px-gapped column, so this reaches exactly its own gaps
+     and never the header body's target above or the first gear row below.
+
+     **Vertically only.** The chips sit 4px apart on one line, so a
+     horizontal extension would put a tap meant for `CAR` on `PACKED` —
+     ruling B's arithmetic in the other axis. */
+  .chip::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem 0;
+  }
+
+  .chip:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* Bordered + muted + `✓`: been there. */
+  .chip[data-stage-state='past'] {
+    color: var(--color-ink-muted);
+  }
+
+  /* Inverted, and **undimmed** — the strongest paint on the answer a reader
+     at arm's length in a garage actually wants. */
+  .chip[data-stage-state='current'] {
+    border-color: var(--color-ink-primary);
+    background: var(--color-ink-primary);
+    color: var(--color-bg-base);
+    font-weight: 600;
+  }
+
+  /* Dashed + dim: **dim means future**, and this is the only rule in this
+     file that says so. */
+  .chip[data-stage-state='future'] {
+    border-style: dashed;
+    color: var(--color-ink-dim);
+  }
+}
