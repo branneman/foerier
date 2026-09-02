@@ -45,7 +45,12 @@ import type { OpEnvelope } from './ops.ts'
 import { overClaims, overClaimsFor } from './selectors/claim.ts'
 import { containmentView } from './selectors/containment.ts'
 import { entriesOf } from './selectors/entry.ts'
-import { isPacked, stageOf, statusOf } from './selectors/packing.ts'
+import {
+  disagreements,
+  isPacked,
+  stageOf,
+  statusOf,
+} from './selectors/packing.ts'
 import { piecesOf } from './selectors/piece.ts'
 import { isActive } from './selectors/trip.ts'
 import { tripContainmentView } from './selectors/tripContainment.ts'
@@ -1739,10 +1744,14 @@ describe('convergence', () => {
    * are two different registers on the same Entry, so no merge can ever make
    * them agree. Device A moves the stove into the duffel; Device B marks it
    * `not_packed`. Both apply — regardless of which order the two exchange —
-   * and the disagreement (a packed-for-the-car duffel holding an unpacked
-   * stove) survives on both replicas rather than being resolved away. That
-   * disagreement is exactly what `packing.ts`'s `disagreements` exists to
-   * surface, not to prevent.
+   * and the disagreement survives on both replicas rather than being resolved
+   * away.
+   *
+   * The duffel is staged `car` (uncontested, by A alone, before the race) so
+   * the disagreement is a real one: `packing.ts`'s `disagreements` fires on
+   * `car` and `packed` only ({@link stageDisagreementLabel}), and this pins
+   * that it actually does, on both replicas — not merely that the two
+   * registers hold the values a reader would expect.
    */
   it('keeps residence and status apart, so no merge can make them agree', () => {
     const { clock, a, b } = aWorld()
@@ -1765,11 +1774,15 @@ describe('convergence', () => {
         container: false,
       }),
     )
+    // Uncontested — the duffel is already in the car before the race below,
+    // so the disagreement this test produces is one `disagreements` actually
+    // fires on (`car`, not `home`).
+    a.emit(tripContainerStageSet(trip, duffel, 'car'))
     exchange(a, b)
 
     // Neither device has seen the other's op when it authors its own.
     clock.advance(1000)
-    b.emit(tripEntryStatusSet(trip, stove, 'not_packed'))
+    const notPacked = b.emit(tripEntryStatusSet(trip, stove, 'not_packed'))
     clock.advance(1000)
     a.emit(tripEntryMoved(trip, stove, { in: 'container', entryId: duffel }))
     // `exchange` hands each replica the pair in the opposite order to the
@@ -1779,18 +1792,35 @@ describe('convergence', () => {
     expect(a.state()).toEqual(b.state())
     for (const r of [a, b]) {
       const state = r.state()
-      const entry = state.trips[trip]!.entries![stove]!
+      const tripState = state.trips[trip]!
+      const entry = tripState.entries![stove]!
       // Two different registers, and both writes stand — the merge has no
       // basis to make them agree.
       expect(entry.residence!.value).toEqual({
         in: 'container',
         entryId: duffel,
       })
-      expect(entry.status!.value).toBe('not_packed')
+      // The whole register, not merely the value: `not_packed` is also
+      // `statusOf`'s default for an absent register, so pinning only the
+      // value cannot tell "B's write survived" apart from "nothing ever
+      // wrote this field".
+      expect(entry.status).toEqual({
+        value: 'not_packed',
+        hlc: notPacked.hlc,
+        deviceId: notPacked.device_id,
+      })
       expect(statusOf(entry, state)).toBe('not_packed')
-      expect(
-        tripContainmentView(state.trips[trip]!, state).holderOf(stove),
-      ).toEqual({ kind: 'container', entryId: duffel })
+      expect(tripContainmentView(tripState, state).holderOf(stove)).toEqual({
+        kind: 'container',
+        entryId: duffel,
+      })
+
+      // The disagreement this shape is meant to produce, surfaced rather
+      // than prevented: the packed-for-the-car duffel holds one unpacked
+      // Piece.
+      expect(disagreements(tripState, state)).toEqual([
+        { entryId: duffel, label: 'IN CAR', notPacked: 1 },
+      ])
     }
   })
 
