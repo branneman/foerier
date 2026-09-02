@@ -188,22 +188,24 @@ export function PieceStatusSheet({
         residence: item.residence,
       })
     }
-    return tripParticipants(state, trip)
-      .filter((person) => byPerson.has(person.id))
-      .map((person) => {
-        // Never `undefined` here — the `filter` above proves the key
-        // exists; `??` states that rather than reaching for `!`.
-        const item = byPerson.get(person.id) ?? {
-          status: 'not_packed' as StatusValue,
-          residence: { in: 'loose' } as const,
-        }
-        return {
+    // `flatMap` rather than `.filter(...).map(...)`: the lookup and the
+    // inclusion test are the same map access, so doing both in one pass
+    // means the `undefined` case a separate filter-then-map would leave for
+    // `map` to explain away never arises in the first place — an empty
+    // array skips the row, a one-element array keeps it, and there is no
+    // branch left to fill with a fallback (or a cast) that can never run.
+    return tripParticipants(state, trip).flatMap((person) => {
+      const item = byPerson.get(person.id)
+      if (item === undefined) return []
+      return [
+        {
           personId: person.id,
           label: person.label,
           status: item.status,
           residenceLabel: residenceLabel(trip, state, item.residence),
-        }
-      })
+        },
+      ]
+    })
   }, [state, trip, entry, entryId])
 
   if (trip === undefined || entry === undefined) return null
