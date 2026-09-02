@@ -300,10 +300,24 @@ export type PackingItem =
       residence: TripResidence
     }
 
-/** One shared instance, for `tripContainment.ts`'s own `LOOSE`'s reason: it
+/**
+ * One shared instance, for `tripContainment.ts`'s own `LOOSE`'s reason: it
  * carries no id, so there is nothing to distinguish, and freezing it keeps
- * the singleton safe to hand out from every item. */
-const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
+ * the singleton safe to hand out from every item.
+ *
+ * **Exported, and named for the world it belongs to.** `app/` had grown two
+ * more copies of this three-word literal — F4's screen and its row, each
+ * reading an absent `residence` register the same way — which is one
+ * definition of *loose on a Trip* per file rather than per codebase. The
+ * `TRIP_` prefix is what keeps it apart from the home world's own loose
+ * holder (`containment.ts`'s `HolderRef`): the two are different shapes for
+ * different aggregates, and an unqualified `LOOSE` on the index would invite
+ * exactly the two-worlds confusion the domain model spends a section on.
+ */
+export const TRIP_LOOSE: TripResidence = Object.freeze({ in: 'loose' })
+
+/** The module-internal spelling, unchanged at its call sites below. */
+const LOOSE = TRIP_LOOSE
 
 /**
  * Every item on the Trip, in {@link entriesOf} order with a per-person

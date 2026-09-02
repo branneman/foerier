@@ -13,7 +13,7 @@ import {
   statusOf,
   tripEntryStatusSet,
   tripPieceStatusSet,
-  UNNAMED_PERSON_GLYPH,
+  TRIP_LOOSE,
   type PackingItem,
   type StatusValue,
   type TripResidence,
@@ -21,6 +21,7 @@ import {
 import { PersonCluster } from '@foerier/ui'
 import { useMemo } from 'react'
 
+import { personInitial } from '../depot/people'
 import { useDepot } from '../depot/store'
 import { tripParticipants } from '../depot/trips'
 import { sameTripResidence } from './PackPicker'
@@ -130,11 +131,17 @@ import { residenceLabel, toneForStatus } from './PieceStatusSheet'
  * and amber is the app's standing `▸` trip-world mark (§2's WHEREABOUTS
  * column, gear detail's card).
  *
+ * **PERSON mode passes it for every row it draws, Piece rows included**, and
+ * a Piece row therefore never renders without it — its residence is the only
+ * fact it has that its Entry does not, and it is that row's entire meta line.
+ * The flag is one condition and not `showResidence || personId !== undefined`:
+ * the second half would only ever be true for a configuration no caller
+ * renders, which is a branch pinned by nothing but the shape of a unit test.
+ *
  * What the segment says depends on what the row is:
  *
  * - a **Piece** row: that Piece's own residence, which is the only fact a
- *   Piece has that its Entry does not — and the one case drawn **whatever
- *   the flag says**, because it is that row's entire meta line;
+ *   Piece has that its Entry does not;
  * - a **per-person Entry** row: the residence its Pieces share, or `▸ MIXED`
  *   where they sit in different containers — the sheet is what states each
  *   one, and the row cannot;
@@ -168,23 +175,9 @@ interface RowPiece {
   residence: TripResidence
 }
 
-/** One shared instance for an Entry with no `residence` register —
- * `packing.ts`'s own `LOOSE`'s reason: it carries no id, so there is nothing
- * to distinguish. */
-const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
-
 /** What a per-person row says when its Pieces disagree about where they
  * ride. `residenceLabel`'s `▸` grammar with no container to name. */
 const MIXED = '▸ MIXED'
-
-/** `label.charAt(0).toUpperCase()`, or `undefined` for the sentinel — the
- * transform every `PersonCircle` caller in `app/` repeats rather than
- * shares; see `EntryRow.tsx`'s own copy of this note. */
-function personInitial(label: string): string | undefined {
-  return label === UNNAMED_PERSON_GLYPH
-    ? undefined
-    : label.charAt(0).toUpperCase()
-}
 
 export function PackingRow({
   tripId,
@@ -281,12 +274,7 @@ export function PackingRow({
   // be called before the `trip === undefined` guard above, so TypeScript
   // declines to carry the narrowing into one (`Packing.tsx`'s own note).
   const residenceSegment = (): string => {
-    // A **Piece** row draws it whatever the caller asked for: its residence
-    // is the one fact its Entry does not carry, and it is the whole of that
-    // row's meta line. `showResidence` is about the *other* rows, whose
-    // ownership and units already fill the line and whose *where* only a
-    // group header would otherwise say.
-    if (!showResidence && personId === undefined) return ''
+    if (!showResidence) return ''
 
     // **One path, not a Piece special case.** The subject of a Piece row is
     // that one Piece; of any other row, every Piece the Entry has — which is
@@ -317,7 +305,7 @@ export function PackingRow({
     return residenceLabel(
       trip,
       state,
-      shared ?? entry.residence?.value ?? LOOSE,
+      shared ?? entry.residence?.value ?? TRIP_LOOSE,
     )
   }
 

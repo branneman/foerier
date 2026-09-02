@@ -118,10 +118,14 @@ async function renderPieceRow(): Promise<Rendered> {
 
   render(
     <DepotProvider value={store}>
+      {/* `showResidence` because **PERSON mode is the only caller that
+          passes `personId`, and it passes both** — rendering a Piece row
+          without it would pin a configuration the app never draws. */}
       <PackingRow
         tripId={ALPS}
         entryId={E_HEADLAMP}
         personId="els"
+        showResidence
         onOpenPicker={openPicker}
         onOpenPieceSheet={openPieceSheet}
       />

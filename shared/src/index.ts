@@ -201,6 +201,7 @@ export {
   statusLabel,
   statusOf,
   subtreeOf,
+  TRIP_LOOSE,
 } from './selectors/packing.ts'
 
 export type { PieceInclusion } from './selectors/piece.ts'

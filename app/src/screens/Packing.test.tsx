@@ -1260,6 +1260,10 @@ describe('moving what a group holds', () => {
  * `docs/design/README.md` §1 and §5e A7 · A7b · A8; spec §4.2.
  * ------------------------------------------------------------------------ */
 
+/** The non-Participant owner. `aa-zoe` sorts **first** among the roster's
+ * ids and `Zoë` sorts **last** among its names — see {@link personFrame}. */
+const ZOE = 'aa-zoe'
+
 const DUFFEL = 'gggggggg-0000-7000-8000-000000000030'
 const DRYBAG = 'gggggggg-0000-7000-8000-000000000031'
 const JACKET = 'gggggggg-0000-7000-8000-000000000032'
@@ -1279,13 +1283,13 @@ const E_BOOTS = 'nnnnnnnn-0000-7000-8000-000000000033'
  *                       Jacket                   ▸ LOOSE         ○
  * Kim    ● 1/1          (collapsed)
  * Mies   0/1 · 1 LEFT   Headlamp — Mies's piece  ▸ LOOSE         ○
- * Noor   0/1 · 1 LEFT   Boots                    ▸ LOOSE         ○
+ * Zoë    0/1 · 1 LEFT   Boots                    ▸ LOOSE         ○
  * Shared 2/3 · 1 LEFT   Map                      ▸ LOOSE         ●
  *                       Rope                     ▸ DRY BAG       ●
  *                       Stove                    ▸ DUFFEL 90 L   ○
  * ```
  *
- * - **Noor is not a Participant** and still gets a group: the header answers
+ * - **Zoë is not a Participant** and still gets a group: the header answers
  *   *whose it is*, and Els's jacket carried by Mark is honest (ruling A7).
  * - **Kim's group is all done**, which is what the `● 1/1` collapse is read
  *   off, and what `○ LEFT` empties.
@@ -1296,11 +1300,26 @@ const E_BOOTS = 'nnnnnnnn-0000-7000-8000-000000000033'
  *
  * `● 3/8 PIECES` / `5 LEFT` in all, and `0 + 1 + 0 + 0 + 2 = 3` across the
  * groups — ruling A7's arithmetic, on facts the MVP holds.
+ *
+ * ## Zoë's id sorts against her name, deliberately
+ *
+ * `packing.counts.test.ts`'s own hazard, and this file walked into it once:
+ * `alps()`'s three People are `els · kim · mies` named `Els · Kim · Mies`, so
+ * **id order and name order agree**, and `personPartition` already returns
+ * `shared` last on its own — an ordering assertion over that roster passes
+ * whether or not the screen orders anything at all.
+ *
+ * {@link ZOE} is `aa-zoe`, which sorts **first** by id and **last** by name,
+ * so the drawn order can only be produced by `peopleOn`. And `Zoë` sorts
+ * *after* `Shared`, so an implementation that folded the `Shared` bucket into
+ * that same label sort would draw it fourth rather than last. The two
+ * mechanisms the group order rests on are each pinned by one row of the
+ * expected array.
  */
 function personFrame(): readonly OpSpec[] {
   return [
     ...alps(),
-    personRecorded('noor', 'Noor'),
+    personRecorded(ZOE, 'Zoë'),
 
     gearRecorded(DUFFEL, {
       name: 'Duffel 90 L',
@@ -1331,7 +1350,7 @@ function personFrame(): readonly OpSpec[] {
     tripEntryAdded(ALPS, E_JACKET, { from: 'depot', gearId: JACKET }),
 
     gearRecorded(BOOTS, { name: 'Boots', container: false, kind: 'single' }),
-    gearOwnershipSet(BOOTS, { type: 'person', personId: 'noor' }),
+    gearOwnershipSet(BOOTS, { type: 'person', personId: ZOE }),
     tripEntryAdded(ALPS, E_BOOTS, { from: 'depot', gearId: BOOTS }),
 
     // Shared: one in the duffel, one loose and packed, one in the dry bag.
@@ -1385,13 +1404,20 @@ describe('PERSON mode', () => {
    * **the order is the screen's**, because `shared/` deliberately does not
    * supply one — its buckets come back in person-id order with `Shared`
    * distinguished by its key rather than by its position.
+   *
+   * **Both mechanisms are pinned by one row each**, which is only true
+   * because {@link ZOE}'s id sorts against her name: `Zoë` fourth is
+   * `peopleOn`'s label order rather than `personPartition`'s id order (which
+   * would draw her first), and `Shared` fifth is this screen's own push
+   * rather than a label sort over every bucket (which would draw `Shared`
+   * fourth, since `shared` < `zoë`). Both mutations were run and both go red.
    */
   it('orders People by the People screen, with Shared last', async () => {
     const user = userEvent.setup()
     await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
     await chooseMode(user, 'PERSON')
 
-    expect(groupNames()).toEqual(['Els', 'Kim', 'Mies', 'Noor', 'Shared'])
+    expect(groupNames()).toEqual(['Els', 'Kim', 'Mies', 'Zoë', 'Shared'])
   })
 
   /**
@@ -1425,14 +1451,14 @@ describe('PERSON mode', () => {
   })
 
   /** Rule 2, and the one that makes the group answer *whose it is* rather
-   * than *who is going*: Noor is not a Participant and still has a group. */
+   * than *who is going*: Zoë is not a Participant and still has a group. */
   it('buckets Personal gear to its owner, participant or not', async () => {
     const user = userEvent.setup()
     await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
     await chooseMode(user, 'PERSON')
 
     expect(
-      within(groupFor('Noor')).getByTestId('packing-row-name'),
+      within(groupFor('Zoë')).getByTestId('packing-row-name'),
     ).toHaveTextContent('Boots')
     expect(
       within(groupFor('Els')).getAllByTestId('packing-row-name')[1],
@@ -1452,7 +1478,7 @@ describe('PERSON mode', () => {
     expect(within(groupFor('Els')).getByText('0/2 · 2 LEFT')).toBeVisible()
     expect(within(groupFor('Kim')).getByText('● 1/1')).toBeVisible()
     expect(within(groupFor('Mies')).getByText('0/1 · 1 LEFT')).toBeVisible()
-    expect(within(groupFor('Noor')).getByText('0/1 · 1 LEFT')).toBeVisible()
+    expect(within(groupFor('Zoë')).getByText('0/1 · 1 LEFT')).toBeVisible()
     expect(within(groupFor('Shared')).getByText('2/3 · 1 LEFT')).toBeVisible()
   })
 
@@ -1523,6 +1549,39 @@ describe('PERSON mode', () => {
     await chooseMode(user, 'PERSON')
 
     expect(screen.queryByText('PARTICIPANT')).not.toBeInTheDocument()
+  })
+
+  /**
+   * The header circle's tone is the group's **one** fact, said a second way:
+   * `filled` where nothing is left, `control` otherwise — the `●` in
+   * `● 1/1` in a second channel, never colour alone.
+   *
+   * It is deliberately **not** the three-way `toneForStatus` a row's circle
+   * takes. A group has no status, and borrowing that vocabulary for an
+   * aggregate would invent one — which is also why the board's own frame,
+   * drawing a partial group half-amber in one row and bordered in another,
+   * could not be followed as drawn.
+   */
+  it('fills an all-done header circle and leaves every other one bordered', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    const toneIn = (group: string): string | null =>
+      within(groupFor(group))
+        .getAllByTestId('person-circle')[0]
+        ?.getAttribute('data-tone') ?? null
+
+    expect(toneIn('Kim')).toBe('filled')
+    expect(toneIn('Els')).toBe('control')
+    expect(toneIn('Mies')).toBe('control')
+    expect(toneIn('Zoë')).toBe('control')
+
+    // `Shared` is not a Person and draws no circle at all: one there would
+    // claim an attribution the group exists to say is absent.
+    expect(
+      within(groupFor('Shared')).queryAllByTestId('person-circle'),
+    ).toHaveLength(0)
   })
 
   /** No header states *where* in this mode either, so every row's meta ends
@@ -1626,6 +1685,48 @@ describe('ALL mode', () => {
       within(rowFor('Headlamp')).getByTestId('packing-row-meta'),
     ).toHaveTextContent('PER-PERSON · 1/3 · ▸ Duffel 90 L')
   })
+
+  /**
+   * **Ruling B's condition, on the one mode that can still break it.** The
+   * visible `1/3` sits in a per-person row's *meta line*, inside the body
+   * button rather than inside the cluster control — a departure from
+   * `EntryRow` that is harmless **only because the body and the cluster open
+   * the same sheet**, so the digit and the circles stay one control's worth
+   * of target between them. `PackingRow`'s docstring says in as many words
+   * that giving a per-person row's body a different destination turns this
+   * into a violation.
+   *
+   * PERSON mode cannot break it — `personPartition` emits one `piece` item
+   * per Piece, so no clustered row is drawn there at all and the rule holds
+   * vacuously. **ALL mode is where a clustered row survives**, so this is
+   * where the invariant is worth an assertion.
+   */
+  it("opens the Piece sheet from a per-person row's body, not the picker", async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'ALL')
+
+    await user.click(within(rowFor('Headlamp')).getByTestId('packing-row-body'))
+
+    expect(screen.getByText('PACKING STATUS · 1 OF 3 PACKED')).toBeVisible()
+    expect(
+      screen.queryByText('WHERE IT GOES ON THIS TRIP'),
+    ).not.toBeInTheDocument()
+  })
+
+  /** The other half of the same control: the cluster opens the same sheet, so
+   * the two targets on that row are one destination. */
+  it("opens the same sheet from that row's cluster", async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'ALL')
+
+    await user.click(
+      within(rowFor('Headlamp')).getByTestId('packing-row-cluster'),
+    )
+
+    expect(screen.getByText('PACKING STATUS · 1 OF 3 PACKED')).toBeVisible()
+  })
 })
 
 describe('the ○ LEFT filter', () => {
@@ -1684,27 +1785,50 @@ describe('the ○ LEFT filter', () => {
     expect(screen.getByRole('region', { name: 'Els' })).toBeVisible()
   })
 
-  /** A container holding nothing but nested containers keeps its header: the
-   * rail is that container's own journey, not its contents'. */
+  /**
+   * A container holding nothing but nested containers keeps its header: the
+   * rail is that container's own journey, not its contents'.
+   *
+   * **The `Stove` has to leave the duffel for this fixture to say anything.**
+   * `containerView` builds a group's `rowIds` with a `!isContainerEntry`
+   * filter, so a rows-less container is one whose *only* children are nested
+   * containers — and while the duffel still held the unpacked stove it
+   * survived `○ LEFT` on that row rather than on the rule under test. The
+   * guard reads `group.rowIds.length > 0 && rowIds.length === 0` precisely so
+   * that emptiness has to be **caused** by the filter; drop that first
+   * conjunct and this goes red.
+   */
   it('keeps a container group whose only rows are nested groups', async () => {
     const user = userEvent.setup()
     await renderPacking(
       `/trips/${ALPS}/packing`,
       ...personFrame(),
       tripEntryMoved(ALPS, E_DRYBAG, { in: 'container', entryId: E_DUFFEL }),
+      // Now the duffel's own rows are none: the dry bag is its only child.
+      tripEntryMoved(ALPS, E_STOVE, { in: 'loose' }),
     )
     await pressLeftOnly(user)
 
-    expect(screen.getByRole('region', { name: 'Duffel 90 L' })).toBeVisible()
+    const duffel = screen.getByRole('region', { name: 'Duffel 90 L' })
+    expect(duffel).toBeVisible()
+    expect(within(duffel).getByTestId('journey-rail')).toBeVisible()
+    // Its one nested group *is* filtered out — the rope inside is packed —
+    // which is what makes the duffel's survival the rule and not an
+    // accident of something unpacked still sitting in it.
+    expect(screen.queryByRole('region', { name: 'Dry bag' })).toBeNull()
+    expect(within(duffel).queryAllByTestId('packing-row')).toHaveLength(0)
   })
 
   /**
    * **The orphaned indent, pinned as it behaves rather than as anyone drew
-   * it.** Ruling A3's filter sentence is taken literally — *a group whose
-   * items all filter out draws nothing* — and this is the one shape where
-   * that has a visible cost: a parent container whose own rows are all packed
-   * disappears while a nested container inside it survives, so the child's
-   * group keeps its 16px indent with nothing above it to be indented from.
+   * it.** *A group whose items all filter out draws nothing* is **the
+   * slice's own sentence, not a ruling's** — ruling A3 settles `Loose`-last
+   * and nothing else, and §1's "empty, it draws nothing" is about an empty
+   * `Loose` group rather than about the filter. Taken literally it has one
+   * shape with a visible cost: a parent container whose own rows are all
+   * packed disappears while a nested container inside it survives, so the
+   * child's group keeps its 16px indent with nothing above it to be indented
+   * from.
    *
    * The alternative would be a keep-the-ancestry condition, and **no board
    * draws one** — inventing it here would be designing rather than building,

@@ -1,4 +1,8 @@
-import { personLabel, type DepotState } from '@foerier/shared'
+import {
+  personLabel,
+  UNNAMED_PERSON_GLYPH,
+  type DepotState,
+} from '@foerier/shared'
 
 /** A Person, and the label every surface draws them by. */
 export interface PersonRow {
@@ -31,4 +35,30 @@ export function sortedPeople(state: DepotState): readonly PersonRow[] {
       if (a.id === b.id) return 0
       return a.id < b.id ? -1 : 1
     })
+}
+
+/**
+ * A `PersonCircle`'s letter: the label's first character, upper-cased, or
+ * `undefined` for the sentinel — which draws an **empty** circle rather than
+ * a placeholder letter, because a Person with no folded name is a fact the
+ * app does not have and inventing one would be worse than blank.
+ *
+ * **Shared rather than repeated, at the third copy.** `EntryRow`,
+ * `PackingRow` and F4's own person headers each carried this verbatim, each
+ * with a docstring admitting it was copied; the argument that a helper would
+ * be a longer name than the line it replaces stops paying once three call
+ * sites have to agree about the sentinel. It lives beside {@link sortedPeople}
+ * for that function's reason: this is *how a screen draws a Person*, and the
+ * screens that draw one must not disagree.
+ *
+ * The seven surfaces that hand-roll `label.charAt(0).toUpperCase()` for a
+ * name they already hold (`Trip`, `TripCard`, `NewTrip`, `People`,
+ * `PiecePicker`, `GearListBuilder`, `ParticipantPicker`) are asking a
+ * different question — a Person's initial, never a sentinel's absence — and
+ * are deliberately left alone.
+ */
+export function personInitial(label: string): string | undefined {
+  return label === UNNAMED_PERSON_GLYPH
+    ? undefined
+    : label.charAt(0).toUpperCase()
 }

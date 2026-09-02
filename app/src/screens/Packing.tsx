@@ -18,7 +18,7 @@ import {
   tripLabel,
   tripPath,
   tripPieceMoved,
-  UNNAMED_PERSON_GLYPH,
+  TRIP_LOOSE,
   type DepotState,
   type Disagreement,
   type EntryState,
@@ -40,6 +40,7 @@ import { PackingRow } from '../components/PackingRow'
 import { PackPicker, sameTripResidence } from '../components/PackPicker'
 import { PieceStatusSheet } from '../components/PieceStatusSheet'
 import { useDepot } from '../depot/store'
+import { personInitial } from '../depot/people'
 import { syncLabel } from '../depot/syncLabel'
 import { peopleOn } from '../depot/trips'
 import { useScreenHeader } from '../shell/useMediaQuery'
@@ -76,19 +77,6 @@ const INDENT_CAP = 2
 /** `Shared`'s own meta — what the group is, said once, in the register
  * `NOT IN A CONTAINER` uses one mode over. */
 const NOT_ATTRIBUTED = 'NOT ATTRIBUTED TO A PERSON'
-
-/** `label.charAt(0).toUpperCase()`, or `undefined` for the sentinel — the
- * transform every `PersonCircle` caller in `app/` repeats rather than
- * shares; see `EntryRow.tsx`'s and `PackingRow.tsx`'s copies of this note. */
-function personInitial(label: string): string | undefined {
-  return label === UNNAMED_PERSON_GLYPH
-    ? undefined
-    : label.charAt(0).toUpperCase()
-}
-
-/** One shared instance for an Entry with no `residence` register — it
- * carries no id, so there is nothing to distinguish. */
-const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
 
 /**
  * The bar's fill, as a percentage of the denominator the count line draws.
@@ -629,7 +617,7 @@ export function Packing() {
   // created after it and read the narrowed `TripState`.
   const currentResidenceOf = (target: PickerTarget): TripResidence => {
     if (target.kind !== 'piece') {
-      return trip.entries?.[target.entryId]?.residence?.value ?? LOOSE
+      return trip.entries?.[target.entryId]?.residence?.value ?? TRIP_LOOSE
     }
     // A Piece with no residence register of its own reads its Entry's, then
     // loose — `packingItems`' layered read, taken from there rather than
@@ -641,7 +629,7 @@ export function Packing() {
       if (item.personId !== target.personId) continue
       return item.residence
     }
-    return LOOSE
+    return TRIP_LOOSE
   }
 
   /** The destination's own name, for the confirm's title. A pointer this
@@ -848,11 +836,20 @@ export function Packing() {
               {view.container.groups.map((group) => {
                 const rowIds = visibleRows(group.rowIds)
                 // **A group whose items all filter out draws nothing** — and
-                // only the filter can empty one. A container holding nothing
-                // but nested containers has no rows of its own and is still
-                // drawn: its header carries the rail, which is that
-                // container's own journey and not its contents'.
-                if (leftOnly && rowIds.length === 0) return null
+                // the emptiness has to be *caused* by the filter, which is
+                // why `group.rowIds.length > 0` is a separate conjunct and
+                // not a tidier `rowIds.length === 0` alone.
+                //
+                // `containerView` builds `rowIds` with a
+                // `!isContainerEntry` filter, so **a container whose only
+                // children are nested containers arrives here with no rows
+                // of its own**. Nothing filtered out of it; dropping it
+                // would take its journey rail and its ▲ line off the screen
+                // the moment `○ LEFT` was pressed, and orphan every nested
+                // group beneath it. The rail is that container's own
+                // journey, not its contents'.
+                if (leftOnly && group.rowIds.length > 0 && rowIds.length === 0)
+                  return null
 
                 const headingId = `packing-group-${tripId}-${group.key}`
                 // `null` is `Loose` — a holder, not an Entry. Read once into

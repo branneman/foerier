@@ -1,5 +1,7 @@
-import { UNNAMED_PERSON_GLYPH, type KindValue } from '@foerier/shared'
+import { type KindValue } from '@foerier/shared'
 import { PersonCluster, Stepper } from '@foerier/ui'
+
+import { personInitial } from '../depot/people'
 
 import styles from './EntryRow.module.css'
 
@@ -282,18 +284,6 @@ function trailing(
       // has already mapped to `'ungrouped'` — nothing to draw here.
       return null
   }
-}
-
-/** `label.charAt(0).toUpperCase()`, or `undefined` for the sentinel — the
- * transform every `PersonCircle` caller in `app/` repeats rather than
- * shares (`PiecePicker.tsx`, `Trip.tsx`, `TripCard.tsx`, `NewTrip.tsx`,
- * `People.tsx`, `GearListBuilder.tsx`, `ParticipantPicker.tsx`), because a
- * shared helper for one line of arithmetic would be a longer name than the
- * line it replaces. */
-function personInitial(label: string): string | undefined {
-  return label === UNNAMED_PERSON_GLYPH
-    ? undefined
-    : label.charAt(0).toUpperCase()
 }
 
 /**
