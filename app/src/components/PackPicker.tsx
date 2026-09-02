@@ -4,6 +4,7 @@ import {
   isContainerEntry,
   stageLabel,
   stageOf,
+  subtreeOf,
   tripContainmentView,
   tripPath,
   type DepotState,
@@ -148,28 +149,22 @@ const INDENT_CAP = 2
  * `excludeEntryId` and every Entry reachable underneath it, at any depth —
  * the descendant half of invariant 3, over the Trip's tree. Empty when
  * `excludeEntryId` is unset.
+ *
+ * **The walk itself is `subtreeOf`'s, not a fourth copy of it** (review F4).
+ * That function's own docstring names this call site as one of the copies it
+ * was made public to collapse, and the half that would be silent if two
+ * copies diverged is the cycle break: a container excluded from the picker on
+ * one Device and offered on another is a divergence no test would see. All
+ * this adds is invariant 3's *other* half — the moved container itself, which
+ * `subtreeOf` deliberately excludes because its own caller is counting
+ * contents.
  */
 function excludedSubtree(
   view: TripContainmentView,
   excludeEntryId: string | undefined,
 ): ReadonlySet<string> {
-  const result = new Set<string>()
-  if (excludeEntryId === undefined) return result
-  result.add(excludeEntryId)
-  const stack = [excludeEntryId]
-  while (stack.length > 0) {
-    const current = stack.pop()
-    if (current === undefined) continue
-    for (const childId of view.childrenOf({
-      kind: 'container',
-      entryId: current,
-    })) {
-      if (result.has(childId)) continue
-      result.add(childId)
-      stack.push(childId)
-    }
-  }
-  return result
+  if (excludeEntryId === undefined) return new Set()
+  return new Set([excludeEntryId, ...subtreeOf(view, excludeEntryId)])
 }
 
 /**

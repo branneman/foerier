@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 
@@ -35,6 +37,7 @@ import {
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPhaseMoved,
+  tripPieceMoved,
   tripPieceRemoved,
   tripPieceRestored,
   tripPieceStatusSet,
@@ -60,6 +63,9 @@ import type {
   Owner,
   PhaseValue,
   Residence,
+  StageValue,
+  StatusValue,
+  TripResidence,
 } from './state.ts'
 import { normalizeTag, type TagString } from './tags.ts'
 
@@ -324,22 +330,73 @@ const arbEntrySource: fc.Arbitrary<EntrySource> = fc.oneof(
 )
 
 /**
+ * The three known statuses plus one this build cannot name — `arbKind`'s and
+ * `arbPhase`'s rule a third time. {@link StatusValue} is deliberately open
+ * (story 20 ships editable statuses on exactly this mechanism), so an
+ * unrecognised member has to survive the merge byte for byte, and the
+ * generator is the only tier that draws one at scale.
+ */
+const arbStatus = fc.constantFrom<StatusValue[]>(
+  'not_packed',
+  'staged',
+  'packed',
+  'soaked',
+)
+/** {@link StageValue}'s four known members plus one unrecognised, for
+ * {@link arbStatus}'s reason. */
+const arbStage = fc.constantFrom<StageValue[]>(
+  'home',
+  'staging',
+  'car',
+  'packed',
+  'ferry',
+)
+/**
+ * **Over {@link ENTRY_IDS}, not a fresh pool**, and that is the whole point:
+ * a trip residence names a *container Entry on the same Trip*, so drawing the
+ * target from the same three ids is what makes two devices move two things
+ * into the same crate — and, since nothing stops an Entry naming itself or a
+ * pair naming each other, what makes {@link tripContainmentView}'s cycle
+ * break meet a real cycle rather than a hypothetical one.
+ *
+ * Weighted towards `container` for {@link arbResidence}'s reason: `loose` is
+ * the absent-register default, so an even split would spend half the draws
+ * writing the state most of the pool already holds.
+ */
+const arbTripResidence: fc.Arbitrary<TripResidence> = fc.oneof(
+  {
+    arbitrary: arbEntryId.map((entryId): TripResidence => ({
+      in: 'container',
+      entryId,
+    })),
+    weight: 3,
+  },
+  { arbitrary: fc.constant<TripResidence>({ in: 'loose' }), weight: 1 },
+)
+
+/**
  * S6's six op types, nested under **one** weighted branch of the outer
  * `oneof` rather than spread across six unweighted ones — so the trip share
  * is a number to set rather than a consequence of how many op types the slice
  * happened to add.
  *
- * It is set to 4 in 19 (~21% of ops) because 1 in 16 was measured and found
- * too thin: over 200 runs it put trip ops in 6% of draws and left two devices
- * contesting one Trip register in **12** runs, against **~70** at this
- * weight (both figures from before S7 existed — see {@link arbTripEntrySpec}'s
- * doc for the current, post-S7 numbers). The obvious worry — that diluting
- * the gear ops costs the containment-cycle rate `arbResidence` is tuned
- * for — was measured too and is not real: cycles turn up in 5–15 runs per 200
- * with no trip ops at all and 11–14 with these, which is seed noise either
- * way. (That also puts `arbResidence`'s "17" where it belongs — a single
- * measurement from a generator with fewer op types in it, not a floor to
- * defend.)
+ * It was first set to 4 in 19 (~21% of ops) because 1 in 16 was measured and
+ * found too thin: over 200 runs it put trip ops in 6% of draws and left two
+ * devices contesting one Trip register in **12** runs, against **~70** at
+ * that weight (both figures from before S7 existed). **S9a re-set it to 12 in
+ * 27 (~44% of ops)**, which is the whole reason the number is a knob: the
+ * Trip aggregate grew from nine op types to sixteen across S7, S8 and S9a,
+ * and a share that stays put while the aggregate triples is a share that
+ * silently thins every register under it. See {@link arbTripEntrySpec}'s doc
+ * for the measured before-and-after.
+ *
+ * The obvious worry — that diluting the gear ops costs the containment-cycle
+ * rate `arbResidence` is tuned for — was measured at 4 and again at 12, and
+ * is not real: cycles turn up in 5–15 runs per 200 with no trip ops at all,
+ * 11–14 at weight 4, and **8, 10, 11** at weight 12, which is seed noise
+ * throughout. (That also puts `arbResidence`'s "17" where it belongs — a
+ * single measurement from a generator with fewer op types in it, not a floor
+ * to defend.)
  */
 const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc.tuple(arbTripId, arbTripName).map(([id, name]) => tripCreated(id, name)),
@@ -395,6 +452,27 @@ const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
  * pre-S7 ~70 to roughly **30 in 200** (three passes: 27, 31, 38) — well clear
  * of that same 12-run floor, so this is a real trade and not a regression
  * disguised as one.
+ *
+ * **S9a: a third arm, three more branches here, and the trip weight re-set.**
+ * Adding {@link arbTripPieceSpec} and this arm's three Entry-level packing
+ * ops at the old weight of 4 did exactly what the flat-branch draft did — the
+ * entry rate fell from **22** runs in 200 to **5**, well under the 12-run
+ * floor, because each branch now draws a third of what it did *and* the
+ * registers it can hit doubled from 18 to 36. Raising the trip weight to 12
+ * (see {@link arbTripRootSpec}) buys all of it back and more, measured over
+ * three passes of 200 each:
+ *
+ * | contest, runs in 200 | before S9a | S9a at weight 4 | S9a at weight 12 |
+ * | --- | --- | --- | --- |
+ * | root register | 31, 32 | 14 | 64, 55, 49 |
+ * | entry register | 11, 22 | 5 | 24, 21, 22 |
+ * | piece register | **0** | 4 | 23, 23, 23 |
+ *
+ * The piece column is the point of the exercise: `trip.piece_removed` and
+ * `trip.piece_restored` shipped at S8 and were never generated, and
+ * `trip.piece_moved` had no Tier-2 coverage of any kind. A zero in a column
+ * this table can print is the failure mode a docstring claiming "all
+ * twenty-four op types" was hiding.
  */
 const arbTripEntrySpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
@@ -406,18 +484,75 @@ const arbTripEntrySpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbEntryId, fc.nat({ max: 5 }))
     .map(([id, entryId, count]) => tripEntryBringCountSet(id, entryId, count)),
+  // S9a's three Entry-level ops. They join this arm rather than forming a
+  // fourth one because the arms partition by **entity path**, not by slice:
+  // every branch here writes a register on `entries.<entryId>`, and the
+  // contest this arm exists to provoke is two devices reaching that path.
+  fc
+    .tuple(arbTripId, arbEntryId, arbStatus)
+    .map(([id, entryId, status]) => tripEntryStatusSet(id, entryId, status)),
+  fc
+    .tuple(arbTripId, arbEntryId, arbTripResidence)
+    .map(([id, entryId, residence]) => tripEntryMoved(id, entryId, residence)),
+  fc
+    .tuple(arbTripId, arbEntryId, arbStage)
+    .map(([id, entryId, stage]) => tripContainerStageSet(id, entryId, stage)),
+)
+
+/**
+ * S8's two Piece ops and S9a's two, the third arm — every branch writing a
+ * register on `entries.<entryId>.pieces.<personId>`, one level below
+ * {@link arbTripEntrySpec}'s path.
+ *
+ * **A third arm rather than four more branches of the second**, for the
+ * reason that arm's own doc gives about not being a flat branch: folded in,
+ * the Piece registers would draw 4/10 of the entry arm's half of the trip
+ * budget while the Entry registers drew 6/10, which is an accident of how
+ * many op types each level happens to have rather than a decision. Three
+ * equal arms make the level's share the thing that is set.
+ *
+ * `trip.piece_removed` and `trip.piece_restored` shipped a slice before this
+ * one and were never generated at all; `trip.piece_moved` had **no Tier-2
+ * coverage of any kind** until this arm existed.
+ */
+const arbTripPieceSpec: fc.Arbitrary<OpSpec> = fc.oneof(
+  fc
+    .tuple(arbTripId, arbEntryId, arbPersonId)
+    .map(([id, entryId, personId]) => tripPieceRemoved(id, entryId, personId)),
+  fc
+    .tuple(arbTripId, arbEntryId, arbPersonId)
+    .map(([id, entryId, personId]) => tripPieceRestored(id, entryId, personId)),
+  fc
+    .tuple(arbTripId, arbEntryId, arbPersonId, arbStatus)
+    .map(([id, entryId, personId, status]) =>
+      tripPieceStatusSet(id, entryId, personId, status),
+    ),
+  fc
+    .tuple(arbTripId, arbEntryId, arbPersonId, arbTripResidence)
+    .map(([id, entryId, personId, residence]) =>
+      tripPieceMoved(id, entryId, personId, residence),
+    ),
 )
 
 /** Equal, unweighted split — see {@link arbTripEntrySpec}'s doc for why. */
 const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   arbTripRootSpec,
   arbTripEntrySpec,
+  arbTripPieceSpec,
 )
 
 /**
- * All twenty-four op types this build folds (`sync-protocol.md` §4), authored
- * through the real builders — never a hand-shaped payload, so the generator
- * cannot drift from the wire format.
+ * **Every op type this build folds** (`sync-protocol.md` §4), authored through
+ * the real builders — never a hand-shaped payload, so the generator cannot
+ * drift from the wire format.
+ *
+ * "Every" is a claim, so it is checked rather than asserted in prose: the
+ * suite below counts the distinct `type` values this arbitrary can produce
+ * and compares them against `reduce.ts`'s own handler table, which is the
+ * definition of *what this build folds*. An earlier version of this line
+ * counted **twenty-four** by hand while the table had grown to thirty-one —
+ * S8's two Piece ops and S9a's five were folded, shipped, and generated by
+ * nothing.
  */
 const arbSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc.tuple(arbPlaceId, arbName).map(([id, name]) => placeRecorded(id, name)),
@@ -472,7 +607,7 @@ const arbSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbPersonId, fc.option(arbName, { nil: null }))
     .map(([id, name]) => personRenamed(id, name)),
-  { arbitrary: arbTripSpec, weight: 4 },
+  { arbitrary: arbTripSpec, weight: 12 },
 )
 
 /**
@@ -490,6 +625,48 @@ const arbOpSets = (): fc.Arbitrary<OpSpec[][]> =>
   })
 
 describe('convergence', () => {
+  /**
+   * **The guard on {@link arbSpec}'s "every op type" claim**, and the reason
+   * that claim is no longer a hand-counted number in a comment. From S8 until
+   * this test existed the docstring said *twenty-four* while `reduce.ts`
+   * folded thirty-one, so seven shipped op types — S8's two Piece ops and
+   * S9a's five packing ops — were folded by the reducer, pinned by the
+   * hand-built scenarios below, and generated by **nothing**. Nothing failed;
+   * the sentence simply stopped being true, and no tier could tell.
+   *
+   * `reduce.ts`'s dispatch table is the definition of *what this build
+   * folds*, and it is not exported — deliberately, since "is this type
+   * known?" is the tolerant reader's question and not a caller's. So this
+   * reads the table out of the module's own source, the technique
+   * `drawnSizes.test.ts`, `EntryRow.test.tsx` and `OverClaimBand.test.tsx`
+   * already use for facts that live in a file rather than in an export.
+   */
+  it('generates every op type the reducer folds', () => {
+    const source = readFileSync(new URL('./reduce.ts', import.meta.url), 'utf8')
+    const table =
+      /const handlers: Record<string, Handler> = \{\n([\s\S]*?)\n\}/.exec(
+        source,
+      )?.[1]
+    expect(table).toBeDefined()
+    const folded = new Set(
+      [...(table ?? '').matchAll(/^ {2}'([a-z_]+\.[a-z_]+)':/gm)].map(
+        (match) => match[1]!,
+      ),
+    )
+
+    // Seeded, so a rare branch cannot make this flaky: the thinnest branch
+    // draws ~2.5% of ops, and 20 000 samples miss it with probability zero
+    // for any practical purpose — but a fixed seed means the assertion is a
+    // fact about the generator rather than about today's luck.
+    const generated = new Set(
+      fc
+        .sample(arbSpec, { numRuns: 20_000, seed: 20260902 })
+        .map((spec) => spec.type),
+    )
+
+    expect([...generated].sort()).toEqual([...folded].sort())
+  })
+
   it('converges to identical state regardless of arrival order', () => {
     let runs = 0
     let runsWithDivergentArrival = 0

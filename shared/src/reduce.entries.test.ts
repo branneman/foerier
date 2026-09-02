@@ -113,14 +113,26 @@ describe('trip.entry_removed', () => {
   })
 })
 
-// F2 (Task 1 review, round 1): the `entry_id` guard on all three handlers
-// (`reduce.ts`'s `tripEntryAdded`, `tripEntryRemoved`, `tripEntryBringCountSet`)
-// was untested — each starts `readString(op.payload, 'entry_id')`, bails
-// unless `.kind === 'value'`, and none of that was pinned. A future refactor
-// that collapses the four copies of this prologue (this one plus S9's
-// `trip.entry_status_set`) into a helper could key a real Entry as `''`
-// via something like `readString(...).value ?? ''` and nothing here would
-// catch it without these tests.
+// F2 (Task 1 review, round 1): the `entry_id` guard on all three of S7's
+// handlers (`reduce.ts`'s `tripEntryAdded`, `tripEntryRemoved`,
+// `tripEntryBringCountSet`) was untested — each starts
+// `readString(op.payload, 'entry_id')`, bails unless `.kind === 'value'`, and
+// none of that was pinned. A refactor collapsing the copies of this prologue
+// into a helper could key a real Entry as `''` via something like
+// `readString(...).value ?? ''`, and nothing here would catch it.
+//
+// **S9a is the slice that comment named, and it arrived** (review F7). It
+// added five more handlers carrying the identical prologue —
+// `trip.entry_status_set`, `trip.entry_moved`, `trip.container_stage_set` and
+// the two Piece ops, which read `person_id` immediately after by the same
+// rule — and the table below was not widened with them. Ten op types now open
+// with the prologue and the table pinned three, so the helper the comment
+// warns about could have been written against seven unguarded copies.
+//
+// The table is the whole defence, so it lists **every** op type that opens
+// with it — S8's `trip.piece_removed` / `trip.piece_restored` included, whose
+// own suite pins the `person_id` half of their guard and never the
+// `entry_id` half. A slice adding an eleventh adds a row here.
 describe('an unreadable entry_id leaves state untouched', () => {
   const OP_TYPES: { type: string; extra: Record<string, unknown> }[] = [
     {
@@ -129,6 +141,23 @@ describe('an unreadable entry_id leaves state untouched', () => {
     },
     { type: 'trip.entry_removed', extra: {} },
     { type: 'trip.entry_bring_count_set', extra: { count: 3 } },
+    // S9a's five. The Piece pair carries a **readable** `person_id`, so the
+    // only unreadable field in the payload is the one under test and a pass
+    // cannot come from the second guard bailing first.
+    { type: 'trip.entry_status_set', extra: { status: 'packed' } },
+    { type: 'trip.entry_moved', extra: { residence: { in: 'loose' } } },
+    { type: 'trip.container_stage_set', extra: { stage: 'car' } },
+    {
+      type: 'trip.piece_status_set',
+      extra: { person_id: 'p1', status: 'packed' },
+    },
+    {
+      type: 'trip.piece_moved',
+      extra: { person_id: 'p1', residence: { in: 'loose' } },
+    },
+    // S8's pair, the same prologue a slice earlier.
+    { type: 'trip.piece_removed', extra: { person_id: 'p1' } },
+    { type: 'trip.piece_restored', extra: { person_id: 'p1' } },
   ]
 
   const BAD_ENTRY_IDS: { label: string; payload: Record<string, unknown> }[] = [

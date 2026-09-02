@@ -420,15 +420,17 @@ export function packingTotals(
  * applied exactly once — and the `subtree` guard makes termination
  * independent of the view it is handed.
  *
- * **Exported because a screen needs the same walk for a different
- * question.** `containerTotals` answers *how far along is what is inside*;
- * the Pack picker's context line (`5 INSIDE RIDE ALONG`) and the container
- * move's confirm ask *how many things are inside*, which is `.size` of this
- * set. A third hand-rolled depth-first walk over the same edges — after this
- * one and `PackPicker`'s excluded-set walk — is exactly the drift this
- * package keeps refusing, and the half that would be silent if the copies
- * diverged is the cycle break: two replicas would count the same crate
- * differently.
+ * **Exported because a screen needs the same walk for different questions.**
+ * `containerTotals` answers *how far along is what is inside*; the Pack
+ * picker's context line (`5 INSIDE RIDE ALONG`) and the container move's
+ * confirm ask *how many things are inside*, which is `.size` of this set; and
+ * `PackPicker`'s own `excludedSubtree` asks which rows invariant 3 forbids as
+ * destinations, which is this set plus the moved container itself. Every one
+ * of those was a hand-rolled depth-first walk over the same edges at some
+ * point in S9a, and that is exactly the drift this package keeps refusing —
+ * the half that would be silent if the copies diverged is the cycle break,
+ * where two replicas count the same crate differently, or offer a
+ * destination to one Device and hide it from another.
  */
 export function subtreeOf(
   view: TripContainmentView,

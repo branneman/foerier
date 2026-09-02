@@ -40,9 +40,20 @@
    *
    * Vertical only, and inset 0 horizontally — so it grows into the row's own
    * 12px padding and cannot reach the pill or the cluster beside it.
+   *
+   * **The paint is stated, not left to the content** (review F6). The ~38px
+   * above is what the *usual* row happens to compute, and a comment is not a
+   * declaration: on a row whose meta line is empty the content is the 22px
+   * name alone, and 22 + 12 + 12 = 46 — inside the 44 minimum but short of
+   * the 48 target, with nothing in the stylesheet or in `drawnSizes.test.ts`
+   * able to say so. `min-height: 1.5rem` is the repo's own constant for a
+   * control clamped to 48 by `inset: -0.75rem 0` (`.move`,
+   * `EntryRow.pieceControl`, `JourneyRail.chip`), and it makes the
+   * arithmetic exact for every row rather than for the common one.
    */
   .body {
     position: relative;
+    min-height: 1.5rem;
     flex: 1;
     min-width: 0;
     display: flex;

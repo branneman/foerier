@@ -353,7 +353,15 @@ export function PackingRow({
               </span>
             </>
           )}
-          {tripOnly && <span className={styles['badge']}>TRIP-ONLY</span>}
+          {/* `{' '}` for the same reason the Piece suffix above carries
+              one: `.nameLine`'s flex `gap` is not a character, so without it
+              the body button announces `PassportsTRIP-ONLY`. */}
+          {tripOnly && (
+            <>
+              {' '}
+              <span className={styles['badge']}>TRIP-ONLY</span>
+            </>
+          )}
         </span>
         {(meta !== '' || residence !== '') && (
           <span className={styles['meta']} data-testid="packing-row-meta">

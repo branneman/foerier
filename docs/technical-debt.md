@@ -195,3 +195,16 @@ items under thirty settled ones.
   Counted gate and the count out again. Two computations of one drawn value, in
   one file. [`frontend-design.md`](frontend-design.md) §5, anchor:
   `` `metaFor` ``
+- **A per-person Entry's own trip residence cannot be authored, so two packing
+  modes contradict each other about where the gear is.** The row body of a
+  per-person row opens the Piece status sheet rather than the Pack picker, and
+  PERSON mode partitions such an Entry into Pieces, so nothing shipped emits
+  `trip.entry_moved` for one and `PackingRow`'s whole-Entry branch is
+  unreachable there. Move all three Headlamp Pieces into the duffel and ALL
+  mode reads `▸ DUFFEL 90 L` for each while CONTAINER keeps the Headlamp row
+  under `Loose` and the duffel's header counts none of them. Recorded rather
+  than fixed because no board draws a whole-Entry move for per-person gear and
+  the two candidate answers — a second `MOVE` in the sheet, or grouping by the
+  Pieces' consensus with `▸ MIXED` spanning two headers — are a design trade.
+  [`design/README.md`](design/README.md) §1, anchor:
+  `` `trip.entry_moved` is unauthorable for a per-person Entry ``

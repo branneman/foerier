@@ -1083,3 +1083,42 @@ against `Date.now()` (`tripChip`, `phaseDay`), and `app/vitest.config.ts` pins
 `TZ` precisely because those reads are time-sensitive — a run crossing a
 boundary is the shape of thing that produces exactly one failure in seventeen.
 Speculation, not a diagnosis.
+
+### 11.7 A functional hole, with no drawn answer
+
+**`trip.entry_moved` has no authoring path for a per-person Entry**, and the
+consequence is not a missing convenience: two of the three modes state
+different places for the same gear.
+
+The two rules that produce it are each right on their own. §4.4's is that a
+per-person row's body opens the **Piece status sheet** rather than the Pack
+picker — *one Piece may ride in the duffel while another is loose, and only
+that row can say which*. PERSON mode's is that `personPartition` builds
+`piece` items for a per-person Entry and never a row for the Entry itself.
+Between them no shipped control writes that Entry's own `residence` register,
+and `PackingRow`'s whole-Entry picker branch is reachable by no tap for
+per-person gear.
+
+**Reproduction.** Move all three Headlamp Pieces into `Duffel 90 L` with the
+sheet's `MOVE`. ALL mode then draws `▸ DUFFEL 90 L` on each of the three
+Pieces, because a Piece's read layers its own register over its Entry's.
+CONTAINER mode keeps the Headlamp row under `Loose` and counts none of the
+three in the duffel's header, because `containerTotals` groups by the Entry's
+holder. Both surfaces are internally consistent; they contradict each other
+about where the headlamps are.
+
+**This exceeds §11.2's `containerTotals` note**, which says grouping by the
+Entry is what keeps a group header agreeing with the rows drawn under it. That
+remains true and is not the whole story: header and rows agree, and *both* are
+then wrong about the gear's location, which is a worse failure than the one
+the note rules out.
+
+**Not fixed here, and deliberately.** No board draws a whole-Entry move for
+per-person gear, and the two candidate answers carry a real trade — the Piece
+status sheet grows a whole-Entry `MOVE` beside its per-Piece one, or CONTAINER
+groups a per-person Entry by its Pieces' consensus and draws `▸ MIXED` where
+they disagree, which puts one Entry under two group headers and changes the
+`9/12` arithmetic with it. Choosing between them in code is designing, which
+this slice has refused a dozen times. Carried into `design/README.md` §1 as a
+**code-authored line** so the next round meets it where it looks, rather than
+left in a dated spec alone.

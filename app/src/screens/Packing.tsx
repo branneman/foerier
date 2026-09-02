@@ -184,10 +184,23 @@ function containerView(trip: TripState, state: DepotState): ContainerView {
 
   const groups: PackingGroup[] = []
   let hasContainer = false
+  /**
+   * **The termination guard, and this walk is the one that had none** (review
+   * F5). `subtreeOf`, `tripPath` and `PackPicker`'s exclusion each carry the
+   * same `visited` set and each say in as many words that it "makes
+   * termination independent of the view it is handed". This walk relied on
+   * `tripContainmentView` having already broken every cycle — true today, and
+   * exactly the assumption those three refuse to make. It is also the only
+   * one of the four written as **recursion**, so the failure mode is a stack
+   * overflow rather than a hang: a blank screen, not a slow one.
+   */
+  const visited = new Set<string>()
 
   function pushContainersUnder(holder: TripHolderRef, depth: number): void {
     for (const entry of childrenInOrder(holder)) {
       if (!isContainerEntry(entry, state)) continue
+      if (visited.has(entry.id)) continue
+      visited.add(entry.id)
       // `stageOf` answers `null` for a non-container and nothing else, and
       // the line above filtered to containers — so there is deliberately no
       // `stage === null` arm here. `PackingGroup.stage` is `StageValue |
@@ -908,10 +921,19 @@ export function Packing() {
                               {/* Ruling A14: a trip-only container is an
                                   ordinary group plus this tag — the row
                                   treatment promoted to the header. */}
+                              {/* `{' '}` for `PackingRow`'s reason: the
+                                  flex `gap` in `.headerNameLine` separates
+                                  the two spans on screen but not in the
+                                  header button's accessible name, which
+                                  would otherwise read
+                                  `Crate, borrowedTRIP-ONLY`. */}
                               {group.tripOnly && (
-                                <span className={styles['badge']}>
-                                  TRIP-ONLY
-                                </span>
+                                <>
+                                  {' '}
+                                  <span className={styles['badge']}>
+                                    TRIP-ONLY
+                                  </span>
+                                </>
                               )}
                             </span>
                             {group.ancestry !== '' && (

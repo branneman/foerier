@@ -196,6 +196,13 @@ describe("ruling O's drawn sizes", () => {
     expect(body).toBeDefined()
     expect(body).not.toMatch(FLOOR)
     expect(body).toMatch(/position:\s*relative/)
+    // **The painted size, pinned like every sibling here** (review F6). The
+    // first version of this test asserted the extension and not the paint,
+    // which is the one combination this file must never accept: an
+    // extension is only worth what it is measured from, and `.body` is
+    // content-sized, so without a stated 24 a meta-less row painted 22 and
+    // reached 46. Exactly `.move`'s constant, one row along.
+    expect(body).toMatch(/min-height:\s*1\.5rem/)
     // Vertical-only: the pill and the cluster sit immediately beside it, and
     // a horizontal extension would take taps meant for *how far along*.
     expect(ruleBody(css, '.body::after')).toMatch(/inset:\s*-0\.75rem 0/)

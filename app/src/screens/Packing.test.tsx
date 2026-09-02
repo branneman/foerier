@@ -790,6 +790,13 @@ describe('the row', () => {
 
     const row = rowFor('Passports')
     expect(within(row).getByText('TRIP-ONLY')).toBeInTheDocument()
+    // **The whole announced name, not the badge as a substring** — the Piece
+    // suffix's own lesson one span along. `.nameLine`'s flex `gap` is not a
+    // character, so `getByText('TRIP-ONLY')` passes happily while the body
+    // button announces `PassportsTRIP-ONLY` as one word.
+    expect(within(row).getByTestId('packing-row-body')).toHaveTextContent(
+      'Passports TRIP-ONLY',
+    )
     expect(within(row).getByTestId('packing-row-meta')).toHaveTextContent(
       'NOT IN DEPOT',
     )
@@ -962,6 +969,12 @@ describe('the groups', () => {
 
     const header = headerFor('Crate, borrowed')
     expect(within(header).getByText('TRIP-ONLY')).toBeInTheDocument()
+    // The row's assertion, on the header's own button: the tag has to be a
+    // separate word in `packing-group-move`'s accessible name, not
+    // `Crate, borrowedTRIP-ONLY`.
+    expect(within(header).getByTestId('packing-group-move')).toHaveTextContent(
+      'Crate, borrowed TRIP-ONLY',
+    )
     expect(within(header).getByTestId('journey-rail')).toBeInTheDocument()
     expect(header).toHaveTextContent('0/0')
   })
