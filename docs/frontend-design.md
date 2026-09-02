@@ -480,9 +480,10 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   `number | null` partway through S7, so the fold is possible now, but Add
   gear's field still owns a label, a fact line and a CTA gate `Stepper`
   does not, and nobody has done the work of folding it in. The rest of
-  this list is unbuilt, and `Popover` is the one with a waiting caller: §4a's
-  desktop tag picker is approximated by `Sheet`'s `desktopCard` until it
-  lands.
+  this list is unbuilt, and `Popover` is the one with waiting callers — **three
+  of them** now: §4a's desktop tag picker is approximated by `Sheet`'s
+  `desktopCard` until it lands, and so are S8's Piece picker and S9a's Piece
+  status sheet, both popovers from Split up on the boards.
 - **Composites (`ui/`)** — `GearRow`, `TripCard`, `JourneyRail`,
   `WhereaboutsCard`, `LedgerList`. Presentational; take domain data as **props**.
 
@@ -492,6 +493,11 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   (`InviteIssued`, `People`). `WhereaboutsCard` is props-in already and wants
   nothing but that caller, but `TripCard` reads `useDepot` and would have to
   lift that read to `Trips` before it could clear the hard rule above at all.
+  **`JourneyRail` was built at S9a and built in `app/`**, making three: it is
+  props-in and clears the hard rule already, but it reads `STAGES` and
+  `stageLabel` from `@foerier/shared`, which `ui/` does not depend on — so the
+  move is either a new dependency edge or a stage table passed down as props,
+  and that is a decision rather than a relocation. Its one caller is `Packing`.
 - **Screens / containers (`app/`)** — read Zustand **selectors from `shared/`**,
   then hand plain data down to `ui/`.
 

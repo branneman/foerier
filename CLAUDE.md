@@ -566,6 +566,102 @@ untouched. See [its spec](docs/specs/2026-08-31-per-person-pieces.md) and
   the `HERE` side — a deliberate widening, recorded in the spec's §9, not a
   gap.
 
+**S9a, packing and the journey, has landed** (stories 9, 10). Five op types —
+`trip.entry_status_set`, `trip.piece_status_set`, `trip.entry_moved`,
+`trip.piece_moved`, `trip.container_stage_set` — five new registers over two
+existing entity paths, the packing arithmetic in
+`shared/src/selectors/packing.ts`, the Trip's own containment tree in
+`shared/src/selectors/tripContainment.ts`, **F4** (`/trips/:id/packing`) with
+its Pack picker, Piece status sheet, journey rail and container-move confirm,
+and the two doors that reach it. No endpoints, no migration, and — after ruling
+B4 retired the dimension §8.5 had assigned to this slice — the slicing engine
+untouched. See [its spec](docs/specs/2026-09-01-packing-and-the-journey.md),
+whose **§11 records what moved while it was being built**, and
+[§12.15](docs/architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
+
+**S9 ships as two halves, S9a and S9b** — the second slice in the plan to
+split, on the same write-then-read seam S2 used, and argued the way §8.4 argues
+story 11's: **S9b introduces no new op type at all.** S9b owes
+`whereabouts()`'s `'trip'` slice and the quantity split, and everything
+downstream of them — the Depot's `WHEREABOUTS` column, gear detail's card as a
+stack of one row per slice, Find's per-person answer card, and story 13's
+`CONTAINER` (home) dimension. **The cost meanwhile, stated plainly: between the
+two halves a household can pack a Trip and the Depot will not say so** — Find
+answers `⌂ HAL ▸ LADE 2` for a headlamp that is in the duffel, in the car. Same
+shape of gap S2a left before S2b, and the reason the halves ship close
+together.
+
+**Six things about S9a are worth knowing before touching packing:**
+
+- **`stage` xor `status` is a reader gate, and this is the third time this
+  codebase has had to say so.** A container Entry carries a journey *instead
+  of* a status ([sync §3.7](docs/sync-protocol.md)), but the reducer does not
+  enforce it and must not: the containment trait lives on the **Gear**
+  aggregate, so resolving it before writing would make the fold order-dependent
+  on whether `gear.recorded` had arrived. Both registers fold unconditionally
+  and `packing.ts` decides on the way out — `statusOf` is `null` for a
+  container, `stageOf` `null` for a non-container. `TagString` and invariant 6's
+  `bring_count` are the first two; sync §4.4 now carries the note beside both.
+  Two absent reads come with it — an absent `status` reads `not_packed`, an
+  absent `stage` reads `home`, `ownerOf`'s rule for a fourth and fifth time and
+  stated only in `packing.ts` — plus a third that is *not* symmetric: **a Piece
+  with no `residence` of its own reads its Entry's**, then loose, because
+  moving a whole per-person set into the duffel is a legitimate op and the
+  Piece ops are the refinement.
+- **A container is not a piece, and ruling A5 moved numbers that had already
+  shipped.** `pieceCountOf` returns `0` for a container Entry and `listTotals`
+  follows, because a denominator holding things that can never be marked packed
+  makes the numerator unreachable. It **narrows ruling L rather than breaking
+  it**: ENTRIES counts the list, PIECES counts what travels, so `entriesOf` and
+  `claim.ts` are untouched and `N ENTRIES` still counts the container. No drawn
+  board's number changed — no drawn gear list holds a container Entry — but a
+  real household's Trip totals did, and they moved to the truth.
+- **The rail is a direct set, and a redundant write is never free.** Any chip
+  sets that stage, backwards included, so there is no `nextStage` and no
+  furthest-stage rule to reintroduce; **tapping the current stage writes
+  nothing**, because a redundant write moves the stamp LWW compares and can
+  therefore beat, and silently discard, a genuine concurrent write from a
+  Device that was offline. At S6 that mistake was *visible* (`DAY N` reads the
+  phase register's own stamp); here it is invisible and exactly as wrong. Same
+  rule, twice more in this slice: `SET EVERYONE` skips a Piece already at the
+  tapped status, and the Pack picker's **caller** suppresses a selection equal
+  to the current residence — the picker itself stays a pure selection component,
+  as `HomePicker` is.
+- **PERSON mode means *whose it is*, and that is what made the drawn frame
+  buildable.** *Whose body it goes with* is story 23, Later, and the app holds
+  no such fact — which is precisely why the frame's arithmetic could not be
+  built as drawn. Ownership partitions instead: a per-person Entry contributes
+  its included Pieces to their Participants; otherwise `ownerOf`, **including a
+  Person who is not a Participant**; otherwise `Shared`, which is drawn
+  **last**, against the Depot's `GROUP BY OWNER` pinning `shared` first — the
+  Depot files gear, F4 lists work, and on a real Trip a first-position `Shared`
+  pushes every person header off-screen. Being total is what closes the
+  arithmetic, and the bucket sums are asserted against `packingTotals` rather
+  than a frozen number.
+- **Two containment views now, and they must not drift.**
+  `tripContainment.ts` restates `containment.ts`'s traversal, its sorted-id
+  determinism and [sync §3.6](docs/sync-protocol.md)'s cycle break over a
+  different pointer type. The duplication is deliberate — the two worlds
+  resolve against different things, Places and Gear against Entries, and a
+  shared implementation would take a strategy object for every line — but **the
+  cycle break is the half that would be silent if they diverged**, since a
+  replica-dependent break shows up only as two Devices drawing different trees.
+  Two rules the trip tree deliberately does *not* share are written into its
+  header: `trip.entry_removed` has no restore, and there is **no trip twin of
+  the home tree's *retired* reason**, because retirement is a home fact and
+  says nothing about whether the duffel already packed for Saturday still holds
+  the stove.
+- **The card's five elements are full, and the NEXT line stays above the
+  progress line.** S9a draws exactly one CTA, `Continue pack-out` at Pack-out
+  only, and returns the progress line **below** the NEXT line, on Active cards
+  only — a Draft's `● 0/59 PIECES` would state progress against an arrangement
+  invariant 17 makes inert. The second door is `PACKING ›` in the `GEAR LIST`
+  band at every width and every phase, which has one consequence worth knowing
+  before adding a third: **a Trip with an empty gear list has no drawn door to
+  F4**, because the band renders only when the Trip has Entries. Deliberate — a
+  route to a screen that can only say `0 ENTRIES.` is a door to an empty room —
+  and recorded in `docs/design/README.md` §1 as a code-authored line.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**

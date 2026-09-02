@@ -836,3 +836,243 @@ correct: this slice creates the facts that make it reachable.
 `sequence()`'s sixth hand-rolled clock-stamper, `Popover`'s waiting callers (now
 three), the `DepotState` misnomer, and the two-panes-one-scroller entry — which
 F4 does not add to, having no panes.
+
+---
+
+## 11. What changed during implementation
+
+Written after the slice landed. **Nothing above this line has been edited.**
+`the-gear-list.md` §11 sets the precedent and this repo's own S4-fixture lesson
+names the reason: a dated spec is a record of what was believed when it was
+written, and correcting it in place destroys the evidence of what moved. So a
+sentence above that turned out false is listed here, beside the reason, rather
+than quietly fixed where a reader would never learn it had been wrong.
+
+### 11.1 Sentences in this document that are wrong
+
+- **§4.5's right-hand slot is backwards, and the boards say so.** It reads
+  "each row's right-hand mono is *that container's stage*, taking the slot the
+  Home picker gives `● NOW`". The built picker does the reverse: **`● NOW`
+  takes the slot on the current row, and every other row shows its container's
+  stage.** `design/README.md` §1 is only consistent under that reading — it
+  says `● NOW` on the current residence "taking that row's right-hand slot in
+  place of the container's stage", and later in the same bullet that "each
+  row's right-hand mono is that container's stage" — and the round's artboard
+  settles it outright, drawing the `Loose` row's `● NOW` right-aligned in the
+  same slot the container rows give `CAR` / `STAGING`. The error was carried
+  from this spec into a task brief; the implementer overrode the brief and was
+  right to.
+- **§3.6 says `entry.ts` is untouched, and it means the four functions it
+  names.** `entriesOf`, `entryKind`, `bringCountOf` and `piecesOf` are indeed
+  untouched, but `isContainerEntry` landed **in `entry.ts`**, not in
+  `packing.ts`: three files need it, and `entry.ts` is where *what does this
+  Entry's Gear say* already lives. Putting it in `packing.ts` would have made
+  the containment view and the counts import the packing module for a question
+  that is not about packing.
+- **§3.6's untouched list does not mention `ui/`, and `ui/` moved twice.**
+  `PersonCircle` widened its `size` union to include **28 and 34** (§4 named
+  both sizes without noticing that no such circle existed yet) and its `tone`
+  union to include **`filled` and `half`**, so the sheet's row circle can state
+  that Piece's status. The tones are named **presentationally on purpose**:
+  S8's own rule is that `PersonCircle` takes a tone and not a state, so the
+  packing vocabulary stays in `app/` and the sheet maps status → tone itself.
+  `ui/Sheet` gained an optional **`description`**, rendered as Radix's
+  `Dialog.Description` — see §11.2.
+- **§3.6 says `whereabouts()`'s docstring "is amended to say so"; it was
+  not.** The file is untouched and still reads *"`'trip'` arrives with stories
+  9/10"* — which S9a has now made ambiguous rather than false, since stories 9
+  and 10 have arrived and the trip slice has not. S9b writes the sentence that
+  fixes it, and closes the `WhereaboutsCard` collision entry with the same
+  keystroke.
+- **§3.1's table is the exported *questions*, not the exported surface.**
+  `packing.ts` also exports `statusGlyph` (the pill's own `○ ◐ ●`),
+  `countsAsDisagreement` (§11.2), `TRIP_LOOSE` — the frozen singleton, exported
+  once `app/` had grown two more copies of the literal — and `subtreeOf`, made
+  public rather than leave a third hand-rolled depth-first walk in a screen.
+- **§3.5's threshold counts more than "not packed".** See §11.2; the rule as
+  built is *not packed, or any status this build cannot name*.
+
+### 11.2 Decisions this document did not take
+
+Each was forced by the code and is recorded where it is implemented, not only
+here.
+
+- **A Piece with no `residence` register of its own reads its Entry's, then
+  loose.** `trip.entry_moved` on a per-person Entry is a legitimate op — the
+  whole headlamp set goes in the duffel — and the Piece ops are the refinement,
+  so reading an absent Piece residence as `loose` would silently discard it.
+  The two registers stay distinct facts about the log; only the read is
+  layered. It is deliberately **not symmetric with `status`**: an absent Piece
+  status reads `not_packed` rather than the Entry's, because a status is
+  per-Piece work while a residence is where the set rides. Stated in
+  `packingItems`' own docstring.
+- **An unrecognised status counts toward the ▲ line.** Ruling A6 says "not
+  packed only", but its whole stated reason is about `staged` — counting staged
+  would fire on nearly every container in the car — so the carve-out is drawn
+  against `staged` and the round never reached the unrecognised case. As first
+  built, a crate in the car full of gear in a status this build cannot name
+  drew **no ▲ at all**: the disagreement the feature exists to surface, hidden
+  in silence. The failure directions are asymmetric and that decides it, and
+  the open enum is not exotic — it is the mechanism story 20's editable
+  statuses ship on, so every Trip using a custom status would have had a
+  permanently silent ▲. `countsAsDisagreement` is
+  `!isPacked(status) && status !== A6_CARVE_OUT`, with a test walking
+  `STATUSES` and asserting the differing rows are exactly `['staged']`, so a
+  second carve-out cannot appear unnoticed. **Flagged for the next design
+  round**: A6 did not reach this case.
+- **A container's *where* target is its group header.** No board draws it. A
+  container is never a row in any of the three modes, yet ruling A2b rules on a
+  container move and the Pack picker and its confirm exist to serve one — so
+  something must open the picker for a container, and only the header is left.
+  The header therefore takes the row's own two-track shape (body = picker, rail
+  = journey) and is drawn ≥48 under ruling O's standalone-control clause, so
+  the rail's clamped `::after` meets it edge to edge. **Flagged for the next
+  round.**
+- **`SET EVERYONE` skips a Piece already at the tapped status**, so N is the
+  number of Pieces that *change*. The harm the skip avoids is correctness under
+  sync, not tidiness: a redundant `trip.piece_status_set` carries a later HLC
+  than the register holds, so it beats — and silently discards — a genuine
+  concurrent write from another Device. This sheet is the one surface where a
+  single tap authors N such writes at once. §4.4's "it writes N ops in one
+  batch" is still true; N is smaller than it reads.
+- **`ui/Sheet` gained an optional `description`.** The board wants a short
+  visible title (`Headlamp`), a visible mono fact line, and a fuller
+  announcement on open (`Packing status — Headlamp, 1 of 3 packed`), while
+  `Sheet` declares as an invariant that the accessible name **is** the visible
+  title. Widening `title` to a `ReactNode` with visually-hidden spans would
+  have kept the invariant only technically; making the whole sentence the
+  visible title would have collapsed two drawn registers into one. `Sheet`
+  already set `aria-describedby={undefined}` with the note that "our pickers
+  have no single describing paragraph" — a statement that none had had one
+  *yet*, not a rule against them. This sheet has one, already visible and
+  already drawn. Thirteen existing callers are byte-identical without it.
+- **Empty person buckets are omitted**, rather than drawn at `0/0`. That is the
+  same "arithmetic nobody asked for" the empty state already refuses when it
+  withholds `● 0/0 PIECES`.
+- **`containerTotals` groups by the Entry's holder, not by a Piece's own
+  residence** — a reason rather than a limitation. In CONTAINER mode the boards
+  draw a per-person Entry as one row carrying a cluster, not one row per Piece;
+  per-Piece residence surfaces only in ALL mode's `▸ MIXED`. Grouping by the
+  Entry is what keeps a group header agreeing with the rows drawn under it,
+  which is the precise symptom the shared arithmetic exists to prevent.
+- **The Piece status sheet's residence names the immediate container**
+  (`▸ DUFFEL 90 L`), never a breadcrumb — README §1's own row anatomy, and the
+  read ALL mode's meta line already uses. The Pack picker is one tap away and
+  shows the whole tree.
+
+### 11.3 Departures from a drawn frame, each with its reason
+
+- **The ▲ line's colour is split**: the line in the staged amber the frame
+  paints, the **glyph alone** in attention, as its own element. Two README
+  statements are in tension — the frame paints the whole line one colour, the
+  Status Grammar puts ▲ in attention — and the general rule wins here against
+  the usual specific-beats-general instinct, for one reason: a glyph meaning
+  "attention" everywhere else in the app must not mean something else on one
+  screen. The trip card already draws exactly this structure.
+- **The residence segment stays amber in PERSON mode**, where the boards draw
+  it amber in ALL and muted in PERSON. `▸` + amber is the app-wide trip-world
+  mark (README §2's whereabouts encoding), and ALL's own stated reason for
+  amber — "the only statement of *where* once no header makes one" — is equally
+  true in PERSON, which groups by person rather than by container.
+- **PERSON keeps `×N`.** Making units mode-dependent would buy a board detail
+  at the cost of a per-mode branch in the meta line, and CONTAINER already
+  draws `SHARED · ×1`.
+- **The person header circle takes one tone rule, not the board's two.** The
+  frame is internally inconsistent — Els at 9/13 is half-filled, Kees at 6/9 is
+  bordered, the same partial state drawn two ways — so no rule fits all three
+  circles. The build states only the fact the ruling names: filled = nothing
+  left. **Board inconsistency flagged for the next round.**
+- **The empty state withholds the controls row and the hint as well as the
+  count line and the bar.** The board names only the count line and the bar, so
+  this extends it — but it extends the board's own stated principle: a
+  segmented control that partitions nothing and a hint naming three gestures on
+  rows that do not exist are dead affordances, and "never a dead affordance" is
+  the empty region's own rule, the same one §4.9 cites about the missing door.
+  `Trip.tsx` sets the precedent by replacing its whole `GEAR LIST` band rather
+  than merely its count.
+- **Three spacing and type values follow a shared token rather than a board
+  number, under one principle: a per-screen override of a shared token is
+  exactly the drift the token exists to prevent, so where a board's number
+  differs from the app's token, *the token wins* and the difference is recorded
+  for a round that can change the token everywhere.** (1) The gutter reads the
+  shell's `--gutter` (24) rather than §4.8's "20 at Roomy" — `Depot.module.css`
+  and `Trips.module.css` carry the identical documented note, and a flat 20 is
+  only meaningful below the 560 cap anyway, since above it the inset is
+  (viewport − 560)/2. (2) §4.8's **Desktop title bump to 34 is deliberately not
+  implemented**, because no screen in the app implements it and doing it here
+  alone would make F4 the odd one out. (3) A 12px gap between group cards from
+  Roomy up, unspecified anywhere, because adjacent rounded corners with no gap
+  pinch.
+- **§4.9's missing door is confirmed as built, not fixed.** A Trip with an
+  empty gear list has no drawn door to F4, for the reason §4.9 gives.
+  `design/README.md` §1 now carries the consequence as a code-authored line so
+  it survives the next regeneration, and it is flagged for the next round in
+  case the boards want a door there anyway.
+
+### 11.4 Known limitations, deliberately taken
+
+- **A Piece cannot be pinned against a later Entry move.** Tapping the Piece's
+  own effective residence in the picker writes nothing, because a redundant
+  write moves the stamp LWW compares. Writing it anyway would "pin" the Piece
+  so a later `trip.entry_moved` could not carry it along — arguably not a
+  redundant write at all, since it changes future behaviour — but **no board
+  draws pinning**, and inventing it would add an unrequested capability. One
+  guard narrows from effective to own-register residence if a round asks for
+  it.
+- **An orphaned indent survives under `○ LEFT`.** A nested group whose parent's
+  header is filtered out keeps its indent, with no ancestor above it. Ruling
+  A4's cap-and-ancestry rule is taken literally and no board draws a
+  keep-the-ancestry condition, so inventing one would be designing. Pinned by a
+  test that says in as many words that it records the ruling read literally and
+  is a candidate for the next round, so a later refactor cannot change it
+  silently.
+- **`toneForStatus`'s `staged` branch is a second site naming that literal**,
+  after `A6_CARVE_OUT`. Reusing the constant would be worse — it answers "which
+  status is carved out of the ▲ threshold", a different question that merely
+  shares a value today. The principled fix is a presentational column on
+  `STATUSES`, which is exactly what story 20's design phase touches; **that is
+  the moment to table-ise it, and this is the note that names the site.**
+- **Inherited, not S9a's: `EntryRow`'s `TRIP-ONLY` badge announces
+  `PassportsTRIP-ONLY`** — the same glued-name shape S9a fixed on its own Piece
+  row, but shipped at S7 and inherited by `PackingRow`'s badge. Named here so
+  it is not lost between "not this slice's" and "nobody's".
+
+### 11.5 What the slice found in shipped code
+
+- **A Counted *container* is authorable**, because `container` and `kind` are
+  orthogonal registers — so ruling A5's narrowing made `EntryRow` draw `×0` for
+  one. Fixed inside this slice rather than deferred, because no other task
+  touched that file: the read-only `×N` reads the **Bring-count**, since `×N`
+  answers "how many of this thing there are" while the totals answer "how many
+  things travel and can be packed".
+- **`align-items: center` sizes a flex item to its content on the cross
+  axis**, so a nested content-sized button inside a ≥64px row had a ~38px hit
+  area while its own comment claimed the row's height floored it. Every
+  precedent in this repo puts the floor on the element that *is* the target;
+  here the row is a `<div>` and the target is a button inside it, a shape the
+  codebase had not had before.
+- **`overflow: hidden` on a segmented control is a trap that no test could
+  see.** A clipped descendant is not hit-testable, so a later `::after`
+  extension would have been dead on arrival — and `drawnSizes.test.ts` works by
+  **parsing stylesheet text**, so it would have asserted the extension exists
+  and passed over a hit area that did not. Inherited verbatim from
+  `AddGear.module.css`, where it is harmless because that control is drawn at
+  48. Removed here; the end segments round with `border-radius` instead.
+- **Adjacent `<span>`s carry no whitespace**, so the Piece row announced
+  `Headlamp— Els's piece`. The assertion that was supposed to pin the name
+  matched the suffix as a **substring**, so it never saw the defect — a test
+  that pins a defect is worse than no test, and it was updated with the fix
+  rather than around it.
+
+### 11.6 One thing left unresolved
+
+**A single unreproducible test failure.** One run reported
+`1 failed | 1733 passed` and the output was lost before the test could be
+named. It did not reproduce across eleven further runs by the implementer or
+six by the controller — **seventeen consecutive clean runs against one
+sighting**. Recorded rather than assumed away, and worth watching in CI. One
+untested hypothesis for whoever meets it next: several `app/` suites compute
+against `Date.now()` (`tripChip`, `phaseDay`), and `app/vitest.config.ts` pins
+`TZ` precisely because those reads are time-sensitive — a run crossing a
+boundary is the shape of thing that produces exactly one failure in seventeen.
+Speculation, not a diagnosis.

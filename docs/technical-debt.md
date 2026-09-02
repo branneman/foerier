@@ -83,17 +83,20 @@ items under thirty settled ones.
   and why its CTA fact line has only one alignment to say.
   [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `two-pane Add gear has never been built`
-- **`ui/`'s `Popover` is unbuilt and has two waiting callers.** §4a's desktop
-  tag picker and S8's Piece picker (Split and up) are both popovers on the
-  boards, and both are approximated by `Sheet`'s `desktopCard` until the
-  primitive lands. [`frontend-design.md`](frontend-design.md) §5, anchor:
-  `§4a's desktop tag picker is approximated by`
-- **Two of §5's `ui/` composites are still in `app/`.** `TripCard` and
-  `WhereaboutsCard` are named there and live in `app/src/components/`, each with
-  one caller — and a second caller is the bar both moves so far have cleared
-  (`GearRow`, `ExpiryChip`). `WhereaboutsCard` wants only that caller;
-  `TripCard` reads the store, which §5's hard rule forbids in `ui/`, so it owes
-  a lifted read as well. [`frontend-design.md`](frontend-design.md) §5, anchor:
+- **`ui/`'s `Popover` is unbuilt and has three waiting callers.** §4a's desktop
+  tag picker, S8's Piece picker and S9a's Piece status sheet are all popovers
+  from Split up on the boards, and all three are approximated by `Sheet`'s
+  `desktopCard` until the primitive lands.
+  [`frontend-design.md`](frontend-design.md) §5, anchor:
+  `desktop tag picker is approximated by`
+- **Three of §5's `ui/` composites are still in `app/`.** `TripCard`,
+  `WhereaboutsCard` and — since S9a — `JourneyRail` are named there and live in
+  `app/src/components/`, each with one caller, and a second caller is the bar
+  both moves so far have cleared (`GearRow`, `ExpiryChip`).
+  `WhereaboutsCard` wants only that caller; `TripCard` reads the store, which
+  §5's hard rule forbids in `ui/`, so it owes a lifted read as well; and
+  `JourneyRail` reads the stage table from `shared/`, which `ui/` does not
+  depend on. [`frontend-design.md`](frontend-design.md) §5, anchor:
   `` still in `app/src/components/` with one caller each ``
 - **`DepotState` is a misnomer** — it is the fold of everything, Trips included.
   The rename reaches `DepotStoreState`, `DepotProvider`, `useDepot`, `DepotView`
@@ -166,6 +169,26 @@ items under thirty settled ones.
   component is a `<label htmlFor>`, its `OPENS EMPTY — GATES THE CTA` fact line,
   and a CTA gate computed from the parsed value.
   [`frontend-design.md`](frontend-design.md) §5, anchor: `aria-label="Fewer"`
+- **The trip's containment view restates the home one's traversal, and the two
+  must not drift.** `shared/src/selectors/tripContainment.ts` reimplements
+  `containment.ts`'s walk, its sorted-id determinism and
+  [`sync-protocol.md`](sync-protocol.md) §3.6's cycle break over a different
+  pointer type. The duplication is deliberate — the two worlds resolve against
+  different things, and a shared implementation would take a strategy object
+  for every line — but the **cycle break is the half that would be silent if
+  they diverged**, since a replica-dependent break shows up only as two devices
+  drawing different trees. Argued in the module's own header,
+  `shared/src/selectors/tripContainment.ts`, anchor:
+  `The duplication is deliberate, and the two must not drift.`
+- **`useScreenHeader`'s tenth and eleventh callers disagree about the same
+  question.** F4 passes `atDesktopSidebarCarriesDestination: false` and keeps
+  `‹ ALPS 2026` at Desktop; `GearListBuilder`'s **default** door points at the
+  same kind of destination — one specific Trip, which no sidebar row
+  carries — and the S9 round did not look at it. One of the two is drawn
+  wrong at Desktop, and the boards draw the builder at 1024 with no sidebar at
+  all, which is why the question has never been forced.
+  [`architecture-design.md`](architecture-design.md) §12.15, anchor:
+  `the first screen where that flag's`
 - **`Depot.tsx`'s `metaFor` computes `×N` inline rather than calling the
   `qtyFor` beside it.** S7 exported `qtyFor` so `DepotPicker` could draw the same
   suffix; `metaFor`, four lines above it in the same file, still spells the

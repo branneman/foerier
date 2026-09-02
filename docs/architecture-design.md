@@ -424,12 +424,13 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 ### 8.3 The slices
 
-**Landed so far: S0, S1, S2a, S2b, S3, S3.5, S4, S6, S5 and S7**, plus two
-pieces of work carrying no slice number (the Radix conversion, §12.9; Tier 4
+**Landed so far: S0, S1, S2a, S2b, S3, S3.5, S4, S6, S5, S7, S8 and S9a**, plus
+two pieces of work carrying no slice number (the Radix conversion, §12.9; Tier 4
 and 5 against production, §12.8). S2 was the first slice to need the op log,
 the reducer, and `/sync`, and it landed in **two halves rather than one** —
 see its entry below for why, and §12.3 and §12.4 for what each half settled.
-**S5 is the one gap in the order**: it is an auth slice, it shares no file
+**S9 is the second slice to split**, on the same write-then-read seam. **S5 is
+the one gap in the order**: it is an auth slice, it shares no file
 with the Trip, and S6 took the float §8.6 grants rather than idling behind
 it. S7 landed after S5, back in step with §8's order — it is next after S6
 either way, since it shares no file with an auth slice.
@@ -677,25 +678,56 @@ See [its spec](specs/2026-08-29-trips-and-phases.md) and §12.11.
   concurrently with a Piece removal.
 - **Usable?** One missing headlamp is obvious, and obvious whose.
 
-**S9 — Packing and the Journey.** *Delivers 9, 10. Advances 3 (trip
-Whereabouts), 13 (Packing-status and Container dimensions).*
+**S9 — Packing and the Journey. Two halves, S9a and S9b.** *S9a delivers 9 and
+10; S9b advances 3 (trip Whereabouts) and 13 (Container dimension).*
 
-One slice, because [sync §3.7](sync-protocol.md) makes 9 and 10 one mechanism.
+Planned as one slice, because [sync §3.7](sync-protocol.md) makes 9 and 10 one
+mechanism. It **ships as two**, cut at the design round
+(`design/README.md` §5e) on S2's own write-then-read seam and argued the way
+§8.4 argues story 11's: **S9b introduces no new op type at all**, so it cannot
+break S9a's merge behaviour, and S9a carries the whole of the protocol weight.
+The value test holds in both directions — S9a alone is a trustworthy Pack-out,
+and S9b alone would be a Depot column with nothing to read.
+
+**S9a — packing and the journey. Landed.** *Delivers 9, 10.* See
+[its spec](specs/2026-09-01-packing-and-the-journey.md) and §12.15.
 
 - **Ops (5):** `trip.entry_status_set`, `trip.piece_status_set`,
   `trip.entry_moved`, `trip.piece_moved`, `trip.container_stage_set`.
-- **UI:** F4 Pack-out — status per Entry and per Piece, trip residence, the
-  Container journey board, and the **disagreement shown, not forbidden** when a
-  packed Container holds a not-packed Entry. Also **Find's per-person answer
-  card**, work S8 held back — `Screens B` 03 is restaged `S8 · PIECES` → `S9`.
+- **UI:** F4 Pack-out — status per Entry and per Piece, trip residence through
+  the Pack picker, the Container journey rail, and the **disagreement shown,
+  not forbidden** when a Container in the car holds a not-packed Entry. Plus
+  the two doors that reach it, and the trip card's fifth element: the progress
+  line on Active cards.
+- **Tests:** Tier 1 — moving a Container moving its contents through the
+  pointer, nested included, with statuses untouched; the trip containment
+  view's four loose reasons and its cycle break; the counts and the person
+  partition. **Tier 2 — `residence` and `status` are separate registers, so no
+  merge can make them agree (invariant 12)**; a backwards status move winning
+  on its clock; a trip-side cycle breaking identically on both replicas.
+  Tier 3 — F4, both sheets, the confirm, and the two doors.
+- **Usable?** A multi-day Pack-out is trustworthy on the Trip's own screens.
+
+**S9b — the trip world reaches the Depot.** *Advances 3 (trip Whereabouts, the
+quantity split), 13 (`CONTAINER`).*
+
+- **Ops: none. Endpoints: none.** Purely additive read-side code, which is what
+  made the seam a clean one — the S2b property, one slice shape later.
+- **UI:** `whereabouts()` gains its `'trip'` slice and the quantity split, and
+  everything downstream follows: the Depot's `WHEREABOUTS` column, gear
+  detail's card as a stack of one row per slice, **Find's per-person answer
+  card** — work S8 held back, `Screens B` 03 restaged `S8 · PIECES` →
+  `S9` — and story 13's `CONTAINER` dimension, meaning the *home* container
+  (§8.5).
 - **Tests:** Tier 1 — Whereabouts reconciling home against trip residence for
-  Active Trips only, and the **quantity split** for Counted and Per-person gear
-  with the Home slot kept; moving a Container moving its contents through the
-  pointer, nested included, with statuses untouched. **Tier 2 — `residence` and
-  `status` are separate registers, so no merge can make them agree (invariant
-  12); two Bring-count edits resolve by plain LWW.** Tier 3 — F4.
-- **Usable?** A multi-day Pack-out is trustworthy. With S10 still to come, this
-  is the last slice where the Depot can drift.
+  **Active Trips only**, and the **quantity split** for Counted and Per-person
+  gear with the Home slot kept. Tier 3 — the column, the card and Find.
+- **Usable?** The Depot stops lying about gear that is already in the car.
+  Until S9b it does: a household can pack a Trip and the Depot will not say
+  so — Find answers `⌂ HAL ▸ LADE 2` for a headlamp that is in the duffel, in
+  the car. That is the same shape of gap S2a left before S2b, and the reason
+  the two halves ship close together. With S10 still to come, S9 is the last
+  slice where the Depot can drift.
 
 **S10 — Unpack: resolve and close.** *Delivers 11a. Advances 32 (close gate), 3
 (unaccounted for).*
@@ -849,7 +881,7 @@ follow-up:
 | --- | --- |
 | Person; Ownership (Personal / Shared) | S4 |
 | Trip membership ("Gear not in any Trip") | S7 |
-| Packing status; Container | S9 |
+| Container (home) | S9b |
 | Outcome (`open`, `lost`) | S10 |
 
 **Trip membership landed with S7**, the fifth dimension the table carries —
@@ -862,9 +894,22 @@ earlier — but the round's ruling H overturned it: the rung contradicted the
 standing two-worlds rule (Pieces exist only in trip contexts, never on the
 Depot) and story 13's own criterion list had never named it. See §12.14.
 
+**`Packing status` has left the table, and did not move — ruling B4 retired it
+outright.** The S9 round ruled it the way ruling H was ruled one slice earlier:
+a dimension whose value is *undefined for four-fifths of the list* is a filter
+for a different list, and the two-worlds rule says which list. The capability
+itself is not lost — it lands on **F4**, where a packing status is defined for
+every row, and story 13's own worked example is answered there by the screen's
+segmented `CONTAINER · PERSON · ALL` and its `○ LEFT` pill. `Container` stays
+and gains its meaning: the **home** container (ruling B4b), and it groups as
+well as filters. Both rulings are in `design/README.md` §5e.
+
 Story 13 is therefore **complete at S10**, having been touched by **five**
-slices — S3, S4, S7, S9, S10 — and owned by one, and story 4's own narrowing
-criterion is delivered by S4 through this engine rather than beside it. Story
+slices — S3, S4, S7, S9, S10 — and owned by one. S9 is the odd one: it is the
+only slice that contributed a **capability** as well as a dimension, and it
+split them across its two halves — S9a built the screen that answers the
+narrowing on its own controls, and S9b adds the `Container` row. Story 4's own narrowing criterion is
+delivered by S4 through this engine rather than beside it. Story
 34 (naming a slice) is Later and attaches to the same engine with no
 structural change, which is the test that the engine was built at the right
 altitude.
@@ -2108,3 +2153,148 @@ dimension the first draft had proposed — the slicing engine untouched. See its
   exceptions-first and `+N` at its own drawn size, and **a new caller needs a
   design round only to _depart_ from that, never to be allowed it.**
 
+### 12.15 Consequences of S9a: packing and the journey
+
+Five op types, no endpoints, no migration, and — ruling B4 having retired the
+one dimension §8.5 had assigned to it — the slicing engine untouched. See its
+[spec](specs/2026-09-01-packing-and-the-journey.md), whose §11 records what
+moved while it was being built.
+
+- **Five registers, two tracks, and nothing in the merge that can make them
+  agree.** `EntryState` gains `status`, `residence` and `stage`; `PieceState`
+  gains `status` and `residence`. [Domain §7](domain-model.md)'s two
+  independent tracks — *where* against *how far along* — are therefore
+  **structural** rather than enforced: they are separate registers, so
+  invariant 12 is honoured for free and the disagreement a packed container
+  full of unpacked gear represents is *surfaced*, not forbidden. The design
+  round made the same split the row's interaction model (ruling A2): the pill
+  at the right edge writes how far along, the row body writes where. Two
+  targets, two registers, and the row body was free precisely because the pill
+  already owns the thumb side. What remains of [sync §3.7](sync-protocol.md)'s
+  register map after this slice is `outcome` and `consumedCount` on both
+  paths — S10's, and nobody else's.
+- **`stage` xor `status` is a reader gate, and can never be a reducer gate.**
+  Sync §3.7 says a container Entry carries a journey *instead of* a status. The
+  reducer does not enforce that and must not: the containment trait lives on
+  the **Gear** aggregate for a depot Entry, so resolving it before writing
+  would make the fold order-dependent on whether `gear.recorded` had arrived.
+  Both registers fold unconditionally for any Entry, and
+  `shared/src/selectors/packing.ts` decides on the way out — `statusOf` returns
+  `null` for a container, `stageOf` `null` for a non-container, whatever either
+  register holds. This is the third pair of ops to take the split `TagString`
+  drew and invariant 6 restated at `bringCountOf`, which is why sync §4.4 now
+  carries the note beside the other two rather than leaving it to a spec. The
+  conservative direction is stated once too: **a depot Entry whose Gear has not
+  reached this replica is not a container** — it carries a status, counts as a
+  piece, and starts carrying a journey the moment the Gear arrives, since
+  asserting a journey for gear nobody has described would draw a rail with no
+  container under it.
+- **Two more absent reads, with one home each.** An absent `status` reads
+  `not_packed`; an absent `stage` reads `home` — `ownerOf`'s rule and
+  `phaseOf`'s rule for a fourth and fifth time, and both stated only in
+  `packing.ts`. They are ordinary rather than exotic: no op writes either
+  register at `trip.entry_added`, so **every Entry begins with neither** and a
+  Trip mid-pack-out has both kinds on screen at once. The symptom of a call
+  site re-deriving one is the familiar one, a row drawn `NOT PACKED` while the
+  group header counts it packed. Both enums stay **open** past their known
+  members, so an unrecognised status is drawn verbatim, is not packed, and
+  cycles to `not_packed` — the only answer that is not an invention.
+- **Ruling A5 narrows ruling L, and it is the one place S9a moved a shipped
+  number.** `pieceCountOf` returns `0` for a container Entry and `listTotals`
+  follows, because a denominator holding things that can never be marked packed
+  makes the numerator unreachable — invariant 18's own shape, one slice early.
+  *PIECES is the trip arithmetic only* still stands; A5 states what that
+  arithmetic counts. **`entriesOf` is untouched** — a container is still a line
+  on the gear list, still counted by `N ENTRIES`, still removable — because
+  ENTRIES counts the list and PIECES counts what travels (ruling D), and
+  `claim.ts` is untouched too, reading the *rule* rather than the function and
+  correctly giving a Single container Entry a claim of 1. No drawn board's
+  number changed, since no drawn gear list holds a container Entry; the numbers
+  that moved are on a real household's Trip, and they moved to the truth. One
+  case the narrowing exposed and this slice fixed rather than deferred:
+  `container` and `kind` are **orthogonal** registers, so a *Counted container*
+  is authorable, and `EntryRow` briefly drew `×0` for one — `×N` answers "how
+  many of this thing there are" (`bringCountOf`'s question) while the totals
+  answer "how many things travel and can be packed" (`pieceCountOf`'s).
+- **A second containment view, deliberately duplicated, and the two must not
+  drift.** `shared/src/selectors/tripContainment.ts` is `containment.ts`'s twin
+  over `TripResidence`: a second file rather than a parameter on the first,
+  because the two worlds resolve against different things — one against Places
+  and Gear, the other against Entries — and a shared implementation would take
+  a strategy object for every line of it. It restates sync §3.6's cycle break
+  verbatim (lowest `(hlc, device_id)` edge, entry id as the canonical final
+  tiebreak) and `containment.ts`'s sorted-id traversal, for that file's own
+  stated reason: `Object.keys` is insertion order, which two replicas that
+  received the same ops in a different order do not share, and a traversal
+  driven by it is replica-dependent **in a way the convergence tier cannot
+  see**, because it runs downstream of the fold. **The obligation the
+  duplication creates is non-drift, and the cycle break is the half that would
+  be silent if it broke.** Two rules the trip tree deliberately does *not*
+  share with its twin are written into its header for the same reason:
+  `trip.entry_removed` has no restore, so a pointer into a removed container is
+  permanent rather than recoverable; and there is **no trip twin of the home
+  tree's *retired* reason**, because retirement is a home fact and says nothing
+  about whether the duffel already packed for Saturday still holds the stove.
+- **Ruling A7's partition is what made the drawn frame buildable.** PERSON mode
+  means *whose it is*, which ownership answers; *whose body it goes with* is
+  story 23, Later, and the app holds no such fact — which is precisely why the
+  frame's arithmetic could not be built as drawn. Every non-container Entry
+  falls in exactly one bucket, tested in order: a per-person Entry contributes
+  its included **Pieces**, each to its own Participant; otherwise the Entry's
+  `ownerOf`, **including a Person who is not a Participant**, because the
+  header answers whose it is and Els's jacket carried by Mark is honest;
+  otherwise `Shared`. Being total is what closes the arithmetic, and the bucket
+  sums are asserted against `packingTotals` rather than against a frozen
+  number. Group order is People first and **`Shared` last**, a deliberate
+  divergence from the Depot's `GROUP BY OWNER`, which pins `shared` first:
+  `Shared` is the everything-else bucket and on a real Trip the biggest one, so
+  first position would push every person header off-screen. The two surfaces
+  answer differently on purpose — the Depot files gear, F4 lists work.
+- **The rail is a direct set, and a redundant write is never free.** Ruling A15
+  gives the journey `SET PHASE`'s answer verbatim: any chip sets that stage,
+  backwards included, which plain LWW makes correct and sync §3.3 makes
+  deliberate — so there is no `nextStage` in `shared/` and no furthest-stage
+  rule to reintroduce. **Tapping the current stage writes nothing**, because a
+  redundant write moves the stamp LWW compares and can therefore beat, and
+  silently discard, a genuine concurrent write another Device made while this
+  one was offline. At S6 that mistake was *visible*, since `DAY N` reads the
+  phase register's own stamp; here it is invisible and exactly as wrong, which
+  is why the guard lives on the chip rather than in the caller, why the Piece
+  status sheet's `SET EVERYONE` skips a Person already at the tapped status,
+  and why the Pack picker's caller suppresses a selection equal to the current
+  residence.
+- **The trip card's five elements are now full, and the NEXT line stays above
+  the progress line.** S9a draws exactly one CTA — `Continue pack-out`, at
+  Pack-out only — and returns the progress line **below** the NEXT line, on
+  Active cards only. §12.11 said "above" until the S6 design round corrected
+  it, and this is the slice that had to get it right: the permanent obligation
+  sits above the arithmetic, and the arithmetic above the action. A Draft's
+  `● 0/59 PIECES` would state progress against an arrangement invariant 17
+  makes inert, so a Draft keeps `BUILD LIST ›` and its `DRAFT · 14 ENTRIES`
+  instead. The second door is `PACKING ›` in the `GEAR LIST` band, at every
+  width and every phase — the S6 rule holding, that a board's CTA copy lands on
+  the slice that builds the board's destination.
+- **`useScreenHeader`'s tenth and eleventh callers now disagree about the same
+  question.** F4 passes `atDesktopSidebarCarriesDestination: false` and keeps
+  `‹ ALPS 2026` at Desktop, and it is the first screen where that flag's
+  *reason* is the only reason it applies: the 216px sidebar carries `TRIPS`,
+  not `Alps 2026`. But `GearListBuilder`'s **default** door points at the same
+  kind of destination — one specific Trip, which no sidebar row carries — and
+  the round did not look at it. **Either the builder is drawn wrong at Desktop
+  or F4 is**, and the boards draw the builder at 1024 with no sidebar at all,
+  which is why the question has never been forced. Named here rather than
+  answered.
+- **What S9b still owes, and what it costs meanwhile.** `whereabouts()` keeps
+  returning its single `'home'` slice, so the Depot's `WHEREABOUTS` column,
+  gear detail's card, Find's per-person answer card and story 13's `CONTAINER`
+  dimension all stand exactly as they were. **The cost, stated plainly: between
+  S9a and S9b a household can pack a Trip and the Depot will not say so** —
+  Find answers `⌂ HAL ▸ LADE 2` for a headlamp that is in the duffel, in the
+  car. S9a writes the fact and S9b reads it; that is the same shape of gap S2a
+  left before S2b, and the reason the two halves ship close together. Also
+  unbuilt and deliberately so: `ui/Popover`, whose waiting callers are now
+  three; the pack-out banner (ruling A12, deferred with its blocker named — a
+  banner must name **one** trip and §5's standing decision refuses to rank
+  them); `UNDO` on F4, drawn and not built, the third instance of the §3b/§3c
+  precedent and the strongest, because this screen holds the app's most tapped
+  writes; and F4's own slice bar, which stays story 13's scope.

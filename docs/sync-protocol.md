@@ -625,6 +625,26 @@ Their **packing statuses are deliberately not touched** — the container may be
 the car while the stove inside it is still marked not-packed, and that
 disagreement is surfaced, not forbidden (invariant 12).
 
+**`status` and `stage` are open enums, and *never both on one Entry* is an
+authoring rule, not a reader gate (S9a).** The two rows above list the values
+this build knows, and both sets stay **open** past them exactly as `kind` and
+`phase` do (§3.3) — which is the whole reason story 20's per-trip editable
+statuses need no rank function and no migration. An unrecognised value is
+simply a value: folded as received, drawn verbatim, never coerced, and never
+counted as packed.
+
+The exclusivity §3.7 states — `stage` on Entries whose gear carries the
+containment trait, `status` on everything else, and never both — is then the
+`TagString` split (§4.3) and "Counted entries only" (above) for a third time.
+The trait lives on the **Gear** aggregate for a depot Entry, so a reducer that
+resolved it before writing would make the fold order-dependent on whether
+`gear.recorded` had already arrived. Both registers therefore fold
+unconditionally for any Entry, the authoring screen is the whole of the
+defence, and the gate lives on the way out: a container answers nothing when
+asked for a status, and a non-container nothing when asked for a stage. A peer
+on another build that wrote both leaves both folded, and this reader takes the
+one that applies.
+
 **Tasks and notes**
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |
