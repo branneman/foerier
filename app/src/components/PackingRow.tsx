@@ -38,12 +38,18 @@ import { residenceLabel, toneForStatus } from './PieceStatusSheet'
  * Piece rides in the duffel while another is loose.
  *
  * The row body was free *precisely because* the pill already owns the thumb
- * side, and that is also what keeps the two apart: the pill states its own
- * explicit ≥44 and the body is the rest of a ≥64px row, so ruling O's
- * clamped extensions never reach across each other. Neither this row nor any
- * ancestor of it may carry `overflow: hidden` — a clipped descendant is not
- * hit-testable, and `drawnSizes.test.ts` reads stylesheet text, so it would
- * pass over a hit area that does not exist.
+ * side, and that is also what keeps the two apart: **all three targets are
+ * horizontally inset 0**, so ruling O's clamped extensions grow into the
+ * row's own vertical padding and never reach across each other. The pill
+ * states an explicit ≥44 and paints it; the body and the cluster each carry
+ * a clamped `::after`, because `.row` is `align-items: center` and a flex
+ * item is sized to its *content* on the cross axis rather than stretched —
+ * an earlier draft of this paragraph claimed the body inherited the row's
+ * 64px and it does not (review F1; `PackingRow.module.css` carries the
+ * arithmetic). Neither this row nor any ancestor of it may carry
+ * `overflow: hidden` — a clipped descendant is not hit-testable, and
+ * `drawnSizes.test.ts` reads stylesheet text, so it would pass over a hit
+ * area that does not exist.
  *
  * ## Circles are never individual tap targets
  *
@@ -53,6 +59,17 @@ import { residenceLabel, toneForStatus } from './PieceStatusSheet'
  * `aria-hidden` inside a button that carries the whole fact as its
  * accessible name (`EntryRow`'s pattern, unchanged), and no circle is ever a
  * `<button>` of its own.
+ *
+ * **The visible `1/3` sits in the meta line, not inside the cluster button**
+ * — a departure from `EntryRow`, which puts its `×N` inside the control —
+ * because the board draws it there (`S9 Round` §01: `PER-PERSON · 1/3` on
+ * the meta, three bare circles at the right edge). That is harmless **only
+ * because on a per-person row the body and the cluster open the same
+ * sheet**, so the digit and the circles remain one control's worth of
+ * target between them. The cluster's own `aria-label` still states the whole
+ * fact, so nothing depends on reading the digit. **If PERSON mode ever gives
+ * a per-person row's body a different destination, this becomes a ruling B
+ * violation** and the digit has to move inside the cluster button.
  *
  * ## A container Entry has no status pill anywhere
  *

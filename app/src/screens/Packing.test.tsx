@@ -1172,4 +1172,82 @@ describe('moving what a group holds', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
+
+  /**
+   * The **container** arm of the same guard (review F6). Crate B is already
+   * loose, so the picker's own `● NOW` sits on `Loose` — and this also pins
+   * that the suppression runs *before* the confirm: a container move that
+   * changes nothing must not put a decision on screen either.
+   */
+  it('authors nothing, and confirms nothing, when a container is moved where it already is', async () => {
+    const user = userEvent.setup()
+    const seeded = await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...containerFrame(),
+    )
+
+    await user.click(
+      within(headerFor('Crate B')).getByTestId('packing-group-move'),
+    )
+    expect(within(pickerRow('Loose')).getByText('● NOW')).toBeInTheDocument()
+    await user.click(within(pickerRow('Loose')).getByRole('button'))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(await seeded.authored()).toEqual([])
+  })
+
+  /**
+   * The **Piece** arm (review F6), reached through the status sheet's own
+   * trailing `MOVE`. A Piece with no residence register of its own reads its
+   * Entry's — the headlamp set is loose — so `● NOW` is on `Loose` again,
+   * and choosing it authors no `trip.piece_moved`.
+   */
+  it('authors nothing when a Piece is moved where it already rides', async () => {
+    const user = userEvent.setup()
+    const seeded = await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...containerFrame(),
+    )
+
+    await user.click(within(rowFor('Headlamp')).getByTestId('packing-row-body'))
+    const rows = screen.getAllByTestId('piece-status-row')
+    expect(rows).toHaveLength(3)
+    await user.click(
+      within(rows[0] ?? document.body).getByRole('button', { name: 'MOVE' }),
+    )
+
+    expect(within(pickerRow('Loose')).getByText('● NOW')).toBeInTheDocument()
+    await user.click(within(pickerRow('Loose')).getByRole('button'))
+
+    expect(await seeded.authored()).toEqual([])
+  })
+
+  /** …and the same Piece genuinely moving, so the arm above is read as a
+   * suppression rather than as a dead route. */
+  it('moves one Piece with one op and no confirm', async () => {
+    const user = userEvent.setup()
+    const seeded = await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...containerFrame(),
+    )
+
+    await user.click(within(rowFor('Headlamp')).getByTestId('packing-row-body'))
+    const rows = screen.getAllByTestId('piece-status-row')
+    await user.click(
+      within(rows[0] ?? document.body).getByRole('button', { name: 'MOVE' }),
+    )
+    await user.click(within(pickerRow('Crate B')).getByRole('button'))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(await seeded.authored()).toEqual([
+      expect.objectContaining({
+        type: 'trip.piece_moved',
+        payload: {
+          entry_id: E_HEADLAMP,
+          person_id: 'els',
+          residence: { in: 'container', entry_id: E_CRATE },
+        },
+      }),
+    ])
+  })
 })

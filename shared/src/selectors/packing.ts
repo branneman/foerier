@@ -405,8 +405,21 @@ export function packingTotals(
  * than the raw registers, so the four loose-reasons and the cycle break are
  * applied exactly once — and the `subtree` guard makes termination
  * independent of the view it is handed.
+ *
+ * **Exported because a screen needs the same walk for a different
+ * question.** `containerTotals` answers *how far along is what is inside*;
+ * the Pack picker's context line (`5 INSIDE RIDE ALONG`) and the container
+ * move's confirm ask *how many things are inside*, which is `.size` of this
+ * set. A third hand-rolled depth-first walk over the same edges — after this
+ * one and `PackPicker`'s excluded-set walk — is exactly the drift this
+ * package keeps refusing, and the half that would be silent if the copies
+ * diverged is the cycle break: two replicas would count the same crate
+ * differently.
  */
-function subtreeOf(view: TripContainmentView, entryId: string): Set<string> {
+export function subtreeOf(
+  view: TripContainmentView,
+  entryId: string,
+): Set<string> {
   const subtree = new Set<string>()
   const stack = [entryId]
   while (stack.length > 0) {

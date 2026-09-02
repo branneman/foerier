@@ -23,10 +23,26 @@
     border-top: var(--stroke-rule) solid var(--color-rule-row);
   }
 
-  /* *Where it goes* — the row body, and the whole of the row that the right
-     edge does not take. It needs no hit extension of its own: it is the
-     ≥64px row minus its own padding, which is already past 48. */
+  /*
+   * *Where it goes* — the row body, and the whole of the row that the right
+   * edge does not take.
+   *
+   * **It carries its own extension, and an earlier comment here was wrong
+   * about why it did not need one** (review F1). `.row` is
+   * `align-items: center`, which sizes a flex item to its **content** on the
+   * cross axis rather than stretching it — so this button paints name (22) +
+   * gap (2) + meta (~14) ≈ 38px inside a 64px row, leaving ~13px of dead row
+   * above and below it, and ~22px on a Piece row whose meta is empty. The
+   * repo's precedents (`ui/GearRow.module.css`, `EntryRow.module.css`) all
+   * put the floor on the element that *is* the target; here the row is a
+   * `<div>` and the target is a content-sized button nested in it, which is
+   * the shape that made the intuition fail.
+   *
+   * Vertical only, and inset 0 horizontally — so it grows into the row's own
+   * 12px padding and cannot reach the pill or the cluster beside it.
+   */
   .body {
+    position: relative;
     flex: 1;
     min-width: 0;
     display: flex;
@@ -38,6 +54,14 @@
     background: none;
     text-align: start;
     cursor: pointer;
+  }
+
+  /* 38px painted + 12px above and below = past the 48px target, clamped
+     inside a ≥64px row. */
+  .body::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem 0;
   }
 
   .body:focus-visible {

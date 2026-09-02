@@ -200,6 +200,7 @@ export {
   statusGlyph,
   statusLabel,
   statusOf,
+  subtreeOf,
 } from './selectors/packing.ts'
 
 export type { PieceInclusion } from './selectors/piece.ts'

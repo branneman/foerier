@@ -9,6 +9,7 @@ import {
   packingTotals,
   stageOf,
   statusGlyph,
+  subtreeOf,
   tripContainmentView,
   tripContainerStageSet,
   tripEntryMoved,
@@ -151,37 +152,19 @@ function containerView(trip: TripState, state: DepotState): ContainerView {
     return entries.filter((entry) => ids.has(entry.id))
   }
 
-  /** Entries inside `entryId` at any depth — the `seen` set makes
-   * termination independent of the view it is handed. */
-  function insideCountOf(entryId: string): number {
-    const seen = new Set<string>()
-    const stack = [entryId]
-    while (stack.length > 0) {
-      const current = stack.pop()
-      if (current === undefined) continue
-      for (const childId of view.childrenOf({
-        kind: 'container',
-        entryId: current,
-      })) {
-        if (seen.has(childId)) continue
-        seen.add(childId)
-        stack.push(childId)
-      }
-    }
-    return seen.size
-  }
-
   const groups: PackingGroup[] = []
   let hasContainer = false
 
   function pushContainersUnder(holder: TripHolderRef, depth: number): void {
     for (const entry of childrenInOrder(holder)) {
       if (!isContainerEntry(entry, state)) continue
-      const stage = stageOf(entry, state)
       // `stageOf` answers `null` for a non-container and nothing else, and
-      // the line above filtered to containers — a **narrowing, not a case**,
-      // exactly as `PackPicker`'s own is. There is no group to drop here.
-      if (stage === null) continue
+      // the line above filtered to containers — so there is deliberately no
+      // `stage === null` arm here. `PackingGroup.stage` is `StageValue |
+      // null` because `Loose` has no journey at all, and that is the only
+      // way `null` ever reaches it. (`PackPicker` carries such an arm and
+      // needs it: `stageLabel` there demands a non-null argument.)
+      const stage = stageOf(entry, state)
 
       hasContainer = true
       const source = entry.source?.value
@@ -194,6 +177,13 @@ function containerView(trip: TripState, state: DepotState): ContainerView {
         // Past the cap the indent stops saying where the group sits, so the
         // header says it itself — `tripPath`'s outermost-first segments, the
         // one place the trip world's breadcrumb is derived.
+        //
+        // **Left as a third copy of `PackPicker`'s identical expression**
+        // (review F4), deliberately: it is three chained calls with no rule
+        // of its own to get wrong, the rule that *could* drift lives in
+        // `tripPath` and is already shared, and a named helper would have to
+        // sit in `shared/` — where `INDENT_CAP` is a *drawing* decision that
+        // does not belong.
         ancestry:
           depth > INDENT_CAP
             ? tripPath(trip, state, entry.id, view)
@@ -205,7 +195,9 @@ function containerView(trip: TripState, state: DepotState): ContainerView {
         rowIds: childrenInOrder({ kind: 'container', entryId: entry.id })
           .filter((child) => !isContainerEntry(child, state))
           .map((child) => child.id),
-        insideCount: insideCountOf(entry.id),
+        // `subtreeOf` rather than a third hand-rolled walk (review F4):
+        // same edges, same cycle break, one definition.
+        insideCount: subtreeOf(view, entry.id).size,
       })
 
       pushContainersUnder({ kind: 'container', entryId: entry.id }, depth + 1)

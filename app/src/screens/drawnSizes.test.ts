@@ -178,4 +178,119 @@ describe("ruling O's drawn sizes", () => {
     // own flex `gap` already separates this from the body button sideways.
     expect(ruleBody(css, '.move::after')).toMatch(/inset:\s*-0\.75rem 0/)
   })
+
+  /**
+   * **S9a task 10, moved forward from task 12 by review F2** — because F1 is
+   * exactly the failure this file exists to catch, and it shipped: `.row` is
+   * `align-items: center`, which sizes a flex item to its **content** on the
+   * cross axis rather than stretching it, so the row body painted ~38px
+   * inside a 64px row while a comment claimed it inherited the row's height.
+   * Every earlier precedent here puts the floor on the element that *is* the
+   * target; a content-sized button nested in a taller `<div>` was a shape the
+   * repo had not had before.
+   */
+  it("clamps the packing row's body at the row's own 48, since a flex item is not stretched", () => {
+    const css = moduleCss('..', 'components', 'PackingRow.module.css')
+    const body = ruleBody(css, '.body')
+
+    expect(body).toBeDefined()
+    expect(body).not.toMatch(FLOOR)
+    expect(body).toMatch(/position:\s*relative/)
+    // Vertical-only: the pill and the cluster sit immediately beside it, and
+    // a horizontal extension would take taps meant for *how far along*.
+    expect(ruleBody(css, '.body::after')).toMatch(/inset:\s*-0\.75rem 0/)
+  })
+
+  /**
+   * The other end of the same row. `docs/design/README.md`'s touch rule
+   * carves the status pill out at **44** rather than 48, and the board draws
+   * it at that size — so this one states its own paint and needs no
+   * extension at all, which is also what keeps it from reaching back across
+   * the body's.
+   */
+  it('paints the status pill at its own 44 and gives it no extension', () => {
+    const css = moduleCss('..', 'components', 'PackingRow.module.css')
+    const pill = ruleBody(css, '.pill')
+
+    expect(pill).toBeDefined()
+    expect(pill).not.toMatch(FLOOR)
+    expect(pill).toMatch(/min-height:\s*max\(2\.75rem,\s*44px\)/)
+    expect(ruleBody(css, '.pill::after')).toBeUndefined()
+  })
+
+  /**
+   * Ruling B at 34px (ruling A1): the circles paint the packing row's own
+   * density and the **cluster** is the target, clamped at the row rather
+   * than at the 44 a secondary action would take — this is one of the row's
+   * two primary controls, `EntryRow.pieceControl`'s argument one size up.
+   */
+  it("paints the packing row's cluster at 34px and clamps the control at 48", () => {
+    const circleCss = moduleCss(
+      '..',
+      '..',
+      '..',
+      'ui',
+      'src',
+      'PersonCircle.module.css',
+    )
+    const size34 = ruleBody(circleCss, '.size34')
+
+    expect(size34).toBeDefined()
+    expect(size34).not.toMatch(FLOOR)
+    expect(size34).toMatch(/width:\s*2\.125rem/)
+    expect(size34).toMatch(/height:\s*2\.125rem/)
+
+    const css = moduleCss('..', 'components', 'PackingRow.module.css')
+    const cluster = ruleBody(css, '.cluster')
+
+    expect(cluster).toBeDefined()
+    expect(cluster).not.toMatch(FLOOR)
+    expect(cluster).toMatch(/position:\s*relative/)
+    // 34 painted + 7 above and below = 48, and vertical-only for the body
+    // button's sake.
+    expect(ruleBody(css, '.cluster::after')).toMatch(/inset:\s*-0\.4375rem 0/)
+  })
+
+  /**
+   * Ruling A15: the rail chip is painted at the phase chip's own drawn size
+   * and reaches 48 through the same clamp — which is why the group header is
+   * a 12px-gapped column, so the extension lands in those gaps rather than
+   * on the header body's target above it or the first gear row below.
+   *
+   * **Vertical only**, and that is ruling B's arithmetic in the other axis:
+   * the four chips sit 4px apart on one line, so a horizontal extension
+   * would put a tap meant for `CAR` on `PACKED`.
+   */
+  it('paints the journey chip at the phase chip 24 and clamps it at the header row', () => {
+    const css = moduleCss('..', 'components', 'JourneyRail.module.css')
+    const chip = ruleBody(css, '.chip')
+
+    expect(chip).toBeDefined()
+    expect(chip).not.toMatch(FLOOR)
+    expect(chip).toMatch(/min-height:\s*1\.5rem/)
+    expect(chip).toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.chip::after')).toMatch(/inset:\s*-0\.75rem 0/)
+
+    // The gaps the clamp is measured against. A smaller gap here would let
+    // a chip tap land on the header body's own target.
+    const header = ruleBody(moduleCss('Packing.module.css'), '.groupHeader')
+    expect(header).toMatch(/gap:\s*var\(--space-12\)/)
+    expect(header).toMatch(/padding:\s*var\(--space-12\) var\(--space-16\)/)
+  })
+
+  /**
+   * The container's *where* target, and the other half of ruling O: a
+   * control **no board draws at all** has no drawn size to preserve, so it
+   * takes the standalone rule — simply drawn ≥48 — rather than a clamp that
+   * would have to share the 12px gap the rail chip's extension already
+   * occupies.
+   */
+  it('draws the group header body at an explicit 48, with no extension to share', () => {
+    const css = moduleCss('Packing.module.css')
+    const header = ruleBody(css, '.headerBody')
+
+    expect(header).toBeDefined()
+    expect(header).toMatch(FLOOR)
+    expect(ruleBody(css, '.headerBody::after')).toBeUndefined()
+  })
 })
