@@ -109,14 +109,30 @@
     letter-spacing: 0.06em;
   }
 
-  /* `SHARED · ×1`, `PER-PERSON · 1/3`, `NOT IN DEPOT`, `▸ DUFFEL 90 L` —
-     mono 11, muted, tabular so a count does not shuffle as it is tapped. */
+  /* `SHARED · ×1`, `PER-PERSON · 1/3`, `NOT IN DEPOT` — mono 11, muted,
+     tabular so a count does not shuffle as it is tapped. In PERSON and ALL
+     mode a `.residence` segment follows it. */
   .meta {
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     color: var(--color-ink-muted);
     font-variant-numeric: tabular-nums;
     text-transform: uppercase;
+  }
+
+  /*
+   * `▸ DUFFEL 90 L` · `▸ LOOSE` · `▸ MIXED` — where it rides on this Trip,
+   * ending the meta line in PERSON and ALL mode.
+   *
+   * **Amber in both**, which is the app's standing `▸` trip-world mark
+   * (§2's WHEREABOUTS column, gear detail's card, the trip card's line). The
+   * boards draw this identical segment amber in the ALL frame and muted in
+   * the PERSON frame; one colour meaning two things by mode is the drift
+   * `PersonCircle`'s tone note warns about, so the encoding is stated once
+   * here and the PERSON frame's muted draw is recorded as the departure.
+   */
+  .residence {
+    color: var(--color-brand-amber);
   }
 
   /*

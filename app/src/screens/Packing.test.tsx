@@ -12,6 +12,8 @@ import {
   tripEntryStatusSet,
   tripParticipantAdded,
   tripPhaseMoved,
+  tripPieceMoved,
+  tripPieceStatusSet,
   type Clock,
   type DepotState,
   type IdSource,
@@ -21,7 +23,7 @@ import {
   type StageValue,
 } from '@foerier/shared'
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -1249,5 +1251,452 @@ describe('moving what a group holds', () => {
         },
       }),
     ])
+  })
+})
+
+/* ------------------------------------------------------------------------ *
+ * PERSON mode, ALL mode, and the `○ LEFT` filter.
+ *
+ * `docs/design/README.md` §1 and §5e A7 · A7b · A8; spec §4.2.
+ * ------------------------------------------------------------------------ */
+
+const DUFFEL = 'gggggggg-0000-7000-8000-000000000030'
+const DRYBAG = 'gggggggg-0000-7000-8000-000000000031'
+const JACKET = 'gggggggg-0000-7000-8000-000000000032'
+const BOOTS = 'gggggggg-0000-7000-8000-000000000033'
+
+const E_DUFFEL = 'nnnnnnnn-0000-7000-8000-000000000030'
+const E_DRYBAG = 'nnnnnnnn-0000-7000-8000-000000000031'
+const E_JACKET = 'nnnnnnnn-0000-7000-8000-000000000032'
+const E_BOOTS = 'nnnnnnnn-0000-7000-8000-000000000033'
+
+/**
+ * Eight pieces over five buckets, built so that every rule ruling A7 states
+ * has exactly one row proving it.
+ *
+ * ```
+ * Els    0/2 · 2 LEFT   Headlamp — Els's piece   ▸ DUFFEL 90 L   ○
+ *                       Jacket                   ▸ LOOSE         ○
+ * Kim    ● 1/1          (collapsed)
+ * Mies   0/1 · 1 LEFT   Headlamp — Mies's piece  ▸ LOOSE         ○
+ * Noor   0/1 · 1 LEFT   Boots                    ▸ LOOSE         ○
+ * Shared 2/3 · 1 LEFT   Map                      ▸ LOOSE         ●
+ *                       Rope                     ▸ DRY BAG       ●
+ *                       Stove                    ▸ DUFFEL 90 L   ○
+ * ```
+ *
+ * - **Noor is not a Participant** and still gets a group: the header answers
+ *   *whose it is*, and Els's jacket carried by Mark is honest (ruling A7).
+ * - **Kim's group is all done**, which is what the `● 1/1` collapse is read
+ *   off, and what `○ LEFT` empties.
+ * - **Els's Headlamp Piece rides in the duffel while the other two are
+ *   loose**, which is the only way `▸ MIXED` becomes reachable.
+ * - **`Dry bag` holds one packed Entry and nothing else**, so `○ LEFT` has a
+ *   fully-packed *container* group to empty as well as a person one.
+ *
+ * `● 3/8 PIECES` / `5 LEFT` in all, and `0 + 1 + 0 + 0 + 2 = 3` across the
+ * groups — ruling A7's arithmetic, on facts the MVP holds.
+ */
+function personFrame(): readonly OpSpec[] {
+  return [
+    ...alps(),
+    personRecorded('noor', 'Noor'),
+
+    gearRecorded(DUFFEL, {
+      name: 'Duffel 90 L',
+      container: true,
+      kind: 'single',
+    }),
+    tripEntryAdded(ALPS, E_DUFFEL, { from: 'depot', gearId: DUFFEL }),
+
+    gearRecorded(DRYBAG, { name: 'Dry bag', container: true, kind: 'single' }),
+    tripEntryAdded(ALPS, E_DRYBAG, { from: 'depot', gearId: DRYBAG }),
+
+    // Per-person, with one Piece moved away from the other two.
+    gearRecorded(HEADLAMP, {
+      name: 'Headlamp',
+      container: false,
+      kind: 'per_person',
+    }),
+    tripEntryAdded(ALPS, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
+    tripPieceMoved(ALPS, E_HEADLAMP, 'els', {
+      in: 'container',
+      entryId: E_DUFFEL,
+    }),
+    tripPieceStatusSet(ALPS, E_HEADLAMP, 'kim', 'packed'),
+
+    // Personal to a Participant, and personal to a Person who is not one.
+    gearRecorded(JACKET, { name: 'Jacket', container: false, kind: 'single' }),
+    gearOwnershipSet(JACKET, { type: 'person', personId: 'els' }),
+    tripEntryAdded(ALPS, E_JACKET, { from: 'depot', gearId: JACKET }),
+
+    gearRecorded(BOOTS, { name: 'Boots', container: false, kind: 'single' }),
+    gearOwnershipSet(BOOTS, { type: 'person', personId: 'noor' }),
+    tripEntryAdded(ALPS, E_BOOTS, { from: 'depot', gearId: BOOTS }),
+
+    // Shared: one in the duffel, one loose and packed, one in the dry bag.
+    gearRecorded(STOVE, { name: 'Stove', container: false, kind: 'single' }),
+    tripEntryAdded(ALPS, E_STOVE, { from: 'depot', gearId: STOVE }),
+    tripEntryMoved(ALPS, E_STOVE, { in: 'container', entryId: E_DUFFEL }),
+
+    gearRecorded(MAP, { name: 'Map', container: false, kind: 'single' }),
+    tripEntryAdded(ALPS, E_MAP, { from: 'depot', gearId: MAP }),
+    tripEntryStatusSet(ALPS, E_MAP, 'packed'),
+
+    gearRecorded(ROPE, { name: 'Rope', container: false, kind: 'single' }),
+    tripEntryAdded(ALPS, E_ROPE, { from: 'depot', gearId: ROPE }),
+    tripEntryMoved(ALPS, E_ROPE, { in: 'container', entryId: E_DRYBAG }),
+    tripEntryStatusSet(ALPS, E_ROPE, 'packed'),
+  ]
+}
+
+/** A group as a landmark: `<section aria-labelledby>` is a `region` named by
+ * its own heading, so a group is addressable without a testid of its own. */
+function groupFor(name: string): HTMLElement {
+  return screen.getByRole('region', { name })
+}
+
+/** Switch the segmented control, which is what the three modes hang off. */
+async function chooseMode(user: UserEvent, label: string): Promise<void> {
+  await user.click(screen.getByRole('radio', { name: label }))
+}
+
+async function pressLeftOnly(user: UserEvent): Promise<void> {
+  await user.click(screen.getByRole('button', { name: /○ LEFT/ }))
+}
+
+/** Every drawn row's name, in document order. */
+function rowNames(): string[] {
+  return screen
+    .getAllByTestId('packing-row-name')
+    .map((name) => name.textContent ?? '')
+}
+
+/** Every drawn group's name, in document order. */
+function groupNames(): string[] {
+  return screen
+    .getAllByTestId('packing-group-name')
+    .map((name) => name.textContent ?? '')
+}
+
+describe('PERSON mode', () => {
+  /**
+   * The partition is `personPartition`'s and is not re-derived on the screen;
+   * **the order is the screen's**, because `shared/` deliberately does not
+   * supply one — its buckets come back in person-id order with `Shared`
+   * distinguished by its key rather than by its position.
+   */
+  it('orders People by the People screen, with Shared last', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    expect(groupNames()).toEqual(['Els', 'Kim', 'Mies', 'Noor', 'Shared'])
+  })
+
+  /**
+   * `Shared` is last on purpose, a deliberate divergence from the Depot's
+   * `GROUP BY OWNER`, whose grouping table pins `shared` **first**: it is the
+   * everything-else bucket and on a real Trip the biggest one, so first
+   * position would push every person header off-screen.
+   */
+  it('names the Shared group for what it is, with its own meta', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    const shared = groupFor('Shared')
+    expect(
+      within(shared).getByText('NOT ATTRIBUTED TO A PERSON'),
+    ).toBeInTheDocument()
+    expect(within(shared).getByText('2/3 · 1 LEFT')).toBeInTheDocument()
+  })
+
+  it('buckets a Piece to its Participant', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    const mies = groupFor('Mies')
+    expect(within(mies).getAllByTestId('packing-row')).toHaveLength(1)
+    expect(within(mies).getByTestId('packing-row-name')).toHaveTextContent(
+      'Headlamp',
+    )
+  })
+
+  /** Rule 2, and the one that makes the group answer *whose it is* rather
+   * than *who is going*: Noor is not a Participant and still has a group. */
+  it('buckets Personal gear to its owner, participant or not', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    expect(
+      within(groupFor('Noor')).getByTestId('packing-row-name'),
+    ).toHaveTextContent('Boots')
+    expect(
+      within(groupFor('Els')).getAllByTestId('packing-row-name')[1],
+    ).toHaveTextContent('Jacket')
+  })
+
+  /** Ruling A7's arithmetic: the buckets close on facts the MVP holds, and
+   * the header counts sum to the count line above them. */
+  it('sums the group counts to the trip total', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    expect(screen.getByText('● 3/8 PIECES')).toBeInTheDocument()
+    expect(screen.getByText('5 LEFT')).toBeInTheDocument()
+
+    expect(within(groupFor('Els')).getByText('0/2 · 2 LEFT')).toBeVisible()
+    expect(within(groupFor('Kim')).getByText('● 1/1')).toBeVisible()
+    expect(within(groupFor('Mies')).getByText('0/1 · 1 LEFT')).toBeVisible()
+    expect(within(groupFor('Noor')).getByText('0/1 · 1 LEFT')).toBeVisible()
+    expect(within(groupFor('Shared')).getByText('2/3 · 1 LEFT')).toBeVisible()
+  })
+
+  /** Ruling A7's collapse, and the word that went with it. */
+  it('collapses an all-done person and says nothing about the widget', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    const kim = groupFor('Kim')
+    expect(within(kim).getByText('● 1/1')).toBeInTheDocument()
+    expect(within(kim).queryAllByTestId('packing-row')).toHaveLength(0)
+    expect(screen.queryByText(/COLLAPSED/)).not.toBeInTheDocument()
+  })
+
+  it('expands an all-done person in place when its header is tapped', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    const expand = within(groupFor('Kim')).getByTestId('packing-group-expand')
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(expand)
+
+    expect(expand).toHaveAttribute('aria-expanded', 'true')
+    expect(within(groupFor('Kim')).getAllByTestId('packing-row')).toHaveLength(
+      1,
+    )
+  })
+
+  /**
+   * A group with work left is already showing it, so its header is text and
+   * not a control — the dead affordance the empty state refuses one screen
+   * up, and `Loose`'s own header rule one mode over.
+   */
+  it('gives a group with work left no expand control at all', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    expect(
+      within(groupFor('Els')).queryByTestId('packing-group-expand'),
+    ).not.toBeInTheDocument()
+  })
+
+  it("names a Piece row's owner inline", async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    // Recorded case in the DOM, capped by CSS — the house rule. The two
+    // spans are separated by `.nameLine`'s gap rather than by whitespace, so
+    // the drawn `Headlamp — ELS'S PIECE` is two assertions here.
+    const els = groupFor('Els')
+    expect(within(els).getAllByTestId('packing-row-name')[0]).toHaveTextContent(
+      'Headlamp',
+    )
+    expect(within(els).getByText("— Els's piece")).toBeVisible()
+  })
+
+  /**
+   * Ruling A7b, overturned. Its only possible fact is *holds no Login*, which
+   * S5 ruled must be withdrawn rather than guessed when the read fails — a
+   * screen used in a cold garage cannot rest on a network call.
+   */
+  it('draws no PARTICIPANT tag anywhere', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    expect(screen.queryByText('PARTICIPANT')).not.toBeInTheDocument()
+  })
+
+  /** No header states *where* in this mode either, so every row's meta ends
+   * in its own trip residence. */
+  it("ends a row's meta line in its trip residence", async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+
+    const els = within(groupFor('Els')).getAllByTestId('packing-row')
+    expect(els[0]).toHaveTextContent('▸ Duffel 90 L')
+    expect(els[1]).toHaveTextContent('PERSONAL E · ×1 · ▸ LOOSE')
+  })
+})
+
+describe('ALL mode', () => {
+  /**
+   * Ruling A8. The grouped modes answer *where is it going* and *whose is
+   * it*; ALL exists for *is this one thing packed*, which is a lookup — and
+   * **sorting by status would move rows under the thumb as they are tapped**.
+   *
+   * The order is `entriesOf`', which sorts through `byNameThenId`
+   * (`selectors/order.ts`) — no second comparator, so two Devices holding
+   * identical state draw the identical list.
+   */
+  it('sorts by name A→Z, never by status', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'ALL')
+
+    expect(rowNames()).toEqual([
+      'Boots',
+      'Headlamp',
+      'Jacket',
+      'Map',
+      'Rope',
+      'Stove',
+    ])
+  })
+
+  it('draws no group headers', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'ALL')
+
+    expect(screen.queryAllByTestId('packing-group-header')).toHaveLength(0)
+  })
+
+  /** A container carries no status, and its name still appears as its
+   * contents' residence segment — so nothing is hidden by leaving it out. */
+  it('draws no container rows', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'ALL')
+
+    expect(rowNames()).not.toContain('Duffel 90 L')
+    expect(rowNames()).not.toContain('Dry bag')
+    expect(within(rowFor('Stove')).getByText('▸ Duffel 90 L')).toBeVisible()
+  })
+
+  it("ends each meta line in the item's trip residence", async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'ALL')
+
+    expect(within(rowFor('Stove')).getByText('▸ Duffel 90 L')).toBeVisible()
+    expect(within(rowFor('Map')).getByText('▸ LOOSE')).toBeVisible()
+    expect(within(rowFor('Rope')).getByText('▸ Dry bag')).toBeVisible()
+  })
+
+  /** One row for the whole per-person Entry, so the row cannot name three
+   * residences — the sheet it opens is what states each one. */
+  it("reads ▸ MIXED where a per-person row's Pieces differ", async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'ALL')
+
+    expect(
+      within(rowFor('Headlamp')).getByTestId('packing-row-meta'),
+    ).toHaveTextContent('PER-PERSON · 1/3 · ▸ MIXED')
+  })
+
+  /** …and names the one residence they share the moment they agree. */
+  it("names the residence a per-person row's Pieces share", async () => {
+    const user = userEvent.setup()
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...personFrame(),
+      tripPieceMoved(ALPS, E_HEADLAMP, 'mies', {
+        in: 'container',
+        entryId: E_DUFFEL,
+      }),
+      tripPieceMoved(ALPS, E_HEADLAMP, 'kim', {
+        in: 'container',
+        entryId: E_DUFFEL,
+      }),
+    )
+    await chooseMode(user, 'ALL')
+
+    expect(
+      within(rowFor('Headlamp')).getByTestId('packing-row-meta'),
+    ).toHaveTextContent('PER-PERSON · 1/3 · ▸ Duffel 90 L')
+  })
+})
+
+describe('the ○ LEFT filter', () => {
+  it('hides packed items and nothing else', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'ALL')
+    await pressLeftOnly(user)
+
+    // Map and Rope are packed; the Headlamp keeps two unpacked Pieces, so the
+    // row it draws survives — the filter is over what carries a status.
+    expect(rowNames()).toEqual(['Boots', 'Headlamp', 'Jacket', 'Stove'])
+  })
+
+  /** The counts state the pack-out's arithmetic, not the view's: a control
+   * that narrows a list must not move a denominator. */
+  it('leaves the count line and the group counts alone', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await chooseMode(user, 'PERSON')
+    await pressLeftOnly(user)
+
+    expect(screen.getByText('● 3/8 PIECES')).toBeInTheDocument()
+    expect(within(groupFor('Shared')).getByText('2/3 · 1 LEFT')).toBeVisible()
+  })
+
+  it('applies in all three modes', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await pressLeftOnly(user)
+
+    // CONTAINER: the packed Map goes from the Loose group.
+    expect(rowNames()).not.toContain('Map')
+    expect(rowNames()).toContain('Stove')
+
+    await chooseMode(user, 'PERSON')
+    expect(rowNames()).not.toContain('Map')
+    expect(rowNames()).toContain('Boots')
+
+    await chooseMode(user, 'ALL')
+    expect(rowNames()).not.toContain('Map')
+    expect(rowNames()).toContain('Jacket')
+  })
+
+  it('leaves a fully-packed group drawing nothing', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+    await pressLeftOnly(user)
+
+    // CONTAINER: `Dry bag` holds one packed Entry and nothing else.
+    expect(screen.queryByRole('region', { name: 'Dry bag' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Duffel 90 L' })).toBeVisible()
+
+    await chooseMode(user, 'PERSON')
+    expect(screen.queryByRole('region', { name: 'Kim' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Els' })).toBeVisible()
+  })
+
+  /** A container holding nothing but nested containers keeps its header: the
+   * rail is that container's own journey, not its contents'. */
+  it('keeps a container group whose only rows are nested groups', async () => {
+    const user = userEvent.setup()
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...personFrame(),
+      tripEntryMoved(ALPS, E_DRYBAG, { in: 'container', entryId: E_DUFFEL }),
+    )
+    await pressLeftOnly(user)
+
+    expect(screen.getByRole('region', { name: 'Duffel 90 L' })).toBeVisible()
   })
 })

@@ -14,6 +14,7 @@ import {
   tripEntryStatusSet,
   tripPieceStatusSet,
   UNNAMED_PERSON_GLYPH,
+  type PackingItem,
   type StatusValue,
   type TripResidence,
 } from '@foerier/shared'
@@ -22,6 +23,7 @@ import { useMemo } from 'react'
 
 import { useDepot } from '../depot/store'
 import { tripParticipants } from '../depot/trips'
+import { sameTripResidence } from './PackPicker'
 import styles from './PackingRow.module.css'
 import { residenceLabel, toneForStatus } from './PieceStatusSheet'
 
@@ -106,29 +108,74 @@ import { residenceLabel, toneForStatus } from './PieceStatusSheet'
  * own status and emits `trip.piece_status_set`, the body moves that Piece
  * alone, and the name gains the board's `— ELS'S PIECE` suffix — recorded
  * case in the DOM, capped by CSS, the house rule — over a meta line that is
- * simply where the Piece rides. CONTAINER mode never passes it
- * — a per-person Entry is one row with a cluster there — so PERSON mode
- * (the next task) is the caller. What that mode adds on top is the residence
- * segment every *other* row's meta gains once no header states it; that is a
- * flag this row does not yet carry.
+ * simply where the Piece rides. CONTAINER mode never passes it — a
+ * per-person Entry is one row with a cluster there — so PERSON mode is the
+ * only caller.
+ *
+ * **A per-person row's body still opens the sheet in PERSON mode**, and it
+ * has to: a Piece row is not a per-person row (it carries a pill, not a
+ * cluster), so the "body and cluster open the same sheet" invariant the
+ * `1/3` digit leans on is untouched. PERSON mode never draws a clustered row
+ * at all — `personPartition` splits a per-person Entry into one item per
+ * Piece — so the only clustered rows on this screen are CONTAINER's and
+ * ALL's, both of which route body and cluster to the sheet together.
+ *
+ * ## The residence segment, and `▸ MIXED`
+ *
+ * {@link PackingRowProps.showResidence} is what PERSON and ALL mode add on
+ * top: once no group header states *where*, the meta line has to end in the
+ * item's own trip residence (ruling A8). It is drawn **amber in both modes**,
+ * one encoding — the boards draw the identical segment amber in the ALL frame
+ * and muted in the PERSON frame, which would make one colour mean two things,
+ * and amber is the app's standing `▸` trip-world mark (§2's WHEREABOUTS
+ * column, gear detail's card).
+ *
+ * What the segment says depends on what the row is:
+ *
+ * - a **Piece** row: that Piece's own residence, which is the only fact a
+ *   Piece has that its Entry does not — and the one case drawn **whatever
+ *   the flag says**, because it is that row's entire meta line;
+ * - a **per-person Entry** row: the residence its Pieces share, or `▸ MIXED`
+ *   where they sit in different containers — the sheet is what states each
+ *   one, and the row cannot;
+ * - anything else: the Entry's own residence.
+ *
+ * A per-person Entry with **no** Pieces (no Participants, or every Piece
+ * tombstoned) falls through to its Entry residence, which is the honest read:
+ * `MIXED` needs two answers to disagree and there are none.
  */
 export interface PackingRowProps {
   tripId: string
   entryId: string
   /** Set to draw one Piece of a per-person Entry rather than the Entry. */
   personId?: string
+  /** End the meta line in the item's trip residence — PERSON and ALL mode,
+   * where no group header states *where*. See the docstring. */
+  showResidence?: boolean
   /** The row body's *where*: the Pack picker, for this Entry or Piece. */
   onOpenPicker: () => void
   /** The per-person cluster's control, and a per-person row's own body. */
   onOpenPieceSheet: () => void
 }
 
-/** One circle's worth of a per-person row: who, and how far along. */
+/** One circle's worth of a per-person row: who, how far along, and where —
+ * the last of the three for `▸ MIXED` alone, which is a fact about the set
+ * rather than about any one circle. */
 interface RowPiece {
   personId: string
   label: string
   status: StatusValue
+  residence: TripResidence
 }
+
+/** One shared instance for an Entry with no `residence` register —
+ * `packing.ts`'s own `LOOSE`'s reason: it carries no id, so there is nothing
+ * to distinguish. */
+const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
+
+/** What a per-person row says when its Pieces disagree about where they
+ * ride. `residenceLabel`'s `▸` grammar with no container to name. */
+const MIXED = '▸ MIXED'
 
 /** `label.charAt(0).toUpperCase()`, or `undefined` for the sentinel — the
  * transform every `PersonCircle` caller in `app/` repeats rather than
@@ -143,6 +190,7 @@ export function PackingRow({
   tripId,
   entryId,
   personId,
+  showResidence = false,
   onOpenPicker,
   onOpenPieceSheet,
 }: PackingRowProps) {
@@ -168,28 +216,24 @@ export function PackingRow({
   const pieces = useMemo<readonly RowPiece[]>(() => {
     if (trip === undefined || entry === undefined) return []
     if (entryKind(entry, state) !== 'per_person') return []
-    const byPerson = new Map<string, StatusValue>()
+    const byPerson = new Map<string, PackingItem>()
     for (const item of packingItems(trip, state)) {
       if (item.kind !== 'piece' || item.entryId !== entryId) continue
-      byPerson.set(item.personId, item.status)
+      byPerson.set(item.personId, item)
     }
     return tripParticipants(state, trip).flatMap((person) => {
-      const status = byPerson.get(person.id)
-      if (status === undefined) return []
-      return [{ personId: person.id, label: person.label, status }]
+      const item = byPerson.get(person.id)
+      if (item === undefined) return []
+      return [
+        {
+          personId: person.id,
+          label: person.label,
+          status: item.status,
+          residence: item.residence,
+        },
+      ]
     })
   }, [state, trip, entry, entryId])
-
-  /** This Piece's residence, for the `personId` row's meta line. */
-  const pieceResidence = useMemo<TripResidence | null>(() => {
-    if (trip === undefined || personId === undefined) return null
-    for (const item of packingItems(trip, state)) {
-      if (item.kind !== 'piece') continue
-      if (item.entryId !== entryId || item.personId !== personId) continue
-      return item.residence
-    }
-    return null
-  }, [state, trip, entryId, personId])
 
   // The ids are the caller's, and a row can outlive the Entry it names by a
   // fold — another Device's `trip.entry_removed`, arriving between render
@@ -215,19 +259,69 @@ export function PackingRow({
 
   const packedPieces = pieces.filter((piece) => isPacked(piece.status)).length
 
+  // The muted half of the meta line: what the item **is**. A Piece has none
+  // — its Entry's ownership and units belong to the Entry, and the board
+  // draws a Piece row's meta as its residence alone.
   const meta = tripOnly
     ? 'NOT IN DEPOT'
     : isPiece
-      ? // A Piece's own meta is where it rides — the board's own row
-        // anatomy, and the only fact a Piece has that its Entry does not.
-        pieceResidence === null
-        ? ''
-        : residenceLabel(trip, state, pieceResidence)
+      ? ''
       : isPerPerson
         ? `PER-PERSON · ${packedPieces}/${pieces.length}`
         : // `SHARED` for a depot Entry whose Gear has not reached this
           // replica — `personPartition`'s rule 3 for the identical state.
           `${gear === undefined ? 'SHARED' : ownerLabel(state, gear)} · ×${pieceCountOf(entry, trip, state)}`
+
+  /**
+   * The amber half: where it rides on this Trip, drawn only where no group
+   * header says so. See the docstring for the three readings and for why
+   * `MIXED` needs two Pieces to disagree.
+   */
+  // An arrow const, not a declaration: a hoisted `function` can in principle
+  // be called before the `trip === undefined` guard above, so TypeScript
+  // declines to carry the narrowing into one (`Packing.tsx`'s own note).
+  const residenceSegment = (): string => {
+    // A **Piece** row draws it whatever the caller asked for: its residence
+    // is the one fact its Entry does not carry, and it is the whole of that
+    // row's meta line. `showResidence` is about the *other* rows, whose
+    // ownership and units already fill the line and whose *where* only a
+    // group header would otherwise say.
+    if (!showResidence && personId === undefined) return ''
+
+    // **One path, not a Piece special case.** The subject of a Piece row is
+    // that one Piece; of any other row, every Piece the Entry has — which is
+    // none unless it is per-person, so this is also the Kind gate. A single
+    // candidate can never disagree with itself, so a Piece row can never read
+    // `MIXED`, and it needs no branch saying so.
+    //
+    // `pieces` is read rather than `packingItems` walked a second time: that
+    // memo already holds every Piece of this Entry with the layered residence
+    // read applied.
+    const subject =
+      personId === undefined
+        ? pieces
+        : pieces.filter((piece) => piece.personId === personId)
+
+    let shared: TripResidence | null = null
+    for (const piece of subject) {
+      if (shared === null) {
+        shared = piece.residence
+        continue
+      }
+      if (!sameTripResidence(shared, piece.residence)) return MIXED
+    }
+
+    // No Pieces at all — a single or counted Entry, or a per-person one with
+    // no Participant left holding a Piece. The Entry's own register is the
+    // answer, and it is the one `packingItems` layers a Piece's read over.
+    return residenceLabel(
+      trip,
+      state,
+      shared ?? entry.residence?.value ?? LOOSE,
+    )
+  }
+
+  const residence = residenceSegment()
 
   function advance(current: StatusValue) {
     if (personId === undefined) {
@@ -262,9 +356,16 @@ export function PackingRow({
           )}
           {tripOnly && <span className={styles['badge']}>TRIP-ONLY</span>}
         </span>
-        {meta !== '' && (
+        {(meta !== '' || residence !== '') && (
           <span className={styles['meta']} data-testid="packing-row-meta">
             {meta}
+            {/* The separator belongs to neither half — it appears only where
+                both are drawn, which is why it is not baked into either
+                string. */}
+            {meta !== '' && residence !== '' && ' · '}
+            {residence !== '' && (
+              <span className={styles['residence']}>{residence}</span>
+            )}
           </span>
         )}
       </button>

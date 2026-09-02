@@ -5,8 +5,10 @@ import {
   entriesOf,
   entryLabel,
   isContainerEntry,
+  isPacked,
   packingItems,
   packingTotals,
+  personPartition,
   stageOf,
   statusGlyph,
   subtreeOf,
@@ -16,15 +18,19 @@ import {
   tripLabel,
   tripPath,
   tripPieceMoved,
+  UNNAMED_PERSON_GLYPH,
   type DepotState,
   type Disagreement,
   type EntryState,
   type PackingCount,
+  type PackingItem,
+  type PersonBucket,
   type StageValue,
   type TripHolderRef,
   type TripResidence,
   type TripState,
 } from '@foerier/shared'
+import { PersonCircle } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
@@ -35,6 +41,7 @@ import { PackPicker, sameTripResidence } from '../components/PackPicker'
 import { PieceStatusSheet } from '../components/PieceStatusSheet'
 import { useDepot } from '../depot/store'
 import { syncLabel } from '../depot/syncLabel'
+import { peopleOn } from '../depot/trips'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Packing.module.css'
 
@@ -65,6 +72,19 @@ const NO_CONTAINERS = 'A CONTAINER ON THE GEAR LIST BECOMES A GROUP HERE.'
  * row runs out of row, so past the cap the header states its own ancestry
  * instead. */
 const INDENT_CAP = 2
+
+/** `Shared`'s own meta — what the group is, said once, in the register
+ * `NOT IN A CONTAINER` uses one mode over. */
+const NOT_ATTRIBUTED = 'NOT ATTRIBUTED TO A PERSON'
+
+/** `label.charAt(0).toUpperCase()`, or `undefined` for the sentinel — the
+ * transform every `PersonCircle` caller in `app/` repeats rather than
+ * shares; see `EntryRow.tsx`'s and `PackingRow.tsx`'s copies of this note. */
+function personInitial(label: string): string | undefined {
+  return label === UNNAMED_PERSON_GLYPH
+    ? undefined
+    : label.charAt(0).toUpperCase()
+}
 
 /** One shared instance for an Entry with no `residence` register — it
  * carries no id, so there is nothing to distinguish. */
@@ -118,10 +138,45 @@ interface ContainerView {
   readonly disagreementOf: ReadonlyMap<string, Disagreement>
 }
 
-const EMPTY_VIEW: ContainerView = {
-  groups: [],
-  hasContainer: false,
-  disagreementOf: new Map(),
+/**
+ * One group of PERSON mode: a Person, or the `Shared` group that closes the
+ * list.
+ */
+interface PersonGroup {
+  readonly key: string
+  /** `null` for `Shared`, which is the absence of an attribution rather than
+   * a Person — `ownerLabel`'s own word for an absent ownership register. */
+  readonly personId: string | null
+  /** `personLabel`'s — the recorded name, or `—`. */
+  readonly name: string
+  /** `9/13 · 4 LEFT`, or `● 12/12` when nothing is left. */
+  readonly count: PackingCount
+  /** This group's items, in {@link packingItems} order. */
+  readonly items: readonly PackingItem[]
+}
+
+/**
+ * Everything all three modes draw, folded once.
+ *
+ * One memo rather than three, keyed on the fold: switching modes is a tap on
+ * a segmented control and must not pay for a re-derivation, and the three
+ * shapes share {@link packingItems} underneath anyway.
+ */
+interface PackingView {
+  readonly container: ContainerView
+  readonly person: readonly PersonGroup[]
+  /** ALL mode's rows — every non-container Entry in {@link entriesOf} order,
+   * which **is** name A→Z. */
+  readonly allEntryIds: readonly string[]
+  /** Entry ids holding at least one item the `○ LEFT` filter keeps. */
+  readonly entriesWithLeft: ReadonlySet<string>
+}
+
+const EMPTY_VIEW: PackingView = {
+  container: { groups: [], hasContainer: false, disagreementOf: new Map() },
+  person: [],
+  allEntryIds: [],
+  entriesWithLeft: new Set(),
 }
 
 /**
@@ -243,6 +298,109 @@ function containerView(trip: TripState, state: DepotState): ContainerView {
 }
 
 /**
+ * PERSON mode's groups, in the **drawn** order.
+ *
+ * The partition itself is {@link personPartition}'s and is not re-derived
+ * here (ruling A7): a Piece goes to its Participant, Personal gear to its
+ * owner whether or not they travel, everything else to `Shared`. It is
+ * already proved total and proved to sum to {@link packingTotals}.
+ *
+ * **What this function decides is the order, which `shared/` deliberately
+ * does not.** `personPartition` returns buckets in person-id order — total
+ * and replica-identical, and meaningless to read. The drawn order is
+ * {@link peopleOn}'s, which is `sortedPeople`'s People-screen order with a
+ * Person whose `person.recorded` has not folded appended rather than dropped
+ * (`depot/trips.ts`'s rule, reused rather than restated — a bucket vanishing
+ * because a name has not arrived would take that Person's work off the
+ * screen).
+ *
+ * **`Shared` goes last**, and that is a deliberate divergence from the
+ * Depot's `GROUP BY OWNER`, whose grouping table pins `shared` **first**.
+ * `Shared` is the everything-else bucket and on a real Trip the biggest one,
+ * so first position pushes every person header off-screen. The two surfaces
+ * answer differently on purpose: the Depot files gear, F4 lists work — the
+ * `Loose`-last argument (ruling A3) for the second time on this screen.
+ */
+function personGroups(trip: TripState, state: DepotState): PersonGroup[] {
+  const buckets = personPartition(trip, state)
+
+  const byPerson = new Map<string, PersonBucket>()
+  let sharedBucket: PersonBucket | undefined
+  for (const bucket of buckets) {
+    if (bucket.key.kind === 'shared') sharedBucket = bucket
+    else byPerson.set(bucket.key.personId, bucket)
+  }
+
+  // `peopleOn` reorders the ids it is handed and adds none, so the empty
+  // arm is `Map.get`'s narrowing rather than a case — `PackingRow`'s own
+  // `flatMap` over `tripParticipants`, for the same reason.
+  const groups: PersonGroup[] = peopleOn(state, [...byPerson.keys()]).flatMap(
+    (person) => {
+      const bucket = byPerson.get(person.id)
+      if (bucket === undefined) return []
+      return [
+        {
+          key: person.id,
+          personId: person.id,
+          name: person.label,
+          count: bucket.count,
+          items: bucket.items,
+        },
+      ]
+    },
+  )
+
+  if (sharedBucket !== undefined) {
+    groups.push({
+      key: 'shared',
+      personId: null,
+      name: 'Shared',
+      count: sharedBucket.count,
+      items: sharedBucket.items,
+    })
+  }
+
+  return groups
+}
+
+/**
+ * Everything the screen draws, from one fold.
+ *
+ * ALL mode's rows are {@link entriesOf}' order minus the containers — which
+ * **is** name A→Z, because `entriesOf` sorts through `byNameThenId`
+ * (`selectors/order.ts`), the one comparator every list in this codebase
+ * shares. A `localeCompare` here would resolve against the host's locale and
+ * ICU data, so two Devices holding identical state would draw the list in
+ * different orders; that is the divergence `order.ts`'s own header exists to
+ * refuse, and the reason ALL borrows an existing order rather than sorting.
+ *
+ * **Containers draw no row** (ruling A8): ALL lists what carries a status,
+ * and a container's name still appears as its contents' residence segment,
+ * so nothing is hidden.
+ *
+ * `entriesWithLeft` is the `○ LEFT` filter, over items rather than rows — the
+ * filter is `!isPacked` and nothing else, and a row survives while any of the
+ * items it draws does. For a single or counted Entry that is its own status;
+ * for a per-person Entry drawn as one clustered row it is any unpacked Piece,
+ * since a row showing `1/3` still holds two pieces of work.
+ */
+function packingView(trip: TripState, state: DepotState): PackingView {
+  const entriesWithLeft = new Set<string>()
+  for (const item of packingItems(trip, state)) {
+    if (!isPacked(item.status)) entriesWithLeft.add(item.entryId)
+  }
+
+  return {
+    container: containerView(trip, state),
+    person: personGroups(trip, state),
+    allEntryIds: entriesOf(trip, state)
+      .filter((entry) => !isContainerEntry(entry, state))
+      .map((entry) => entry.id),
+    entriesWithLeft,
+  }
+}
+
+/**
  * What the Pack picker is open for. The three arms are the three things that
  * can be moved on this screen, and they differ in exactly the two ways
  * ruling A2b cares about: whether the act can be seen where it was made (a
@@ -271,8 +429,31 @@ interface PendingMove {
  * **F4 — the screen the app lives on** (`docs/design/README.md` §1, spec
  * `docs/specs/2026-09-01-packing-and-the-journey.md` §4.1, §4.2, §4.3 and
  * §4.7). The band, the title, the arithmetic, the two controls, the one hint
- * — and CONTAINER mode's groups beneath them. PERSON and ALL, and the
- * `○ LEFT` filter's wiring, are the next task.
+ * — and all three modes beneath them.
+ *
+ * ## Three modes over one fold, and each answers a different question
+ *
+ * **CONTAINER** answers *where is it going*, **PERSON** *whose is it*
+ * (ruling A7 — ownership, not whose body it goes with, which is story 23 and
+ * a fact the app does not hold), **ALL** *is this one thing packed*. That
+ * last is a lookup, which is why ALL is flat and sorted by **name** and never
+ * by status: sorting by status would move rows under the thumb as they are
+ * tapped (ruling A8).
+ *
+ * Two of the three end their rows' meta lines in the trip residence, amber,
+ * because neither draws a header that says where — `PackingRow`'s
+ * `showResidence`, and its docstring carries the `▸ MIXED` rule.
+ *
+ * ## The `○ LEFT` filter is `!isPacked` and nothing else
+ *
+ * It applies in all three modes, and **a group whose items all filter out
+ * draws nothing**. It filters the *view* and never the arithmetic: the count
+ * line and every group count state the pack-out's own numbers, which do not
+ * move when a control that narrows a list is tapped.
+ *
+ * Story 13's own worked example — *all of our kid's gear that is still
+ * unpacked* — is this pill plus PERSON mode, which is the whole of ruling
+ * B4's argument that `STATUS` never belonged on the Depot's slice bar.
  *
  * ## Its own route at every width, and not a pane
  *
@@ -385,9 +566,29 @@ export function Packing() {
   })
 
   // The two controls' own state. `mode` chooses the partition; `leftOnly`
-  // filters `!isPacked` in all three modes and is the next task's wiring.
+  // filters `!isPacked`, in all three modes.
   const [mode, setMode] = useState<PackingMode>('container')
   const [leftOnly, setLeftOnly] = useState(false)
+
+  /**
+   * Person groups the reader has opened by hand.
+   *
+   * **The collapse is derived, and this set is the override.** A group with
+   * nothing left is drawn collapsed (ruling A7's `● 12/12`), which is a fact
+   * about the ledger and not a widget's memory — so packing a group's last
+   * item collapses it without anybody storing that, and unpacking anything
+   * inside it opens it again. This holds only the deliberate exception: the
+   * header tapped to look inside a finished group.
+   */
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
+
+  const toggleExpanded = (key: string): void => {
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
+  }
 
   // The three overlays this screen owns. `PackPicker` and `PieceStatusSheet`
   // can be open together — the sheet's trailing `MOVE` opens the picker for
@@ -398,8 +599,8 @@ export function Packing() {
 
   const trip = tripId === undefined ? undefined : state.trips[tripId]
 
-  const view = useMemo<ContainerView>(
-    () => (trip === undefined ? EMPTY_VIEW : containerView(trip, state)),
+  const view = useMemo<PackingView>(
+    () => (trip === undefined ? EMPTY_VIEW : packingView(trip, state)),
     [trip, state],
   )
 
@@ -482,6 +683,59 @@ export function Packing() {
 
   const pickerEntry =
     picker === null ? undefined : trip.entries?.[picker.entryId]
+
+  /**
+   * The `○ LEFT` filter, over Entry rows: `!isPacked` and nothing else
+   * (ruling B4's own worked example, *all of our kid's gear that is still
+   * unpacked*, is this plus PERSON mode).
+   *
+   * The **counts are not filtered**. `9/13 · 4 LEFT` and `● 4/9 PIECES` state
+   * the Trip's arithmetic, and a header whose denominator moved as a filter
+   * was tapped would be answering a question about the view rather than about
+   * the pack-out.
+   */
+  const visibleRows = (entryIds: readonly string[]): readonly string[] =>
+    leftOnly
+      ? entryIds.filter((entryId) => view.entriesWithLeft.has(entryId))
+      : entryIds
+
+  /** The same filter over PERSON mode's items, where the row **is** the item:
+   * one Piece can be packed while its siblings in other groups are not. */
+  const visibleItems = (
+    items: readonly PackingItem[],
+  ): readonly PackingItem[] =>
+    leftOnly ? items.filter((item) => !isPacked(item.status)) : items
+
+  /** One row per item, for PERSON mode. A `piece` item draws that Piece
+   * alone; anything else draws its whole Entry. */
+  const rowFor = (item: PackingItem) => (
+    <li
+      key={
+        item.kind === 'piece'
+          ? `${item.entryId}:${item.personId}`
+          : item.entryId
+      }
+    >
+      <PackingRow
+        tripId={tripId}
+        entryId={item.entryId}
+        showResidence
+        onOpenPicker={() =>
+          setPicker(
+            item.kind === 'piece'
+              ? {
+                  kind: 'piece',
+                  entryId: item.entryId,
+                  personId: item.personId,
+                }
+              : { kind: 'entry', entryId: item.entryId },
+          )
+        }
+        onOpenPieceSheet={() => setSheetEntryId(item.entryId)}
+        {...(item.kind === 'piece' ? { personId: item.personId } : {})}
+      />
+    </li>
+  )
 
   return (
     <div className={styles['screen']}>
@@ -591,7 +845,15 @@ export function Packing() {
 
           {mode === 'container' && (
             <div className={styles['groups']} data-testid="packing-groups">
-              {view.groups.map((group) => {
+              {view.container.groups.map((group) => {
+                const rowIds = visibleRows(group.rowIds)
+                // **A group whose items all filter out draws nothing** — and
+                // only the filter can empty one. A container holding nothing
+                // but nested containers has no rows of its own and is still
+                // drawn: its header carries the rail, which is that
+                // container's own journey and not its contents'.
+                if (leftOnly && rowIds.length === 0) return null
+
                 const headingId = `packing-group-${tripId}-${group.key}`
                 // `null` is `Loose` — a holder, not an Entry. Read once into
                 // a local so every branch below narrows on the same fact.
@@ -599,7 +861,7 @@ export function Packing() {
                 const disagreement =
                   containerId === null
                     ? undefined
-                    : view.disagreementOf.get(containerId)
+                    : view.container.disagreementOf.get(containerId)
 
                 return (
                   <section
@@ -714,7 +976,7 @@ export function Packing() {
                     </div>
 
                     <ul className={styles['rows']}>
-                      {group.rowIds.map((entryId) => (
+                      {rowIds.map((entryId) => (
                         <li key={entryId}>
                           <PackingRow
                             tripId={tripId}
@@ -734,10 +996,135 @@ export function Packing() {
               {/* A Trip with no containers draws the one `Loose` group
                   holding everything, and below the last row the permanent
                   fact — where a group comes from, said once. */}
-              {!view.hasContainer && (
+              {!view.container.hasContainer && (
                 <p className={styles['fact']}>{NO_CONTAINERS}</p>
               )}
             </div>
+          )}
+
+          {mode === 'person' && (
+            <div className={styles['groups']} data-testid="packing-groups">
+              {view.person.map((group) => {
+                const items = visibleItems(group.items)
+                if (leftOnly && items.length === 0) return null
+
+                // Ruling A7: an all-done person reads `● 12/12` with its rows
+                // collapsed, the header tappable to expand. **The word
+                // `COLLAPSED` is dropped** — a group with no rows under it is
+                // self-evident, and the word is about the widget rather than
+                // the ledger.
+                const done = group.count.left === 0
+                const open = !done || expanded.has(group.key)
+                const headingId = `packing-group-${tripId}-${group.key}`
+
+                const count = done
+                  ? `${statusGlyph('packed')} ${group.count.packed}/${group.count.total}`
+                  : `${group.count.packed}/${group.count.total} · ${group.count.left} LEFT`
+
+                const heading = (
+                  <>
+                    <span className={styles['headerMain']}>
+                      <span className={styles['personLine']}>
+                        {/* 28px — group-header density (§5d K). `Shared` is
+                            not a Person and draws none: a circle there would
+                            claim an attribution the group exists to say is
+                            absent. */}
+                        {group.personId !== null && (
+                          <span aria-hidden="true" className={styles['circle']}>
+                            {/* `tone` is the group's own one fact: `filled`
+                                where nothing is left, `control` otherwise —
+                                the `●` in `● 12/12` said a second way, never
+                                colour alone. It is deliberately **not** the
+                                three-way `toneForStatus` a row's circle
+                                takes: a group has no status, and borrowing
+                                that vocabulary would invent one. */}
+                            <PersonCircle
+                              size={28}
+                              tone={done ? 'filled' : 'control'}
+                              label={personInitial(group.name)}
+                            />
+                          </span>
+                        )}
+                        <span
+                          id={headingId}
+                          className={`${styles['groupName']} ${
+                            group.personId === null ? styles['looseName'] : ''
+                          }`}
+                          data-testid="packing-group-name"
+                        >
+                          {group.name}
+                        </span>
+                      </span>
+                      {group.personId === null && (
+                        <span className={styles['groupMeta']}>
+                          {NOT_ATTRIBUTED}
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`${styles['groupCount']} ${
+                        done ? styles['countDone'] : ''
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </>
+                )
+
+                return (
+                  <section
+                    key={group.key}
+                    className={styles['group']}
+                    aria-labelledby={headingId}
+                  >
+                    <div
+                      className={styles['groupHeader']}
+                      data-testid="packing-group-header"
+                    >
+                      {/* The header is a control **only where it has
+                          something to do**: a group with work left is
+                          already showing it, and a button that expands what
+                          is expanded is the dead affordance the empty state
+                          refuses one screen up. `Loose`'s text header, one
+                          mode over, is the same rule. */}
+                      {done ? (
+                        <button
+                          type="button"
+                          className={styles['headerBody']}
+                          data-testid="packing-group-expand"
+                          aria-expanded={open}
+                          onClick={() => toggleExpanded(group.key)}
+                        >
+                          {heading}
+                        </button>
+                      ) : (
+                        <div className={styles['headerBody']}>{heading}</div>
+                      )}
+                    </div>
+
+                    {open && (
+                      <ul className={styles['rows']}>{items.map(rowFor)}</ul>
+                    )}
+                  </section>
+                )
+              })}
+            </div>
+          )}
+
+          {mode === 'all' && (
+            <ul className={styles['rows']} data-testid="packing-groups">
+              {visibleRows(view.allEntryIds).map((entryId) => (
+                <li key={entryId}>
+                  <PackingRow
+                    tripId={tripId}
+                    entryId={entryId}
+                    showResidence
+                    onOpenPicker={() => setPicker({ kind: 'entry', entryId })}
+                    onOpenPieceSheet={() => setSheetEntryId(entryId)}
+                  />
+                </li>
+              ))}
+            </ul>
           )}
         </>
       )}

@@ -156,6 +156,25 @@
     cursor: pointer;
   }
 
+  /*
+   * Ruling O's hit extension: 40 painted + 4 above and below = 48. **Inset 0
+   * horizontally**, so a segment's extension cannot reach into its
+   * neighbour's — three segments share this row edge to edge, and a
+   * horizontal grow would put a tap meant for PERSON on CONTAINER, which is
+   * ruling B's arithmetic in a different control.
+   *
+   * The clamp is the `.controls` row's own bounds: the row is 40px tall and
+   * the screen's 16px stack gap sits above and below it, so 4px each way
+   * lands in dead space and reaches nothing. `::after` on a `<label>` is
+   * hit-testable and activates the input inside it, which is what makes the
+   * extension work at all.
+   */
+  .segment::after {
+    content: '';
+    position: absolute;
+    inset: -0.25rem 0;
+  }
+
   .segment + .segment {
     border-left: var(--stroke-rule) solid var(--color-rule-control);
   }
@@ -195,6 +214,7 @@
   /* `○ LEFT` — the slice bar's own selected-chip grammar at 40px: bordered
      while off, `accent-fill` with a `✕` while on. */
   .filter {
+    position: relative;
     flex: none;
     display: inline-flex;
     align-items: center;
@@ -210,6 +230,15 @@
     letter-spacing: var(--tracking-label);
     white-space: nowrap;
     cursor: pointer;
+  }
+
+  /* The same 40 → 48 extension as `.segment`, clamped the same way and
+     inset 0 horizontally: the 12px gap to the segmented control beside it is
+     wider than this grows, so the two never overlap. */
+  .filter::after {
+    content: '';
+    position: absolute;
+    inset: -0.25rem 0;
   }
 
   .filter[aria-pressed='true'] {
@@ -324,6 +353,12 @@
     border: 0;
     background: none;
     text-align: start;
+  }
+
+  /* Only where the header **is** a control: `Loose`'s header and a person
+     group with work still left are both plain `<div>`s, and a pointer over
+     them would promise a tap that does nothing. */
+  button.headerBody {
     cursor: pointer;
   }
 
@@ -354,9 +389,28 @@
     overflow-wrap: anywhere;
   }
 
-  /* `Loose` is muted: it names the absence of a container rather than one. */
+  /* `Loose` is muted: it names the absence of a container rather than one.
+     `Shared` is muted for the identical reason one mode over — it names the
+     absence of an attribution. */
   .looseName {
     color: var(--color-ink-muted);
+  }
+
+  /* PERSON mode's header line: the 28px circle then the name. Its own row
+     inside `.headerMain`, because `Shared`'s meta has to sit beneath the
+     name and not beside the circle. */
+  .personLine {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  /* `display: contents` so the wrapper adds no line box of its own —
+     `PersonCircle`'s own layout-shift note. `aria-hidden` because the header
+     already states the name in text beside it. */
+  .circle {
+    display: contents;
   }
 
   /* `NOT IN A CONTAINER`, and the ancestry a capped indent no longer says. */
@@ -376,6 +430,15 @@
     font-size: 0.625rem;
     color: var(--color-ink-muted);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* `● 12/12` — a group with nothing left, in the packed colour the glyph
+     beside it already carries. Never colour alone: the `●` and the equal
+     numerator state the same fact. */
+  .countDone {
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--color-status-packed);
   }
 
   /* Ruling A14's amber tag, `EntryRow`'s encoding: a trip-only container is
