@@ -41,6 +41,40 @@ export type EntrySource =
   | { from: 'depot'; gearId: string }
   | { from: 'trip_only'; name: string | null; container: boolean }
 
+/**
+ * Deliberately open past the three known members, exactly as {@link KindValue}
+ * and {@link PhaseValue} are and for the identical reason: an unknown enum
+ * value is stored verbatim and never coerced (`sync-protocol.md` §5.3,
+ * obligation 4). It is what makes story 20's per-trip editable statuses widen
+ * the set with **no migration and no lattice** — §3.3 removed the rank
+ * function from the merge, so an unrecognised value is simply a value.
+ *
+ * What the app then *does* with one is `selectors/packing.ts`'s answer, not
+ * this type's: drawn verbatim, not packed, not counted toward the numerator,
+ * cycling to `not_packed` — the only answer that is not an invention.
+ */
+export type StatusValue = 'not_packed' | 'staged' | 'packed' | (string & {})
+
+/** Open past its four known members, for {@link StatusValue}'s reason. */
+export type StageValue = 'home' | 'staging' | 'car' | 'packed' | (string & {})
+
+/**
+ * Where a thing rides **on this Trip** (`sync-protocol.md` §3.7).
+ *
+ * **Not {@link Residence}**, and deliberately a second type rather than a
+ * widening of that one: different members, and the container is keyed by
+ * `entryId` rather than `id`. A trip residence assigned to `gear.residence`
+ * would be the bug invariant 13 exists to forbid, and two types the compiler
+ * keeps apart is the whole of the defence.
+ *
+ * **Closed**, like {@link EntrySource} and unlike the two enums above:
+ * `readTripResidence` reads an unrecognised `in` as `absent`, so it never
+ * reaches state. The tolerance lives at the boundary; the type stays
+ * exhaustive.
+ */
+export type TripResidence =
+  { in: 'container'; entryId: string } | { in: 'loose' }
+
 export interface PlaceState {
   id: string
   name?: Register<string | null>
@@ -108,26 +142,42 @@ export type PhaseValue =
  * One Participant's copy of a per-person Entry
  * (`sync-protocol.md` §3.7).
  *
- * S8 declares **one** of §3.7's four registers. `status` and `residence` are
- * S9's (`trip.piece_status_set`, `trip.piece_moved`); `outcome` is S10's. A
- * register nobody writes is a field every reader must have an opinion about,
- * so each arrives with the slice that writes it — `EntryState`'s own rule,
- * one level deeper.
+ * S9a declares three of §3.7's four registers. `outcome` is S10's, and
+ * nobody else's. A register nobody writes is a field every reader must have
+ * an opinion about, so each arrives with the slice that writes it —
+ * `EntryState`'s own rule, one level deeper.
+ *
+ * `status` and `residence` are declared with **identical types** to the
+ * Entry's. A Piece is a thing that travels exactly as an Entry is; nothing
+ * about the two registers differs but the entity path they hang on.
  */
 export interface PieceState {
   /** The Person id. The map key and this field are the same value. */
   readonly id: string
   /** Tombstone. `trip.piece_restored` clears it, if strictly later. */
   readonly removed?: Register<boolean>
+  /**
+   * *How far along* — the second of domain §7's two tracks. **An absent
+   * register reads `not_packed`, and only `selectors/packing.ts`'s
+   * `pieceStatusOf` says so.** The fold conflates nothing: absent and an
+   * explicit `"not_packed"` stay different facts about the log.
+   */
+  readonly status?: Register<StatusValue>
+  /**
+   * *Where* — the first track. One Piece may ride in the duffel while another
+   * of the same Entry is loose, which is why this hangs here and not only on
+   * the Entry.
+   */
+  readonly residence?: Register<TripResidence>
 }
 
 /**
  * One line on a Trip's gear list.
  *
- * S7 declares three of the eight registers [sync §3.7] names. `status`,
- * `residence` and `stage` are S9's; `outcome` and `consumedCount` are S10's.
- * A register nobody writes is a field every reader must have an opinion
- * about, so each arrives with the slice that writes it.
+ * S9a declares six of the eight registers [sync §3.7] names. `outcome` and
+ * `consumedCount` are S10's, and nobody else's. A register nobody writes is a
+ * field every reader must have an opinion about, so each arrives with the
+ * slice that writes it.
  */
 export interface EntryState {
   readonly id: string
@@ -151,6 +201,30 @@ export interface EntryState {
    * so.
    */
   readonly pieces?: Readonly<Record<string, PieceState>>
+  /**
+   * *How far along*, for an Entry that is **not** a container. An absent
+   * register reads `not_packed` (`packing.ts`'s `statusOf`).
+   *
+   * Folded **unconditionally**, for `bringCount`'s reason one register over:
+   * the containment trait lives on the **Gear** aggregate, so a reducer that
+   * resolved it before writing would make the fold order-dependent on whether
+   * `gear.recorded` had arrived. Sync §3.7's *never both on one entry* is an
+   * **authoring rule**, and the gate lives on the way out.
+   */
+  readonly status?: Register<StatusValue>
+  /** *Where*, on this Trip. Never the home residence (invariant 13). */
+  readonly residence?: Register<TripResidence>
+  /**
+   * *How far along*, for an Entry that **is** a container — a journey
+   * *instead of* a status. An absent register reads `home` (`stageOf`).
+   * Folded unconditionally, for `status`'s reason directly above.
+   *
+   * **One op moves everything inside it** (story 10): containment is a
+   * pointer held by the contained thing, so the contents' whereabouts follows
+   * with no fan-out and no cross-entity write. Their statuses are
+   * deliberately untouched (invariant 12).
+   */
+  readonly stage?: Register<StageValue>
 }
 
 /**

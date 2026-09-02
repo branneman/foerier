@@ -43,13 +43,24 @@ describe('the S2 op fixture', () => {
     expect(state).toMatchSnapshot()
   })
 
-  // Obligation 1: an unknown `type` (`trip.entry_status_set`, a real
-  // catalogue entry — S9's — this build has never heard of) is retained and
-  // counted, never rejected and never folded. It stays unknown through S6,
-  // which folds the Trip *root* and none of the four nested maps.
-  it('retains the op types it cannot fold rather than rejecting them', () => {
+  // Obligation 1 **discharged.** `trip.entry_status_set` was captured at S2a
+  // as an unknown-type probe: a real catalogue entry that build had never
+  // heard of, retained and counted rather than rejected. S9a folds it, and
+  // this assertion is the other end of that promise — the op sat verbatim in
+  // a log across seven slices and a later build read it. Nothing was
+  // discarded, and nothing had to be re-sent.
+  it('folds the op it retained as unknown when it was captured', () => {
     const state = fold(fixture as OpEnvelope[])
-    expect(state.unfolded.types['trip.entry_status_set']).toBe(1)
+    expect(state.unfolded.types['trip.entry_status_set']).toBeUndefined()
+    expect(state.unfolded.count).toBe(0)
+    const entry =
+      state.trips['66666666-0000-7000-8000-000000000001']?.entries?.[
+        '77777777-0000-7000-8000-000000000001'
+      ]
+    expect(entry?.status?.value).toBe('packed')
+    // No `trip.entry_added` accompanies it, so the Entry is sourceless —
+    // folded, retained, and excluded from every list by `entriesOf`.
+    expect(entry?.source).toBeUndefined()
   })
 
   it('never mutates the fixture it was given', () => {

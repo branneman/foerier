@@ -1,4 +1,4 @@
-import type { EntrySource, Owner, Residence } from './state.ts'
+import type { EntrySource, Owner, Residence, TripResidence } from './state.ts'
 
 /**
  * The **tolerant** half of the reader (`docs/sync-protocol.md` §5.3). Its
@@ -90,6 +90,33 @@ export function readResidence(
     if (v['in'] === 'place' || v['in'] === 'gear') {
       const id = v['id']
       return typeof id === 'string' ? { in: v['in'], id } : undefined
+    }
+    return undefined
+  })
+}
+
+/**
+ * Reads a **trip** residence ([sync §4.4](../../docs/sync-protocol.md)).
+ *
+ * Not `readResidence`: different members, and the container is keyed
+ * `entry_id` rather than `id`. The wire's `entry_id` becomes `entryId`, the
+ * same split `readOwner` already has over `person_id` and `readSource` over
+ * `gear_id`. An unrecognised `in`, or a container with no `entry_id`, reads
+ * `absent` — the register is left exactly as it was, the op is retained, and
+ * nothing is rejected.
+ */
+export function readTripResidence(
+  p: Record<string, unknown>,
+  key: string,
+): Read<TripResidence> {
+  return refine(p, key, (v) => {
+    if (!isRecord(v)) return undefined
+    if (v['in'] === 'loose') return { in: 'loose' }
+    if (v['in'] === 'container') {
+      const entryId = v['entry_id']
+      return typeof entryId === 'string' && entryId !== ''
+        ? { in: 'container', entryId }
+        : undefined
     }
     return undefined
   })

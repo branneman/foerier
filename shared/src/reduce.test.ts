@@ -241,12 +241,12 @@ describe('applyOp', () => {
 
   it('retains an unknown op type without folding it and without rejecting it', () => {
     const state = fold([
-      unknownOp('trip.entry_status_set'),
+      unknownOp('trip.entry_outcome_set'),
       unknownOp('gear.weighed'),
     ])
     expect(state.unfolded).toEqual({
       count: 2,
-      types: { 'trip.entry_status_set': 1, 'gear.weighed': 1 },
+      types: { 'trip.entry_outcome_set': 1, 'gear.weighed': 1 },
     })
     // Ignore is not discard: nothing else moved, and the caller still holds the
     // ops in its log for a later build to fold (sync-protocol §5.3, obligation 1).

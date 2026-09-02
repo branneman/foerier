@@ -32,6 +32,9 @@ export type {
   PieceState,
   PlaceState,
   Residence,
+  StageValue,
+  StatusValue,
+  TripResidence,
   TripState,
   UnfoldedOps,
 } from './state.ts'
@@ -45,6 +48,7 @@ export {
   readResidence,
   readSource,
   readString,
+  readTripResidence,
 } from './payloads.ts'
 
 export type { TagString } from './tags.ts'
@@ -73,16 +77,21 @@ export {
   placeRecorded,
   placeRemoved,
   placeRenamed,
+  tripContainerStageSet,
   tripCreated,
   tripDatesSet,
   tripEntryAdded,
   tripEntryBringCountSet,
+  tripEntryMoved,
   tripEntryRemoved,
+  tripEntryStatusSet,
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPhaseMoved,
+  tripPieceMoved,
   tripPieceRemoved,
   tripPieceRestored,
+  tripPieceStatusSet,
   tripRenamed,
 } from './authoring.ts'
 

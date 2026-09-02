@@ -301,12 +301,24 @@ exports[`the S2 op fixture > folds the S2 fixture to exactly the state it folded
       },
     },
   },
-  "trips": {},
-  "unfolded": {
-    "count": 1,
-    "types": {
-      "trip.entry_status_set": 1,
+  "trips": {
+    "66666666-0000-7000-8000-000000000001": {
+      "entries": {
+        "77777777-0000-7000-8000-000000000001": {
+          "id": "77777777-0000-7000-8000-000000000001",
+          "status": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-08-10T09:00:00.000Z-0000",
+            "value": "packed",
+          },
+        },
+      },
+      "id": "66666666-0000-7000-8000-000000000001",
     },
+  },
+  "unfolded": {
+    "count": 0,
+    "types": {},
   },
 }
 `;

@@ -7,6 +7,9 @@ import type {
   Owner,
   PhaseValue,
   Residence,
+  StageValue,
+  StatusValue,
+  TripResidence,
 } from './state.ts'
 import type { TagString } from './tags.ts'
 
@@ -510,5 +513,92 @@ export function tripPieceRestored(
     aggregate_id: tripId,
     type: 'trip.piece_restored',
     payload: { entry_id: entryId, person_id: personId },
+  }
+}
+
+/** camelCase in, `snake_case` out — `authoring.ts` is the strict half. */
+function wireResidence(residence: TripResidence): Record<string, unknown> {
+  return residence.in === 'loose'
+    ? { in: 'loose' }
+    : { in: 'container', entry_id: residence.entryId }
+}
+
+/** §4.4. `status` is an open enum; the builder does not narrow it. */
+export function tripEntryStatusSet(
+  tripId: string,
+  entryId: string,
+  status: StatusValue,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.entry_status_set',
+    payload: { entry_id: entryId, status },
+  }
+}
+
+/** §4.4: {@link tripEntryStatusSet} for one Participant's Piece. */
+export function tripPieceStatusSet(
+  tripId: string,
+  entryId: string,
+  personId: string,
+  status: StatusValue,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.piece_status_set',
+    payload: { entry_id: entryId, person_id: personId, status },
+  }
+}
+
+/**
+ * §4.4: the Entry's **trip** residence. The payload is `snake_case` on the
+ * wire, so `entryId` is written back out as `entry_id` — the one place this
+ * slice performs its camel/snake split on the way out.
+ */
+export function tripEntryMoved(
+  tripId: string,
+  entryId: string,
+  residence: TripResidence,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.entry_moved',
+    payload: { entry_id: entryId, residence: wireResidence(residence) },
+  }
+}
+
+/** §4.4: {@link tripEntryMoved} for one Participant's Piece. */
+export function tripPieceMoved(
+  tripId: string,
+  entryId: string,
+  personId: string,
+  residence: TripResidence,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.piece_moved',
+    payload: {
+      entry_id: entryId,
+      person_id: personId,
+      residence: wireResidence(residence),
+    },
+  }
+}
+
+/** §4.4. One op moves the container and everything inside it (story 10). */
+export function tripContainerStageSet(
+  tripId: string,
+  entryId: string,
+  stage: StageValue,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.container_stage_set',
+    payload: { entry_id: entryId, stage },
   }
 }

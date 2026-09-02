@@ -1,0 +1,324 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the S9a fixture > folds to exactly the state it folded to when captured 1`] = `
+{
+  "gear": {
+    "g-s9a-counted": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:10:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s9a-counted",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:10:00.000Z-0000",
+        "value": "counted",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:10:00.000Z-0000",
+        "value": "Tent pegs",
+      },
+      "ownedCount": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:10:00.000Z-0000",
+        "value": 12,
+      },
+    },
+    "g-s9a-crate": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:08:00.000Z-0000",
+        "value": true,
+      },
+      "id": "g-s9a-crate",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:08:00.000Z-0000",
+        "value": "single",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:08:00.000Z-0000",
+        "value": "Crate",
+      },
+    },
+    "g-s9a-duffel": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:07:00.000Z-0000",
+        "value": true,
+      },
+      "id": "g-s9a-duffel",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:07:00.000Z-0000",
+        "value": "single",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:07:00.000Z-0000",
+        "value": "Duffel",
+      },
+    },
+    "g-s9a-headlamp": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:11:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s9a-headlamp",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:11:00.000Z-0000",
+        "value": "per_person",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:11:00.000Z-0000",
+        "value": "Headlamp",
+      },
+    },
+    "g-s9a-stove": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:09:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s9a-stove",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:09:00.000Z-0000",
+        "value": "single",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:09:00.000Z-0000",
+        "value": "Camp stove",
+      },
+    },
+  },
+  "people": {
+    "p-s9a-1": {
+      "id": "p-s9a-1",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:00:00.000Z-0000",
+        "value": "Mark",
+      },
+    },
+    "p-s9a-2": {
+      "id": "p-s9a-2",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:01:00.000Z-0000",
+        "value": "Els",
+      },
+    },
+    "p-s9a-3": {
+      "id": "p-s9a-3",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:02:00.000Z-0000",
+        "value": "Kim",
+      },
+    },
+  },
+  "places": {},
+  "trips": {
+    "t-s9a-1": {
+      "entries": {
+        "e-s9a-counted": {
+          "bringCount": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:23:00.000Z-0000",
+            "value": 4,
+          },
+          "id": "e-s9a-counted",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:15:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s9a-counted",
+            },
+          },
+          "status": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:24:00.000Z-0000",
+            "value": "staged",
+          },
+        },
+        "e-s9a-crate": {
+          "id": "e-s9a-crate",
+          "residence": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:20:00.000Z-0000",
+            "value": {
+              "entryId": "e-s9a-duffel",
+              "in": "container",
+            },
+          },
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:13:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s9a-crate",
+            },
+          },
+          "stage": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:22:00.000Z-0000",
+            "value": "car",
+          },
+        },
+        "e-s9a-crate-b": {
+          "id": "e-s9a-crate-b",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:17:00.000Z-0000",
+            "value": {
+              "container": true,
+              "from": "trip_only",
+              "name": "Crate B",
+            },
+          },
+        },
+        "e-s9a-duffel": {
+          "id": "e-s9a-duffel",
+          "residence": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:19:00.000Z-0000",
+            "value": {
+              "in": "loose",
+            },
+          },
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:12:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s9a-duffel",
+            },
+          },
+        },
+        "e-s9a-headlamp": {
+          "id": "e-s9a-headlamp",
+          "pieces": {
+            "p-s9a-1": {
+              "id": "p-s9a-1",
+              "residence": {
+                "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+                "hlc": "2026-09-01T09:28:00.000Z-0000",
+                "value": {
+                  "entryId": "e-s9a-crate",
+                  "in": "container",
+                },
+              },
+              "status": {
+                "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+                "hlc": "2026-09-01T09:26:00.000Z-0000",
+                "value": "packed",
+              },
+            },
+            "p-s9a-2": {
+              "id": "p-s9a-2",
+              "status": {
+                "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+                "hlc": "2026-09-01T09:27:00.000Z-0000",
+                "value": "not_packed",
+              },
+            },
+            "p-s9a-3": {
+              "id": "p-s9a-3",
+              "removed": {
+                "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+                "hlc": "2026-09-01T09:25:00.000Z-0000",
+                "value": true,
+              },
+            },
+          },
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:16:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s9a-headlamp",
+            },
+          },
+        },
+        "e-s9a-probe": {
+          "id": "e-s9a-probe",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:18:00.000Z-0000",
+            "value": {
+              "container": false,
+              "from": "trip_only",
+              "name": "Borrowed tarp",
+            },
+          },
+          "status": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:29:00.000Z-0000",
+            "value": "in_the_shed",
+          },
+        },
+        "e-s9a-stove": {
+          "id": "e-s9a-stove",
+          "residence": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:21:00.000Z-0000",
+            "value": {
+              "entryId": "e-s9a-crate",
+              "in": "container",
+            },
+          },
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-01T09:14:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s9a-stove",
+            },
+          },
+        },
+      },
+      "id": "t-s9a-1",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:03:00.000Z-0000",
+        "value": "S9a Fixture Trip",
+      },
+      "participants": {
+        "p-s9a-1": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-09-01T09:04:00.000Z-0000",
+          "value": true,
+        },
+        "p-s9a-2": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-09-01T09:05:00.000Z-0000",
+          "value": true,
+        },
+        "p-s9a-3": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-09-01T09:06:00.000Z-0000",
+          "value": true,
+        },
+      },
+      "phase": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-01T09:03:00.000Z-0000",
+        "value": "draft",
+      },
+    },
+  },
+  "unfolded": {
+    "count": 0,
+    "types": {},
+  },
+}
+`;

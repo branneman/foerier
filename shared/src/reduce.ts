@@ -8,6 +8,7 @@ import {
   readResidence,
   readSource,
   readString,
+  readTripResidence,
   type Read,
 } from './payloads.ts'
 import { writeRegister, type Register } from './registers.ts'
@@ -729,6 +730,116 @@ const tripPieceWritten =
   }
 
 /**
+ * `trip.entry_status_set` / `trip.container_stage_set` (`sync-protocol.md`
+ * §4.4). Two ops, one shape: read `entry_id`, write one open-enum register on
+ * the Entry by plain LWW (§3.3).
+ *
+ * **Neither is gated on the Gear's containment trait, and neither may be.**
+ * The trait lives on another aggregate with no ordering against the Trip's, so
+ * a gate here would make the fold order-dependent on whether `gear.recorded`
+ * had arrived. §3.7's *never both on one entry* is an authoring rule and the
+ * gate lives on the way out, in `selectors/packing.ts` — the same split
+ * `bringCount` takes for invariant 6 and `tags` for `TagString`.
+ *
+ * One factory over `'status' | 'stage'`, `gearTagWritten` and
+ * `tripParticipantWritten`'s shape: `entry[field]` is a union of two
+ * `Register` types, but `writeRegister`'s own type parameter infers to their
+ * common supertype (`string`, since both `StatusValue` and `StageValue` widen
+ * to it) rather than forcing a cast, and the computed-key spread checks
+ * against `EntryState` the same way. Confirmed against this file's own
+ * `tsconfig` before relying on it — no `as`, no `any`, no `!`.
+ */
+const tripEntryOpenEnum =
+  (field: 'status' | 'stage'): Handler =>
+  (state, op, stamp) => {
+    const entryId = readString(op.payload, 'entry_id')
+    if (entryId.kind !== 'value') return state
+    const value = readOpen(op.payload, field)
+    if (value.kind !== 'value') return state
+    return writeEntry(
+      state,
+      op.aggregate_id,
+      entryId.value,
+      stamp,
+      (entry, st) => {
+        const next = writeRegister(entry[field], value.value, st)
+        return next === entry[field] ? entry : { ...entry, [field]: next }
+      },
+    )
+  }
+
+/** `trip.piece_status_set` (§4.4) — the Entry's `status`, one path deeper. */
+const tripPieceStatusSet: Handler = (state, op, stamp) => {
+  const entryId = readString(op.payload, 'entry_id')
+  if (entryId.kind !== 'value') return state
+  const personId = readString(op.payload, 'person_id')
+  if (personId.kind !== 'value') return state
+  const status = readOpen(op.payload, 'status')
+  if (status.kind !== 'value') return state
+  return writePiece(
+    state,
+    op.aggregate_id,
+    entryId.value,
+    personId.value,
+    stamp,
+    (piece, st) => {
+      const next = writeRegister(piece.status, status.value, st)
+      return next === piece.status ? piece : { ...piece, status: next }
+    },
+  )
+}
+
+/**
+ * `trip.entry_moved` (§4.4): the Entry's **trip** residence.
+ *
+ * Never its home (invariant 13) and never its status (invariant 12) — two
+ * registers the merge can never make agree, which is what makes the duffel in
+ * the car with an unpacked stove inside it a *reportable* disagreement rather
+ * than a forbidden state.
+ *
+ * Moving a container writes **this one register on the container** and nothing
+ * else: containment is a pointer held by the contained thing, so the contents
+ * follow with no fan-out (story 10, spec §1.5).
+ */
+const tripEntryMoved: Handler = (state, op, stamp) => {
+  const entryId = readString(op.payload, 'entry_id')
+  if (entryId.kind !== 'value') return state
+  const residence = readTripResidence(op.payload, 'residence')
+  if (residence.kind !== 'value') return state
+  return writeEntry(
+    state,
+    op.aggregate_id,
+    entryId.value,
+    stamp,
+    (entry, st) => {
+      const next = writeRegister(entry.residence, residence.value, st)
+      return next === entry.residence ? entry : { ...entry, residence: next }
+    },
+  )
+}
+
+/** `trip.piece_moved` (§4.4) — {@link tripEntryMoved}, one path deeper. */
+const tripPieceMoved: Handler = (state, op, stamp) => {
+  const entryId = readString(op.payload, 'entry_id')
+  if (entryId.kind !== 'value') return state
+  const personId = readString(op.payload, 'person_id')
+  if (personId.kind !== 'value') return state
+  const residence = readTripResidence(op.payload, 'residence')
+  if (residence.kind !== 'value') return state
+  return writePiece(
+    state,
+    op.aggregate_id,
+    entryId.value,
+    personId.value,
+    stamp,
+    (piece, st) => {
+      const next = writeRegister(piece.residence, residence.value, st)
+      return next === piece.residence ? piece : { ...piece, residence: next }
+    },
+  )
+}
+
+/**
  * The op-type dispatch table (`sync-protocol.md` §4.1, §4.3). A `Record`, not
  * a `switch`, so "is this type known?" is a lookup — the same question the
  * tolerant reader asks.
@@ -780,7 +891,7 @@ const handlers: Record<string, Handler> = {
   'trip.participant_added': tripParticipantWritten(true),
   'trip.participant_removed': tripParticipantWritten(false),
   // S7 (§4.4): the gear list, keyed by entry id — the first of the Trip's
-  // nested maps. `trip.entry_status_set` stays unfolded until S9.
+  // nested maps.
   'trip.entry_added': tripEntryAdded,
   'trip.entry_removed': tripEntryRemoved,
   'trip.entry_bring_count_set': tripEntryBringCountSet,
@@ -789,6 +900,15 @@ const handlers: Record<string, Handler> = {
   // tag pairs above.
   'trip.piece_removed': tripPieceWritten(true),
   'trip.piece_restored': tripPieceWritten(false),
+  // S9a (§4.4): the two tracks — *where* and *how far along* — as five
+  // registers over two entity paths. Separate registers is what makes
+  // invariant 12 structural rather than enforced: no merge can make them
+  // agree, so the disagreement survives to be reported.
+  'trip.entry_status_set': tripEntryOpenEnum('status'),
+  'trip.container_stage_set': tripEntryOpenEnum('stage'),
+  'trip.piece_status_set': tripPieceStatusSet,
+  'trip.entry_moved': tripEntryMoved,
+  'trip.piece_moved': tripPieceMoved,
 }
 
 /**
