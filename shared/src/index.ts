@@ -104,6 +104,15 @@ export type {
 } from './selectors/containment.ts'
 export { containmentView, homePath } from './selectors/containment.ts'
 
+// Beside its twin on purpose: `tripContainment.ts` duplicates the file above
+// deliberately, and the two must not drift.
+export type {
+  TripContainmentView,
+  TripHolderRef,
+  TripPathSegment,
+} from './selectors/tripContainment.ts'
+export { tripContainmentView, tripPath } from './selectors/tripContainment.ts'
+
 export {
   depotCounts,
   looseGear,
