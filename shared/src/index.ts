@@ -154,9 +154,32 @@ export {
   entriesOf,
   entryKind,
   entryLabel,
+  isContainerEntry,
   listTotals,
   pieceCountOf,
 } from './selectors/entry.ts'
+
+export type {
+  JourneyStage,
+  PackingStatus,
+  StageKey,
+  StatusKey,
+} from './selectors/packing.ts'
+export {
+  isKnownStage,
+  isKnownStatus,
+  isPacked,
+  nextStatus,
+  pieceStatusOf,
+  STAGES,
+  stageDisagreementLabel,
+  stageLabel,
+  stageOf,
+  STATUSES,
+  statusGlyph,
+  statusLabel,
+  statusOf,
+} from './selectors/packing.ts'
 
 export type { PieceInclusion } from './selectors/piece.ts'
 export { pieceInclusion, piecesOf } from './selectors/piece.ts'

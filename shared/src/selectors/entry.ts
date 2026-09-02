@@ -126,6 +126,34 @@ export function entryKind(
 }
 
 /**
+ * Does this Entry carry a **journey** rather than a status?
+ *
+ * A depot Entry is a container when its Gear's `container` register says so;
+ * a trip-only Entry when its own `source.container` does. Nothing else is,
+ * including — deliberately — **a depot Entry whose Gear has not reached this
+ * replica** (spec §1.3). `entryKind` already reads that case as the ordinary
+ * cross-aggregate race rather than an error, and the conservative direction
+ * is the same one `pieceCountOf` takes: the Entry carries a status, counts as
+ * a piece, and starts carrying a journey the moment the Gear arrives.
+ * Asserting a journey for gear nobody has described would draw a rail with no
+ * container under it.
+ *
+ * This is the one place the question is answered. `statusOf`, `stageOf`,
+ * `pieceCountOf` and `tripContainmentView` all read it, and a call site
+ * re-deriving `state.gear[…]?.container?.value === true` will miss the
+ * trip-only half.
+ */
+export function isContainerEntry(
+  entry: EntryState,
+  state: DepotState,
+): boolean {
+  const source = entry.source?.value
+  if (source === undefined) return false
+  if (source.from === 'trip_only') return source.container
+  return state.gear[source.gearId]?.container?.value === true
+}
+
+/**
  * The Bring-count, or `null` for every Entry that is not a Counted depot
  * Entry.
  *
