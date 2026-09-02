@@ -102,16 +102,22 @@ export interface EntryRowPiece {
 export interface EntryRowProps {
   readonly label: string
   readonly kind: KindValue | 'trip_only'
-  /** `null` only ever arrives for a non-`counted` Kind — see `bringCountOf`. */
+  /**
+   * `null` only ever arrives for a non-`counted` Kind — see `bringCountOf`.
+   * **The row's own `×N` for `counted`, in both modes** (fix round, S9a task
+   * 4 F3) — `pieceCount` reads `0` for a container regardless of Kind
+   * (ruling A5), which is a fact about the totals, not about how many of
+   * this thing there are, so this row must not draw its Bring-count from it.
+   */
   readonly bringCount: number | null
   /**
-   * The full answer for every Kind but a populated `per_person` row, which
-   * derives its own `×N` from `pieces` instead (review finding F3) — so
-   * that digit and ruling B's accessible name agree by construction rather
-   * than by the coincidence that `pieceCountOf` for `per_person` happens to
-   * equal `piecesOf().length`. Still the only answer for the `per_person`
-   * empty case (`×0` beside `NO PARTICIPANTS`), where there is no `pieces`
-   * array to derive a count from.
+   * The `per_person` empty case's `×0` beside `NO PARTICIPANTS` — the one
+   * remaining caller, since `pieces` is empty and there is no cluster to
+   * derive a count from. A populated `per_person` row derives its own `×N`
+   * from `pieces` instead (below), and `counted` now reads `bringCount`
+   * rather than this field (fix round, S9a task 4 F3) — a container's
+   * `pieceCount` is `0` regardless of Kind (ruling A5), which answers "how
+   * many things travel", not "how many of this thing there are".
    */
   readonly pieceCount: number
   /**
@@ -237,9 +243,24 @@ function trailing(
     // The spec's own rule for everything but `per_person`: `×N` for Counted
     // alone, `—` for everything else. Not "the editable anatomy minus the
     // controls"; see this file's docstring.
+    //
+    // **Reads `bringCount`, not `pieceCount` (fix round, S9a task 4 F3).**
+    // `container` and `kind` are orthogonal registers — a Counted Entry can
+    // be a container — and ruling A5 makes `pieceCount` (`pieceCountOf`) read
+    // `0` for one, because A5 is the outer gate: a container carries no
+    // status, so it contributes nothing to the packing arithmetic whatever
+    // its Kind. `×N` on this row is a different question — "how many of this
+    // thing are there" — which is `bringCountOf`'s question (ruling A13), not
+    // the totals'. The editable branch below already draws that number
+    // through `Stepper`'s `bringCount` prop; this is the same fact in
+    // read-only form, and the two must not diverge by mode again. Never
+    // `null` here: `bringCountOf` only reads `null` for a non-`counted` Kind,
+    // and this branch is guarded on `kind === 'counted'` — the `?? 1` is
+    // `bringCountOf`'s own documented default for an absent register, read
+    // again rather than trusted blindly.
     return (
       <span data-testid="entry-row-count">
-        {kind === 'counted' ? `×${pieceCount}` : '—'}
+        {kind === 'counted' ? `×${bringCount ?? 1}` : '—'}
       </span>
     )
   }

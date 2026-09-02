@@ -14,15 +14,29 @@ import { piecesOf } from './piece.ts'
  * moves behind one function instead of yet another copy of the gate.
  */
 
-/** What the builder's footer and the section band count. */
+/**
+ * What the builder's footer and the section band count.
+ *
+ * **Two fields count lines; two count things that travel — and a container
+ * is where the difference stops being academic.** `entries` and `tripOnly`
+ * are line counts: every Entry {@link entriesOf} lists adds to `entries`, and
+ * every trip-only Entry among them adds to `tripOnly`, a container included
+ * — a container is still a line on the gear list (ruling D). `pieces` and
+ * `perPerson` are {@link pieceCountOf} sums: what can be packed, which for a
+ * container is `0` (ruling A5), whatever line-count field it also belongs
+ * to. So a trip-only container adds `1` to `tripOnly` and `0` to `pieces`, a
+ * per-person container adds `0` to both `pieces` and `perPerson` — `tripOnly`
+ * is **not** a subset of `pieces`, and neither is `perPerson`; each pair
+ * answers a different question of the same Entry.
+ */
 export interface ListTotals {
   /** Lines on the list. */
   readonly entries: number
-  /** Physical things: a Bring-count, a Participant count, or one. */
+  /** Things that travel and can be packed: a Bring-count, a Participant count, or one — `0` for a container. */
   readonly pieces: number
-  /** The pieces contributed by per-person Entries. */
+  /** The pieces contributed by per-person Entries — `0` for a per-person container, which is a line but travels as nothing. */
   readonly perPerson: number
-  /** Trip-only Entries — one piece each, so this counts both. */
+  /** Trip-only Entries, counted as lines — one each, a trip-only container included even though it contributes `0` to `pieces`. */
   readonly tripOnly: number
 }
 
@@ -236,12 +250,16 @@ export function pieceCountOf(
  * The four numbers the builder's footer and the section band draw:
  * `4 ENTRIES · 6 PIECES · 2 PER-PERSON · 1 TRIP-ONLY`.
  *
- * The field names are the boards' nouns: `entries` counts lines,
- * `pieces` sums {@link pieceCountOf} over every visible Entry, `perPerson`
- * sums it over per-person Entries only, `tripOnly` counts trip-only Entries
- * (each worth one piece, so it is a subset of `pieces` rather than a fifth
- * number). Formatting the count with its noun — `1 PIECE` vs `2 PIECES` — is
- * the screens' job, not this one's: this returns numbers.
+ * The field names are the boards' nouns: `entries` counts lines, `pieces`
+ * sums {@link pieceCountOf} over every visible Entry, `perPerson` sums it
+ * over per-person Entries only, `tripOnly` counts trip-only Entries as
+ * lines — one each, unconditionally, **not** {@link pieceCountOf} summed
+ * over them. See {@link ListTotals}'s own note on why that stopped being a
+ * subset relationship: a trip-only container is a line (`tripOnly += 1`)
+ * that carries no status and so travels as nothing (`pieces += 0`), and a
+ * per-person container is the mirror case for `perPerson`. Formatting the
+ * count with its noun — `1 PIECE` vs `2 PIECES` — is the screens' job, not
+ * this one's: this returns numbers.
  */
 export function listTotals(trip: TripState, state: DepotState): ListTotals {
   const entries = entriesOf(trip, state)

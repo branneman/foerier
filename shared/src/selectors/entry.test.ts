@@ -534,6 +534,71 @@ describe('a container is not a piece (ruling A5)', () => {
       pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
     ).toBe(1)
   })
+
+  it('counts a Counted container Entry as zero pieces, whatever its Bring-count (fix round F4)', () => {
+    // `container` and `kind` are orthogonal registers — a Counted Entry can
+    // be a container (`AddGear`'s `Recorded as` control is separate from its
+    // Kind selector). Ruling A5 is the outer gate: a container carries no
+    // status, so it contributes nothing to the arithmetic whatever its Kind.
+    // `EntryRow`'s own `×N` for this same Entry still reads the Bring-count —
+    // see `EntryRow.test.tsx`'s "reads ×N from bringCount, not pieceCount"
+    // for that half of the fact.
+    const state = depot(
+      aTrip({ id: 't1' }),
+      aGear({ id: 'g-crate', kind: 'counted', container: true }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g-crate' })],
+      [tripEntryBringCountSet('t1', 'e1', 3)],
+    )
+    expect(bringCountOf(entryOf(state, 't1', 'e1')!, state)).toBe(3)
+    expect(
+      pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
+    ).toBe(0)
+  })
+
+  it('counts a per-person container Entry as zero pieces, whatever its Participant count (fix round F4)', () => {
+    const state = depot(
+      aTrip({ id: 't1', participants: ['p1', 'p2'] }),
+      aGear({ id: 'g-crate', kind: 'per_person', container: true }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g-crate' })],
+    )
+    expect(
+      pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
+    ).toBe(0)
+  })
+
+  it('counts a trip-only container as a TRIP-ONLY line but not a PIECE (fix round F2)', () => {
+    // `tripOnly` and `pieces` are not a subset relationship: a trip-only
+    // container is a line (`tripOnly += 1`, unconditionally) that carries no
+    // status and so travels as nothing (`pieces += 0`). This is the
+    // assertion whose absence let F2's stale "subset of pieces" docstring
+    // stand uncaught.
+    const state = depot(aTrip({ id: 't1' }), [
+      tripEntryAdded('t1', 'e1', {
+        from: 'trip_only',
+        name: 'Crate',
+        container: true,
+      }),
+    ])
+    const totals = listTotals(trip(state, 't1'), state)
+    expect(totals.tripOnly).toBe(1)
+    expect(totals.pieces).toBe(0)
+  })
+
+  it('counts a per-person container as zero PIECES and zero PER-PERSON (fix round F2)', () => {
+    // The mirror case: `perPerson` sums `pieceCountOf` over per-person
+    // Entries, so a per-person container contributes `0` to both fields —
+    // it is still a line (an ordinary group in `tripContainmentView`), just
+    // not one that travels.
+    const state = depot(
+      aTrip({ id: 't1', participants: ['p1', 'p2'] }),
+      aGear({ id: 'g-crate', kind: 'per_person', container: true }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g-crate' })],
+    )
+    const totals = listTotals(trip(state, 't1'), state)
+    expect(totals.entries).toBe(1)
+    expect(totals.perPerson).toBe(0)
+    expect(totals.pieces).toBe(0)
+  })
 })
 
 describe('listTotals', () => {

@@ -23,9 +23,11 @@ import { isActive, visibleTrips } from './trip.ts'
  *
  * `count` is the unit the kind counts in: `1` for Single, the Bring-count for
  * Counted, the number of Participants for Per-person — {@link pieceCountOf}'s
- * rule, read again here rather than imported, because that function answers
- * "how many things is this line" for *any* Entry and this one only ever asks
- * it of a depot Entry whose Kind is already known.
+ * rule for every non-container Entry, read again here rather than imported,
+ * because that function answers "how many things is this line" for *any*
+ * Entry and this one only ever asks it of a depot Entry whose Kind is already
+ * known. **A container Entry is the one place the two rules disagree, on
+ * purpose** — see {@link claimFor}'s own note.
  *
  * `personIds` is present only for a Per-person claim, and is the Entry's
  * **included Pieces** — the claiming Trip's Participants minus whoever's
@@ -109,6 +111,11 @@ function compareIds(a: string, b: string): number {
  * Trip — Pieces, not Participants: removing a Piece releases that Person's
  * claim, which is what makes domain §5.2's per-person rule settleable at the
  * granularity it is stated in (spec §3.3, §4.4).
+ *
+ * **This function never checks `isContainerEntry`, on purpose.** A Single
+ * container Entry contributes `count: 1` here even though {@link pieceCountOf}
+ * reads the same Entry as `0` pieces (ruling A5) — see {@link claimsByGear}'s
+ * fuller note on why the two rules are meant to disagree.
  */
 function claimFor(
   kind: ClaimableKind,
@@ -178,6 +185,17 @@ function claimingTrips(
  * claim than counting a line. `isClaimableKind` is this file's own answer to
  * "which Kinds does this build have a supply rule for", and it names only
  * the three the domain states one for.
+ *
+ * **This also, separately, diverges from `pieceCountOf` for a container
+ * Entry — and this one is permanent, not a gap to close.** Ruling A5 makes
+ * `pieceCountOf` read `0` for a container, because a container carries a
+ * journey instead of a status and a packing arithmetic cannot count what can
+ * never be marked packed. A supply rule asks a different question: whether
+ * two active Trips can both take the one duffel, and they cannot, whatever
+ * the duffel's Kind. So `claimFor` gates on `entryKind` alone and never calls
+ * `isContainerEntry` — a Single container Entry still contributes `count: 1`
+ * here. Do not "fix" this by importing `pieceCountOf` or adding a container
+ * check to `claimFor`: that would let two Trips both claim the one duffel.
  */
 function claimsByGear(
   state: DepotState,

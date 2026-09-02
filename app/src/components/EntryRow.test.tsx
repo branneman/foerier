@@ -332,6 +332,28 @@ describe('EntryRow', () => {
       expect(screen.queryByRole('textbox')).toBeNull()
     })
 
+    it('reads ×N from bringCount, not pieceCount, for a Counted container Entry (fix round F3)', () => {
+      // `container` and `kind` are orthogonal registers — a Counted Entry can
+      // be a container. `pieceCountOf` reads `0` for one (ruling A5), but
+      // `×N` on a row answers "how many of this thing there are", which is
+      // `bringCountOf`'s question — so the two props diverge here on purpose,
+      // and the row must follow `bringCount`.
+      render(
+        <EntryRow
+          label="Ammo crate"
+          kind="counted"
+          bringCount={3}
+          pieceCount={0}
+          pieces={[]}
+          editable={false}
+          onBringCountChange={vi.fn()}
+          onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
+        />,
+      )
+      expect(screen.getByTestId('entry-row-count')).toHaveTextContent('×3')
+    })
+
     it("draws the cluster + ×N for a per-person Entry too — ruling A's amendment to the — rule", () => {
       render(
         <EntryRow
