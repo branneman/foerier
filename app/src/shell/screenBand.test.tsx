@@ -29,6 +29,7 @@ import { GearDetail } from '../screens/GearDetail'
 import { GearListBuilder } from '../screens/GearListBuilder'
 import { InviteIssued } from '../screens/InviteIssued'
 import { NewTrip } from '../screens/NewTrip'
+import { Packing } from '../screens/Packing'
 import { People } from '../screens/People'
 import { Trip } from '../screens/Trip'
 import { setViewport } from '../testSetup'
@@ -186,6 +187,14 @@ function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
             <Route path="/trips/:id">
               <Trip />
             </Route>
+            {/* Not width-gated at all, and not a pane (spec §4.8) — the one
+                route reachable at every width, counted below for that
+                reason: F4 is the first screen whose Desktop back link is
+                drawn, which `useScreenHeader`'s eleventh caller states as its
+                own reason rather than deriving it from `splitPane`. */}
+            <Route path="/trips/:id/packing">
+              <Packing />
+            </Route>
             {/* Width-guarded in opposite directions (spec §4.1): the picker
                 exists below Split only, the builder Split and up only — each
                 is stood up here and counted at the widths it actually
@@ -292,6 +301,55 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
     setViewport(SPLIT, DESKTOP)
     const { store, id } = await aTrip()
     renderInShell(store, `/trips/${id}`)
+
+    const lines = syncLines()
+    expect(lines).toHaveLength(1)
+    const [line] = lines
+    expect(line).toBeVisible()
+    expect(screen.getByRole('main')).not.toContainElement(line ?? null)
+  })
+
+  /**
+   * **F4 — the first screen whose Desktop answer is *drawn*.** Every caller
+   * above and below this one passes no `atDesktopSidebarCarriesDestination`
+   * override, or passes it for a door the sidebar's own row already answers
+   * (`GearListBuilder`'s `?from=trips`) — so a per-screen suite proving
+   * `Packing.test.tsx`'s own absence-of-`AppShell` half was, until this
+   * suite, the only check this rule had. Counted here for the identical
+   * reason the builder is: an inverted rule (the shell's marker doubled with
+   * the screen's own) would pass every per-screen suite and fail only a
+   * composed one.
+   */
+  it('states SYNCED once on a phone for Packing, in the shell header', async () => {
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/packing`)
+
+    const lines = syncLines()
+    expect(lines).toHaveLength(1)
+    const [line] = lines
+    expect(line).toBeVisible()
+    expect(screen.getByRole('main')).not.toContainElement(line ?? null)
+  })
+
+  it('states SYNCED once at Split for Packing, in the screen', async () => {
+    setViewport(SPLIT)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/packing`)
+
+    const lines = syncLines()
+    expect(lines).toHaveLength(1)
+    const [line] = lines
+    expect(line).toBeVisible()
+    expect(screen.getByRole('main')).toContainElement(line ?? null)
+    const nav = screen.getByRole('navigation', { name: 'Sections' })
+    expect(within(nav).queryByText('SYNCED')).toBeNull()
+    expect(within(nav).getByRole('img', { name: 'SYNCED' })).toBeInTheDocument()
+  })
+
+  it('states SYNCED once at Desktop for Packing, in the sidebar', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/packing`)
 
     const lines = syncLines()
     expect(lines).toHaveLength(1)
@@ -579,6 +637,23 @@ describe('the back link — withheld only where its destination is already drawn
     renderInShell(store, `/trips/${id}/list`)
 
     expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
+  })
+
+  /**
+   * F4 is the **eleventh** `useScreenHeader` caller, and the first where
+   * `atDesktopSidebarCarriesDestination: false` is the *only* reason the
+   * link survives — it has one door, not two, so unlike the builder there is
+   * no `?from=trips` arm to withhold it for. The 216px sidebar carries
+   * `TRIPS`, never one Trip's name, so `‹ Alps 2026` is owed at every width.
+   */
+  it('keeps its back link at Desktop — the sidebar carries TRIPS, not the Trip', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/packing`)
+
+    expect(
+      screen.getByRole('link', { name: '‹ Alps 2026' }),
+    ).toBeInTheDocument()
   })
 
   it('draws it on People at Split, the widest width it is mounted at', async () => {

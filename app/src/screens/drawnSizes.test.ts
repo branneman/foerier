@@ -293,4 +293,36 @@ describe("ruling O's drawn sizes", () => {
     expect(header).toMatch(FLOOR)
     expect(ruleBody(css, '.headerBody::after')).toBeUndefined()
   })
+
+  /**
+   * **Ruling A10's controls row.** Both are drawn at 40px "unchanged at
+   * every width" and reach 48 through the same vertical-only clamp — inset 0
+   * horizontally, because the three segments and the pill beside them sit on
+   * one row edge to edge, and a sideways grow would put a tap meant for one
+   * control on its neighbour. `.segment`'s own docstring is where the
+   * `overflow: hidden` trap this file exists to catch is spelled out: a
+   * clipped descendant is not hit-testable, so the corners are drawn instead
+   * of cut.
+   */
+  it('paints the packing mode segments at 40px and clamps them at 48', () => {
+    const css = moduleCss('Packing.module.css')
+    const segment = ruleBody(css, '.segment')
+
+    expect(segment).toBeDefined()
+    expect(segment).not.toMatch(FLOOR)
+    expect(segment).toMatch(/min-height:\s*max\(2\.5rem,\s*40px\)/)
+    expect(segment).toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.segment::after')).toMatch(/inset:\s*-0\.25rem 0/)
+  })
+
+  it('paints the ○ LEFT filter pill at 40px and clamps it at 48', () => {
+    const css = moduleCss('Packing.module.css')
+    const filter = ruleBody(css, '.filter')
+
+    expect(filter).toBeDefined()
+    expect(filter).not.toMatch(FLOOR)
+    expect(filter).toMatch(/min-height:\s*max\(2\.5rem,\s*40px\)/)
+    expect(filter).toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.filter::after')).toMatch(/inset:\s*-0\.25rem 0/)
+  })
 })

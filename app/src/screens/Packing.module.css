@@ -4,15 +4,37 @@
    * something to fill — `Trip.module.css`'s own reason, and the pane is a
    * stretched grid item of the shell so the percentage resolves.
    *
-   * The 560px cap, the Roomy/Split gutters and the group card border from
-   * Roomy up are ruling A10's and land with Task 12, which owns the width
-   * suite; there is nothing width-dependent to cap until the groups exist.
+   * **Ruling A10, capped from Roomy up:** 560px, centred, no pane — a packing
+   * row has no detail, its two acts being a pill and a sheet, so there is no
+   * second pane for a wider viewport to unlock. 560 is the 393 row's content
+   * plus the room ALL mode's residence segment needs; past it the pill
+   * drifts an arm's length from the name it belongs to. Below Roomy the
+   * phone frame is unchanged — no override here at all, so Compact and
+   * Comfortable keep `.shell__main`'s own gutter untouched, exactly as
+   * `NewTrip`'s and `AddGear`'s identical `28rem` caps do.
+   *
+   * **The gutter is the shell's own `--gutter` token, not a bespoke 20/24.**
+   * `ui/styles/layout.css` already reaches 24 at Roomy and holds it through
+   * Split and Desktop, so "24 from Split" is simply that token, unchanged —
+   * and "20 at Roomy" is the identical departure already recorded for
+   * Depot/Trips' title-row button (`docs/design/README.md` §1's Widths
+   * bullet vs. the shared token): the boards draw 20, the shared gutter
+   * step is 24, and a screen this narrow does not invent a second gutter
+   * value 4px off the one every other surface reads.
    */
   .screen {
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
     min-height: 100%;
+  }
+
+  @media (min-width: 40em) {
+    .screen {
+      max-width: 35rem;
+      margin-inline: auto;
+      width: 100%;
+    }
   }
 
   /* The band — `Trip.module.css`'s rule verbatim, since it is the same band
@@ -286,8 +308,9 @@
     font: var(--text-body) var(--font-ui);
   }
 
-  /* CONTAINER mode's groups. No gap between them: a group is a surface band
-     followed by its rows, and the next band's own top border is the seam. */
+  /* CONTAINER mode's groups. No gap between them below Roomy: a group is a
+     surface band followed by its rows, and the next band's own top border is
+     the seam — the edge-to-edge list ruling A10 draws below the cap. */
   .groups {
     display: flex;
     flex-direction: column;
@@ -303,6 +326,31 @@
    */
   .group {
     --packing-indent: 0px;
+  }
+
+  /*
+   * **Ruling A10: group cards, from Roomy up — where the list stops being
+   * edge-to-edge.** A gap between groups so two rounded corners never touch
+   * (below Roomy the seam is the next band's own top border instead, and
+   * there is nothing to separate). **No `overflow: hidden`**: this element is
+   * the ancestor of every hit-tested control the group draws — the rail
+   * chip's `::after` among them — and a clipped ancestor makes ruling O's own
+   * extension untestable by touch, the exact trap this file's own
+   * `drawnSizes.test.ts` cannot see (it parses stylesheet text, not layout).
+   * The corners are drawn instead: the header's own background is the one
+   * child that would otherwise poke a square corner past the card's rounded
+   * one, so it alone restates the radius; `PackingRow`'s own rows carry no
+   * background of their own, so the card's bottom corners need no match.
+   */
+  @media (min-width: 40em) {
+    .groups {
+      gap: var(--space-12);
+    }
+
+    .group {
+      border: var(--stroke-rule) solid var(--color-rule);
+      border-radius: var(--radius-card);
+    }
   }
 
   .group[data-indent='1'] {
@@ -330,6 +378,18 @@
     padding-inline-start: calc(var(--space-16) + var(--packing-indent));
     background: var(--color-bg-surface);
     border-top: var(--stroke-rule) solid var(--color-rule);
+  }
+
+  /* From Roomy up the card's own border is the seam — a flush top border
+     here would double it — and the header's opaque background needs its own
+     matching top radius, inset by the card's border width, or its square
+     corners would poke past the card's rounded ones. */
+  @media (min-width: 40em) {
+    .groupHeader {
+      border-top: 0;
+      border-start-start-radius: calc(var(--radius-card) - var(--stroke-rule));
+      border-start-end-radius: calc(var(--radius-card) - var(--stroke-rule));
+    }
   }
 
   /*
