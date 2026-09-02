@@ -169,16 +169,27 @@ export {
 } from './selectors/entry.ts'
 
 export type {
+  Disagreement,
   JourneyStage,
+  PackingCount,
+  PackingItem,
   PackingStatus,
+  PersonBucket,
+  PersonBucketKey,
   StageKey,
   StatusKey,
 } from './selectors/packing.ts'
 export {
+  containerTotals,
+  countOf,
+  disagreements,
   isKnownStage,
   isKnownStatus,
   isPacked,
   nextStatus,
+  packingItems,
+  packingTotals,
+  personPartition,
   pieceStatusOf,
   STAGES,
   stageDisagreementLabel,

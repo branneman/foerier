@@ -4,8 +4,21 @@ import type {
   PieceState,
   StageValue,
   StatusValue,
+  TripResidence,
+  TripState,
 } from '../state.ts'
-import { isContainerEntry } from './entry.ts'
+import {
+  bringCountOf,
+  entriesOf,
+  entryKind,
+  isContainerEntry,
+} from './entry.ts'
+import { ownerOf } from './owner.ts'
+import { piecesOf } from './piece.ts'
+import {
+  type TripContainmentView,
+  tripContainmentView,
+} from './tripContainment.ts'
 
 /**
  * **Packing's read side** — beside `trip.ts` and `owner.ts`, and the same
@@ -203,4 +216,346 @@ export function isKnownStatus(status: StatusValue): boolean {
 
 export function isKnownStage(stage: StageValue): boolean {
   return stageRow(stage) !== undefined
+}
+
+/**
+ * One thing that carries a status: a whole Entry, or **one Piece** of a
+ * per-person Entry.
+ *
+ * This is the spine the four count lines share — the trip total, a container
+ * group's count, a person group's count and the `○ LEFT` filter. Deriving it
+ * once is what makes them agree; deriving it four times is exactly the drift
+ * this file's header warns about, and the symptom is a group header
+ * disagreeing with the rows drawn under it.
+ *
+ * `units` is what the item contributes to a denominator: a **Counted** Entry
+ * contributes its whole Bring-count (ruling A13 — one register, one pill, one
+ * tap moving the count by two), everything else contributes one. This is the
+ * `pieces`/`perPerson` family of `ListTotals` (`entry.ts`), which counts
+ * **things that travel**, and not the `entries`/`tripOnly` family, which
+ * counts lines.
+ *
+ * **Containers produce no item**, and neither do sourceless or removed
+ * Entries — {@link entriesOf} has already excluded the latter two.
+ */
+export type PackingItem =
+  | {
+      kind: 'entry'
+      entryId: string
+      units: number
+      status: StatusValue
+      residence: TripResidence
+    }
+  | {
+      kind: 'piece'
+      entryId: string
+      personId: string
+      units: 1
+      status: StatusValue
+      residence: TripResidence
+    }
+
+/** One shared instance, for `tripContainment.ts`'s own `LOOSE`'s reason: it
+ * carries no id, so there is nothing to distinguish, and freezing it keeps
+ * the singleton safe to hand out from every item. */
+const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
+
+/**
+ * Every item on the Trip, in {@link entriesOf} order with a per-person
+ * Entry's Pieces in {@link piecesOf} order.
+ *
+ * **A Piece with no `residence` register of its own reads its Entry's**, then
+ * `loose`. `trip.entry_moved` on a per-person Entry is a legitimate op — the
+ * whole headlamp set goes in the duffel — and the Piece ops are the
+ * refinement, so reading an absent Piece residence as `loose` would silently
+ * discard it. The two registers stay distinct facts about the log; only the
+ * read is layered, exactly as the absent reads above are. **This is a
+ * decision the spec did not take**, recorded in the slice's own *what changed
+ * during implementation*, and it is deliberately *not* symmetric with
+ * `status`: an absent Piece status reads `not_packed` rather than the Entry's,
+ * because a status is per-Piece work while a residence is where the set rides.
+ */
+export function packingItems(
+  trip: TripState,
+  state: DepotState,
+): readonly PackingItem[] {
+  const items: PackingItem[] = []
+  for (const entry of entriesOf(trip, state)) {
+    if (isContainerEntry(entry, state)) continue
+    const entryResidence = entry.residence?.value ?? LOOSE
+    if (entryKind(entry, state) === 'per_person') {
+      for (const personId of piecesOf(entry, trip)) {
+        const piece = entry.pieces?.[personId]
+        items.push({
+          kind: 'piece',
+          entryId: entry.id,
+          personId,
+          units: 1,
+          // Never `null` here: `isContainerEntry` was answered above, and it
+          // is the only thing either status function returns `null` for.
+          status: pieceStatusOf(piece, entry, state) ?? 'not_packed',
+          residence: piece?.residence?.value ?? entryResidence,
+        })
+      }
+      continue
+    }
+    items.push({
+      kind: 'entry',
+      entryId: entry.id,
+      units:
+        entryKind(entry, state) === 'counted'
+          ? (bringCountOf(entry, state) ?? 1)
+          : 1,
+      status: statusOf(entry, state) ?? 'not_packed',
+      residence: entryResidence,
+    })
+  }
+  return items
+}
+
+/** `● 48/61 PIECES` and `13 LEFT`. */
+export interface PackingCount {
+  readonly packed: number
+  readonly total: number
+  readonly left: number
+}
+
+/**
+ * The one arithmetic, over any selection of items. `left` is `total − packed`
+ * and **not a third sum**, so the two can never disagree — two independent
+ * sums can, a subtraction cannot.
+ *
+ * `staged` counts toward `left`: {@link isPacked} is the only definition of
+ * packed-ness and it says so. That is a different question from the ▲ line's
+ * (see {@link disagreements}), which counts `not packed` alone.
+ */
+export function countOf(items: readonly PackingItem[]): PackingCount {
+  let packed = 0
+  let total = 0
+  for (const item of items) {
+    total += item.units
+    if (isPacked(item.status)) packed += item.units
+  }
+  return { packed, total, left: total - packed }
+}
+
+/** The Trip's own `● 5/13 PIECES · 8 LEFT`, over {@link packingItems}. */
+export function packingTotals(
+  trip: TripState,
+  state: DepotState,
+): PackingCount {
+  return countOf(packingItems(trip, state))
+}
+
+/**
+ * Every Entry inside `entryId` **at any depth**, the container itself
+ * excluded. Ids, not entities, and over {@link TripContainmentView} rather
+ * than the raw registers, so the four loose-reasons and the cycle break are
+ * applied exactly once — and the `subtree` guard makes termination
+ * independent of the view it is handed.
+ */
+function subtreeOf(view: TripContainmentView, entryId: string): Set<string> {
+  const subtree = new Set<string>()
+  const stack = [entryId]
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (current === undefined) continue
+    for (const childId of view.childrenOf({
+      kind: 'container',
+      entryId: current,
+    })) {
+      if (subtree.has(childId)) continue
+      subtree.add(childId)
+      stack.push(childId)
+    }
+  }
+  return subtree
+}
+
+/**
+ * A container group's `9/12` — **its contents at any depth**. The duffel's
+ * twelve include the stuff sack's four, so a nested group's own rows are
+ * counted twice on screen: once in its header and once in its ancestor's.
+ * That is what "everything in the duffel" means to a household carrying it.
+ *
+ * The subtree is over **Entries**, which is what {@link tripContainmentView}
+ * resolves: a per-person Entry counts under the container its own `residence`
+ * names, whatever a `trip.piece_moved` has since said about one of its
+ * Pieces. That is the row the by-container list draws — one row per Entry,
+ * with the cluster on it — and a Piece's own residence is what ALL mode's
+ * `▸ MIXED` segment states instead.
+ *
+ * Pass `view` when you already have one: building it is O(entries), and a
+ * list screen wants one view rather than one per group.
+ */
+export function containerTotals(
+  trip: TripState,
+  state: DepotState,
+  entryId: string,
+  view: TripContainmentView = tripContainmentView(trip, state),
+): PackingCount {
+  const subtree = subtreeOf(view, entryId)
+  return countOf(
+    packingItems(trip, state).filter((item) => subtree.has(item.entryId)),
+  )
+}
+
+export type PersonBucketKey =
+  { kind: 'person'; personId: string } | { kind: 'shared' }
+
+export interface PersonBucket {
+  readonly key: PersonBucketKey
+  readonly items: readonly PackingItem[]
+  readonly count: PackingCount
+}
+
+/**
+ * Ruling A7's partition: **PERSON mode means *whose it is***, which ownership
+ * answers. *Whose body it goes with* is story 23, Later, and the app holds no
+ * such fact — which is precisely what made the drawn frame's complete
+ * partition unbuildable.
+ *
+ * Every item falls in exactly one bucket, tested in this order:
+ *
+ * 1. a **Piece** goes to its own Participant's bucket;
+ * 2. otherwise the Entry's {@link ownerOf} — a Person's bucket, **including a
+ *    Person who is not a Participant**, because the header answers whose it
+ *    is and Els's jacket carried by Mark is honest;
+ * 3. otherwise `Shared` — which covers a Shared register, an **absent** one
+ *    (`owner.ts`'s rule), a trip-only Entry with no Gear to own it, and a
+ *    depot Entry whose Gear has not reached this replica.
+ *
+ * The partition is **total**, so the arithmetic closes on facts the MVP
+ * holds: the buckets sum to {@link packingTotals} exactly, and the test that
+ * asserts it is the one that would have caught the drawn frame.
+ *
+ * **A bucket with no items is not returned**, the Participant whose Piece was
+ * removed and who owns nothing included: PERSON mode groups work, and a
+ * header over nothing states nothing. A screen wanting to say *Kim has
+ * nothing to pack* has `participantIds` and this list to say it from.
+ *
+ * **Order here is by person id**, `Shared` distinguished by its **key** and
+ * not by its position — `piecesOf`'s own rule, and deliberately not the drawn
+ * order. Surfaces order by Person label through `sortedPeople`, which lives
+ * in `app/` and cannot be reached from here, and put `Shared` **last** (a
+ * deliberate divergence from the Depot's `GROUP BY OWNER`, whose grouping
+ * table pins `shared` first: `Shared` is the everything-else bucket and on a
+ * real Trip the biggest one, so first position pushes every person header
+ * off-screen). That belongs at the screen, not here.
+ */
+export function personPartition(
+  trip: TripState,
+  state: DepotState,
+): readonly PersonBucket[] {
+  // Rule 2, resolved once per Entry rather than once per item. Only Personal
+  // ownership is recorded: every Entry absent from this map is rule 3.
+  const owners = new Map<string, string>()
+  for (const entry of entriesOf(trip, state)) {
+    const source = entry.source?.value
+    if (source === undefined || source.from !== 'depot') continue
+    const gear = state.gear[source.gearId]
+    if (gear === undefined) continue
+    const owner = ownerOf(gear)
+    if (owner.type === 'person') owners.set(entry.id, owner.personId)
+  }
+
+  const byPerson = new Map<string, PackingItem[]>()
+  const shared: PackingItem[] = []
+  for (const item of packingItems(trip, state)) {
+    const personId =
+      item.kind === 'piece' ? item.personId : owners.get(item.entryId)
+    if (personId === undefined) {
+      shared.push(item)
+      continue
+    }
+    const bucket = byPerson.get(personId)
+    if (bucket === undefined) byPerson.set(personId, [item])
+    else bucket.push(item)
+  }
+
+  const buckets: PersonBucket[] = []
+  for (const personId of [...byPerson.keys()].sort()) {
+    const items = byPerson.get(personId) ?? []
+    buckets.push({
+      key: { kind: 'person', personId },
+      items,
+      count: countOf(items),
+    })
+  }
+  if (shared.length > 0) {
+    buckets.push({
+      key: { kind: 'shared' },
+      items: shared,
+      count: countOf(shared),
+    })
+  }
+  return buckets
+}
+
+export interface Disagreement {
+  readonly entryId: string
+  /** `IN CAR` · `PACKED` — the stage's own word, from the table. */
+  readonly label: string
+  readonly notPacked: number
+}
+
+/**
+ * Ruling A6, the rule the two drawn frames encode and neither states:
+ *
+ * ```
+ * disagreeing(entry) = stageDisagreementLabel(stageOf(entry)) !== null
+ *                      ∧ count of not-packed contents, at any depth, > 0
+ * ```
+ *
+ * `car` and `packed` only — **staging *is* the act of packing**, so unpacked
+ * contents on the staging floor are the work, not a contradiction. Both
+ * halves are read off {@link stageDisagreementLabel}, one field, so the stage
+ * set and the phrasing it fires with cannot drift apart.
+ *
+ * `not packed` only — counting `staged` would fire on nearly every container
+ * in the car and the ▲ would stop meaning anything. So this is **not**
+ * {@link PackingCount.left}, which counts everything {@link isPacked}
+ * rejects: a crate holding a staged tarp has `left` one higher than
+ * `notPacked`, and the two answer different questions on purpose. An
+ * **unrecognised** status counts toward neither — a build that cannot name a
+ * status cannot claim a disagreement about it, which is
+ * {@link stageDisagreementLabel}'s own rule one register over.
+ *
+ * The count is in `units`, so a Counted Entry contributes its whole
+ * Bring-count: `▲ IN CAR · 3 INSIDE NOT PACKED` counts what travels, exactly
+ * as the numerator beside it does.
+ *
+ * A **pure function of the fold**, like `overClaims` and unlike anything with
+ * an op: every replica computes the identical set, and it goes away when a
+ * Quartermaster packs the contents or moves the container back — both
+ * ordinary ops, nothing discarded (invariant 12).
+ *
+ * In {@link entriesOf} order, which is the order the list draws its groups.
+ */
+export function disagreements(
+  trip: TripState,
+  state: DepotState,
+  view: TripContainmentView = tripContainmentView(trip, state),
+): readonly Disagreement[] {
+  const items = packingItems(trip, state)
+  const rows: Disagreement[] = []
+  for (const entry of entriesOf(trip, state)) {
+    // `null` for every non-container, so this is also the container gate —
+    // stated once, in the named function, rather than re-derived here.
+    const stage = stageOf(entry, state)
+    if (stage === null) continue
+    const label = stageDisagreementLabel(stage)
+    if (label === null) continue
+
+    const subtree = subtreeOf(view, entry.id)
+    let notPacked = 0
+    for (const item of items) {
+      if (!subtree.has(item.entryId)) continue
+      if (statusRow(item.status)?.id !== 'not_packed') continue
+      notPacked += item.units
+    }
+    if (notPacked === 0) continue
+    rows.push({ entryId: entry.id, label, notPacked })
+  }
+  return rows
 }

@@ -1,0 +1,673 @@
+import { describe, expect, it } from 'vitest'
+
+import { aGear, anOp, aPerson, aTrip, hlcAt } from '../../testUtils/index.ts'
+import {
+  type OpSpec,
+  tripContainerStageSet,
+  tripEntryAdded,
+  tripEntryBringCountSet,
+  tripEntryMoved,
+  tripEntryRemoved,
+  tripEntryStatusSet,
+  tripPieceMoved,
+  tripPieceRemoved,
+  tripPieceStatusSet,
+} from '../authoring.ts'
+import type { OpEnvelope } from '../ops.ts'
+import { fold } from '../reduce.ts'
+import type { DepotState, TripState } from '../state.ts'
+import { entriesOf, isContainerEntry } from './entry.ts'
+import {
+  containerTotals,
+  countOf,
+  disagreements,
+  isPacked,
+  type PackingItem,
+  packingItems,
+  packingTotals,
+  personPartition,
+} from './packing.ts'
+import { participantIds } from './trip.ts'
+import { tripContainmentView } from './tripContainment.ts'
+
+const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
+
+const TRIP = 't-alps'
+
+/**
+ * Ids sort `MARK · KIM · ANA · ELS`; the names sort `Ana · Els · Kim · Mark`.
+ * The two orders are deliberately different, so a partition returned in *id*
+ * order cannot pass a test that a partition returned in *label* order would
+ * also pass.
+ */
+const MARK = 'p-1-mark'
+const KIM = 'p-2-kim'
+const ANA = 'p-3-ana'
+const ELS = 'p-4-els'
+
+// Containers. `entriesOf` sorts by label, so the names fix the order every
+// list-shaped assertion below reads against.
+const BIN = 'e-bin' // trip-only container · `staging` · one unpacked item
+const BOX = 'e-box' // container · `car` · everything inside it packed
+const CRATE = 'e-crate' // container · `car` · disagreeing at depth 1
+const DUFFEL = 'e-duffel' // container · `packed` · disagreeing at depth 2
+const SACK = 'e-sack' // container inside the duffel · `home`
+
+// The things that travel.
+const FLAGS = 'e-flags' // trip-only single, in the bin, not packed
+const HEADLAMP = 'e-lamp' // per-person, three Participants, Kim's Piece removed
+const JACKET = 'e-jacket' // owned by ELS, who is **not** a Participant
+const MAP = 'e-map' // owned by MARK, in the stuff sack, not packed
+const MUG = 'e-mug' // shared, in the box, packed
+const PAN = 'e-pan' // shared, in the crate, packed
+const POT = 'e-pot' // shared, in the stuff sack, packed
+const ROPE = 'e-rope' // shared, in the crate, explicitly not packed
+const STOVE = 'e-stove' // counted ×3, in the crate, **no** status register
+const TARP = 'e-tarp' // shared, in the crate, staged
+const ORPHANED = 'e-ghost' // sourceless — `entriesOf` already excludes it
+
+/**
+ * One Trip, holding every branch the four counts have to agree about: a
+ * Counted Entry with a Bring-count of 3, a per-person Entry with one of three
+ * Pieces removed, a Single owned by a **non-Participant**, a Single owned by a
+ * Participant, three Shared Singles, a trip-only Single, a sourceless Entry, a
+ * container in `car` with unpacked contents, a container in `car` with none, a
+ * trip-only container in `staging`, and a container in `packed` whose only
+ * unpacked content sits **two levels down**.
+ *
+ * Several registers are left absent on purpose — the Stove's and the Map's
+ * `status`, the stuff sack's `stage`, Ana's Piece `status` — so the absent
+ * reads `packing.ts` states once are exercised by the fixture rather than
+ * asserted about in isolation.
+ */
+const BASE_SPECS: readonly OpSpec[] = [
+  ...aTrip({
+    id: TRIP,
+    name: 'Alps 2026',
+    phase: 'pack_out',
+    participants: [MARK, KIM, ANA],
+  }),
+  ...aPerson({ id: MARK, name: 'Mark' }),
+  ...aPerson({ id: KIM, name: 'Kim' }),
+  ...aPerson({ id: ANA, name: 'Ana' }),
+  ...aPerson({ id: ELS, name: 'Els' }),
+
+  // ── Containers ────────────────────────────────────────────────────────────
+  ...aGear({ id: 'g-box', name: 'Box', container: true }),
+  tripEntryAdded(TRIP, BOX, { from: 'depot', gearId: 'g-box' }),
+  tripContainerStageSet(TRIP, BOX, 'car'),
+
+  ...aGear({ id: 'g-crate', name: 'Crate B', container: true }),
+  tripEntryAdded(TRIP, CRATE, { from: 'depot', gearId: 'g-crate' }),
+  tripContainerStageSet(TRIP, CRATE, 'car'),
+
+  ...aGear({ id: 'g-duffel', name: 'Duffel 90 L', container: true }),
+  tripEntryAdded(TRIP, DUFFEL, { from: 'depot', gearId: 'g-duffel' }),
+  tripContainerStageSet(TRIP, DUFFEL, 'packed'),
+
+  ...aGear({ id: 'g-sack', name: 'Stuff sack', container: true }),
+  tripEntryAdded(TRIP, SACK, { from: 'depot', gearId: 'g-sack' }),
+  tripEntryMoved(TRIP, SACK, { in: 'container', entryId: DUFFEL }),
+  // No `trip.container_stage_set`: an absent `stage` reads `home`.
+
+  tripEntryAdded(TRIP, BIN, {
+    from: 'trip_only',
+    name: 'Ammo bin',
+    container: true,
+  }),
+  tripContainerStageSet(TRIP, BIN, 'staging'),
+
+  // ── Things that travel ────────────────────────────────────────────────────
+  ...aGear({ id: 'g-stove', name: 'Stove', kind: 'counted' }),
+  tripEntryAdded(TRIP, STOVE, { from: 'depot', gearId: 'g-stove' }),
+  tripEntryBringCountSet(TRIP, STOVE, 3),
+  tripEntryMoved(TRIP, STOVE, { in: 'container', entryId: CRATE }),
+  // No `trip.entry_status_set`: an absent `status` reads `not_packed`.
+
+  ...aGear({ id: 'g-rope', name: 'Rope' }),
+  tripEntryAdded(TRIP, ROPE, { from: 'depot', gearId: 'g-rope' }),
+  tripEntryMoved(TRIP, ROPE, { in: 'container', entryId: CRATE }),
+  tripEntryStatusSet(TRIP, ROPE, 'not_packed'),
+
+  ...aGear({ id: 'g-tarp', name: 'Tarp' }),
+  tripEntryAdded(TRIP, TARP, { from: 'depot', gearId: 'g-tarp' }),
+  tripEntryMoved(TRIP, TARP, { in: 'container', entryId: CRATE }),
+  tripEntryStatusSet(TRIP, TARP, 'staged'),
+
+  ...aGear({ id: 'g-pan', name: 'Pan' }),
+  tripEntryAdded(TRIP, PAN, { from: 'depot', gearId: 'g-pan' }),
+  tripEntryMoved(TRIP, PAN, { in: 'container', entryId: CRATE }),
+  tripEntryStatusSet(TRIP, PAN, 'packed'),
+
+  ...aGear({ id: 'g-mug', name: 'Mug' }),
+  tripEntryAdded(TRIP, MUG, { from: 'depot', gearId: 'g-mug' }),
+  tripEntryMoved(TRIP, MUG, { in: 'container', entryId: BOX }),
+  tripEntryStatusSet(TRIP, MUG, 'packed'),
+
+  ...aGear({ id: 'g-pot', name: 'Pot' }),
+  tripEntryAdded(TRIP, POT, { from: 'depot', gearId: 'g-pot' }),
+  tripEntryMoved(TRIP, POT, { in: 'container', entryId: SACK }),
+  tripEntryStatusSet(TRIP, POT, 'packed'),
+
+  ...aGear({
+    id: 'g-map',
+    name: 'Map',
+    owner: { type: 'person', personId: MARK },
+  }),
+  tripEntryAdded(TRIP, MAP, { from: 'depot', gearId: 'g-map' }),
+  tripEntryMoved(TRIP, MAP, { in: 'container', entryId: SACK }),
+
+  ...aGear({
+    id: 'g-jacket',
+    name: 'Jacket',
+    owner: { type: 'person', personId: ELS },
+  }),
+  tripEntryAdded(TRIP, JACKET, { from: 'depot', gearId: 'g-jacket' }),
+  tripEntryMoved(TRIP, JACKET, { in: 'container', entryId: DUFFEL }),
+  tripEntryStatusSet(TRIP, JACKET, 'packed'),
+
+  tripEntryAdded(TRIP, FLAGS, {
+    from: 'trip_only',
+    name: 'Flagging tape',
+    container: false,
+  }),
+  tripEntryMoved(TRIP, FLAGS, { in: 'container', entryId: BIN }),
+
+  ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+  tripEntryAdded(TRIP, HEADLAMP, { from: 'depot', gearId: 'g-lamp' }),
+  tripPieceRemoved(TRIP, HEADLAMP, KIM),
+  tripPieceStatusSet(TRIP, HEADLAMP, MARK, 'packed'),
+  // Ana's Piece carries no `status` register at all.
+
+  // `trip.entry_bring_count_set` creates the Entry on sight, so a sourceless
+  // Entry is reachable without a malformed op.
+  tripEntryBringCountSet(TRIP, ORPHANED, 2),
+]
+
+/** Stamps each spec with its own increasing clock, in authoring order. */
+function log(specs: readonly OpSpec[], from = 0): OpEnvelope[] {
+  return specs.map((spec, index) =>
+    anOp(spec, { hlc: hlcAt(from + index + 1), deviceId: DEV_A }),
+  )
+}
+
+const BASE = fold(log(BASE_SPECS))
+
+/** The fixture, plus ops stamped strictly after every one of its own. */
+function withLater(...specs: readonly OpSpec[]): DepotState {
+  return fold(log(specs, BASE_SPECS.length), BASE)
+}
+
+function tripOf(state: DepotState): TripState {
+  const trip = state.trips[TRIP]
+  if (trip === undefined) throw new Error(`the fold holds no Trip ${TRIP}`)
+  return trip
+}
+
+const TRIP_STATE = tripOf(BASE)
+
+function itemsIn(state: DepotState): readonly PackingItem[] {
+  return packingItems(tripOf(state), state)
+}
+
+function itemsFor(
+  entryId: string,
+  state: DepotState = BASE,
+): readonly PackingItem[] {
+  return itemsIn(state).filter((item) => item.entryId === entryId)
+}
+
+type PieceItem = Extract<PackingItem, { kind: 'piece' }>
+
+function isPieceItem(item: PackingItem): item is PieceItem {
+  return item.kind === 'piece'
+}
+
+function piecesFor(
+  entryId: string,
+  state: DepotState = BASE,
+): readonly PieceItem[] {
+  return itemsFor(entryId, state).filter(isPieceItem)
+}
+
+function totalsIn(state: DepotState = BASE) {
+  return packingTotals(tripOf(state), state)
+}
+
+function groupTotals(entryId: string, state: DepotState = BASE) {
+  return containerTotals(tripOf(state), state, entryId)
+}
+
+function bucketsIn(state: DepotState = BASE) {
+  return personPartition(tripOf(state), state)
+}
+
+function bucketFor(personId: string, state: DepotState = BASE) {
+  const bucket = bucketsIn(state).find(
+    (candidate) =>
+      candidate.key.kind === 'person' && candidate.key.personId === personId,
+  )
+  if (bucket === undefined) throw new Error(`no bucket for ${personId}`)
+  return bucket
+}
+
+function disagreementsIn(state: DepotState = BASE) {
+  return disagreements(tripOf(state), state)
+}
+
+describe('packingItems is the spine', () => {
+  it('gives a Counted Entry one item carrying its whole Bring-count', () => {
+    const items = itemsFor(STOVE)
+
+    expect(items).toHaveLength(1)
+    expect(items[0]?.kind).toBe('entry')
+    expect(items[0]?.units).toBe(3)
+    // No status register at all — the absent read, exercised by the fixture.
+    expect(items[0]?.status).toBe('not_packed')
+  })
+
+  it('gives a Single, a trip-only Entry and an unknown Kind one unit each', () => {
+    expect(itemsFor(ROPE).map((item) => item.units)).toEqual([1])
+    expect(itemsFor(FLAGS).map((item) => item.units)).toEqual([1])
+  })
+
+  it('gives a per-person Entry one item per INCLUDED Piece', () => {
+    // Three Participants, Kim's Piece tombstoned: two items, one unit each.
+    const pieces = piecesFor(HEADLAMP)
+
+    expect(pieces).toHaveLength(2)
+    expect(pieces.every((piece) => piece.units === 1)).toBe(true)
+    expect(pieces.map((piece) => piece.personId)).not.toContain(KIM)
+    expect(pieces.map((piece) => piece.personId)).toEqual([MARK, ANA])
+    // Mark's Piece was set; Ana's carries no register and reads `not_packed`.
+    expect(pieces.map((piece) => piece.status)).toEqual([
+      'packed',
+      'not_packed',
+    ])
+  })
+
+  it('gives a container no item at all — depot or trip-only', () => {
+    for (const container of [BOX, CRATE, DUFFEL, SACK, BIN]) {
+      expect(itemsFor(container)).toEqual([])
+    }
+  })
+
+  it('gives a sourceless Entry no item — entriesOf already excludes it', () => {
+    expect(TRIP_STATE.entries?.[ORPHANED]?.source).toBeUndefined()
+    expect(itemsFor(ORPHANED)).toEqual([])
+  })
+
+  it('gives a removed Entry no item', () => {
+    expect(itemsFor(ROPE)).toHaveLength(1)
+    expect(itemsFor(ROPE, withLater(tripEntryRemoved(TRIP, ROPE)))).toEqual([])
+  })
+
+  it('carries the Entry residence on a whole-Entry item', () => {
+    expect(itemsFor(POT)[0]?.residence).toEqual({
+      in: 'container',
+      entryId: SACK,
+    })
+    expect(itemsFor(HEADLAMP)[0]?.residence).toEqual({ in: 'loose' })
+  })
+
+  it('falls a Piece with no residence back to its Entry residence', () => {
+    // A decision the spec does not take. `trip.entry_moved` on a per-person
+    // Entry is legitimate — the whole headlamp set goes in the duffel — and
+    // the Piece ops refine it; reading absent as loose would discard that.
+    const state = withLater(
+      tripEntryMoved(TRIP, HEADLAMP, { in: 'container', entryId: CRATE }),
+    )
+
+    const pieces = piecesFor(HEADLAMP, state)
+    expect(pieces).toHaveLength(2)
+    expect(
+      pieces.every(
+        (piece) =>
+          piece.residence.in === 'container' &&
+          piece.residence.entryId === CRATE,
+      ),
+    ).toBe(true)
+    // The two registers stay distinct facts about the log; only the read is
+    // layered — no Piece residence was written.
+    expect(
+      tripOf(state).entries?.[HEADLAMP]?.pieces?.[MARK]?.residence,
+    ).toBeUndefined()
+  })
+
+  it('lets a Piece residence override its Entry residence', () => {
+    const state = withLater(
+      tripEntryMoved(TRIP, HEADLAMP, { in: 'container', entryId: CRATE }),
+      tripPieceMoved(TRIP, HEADLAMP, ANA, {
+        in: 'container',
+        entryId: DUFFEL,
+      }),
+    )
+
+    const byPerson = new Map(
+      piecesFor(HEADLAMP, state).map((piece) => [piece.personId, piece]),
+    )
+    expect(byPerson.get(MARK)?.residence).toEqual({
+      in: 'container',
+      entryId: CRATE,
+    })
+    expect(byPerson.get(ANA)?.residence).toEqual({
+      in: 'container',
+      entryId: DUFFEL,
+    })
+  })
+
+  it('reads a Piece residence even where the Entry has none', () => {
+    const state = withLater(
+      tripPieceMoved(TRIP, HEADLAMP, MARK, { in: 'container', entryId: BOX }),
+    )
+
+    const byPerson = new Map(
+      piecesFor(HEADLAMP, state).map((piece) => [piece.personId, piece]),
+    )
+    expect(byPerson.get(MARK)?.residence).toEqual({
+      in: 'container',
+      entryId: BOX,
+    })
+    expect(byPerson.get(ANA)?.residence).toEqual({ in: 'loose' })
+  })
+
+  it('falls back to loose when neither register is set', () => {
+    expect(
+      piecesFor(HEADLAMP).every((piece) => piece.residence.in === 'loose'),
+    ).toBe(true)
+  })
+})
+
+describe('countOf', () => {
+  it('is the one arithmetic, and left is total minus packed', () => {
+    const items: PackingItem[] = [
+      { kind: 'entry', entryId: 'a', units: 3, status: 'packed', residence: { in: 'loose' } }, // prettier-ignore
+      { kind: 'entry', entryId: 'b', units: 2, status: 'staged', residence: { in: 'loose' } }, // prettier-ignore
+    ]
+
+    expect(countOf(items)).toEqual({ packed: 3, total: 5, left: 2 })
+    expect(countOf([])).toEqual({ packed: 0, total: 0, left: 0 })
+  })
+})
+
+describe('packingTotals', () => {
+  it('counts packed, total and left over every item', () => {
+    // 3 (stove) + 1 rope + 1 tarp + 1 pan + 1 mug + 1 pot + 1 map + 1 jacket
+    // + 1 flags + 2 headlamp Pieces = 13; packed = pan, mug, pot, jacket and
+    // Mark's Piece.
+    expect(totalsIn()).toEqual({ packed: 5, total: 13, left: 8 })
+  })
+
+  it('reads the same list the spine hands out', () => {
+    expect(totalsIn()).toEqual(countOf(itemsIn(BASE)))
+  })
+
+  it('does not count staged as packed', () => {
+    expect(isPacked('staged')).toBe(false)
+    // The Tarp is the Trip's one staged item; packing it moves the numerator
+    // by exactly one and leaves the denominator alone.
+    expect(
+      totalsIn(withLater(tripEntryStatusSet(TRIP, TARP, 'packed'))),
+    ).toEqual({
+      packed: 6,
+      total: 13,
+      left: 7,
+    })
+  })
+
+  it('excludes containers from the denominator', () => {
+    const containers = entriesOf(TRIP_STATE, BASE).filter((entry) =>
+      isContainerEntry(entry, BASE),
+    )
+
+    expect(containers).toHaveLength(5)
+    expect(itemsIn(BASE).map((item) => item.entryId)).not.toContain(CRATE)
+    expect(totalsIn().total).toBe(13)
+  })
+
+  it('counts an unrecognised status as not packed', () => {
+    const state = withLater(tripEntryStatusSet(TRIP, MUG, 'wedged'))
+
+    expect(itemsFor(MUG, state)[0]?.status).toBe('wedged')
+    expect(totalsIn(state)).toEqual({ packed: 4, total: 13, left: 9 })
+  })
+})
+
+describe('a container group counts its subtree at any depth', () => {
+  it("includes a nested container's contents in its ancestor's count", () => {
+    // The duffel's three include the stuff sack's two. A nested group's own
+    // rows are counted twice on screen — once in its header and once in its
+    // ancestor's — which is what "everything in the duffel" means to a
+    // household carrying it.
+    expect(groupTotals(DUFFEL)).toEqual({ packed: 2, total: 3, left: 1 })
+    expect(groupTotals(SACK)).toEqual({ packed: 1, total: 2, left: 1 })
+  })
+
+  it('counts a Counted Entry inside it by its whole Bring-count', () => {
+    // 3 (stove) + rope + tarp + pan; only the pan is packed.
+    expect(groupTotals(CRATE)).toEqual({ packed: 1, total: 6, left: 5 })
+  })
+
+  it('counts the container itself as nothing', () => {
+    // The stuff sack is inside the duffel and contributes no unit of its own:
+    // the duffel's total is exactly the pot, the map and the jacket.
+    expect(groupTotals(DUFFEL).total).toBe(
+      countOf([...itemsFor(POT), ...itemsFor(MAP), ...itemsFor(JACKET)]).total,
+    )
+    expect(groupTotals(BIN)).toEqual({ packed: 0, total: 1, left: 1 })
+  })
+
+  it('counts nothing for an empty container and for a non-container', () => {
+    const state = withLater(tripEntryMoved(TRIP, MUG, { in: 'loose' }))
+
+    expect(groupTotals(BOX, state)).toEqual({ packed: 0, total: 0, left: 0 })
+    expect(groupTotals(ROPE)).toEqual({ packed: 0, total: 0, left: 0 })
+  })
+
+  it('agrees with the trip total once every group is added up', () => {
+    // Every item on this Trip lives in exactly one container, so the five
+    // top-level-or-nested groups double-count only the stuff sack's two.
+    const grouped =
+      groupTotals(BOX).total +
+      groupTotals(CRATE).total +
+      groupTotals(DUFFEL).total +
+      groupTotals(BIN).total
+    const loose = countOf(piecesFor(HEADLAMP)).total
+
+    expect(grouped + loose).toBe(totalsIn().total)
+  })
+})
+
+describe('the person partition is total (ruling A7)', () => {
+  it('puts each included Piece in its own Participant bucket', () => {
+    expect(bucketFor(MARK).items.map((item) => item.entryId)).toContain(
+      HEADLAMP,
+    )
+    expect(bucketFor(ANA).items.map((item) => item.entryId)).toContain(HEADLAMP)
+    // Kim's Piece is tombstoned, so she has nothing to pack and no bucket.
+    expect(
+      bucketsIn().some(
+        (bucket) => bucket.key.kind === 'person' && bucket.key.personId === KIM,
+      ),
+    ).toBe(false)
+  })
+
+  it("puts Personal gear in its owner's bucket, participant or not", () => {
+    // The header answers *whose it is*, and Els's jacket carried by Mark is
+    // honest. *Whose body it goes with* is story 23, Later.
+    expect(bucketFor(ELS).items.map((item) => item.entryId)).toContain(JACKET)
+    expect(participantIds(TRIP_STATE)).not.toContain(ELS)
+    // And a Participant's own Personal gear lands the same way.
+    expect(bucketFor(MARK).items.map((item) => item.entryId)).toContain(MAP)
+  })
+
+  it('puts everything else in Shared', () => {
+    const shared = bucketsIn().find((bucket) => bucket.key.kind === 'shared')
+
+    expect(shared?.items.map((item) => item.entryId).sort()).toEqual(
+      [FLAGS, MUG, PAN, POT, ROPE, STOVE, TARP].sort(),
+    )
+    // A trip-only Entry has no Gear to own it, and an absent owner register
+    // reads SHARED — both land here.
+    expect(shared?.count).toEqual({ packed: 3, total: 9, left: 6 })
+  })
+
+  it('lands every non-container item in exactly one bucket', () => {
+    const partitioned = bucketsIn().flatMap((bucket) => bucket.items)
+
+    expect(partitioned).toHaveLength(itemsIn(BASE).length)
+    expect(new Set(partitioned).size).toBe(partitioned.length)
+  })
+
+  it('sums to packingTotals — the assertion the drawn frame would have failed', () => {
+    // `1/2 (Mark) + 0/1 (Ana) + 1/1 (Els) + 3/9 (Shared) = 5/13`. The drawn
+    // PERSON frame was a complete partition that only carry-assignment
+    // (story 23) could produce.
+    const buckets = bucketsIn()
+    const packed = buckets.reduce((sum, bucket) => sum + bucket.count.packed, 0)
+    const total = buckets.reduce((sum, bucket) => sum + bucket.count.total, 0)
+    const left = buckets.reduce((sum, bucket) => sum + bucket.count.left, 0)
+
+    expect(buckets.map((bucket) => bucket.count)).toEqual([
+      { packed: 1, total: 2, left: 1 },
+      { packed: 0, total: 1, left: 1 },
+      { packed: 1, total: 1, left: 0 },
+      { packed: 3, total: 9, left: 6 },
+    ])
+    expect({ packed, total, left }).toEqual(totalsIn())
+  })
+
+  it('returns buckets in person-id order with shared distinguished, not drawn order', () => {
+    // `piecesOf`'s own rule: the drawn order is `sortedPeople`'s and lives at
+    // the screen, and `Shared` goes last there (ruling A3's argument, and a
+    // deliberate divergence from GROUP BY OWNER, which pins shared first).
+    // Ids sort Mark · Ana · Els; their names sort Ana · Els · Mark, so this
+    // cannot be passing on the drawn order by accident.
+    expect(bucketsIn().map((bucket) => bucket.key)).toEqual([
+      { kind: 'person', personId: MARK },
+      { kind: 'person', personId: ANA },
+      { kind: 'person', personId: ELS },
+      { kind: 'shared' },
+    ])
+  })
+
+  it('returns no bucket at all for a Trip with nothing to pack', () => {
+    const empty = fold(log([...aTrip({ id: 't-empty', name: 'Nothing' })]))
+    const trip = empty.trips['t-empty']
+    if (trip === undefined) throw new Error('the fold holds no Trip t-empty')
+
+    expect(personPartition(trip, empty)).toEqual([])
+  })
+})
+
+describe('the disagreement threshold (ruling A6)', () => {
+  it('fires at car', () => {
+    // The stove's three and the rope's one. The pan is packed and the tarp is
+    // staged, so neither is counted.
+    expect(disagreementsIn()).toContainEqual({
+      entryId: CRATE,
+      label: 'IN CAR',
+      notPacked: 4,
+    })
+  })
+
+  it('fires at packed', () => {
+    expect(disagreementsIn()).toContainEqual({
+      entryId: DUFFEL,
+      label: 'PACKED',
+      notPacked: 1,
+    })
+  })
+
+  it('does not fire at home', () => {
+    // The stuff sack carries no `stage` register, reads `home`, and holds an
+    // unpacked map one level down — every ingredient but the stage.
+    expect(groupTotals(SACK).left).toBe(1)
+    expect(disagreementsIn().map((row) => row.entryId)).not.toContain(SACK)
+  })
+
+  it('does not fire at staging — staging IS the act of packing', () => {
+    // Counting `staged` would fire on nearly every container in the car and
+    // the ▲ would stop meaning anything.
+    expect(groupTotals(BIN).left).toBe(1)
+    expect(disagreementsIn().map((row) => row.entryId)).not.toContain(BIN)
+  })
+
+  it('counts not-packed only, never staged', () => {
+    // The crate's `left` is five and its `notPacked` is four: the staged tarp
+    // is unpacked work but not a contradiction, and the two questions are
+    // deliberately different.
+    expect(groupTotals(CRATE).left).toBe(5)
+    expect(
+      disagreementsIn().find((row) => row.entryId === CRATE)?.notPacked,
+    ).toBe(4)
+  })
+
+  it('counts an unrecognised status as neither packed nor not-packed', () => {
+    // A build that cannot name a status cannot claim a disagreement about it
+    // — `stageDisagreementLabel`'s own rule, one register over. It still
+    // fails `isPacked`, so `left` keeps counting it.
+    const state = withLater(tripEntryStatusSet(TRIP, ROPE, 'wedged'))
+
+    expect(groupTotals(CRATE, state).left).toBe(5)
+    expect(
+      disagreementsIn(state).find((row) => row.entryId === CRATE)?.notPacked,
+    ).toBe(3)
+  })
+
+  it('counts contents at any depth', () => {
+    // The duffel's own children are the stuff sack (a container, no item) and
+    // a packed jacket, so a non-recursive count would say zero and the line
+    // would never fire. Its one unpacked content is the map, two levels down.
+    const view = tripContainmentView(TRIP_STATE, BASE)
+    expect(view.holderOf(MAP)).toEqual({ kind: 'container', entryId: SACK })
+    expect(view.holderOf(SACK)).toEqual({ kind: 'container', entryId: DUFFEL })
+    expect(view.holderOf(DUFFEL)).toEqual({ kind: 'loose' })
+
+    const directChildren = view.childrenOf({
+      kind: 'container',
+      entryId: DUFFEL,
+    })
+    expect(directChildren).toEqual([JACKET, SACK])
+    expect(countOf(itemsFor(JACKET)).left).toBe(0)
+
+    expect(
+      disagreementsIn().find((row) => row.entryId === DUFFEL)?.notPacked,
+    ).toBe(1)
+  })
+
+  it('does not fire on a container whose contents are all packed', () => {
+    // The box is in the car and holds one packed mug.
+    expect(groupTotals(BOX)).toEqual({ packed: 1, total: 1, left: 0 })
+    expect(disagreementsIn().map((row) => row.entryId)).not.toContain(BOX)
+  })
+
+  it('does not fire on an empty container', () => {
+    const state = withLater(tripEntryMoved(TRIP, MUG, { in: 'loose' }))
+
+    expect(disagreementsIn(state).map((row) => row.entryId)).not.toContain(BOX)
+  })
+
+  it('says nothing about a stage this build cannot name', () => {
+    // `stageDisagreementLabel` is null for an unrecognised value: a build that
+    // cannot name a stage cannot claim a disagreement about it.
+    const state = withLater(tripContainerStageSet(TRIP, CRATE, 'quarantine'))
+
+    expect(disagreementsIn(state).map((row) => row.entryId)).toEqual([DUFFEL])
+  })
+
+  it('lists disagreeing containers in the order the list draws them', () => {
+    expect(disagreementsIn()).toEqual([
+      { entryId: CRATE, label: 'IN CAR', notPacked: 4 },
+      { entryId: DUFFEL, label: 'PACKED', notPacked: 1 },
+    ])
+  })
+
+  it('goes away when a Quartermaster packs the contents', () => {
+    const state = withLater(tripEntryStatusSet(TRIP, MAP, 'packed'))
+
+    expect(disagreementsIn(state).map((row) => row.entryId)).not.toContain(
+      DUFFEL,
+    )
+  })
+})
