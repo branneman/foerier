@@ -450,10 +450,12 @@
     color: var(--color-ink-muted);
   }
 
-  /* The count alone (below Split) or the count beside `EDIT LIST ›` (from
-     Split up) — one flex item either way, which is what `.gearListBand`'s
-     `space-between` needs to keep the two glued together on the trailing
-     edge rather than spread apart. */
+  /* The count and `PACKING ›` (below Split), or those two with `EDIT LIST ›`
+     between them (from Split up) — one flex item however many it holds,
+     which is what `.gearListBand`'s `space-between` needs to keep them glued
+     together on the trailing edge rather than spread apart. The gap is the
+     board's own 14 read as the system's step, the same `--space-12` the
+     settle-routes row it borrows its grammar from already uses. */
   .gearListTrailing {
     display: inline-flex;
     align-items: baseline;
@@ -484,9 +486,15 @@
      Chromium: an unpatched `.editList` measures 22px tall). `position:
      relative` plus `::after` grows the *hit area* without touching layout
      at all, so the baseline stays put. 44px needs 11px each side
-     (44 − 22 = 22, halved) — symmetric, unlike `OverClaimBand`'s
-     `.settle`: this link has no same-row neighbour of its own kind to
-     overlap, only `.gearListCount`, which is not interactive. */
+     (44 − 22 = 22, halved) — symmetric, unlike `OverClaimBand`'s `.settle`.
+
+     S9a puts a second interactive link in this band (`.packing` below), and
+     the symmetry survives it: `.gearListTrailing`'s gap is `--space-12`, so
+     this extension reaches 11px of that 12px and stops one short of the
+     neighbour's own box. It is `.packing` that gives up its horizontal
+     extension rather than this one, because two symmetric 11s across a
+     12px gap would overlap by 10 — the exact mis-tap `.settleRow` already
+     refuses. */
   .editList {
     position: relative;
     flex: none;
@@ -506,6 +514,37 @@
     content: '';
     position: absolute;
     inset: -0.6875rem;
+  }
+
+  /* `PACKING ›` — `.editList`'s twin in the same band, so every word of that
+     rule's reasoning above applies here unchanged: the baseline row forbids
+     a `min-height`, and the `::after` is what makes an 11px link reachable
+     at 44 without moving anything. Its own rule rather than a second
+     selector on `.editList`, because the drawn-size guards read these two
+     bodies by name (`Trip.test.tsx`, `drawnSizes.test.ts`) and a shared
+     selector list would leave both unread.
+
+     One difference, and it is the only one: this link has an interactive
+     same-row neighbour from Split up, `.editList` itself. The band's own
+     `gap` (`--space-12`, 12px) against 11px of horizontal extension each
+     side would overlap their hit areas by 10px, so the extension is
+     **vertical only** — `OverClaimBand.module.css`'s `.settleRow` argument,
+     and 44px is reached by the vertical growth alone. */
+  .packing {
+    position: relative;
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .packing::after {
+    content: '';
+    position: absolute;
+    inset: -0.6875rem 0;
   }
 
   /* The dashed add row for a trip-only Entry — `HomePicker.module.css`'s

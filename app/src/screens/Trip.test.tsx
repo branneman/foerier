@@ -888,6 +888,152 @@ describe('the trip screen — the gear list (S7)', () => {
   })
 })
 
+/**
+ * Ruling A11's second door. The asymmetry with `EDIT LIST ›` beside it is the
+ * point: that link is *withheld* below Split because this screen is the
+ * editor there, while `/trips/:id/packing` is F4's own route at every width
+ * and so is never width-gated.
+ */
+describe('the trip screen — PACKING › (S9a)', () => {
+  const headlamp = [
+    gearRecorded('g-single', {
+      name: 'Headlamp',
+      container: false,
+      kind: 'single',
+    }),
+    tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+  ]
+
+  it('draws PACKING › in the gear list band, below Split, where EDIT LIST › is withheld', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps(), ...headlamp)
+
+    expect(
+      screen.getByRole('link', { name: 'Open packing for Alps 2026' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/packing`)
+    // The half that makes this a claim about two links and not one: the
+    // editor's own door is absent here, because below Split this screen *is*
+    // the editor.
+    expect(screen.queryByText('EDIT LIST ›')).toBeNull()
+    expect(screen.getByTestId('gear-list-band')).toHaveTextContent('PACKING ›')
+  })
+
+  it('draws it from Split up too, beside EDIT LIST › and trailing it', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(SPLIT)
+    await renderTrip(`/trips/${ALPS}`, ...alps(), ...headlamp)
+
+    const edit = screen.getByRole('link', { name: 'EDIT LIST ›' })
+    const packing = screen.getByRole('link', {
+      name: 'Open packing for Alps 2026',
+    })
+    // Trailing-most at both widths, which is where the drawn phone frame puts
+    // it: its position does not move across the breakpoint that adds the
+    // second link beside it.
+    expect(
+      edit.compareDocumentPosition(packing) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('draws it at every phase, Draft included — a phase locks nothing', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      // No `trip.phase_moved` at all: `phaseOf` reads the absent register as
+      // `draft`, and hiding the route there would be a soft lock the phase
+      // model does not have.
+      tripCreated(ALPS, 'Alps 2026'),
+      ...headlamp,
+    )
+
+    expect(screen.getByTestId('phase-chip')).toHaveTextContent('DRAFT')
+    expect(
+      screen.getByRole('link', { name: 'Open packing for Alps 2026' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/packing`)
+  })
+
+  it('keeps the › out of the accessible name', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps(), ...headlamp)
+
+    // Ruling D. Read as text content the name would carry the glyph, spoken
+    // "greater-than sign"; `aria-label` overrides content wholesale, so the
+    // visible mono string keeps its `›` and the name does not. `EDIT LIST ›`
+    // beside it predates the ruling and still announces its own — pinned in
+    // the test above, not repaired here.
+    const packing = screen.getByRole('link', {
+      name: 'Open packing for Alps 2026',
+    })
+    expect(packing).toHaveTextContent('PACKING ›')
+    expect(packing).toHaveAccessibleName('Open packing for Alps 2026')
+    expect(screen.queryByRole('link', { name: 'PACKING ›' })).toBeNull()
+  })
+
+  /**
+   * **Recorded, not a gap.** The `GEAR LIST` band renders only in the
+   * non-empty branch, so a Trip with no Entries has no drawn door to F4 at
+   * all — a route to a screen that could only say `0 ENTRIES.` back is the
+   * dead affordance the empty region's own rule forbids. F4's empty state
+   * still exists for a direct link and for the reader already standing there
+   * when another Device removes the last Entry (`Packing.tsx`). Flagged for
+   * the next design round in case the boards want a door here anyway.
+   */
+  it('draws no door at all when the gear list is empty', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    expect(screen.getByText('0 ENTRIES.')).toBeVisible()
+    expect(screen.queryByTestId('gear-list-band')).toBeNull()
+    expect(screen.queryByRole('link', { name: /Open packing/ })).toBeNull()
+    expect(screen.queryByText('PACKING ›')).toBeNull()
+  })
+
+  /**
+   * `.editList`'s hit-area test, restated for its twin — and for the one
+   * difference between them. This link has an interactive same-row
+   * neighbour from Split up, so its extension is **vertical only**: two
+   * symmetric 11px extensions across `.gearListTrailing`'s 12px gap would
+   * overlap by 10, the exact mis-tap `OverClaimBand`'s `.settleRow` already
+   * refuses.
+   */
+  it('grows PACKING › to a ≥44px hit area without reaching its neighbour', () => {
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
+      'utf8',
+    )
+    const rule = /\.packing\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    const afterRule = /\.packing::after\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+
+    expect(rule).toMatch(/position:\s*relative/)
+    expect(afterRule).toMatch(/position:\s*absolute/)
+
+    // Two values, and the second is `0`: the vertical half grows, the
+    // horizontal half does not.
+    const inset = /inset:\s*(-?[0-9.]+)rem\s+0\b/.exec(afterRule)?.[1]
+    expect(inset).toBeDefined()
+    const insetPx = Math.abs(Number.parseFloat(inset ?? '0') * 16)
+
+    const bodyLineHeightRem = /--text-body:\s*[0-9.]+rem\/([0-9.]+)rem/.exec(
+      readFileSync(
+        join(
+          dirname(expect.getState().testPath ?? ''),
+          '..',
+          '..',
+          '..',
+          'ui',
+          'styles',
+          'tokens.css',
+        ),
+        'utf8',
+      ),
+    )?.[1]
+    expect(bodyLineHeightRem).toBeDefined()
+    const paddingBoxHeight = Number.parseFloat(bodyLineHeightRem ?? '0') * 16
+
+    expect(paddingBoxHeight + 2 * insetPx).toBeGreaterThanOrEqual(44)
+  })
+})
+
 describe('the trip screen — EDIT', () => {
   it('carries the name and the dates, and nothing else', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)

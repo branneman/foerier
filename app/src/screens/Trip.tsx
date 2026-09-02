@@ -72,6 +72,26 @@ import styles from './Trip.module.css'
  * (Task 12) rather than doing nothing — the last two documented no-ops this
  * slice's screens carried.
  *
+ * ## `PACKING ›` is the band's second door, and it is not width-gated
+ *
+ * Ruling A11's second entry point to F4 sits in the `GEAR LIST` band's
+ * trailing slot **at every width and at every phase, Draft included** — a
+ * phase locks nothing, and hiding a route is a soft lock the phase model
+ * does not have. Note the asymmetry with `EDIT LIST ›` beside it, which is
+ * *withheld* below Split because this screen is itself the editor there:
+ * `/trips/:id/packing` is F4's own route at every width rather than a pane,
+ * so nothing about this link turns on the breakpoint.
+ *
+ * **A Trip with an empty gear list therefore has no drawn door to F4**, and
+ * that is the answer rather than a gap: the band renders only in the
+ * non-empty branch, and the `0 ENTRIES.` region that replaces it would
+ * otherwise carry a route to a screen that can only say `0 ENTRIES.` back —
+ * the dead affordance that region's own rule forbids. F4's empty state still
+ * exists, for the reader already standing there when another Device removes
+ * the last Entry and for a direct link (`Packing.tsx`). The consequence is
+ * **recorded and flagged for the next design round**, spec §4.9, in case the
+ * boards want a door there anyway; it is not papered over here.
+ *
  * ## There is no `NEXT` line here
  *
  * The trip card draws one and this screen does not, which is the board's
@@ -664,6 +684,25 @@ export function Trip() {
                   EDIT LIST ›
                 </Link>
               )}
+              {/* The second door to F4 (ruling A11), and the trailing-most
+                  thing in the band at every width — which is where the
+                  drawn phone frame puts it, so its position does not move
+                  across the breakpoint that adds `EDIT LIST ›` beside it.
+                  Not gated on `editable`, and not gated on the phase: F4 is
+                  its own route at every width rather than a pane, and a
+                  phase locks nothing, so hiding this would be a soft lock
+                  the phase model does not have. */}
+              <Link
+                href={`/trips/${tripId}/packing`}
+                className={styles['packing']}
+                // Ruling D: the `›` is decoration and stays out of the
+                // name, which `aria-label` does wholesale — read as text
+                // content it would be spoken "greater-than sign".
+                // `Build list for …`'s own pattern (`TripCard.tsx`).
+                aria-label={`Open packing for ${label}`}
+              >
+                PACKING ›
+              </Link>
             </span>
           </div>
           <GearListSection

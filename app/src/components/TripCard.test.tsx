@@ -9,6 +9,7 @@ import {
   type IdSource,
   type OpAuthor,
   type OpSpec,
+  type PackingCount,
   type TripState,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
@@ -116,6 +117,11 @@ function renderCard(
   // passes a different string explicitly rather than flipping a viewport
   // this component no longer reads.
   buildListHref: string = `/trips/${trip().id}`,
+  // Absent by default, which is what a `planned` card gets from `Trips.tsx`
+  // and is therefore the honest default here: the caller reads
+  // `packingTotals` for the active section alone (ruling A11's "Active cards
+  // only"), so a test that wants the progress line hands one down.
+  progress?: PackingCount | undefined,
 ) {
   const location = memoryLocation({ path: '/trips', record: true })
   render(
@@ -126,6 +132,7 @@ function renderCard(
           variant={variant}
           entryCount={entryCount}
           buildListHref={buildListHref}
+          progress={progress}
           onOpenPhase={onOpenPhase}
         />
       </DepotProvider>
@@ -155,7 +162,11 @@ describe('the active trip card', () => {
       tripParticipantAdded(TRIP, 'els'),
       tripPhaseMoved(TRIP, 'pack_out'),
     )
-    renderCard(card, 'active')
+    renderCard(card, 'active', undefined, undefined, undefined, {
+      packed: 48,
+      total: 61,
+      left: 13,
+    })
 
     // `▸` is the trip world, and the boards put it on the active card's name
     // and nowhere else on this screen.
@@ -172,12 +183,19 @@ describe('the active trip card', () => {
     expect(
       screen.getByRole('img', { name: 'Participants: Els, Mark' }),
     ).toBeVisible()
-    // In place of the board's `● 48/61 PIECES · 13 LEFT`, which has nothing to
-    // count until the gear list exists (spec §6.2).
+    // The board's own order, and the one thing about this card that has been
+    // got backwards before: the permanent obligation, then the arithmetic,
+    // then the action. The five-element card is full as of S9a.
     expect(screen.getByTestId('trip-next')).toHaveTextContent(
       'NEXT — PACK THE LIST',
     )
-    expect(screen.queryByText(/PIECES/)).toBeNull()
+    expect(screen.getByTestId('trip-progress')).toHaveTextContent(
+      '● 48/61 PIECES',
+    )
+    expect(screen.getByTestId('trip-progress')).toHaveTextContent('13 LEFT')
+    expect(screen.getByTestId('packing-cta')).toHaveTextContent(
+      'Continue pack-out',
+    )
     // The `›` beside the chip: the closed row's own glyph, doing what `OPEN ›`
     // used to do with a whole accent button.
     expect(screen.getByTestId('trip-chevron')).toHaveTextContent('›')
@@ -187,7 +205,10 @@ describe('the active trip card', () => {
     today(1)
     const card = await seeded(
       tripCreated(TRIP, 'Alps 2026'),
-      tripPhaseMoved(TRIP, 'pack_out'),
+      // On trip, so the card carries no CTA at all: this is the whole-card
+      // link's own test, and a phase that draws a second link would make
+      // "one tap target" a claim about two of them.
+      tripPhaseMoved(TRIP, 'on_trip'),
     )
     renderCard(card, 'active')
 
@@ -200,6 +221,30 @@ describe('the active trip card', () => {
     expect(links).toHaveLength(1)
     expect(links[0]).toHaveAccessibleName('Open Alps 2026')
     expect(links[0]).toHaveAttribute('href', `/trips/${TRIP}`)
+  })
+
+  /**
+   * S9a's CTA is the second link on a Pack-out card, and the pair has to
+   * stay two *separate* controls: an anchor inside an anchor is invalid HTML
+   * and one tap following both, which is the same failure the phase chip's
+   * own arrangement exists to avoid.
+   */
+  it('keeps the CTA beside the whole-card link, never inside it', async () => {
+    today(1)
+    const user = userEvent.setup()
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    const location = renderCard(card, 'active')
+
+    const cta = screen.getByTestId('packing-cta')
+    const surface = screen.getByRole('link', { name: 'Open Alps 2026' })
+    expect(cta.contains(surface)).toBe(false)
+    expect(surface.contains(cta)).toBe(false)
+
+    await user.click(cta)
+    expect(location.history).toEqual(['/trips', `/trips/${TRIP}/packing`])
   })
 
   it('carves the phase chip out of that target rather than nesting it', async () => {
@@ -310,7 +355,13 @@ describe('the active trip card', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('carries no Continue pack-out and no BUILD LIST — S9s CTA, not built yet', async () => {
+  /**
+   * The rule that let `BUILD LIST ›` land on the Draft card is the same one
+   * that kept `Continue pack-out` off the active one until now — a board's
+   * CTA copy lands on the slice that builds its destination — and S9a is
+   * that slice for the packing view.
+   */
+  it('draws Continue pack-out on an active card at Pack-out', async () => {
     today(1)
     const card = await seeded(
       tripCreated(TRIP, 'Alps 2026'),
@@ -318,12 +369,126 @@ describe('the active trip card', () => {
     )
     renderCard(card, 'active')
 
-    // The rule that let `BUILD LIST ›` land on the Draft card is the same one
-    // that keeps `Continue pack-out` off the active one: a board's CTA copy
-    // lands on the slice that builds its destination, and the packing view is
-    // S9's.
-    expect(screen.queryByText(/Continue pack-out/i)).toBeNull()
+    const cta = screen.getByRole('link', { name: /Continue pack-out/ })
+    // Built inline and not handed down: `/trips/:id/packing` is the same
+    // route at every width, which is exactly why there is no `packingHref`
+    // prop beside `buildListHref`.
+    expect(cta).toHaveAttribute('href', `/trips/${TRIP}/packing`)
+    // Named for the Trip, `BUILD LIST ›`'s own rule — two active cards are a
+    // legitimate state, and `Continue pack-out` twice in a control list
+    // tells them apart by nothing. `Continue pack-out` survives as a
+    // substring for voice control (WCAG 2.5.3).
+    expect(cta).toHaveAccessibleName('Continue pack-out for Alps 2026')
+    expect(cta).toHaveTextContent('Continue pack-out')
+    // The two never share a card: `BUILD LIST ›` is the planned variant's.
     expect(screen.queryByTestId('build-list-link')).toBeNull()
+  })
+
+  it('draws no CTA at On trip — the phase chip is the control for that verb', async () => {
+    today(1)
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'on_trip'),
+    )
+    renderCard(card, 'active', undefined, undefined, undefined, {
+      packed: 27,
+      total: 27,
+      left: 0,
+    })
+
+    // Ruling A11: the CTA names the *current* phase's verb, and the control
+    // for that verb is the chip this card already carries. The slot is empty
+    // rather than filled with a second way to do what the chip does.
+    expect(screen.queryByTestId('packing-cta')).toBeNull()
+    expect(screen.queryByRole('link', { name: /Continue/ })).toBeNull()
+    // The progress line is not what goes with it — it draws on every active
+    // card, this one included.
+    expect(screen.getByTestId('trip-progress')).toHaveTextContent(
+      '● 27/27 PIECES',
+    )
+  })
+
+  it('draws no CTA at Unpack — S10 draws that one', async () => {
+    today(1)
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'unpack'),
+    )
+    renderCard(card, 'active')
+
+    // `Continue unpack` would name F5, a screen that does not exist — the
+    // retired `OPEN ›` failure one worse, an accent button lying about where
+    // it goes.
+    expect(screen.queryByTestId('packing-cta')).toBeNull()
+    expect(screen.queryByRole('link', { name: /Continue/ })).toBeNull()
+  })
+
+  it('puts the progress line BELOW the NEXT line', async () => {
+    today(1)
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    renderCard(card, 'active', undefined, undefined, undefined, {
+      packed: 48,
+      total: 61,
+      left: 13,
+    })
+
+    // The order is the board's own sentence — `NEXT LINE SITS ABOVE THE
+    // PROGRESS LINE.` — and §12.11 said "above" until the S6 round, so this
+    // asserts DOM order rather than mere presence: the permanent obligation,
+    // then the arithmetic, then the action.
+    const next = screen.getByTestId('trip-next')
+    const progress = screen.getByTestId('trip-progress')
+    const cta = screen.getByTestId('packing-cta')
+    expect(
+      next.compareDocumentPosition(progress) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      progress.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('states the count in words and the same fraction as a bar', async () => {
+    today(1)
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    renderCard(card, 'active', undefined, undefined, undefined, {
+      packed: 48,
+      total: 61,
+      left: 13,
+    })
+
+    const progress = screen.getByTestId('trip-progress')
+    // Composed by `packedLabel`/`leftLabel`, which the packing view this
+    // card's CTA opens draws its own head from: one Trip cannot read
+    // `48/61` here and something else there.
+    expect(progress).toHaveTextContent('● 48/61 PIECES')
+    expect(progress).toHaveTextContent('13 LEFT')
+
+    // The bar states the identical fact, so it is `aria-hidden` — a
+    // `role="progressbar"` would announce one number twice.
+    const bar = progress.querySelector('[aria-hidden="true"]')
+    expect(bar).not.toBeNull()
+    expect(bar?.firstElementChild).toHaveStyle({ inlineSize: '79%' })
+  })
+
+  it('draws no progress line when the caller hands none down', async () => {
+    today(1)
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    renderCard(card, 'active')
+
+    // Absence *is* the rule: `Trips.tsx` reads `packingTotals` for the active
+    // section alone, so nothing here re-derives active-ness and the card
+    // states no arithmetic it was not given.
+    expect(screen.queryByTestId('trip-progress')).toBeNull()
+    expect(screen.queryByText(/PIECES/)).toBeNull()
   })
 })
 
@@ -463,6 +628,32 @@ describe('the planned trip card', () => {
     renderCard(card, 'planned')
 
     expect(screen.getByTestId('trip-name')).toHaveTextContent('—')
+  })
+
+  it('draws neither the progress line nor a CTA, whatever it is handed', async () => {
+    today(0)
+    const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
+    // Handed a count it must not draw. `Trips.tsx` never does this — the
+    // point is that the two rules are separate facts and neither leans on
+    // the other: a Draft's `● 0/59 PIECES` states progress against an
+    // arrangement invariant 17 makes inert, and `Continue pack-out` is not
+    // this Trip's verb.
+    renderCard(card, 'planned', undefined, 14, undefined, {
+      packed: 0,
+      total: 59,
+      left: 59,
+    })
+
+    expect(screen.queryByTestId('trip-progress')).toBeNull()
+    expect(screen.queryByText(/PIECES/)).toBeNull()
+    expect(screen.queryByTestId('packing-cta')).toBeNull()
+    // `DRAFT · 14 ENTRIES` is the count that matters on this card, and it is
+    // still here — the absence above is of the progress line, not of every
+    // number.
+    expect(screen.getByTestId('phase-line')).toHaveTextContent(
+      'DRAFT · 14 ENTRIES',
+    )
+    expect(screen.getByTestId('build-list-link')).toBeVisible()
   })
 })
 

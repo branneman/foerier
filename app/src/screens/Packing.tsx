@@ -42,7 +42,7 @@ import { PieceStatusSheet } from '../components/PieceStatusSheet'
 import { useDepot } from '../depot/store'
 import { personInitial } from '../depot/people'
 import { syncLabel } from '../depot/syncLabel'
-import { peopleOn } from '../depot/trips'
+import { leftLabel, packedLabel, packedPercent, peopleOn } from '../depot/trips'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Packing.module.css'
 
@@ -77,19 +77,6 @@ const INDENT_CAP = 2
 /** `Shared`'s own meta — what the group is, said once, in the register
  * `NOT IN A CONTAINER` uses one mode over. */
 const NOT_ATTRIBUTED = 'NOT ATTRIBUTED TO A PERSON'
-
-/**
- * The bar's fill, as a percentage of the denominator the count line draws.
- *
- * `total === 0` is **reachable and not defensive**: ruling A5 excludes a
- * container from PIECES, so a Trip whose only Entries are containers has a
- * genuine `0/0` — a list with something on it and nothing to pack yet. An
- * empty bar is the honest paint for it.
- */
-function percentOf(count: PackingCount): number {
-  if (count.total === 0) return 0
-  return Math.round((count.packed / count.total) * 100)
-}
 
 /**
  * One group of CONTAINER mode: a trip container, or the `Loose` group that
@@ -770,14 +757,14 @@ export function Packing() {
       ) : (
         <>
           <div className={styles['counts']}>
-            {/* The glyph is the packed marker from the one status table, not
-                a literal: the numerator and the `●` state the same fact, and
-                a ruling that repaints `packed` must not be able to leave them
-                disagreeing. */}
-            <span className={styles['packed']}>
-              {`${statusGlyph('packed')} ${totals.packed}/${totals.total} PIECES`}
-            </span>
-            <span className={styles['left']}>{`${totals.left} LEFT`}</span>
+            {/* Composed by `packedLabel`/`leftLabel` (`depot/trips.ts`)
+                rather than here, because the active trip card draws this same
+                line and the two have to read identically — `tripChip`'s own
+                arrangement one screen along. The glyph is the packed marker
+                from the one status table and not a literal, which is half of
+                what those two exist to keep true. */}
+            <span className={styles['packed']}>{packedLabel(totals)}</span>
+            <span className={styles['left']}>{leftLabel(totals)}</span>
           </div>
 
           {/* `aria-hidden`, because the line immediately above states the
@@ -792,7 +779,7 @@ export function Packing() {
           >
             <div
               className={styles['fill']}
-              style={{ inlineSize: `${percentOf(totals)}%` }}
+              style={{ inlineSize: `${packedPercent(totals)}%` }}
             />
           </div>
 

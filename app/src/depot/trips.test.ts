@@ -20,6 +20,9 @@ import {
 import { describe, expect, it } from 'vitest'
 
 import {
+  leftLabel,
+  packedLabel,
+  packedPercent,
   peopleOn,
   tripChip,
   tripDateRange,
@@ -409,5 +412,40 @@ describe('tripChip', () => {
     // `isActive` calls an unrecognised phase inactive rather than guessing, so
     // an old build never over-states what a Trip is doing.
     expect(tripChip(theTrip(state), SEEDED_AT + A_DAY)).toBe('portaging')
+  })
+})
+
+/**
+ * The totals line the packing view's head and the active trip card both draw
+ * — one spelling and one percentage, so the card and the screen its CTA
+ * opens can never state one Trip's progress two ways.
+ */
+describe('the packing totals line', () => {
+  it('spells the board line, glyph included', () => {
+    expect(packedLabel({ packed: 48, total: 61, left: 13 })).toBe(
+      '● 48/61 PIECES',
+    )
+    expect(leftLabel({ packed: 48, total: 61, left: 13 })).toBe('13 LEFT')
+  })
+
+  it('keeps PIECES plural at one packed, as the board draws it', () => {
+    // Deliberately not `pieceLabel`'s pluralised noun: the noun here belongs
+    // to the *fraction*, not to the numerator, so `1/13` keeps `PIECES`.
+    expect(packedLabel({ packed: 1, total: 13, left: 12 })).toBe(
+      '● 1/13 PIECES',
+    )
+  })
+
+  it('rounds the bar to a whole percent of the drawn denominator', () => {
+    expect(packedPercent({ packed: 48, total: 61, left: 13 })).toBe(79)
+    expect(packedPercent({ packed: 27, total: 27, left: 0 })).toBe(100)
+  })
+
+  it('paints an empty bar for a genuine 0/0 rather than dividing by zero', () => {
+    // Reachable and not defensive: ruling A5 excludes a container from
+    // PIECES, so a Trip whose only Entries are containers has a real `0/0` —
+    // a list with something on it and nothing to pack yet.
+    expect(packedPercent({ packed: 0, total: 0, left: 0 })).toBe(0)
+    expect(packedLabel({ packed: 0, total: 0, left: 0 })).toBe('● 0/0 PIECES')
   })
 })

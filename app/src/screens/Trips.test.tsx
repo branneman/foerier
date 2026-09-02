@@ -4,6 +4,7 @@ import {
   tripCreated,
   tripDatesSet,
   tripEntryAdded,
+  tripEntryStatusSet,
   tripParticipantAdded,
   tripPhaseMoved,
   type Clock,
@@ -272,6 +273,76 @@ describe('the Trips screen', () => {
     expect(screen.getByTestId(`trip-card-${VOSGES}`)).toHaveTextContent(
       'DRAFT · 2 ENTRIES',
     )
+  })
+
+  /**
+   * The progress line's own version of the test above, and it guards the
+   * same shape: `packingTotals(trip, state)` silently replaced by a literal,
+   * or the read moved into `TripCard` where it would deepen the store-read
+   * debt spec §4.1 already logs.
+   */
+  it('supplies the active card a real packing count, read from the fold', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    renderTrips(
+      await seeded(
+        tripCreated(ALPS, 'Alps 2026'),
+        tripPhaseMoved(ALPS, 'pack_out'),
+        tripEntryAdded(ALPS, 'e-tent', {
+          from: 'trip_only',
+          name: 'Tent',
+          container: false,
+        }),
+        tripEntryAdded(ALPS, 'e-stove', {
+          from: 'trip_only',
+          name: 'Stove',
+          container: false,
+        }),
+        tripEntryStatusSet(ALPS, 'e-tent', 'packed'),
+      ),
+    )
+
+    const card = screen.getByTestId(`trip-card-${ALPS}`)
+    expect(card).toHaveTextContent('● 1/2 PIECES')
+    expect(card).toHaveTextContent('1 LEFT')
+    // And the CTA S9a draws beside it, on the one phase that draws it.
+    expect(
+      screen.getByRole('link', { name: 'Continue pack-out for Alps 2026' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/packing`)
+  })
+
+  /**
+   * Ruling A11's other half, proved where the rule is decided: a Draft with a
+   * real gear list draws `DRAFT · N ENTRIES` and no progress line at all —
+   * `● 0/2 PIECES` would state progress against an arrangement invariant 17
+   * makes inert.
+   */
+  it('hands a Draft card no packing count, however many Entries it holds', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    renderTrips(
+      await seeded(
+        tripCreated(VOSGES, 'Vosges — Oct'),
+        tripEntryAdded(VOSGES, 'e-tent', {
+          from: 'trip_only',
+          name: 'Tent',
+          container: false,
+        }),
+        tripEntryAdded(VOSGES, 'e-stove', {
+          from: 'trip_only',
+          name: 'Stove',
+          container: false,
+        }),
+      ),
+    )
+
+    expect(screen.getByTestId(`trip-card-${VOSGES}`)).toHaveTextContent(
+      'DRAFT · 2 ENTRIES',
+    )
+    expect(screen.queryByTestId('trip-progress')).toBeNull()
+    expect(screen.queryByText(/PIECES/)).toBeNull()
+    // Nor a CTA: `Continue pack-out` is not a Draft's verb, and `BUILD LIST ›`
+    // is the affordance that is.
+    expect(screen.queryByTestId('packing-cta')).toBeNull()
+    expect(screen.getByTestId('build-list-link')).toBeVisible()
   })
 
   it('targets the trip screen below Split, where it is the editor', async () => {

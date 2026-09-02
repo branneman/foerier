@@ -255,6 +255,98 @@
     color: var(--color-ink-muted);
   }
 
+  /*
+   * `● 48/61 PIECES` · `13 LEFT` and its bar — the card's fourth element,
+   * drawn **below** `.next` and never in its place (ruling A11, and the
+   * board's own `NEXT LINE SITS ABOVE THE PROGRESS LINE.`).
+   *
+   * A wrapper of its own rather than two children of `.card`, because the
+   * line and its bar are one statement read together and want a tighter gap
+   * than the card's 8 between elements. The board draws 6 between them;
+   * `--space-4` is the system's step nearest it, the same normalisation
+   * `Packing.module.css` already makes one screen along, where the identical
+   * pair sits in a 16 rhythm.
+   */
+  .progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  /* Mono label, tabular so the numerator does not shuffle sideways as it is
+     tapped upward on the screen this card's CTA opens. The board draws 10
+     here and 11 on that screen; both are `--text-label`, exactly as `.next`
+     above reads the token rather than the board's 9.5. */
+  .counts {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-12);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* `Packing.module.css`'s own two colours, not a second reading of them:
+     the `●` and the numerator are the packed marker, and `13 LEFT` is meta
+     in the same muted ink as `.dates`. The card and the screen state one
+     fact and must not paint it two ways. */
+  .packed {
+    color: var(--color-status-packed);
+  }
+
+  .left {
+    color: var(--color-ink-muted);
+  }
+
+  /* 6px, radius 3 — track `rule`, fill `status/packed`, `Packing.module.css`
+     verbatim. Its own element rather than a background gradient on
+     `.counts`, so the fill's width is one inline style on one node. */
+  .bar {
+    block-size: 0.375rem;
+    border-radius: 0.1875rem;
+    background: var(--color-rule);
+    overflow: hidden;
+  }
+
+  .fill {
+    block-size: 100%;
+    background: var(--color-status-packed);
+  }
+
+  /*
+   * `Continue pack-out` — the board's full-width 48px accent button, and
+   * `Trip.module.css`'s `.addPrimary` anatomy verbatim (the app's one
+   * primary-button shape, worn by a `<Link>` because this navigates;
+   * `Depot`'s FAB set that precedent).
+   *
+   * Raised above `.surface` and positioned after it in the DOM, exactly as
+   * `.chip` and `.buildList` are — a control nested inside the stretched
+   * anchor would be invalid HTML and one tap following two links. The extra
+   * `--space-4` on top of the card's own 8 gap is the board's 14: a primary
+   * action is separated from the statement above it by more than the
+   * statements are from each other.
+   */
+  .cta {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: max(3rem, 48px);
+    margin-block-start: var(--space-4);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
   @container (min-width: 20rem) {
     /*
      * Wide enough for the phone's card: the active card's chip moves up beside

@@ -1,14 +1,23 @@
 import {
   phaseNext,
+  phaseOf,
   tripLabel,
   UNNAMED_PERSON_GLYPH,
+  type PackingCount,
   type TripState,
 } from '@foerier/shared'
 import { PersonCluster } from '@foerier/ui'
 import { Link } from 'wouter'
 
 import { useDepot } from '../depot/store'
-import { tripChip, tripDateRange, tripParticipants } from '../depot/trips'
+import {
+  leftLabel,
+  packedLabel,
+  packedPercent,
+  tripChip,
+  tripDateRange,
+  tripParticipants,
+} from '../depot/trips'
 import { entryCountLabel } from './GearListSection'
 import styles from './TripCard.module.css'
 
@@ -40,9 +49,12 @@ import styles from './TripCard.module.css'
  * the bare `›` there with it**. Fix round F10: that is not "the Draft card
  * alone" — `tripSections`' own docstring (`shared/src/selectors/trip.ts`)
  * files `draft` **and anything this build's phase table does not
- * recognise** into `planned`, and this component asks no phase of its own,
- * only `variant`, so a Trip in an unrecognised phase draws `BUILD LIST ›`
- * exactly as a Draft does. Harmless and inherited — the boards draw only
+ * recognise** into `planned`, and that decision asks no phase at all, only
+ * `variant`, so a Trip in an unrecognised phase draws `BUILD LIST ›`
+ * exactly as a Draft does. (S9a's CTA below *does* ask the phase — for the
+ * one question `variant` cannot answer, which phase the Trip is active in —
+ * and the two questions stay separate rather than one being derived from the
+ * other.) Harmless and inherited — the boards draw only
  * Draft in this section, so it is what every drawn planned card happens to
  * be — but the component's own contract is wider than that. `.chevron` now
  * renders on the active card only: no drawn Draft card carries both a bare
@@ -69,8 +81,47 @@ import styles from './TripCard.module.css'
  * component asks no media query of its own, and `@container, never a media
  * query` below stays true with no exception carved out for this link.
  *
- * The active card keeps the interim affordance: `Continue pack-out` names
- * S9's packing view, which does not exist yet, so nothing here invents it.
+ * ## `Continue pack-out`, and only that one
+ *
+ * S9a builds the second destination, so the card's fifth element lands: a
+ * full-width 48px accent CTA on the active card **at Pack-out and nowhere
+ * else** (`docs/design/README.md` §5's S9a paragraph, ruling A11).
+ *
+ * **At On trip the slot stays empty**, which is a ruling and not an
+ * oversight. The CTA names the *current phase's verb*, and the control for
+ * that verb is the phase chip this card already carries; `Continue unpack`
+ * would name F5, a screen that does not exist, so it would be the retired
+ * `OPEN ›` failure one worse — an accent button that lies about where it
+ * goes. Unpack's CTA is S10's to draw. Draft keeps `BUILD LIST ›`, and
+ * `ClosedRow` (`Trips.tsx`) keeps its own row.
+ *
+ * It is gated on **`phaseOf` alone**, with no `variant === 'active'` beside
+ * it: `isActive` is the only definition of active-ness in the codebase and
+ * `pack_out` is one of the phases it names, so `tripSections` has already
+ * filed every Trip this fires on into `active`. A second condition would be
+ * a second definition of the same fact — the thing `CLAUDE.md` names as the
+ * S6 failure mode — not a safety net.
+ *
+ * **`/trips/:id/packing` is built inline and is not a prop**, unlike
+ * `buildListHref`. See that prop's own note for why the two differ.
+ *
+ * ## The progress line sits **below** the NEXT line
+ *
+ * `● 48/61 PIECES` · `13 LEFT` and the 6px bar, in §5's order: the permanent
+ * obligation above the arithmetic, the arithmetic above the action. This is
+ * the one thing about this card that has been got backwards before —
+ * `architecture-design.md` §12.11 said "above" until the S6 design round, and
+ * the board now says `NEXT LINE SITS ABOVE THE PROGRESS LINE.` in as many
+ * words.
+ *
+ * It draws on **Active cards only** — a Draft's `● 0/59 PIECES` would state
+ * progress against an arrangement invariant 17 makes inert, and the dashed
+ * card's own `DRAFT · 14 ENTRIES` is the count that matters there. Stated at
+ * both ends, as the entry count's mirror-image rule already is: the caller
+ * reads `packingTotals` for the `active` section alone, and this draws it
+ * for the `active` variant alone. The words and the
+ * width both come from `depot/trips.ts`, shared with the packing view this
+ * card's CTA opens, so the two can never draw one Trip differently.
  *
  * **`aria-label={`Build list for ${label}`}`, not the link's bare text as its
  * accessible name.** `.card` is an `<article>` with no accessible name, and
@@ -99,10 +150,10 @@ import styles from './TripCard.module.css'
  *
  * ## The NEXT line belongs to every non-closed card
  *
- * Where the board draws `● 48/61 PIECES · 13 LEFT`, this draws `phaseNext` —
- * *"a permanent obligation, not a stand-in: it survives the progress line and
- * sits above it"*, which is why the full-weight variant puts the progress line
- * **under** it rather than in its place. It shipped
+ * `phaseNext` is *"a permanent obligation, not a stand-in: it survives the
+ * progress line and sits above it"* — which is exactly what S9a's line above
+ * now demonstrates rather than promises: the two are drawn together, in that
+ * order, on every active card. It shipped
  * active-only, on the argument that `NEXT — BUILD THE GEAR LIST` restates
  * `DRAFT · 0 ENTRIES`; the board reverses that, because the redundancy is
  * an accident of the count being zero and *"dies at `DRAFT · 14 ENTRIES`"*
@@ -147,8 +198,37 @@ export interface TripCardProps {
    * carved out for `BUILD LIST ›`. Unused on the active card, which draws no
    * such link — see `entryCount` above for why the caller computes it
    * unconditionally anyway.
+   *
+   * **There is deliberately no `packingHref` beside it.** This prop is a
+   * prop *because it is width-dependent*; `/trips/:id/packing` is the same
+   * route at every width — its own route, never a pane — so the CTA builds
+   * it inline and `@container, never a media query` keeps **one exception
+   * fewer** rather than gaining a second one. A second href prop would say
+   * the two links are the same kind of thing, and they are not.
    */
   buildListHref: string
+  /**
+   * `packingTotals(trip, state)` — the caller's own read, not this
+   * component's, exactly as `entryCount` above and for the reason stated
+   * there: this card already owes one store read (`participants`, spec
+   * §4.1's own debt), and a second one here would **deepen** that debt
+   * rather than merely carry it.
+   *
+   * `Trips.tsx` computes it for the `active` section and hands nothing down
+   * for the `planned` one, so the section that decides it is `tripSections`'
+   * own partition — asked once, where it is already known. The mirror of
+   * `entryCount`, which the caller computes for `planned` alone and passes
+   * as an uncomputed `0` on the active card, and which the card *also* draws
+   * for one variant only: ruling A11's "Active cards only" is stated at both
+   * ends, exactly as the entry count's own rule is.
+   *
+   * `| undefined` spelled out beside the `?`, which
+   * `exactOptionalPropertyTypes` requires of a prop a caller passes as
+   * `undefined` rather than omits — `OverClaimBand`'s `settle` carries the
+   * same pair for the same reason, and its absence means something there
+   * too.
+   */
+  progress?: PackingCount | undefined
   /**
    * The chip asks; the screen mounts the SET PHASE sheet. `ui/`'s primitives
    * have no `open` prop — mounted is open — so the caller writes
@@ -164,6 +244,7 @@ export function TripCard({
   variant,
   entryCount,
   buildListHref,
+  progress,
   onOpenPhase,
 }: TripCardProps) {
   const state = useDepot((depot) => depot.state)
@@ -294,6 +375,54 @@ export function TripCard({
         <p className={styles['next']} data-testid="trip-next">
           {next}
         </p>
+      )}
+
+      {variant === 'active' && progress !== undefined && (
+        // **Below the NEXT line above, never in its place** — the order is
+        // the board's own sentence, and this component's docstring says why
+        // it is the thing most likely to be got backwards.
+        //
+        // Both conditions, and `entryCount`'s own pair one element up is the
+        // precedent: the caller computes for one section and the card draws
+        // for one variant. Neither leans on the other, so a future caller
+        // handing a Draft a count still gets the drawn card the board draws.
+        <div className={styles['progress']} data-testid="trip-progress">
+          <div className={styles['counts']}>
+            <span className={styles['packed']}>{packedLabel(progress)}</span>
+            <span className={styles['left']}>{leftLabel(progress)}</span>
+          </div>
+          {/* `aria-hidden`, exactly as the packing view's own bar is: the
+              line immediately above states the identical fact in words, and a
+              `role="progressbar"` here would announce one number twice. */}
+          <div className={styles['bar']} aria-hidden="true">
+            <div
+              className={styles['fill']}
+              style={{ inlineSize: `${packedPercent(progress)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {phaseOf(trip) === 'pack_out' && (
+        // The card's fifth element, and the only CTA S9a draws — see the
+        // docstring for why On trip's slot stays empty and why this asks the
+        // phase rather than the variant. Raised above `.surface` and a
+        // sibling of it, as `.chip` and `.buildList` are: a control nested
+        // inside the stretched anchor is invalid HTML and one tap following
+        // two links.
+        <Link
+          href={`/trips/${trip.id}/packing`}
+          className={styles['cta']}
+          data-testid="packing-cta"
+          // Named for the Trip, `BUILD LIST ›`'s own rule: two active cards
+          // are a legitimate state (`Trips.tsx` — nothing constrains
+          // `active` to one), and a control list reading `Continue pack-out`
+          // twice tells them apart by nothing. `Continue pack-out` stays a
+          // substring, so voice control still finds it (WCAG 2.5.3).
+          aria-label={`Continue pack-out for ${label}`}
+        >
+          Continue pack-out
+        </Link>
       )}
 
       {variant === 'planned' && (

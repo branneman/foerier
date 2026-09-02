@@ -1,8 +1,10 @@
 import {
   listTotals,
+  packingTotals,
   tripLabel,
   tripPhaseMoved,
   tripSections,
+  type PackingCount,
   type PhaseKey,
   type TripState,
 } from '@foerier/shared'
@@ -123,11 +125,20 @@ export function Trips() {
   // on the active card: `TripCard` draws the count for `planned` only, so
   // an active Trip's `listTotals` call priced a sort nobody was going to
   // read.
+  // `progress` is `entryCount`'s mirror: `packingTotals` is read for the
+  // `active` section and nothing goes down with a `planned` card, exactly as
+  // the entry count is read for `planned` and passed as an uncomputed `0` on
+  // the active one. Ruling A11's "on Active cards only" is stated at both
+  // ends — `TripCard` draws it for the `active` variant alone — and neither
+  // end re-derives active-ness: this is `tripSections`' own partition, which
+  // asked `isActive` once, and `isActive` is the codebase's one definition
+  // of it.
   const cards: readonly {
     trip: TripState
     variant: 'active' | 'planned'
     entryCount: number
     buildListHref: string
+    progress?: PackingCount
   }[] = useMemo(
     () => [
       ...sections.active.map((trip) => ({
@@ -137,6 +148,7 @@ export function Trips() {
         buildListHref: isSplit
           ? `/trips/${trip.id}/list?from=trips`
           : `/trips/${trip.id}`,
+        progress: packingTotals(trip, state),
       })),
       ...sections.planned.map((trip) => ({
         trip,
@@ -192,22 +204,25 @@ export function Trips() {
           <>
             {cards.length > 0 && (
               <ul className={styles['cards']}>
-                {cards.map(({ trip, variant, entryCount, buildListHref }) => (
-                  <li
-                    key={trip.id}
-                    className={styles['cardItem']}
-                    data-testid="trip-entry"
-                    data-trip={trip.id}
-                  >
-                    <TripCard
-                      trip={trip}
-                      variant={variant}
-                      entryCount={entryCount}
-                      buildListHref={buildListHref}
-                      onOpenPhase={() => setPhaseTripId(trip.id)}
-                    />
-                  </li>
-                ))}
+                {cards.map(
+                  ({ trip, variant, entryCount, buildListHref, progress }) => (
+                    <li
+                      key={trip.id}
+                      className={styles['cardItem']}
+                      data-testid="trip-entry"
+                      data-trip={trip.id}
+                    >
+                      <TripCard
+                        trip={trip}
+                        variant={variant}
+                        entryCount={entryCount}
+                        buildListHref={buildListHref}
+                        progress={progress}
+                        onOpenPhase={() => setPhaseTripId(trip.id)}
+                      />
+                    </li>
+                  ),
+                )}
               </ul>
             )}
 

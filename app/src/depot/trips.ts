@@ -6,10 +6,12 @@ import {
   phaseLabel,
   phaseOf,
   pieceInclusion,
+  statusGlyph,
   tripLabel,
   UNNAMED_TRIP,
   type DepotState,
   type EntryState,
+  type PackingCount,
   type TripState,
 } from '@foerier/shared'
 
@@ -422,4 +424,44 @@ export function tripChip(trip: TripState, now: number): string {
 export function tripNameOrUnnamed(trip: TripState): string {
   const label = tripLabel(trip)
   return label === '—' ? UNNAMED_TRIP : label
+}
+
+/**
+ * **The Trip's own totals line, in the two places that draw it** —
+ * `● 48/61 PIECES` · `13 LEFT` and the 6px bar beneath it: the packing view's
+ * head (`Packing.tsx`) and the active trip card (`TripCard.tsx`, ruling A11).
+ *
+ * `pieceLabel`'s own precedent (`GearListSection.tsx`), for the identical
+ * reason one step along: two files spelling `48/61 PIECES` and rounding
+ * `48/61` to a bar width would let the two disagree the moment either one
+ * changed, and here the disagreement is *visible* — the card and the screen
+ * its CTA opens would draw different bars for one Trip. The arithmetic
+ * itself stays in `shared/`: {@link packingTotals} is what both callers ask,
+ * and these three only turn its answer into words and a width.
+ *
+ * The glyph is `statusGlyph('packed')` and never a literal, for the reason
+ * the packing screen already gave: the numerator and the `●` state the same
+ * fact, and a ruling that repaints `packed` must not be able to leave them
+ * disagreeing.
+ */
+export function packedLabel(count: PackingCount): string {
+  return `${statusGlyph('packed')} ${count.packed}/${count.total} PIECES`
+}
+
+/** `13 LEFT` — the totals line's trailing half. See {@link packedLabel}. */
+export function leftLabel(count: PackingCount): string {
+  return `${count.left} LEFT`
+}
+
+/**
+ * The bar's fill, as a percentage of the denominator the count line draws.
+ *
+ * `total === 0` is **reachable and not defensive**: ruling A5 excludes a
+ * container from PIECES, so a Trip whose only Entries are containers has a
+ * genuine `0/0` — a list with something on it and nothing to pack yet. An
+ * empty bar is the honest paint for it.
+ */
+export function packedPercent(count: PackingCount): number {
+  if (count.total === 0) return 0
+  return Math.round((count.packed / count.total) * 100)
 }
