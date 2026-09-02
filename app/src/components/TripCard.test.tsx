@@ -96,6 +96,26 @@ async function seeded(...specs: readonly OpSpec[]): Promise<Seeded> {
   return { store, trip: () => store.getState().state.trips[TRIP]! }
 }
 
+interface RenderCardOptions {
+  onOpenPhase?: () => void
+  // Defaults to 0 rather than being required: most of this file's tests are
+  // about the active card or about facts the count does not touch, and
+  // forcing every call site to spell out an irrelevant 0 would bury the ones
+  // that actually mean something.
+  entryCount?: number
+  // `TripCard` asks no media query of its own (F4 review) — `Trips.tsx`
+  // resolves the route and hands it down, so the default here is that
+  // screen's own below-Split answer, and a test proving the Split-and-up one
+  // passes a different string explicitly rather than flipping a viewport
+  // this component no longer reads.
+  buildListHref?: string
+  // Absent by default, which is what a `planned` card gets from `Trips.tsx`
+  // and is therefore the honest default here: the caller reads
+  // `packingTotals` for the active section alone (ruling A11's "Active cards
+  // only"), so a test that wants the progress line hands one down.
+  progress?: PackingCount | undefined
+}
+
 /**
  * Rendered under a **recording** memory location, because the one thing this
  * card owes that cannot be asserted structurally is that the phase chip does
@@ -105,24 +125,14 @@ async function seeded(...specs: readonly OpSpec[]): Promise<Seeded> {
 function renderCard(
   { store, trip }: Seeded,
   variant: 'active' | 'planned',
-  onOpenPhase: () => void = () => {},
-  // Defaults to 0 rather than being required: most of this file's tests are
-  // about the active card or about facts the count does not touch, and
-  // forcing every call site to spell out an irrelevant 0 would bury the ones
-  // that actually mean something.
-  entryCount = 0,
-  // `TripCard` asks no media query of its own (F4 review) — `Trips.tsx`
-  // resolves the route and hands it down, so the default here is that
-  // screen's own below-Split answer, and a test proving the Split-and-up one
-  // passes a different string explicitly rather than flipping a viewport
-  // this component no longer reads.
-  buildListHref: string = `/trips/${trip().id}`,
-  // Absent by default, which is what a `planned` card gets from `Trips.tsx`
-  // and is therefore the honest default here: the caller reads
-  // `packingTotals` for the active section alone (ruling A11's "Active cards
-  // only"), so a test that wants the progress line hands one down.
-  progress?: PackingCount | undefined,
+  options: RenderCardOptions = {},
 ) {
+  const {
+    onOpenPhase = () => {},
+    entryCount = 0,
+    buildListHref = `/trips/${trip().id}`,
+    progress,
+  } = options
   const location = memoryLocation({ path: '/trips', record: true })
   render(
     <Router hook={location.hook}>
@@ -162,10 +172,8 @@ describe('the active trip card', () => {
       tripParticipantAdded(TRIP, 'els'),
       tripPhaseMoved(TRIP, 'pack_out'),
     )
-    renderCard(card, 'active', undefined, undefined, undefined, {
-      packed: 48,
-      total: 61,
-      left: 13,
+    renderCard(card, 'active', {
+      progress: { packed: 48, total: 61, left: 13 },
     })
 
     // `▸` is the trip world, and the boards put it on the active card's name
@@ -255,7 +263,7 @@ describe('the active trip card', () => {
       tripCreated(TRIP, 'Alps 2026'),
       tripPhaseMoved(TRIP, 'pack_out'),
     )
-    const location = renderCard(card, 'active', opens)
+    const location = renderCard(card, 'active', { onOpenPhase: opens })
 
     // Siblings, never nested — `ClosedRow`'s own arrangement. A `<button>`
     // inside an `<a>` is invalid HTML *and* a live bug: one tap would open SET
@@ -344,7 +352,7 @@ describe('the active trip card', () => {
       tripCreated(TRIP, 'Alps 2026'),
       tripPhaseMoved(TRIP, 'pack_out'),
     )
-    renderCard(card, 'active', opens)
+    renderCard(card, 'active', { onOpenPhase: opens })
 
     await user.click(screen.getByTestId('phase-chip'))
 
@@ -410,11 +418,7 @@ describe('the active trip card', () => {
       tripCreated(TRIP, 'Alps 2026'),
       tripPhaseMoved(TRIP, 'on_trip'),
     )
-    renderCard(card, 'active', undefined, undefined, undefined, {
-      packed: 27,
-      total: 27,
-      left: 0,
-    })
+    renderCard(card, 'active', { progress: { packed: 27, total: 27, left: 0 } })
 
     // Ruling A11: the CTA names the *current* phase's verb, and the control
     // for that verb is the chip this card already carries. The slot is empty
@@ -449,10 +453,8 @@ describe('the active trip card', () => {
       tripCreated(TRIP, 'Alps 2026'),
       tripPhaseMoved(TRIP, 'pack_out'),
     )
-    renderCard(card, 'active', undefined, undefined, undefined, {
-      packed: 48,
-      total: 61,
-      left: 13,
+    renderCard(card, 'active', {
+      progress: { packed: 48, total: 61, left: 13 },
     })
 
     // The order is the board's own sentence — `NEXT LINE SITS ABOVE THE
@@ -476,10 +478,8 @@ describe('the active trip card', () => {
       tripCreated(TRIP, 'Alps 2026'),
       tripPhaseMoved(TRIP, 'pack_out'),
     )
-    renderCard(card, 'active', undefined, undefined, undefined, {
-      packed: 48,
-      total: 61,
-      left: 13,
+    renderCard(card, 'active', {
+      progress: { packed: 48, total: 61, left: 13 },
     })
 
     const progress = screen.getByTestId('trip-progress')
@@ -550,7 +550,7 @@ describe('the planned trip card', () => {
     // phase line reading it can only be echoing the prop `Trips.tsx` computed
     // with `listTotals` (spec §4.9's rule, and the debt note above it).
     const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
-    renderCard(card, 'planned', () => {}, 14)
+    renderCard(card, 'planned', { entryCount: 14 })
 
     expect(screen.getByTestId('phase-line')).toHaveTextContent(
       'DRAFT · 14 ENTRIES',
@@ -580,7 +580,7 @@ describe('the planned trip card', () => {
     const user = userEvent.setup()
     const opens = vi.fn()
     const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
-    const location = renderCard(card, 'planned', opens)
+    const location = renderCard(card, 'planned', { onOpenPhase: opens })
 
     // `OPEN ›` stays retired: the whole card is still one tap target, and now
     // carries a second, visible one — `BUILD LIST ›`, discharging S6's
@@ -613,7 +613,9 @@ describe('the planned trip card', () => {
     // the link is a straight prop echo, the same shape as `entryCount`'s own
     // proof above: a string this component could not have derived itself.
     const card = await seeded(tripCreated(TRIP, 'Vosges — Oct'))
-    renderCard(card, 'planned', () => {}, 0, `/trips/${TRIP}/list?from=trips`)
+    renderCard(card, 'planned', {
+      buildListHref: `/trips/${TRIP}/list?from=trips`,
+    })
 
     expect(screen.getByTestId('build-list-link')).toHaveAttribute(
       'href',
@@ -681,10 +683,9 @@ describe('the planned trip card', () => {
     // the other: a Draft's `● 0/59 PIECES` states progress against an
     // arrangement invariant 17 makes inert, and `Continue pack-out` is not
     // this Trip's verb.
-    renderCard(card, 'planned', undefined, 14, undefined, {
-      packed: 0,
-      total: 59,
-      left: 59,
+    renderCard(card, 'planned', {
+      entryCount: 14,
+      progress: { packed: 0, total: 59, left: 59 },
     })
 
     expect(screen.queryByTestId('trip-progress')).toBeNull()

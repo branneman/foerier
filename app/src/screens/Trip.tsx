@@ -656,11 +656,13 @@ export function Trip() {
           role="group"
           aria-labelledby="gear-list-label"
         >
-          {/* `GEAR LIST` left, the count and (from Split up) `EDIT LIST ›`
-              wrapped together on the right — `justify-content: space-between`
-              between the two groups, exactly `GearListSection`'s own group
-              bands (`GearListSection.module.css`'s `.groupHeader`), so this
-              one reads as their parent rather than the one row on the screen
+          {/* `GEAR LIST` left, the trailing group wrapped together on the
+              right — the count and `PACKING ›` below Split, plus
+              `EDIT LIST ›` between them from Split up —
+              `justify-content: space-between` between the two groups,
+              exactly `GearListSection`'s own group bands
+              (`GearListSection.module.css`'s `.groupHeader`), so this one
+              reads as their parent rather than the one row on the screen
               that doesn't line up with them. */}
           <div className={styles['gearListBand']} data-testid="gear-list-band">
             <span id="gear-list-label" className={styles['gearListLabel']}>
