@@ -291,7 +291,11 @@
   /* `Packing.module.css`'s own two colours, not a second reading of them:
      the `●` and the numerator are the packed marker, and `13 LEFT` is meta
      in the same muted ink as `.dates`. The card and the screen state one
-     fact and must not paint it two ways. */
+     fact and must not paint it two ways — and the token is the board's own
+     value, not a substitution for it: §1 specifies F4's bar as track
+     `#333C33`, fill `#7BB389`, which is `--color-rule` and
+     `--color-status-packed` exactly. The token that means *packed*
+     everywhere means it here. */
   .packed {
     color: var(--color-status-packed);
   }

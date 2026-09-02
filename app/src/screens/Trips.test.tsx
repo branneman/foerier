@@ -444,6 +444,46 @@ describe('the Trips screen', () => {
     expect(scotland.textContent).not.toContain('2025')
   })
 
+  /**
+   * The glyph/prose split, on the one screen that draws both halves. A
+   * nameless closed row used to announce `Open —` and `Reopen —`, then open
+   * a confirm titled `Reopen Unnamed trip?` — the same Trip called two
+   * things one tap apart, since `ReopenConfirm` has taken the prose form
+   * since S6. The visible column keeps the mark, which is exactly where §5c
+   * says it belongs.
+   */
+  it('speaks nameless Trips in prose across both card and closed row', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    renderTrips(
+      await seeded(
+        tripCreated(ALPS, ''),
+        tripPhaseMoved(ALPS, 'pack_out'),
+        tripCreated(TESSIN, ''),
+        tripPhaseMoved(TESSIN, 'closed'),
+      ),
+    )
+
+    // Both draw the mark: the card's title line carries it behind the active
+    // `▸` glyph, the closed row's name column carries it alone.
+    expect(screen.getByTestId('trip-name')).toHaveTextContent('▸ —')
+    expect(screen.getByText('—')).toBeVisible()
+    // One `Open Unnamed trip` per Trip — the card's stretched surface and the
+    // closed row's own link — so the pair is asserted by count rather than by
+    // a lookup that would be ambiguous.
+    expect(
+      screen.getAllByRole('link', { name: 'Open Unnamed trip' }),
+    ).toHaveLength(2)
+    expect(
+      screen.getByRole('button', { name: 'Reopen Unnamed trip' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('link', { name: 'Continue pack-out for Unnamed trip' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/packing`)
+    // Nothing announces the mark itself.
+    expect(screen.queryByRole('link', { name: /—/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /—/ })).toBeNull()
+  })
+
   it('reopens a closed Trip into Unpack, once the decision is taken', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const user = userEvent.setup()

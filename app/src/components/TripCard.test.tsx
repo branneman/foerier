@@ -384,6 +384,26 @@ describe('the active trip card', () => {
     expect(screen.queryByTestId('build-list-link')).toBeNull()
   })
 
+  it('names a nameless Trip in the CTA the way a sentence has to', async () => {
+    today(1)
+    const card = await seeded(
+      tripCreated(TRIP, ''),
+      tripPhaseMoved(TRIP, 'pack_out'),
+    )
+    renderCard(card, 'active')
+
+    // `Continue pack-out for —` announces "em dash", or nothing at all.
+    // §5c's glyph/prose split: the title line keeps the mark, the sentences
+    // take `tripNameOrUnnamed`'s word.
+    expect(screen.getByTestId('trip-name')).toHaveTextContent('—')
+    expect(screen.getByTestId('packing-cta')).toHaveAccessibleName(
+      'Continue pack-out for Unnamed trip',
+    )
+    expect(
+      screen.getByRole('link', { name: 'Open Unnamed trip' }),
+    ).toBeVisible()
+  })
+
   it('draws no CTA at On trip — the phase chip is the control for that verb', async () => {
     today(1)
     const card = await seeded(
@@ -628,6 +648,29 @@ describe('the planned trip card', () => {
     renderCard(card, 'planned')
 
     expect(screen.getByTestId('trip-name')).toHaveTextContent('—')
+  })
+
+  /**
+   * The other half of that, and the half the card had wrong: the glyph is
+   * right on the *title line* and wrong in every sentence beside it. A
+   * screen reader announcing `Open —` says "em dash" or says nothing, and
+   * `ReopenConfirm` has titled the same Trip `Unnamed trip` since S6 — so
+   * the two halves of one flow named it two different things.
+   */
+  it('speaks a nameless Trip in prose, while drawing it as the dash', async () => {
+    today(0)
+    const card = await seeded(tripCreated(TRIP, ''))
+    renderCard(card, 'planned')
+
+    expect(screen.getByTestId('trip-name')).toHaveTextContent('—')
+    expect(
+      screen.getByRole('link', { name: 'Open Unnamed trip' }),
+    ).toBeVisible()
+    expect(screen.getByTestId('build-list-link')).toHaveAccessibleName(
+      'Build list for Unnamed trip',
+    )
+    // And nothing anywhere announces the mark itself.
+    expect(screen.queryByRole('link', { name: /—/ })).toBeNull()
   })
 
   it('draws neither the progress line nor a CTA, whatever it is handed', async () => {

@@ -32,6 +32,7 @@ import {
   parseIsoDate,
   tripChip,
   tripDateRange,
+  tripNameOrUnnamed,
   tripParticipants,
 } from '../depot/trips'
 import {
@@ -698,8 +699,11 @@ export function Trip() {
                 // Ruling D: the `›` is decoration and stays out of the
                 // name, which `aria-label` does wholesale — read as text
                 // content it would be spoken "greater-than sign".
-                // `Build list for …`'s own pattern (`TripCard.tsx`).
-                aria-label={`Open packing for ${label}`}
+                // `Build list for …`'s own pattern (`TripCard.tsx`), down to
+                // the name it interpolates: an accessible name is a sentence,
+                // so it takes `tripNameOrUnnamed`'s prose and not the `—`
+                // this screen's own title draws (§5c's glyph/prose split).
+                aria-label={`Open packing for ${tripNameOrUnnamed(trip)}`}
               >
                 PACKING ›
               </Link>

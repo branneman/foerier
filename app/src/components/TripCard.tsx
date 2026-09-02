@@ -16,6 +16,7 @@ import {
   packedPercent,
   tripChip,
   tripDateRange,
+  tripNameOrUnnamed,
   tripParticipants,
 } from '../depot/trips'
 import { entryCountLabel } from './GearListSection'
@@ -123,13 +124,14 @@ import styles from './TripCard.module.css'
  * width both come from `depot/trips.ts`, shared with the packing view this
  * card's CTA opens, so the two can never draw one Trip differently.
  *
- * **`aria-label={`Build list for ${label}`}`, not the link's bare text as its
- * accessible name.** `.card` is an `<article>` with no accessible name, and
- * the `<li>` `Trips.tsx` wraps it in carries none either — an unnamed
- * ancestor gives a descendant's name nothing to borrow, so a list of Draft
- * cards would otherwise announce `BUILD LIST ›`, `BUILD LIST ›`, `BUILD LIST
- * ›` indistinguishably, exactly the ambiguity `Open {label}` and `Reopen
- * {label}` already exist to avoid on this same card and `ClosedRow`. The
+ * **`aria-label={`Build list for ${spokenName}`}`, not the link's bare text
+ * as its accessible name.** `.card` is an `<article>` with no accessible
+ * name, and the `<li>` `Trips.tsx` wraps it in carries none either — an
+ * unnamed ancestor gives a descendant's name nothing to borrow, so a list of
+ * Draft cards would otherwise announce `BUILD LIST ›`, `BUILD LIST ›`,
+ * `BUILD LIST ›` indistinguishably, exactly the ambiguity `Open {name}` and
+ * `Reopen {name}` already exist to avoid on this same card and `ClosedRow`.
+ * The
  * label keeps `BUILD LIST` as a substring — WCAG 2.5.3 Label in Name, so
  * voice control saying "click build list" still finds it — and it doubles as
  * the fix for the `›` glyph: read as plain text content the accessible name
@@ -250,6 +252,16 @@ export function TripCard({
   const state = useDepot((depot) => depot.state)
 
   const label = tripLabel(trip)
+  // The prose half of the glyph/prose split (`docs/design/README.md` §5c):
+  // `tripLabel`'s `—` is right where the name stands as a *mark* — this
+  // card's own title line, a list column, a group header — and wrong the
+  // moment it is read as a word. Every accessible name below is a sentence
+  // spoken aloud, where `—` announces as "em dash" or as nothing at all, so
+  // all three take `tripNameOrUnnamed` instead. `ReopenConfirm` and
+  // `OverClaimBand` already say `Unnamed trip` in their own sentences; these
+  // labels used to say `—` in theirs, which made one nameless Trip two
+  // different things inside one flow.
+  const spokenName = tripNameOrUnnamed(trip)
   const participants = tripParticipants(state, trip)
   const dates = tripDateRange(trip)
 
@@ -278,7 +290,7 @@ export function TripCard({
       <Link
         href={`/trips/${trip.id}`}
         className={styles['surface']}
-        aria-label={`Open ${label}`}
+        aria-label={`Open ${spokenName}`}
       />
 
       <div className={styles['head']}>
@@ -418,8 +430,9 @@ export function TripCard({
           // are a legitimate state (`Trips.tsx` — nothing constrains
           // `active` to one), and a control list reading `Continue pack-out`
           // twice tells them apart by nothing. `Continue pack-out` stays a
-          // substring, so voice control still finds it (WCAG 2.5.3).
-          aria-label={`Continue pack-out for ${label}`}
+          // substring, so voice control still finds it (WCAG 2.5.3), and the
+          // name is `spokenName`'s prose because this is a sentence.
+          aria-label={`Continue pack-out for ${spokenName}`}
         >
           Continue pack-out
         </Link>
@@ -436,7 +449,7 @@ export function TripCard({
           href={buildListHref}
           className={styles['buildList']}
           data-testid="build-list-link"
-          aria-label={`Build list for ${label}`}
+          aria-label={`Build list for ${spokenName}`}
         >
           BUILD LIST ›
         </Link>

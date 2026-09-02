@@ -952,6 +952,19 @@ describe('the trip screen — PACKING › (S9a)', () => {
     ).toHaveAttribute('href', `/trips/${ALPS}/packing`)
   })
 
+  it('names a nameless Trip in prose, not with the title lines dash', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, tripCreated(ALPS, ''), ...headlamp)
+
+    // The heading keeps `tripLabel`'s mark — a title is where `—` is right —
+    // while the link beside it is a sentence and takes `tripNameOrUnnamed`
+    // (§5c's glyph/prose split). `Open packing for —` announces "em dash".
+    expect(screen.getByRole('heading', { name: '—' })).toBeVisible()
+    expect(
+      screen.getByRole('link', { name: 'Open packing for Unnamed trip' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/packing`)
+  })
+
   it('keeps the › out of the accessible name', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     await renderTrip(`/trips/${ALPS}`, ...alps(), ...headlamp)

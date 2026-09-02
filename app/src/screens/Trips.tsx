@@ -16,7 +16,7 @@ import { PhaseSheet } from '../components/PhaseSheet'
 import { ReopenConfirm } from '../components/ReopenConfirm'
 import { TripCard } from '../components/TripCard'
 import { useDepot } from '../depot/store'
-import { tripStartMonth } from '../depot/trips'
+import { tripNameOrUnnamed, tripStartMonth } from '../depot/trips'
 import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trips.module.css'
 
@@ -307,6 +307,13 @@ function ClosedRow({
   onReopen: () => void
 }) {
   const label = tripLabel(trip)
+  // `TripCard`'s split, and this row is the strongest case for it: its
+  // `REOPEN` opens `ReopenConfirm`, which has titled itself
+  // `Reopen Unnamed trip?` since S6 — so a nameless closed row used to
+  // announce `Reopen —` and then open a dialog calling the same Trip
+  // something else, one tap apart. The visible `rowName` below stays the
+  // glyph: a list column is exactly where `—` is right (§5c).
+  const spokenName = tripNameOrUnnamed(trip)
   const month = tripStartMonth(trip)
   const meta = [month, pieceLabel(pieces)]
     .filter((part): part is string => part !== null)
@@ -320,7 +327,7 @@ function ClosedRow({
         // Named for what it does *and* which Trip it does it to, so the link
         // and the `REOPEN` beside it are two distinguishable controls on one
         // row rather than a bare name and a bare verb.
-        aria-label={`Open ${label}`}
+        aria-label={`Open ${spokenName}`}
       >
         <span className={styles['rowName']}>{label}</span>
         {/* `pieceLabel` always returns a string, so `meta` is never empty —
@@ -340,7 +347,7 @@ function ClosedRow({
         // A list of rows whose buttons all read `REOPEN` is unnavigable by
         // control list, and reopening is the one action on this screen that
         // needs saying which Trip it is about before it is pressed.
-        aria-label={`Reopen ${label}`}
+        aria-label={`Reopen ${spokenName}`}
         onClick={onReopen}
       >
         <span>REOPEN</span>
