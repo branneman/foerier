@@ -190,18 +190,38 @@ export function bringCountOf(
  *
  * | Entry | Pieces |
  * | --- | --- |
+ * | **Container Entry (depot or trip-only)** | **`0`** — ruling A5 |
  * | Single depot Entry | `1` |
  * | Counted depot Entry | {@link bringCountOf}, absent reads `1` |
  * | Per-person depot Entry | {@link piecesOf}`(entry, trip).length` |
  * | Trip-only Entry | `1` — no Kind to be Counted by |
  * | Gear with an unrecognised Kind | `1` — the conservative direction |
  * | Depot Entry whose Gear is not yet synced | `1` — {@link entryKind} reads `undefined`, defaulted exactly like an unrecognised Kind |
+ *
+ * **The container row is ruling A5, and it narrows ruling L rather than
+ * breaking it.** *PIECES is the trip arithmetic only* stands; A5 states what
+ * that arithmetic counts — things that carry a status. A container carries a
+ * journey *instead of* a status (sync §3.7), so it can never be marked
+ * packed, and a denominator holding things that can never be counted makes
+ * `61` unreachable. That is invariant 18's own shape one slice early:
+ * trip-only Entries are excluded from S10's open count because they take no
+ * outcome.
+ *
+ * **{@link entriesOf} is untouched.** A container is still a line on the gear
+ * list, still counted by `N ENTRIES`, still removable with its `✕` —
+ * *ENTRIES counts the list, PIECES counts what travels* (ruling D).
+ *
+ * **Claims are untouched.** `claim.ts` reads this function's *rule* rather
+ * than the function, and its own `claimFor` gives a Single container Entry a
+ * count of `1` — correctly: two active Trips cannot both take the one duffel,
+ * and a supply rule is not a packing arithmetic.
  */
 export function pieceCountOf(
   entry: EntryState,
   trip: TripState,
   state: DepotState,
 ): number {
+  if (isContainerEntry(entry, state)) return 0
   switch (entryKind(entry, state)) {
     case 'counted':
       return bringCountOf(entry, state) ?? 1

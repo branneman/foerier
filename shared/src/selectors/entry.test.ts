@@ -458,6 +458,84 @@ describe('pieceCountOf', () => {
   })
 })
 
+describe('a container is not a piece (ruling A5)', () => {
+  it('counts a depot container Entry as zero pieces', () => {
+    const state = depot(
+      aTrip({ id: 't1' }),
+      aGear({ id: 'g-crate', container: true }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g-crate' })],
+    )
+    expect(
+      pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
+    ).toBe(0)
+  })
+
+  it('counts a trip-only container Entry as zero pieces', () => {
+    const state = depot(aTrip({ id: 't1' }), [
+      tripEntryAdded('t1', 'e1', {
+        from: 'trip_only',
+        name: 'Crate',
+        container: true,
+      }),
+    ])
+    expect(
+      pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
+    ).toBe(0)
+  })
+
+  it('still lists a container and still counts it as an ENTRY', () => {
+    // ENTRIES counts the list, PIECES counts what travels (ruling D). A5 is
+    // that sentence read carefully — `entriesOf` is untouched.
+    const state = depot(
+      aTrip({ id: 't1' }),
+      aGear({ id: 'g-single', kind: 'single' }),
+      aGear({ id: 'g-crate', container: true }),
+      [tripEntryAdded('t1', 'e-single', { from: 'depot', gearId: 'g-single' })],
+      [tripEntryAdded('t1', 'e-crate', { from: 'depot', gearId: 'g-crate' })],
+      [
+        tripEntryAdded('t1', 'e-trip-only', {
+          from: 'trip_only',
+          name: 'Rope',
+          container: false,
+        }),
+      ],
+    )
+    expect(ids(entriesOf(trip(state, 't1'), state))).toContain('e-crate')
+    expect(listTotals(trip(state, 't1'), state).entries).toBe(3)
+  })
+
+  it('leaves a container out of listTotals.pieces', () => {
+    // Two non-container Entries at one piece each, one container.
+    const state = depot(
+      aTrip({ id: 't1' }),
+      aGear({ id: 'g-single', kind: 'single' }),
+      aGear({ id: 'g-crate', container: true }),
+      [tripEntryAdded('t1', 'e-single', { from: 'depot', gearId: 'g-single' })],
+      [tripEntryAdded('t1', 'e-crate', { from: 'depot', gearId: 'g-crate' })],
+      [
+        tripEntryAdded('t1', 'e-trip-only', {
+          from: 'trip_only',
+          name: 'Rope',
+          container: false,
+        }),
+      ],
+    )
+    expect(listTotals(trip(state, 't1'), state).pieces).toBe(2)
+  })
+
+  it('counts a not-yet-synced Gear as one piece, not zero', () => {
+    // `isContainerEntry` reads it as not-a-container — the conservative
+    // direction, matching `entryKind`'s `undefined` and `pieceCountOf`'s own
+    // default.
+    const state = depot(aTrip({ id: 't1' }), [
+      tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'ghost' }),
+    ])
+    expect(
+      pieceCountOf(entryOf(state, 't1', 'e1')!, trip(state, 't1'), state),
+    ).toBe(1)
+  })
+})
+
 describe('listTotals', () => {
   it('counts entries, pieces, perPerson and tripOnly over a mixed list', () => {
     const state = depot(
