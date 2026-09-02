@@ -179,7 +179,7 @@ items under thirty settled ones.
   they diverged**, since a replica-dependent break shows up only as two devices
   drawing different trees. Argued in the module's own header,
   `shared/src/selectors/tripContainment.ts`, anchor:
-  `The duplication is deliberate, and the two must not drift.`
+  `non-drift is the obligation it`
 - **`useScreenHeader`'s tenth and eleventh callers disagree about the same
   question.** F4 passes `atDesktopSidebarCarriesDestination: false` and keeps
   `‹ ALPS 2026` at Desktop; `GearListBuilder`'s **default** door points at the

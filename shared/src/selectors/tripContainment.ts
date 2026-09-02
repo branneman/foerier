@@ -10,13 +10,13 @@ import { entriesOf, entryLabel, isContainerEntry } from './entry.ts'
  * Places and Gear, the other against Entries. A shared implementation would
  * take a strategy object for every line of it.
  *
- * **The duplication is deliberate, and the two must not drift.** The half
- * that would be silent if they did is the cycle break: sync §3.6's rule,
- * verbatim — within a cycle, the edge whose `residence` register carries the
- * **lowest `(hlc, device_id)`** is reported loose, with the entry id as a
- * canonical final tiebreak. Every replica holds identical registers, so every
- * replica breaks the same edge; the fold stays untouched and every device
- * draws the same tree.
+ * **This duplication is deliberate, and non-drift is the obligation it
+ * creates.** The half of that obligation which would fail silently is the
+ * cycle break: sync §3.6's rule, verbatim — within a cycle, the edge whose
+ * `residence` register carries the **lowest `(hlc, device_id)`** is reported
+ * loose, with the entry id as a canonical final tiebreak. Every replica holds
+ * identical registers, so every replica breaks the same edge; the fold stays
+ * untouched and every device draws the same tree.
  *
  * Four reasons a pointer reads **loose**, the first three of them different
  * spellings of *the reader cannot see what it names*:
