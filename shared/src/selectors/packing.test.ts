@@ -17,8 +17,10 @@ import {
   pieceStatusOf,
   STAGES,
   stageDisagreementLabel,
+  stageLabel,
   stageOf,
   STATUSES,
+  statusGlyph,
   statusLabel,
   statusOf,
 } from './packing.ts'
@@ -38,6 +40,8 @@ const PERSON_ENTRY_GEAR = 'g-person'
 const PERSON_ENTRY = 'e-person'
 const ORPHAN_GEAR = 'g-orphan'
 const ORPHAN = 'e-orphan'
+const TRIP_ONLY_CONTAINER = 'e-trip-only-container'
+const TRIP_ONLY_ITEM = 'e-trip-only-item'
 
 /**
  * Folds op specs through the real reducer, stamping each with an increasing
@@ -94,6 +98,20 @@ const state = depot(
     }),
   ],
   [tripEntryAdded(TRIP, ORPHAN, { from: 'depot', gearId: ORPHAN_GEAR })],
+  [
+    tripEntryAdded(TRIP, TRIP_ONLY_CONTAINER, {
+      from: 'trip_only',
+      name: 'Duffel',
+      container: true,
+    }),
+  ],
+  [
+    tripEntryAdded(TRIP, TRIP_ONLY_ITEM, {
+      from: 'trip_only',
+      name: 'Rope',
+      container: false,
+    }),
+  ],
 )
 
 function anEntry(): EntryState {
@@ -225,5 +243,59 @@ describe('isPacked is the only definition of packed-ness', () => {
     expect(isPacked('staged')).toBe(false)
     expect(isPacked('packed')).toBe(true)
     expect(isPacked('not_packed')).toBe(false)
+  })
+})
+
+describe("isContainerEntry's trip-only half", () => {
+  // Every other fixture in this file is `{from: 'depot'}`; a trip-only Entry
+  // reads its own `source.container` instead of a Gear register, and that
+  // branch is otherwise exercised by nothing in this suite.
+  it('reads a trip-only container as a container: a journey, never a status', () => {
+    const entryState = entry(state, TRIP_ONLY_CONTAINER)
+    expect(stageOf(entryState, state)).toBe('home')
+    expect(statusOf(entryState, state)).toBeNull()
+  })
+
+  it('reads a trip-only non-container as not a container: a status, never a journey', () => {
+    const entryState = entry(state, TRIP_ONLY_ITEM)
+    expect(statusOf(entryState, state)).toBe('not_packed')
+    expect(stageOf(entryState, state)).toBeNull()
+  })
+})
+
+describe('statusGlyph', () => {
+  it("draws each row's own glyph", () => {
+    expect(statusGlyph('not_packed')).toBe('○')
+    expect(statusGlyph('staged')).toBe('◐')
+    expect(statusGlyph('packed')).toBe('●')
+  })
+
+  it('falls back to ○ for an unrecognised status — not packed, but the pill still paints', () => {
+    expect(statusGlyph('in_the_shed')).toBe('○')
+  })
+})
+
+describe('stageLabel', () => {
+  it("draws each row's own label", () => {
+    expect(stageLabel('home')).toBe('⌂ HOME')
+    expect(stageLabel('staging')).toBe('STAGING')
+    expect(stageLabel('car')).toBe('CAR')
+    expect(stageLabel('packed')).toBe('PACKED')
+  })
+
+  it('draws an unrecognised stage verbatim', () => {
+    expect(stageLabel('in_the_garage')).toBe('in_the_garage')
+  })
+})
+
+describe('isKnownStatus and isKnownStage', () => {
+  it('is true for every row their own table carries', () => {
+    expect(isKnownStatus('not_packed')).toBe(true)
+    expect(isKnownStatus('staged')).toBe(true)
+    expect(isKnownStatus('packed')).toBe(true)
+    expect(isKnownStage('home')).toBe(true)
+    expect(isKnownStage('staging')).toBe(true)
+    expect(isKnownStage('car')).toBe(true)
+    expect(isKnownStage('packed')).toBe(true)
   })
 })

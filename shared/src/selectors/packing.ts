@@ -185,7 +185,7 @@ export function stageDisagreementLabel(stage: StageValue): string | null {
 export function nextStatus(status: StatusValue): StatusValue {
   const index = STATUSES.findIndex((row) => row.id === status)
   if (index === -1) return 'not_packed'
-  return (STATUSES[(index + 1) % STATUSES.length] as PackingStatus).id
+  return STATUSES[(index + 1) % STATUSES.length]?.id ?? 'not_packed'
 }
 
 /**
