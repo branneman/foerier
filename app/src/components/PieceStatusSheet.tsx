@@ -3,9 +3,9 @@ import {
   isContainerEntry,
   isPacked,
   nextStatus,
-  pieceStatusOf,
-  piecesOf,
+  packingItems,
   statusGlyph,
+  statusLabel,
   STATUSES,
   tripPieceStatusSet,
   UNNAMED_PERSON_GLYPH,
@@ -21,11 +21,6 @@ import { useMemo } from 'react'
 import { useDepot } from '../depot/store'
 import { tripParticipants } from '../depot/trips'
 import styles from './PieceStatusSheet.module.css'
-
-/** No pointer to a container names a place to draw — reason 1/2 of
- * `tripContainmentView`'s own four, restated for a Piece's own residence
- * pointer rather than an Entry's. */
-const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
 
 /**
  * **Per-person packing, from one control** — ruling A1,
@@ -45,22 +40,41 @@ const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
  *
  * The tag-chip rule, and the S8 Piece picker's own commit model: a tap emits
  * `trip.piece_status_set` immediately, there is no draft and no Save. The
- * status glyph (`● Mark`) is text, not a circle fill — `PersonCircle`'s
- * `tone` union carries no packed/staged/not-packed vocabulary, and this
- * component does not ask it to; the cycle is read aloud in the row's own
- * name instead.
+ * board draws four slots per row — circle, name-over-residence, a
+ * right-aligned status word, and `MOVE` — and this component draws all
+ * four: the status glyph and label are no longer glued to the name (review
+ * F2/F11), so a screen reader hears the Person, where they ride, and how far
+ * along they are as three distinct facts rather than one run-on string.
+ *
+ * ## The circle's fill is this sheet's to decide, not `ui/`'s
+ *
+ * {@link toneForStatus} maps a Piece's status to `PersonCircle`'s `tone` —
+ * `filled` for packed, `half` for staged, the pre-existing `control` for
+ * everything else (bordered, the board's "not packed" colour, unchanged).
+ * `ui/PersonCircle` names these two by their **paint**, not by
+ * `packed`/`staged`, exactly as `dashed`'s "not bringing one" is S8's
+ * meaning and not the primitive's — see that file's own docblock.
  *
  * ## `MOVE` is a sibling control, never a nested one
  *
  * Two buttons per row — the body (status) and the trailing `MOVE`
  * (residence) — because a `<button>` cannot contain a second one. `MOVE`
  * calls {@link PieceStatusSheetProps.onOpenPieceMove} and mounts nothing:
- * the screen owns the `PackPicker` for that one Piece, exactly as a per-Piece
- * residence differs from its Entry's (`packing.ts`'s own "a Piece with no
- * `residence` register of its own reads its Entry's, then loose" —
- * {@link pieceResidenceLabel} is that same fallback, read directly off the
- * registers rather than through `packingItems`, which this sheet has no
- * other use for.
+ * the screen owns the `PackPicker` for that one Piece.
+ *
+ * ## Status and residence come from `packingItems`, not a second derivation
+ *
+ * `shared/src/selectors/packing.ts` already computes, for exactly this set
+ * of Pieces, `status: pieceStatusOf(...) ?? 'not_packed'` and
+ * `residence: piece?.residence?.value ?? entryResidence` — with a docblock
+ * explaining why the two fallbacks are deliberately asymmetric, and an
+ * explicit "never null here" guard against a container Entry's `null`
+ * status. Restating either here would be the `ownerOf`/`isActive` drift this
+ * repo keeps catching: if that asymmetry is ever ruled on again, the packing
+ * screen's rows and this sheet's rows would silently disagree about the
+ * same Piece. So this component filters {@link packingItems} to this
+ * Entry's `kind === 'piece'` rows and resolves only the **label** — the one
+ * thing packing.ts has no reason to know — locally.
  *
  * ## `SET EVERYONE` writes only the rows that change
  *
@@ -87,9 +101,9 @@ const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
  *
  * ## Rows, and only included ones
  *
- * {@link piecesOf} decides inclusion; {@link tripParticipants} decides the
- * order. A Piece a tombstone has removed is not drawn here at all — S8's own
- * rule, unchanged.
+ * `packingItems` already excludes a tombstoned Piece — S8's own rule, read
+ * once rather than re-checked here — and {@link tripParticipants} decides
+ * the display order.
  */
 export interface PieceStatusSheetProps {
   tripId: string
@@ -102,37 +116,46 @@ interface StatusRow {
   personId: string
   label: string
   status: StatusValue
-  residence: string
+  residenceLabel: string
 }
 
 /**
- * One Piece's residence, read the way {@link pieceStatusOf} reads status: a
- * Piece with no `residence` register of its own falls back to its Entry's,
- * then to loose. A pointer naming an Entry this replica cannot see, or one
- * that is no longer a container, reads loose too — the same "invisible
- * reads loose" rule `tripContainmentView` states for the Entry-to-Entry
- * graph, restated here for a leaf pointer that graph never resolves.
+ * `PersonCircle`'s tone for a Piece's own status — presentational, not
+ * domain: `filled` and `half` are named for their paint, and this is the
+ * one place in the app allowed to say what `packed`/`staged` look like. An
+ * unrecognised status (the open-enum case `isKnownStatus` names elsewhere)
+ * draws `control`, the same bordered default `not_packed` draws — there is
+ * no fill to invent for a status this build has never heard of.
+ */
+function toneForStatus(status: StatusValue): 'control' | 'filled' | 'half' {
+  if (isPacked(status)) return 'filled'
+  if (status === 'staged') return 'half'
+  return 'control'
+}
+
+/**
+ * The residence half of a `PackingItem`, rendered — `▸ Duffel 90 L` in its
+ * **recorded** case (drawn in caps by `.residence`'s own `text-transform`,
+ * `PackPicker`'s convention — F6), or the literal `▸ LOOSE`. `LOOSE` never
+ * stands alone as a world (`docs/design/README.md` §101), which is why the
+ * loose branch carries the same `▸` every other branch does rather than a
+ * bare word.
  *
  * **Names the immediate container only, by design — not a breadcrumb.**
- * `▸ DUFFEL 90 L` is the board's own row anatomy (§1: `● Mark · ▸ DUFFEL
+ * `▸ Duffel 90 L` is the board's own row anatomy (§1: `● Mark · ▸ DUFFEL
  * 90 L`), the same single-name form ALL mode's meta line uses for a trip
- * residence. A nested `▸ CRATE B ▸ DUFFEL 90 L` would be a different read
+ * residence. A nested `▸ Crate B ▸ Duffel 90 L` would be a different read
  * from the one drawn, so do not "improve" this into `tripPath`'s ancestry.
  */
-function pieceResidenceLabel(
+function residenceLabel(
   trip: TripState,
   state: DepotState,
-  entry: EntryState,
-  personId: string,
+  residence: TripResidence,
 ): string {
-  const residence =
-    entry.pieces?.[personId]?.residence?.value ??
-    entry.residence?.value ??
-    LOOSE
-  if (residence.in === 'loose') return 'LOOSE'
+  if (residence.in === 'loose') return '▸ LOOSE'
   const container = trip.entries?.[residence.entryId]
   if (container === undefined || !isContainerEntry(container, state)) {
-    return 'LOOSE'
+    return '▸ LOOSE'
   }
   return `▸ ${entryLabel(container, state)}`
 }
@@ -149,23 +172,39 @@ export function PieceStatusSheet({
   const trip: TripState | undefined = state.trips[tripId]
   const entry: EntryState | undefined = trip?.entries?.[entryId]
 
-  // Derived from `state`, `trip` and `entry` alone — none of the three
-  // varies independently of the others, so the dependency list names
-  // exactly what can change.
+  // Derived from `state`, `trip` and `entryId` alone — `entry` is looked up
+  // from `trip.entries` and never varies independently of it, so the
+  // dependency list names exactly what can change.
   const rows = useMemo<readonly StatusRow[]>(() => {
     if (trip === undefined || entry === undefined) return []
-    const included = new Set(piecesOf(entry, trip))
+    const byPerson = new Map<
+      string,
+      { status: StatusValue; residence: TripResidence }
+    >()
+    for (const item of packingItems(trip, state)) {
+      if (item.kind !== 'piece' || item.entryId !== entryId) continue
+      byPerson.set(item.personId, {
+        status: item.status,
+        residence: item.residence,
+      })
+    }
     return tripParticipants(state, trip)
-      .filter((person) => included.has(person.id))
-      .map((person) => ({
-        personId: person.id,
-        label: person.label,
-        status:
-          pieceStatusOf(entry.pieces?.[person.id], entry, state) ??
-          'not_packed',
-        residence: pieceResidenceLabel(trip, state, entry, person.id),
-      }))
-  }, [state, trip, entry])
+      .filter((person) => byPerson.has(person.id))
+      .map((person) => {
+        // Never `undefined` here — the `filter` above proves the key
+        // exists; `??` states that rather than reaching for `!`.
+        const item = byPerson.get(person.id) ?? {
+          status: 'not_packed' as StatusValue,
+          residence: { in: 'loose' } as const,
+        }
+        return {
+          personId: person.id,
+          label: person.label,
+          status: item.status,
+          residenceLabel: residenceLabel(trip, state, item.residence),
+        }
+      })
+  }, [state, trip, entry, entryId])
 
   if (trip === undefined || entry === undefined) return null
 
@@ -219,12 +258,18 @@ export function PieceStatusSheet({
                       : row.label.charAt(0).toUpperCase()
                   }
                   size={30}
+                  tone={toneForStatus(row.status)}
                 />
               </span>
-              <span className={styles['statusName']}>
-                {statusGlyph(row.status)} {row.label}
+              <span className={styles['nameStack']}>
+                <span className={styles['name']}>{row.label}</span>
+                <span className={styles['residence']}>
+                  {row.residenceLabel}
+                </span>
               </span>
-              <span className={styles['residence']}>{row.residence}</span>
+              <span className={styles['statusWord']}>
+                {statusGlyph(row.status)} {statusLabel(row.status)}
+              </span>
             </button>
             <button
               type="button"
@@ -252,6 +297,10 @@ export function PieceStatusSheet({
           ))}
         </div>
       </div>
+
+      <p className={styles['hint']}>
+        TAP A ROW = NEXT STATE FOR THAT PERSON · ONE OP PER TAP
+      </p>
 
       <Sheet.Close>
         <button type="button" className={styles['close']}>

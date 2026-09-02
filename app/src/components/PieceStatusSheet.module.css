@@ -43,7 +43,6 @@
     padding-inline: var(--space-4);
     color: var(--color-ink-primary);
     font: var(--text-body) var(--font-ui);
-    font-weight: 600;
     text-align: left;
     cursor: pointer;
   }
@@ -56,39 +55,72 @@
     flex: none;
   }
 
-  .statusName {
-    flex: none;
+  /* Name over residence — the board's two-line anatomy (§1, §5e F11): a
+     16/600 name above a 9.5px mono meta line, not one line glued together
+     with the status glyph the way the first draft read it. This is what
+     makes room for `.statusWord`'s own slot at the row's right edge. */
+  .nameStack {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    gap: 0.125rem;
+  }
+
+  .name {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* The row's own residence — `▸ DUFFEL 90 L`, or `LOOSE`. Mono, and it is
-     the one part of the row allowed to truncate: a name is short and fixed,
-     a container's ancestry is not. */
+  /* The row's own residence — `▸ Duffel 90 L` (recorded case; drawn in caps
+     by `text-transform` below, `PackPicker`'s own convention — F6), or the
+     literal `▸ LOOSE` (never bare `LOOSE`: README §101, a world is never
+     unlabelled). Mono, and it is the one part of the row allowed to
+     truncate: a name is short and fixed, a container's ancestry is not. */
   .residence {
-    flex: 1;
-    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* The right-aligned status word — F2's missing slot. Text, not colour
+     alone: `PersonCircle`'s fill already carries the glance-speed read, so
+     this is what makes the same fact reach a screen reader and a reader who
+     cannot tell a filled circle from a half-filled one apart. */
+  .statusWord {
+    flex: none;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
+    font-weight: 600;
     letter-spacing: var(--tracking-label);
-    color: var(--color-ink-faint);
+    color: var(--color-ink-primary);
   }
 
   /*
    * The trailing accent `MOVE` — the People-row idiom: accent text at the
    * row's far edge, painted at its own size rather than leaning on the
-   * retired global floor (ruling O), with a non-painting `::after` reaching
-   * the row's own 48px so the tap target is still ≥44. Vertical-only,
-   * `EntryRow`'s `.pieceControl` precedent: the row's own flex `gap` already
-   * separates this from the body button, so there is nothing to clamp
-   * sideways, and the row above/below — separated only by `.rows > li + li`'s
-   * border, no gap — is the real risk.
+   * retired global floor (ruling O). `EntryRow.pieceControl`'s precedent
+   * exactly: a 24px paint (`min-height: 1.5rem`) grown to the row's 48px
+   * floor by a non-painting `::after` — (48 - 24) / 2 = 12px = 0.75rem each
+   * side, vertical-only. The row's own flex `gap` already separates this
+   * from the body button sideways, and the row above/below — separated only
+   * by `.rows > li + li`'s border, no gap — is the real risk a sideways
+   * clamp would not address.
    */
   .move {
     position: relative;
     flex: none;
     align-self: center;
+    min-height: 1.5rem;
     margin-inline-end: var(--space-4);
     border: 0;
     background: none;
@@ -144,6 +176,17 @@
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     cursor: pointer;
+  }
+
+  /* F7: the hint between the chips and `Close` — the board's own line,
+     stating the row's whole interaction model in one sentence rather than
+     leaving it to be discovered. */
+  .hint {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.06em;
+    line-height: 1.7;
+    color: var(--color-ink-faint);
   }
 
   .close {

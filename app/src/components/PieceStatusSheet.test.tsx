@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+
 import {
   createHlcClock,
   gearRecorded,
@@ -38,6 +41,13 @@ import { PieceStatusSheet } from './PieceStatusSheet'
  * the name stays exactly the visible title (the gear's own name) and the
  * count reaches a screen reader as the dialog's *description*. Both are
  * asserted below rather than the brief's literal composed-name string.
+ *
+ * The Duffel is deliberately named in **mixed case** (`Duffel 90 L`, not
+ * `DUFFEL 90 L`): the review round's F6 finding was that an all-caps fixture
+ * lets a missing `text-transform: uppercase` pass by coincidence — this
+ * repo's own S5 timezone lesson, restated for a stylesheet. The recorded
+ * case is what the component renders; the caps are the stylesheet's job,
+ * proven separately below by reading `PieceStatusSheet.module.css` as text.
  */
 
 const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000008'
@@ -47,6 +57,8 @@ const ENTRY = 'eeeeeeee-0000-7000-8000-000000000008'
 const GEAR = 'gggggggg-0000-7000-8000-000000000008'
 const DUFFEL_ENTRY = 'eeeeeeee-0000-7000-8000-00000000000d'
 const DUFFEL_GEAR = 'gggggggg-0000-7000-8000-00000000000d'
+const LOOSE_ENTRY = 'eeeeeeee-0000-7000-8000-00000000000e'
+const LOOSE_GEAR = 'gggggggg-0000-7000-8000-00000000000e'
 const SEEDED_AT = 1_700_000_000_000
 
 let nextId = 0
@@ -88,7 +100,8 @@ interface Seeded {
 
 /**
  * Mark, Els and Kim on one Trip, one depot-sourced per-person Headlamp
- * Entry riding in a duffel — the fixture every test in this file starts
+ * Entry riding in a duffel, and a second per-person Entry (`LOOSE_ENTRY`)
+ * that is never moved anywhere — the fixture every test in this file starts
  * from. Kim's Piece starts `packed`, which is what makes `1 OF 3 PACKED`
  * true before any test interacts with anything. `extra` layers on top, so a
  * test asking about a tombstone does not repeat the whole setup.
@@ -109,7 +122,7 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
     tripParticipantAdded(TRIP, 'els'),
     tripParticipantAdded(TRIP, 'kim'),
     gearRecorded(DUFFEL_GEAR, {
-      name: 'DUFFEL 90 L',
+      name: 'Duffel 90 L',
       container: true,
       kind: 'single',
     }),
@@ -122,6 +135,14 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
     tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: GEAR }),
     tripEntryMoved(TRIP, ENTRY, { in: 'container', entryId: DUFFEL_ENTRY }),
     tripPieceStatusSet(TRIP, ENTRY, 'kim', 'packed'),
+    // Never moved: this Entry's own `residence` register stays unset, which
+    // `packing.ts` reads as loose — F1's dedicated fixture.
+    gearRecorded(LOOSE_GEAR, {
+      name: 'Spare Batteries',
+      container: false,
+      kind: 'per_person',
+    }),
+    tripEntryAdded(TRIP, LOOSE_ENTRY, { from: 'depot', gearId: LOOSE_GEAR }),
     ...extra,
   ]
   for (const spec of specs) store.getState().emit(spec)
@@ -148,12 +169,13 @@ async function allStatusOps(
 function renderSheet(
   seed: Seeded,
   onOpenPieceMove: (personId: string) => void = () => {},
+  entryId: string = ENTRY,
 ) {
   render(
     <DepotProvider value={seed.store}>
       <PieceStatusSheet
         tripId={TRIP}
-        entryId={ENTRY}
+        entryId={entryId}
         onClose={() => {}}
         onOpenPieceMove={onOpenPieceMove}
       />
@@ -162,12 +184,26 @@ function renderSheet(
 }
 
 /** The `<li>` a Person's row lives in — the scope both their body button and
- * their trailing `MOVE` sit inside. */
+ * their trailing `MOVE` sit inside. `closest`'s own type parameter avoids
+ * the cast a `HTMLElement | null` narrowing would otherwise need (F10). */
 function rowFor(name: string): HTMLElement {
   const button = screen.getByRole('button', { name: new RegExp(name) })
-  const row = button.closest('[data-testid="piece-status-row"]')
+  const row = button.closest<HTMLElement>('[data-testid="piece-status-row"]')
   if (row === null) throw new Error(`no row found for ${name}`)
-  return row as HTMLElement
+  return row
+}
+
+/** The stylesheet as text — `PackPicker.test.tsx`'s and `drawnSizes.test.ts`'s
+ * technique, and the only one that sees CSS at all under
+ * `app/vitest.config.ts`'s `css: false`. */
+function moduleCss(): string {
+  return readFileSync(
+    join(
+      dirname(expect.getState().testPath ?? ''),
+      'PieceStatusSheet.module.css',
+    ),
+    'utf8',
+  )
 }
 
 describe('the piece status sheet', () => {
@@ -229,13 +265,54 @@ describe('the piece status sheet', () => {
     ])
   })
 
-  it("draws each row's own trip residence", async () => {
+  it("draws each row's own trip residence, in its recorded case", async () => {
     const seed = await seeded()
     renderSheet(seed)
 
+    // Recorded case (`Duffel 90 L`), not upper-cased in the source — the
+    // stylesheet draws the caps (F6, proven separately below).
     expect(
-      within(rowFor('Mark')).getByText('▸ DUFFEL 90 L'),
+      within(rowFor('Mark')).getByText('▸ Duffel 90 L'),
     ).toBeInTheDocument()
+  })
+
+  it('names a Piece with no container LOOSE, never bare (F1)', async () => {
+    const seed = await seeded()
+    renderSheet(seed, () => {}, LOOSE_ENTRY)
+
+    // README §101: `LOOSE` never stands alone as a world.
+    expect(within(rowFor('Mark')).getByText('▸ LOOSE')).toBeInTheDocument()
+  })
+
+  it('draws the residence in caps through the stylesheet, not the source (F6)', () => {
+    const css = moduleCss()
+    expect(css).toMatch(/\.residence[\s\S]*?text-transform:\s*uppercase/)
+  })
+
+  it("draws each row's own status as a word, not only a glyph (F2)", async () => {
+    const seed = await seeded()
+    renderSheet(seed)
+
+    expect(within(rowFor('Kim')).getByText('● PACKED')).toBeInTheDocument()
+    expect(within(rowFor('Mark')).getByText('○ NOT PACKED')).toBeInTheDocument()
+  })
+
+  it("fills the row's circle by the Piece's own status, not a fixed tone (F3)", async () => {
+    const seed = await seeded(tripPieceStatusSet(TRIP, ENTRY, 'els', 'staged'))
+    renderSheet(seed)
+
+    expect(within(rowFor('Kim')).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'filled',
+    )
+    expect(within(rowFor('Els')).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'half',
+    )
+    expect(within(rowFor('Mark')).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'control',
+    )
   })
 
   it('opens the Pack picker for one Piece from the trailing MOVE', async () => {

@@ -22,6 +22,15 @@ import styles from './PersonCircle.module.css'
  * collapsed in the parchment theme, where every `--color-rule*` resolved to
  * one value).
  *
+ * **`filled` and `half` are S9's own two, named for their paint and not for
+ * `packed`/`staged`.** The Piece status sheet (`app/`'s
+ * `PieceStatusSheet.tsx`) is the first caller, mapping a Piece's own status
+ * to one of these two plus the pre-existing `control` (already the board's
+ * bordered "not packed" colour, unchanged) — but the mapping is the
+ * caller's, exactly as `dashed`'s "not bringing one" is S8's and not this
+ * file's. `ui/` stays free of packing vocabulary the same way it stays free
+ * of login vocabulary.
+ *
  * **Named `label`, not `initial`.** An initial is the caller's own
  * `label.charAt(0).toUpperCase()`, computed before it ever reaches this
  * component — this renders whatever string it is given, verbatim. That is
@@ -68,9 +77,10 @@ export interface PersonCircleProps {
   /**
    * Defaults to `control`, the display-only border every non-login caller
    * draws. See the tone-not-state note above for what each value means —
-   * this component does not know.
+   * this component does not know. `filled` (solid) and `half` (half-filled)
+   * are S9's, for a Piece's own packing status.
    */
-  tone?: 'control' | 'accent' | 'dashed' | 'none'
+  tone?: 'control' | 'accent' | 'dashed' | 'none' | 'filled' | 'half'
 }
 
 export function PersonCircle({

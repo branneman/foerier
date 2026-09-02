@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { useRef, type ReactNode } from 'react'
+import { useRef, type ReactElement, type ReactNode } from 'react'
 
 import { restoreOpenerFocus } from './restoreOpenerFocus'
 import styles from './Sheet.module.css'
@@ -47,8 +47,14 @@ export interface SheetProps {
    * onto that element rather than wrapping it in a second one. A caller
    * with no such line omits this, exactly as every caller did before it
    * existed.
+   *
+   * **`ReactElement`, not the looser `ReactNode`.** `asChild` reaches
+   * Radix's `Slot`, which clones its child to attach `id` and needs exactly
+   * one real element to clone onto — a bare string or a fragment reaches
+   * `Slot` and misbehaves. The type says what the mechanism requires rather
+   * than leaving it to a docblock a caller might not read.
    */
-  description?: ReactNode
+  description?: ReactElement
   /**
    * From Split (52em) up, draw a centred bordered card with no scrim and no
    * grabber instead of a bottom sheet.

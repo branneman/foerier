@@ -46,6 +46,18 @@ describe('PersonCircle', () => {
     )
   })
 
+  // S9's two, added for the Piece status sheet's packing fills.
+  it.each(['filled', 'half'] as const)(
+    'renders the %s tone as data-tone',
+    (tone) => {
+      render(<PersonCircle label="M" size={30} tone={tone} />)
+      expect(screen.getByTestId('person-circle')).toHaveAttribute(
+        'data-tone',
+        tone,
+      )
+    },
+  )
+
   it('draws the size as its own class', () => {
     render(<PersonCircle label="M" size={30} />)
     expect(screen.getByTestId('person-circle')).toHaveClass(styles['size30']!)

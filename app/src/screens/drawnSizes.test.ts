@@ -154,4 +154,28 @@ describe("ruling O's drawn sizes", () => {
     expect(display).not.toMatch(/position:\s*relative/)
     expect(ruleBody(entryRowCss, '.pieceDisplay::after')).toBeUndefined()
   })
+
+  /**
+   * **S9 review F5.** The first draft declared no paint height on `.move`
+   * at all, so an 11px mono glyph painted by the UA's own `line-height:
+   * normal` reached only ~13px, and the existing `inset: -0.75rem 0`
+   * clamp — `EntryRow.pieceControl`'s own constant — yielded ~37px, short of
+   * the 44px floor. `EntryRow.pieceControl` only reaches 48 because it
+   * states its own 24px paint (`min-height: 1.5rem`); `.move` now states the
+   * identical 24, so the same clamp reaches the identical 48, still inside
+   * the row it must not spill out of.
+   */
+  it("paints the Piece status sheet's MOVE at 24px, clamped to the row's 48", () => {
+    const css = moduleCss('..', 'components', 'PieceStatusSheet.module.css')
+    const move = ruleBody(css, '.move')
+
+    expect(move).toBeDefined()
+    expect(move).not.toMatch(FLOOR)
+    expect(move).toMatch(/min-height:\s*1\.5rem/)
+    expect(move).toMatch(/position:\s*relative/)
+
+    // (48 - 24) / 2 = 12px = 0.75rem each side, vertical-only — the row's
+    // own flex `gap` already separates this from the body button sideways.
+    expect(ruleBody(css, '.move::after')).toMatch(/inset:\s*-0\.75rem 0/)
+  })
 })

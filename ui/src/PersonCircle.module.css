@@ -58,6 +58,30 @@
     border-color: transparent;
   }
 
+  /* filled — S9's own: a solid fill, `PieceStatusSheet`'s "packed". The
+     initial inverts to the base ground for contrast against a saturated
+     fill, the same move a filled `Chip` does not need because its wash
+     (`--color-accent-fill`) is deliberately subtle rather than solid. */
+  .circle[data-tone='filled'] {
+    border-color: var(--color-status-packed);
+    background: var(--color-status-packed);
+    color: var(--color-bg-base);
+  }
+
+  /* half — S9's own: half-filled, `PieceStatusSheet`'s "staged". Only half
+     the disc carries colour, so the initial stays in the ordinary ink
+     rather than inverting — a fill that never covers the whole disc has no
+     one contrast to invert against. */
+  .circle[data-tone='half'] {
+    border-color: var(--color-status-staged);
+    background: linear-gradient(
+      to right,
+      var(--color-status-staged) 50%,
+      transparent 50%
+    );
+    color: var(--color-ink-primary);
+  }
+
   /* 22px — the trip world's cluster rows: `TripCard`, `Trip`'s header,
      `GearListBuilder`'s desk header. No line-height override, as none of
      the five originals set one at this size. */
