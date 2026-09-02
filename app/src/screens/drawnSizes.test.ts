@@ -325,4 +325,23 @@ describe("ruling O's drawn sizes", () => {
     expect(filter).toMatch(/position:\s*relative/)
     expect(ruleBody(css, '.filter::after')).toMatch(/inset:\s*-0\.25rem 0/)
   })
+
+  /**
+   * **F1 (review round 2).** The Piece status sheet's own row and its
+   * `SET EVERYONE` chips state their sizes explicitly rather than having
+   * been shrunk off the retired global floor — the identical shape
+   * `OverClaimBand`'s `.settle`/`.more` test above pins, so an explicit size
+   * is not a category this file excludes; it is one it deliberately keeps
+   * pinned. `.rowButton` (48) gets the same `FLOOR` match that test uses;
+   * `.chip` (44) gets its own explicit regex, the `.pill` test's own shape
+   * one screen over.
+   */
+  it("leaves the Piece status sheet's row and SET EVERYONE chip explicit", () => {
+    const css = moduleCss('..', 'components', 'PieceStatusSheet.module.css')
+
+    expect(ruleBody(css, '.rowButton')).toMatch(FLOOR)
+    expect(ruleBody(css, '.chip')).toMatch(
+      /min-height:\s*max\(2\.75rem,\s*44px\)/,
+    )
+  })
 })

@@ -651,9 +651,7 @@ describe('the back link — withheld only where its destination is already drawn
     const { store, id } = await aTrip()
     renderInShell(store, `/trips/${id}/packing`)
 
-    expect(
-      screen.getByRole('link', { name: '‹ Alps 2026' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
   })
 
   it('draws it on People at Split, the widest width it is mounted at', async () => {
