@@ -1,0 +1,51 @@
+@layer components {
+  /* `Confirm`'s `card` variant draws `.descriptionCard` in attention-amber
+     mono, which is right for a warning and wrong for this body sentence —
+     the board draws plain 15px body text with the mono count line beneath
+     it. Both blocks therefore state their own type, and the two together are
+     the description Radix requires. */
+  .body {
+    display: block;
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+  }
+
+  .fact {
+    display: block;
+    margin-top: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-muted);
+  }
+
+  /* `ReopenConfirm.module.css`'s pair, and for its reason: accent, not
+     attention — nothing is thrown away by a move, and the body says so.
+     `flex: 1` grows `Move` and leaves `Cancel` its own width, which is the
+     board's action row (`S9 Round`, the container-move confirm). */
+  .primary {
+    flex: 1;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Bordered rather than bare — the board draws `Cancel` with a rule around
+     it here, where `ReopenConfirm`'s sheet variant draws it plain. */
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}

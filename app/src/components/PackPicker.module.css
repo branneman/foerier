@@ -1,0 +1,136 @@
+@layer components {
+  /* `HomePicker.module.css`'s mono vocabulary, borrowed with the anatomy.
+     The **caps live here**, not in the source string: `MOVING {name} · …`
+     interpolates a recorded name, and the one Trip/gear-name rule
+     (`docs/design/README.md` §5b, fix round F1) keeps a recorded case in
+     source and lets `text-transform` draw it. */
+  .context,
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* The quiet line an empty picker ends on — body text, and no button
+     beside it. */
+  .empty {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+
+  .emptyMeta {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-faint);
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  .list > li + li {
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /* Drawn at 48, so no board draws it smaller and nothing here leans on a
+     floor (ruling O): a drawn size is the painted size. */
+  .row {
+    width: 100%;
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    text-align: left;
+  }
+
+  .rowMain {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    text-align: left;
+  }
+
+  /* The name and its badge on one line — `EntryRow`'s name-adjunct rule. */
+  .nameLine {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  .rowName {
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    color: inherit;
+  }
+
+  /* The ancestry the indent cap hid — the GearRow name+meta anatomy. */
+  .rowMeta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* `EntryRow.module.css`'s `.badge`, copied rule for rule rather than
+     approximated: a trip-only container is not kept in the depot, the gear
+     list already says so in amber beside the name, and a second spelling of
+     the same fact is how two spellings drift apart. */
+  .badge {
+    flex: none;
+    padding: var(--space-4) var(--space-8);
+    border: var(--stroke-chip) solid var(--color-brand-amber);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--color-brand-amber) 14%, transparent);
+    color: var(--color-brand-amber);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    white-space: nowrap;
+  }
+
+  /* The SET PHASE anatomy, reused: one app, one way of saying "this is the
+     one you are on". It takes the right-hand slot **in place of** the stage
+     — one row cannot carry two right-hand reads. */
+  .now {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+
+  /* How far that holder has travelled, in the slice bar's own mono
+     register — quieter than `● NOW`, which outranks it. */
+  .stage {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
+  .close {
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}
