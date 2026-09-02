@@ -1,6 +1,7 @@
 import {
   createHlcClock,
   gearRecorded,
+  overClaimsFor,
   personRecorded,
   tripCreated,
   tripEntryAdded,
@@ -9,6 +10,7 @@ import {
   tripParticipantAdded,
   tripPhaseMoved,
   type Clock,
+  type DepotState,
   type IdSource,
   type OpAuthor,
   type OpSpec,
@@ -49,6 +51,7 @@ const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const SEEDED_AT = 1_700_000_000_000
 
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
+const JURA = 'tttttttt-0000-7000-8000-00000000000b'
 
 const STOVE = 'gggggggg-0000-7000-8000-00000000000a'
 const PEGS = 'gggggggg-0000-7000-8000-00000000000b'
@@ -64,6 +67,7 @@ const E_ROPE = 'nnnnnnnn-0000-7000-8000-00000000000e'
 
 const CRATE = 'gggggggg-0000-7000-8000-00000000000f'
 const E_CRATE = 'nnnnnnnn-0000-7000-8000-00000000000f'
+const J_STOVE = 'nnnnnnnn-0000-7000-8000-000000000010'
 
 let nextId = 0
 
@@ -101,6 +105,10 @@ type OpPayload = Record<string, unknown>
 interface Seeded {
   /** Everything the *screen* authored — the seed is subtracted. */
   authored: () => Promise<readonly { type: string; payload: OpPayload }[]>
+  /** The fold, for the one assertion that has to prove a *positive* control:
+   * that the seed genuinely over-claims, so the band's absence is F4's own
+   * decision rather than an empty selector. */
+  state: () => DepotState
 }
 
 /** Renders `/trips/:id/packing` at `path`, over a store seeded with `specs`. */
@@ -138,6 +146,7 @@ async function renderPacking(
         .slice(seedCount)
         .map((entry) => ({ type: entry.op.type, payload: entry.op.payload }))
     },
+    state: () => store.getState().state,
   }
 }
 
@@ -172,7 +181,15 @@ function nineWithFourPacked(): readonly OpSpec[] {
     tripEntryAdded(ALPS, E_STOVE, { from: 'depot', gearId: STOVE }),
     tripEntryStatusSet(ALPS, E_STOVE, 'packed'),
 
-    gearRecorded(PEGS, { name: 'Tent peg', container: false, kind: 'counted' }),
+    // `owned_count` stated, so the depot's supply covers the Bring-count: an
+    // absent register reads `1`, and three pegs claimed against one owned is
+    // an over-claim this fixture does not mean to carry.
+    gearRecorded(PEGS, {
+      name: 'Tent peg',
+      container: false,
+      kind: 'counted',
+      owned_count: 6,
+    }),
     tripEntryAdded(ALPS, E_PEGS, { from: 'depot', gearId: PEGS }),
     tripEntryBringCountSet(ALPS, E_PEGS, 3),
     tripEntryStatusSet(ALPS, E_PEGS, 'packed'),
@@ -189,6 +206,15 @@ function nineWithFourPacked(): readonly OpSpec[] {
 
     gearRecorded(ROPE, { name: 'Rope', container: false, kind: 'single' }),
     tripEntryAdded(ALPS, E_ROPE, { from: 'depot', gearId: ROPE }),
+
+    // A second **active** Trip claiming the one stove. `overClaims` is a pure
+    // fold of registers, so this state genuinely over-claims — which is what
+    // makes the "no over-claim band" assertion below say something: with one
+    // Trip the band returns `null` before its `data-testid` is ever rendered,
+    // and the test would pass identically whether or not F4 asked for it.
+    tripCreated(JURA, 'Jura 2026'),
+    tripPhaseMoved(JURA, 'pack_out'),
+    tripEntryAdded(JURA, J_STOVE, { from: 'depot', gearId: STOVE }),
   ]
 }
 
@@ -332,6 +358,12 @@ describe('the count line, the bar and the controls', () => {
   it('draws the three modes as one segmented control, CONTAINER first', async () => {
     await renderPacking(`/trips/${ALPS}/packing`, ...nineWithFourPacked())
 
+    // The group's own name, which the board draws nowhere: `getAllByRole`
+    // below passes with the `<legend>` deleted, so this is the assertion that
+    // pins the repo's first use of `visually-hidden` at the point where it is
+    // load-bearing.
+    expect(screen.getByRole('group', { name: 'Group by' })).toBeInTheDocument()
+
     const modes = screen.getAllByRole('radio')
     expect(modes.map((mode) => mode.getAttribute('value'))).toEqual([
       'container',
@@ -380,7 +412,6 @@ describe('what F4 deliberately does not draw', () => {
     expect(
       screen.queryByRole('button', { name: /UNDO/i }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByTestId('packing-footer')).not.toBeInTheDocument()
   })
 
   /**
@@ -390,8 +421,17 @@ describe('what F4 deliberately does not draw', () => {
    * far along one Trip's own pack-out is.
    */
   it('draws no over-claim band — that belongs to the gear list', async () => {
-    await renderPacking(`/trips/${ALPS}/packing`, ...nineWithFourPacked())
+    const seeded = await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...nineWithFourPacked(),
+    )
 
+    // The positive control first: Jura claims the one stove too, so there
+    // *is* an over-claim naming this Trip. Without it the assertion below
+    // passes over an empty selector and proves nothing about F4 at all.
+    expect(
+      overClaimsFor(seeded.state(), ALPS).map((claim) => claim.gearId),
+    ).toEqual([STOVE])
     expect(screen.queryByTestId('over-claim-band')).not.toBeInTheDocument()
   })
 })

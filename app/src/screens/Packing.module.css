@@ -120,17 +120,32 @@
      control at this screen's own drawn height. Stated explicitly rather than
      left to a floor: a drawn size is the painted size (ruling O), and the hit
      extension that carries it to 48 is Task 12's, which owns the suite that
-     can see it. */
+     can see it.
+
+     **And that is why there is no `overflow: hidden` here.** `AddGear`'s own
+     rule carries one, harmlessly, because its segments are drawn at 48 and
+     need no extension — but **a clipped descendant is not hit-testable**, so
+     an `::after` growing a 40px segment to 48 inside a clipping parent would
+     be dead on arrival. The trap is that `drawnSizes.test.ts` works by
+     *parsing stylesheet text*: it would find the extension, pass, and say
+     nothing about a hit area that does not exist. So the end segments round
+     themselves instead, and the container clips nothing. */
   .segmented {
     display: flex;
     border: var(--stroke-rule) solid var(--color-rule-control);
     border-radius: var(--radius-control);
-    overflow: hidden;
   }
 
   .segment {
     flex: 1;
     display: flex;
+    /* The containing block for the visually-hidden radio below — which
+       `AddGear` gets from its own `overflow: hidden` and this control no
+       longer has. Without it the 1px input escapes to the initial containing
+       block, and a browser scrolling a focused radio into view would jump the
+       page to its top-left corner. It is also what the hit extension Task 12
+       adds will position against. */
+    position: relative;
     align-items: center;
     justify-content: center;
     min-height: max(2.5rem, 40px);
@@ -143,6 +158,19 @@
 
   .segment + .segment {
     border-left: var(--stroke-rule) solid var(--color-rule-control);
+  }
+
+  /* The corners `overflow: hidden` used to cut, drawn instead. Inset by the
+     container's own border width, so the inner curve sits concentric with the
+     outer one rather than a hair proud of it. */
+  .segment:first-child {
+    border-start-start-radius: calc(var(--radius-control) - var(--stroke-rule));
+    border-end-start-radius: calc(var(--radius-control) - var(--stroke-rule));
+  }
+
+  .segment:last-child {
+    border-start-end-radius: calc(var(--radius-control) - var(--stroke-rule));
+    border-end-end-radius: calc(var(--radius-control) - var(--stroke-rule));
   }
 
   /* The radio itself is the state, not the styling — it stays in the

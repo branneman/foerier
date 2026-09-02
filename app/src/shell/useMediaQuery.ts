@@ -97,6 +97,14 @@ export interface ScreenPlacement {
    * link at Desktop rather than stranding the reader on browser Back, with
    * no route from the builder to the Trip they opened it from — S7 review
    * F4.
+   *
+   * `Packing` (S9a, F4) is the second, and the first where this flag's
+   * *reason* is the **only** reason it applies: it has one door, `‹ <name>`,
+   * pointing at the Trip it belongs to, so the flag is `false`
+   * unconditionally and the back link is drawn at every width. Worth naming
+   * here, because a reader meeting that screen first will otherwise read its
+   * Desktop back link as an exception to the rule below rather than as the
+   * rule answering the question it was written for.
    */
   atDesktopSidebarCarriesDestination?: boolean
 }
@@ -120,11 +128,12 @@ export interface ScreenHeader {
  * Whether a pushed screen draws its own back link and its own sync line.
  * **Every screen that draws either half asks** — `AddGear`, `GearDetail`,
  * `Trip`, `NewTrip`, `Account`, `People`, `Devices`, `InviteIssued`,
- * `DepotPicker` and `GearListBuilder`, all ten of them — because a rule
- * spelled ten times is nine chances to spell it differently, and that is
- * exactly how `Account` came to carry `Trip`'s defect from a different
- * slice. Nine draw a sync line; `InviteIssued` draws only the back link,
- * and gates its band on {@link ScreenHeader.backLink} rather than on
+ * `DepotPicker`, `GearListBuilder` and `Packing`, all eleven of them —
+ * because a rule spelled eleven times is ten chances to spell it
+ * differently, and that is exactly how `Account` came to carry `Trip`'s
+ * defect from a different slice. Ten draw a sync line; `InviteIssued` draws
+ * only the back link, and gates its band on {@link ScreenHeader.backLink}
+ * rather than on
  * {@link ScreenHeader.band}, since for a screen with no sync line the link
  * is the only thing the band could hold. (`DepotPicker`'s own `'pane'`
  * variant asks too but draws neither half itself — its band belongs to
@@ -158,9 +167,9 @@ export interface ScreenHeader {
  *   navigation and the row the link points at is usually *in* it — which is
  *   what `Screens B` §02A's `Trip screen — S6 desktop` draws: the sidebar
  *   carries `TRIPS` and `SYNCED 14:32`, and the main column carries neither.
- *   `GearListBuilder`'s "trip" door is the one caller for which that is
- *   false, and it says so explicitly rather than being derived wrong from
- *   `splitPane` alone (S7 review F4).
+ *   `GearListBuilder`'s "trip" door and `Packing` are the two callers for
+ *   which that is false, and both say so explicitly rather than having it
+ *   derived wrong from `splitPane` alone (S7 review F4).
  * - **At Split, it depends on {@link ScreenPlacement.splitPane}.** The rail
  *   draws no labels, so a screen standing alone there still owes the link —
  *   and every caller but `GearDetail` does stand alone, `GearListBuilder`
