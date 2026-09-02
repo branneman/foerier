@@ -265,6 +265,44 @@ describe('the piece status sheet', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
+  it('skips a row already at the target, while its siblings still change', async () => {
+    const user = userEvent.setup()
+    // Kim's Piece is already `packed` from the seed's own baseline op; Els
+    // and Mark start `not_packed`.
+    const seed = await seeded()
+    renderSheet(seed)
+
+    await user.click(screen.getByRole('button', { name: '● PACKED' }))
+    await seed.store.getState().drained()
+
+    // Two ops, not three: a redundant `trip.piece_status_set` on Kim would
+    // carry a *later* HLC than whatever is in her register, which could beat
+    // a genuine concurrent write from another Device — the SET PHASE /
+    // journey-rail rule, restated for a batch.
+    const ops = await seed.statusOps()
+    expect(ops).toHaveLength(2)
+    expect(ops.map((op) => op.personId).sort()).toEqual(['els', 'mark'])
+    expect(ops.every((op) => op.status === 'packed')).toBe(true)
+  })
+
+  it('emits nothing when every row already holds the tapped status', async () => {
+    const user = userEvent.setup()
+    // All three Pieces already `packed`: Kim from the seed's baseline, Els
+    // and Mark set explicitly here.
+    const seed = await seeded(
+      tripPieceStatusSet(TRIP, ENTRY, 'els', 'packed'),
+      tripPieceStatusSet(TRIP, ENTRY, 'mark', 'packed'),
+    )
+    renderSheet(seed)
+
+    await user.click(screen.getByRole('button', { name: '● PACKED' }))
+    await seed.store.getState().drained()
+
+    // The screen already shows the state the tap asked for: writing anyway
+    // would be a genuinely redundant op with nothing behind it.
+    expect(await seed.statusOps()).toEqual([])
+  })
+
   it('writes backwards from SET EVERYONE too', async () => {
     const user = userEvent.setup()
     const seed = await seeded(tripPieceRemoved(TRIP, ENTRY, 'kim'))

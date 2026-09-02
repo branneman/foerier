@@ -62,16 +62,28 @@ const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
  * registers rather than through `packingItems`, which this sheet has no
  * other use for.
  *
- * ## `SET EVERYONE` writes every included row, unconditionally
+ * ## `SET EVERYONE` writes only the rows that change
  *
  * Three chips, not one control — a single control cannot name a *next*
- * state when the rows disagree — and each writes **every** included Piece
- * to the tapped status, whether or not a row already holds it. That is what
- * makes "a second tap on another chip reverses the whole set" true with no
- * confirm: nothing is destroyed, a redundant write here costs nothing a
- * Quartermaster would notice, and gating on "already there" would make the
- * chip's count depend on the roster's current spread instead of just its
- * size.
+ * state when the rows disagree — and each writes one op per included Piece
+ * **whose current status differs from the tapped one**. A row already at the
+ * target is skipped, for the same reason SET PHASE emits nothing when the
+ * phase tapped is the phase a Trip is already in, and the journey rail
+ * (Task 10) writes nothing on the current stage: a redundant
+ * `trip.piece_status_set` still carries a *later* HLC than whatever sits in
+ * the register, so it can beat — and silently discard — a genuine concurrent
+ * write from another Device that set the same Piece to something else. This
+ * is the one surface in the app where a single tap can author that mistake
+ * N times at once, which is what makes the skip matter here more than
+ * anywhere it already holds.
+ *
+ * `N` in "N ops in one batch" is therefore the count of Pieces that
+ * **change**, not the roster's size — tapping `● PACKED` when everyone is
+ * already packed authors nothing, correctly, since the screen already shows
+ * the state the tap asked for. The batch is still independent per-Piece ops
+ * resolving by plain LWW, and a second tap on another chip still reverses
+ * every row it touches, with no confirm: nothing is destroyed by the first
+ * tap.
  *
  * ## Rows, and only included ones
  *
@@ -100,6 +112,12 @@ interface StatusRow {
  * that is no longer a container, reads loose too — the same "invisible
  * reads loose" rule `tripContainmentView` states for the Entry-to-Entry
  * graph, restated here for a leaf pointer that graph never resolves.
+ *
+ * **Names the immediate container only, by design — not a breadcrumb.**
+ * `▸ DUFFEL 90 L` is the board's own row anatomy (§1: `● Mark · ▸ DUFFEL
+ * 90 L`), the same single-name form ALL mode's meta line uses for a trip
+ * residence. A nested `▸ CRATE B ▸ DUFFEL 90 L` would be a different read
+ * from the one drawn, so do not "improve" this into `tripPath`'s ancestry.
  */
 function pieceResidenceLabel(
   trip: TripState,
@@ -159,9 +177,12 @@ export function PieceStatusSheet({
   }
 
   function setEveryone(status: StatusValue) {
-    // Every included row, unconditionally — see the module docblock's
-    // "writes every included row" note.
+    // Only the rows that change — see the module docblock's "writes only
+    // the rows that change" note. A row already at `status` is skipped so a
+    // redundant write can never beat a genuine concurrent one from another
+    // Device (the SET PHASE / journey-rail rule, restated for a batch).
     for (const row of rows) {
+      if (row.status === status) continue
       emit(tripPieceStatusSet(tripId, entryId, row.personId, status))
     }
   }
