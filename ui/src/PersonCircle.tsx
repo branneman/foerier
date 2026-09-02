@@ -40,10 +40,10 @@ import styles from './PersonCircle.module.css'
  * a Person with no folded name is a fact the app does not have, and
  * inventing one would be worse than blank.
  *
- * **Sizes are the numbers 22 · 24 · 30, not a `sm|md|lg` scale.** Two
- * diameters exist today; S8 adds 24 and S9 adds 28 and 34 — a t-shirt scale
- * would already be out of names by S9 and need renaming across every
- * caller.
+ * **Sizes are the numbers 22 · 24 · 28 · 30 · 34, not a `sm|md|lg` scale.**
+ * Five diameters exist now that S9's two have landed — a t-shirt scale ran
+ * out of names at the fourth and would need renaming across every caller to
+ * take a fifth.
  *
  * **A circle is sized by the density of the band it sits in, never by the
  * screen** — `design/README.md` §5d K, which named the scale rather than
@@ -60,8 +60,8 @@ import styles from './PersonCircle.module.css'
  *
  * That is why the picker rows draw 30 and the gear-list row's cluster draws
  * 24 while both sit on the same screen: the row's own density decides, not
- * the surface that opened it. S9's 28 and 34 join the union above; no
- * caller renames.
+ * the surface that opened it. S9's 28 and 34 are in the union above; no
+ * caller renamed.
  *
  * `ui/` never imports the store or a router (`frontend-design.md` §5): this
  * takes a label, not a Person id, and a caller's own `aria-hidden` / one
@@ -72,8 +72,8 @@ import styles from './PersonCircle.module.css'
 export interface PersonCircleProps {
   /** Verbatim content; see the `label`-not-`initial` note above. */
   label?: string | undefined
-  /** 22 · 24 · 30 — see the sizes note above. */
-  size: 22 | 24 | 30
+  /** 22 · 24 · 28 · 30 · 34 — see the sizes note above. */
+  size: 22 | 24 | 28 | 30 | 34
   /**
    * Defaults to `control`, the display-only border every non-login caller
    * draws. See the tone-not-state note above for what each value means —

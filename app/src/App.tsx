@@ -36,6 +36,7 @@ import { Find } from './screens/Find'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
 import { NewTrip } from './screens/NewTrip'
+import { Packing } from './screens/Packing'
 import { Trip } from './screens/Trip'
 import { Trips } from './screens/Trips'
 import { AppShell } from './shell/AppShell'
@@ -407,6 +408,18 @@ export function App({
                     <Redirect to={`/trips/${params.id}`} />
                   )
                 }
+              </Route>
+              {/* **Not width-gated, and not a pane.** A packing row has no
+                  detail — its two acts are a pill and a sheet — so unlike
+                  the two routes above it, F4 needs no `isSplitOrWider ? … :
+                  <Redirect/>`: it is its own route at every width, and
+                  reachable at **every phase, Draft included**, because a
+                  phase locks nothing (invariant 16) and hiding a route is a
+                  soft lock the phase model forbids (spec §4.1). It sits with
+                  the other specific `/trips/:id/…` routes rather than beside
+                  `/trips/:id`, which cannot match a two-segment tail. */}
+              <Route path="/trips/:id/packing">
+                <Packing />
               </Route>
               <Route path="/find">
                 <Find />

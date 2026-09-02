@@ -1,6 +1,6 @@
 @layer components {
   /*
-   * One primitive, three sizes and four tones — folded from six hand-rolled
+   * One primitive, five sizes and six tones — folded from six hand-rolled
    * `.circle` rules (`TripCard`, `Trip`'s header cluster, `GearListBuilder`'s
    * desk header, `NewTrip`'s Participants row, `ParticipantPicker`, `People`)
    * that had drifted to two diameters and, on `People` alone, a login-state
@@ -9,7 +9,7 @@
    * The border is keyed off `data-tone` rather than a class per state — the
    * same attribute-selector technique `ExpiryChip`'s `data-urgent` already
    * uses. `PersonCircle.tsx` renders the attribute unconditionally (default
-   * `control`), so every instance matches exactly one of the four rules
+   * `control`), so every instance matches exactly one of the six tone rules
    * below and the base `.circle` rule carries no border colour of its own.
    */
   .circle {
@@ -99,6 +99,16 @@
     font-size: 0.625rem;
   }
 
+  /* 28px — S9's group headers: a person group's own header row on F4
+     (`docs/design/README.md` §5d K's band scale, "group headers"). Between
+     the dense 24 and the roster 30, and the same shape as both: width,
+     height, font-size, no line-height override. */
+  .size28 {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.6875rem;
+  }
+
   /* 30px — a picker or list row: `ParticipantPicker`, `People`. Both
      originals set `font: var(--text-label) var(--font-mono)`; the line-height
      is restated explicitly here rather than through the shorthand, which
@@ -109,5 +119,16 @@
     height: 1.875rem;
     font-size: 0.6875rem;
     line-height: 0.875rem;
+  }
+
+  /* 34px — S9's working rows: F4's per-person cluster, where the circle
+     carries a Piece's packing status at glance speed and is read rather than
+     scanned past. Ruling A1's own arithmetic keeps the cluster one control at
+     this size — a 39px pitch puts a 44px target over its neighbour — so the
+     diameter grows and the target does not follow it per circle. */
+  .size34 {
+    width: 2.125rem;
+    height: 2.125rem;
+    font-size: 0.75rem;
   }
 }

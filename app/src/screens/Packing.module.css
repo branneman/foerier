@@ -1,0 +1,239 @@
+@layer components {
+  /*
+   * F4's own column. `min-height: 100%` so the empty region below has
+   * something to fill — `Trip.module.css`'s own reason, and the pane is a
+   * stretched grid item of the shell so the percentage resolves.
+   *
+   * The 560px cap, the Roomy/Split gutters and the group card border from
+   * Roomy up are ruling A10's and land with Task 12, which owns the width
+   * suite; there is nothing width-dependent to cap until the groups exist.
+   */
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    min-height: 100%;
+  }
+
+  /* The band — `Trip.module.css`'s rule verbatim, since it is the same band
+     answering the same hook. The difference is entirely in `Packing.tsx`:
+     `atDesktopSidebarCarriesDestination: false` keeps the link at Desktop. */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .sync {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .syncDot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+  }
+
+  /* DISPLAY, 28/34 — and 34 at Desktop is the token's business, not this
+     file's: every screen title in the app reads the same one. */
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* `● 48/61 PIECES` left, `13 LEFT` right — mono 11, tabular so the
+     numerator does not shuffle sideways as it is tapped upward. */
+  .counts {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-12);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .packed {
+    color: var(--color-status-packed);
+  }
+
+  .left {
+    color: var(--color-ink-muted);
+  }
+
+  /* 6px, radius 3 — track `rule`, fill `status/packed`. Its own element
+     rather than a background gradient on `.counts`, so the fill's width is
+     one inline style on one node. */
+  .bar {
+    block-size: 0.375rem;
+    border-radius: 0.1875rem;
+    background: var(--color-rule);
+    overflow: hidden;
+  }
+
+  .fill {
+    block-size: 100%;
+    background: var(--color-status-packed);
+  }
+
+  /* The segmented control and the filter pill on one row, both 40px and both
+     unchanged at every width (§1). The pill keeps its intrinsic width and the
+     segmented control takes the rest. */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+  }
+
+  .segmentedField {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* 40px, border `rule/control`, radius 8 — `AddGear.module.css`'s segmented
+     control at this screen's own drawn height. Stated explicitly rather than
+     left to a floor: a drawn size is the painted size (ruling O), and the hit
+     extension that carries it to 48 is Task 12's, which owns the suite that
+     can see it. */
+  .segmented {
+    display: flex;
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    overflow: hidden;
+  }
+
+  .segment {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(2.5rem, 40px);
+    color: var(--color-ink-muted);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  .segment + .segment {
+    border-left: var(--stroke-rule) solid var(--color-rule-control);
+  }
+
+  /* The radio itself is the state, not the styling — it stays in the
+     accessibility tree and is simply not drawn (`AddGear`'s own note). */
+  .segment input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .segment:has(input:checked) {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-primary);
+  }
+
+  .segment:has(input:focus-visible) {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* `○ LEFT` — the slice bar's own selected-chip grammar at 40px: bordered
+     while off, `accent-fill` with a `✕` while on. */
+  .filter {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-height: max(2.5rem, 40px);
+    padding-inline: var(--space-12);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .filter[aria-pressed='true'] {
+    border-color: var(--color-accent);
+    background: var(--color-accent-fill);
+    color: var(--color-ink-primary);
+  }
+
+  /* The screen's one hint (ruling A9), directly beneath the controls: read
+     once at the start rather than at the foot of sixty-one rows, which is
+     where the retired footer bar would have put it. Mono 9, faint — it is
+     instruction, not ledger. */
+  .hint {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
+  /* The empty-list region — `Trip.module.css`'s `.gear` verbatim, because it
+     draws the same two lines for the same reason. The region *is* the rest of
+     the screen (`flex: 1`, not a padded block), and the count is what the eye
+     should land on. */
+  .empty {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    padding: var(--space-32);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+    text-align: center;
+  }
+
+  .emptyCount {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-primary);
+  }
+
+  .emptySource {
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+  }
+
+  /* `No such trip.` — gear detail's `No such gear.` in this screen's voice. A
+     Trip the fold has never seen, which is a different fact from one that
+     exists and carries nothing. */
+  .missing {
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+  }
+}

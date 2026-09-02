@@ -58,8 +58,18 @@ describe('PersonCircle', () => {
     },
   )
 
-  it('draws the size as its own class', () => {
-    render(<PersonCircle label="M" size={30} />)
-    expect(screen.getByTestId('person-circle')).toHaveClass(styles['size30']!)
-  })
+  // The five diameters of §5d K's band scale, each its own class: 22 chrome,
+  // 24 dense display rows, 28 group headers, 30 roster rows, 34 working rows.
+  // A table rather than one case, because the union and the stylesheet are two
+  // files and a size added to one and not the other renders an unclassed
+  // circle that still passes every other assertion here.
+  it.each([22, 24, 28, 30, 34] as const)(
+    'draws size %i as its own class',
+    (size) => {
+      render(<PersonCircle label="M" size={size} />)
+      expect(screen.getByTestId('person-circle')).toHaveClass(
+        styles[`size${size}`]!,
+      )
+    },
+  )
 })
