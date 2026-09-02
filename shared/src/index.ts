@@ -182,6 +182,7 @@ export type {
 export {
   containerTotals,
   countOf,
+  countsAsDisagreement,
   disagreements,
   isKnownStage,
   isKnownStatus,

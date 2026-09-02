@@ -210,6 +210,42 @@ export function isPacked(status: StatusValue): boolean {
   return statusRow(status)?.packed === true
 }
 
+/**
+ * Ruling A6's **one** carve-out, named rather than spelled inline at the one
+ * place it applies: see {@link countsAsDisagreement}.
+ */
+const A6_CARVE_OUT: StatusKey = 'staged'
+
+/**
+ * Ruling A6's threshold, the **status** half — {@link stageDisagreementLabel}
+ * is the stage half, and {@link disagreements} fires only where both say yes.
+ *
+ * `!isPacked` **minus one carve-out**, and each of the three parts is a
+ * decision:
+ *
+ * - {@link isPacked} stays the only definition of packed-ness. This reads it
+ *   rather than re-deriving it, so the numerator and the ▲ can never
+ *   disagree about what `packed` means.
+ * - **`staged` is carved out**, and it is A6's only carve-out: staging *is*
+ *   the act of packing, so counting it would fire on nearly every container
+ *   in the car and the ▲ would stop meaning anything.
+ * - **An unrecognised status counts.** A6's carve-out is drawn against
+ *   `staged` specifically, and the ruling never reached the unrecognised
+ *   case, so this is decided on which way the failure points. Excluding it
+ *   hides the ▲ *entirely* on a crate in the car full of gear this build
+ *   cannot name — the disagreement the whole feature exists to surface,
+ *   silently gone. Counting it draws `▲ IN CAR · 3 INSIDE NOT PACKED`
+ *   where one of the three reads `in_the_shed`: slightly loose wording on a
+ *   warning that is correctly telling the truth, and visible rather than
+ *   silent. Nor is it an exotic case — an open enum is the mechanism
+ *   story 20's per-trip editable statuses ship on, so the excluding version
+ *   would leave every Trip using a custom status with a permanently silent
+ *   ▲.
+ */
+export function countsAsDisagreement(status: StatusValue): boolean {
+  return !isPacked(status) && status !== A6_CARVE_OUT
+}
+
 export function isKnownStatus(status: StatusValue): boolean {
   return statusRow(status) !== undefined
 }
@@ -381,9 +417,13 @@ function subtreeOf(view: TripContainmentView, entryId: string): Set<string> {
  * The subtree is over **Entries**, which is what {@link tripContainmentView}
  * resolves: a per-person Entry counts under the container its own `residence`
  * names, whatever a `trip.piece_moved` has since said about one of its
- * Pieces. That is the row the by-container list draws — one row per Entry,
- * with the cluster on it — and a Piece's own residence is what ALL mode's
- * `▸ MIXED` segment states instead.
+ * Pieces. **That is the correct grouping, not a limitation of it.** CONTAINER
+ * mode draws a per-person Entry as **one row** carrying a cluster
+ * (`PER-PERSON · 1/3`), never one row per Piece, so this function's only
+ * consumer groups by the Entry — and grouping by the Entry is what keeps the
+ * group header agreeing with the rows drawn under it, which is the precise
+ * symptom {@link packingItems} exists to prevent. A Piece's own residence
+ * surfaces in ALL mode instead, as the `▸ MIXED` segment.
  *
  * Pass `view` when you already have one: building it is O(entries), and a
  * list screen wants one view rather than one per group.
@@ -429,9 +469,11 @@ export interface PersonBucket {
  * holds: the buckets sum to {@link packingTotals} exactly, and the test that
  * asserts it is the one that would have caught the drawn frame.
  *
- * **A bucket with no items is not returned**, the Participant whose Piece was
- * removed and who owns nothing included: PERSON mode groups work, and a
- * header over nothing states nothing. A screen wanting to say *Kim has
+ * **A bucket with no items is not returned** — deliberately, the Participant
+ * whose Piece was removed and who owns nothing included. PERSON mode groups
+ * work, and a header reading `0/0` is the same arithmetic-nobody-asked-for
+ * the screen's own empty state already refuses when it withholds
+ * `● 0/0 PIECES` rather than zeroing it. A screen wanting to say *Kim has
  * nothing to pack* has `participantIds` and this list to say it from.
  *
  * **Order here is by person id**, `Shared` distinguished by its **key** and
@@ -512,14 +554,12 @@ export interface Disagreement {
  * halves are read off {@link stageDisagreementLabel}, one field, so the stage
  * set and the phrasing it fires with cannot drift apart.
  *
- * `not packed` only — counting `staged` would fire on nearly every container
- * in the car and the ▲ would stop meaning anything. So this is **not**
- * {@link PackingCount.left}, which counts everything {@link isPacked}
- * rejects: a crate holding a staged tarp has `left` one higher than
- * `notPacked`, and the two answer different questions on purpose. An
- * **unrecognised** status counts toward neither — a build that cannot name a
- * status cannot claim a disagreement about it, which is
- * {@link stageDisagreementLabel}'s own rule one register over.
+ * The status half is {@link countsAsDisagreement}, which carries A6's own
+ * carve-out and the reasoning for it — `staged` excluded, an unrecognised
+ * status counted. So `notPacked` is **not** {@link PackingCount.left}, which
+ * counts everything {@link isPacked} rejects: a crate holding a staged tarp
+ * has `left` one higher than `notPacked`, and the two answer different
+ * questions on purpose.
  *
  * The count is in `units`, so a Counted Entry contributes its whole
  * Bring-count: `▲ IN CAR · 3 INSIDE NOT PACKED` counts what travels, exactly
@@ -551,7 +591,7 @@ export function disagreements(
     let notPacked = 0
     for (const item of items) {
       if (!subtree.has(item.entryId)) continue
-      if (statusRow(item.status)?.id !== 'not_packed') continue
+      if (!countsAsDisagreement(item.status)) continue
       notPacked += item.units
     }
     if (notPacked === 0) continue

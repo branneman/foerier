@@ -20,12 +20,14 @@ import { entriesOf, isContainerEntry } from './entry.ts'
 import {
   containerTotals,
   countOf,
+  countsAsDisagreement,
   disagreements,
   isPacked,
   type PackingItem,
   packingItems,
   packingTotals,
   personPartition,
+  STATUSES,
 } from './packing.ts'
 import { participantIds } from './trip.ts'
 import { tripContainmentView } from './tripContainment.ts'
@@ -560,6 +562,32 @@ describe('the person partition is total (ruling A7)', () => {
   })
 })
 
+describe('countsAsDisagreement is the threshold\u2019s status half', () => {
+  it('counts not_packed and every status this build cannot name', () => {
+    expect(countsAsDisagreement('not_packed')).toBe(true)
+    expect(countsAsDisagreement('in_the_shed')).toBe(true)
+  })
+
+  it('carves out staged, and only staged, from what !isPacked would give', () => {
+    expect(isPacked('staged')).toBe(false)
+    expect(countsAsDisagreement('staged')).toBe(false)
+    expect(
+      STATUSES.filter(
+        (row) => !isPacked(row.id) && !countsAsDisagreement(row.id),
+      ).map((row) => row.id),
+    ).toEqual(['staged'])
+  })
+
+  it('never counts a packed status, and reads isPacked rather than re-deriving it', () => {
+    expect(countsAsDisagreement('packed')).toBe(false)
+    expect(
+      STATUSES.every(
+        (row) => !(isPacked(row.id) && countsAsDisagreement(row.id)),
+      ),
+    ).toBe(true)
+  })
+})
+
 describe('the disagreement threshold (ruling A6)', () => {
   it('fires at car', () => {
     // The stove's three and the rope's one. The pan is packed and the tarp is
@@ -603,16 +631,43 @@ describe('the disagreement threshold (ruling A6)', () => {
     ).toBe(4)
   })
 
-  it('counts an unrecognised status as neither packed nor not-packed', () => {
-    // A build that cannot name a status cannot claim a disagreement about it
-    // — `stageDisagreementLabel`'s own rule, one register over. It still
-    // fails `isPacked`, so `left` keeps counting it.
+  it('counts an unrecognised status toward the line', () => {
+    // A6's carve-out is drawn against `staged` specifically and the ruling
+    // never reached the unrecognised case. Excluding it would hide the ▲ on a
+    // crate full of gear this build cannot name — the disagreement the whole
+    // feature exists to surface, silently gone — where counting it is only
+    // slightly loose wording on a warning that is telling the truth.
     const state = withLater(tripEntryStatusSet(TRIP, ROPE, 'wedged'))
 
     expect(groupTotals(CRATE, state).left).toBe(5)
     expect(
       disagreementsIn(state).find((row) => row.entryId === CRATE)?.notPacked,
-    ).toBe(3)
+    ).toBe(4)
+  })
+
+  it('fires on a container whose ONLY unpacked content is a status this build cannot name', () => {
+    // The test that would fail if `countsAsDisagreement` were ever reverted to
+    // a literal `'not_packed'` comparison: the box holds exactly one item, and
+    // an implementation that excluded unrecognised statuses would drop the box
+    // out of the list entirely rather than merely lowering its count.
+    const state = withLater(tripEntryStatusSet(TRIP, MUG, 'in_the_shed'))
+
+    expect(itemsFor(MUG, state)).toHaveLength(1)
+    expect(disagreementsIn(state)).toContainEqual({
+      entryId: BOX,
+      label: 'IN CAR',
+      notPacked: 1,
+    })
+  })
+
+  it('counts a Counted Entry with an unnamed status by its whole Bring-count', () => {
+    // Story 20's per-trip editable statuses ship on this open enum, so the
+    // units rule has to hold for a value this build has never heard of.
+    const state = withLater(tripEntryStatusSet(TRIP, STOVE, 'in_the_shed'))
+
+    expect(
+      disagreementsIn(state).find((row) => row.entryId === CRATE)?.notPacked,
+    ).toBe(4)
   })
 
   it('counts contents at any depth', () => {
