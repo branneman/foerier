@@ -145,6 +145,13 @@ describe('a per-Piece packing row', () => {
    * The board's own anatomy (`S9 Round` §02): the name gains `— ELS'S PIECE`
    * and the meta is simply where that Piece rides, since a Piece's own
    * residence is the one fact its Entry does not carry.
+   *
+   * **The whole phrase, on the body button, and that is the point of the
+   * assertion.** `.nameLine` separates its two spans with a CSS `gap`, which
+   * is not a character — so a substring assertion on the suffix alone passes
+   * happily while the row's text content, and the button's accessible name
+   * with it, read `Headlamp— Els's piece` as one word. Asserting the
+   * announced sentence is what catches that.
    */
   it('names whose Piece it is and where that Piece rides', async () => {
     await renderPieceRow()
@@ -153,7 +160,9 @@ describe('a per-Piece packing row', () => {
     expect(within(row).getByTestId('packing-row-name')).toHaveTextContent(
       'Headlamp',
     )
-    expect(row).toHaveTextContent("— Els's piece")
+    expect(within(row).getByTestId('packing-row-body')).toHaveTextContent(
+      "Headlamp — Els's piece",
+    )
     expect(within(row).getByTestId('packing-row-meta')).toHaveTextContent(
       '▸ Crate B',
     )

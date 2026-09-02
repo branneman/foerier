@@ -348,11 +348,22 @@ export function PackingRow({
           {/* Recorded case here, drawn in caps by `.piece`'s own
               `text-transform` — `PieceStatusSheet`'s `.residence`
               convention, and the house rule that CAPS is a CSS transform
-              rather than a string. */}
+              rather than a string.
+
+              **The leading `{' '}` is not decoration.** `.nameLine`'s gap
+              separates the two spans on screen, but a gap is not a
+              character: without it the row's text content — and so the body
+              button's accessible name — reads `Headlamp— Els's piece`, one
+              word, with the dash glued to the gear. The space is the only
+              thing that makes the drawn `Headlamp — ELS'S PIECE` and the
+              announced name the same sentence. */}
           {isPiece && (
-            <span className={styles['piece']}>
-              {`— ${personNameOrUnnamed(state, personId)}'s piece`}
-            </span>
+            <>
+              {' '}
+              <span className={styles['piece']}>
+                {`— ${personNameOrUnnamed(state, personId)}'s piece`}
+              </span>
+            </>
           )}
           {tripOnly && <span className={styles['badge']}>TRIP-ONLY</span>}
         </span>

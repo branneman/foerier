@@ -1504,14 +1504,12 @@ describe('PERSON mode', () => {
     await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
     await chooseMode(user, 'PERSON')
 
-    // Recorded case in the DOM, capped by CSS — the house rule. The two
-    // spans are separated by `.nameLine`'s gap rather than by whitespace, so
-    // the drawn `Headlamp — ELS'S PIECE` is two assertions here.
-    const els = groupFor('Els')
-    expect(within(els).getAllByTestId('packing-row-name')[0]).toHaveTextContent(
-      'Headlamp',
-    )
-    expect(within(els).getByText("— Els's piece")).toBeVisible()
+    // Recorded case in the DOM, capped by CSS — the house rule. Asserted as
+    // the one phrase the body button announces, which is also what pins the
+    // space between the two spans: `.nameLine`'s gap is not a character.
+    expect(
+      within(groupFor('Els')).getAllByTestId('packing-row-body')[0],
+    ).toHaveTextContent("Headlamp — Els's piece")
   })
 
   /**
@@ -1698,5 +1696,47 @@ describe('the ○ LEFT filter', () => {
     await pressLeftOnly(user)
 
     expect(screen.getByRole('region', { name: 'Duffel 90 L' })).toBeVisible()
+  })
+
+  /**
+   * **The orphaned indent, pinned as it behaves rather than as anyone drew
+   * it.** Ruling A3's filter sentence is taken literally — *a group whose
+   * items all filter out draws nothing* — and this is the one shape where
+   * that has a visible cost: a parent container whose own rows are all packed
+   * disappears while a nested container inside it survives, so the child's
+   * group keeps its 16px indent with nothing above it to be indented from.
+   *
+   * The alternative would be a keep-the-ancestry condition, and **no board
+   * draws one** — inventing it here would be designing rather than building,
+   * which is what §5e's own "a slice number on a board is a claim, not a
+   * licence" warns against from the other direction.
+   *
+   * So this asserts what currently happens, deliberately. **It is a candidate
+   * for the next design round, not settled intent**, and it is pinned so that
+   * a later change to it is a visible decision rather than a silent one.
+   */
+  it('orphans a nested group whose parent filtered out — taken literally, and a candidate for the next round', async () => {
+    const user = userEvent.setup()
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...personFrame(),
+      // `Duffel 90 L ▸ Dry bag`, the duffel's own one row packed and the dry
+      // bag's own one row not — the exact shape, and the smallest one.
+      tripEntryMoved(ALPS, E_DRYBAG, { in: 'container', entryId: E_DUFFEL }),
+      tripEntryStatusSet(ALPS, E_STOVE, 'packed'),
+      tripEntryStatusSet(ALPS, E_ROPE, 'not_packed'),
+    )
+    await pressLeftOnly(user)
+
+    expect(screen.queryByRole('region', { name: 'Duffel 90 L' })).toBeNull()
+
+    const nested = screen.getByRole('region', { name: 'Dry bag' })
+    expect(nested).toBeVisible()
+    // The indent survives its parent: one level in, with no header above it
+    // stating what it is one level inside of.
+    expect(nested).toHaveAttribute('data-indent', '1')
+    expect(within(nested).getByTestId('packing-row-name')).toHaveTextContent(
+      'Rope',
+    )
   })
 })
