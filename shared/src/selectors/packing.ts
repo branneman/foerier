@@ -8,10 +8,10 @@ import type {
   TripState,
 } from '../state.ts'
 import {
-  bringCountOf,
   entriesOf,
   entryKind,
   isContainerEntry,
+  pieceCountOf,
 } from './entry.ts'
 import { ownerOf } from './owner.ts'
 import { piecesOf } from './piece.ts'
@@ -24,6 +24,13 @@ import {
  * **Packing's read side** — beside `trip.ts` and `owner.ts`, and the same
  * shape of problem solved the same way: a handful of facts several surfaces
  * must agree on, stated once here rather than at each of them.
+ *
+ * **The spine is {@link packingItems}.** A packing item is a whole Entry or
+ * one Piece of a per-person Entry, and the four count lines — the trip total,
+ * a container group's count, a person group's count and the `○ LEFT` filter —
+ * are all that one list read through that one predicate. Deriving any of them
+ * separately is the drift this file exists to prevent, and the symptom is a
+ * group header disagreeing with the rows drawn under it.
  *
  * Three of those facts outlive this slice, which is why they are functions
  * and not idioms:
@@ -266,10 +273,12 @@ export function isKnownStage(stage: StageValue): boolean {
  *
  * `units` is what the item contributes to a denominator: a **Counted** Entry
  * contributes its whole Bring-count (ruling A13 — one register, one pill, one
- * tap moving the count by two), everything else contributes one. This is the
- * `pieces`/`perPerson` family of `ListTotals` (`entry.ts`), which counts
- * **things that travel**, and not the `entries`/`tripOnly` family, which
- * counts lines.
+ * tap moving the count by two), everything else contributes one. That is
+ * `pieceCountOf`'s table and it is **read, not restated** — summed over a
+ * Trip these units are exactly `listTotals(trip, state).pieces`, which a test
+ * pins, so the builder's footer and this screen's numerator cannot drift.
+ * Both are the `pieces`/`perPerson` family, which counts **things that
+ * travel**, and not the `entries`/`tripOnly` family, which counts lines.
  *
  * **Containers produce no item**, and neither do sourceless or removed
  * Entries — {@link entriesOf} has already excluded the latter two.
@@ -338,10 +347,17 @@ export function packingItems(
     items.push({
       kind: 'entry',
       entryId: entry.id,
-      units:
-        entryKind(entry, state) === 'counted'
-          ? (bringCountOf(entry, state) ?? 1)
-          : 1,
+      // `pieceCountOf` **is** the units table (`entry.ts`, "the spec's table,
+      // followed exactly"), so this reads it rather than holding a second
+      // copy: a ruling that moves one of its rows must not be able to leave
+      // the builder's `N PIECES` and this screen's `5/13` disagreeing. Its
+      // container row never arrives here — containers were skipped above —
+      // and its per-person row is the branch above, which has to emit one
+      // item per Piece and so cannot call it.
+      units: pieceCountOf(entry, trip, state),
+      // Never `null` here, for the reason the piece arm above gives:
+      // `isContainerEntry` was answered above, and a container is the only
+      // thing either status function returns `null` for.
       status: statusOf(entry, state) ?? 'not_packed',
       residence: entryResidence,
     })
@@ -425,19 +441,21 @@ function subtreeOf(view: TripContainmentView, entryId: string): Set<string> {
  * symptom {@link packingItems} exists to prevent. A Piece's own residence
  * surfaces in ALL mode instead, as the `▸ MIXED` segment.
  *
- * Pass `view` when you already have one: building it is O(entries), and a
- * list screen wants one view rather than one per group.
+ * Pass `view` **and `items`** when you already have them: each is O(entries)
+ * to build, and CONTAINER mode draws one group per container, so a screen
+ * that lets both default pays N × O(entries) on the list the app is used on
+ * most. {@link disagreements} threads one `packingItems` through its whole
+ * loop for the same reason.
  */
 export function containerTotals(
   trip: TripState,
   state: DepotState,
   entryId: string,
   view: TripContainmentView = tripContainmentView(trip, state),
+  items: readonly PackingItem[] = packingItems(trip, state),
 ): PackingCount {
   const subtree = subtreeOf(view, entryId)
-  return countOf(
-    packingItems(trip, state).filter((item) => subtree.has(item.entryId)),
-  )
+  return countOf(items.filter((item) => subtree.has(item.entryId)))
 }
 
 export type PersonBucketKey =

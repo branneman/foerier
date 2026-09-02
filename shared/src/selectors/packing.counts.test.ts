@@ -16,7 +16,12 @@ import {
 import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
 import type { DepotState, TripState } from '../state.ts'
-import { entriesOf, isContainerEntry } from './entry.ts'
+import {
+  entriesOf,
+  isContainerEntry,
+  listTotals,
+  pieceCountOf,
+} from './entry.ts'
 import {
   containerTotals,
   countOf,
@@ -66,16 +71,18 @@ const POT = 'e-pot' // shared, in the stuff sack, packed
 const ROPE = 'e-rope' // shared, in the crate, explicitly not packed
 const STOVE = 'e-stove' // counted ×3, in the crate, **no** status register
 const TARP = 'e-tarp' // shared, in the crate, staged
+const UNSYNCED = 'e-unsynced' // depot Entry whose Gear has never arrived
 const ORPHANED = 'e-ghost' // sourceless — `entriesOf` already excludes it
 
 /**
  * One Trip, holding every branch the four counts have to agree about: a
  * Counted Entry with a Bring-count of 3, a per-person Entry with one of three
  * Pieces removed, a Single owned by a **non-Participant**, a Single owned by a
- * Participant, three Shared Singles, a trip-only Single, a sourceless Entry, a
- * container in `car` with unpacked contents, a container in `car` with none, a
- * trip-only container in `staging`, and a container in `packed` whose only
- * unpacked content sits **two levels down**.
+ * Participant, three Shared Singles, a trip-only Single, a depot Entry whose
+ * **Gear has never reached this replica**, a sourceless Entry, a container in
+ * `car` with unpacked contents, a container in `car` with none, a trip-only
+ * container in `staging`, and a container in `packed` whose only unpacked
+ * content sits **two levels down**.
  *
  * Several registers are left absent on purpose — the Stove's and the Map's
  * `status`, the stuff sack's `stage`, Ana's Piece `status` — so the absent
@@ -175,6 +182,11 @@ const BASE_SPECS: readonly OpSpec[] = [
   }),
   tripEntryMoved(TRIP, FLAGS, { in: 'container', entryId: BIN }),
 
+  // A depot Entry naming Gear that never lands: `entryKind` reads
+  // `undefined`, `pieceCountOf` defaults it to one, and `personPartition` has
+  // no owner register to read — its documented rule-3 clause.
+  tripEntryAdded(TRIP, UNSYNCED, { from: 'depot', gearId: 'g-not-here' }),
+
   ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
   tripEntryAdded(TRIP, HEADLAMP, { from: 'depot', gearId: 'g-lamp' }),
   tripPieceRemoved(TRIP, HEADLAMP, KIM),
@@ -268,9 +280,50 @@ describe('packingItems is the spine', () => {
     expect(items[0]?.status).toBe('not_packed')
   })
 
-  it('gives a Single, a trip-only Entry and an unknown Kind one unit each', () => {
+  it('gives a Single, a trip-only Entry and an unsynced Gear one unit each', () => {
     expect(itemsFor(ROPE).map((item) => item.units)).toEqual([1])
     expect(itemsFor(FLAGS).map((item) => item.units)).toEqual([1])
+    // `entryKind` reads `undefined` for a depot Entry whose Gear has not
+    // reached this replica — the ordinary cross-aggregate race, defaulted to
+    // one exactly as an unrecognised Kind is.
+    expect(itemsFor(UNSYNCED).map((item) => item.units)).toEqual([1])
+    expect(BASE.gear['g-not-here']).toBeUndefined()
+  })
+
+  it('gives a per-person Entry with no included Pieces no item at all', () => {
+    // Every Piece tombstoned. This matches `pieceCountOf`'s per-person row,
+    // which is `piecesOf(...).length` and so is zero here too.
+    const state = withLater(
+      tripPieceRemoved(TRIP, HEADLAMP, MARK),
+      tripPieceRemoved(TRIP, HEADLAMP, ANA),
+    )
+    const entry = tripOf(state).entries?.[HEADLAMP]
+    if (entry === undefined) throw new Error('the fold holds no Headlamp')
+
+    expect(itemsFor(HEADLAMP, state)).toEqual([])
+    expect(pieceCountOf(entry, tripOf(state), state)).toBe(0)
+    expect(totalsIn(state)).toEqual({ packed: 4, total: 12, left: 8 })
+  })
+
+  it('gives a per-person Entry on a Trip with no Participants no item at all', () => {
+    const ops = log([
+      ...aTrip({ id: 't-solo', name: 'Nobody' }),
+      ...aGear({ id: 'g-solo-lamp', name: 'Headlamp', kind: 'per_person' }),
+      tripEntryAdded('t-solo', 'e-solo-lamp', {
+        from: 'depot',
+        gearId: 'g-solo-lamp',
+      }),
+    ])
+    const state = fold(ops)
+    const trip = state.trips['t-solo']
+    if (trip === undefined) throw new Error('the fold holds no Trip t-solo')
+
+    expect(packingItems(trip, state)).toEqual([])
+    expect(packingTotals(trip, state)).toEqual({
+      packed: 0,
+      total: 0,
+      left: 0,
+    })
   })
 
   it('gives a per-person Entry one item per INCLUDED Piece', () => {
@@ -395,9 +448,9 @@ describe('countOf', () => {
 describe('packingTotals', () => {
   it('counts packed, total and left over every item', () => {
     // 3 (stove) + 1 rope + 1 tarp + 1 pan + 1 mug + 1 pot + 1 map + 1 jacket
-    // + 1 flags + 2 headlamp Pieces = 13; packed = pan, mug, pot, jacket and
-    // Mark's Piece.
-    expect(totalsIn()).toEqual({ packed: 5, total: 13, left: 8 })
+    // + 1 flags + 1 unsynced + 2 headlamp Pieces = 14; packed = pan, mug,
+    // pot, jacket and Mark's Piece.
+    expect(totalsIn()).toEqual({ packed: 5, total: 14, left: 9 })
   })
 
   it('reads the same list the spine hands out', () => {
@@ -410,11 +463,7 @@ describe('packingTotals', () => {
     // by exactly one and leaves the denominator alone.
     expect(
       totalsIn(withLater(tripEntryStatusSet(TRIP, TARP, 'packed'))),
-    ).toEqual({
-      packed: 6,
-      total: 13,
-      left: 7,
-    })
+    ).toEqual({ packed: 6, total: 14, left: 8 })
   })
 
   it('excludes containers from the denominator', () => {
@@ -424,14 +473,27 @@ describe('packingTotals', () => {
 
     expect(containers).toHaveLength(5)
     expect(itemsIn(BASE).map((item) => item.entryId)).not.toContain(CRATE)
-    expect(totalsIn().total).toBe(13)
+    expect(totalsIn().total).toBe(14)
+  })
+
+  it('sums to listTotals.pieces — one units table, not two', () => {
+    // `packingItems` reads `pieceCountOf` rather than restating its table, so
+    // the builder footer's `N PIECES` and this screen's numerator share a
+    // definition. This is what fails loudly if a later reader unshares it.
+    expect(totalsIn().total).toBe(listTotals(TRIP_STATE, BASE).pieces)
+
+    // And it keeps holding once a Bring-count moves, which is the row most
+    // likely to be edited.
+    const state = withLater(tripEntryBringCountSet(TRIP, STOVE, 7))
+    expect(totalsIn(state).total).toBe(listTotals(tripOf(state), state).pieces)
+    expect(totalsIn(state).total).toBe(18)
   })
 
   it('counts an unrecognised status as not packed', () => {
     const state = withLater(tripEntryStatusSet(TRIP, MUG, 'wedged'))
 
     expect(itemsFor(MUG, state)[0]?.status).toBe('wedged')
-    expect(totalsIn(state)).toEqual({ packed: 4, total: 13, left: 9 })
+    expect(totalsIn(state)).toEqual({ packed: 4, total: 14, left: 10 })
   })
 })
 
@@ -467,16 +529,45 @@ describe('a container group counts its subtree at any depth', () => {
   })
 
   it('agrees with the trip total once every group is added up', () => {
-    // Every item on this Trip lives in exactly one container, so the five
-    // top-level-or-nested groups double-count only the stuff sack's two.
+    // The four top-level groups plus the Loose group is the whole list, and
+    // only the stuff sack's two are double-counted — through the duffel that
+    // holds it, exactly as the screen draws them.
+    const view = tripContainmentView(TRIP_STATE, BASE)
     const grouped =
       groupTotals(BOX).total +
       groupTotals(CRATE).total +
       groupTotals(DUFFEL).total +
       groupTotals(BIN).total
-    const loose = countOf(piecesFor(HEADLAMP)).total
+    const loose = countOf(
+      itemsIn(BASE).filter(
+        (item) => view.holderOf(item.entryId).kind === 'loose',
+      ),
+    ).total
 
     expect(grouped + loose).toBe(totalsIn().total)
+  })
+
+  it('reads a passed-in items list rather than rebuilding one', () => {
+    // The same shape and reason as the optional `view`: CONTAINER mode draws
+    // one group per container, so a screen letting both default pays
+    // N × O(entries).
+    const view = tripContainmentView(TRIP_STATE, BASE)
+    const items = itemsIn(BASE)
+
+    expect(containerTotals(TRIP_STATE, BASE, CRATE, view, items)).toEqual(
+      groupTotals(CRATE),
+    )
+    // The parameter is honoured, not ignored: a narrowed list narrows the
+    // count.
+    expect(
+      containerTotals(
+        TRIP_STATE,
+        BASE,
+        CRATE,
+        view,
+        items.filter((item) => item.entryId !== STOVE),
+      ),
+    ).toEqual({ packed: 1, total: 3, left: 2 })
   })
 })
 
@@ -507,11 +598,12 @@ describe('the person partition is total (ruling A7)', () => {
     const shared = bucketsIn().find((bucket) => bucket.key.kind === 'shared')
 
     expect(shared?.items.map((item) => item.entryId).sort()).toEqual(
-      [FLAGS, MUG, PAN, POT, ROPE, STOVE, TARP].sort(),
+      [FLAGS, MUG, PAN, POT, ROPE, STOVE, TARP, UNSYNCED].sort(),
     )
-    // A trip-only Entry has no Gear to own it, and an absent owner register
-    // reads SHARED — both land here.
-    expect(shared?.count).toEqual({ packed: 3, total: 9, left: 6 })
+    // A trip-only Entry has no Gear to own it, an absent owner register reads
+    // SHARED, and a depot Entry whose Gear has not reached this replica has
+    // no register to read — all three land here.
+    expect(shared?.count).toEqual({ packed: 3, total: 10, left: 7 })
   })
 
   it('lands every non-container item in exactly one bucket', () => {
@@ -522,7 +614,7 @@ describe('the person partition is total (ruling A7)', () => {
   })
 
   it('sums to packingTotals — the assertion the drawn frame would have failed', () => {
-    // `1/2 (Mark) + 0/1 (Ana) + 1/1 (Els) + 3/9 (Shared) = 5/13`. The drawn
+    // `1/2 (Mark) + 0/1 (Ana) + 1/1 (Els) + 3/10 (Shared) = 5/14`. The drawn
     // PERSON frame was a complete partition that only carry-assignment
     // (story 23) could produce.
     const buckets = bucketsIn()
@@ -534,7 +626,7 @@ describe('the person partition is total (ruling A7)', () => {
       { packed: 1, total: 2, left: 1 },
       { packed: 0, total: 1, left: 1 },
       { packed: 1, total: 1, left: 0 },
-      { packed: 3, total: 9, left: 6 },
+      { packed: 3, total: 10, left: 7 },
     ])
     expect({ packed, total, left }).toEqual(totalsIn())
   })
