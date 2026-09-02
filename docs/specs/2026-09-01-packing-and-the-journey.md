@@ -878,12 +878,16 @@ than quietly fixed where a reader would never learn it had been wrong.
   packing vocabulary stays in `app/` and the sheet maps status → tone itself.
   `ui/Sheet` gained an optional **`description`**, rendered as Radix's
   `Dialog.Description` — see §11.2.
-- **§3.6 says `whereabouts()`'s docstring "is amended to say so"; it was
-  not.** The file is untouched and still reads *"`'trip'` arrives with stories
-  9/10"* — which S9a has now made ambiguous rather than false, since stories 9
-  and 10 have arrived and the trip slice has not. S9b writes the sentence that
-  fixes it, and closes the `WhereaboutsCard` collision entry with the same
-  keystroke.
+- **§3.6's promise about `whereabouts()`'s docstring went unkept until the
+  doc task, and is now kept.** Both of its statements — *"`'trip'` arrives with
+  stories 9/10"* — had gone from a promise to a **falsehood** the moment S9a
+  landed, because S9a *is* stories 9 and 10: the facts exist and only the read
+  is missing. §3.6 named the obligation in as many words (*"the docstring is
+  amended to say so rather than left to read as a lie"*), so it was this
+  slice's and not S9b's to inherit. Amended in the same commit as this section:
+  **S9a writes the fact, S9b reads it**, with the union stated as one member
+  wide until then. The `WhereaboutsCard` collision entry is still S9b's to
+  close.
 - **§3.1's table is the exported *questions*, not the exported surface.**
   `packing.ts` also exports `statusGlyph` (the pill's own `○ ◐ ●`),
   `countsAsDisagreement` (§11.2), `TRIP_LOOSE` — the frozen singleton, exported
@@ -918,8 +922,11 @@ here.
   permanently silent ▲. `countsAsDisagreement` is
   `!isPacked(status) && status !== A6_CARVE_OUT`, with a test walking
   `STATUSES` and asserting the differing rows are exactly `['staged']`, so a
-  second carve-out cannot appear unnoticed. **Flagged for the next design
-  round**: A6 did not reach this case.
+  second carve-out cannot appear unnoticed. **Carried into
+  `design/README.md` §1 as a code-authored line**, rather than left in this
+  dated spec alone, because that file is where the next round actually looks
+  and the round is *ruling* on this rather than reviewing it: A6 did not reach
+  the case.
 - **A container's *where* target is its group header.** No board draws it. A
   container is never a row in any of the three modes, yet ruling A2b rules on a
   container move and the Pack picker and its confirm exist to serve one — so

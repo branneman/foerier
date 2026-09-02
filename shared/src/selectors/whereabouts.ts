@@ -8,9 +8,16 @@ import {
 
 /**
  * One fact about where a piece of gear sits, from one of the sources
- * whereabouts reconciles (domain §4). S2b has only `'home'`; `'trip'` arrives
- * with stories 9/10, once a trip's packing arrangement can hold a residence
- * of its own.
+ * whereabouts reconciles (domain §4). Still only `'home'`.
+ *
+ * **S9a writes the fact and S9b reads it.** Stories 9 and 10 landed with
+ * S9a, so a trip's packing arrangement *does* now hold a residence of its
+ * own — `trip.entry_moved` and `trip.piece_moved` write it, and
+ * `selectors/tripContainment.ts` resolves it into a tree. What is missing is
+ * only the read on this side: the `'trip'` slice arrives with **S9b**,
+ * together with the quantity split. Until then this union stays one member
+ * wide, and the Depot answers `⌂ HAL ▸ LADE 2` for a headlamp that is in the
+ * duffel, in the car.
  */
 export type WhereaboutsSlice = {
   kind: 'home'
@@ -25,16 +32,17 @@ export type WhereaboutsSlice = {
  * `slices` is a list from the start, not a single answer, because story 3's
  * later clauses need more than one slice to be true at once:
  *
- * - the trip clause (stories 9/10) adds a `'trip'` slice alongside `'home'`
- *   while an active trip's entry is unresolved;
+ * - the trip clause (stories 9/10, **written by S9a and read by S9b**) adds a
+ *   `'trip'` slice alongside `'home'` while an active trip's entry is
+ *   unresolved;
  * - the quantity-split clause (story 11) lets counted and per-person gear
  *   carry both a `'home'` slice **and** a `'trip'` slice simultaneously —
  *   "×2 in Crate B, ×2 on Alps 2026" — because the home slot is kept while
  *   units are out (domain §6). Neither extension changes this shape; each
  *   only adds a slice kind.
  *
- * In S2b, before any trip residence exists, this always returns exactly one
- * `'home'` slice.
+ * Through S9a — the trip residences exist, but nothing here reads them
+ * yet — this always returns exactly one `'home'` slice.
  *
  * **Seam, not a stub:** story 3's last clause — gear whose last unpack
  * outcome was `lost` reads as "unaccounted for" — reads an outcome that does

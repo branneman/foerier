@@ -456,7 +456,9 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   restyle or replace it. Radix is tree-shakeable per-primitive, respecting the
   app-shell JS budget. Pure props-in, no data access.
 
-  **Built so far: `Sheet`, `Confirm` and `Stepper`.** `Sheet` and `Confirm`
+  **Built so far: `Chip` (S3), `Sheet` and `Confirm` (the Radix conversion),
+  `Stepper` (S7) and `PersonCircle` (S8)** — plus **`PersonCluster`**, which
+  S8 built in `ui/` and which this list has never named. `Sheet` and `Confirm`
   converted every overlay in the app in one slice
   ([its spec](specs/2026-08-29-radix-conversion.md)). Two primitives rather
   than one because a picker is a `dialog` and a decision is an `alertdialog`,
