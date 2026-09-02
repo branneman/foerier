@@ -24,16 +24,20 @@ import {
   placeRecorded,
   placeRemoved,
   placeRenamed,
+  tripContainerStageSet,
   tripCreated,
   tripDatesSet,
   tripEntryAdded,
   tripEntryBringCountSet,
+  tripEntryMoved,
   tripEntryRemoved,
+  tripEntryStatusSet,
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPhaseMoved,
   tripPieceRemoved,
   tripPieceRestored,
+  tripPieceStatusSet,
   tripRenamed,
   type OpSpec,
 } from './authoring.ts'
@@ -41,8 +45,10 @@ import type { OpEnvelope } from './ops.ts'
 import { overClaims, overClaimsFor } from './selectors/claim.ts'
 import { containmentView } from './selectors/containment.ts'
 import { entriesOf } from './selectors/entry.ts'
+import { isPacked, stageOf, statusOf } from './selectors/packing.ts'
 import { piecesOf } from './selectors/piece.ts'
 import { isActive } from './selectors/trip.ts'
+import { tripContainmentView } from './selectors/tripContainment.ts'
 import type {
   EntrySource,
   KindValue,
@@ -1725,5 +1731,313 @@ describe('convergence', () => {
         piecesOf(state.trips[trip]!.entries![entry]!, state.trips[trip]!),
       ).toEqual([])
     }
+  })
+
+  /**
+   * **S9a's headline property** (`docs/sync-protocol.md` §3.7, invariant 12
+   * honoured *structurally* rather than enforced): `residence` and `status`
+   * are two different registers on the same Entry, so no merge can ever make
+   * them agree. Device A moves the stove into the duffel; Device B marks it
+   * `not_packed`. Both apply — regardless of which order the two exchange —
+   * and the disagreement (a packed-for-the-car duffel holding an unpacked
+   * stove) survives on both replicas rather than being resolved away. That
+   * disagreement is exactly what `packing.ts`'s `disagreements` exists to
+   * surface, not to prevent.
+   */
+  it('keeps residence and status apart, so no merge can make them agree', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const duffel = ENTRY_IDS[0]
+    const stove = ENTRY_IDS[1]
+
+    a.emit(tripCreated(trip, 'Ardennes'))
+    a.emit(
+      tripEntryAdded(trip, duffel, {
+        from: 'trip_only',
+        name: 'Duffel',
+        container: true,
+      }),
+    )
+    a.emit(
+      tripEntryAdded(trip, stove, {
+        from: 'trip_only',
+        name: 'Stove',
+        container: false,
+      }),
+    )
+    exchange(a, b)
+
+    // Neither device has seen the other's op when it authors its own.
+    clock.advance(1000)
+    b.emit(tripEntryStatusSet(trip, stove, 'not_packed'))
+    clock.advance(1000)
+    a.emit(tripEntryMoved(trip, stove, { in: 'container', entryId: duffel }))
+    // `exchange` hands each replica the pair in the opposite order to the
+    // other, so both arrival orders are exercised in the one round.
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const state = r.state()
+      const entry = state.trips[trip]!.entries![stove]!
+      // Two different registers, and both writes stand — the merge has no
+      // basis to make them agree.
+      expect(entry.residence!.value).toEqual({
+        in: 'container',
+        entryId: duffel,
+      })
+      expect(entry.status!.value).toBe('not_packed')
+      expect(statusOf(entry, state)).toBe('not_packed')
+      expect(
+        tripContainmentView(state.trips[trip]!, state).holderOf(stove),
+      ).toEqual({ kind: 'container', entryId: duffel })
+    }
+  })
+
+  /**
+   * **Sync §3.3's dropped furthest-stage rule, asserted rather than
+   * assumed.** Device A sets `packed` at HLC 100; Device B sets `staged` at
+   * HLC 200 — the *backwards* move. The later write wins outright on the
+   * clock alone, even though it names an earlier stage: architecture §2's
+   * furthest-stage-wins override was dropped precisely because a mistaken
+   * `packed` must stay correctable (story 9, story 32), and this test exists
+   * because reintroducing that rule is the tempting thing a future reader
+   * will do.
+   */
+  it('lets a backwards status move win on its clock', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+
+    a.emit(tripCreated(trip, 'Ardennes'))
+    a.emit(
+      tripEntryAdded(trip, entry, {
+        from: 'trip_only',
+        name: 'Stove',
+        container: false,
+      }),
+    )
+    exchange(a, b)
+
+    // Neither device has seen the other's op when it authors its own.
+    clock.advance(1000)
+    const packed = a.emit(tripEntryStatusSet(trip, entry, 'packed'))
+    clock.advance(1000)
+    const staged = b.emit(tripEntryStatusSet(trip, entry, 'staged'))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const status = r.state().trips[trip]!.entries![entry]!.status
+      // The register carries the winning op's own stamp, not merely its
+      // value — proof the earlier `packed` arrived and lost, rather than a
+      // furthest-stage rule having quietly kept it.
+      expect(status).toEqual({
+        value: 'staged',
+        hlc: staged.hlc,
+        deviceId: staged.device_id,
+      })
+      expect(isPacked(status!.value)).toBe(false)
+    }
+    expect(packed.hlc < staged.hlc).toBe(true)
+  })
+
+  /**
+   * The trip side of "two devices forming a containment cycle break the same
+   * edge" above, over `tripContainmentView` instead of `containmentView`.
+   * Per-field LWW cannot prevent the cycle — `trip.entry_moved` on crate X and
+   * on crate Y are two ops on two different Entries' `residence` registers —
+   * so the fold legitimately holds a cycle (§3.6), and the containment
+   * selector must break it identically on both replicas: the edge whose
+   * `residence` register carries the lowest `(hlc, device_id)`.
+   */
+  it('breaks a trip-side containment cycle identically on both replicas', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const crateX = ENTRY_IDS[0]
+    const crateY = ENTRY_IDS[1]
+
+    a.emit(tripCreated(trip, 'Ardennes'))
+    a.emit(
+      tripEntryAdded(trip, crateX, {
+        from: 'trip_only',
+        name: 'Crate X',
+        container: true,
+      }),
+    )
+    a.emit(
+      tripEntryAdded(trip, crateY, {
+        from: 'trip_only',
+        name: 'Crate Y',
+        container: true,
+      }),
+    )
+    exchange(a, b)
+
+    // The two ops target different Entries, so per-field LWW cannot prevent
+    // the cycle and the fold legitimately produces one (§3.6).
+    clock.advance(1000)
+    a.emit(tripEntryMoved(trip, crateX, { in: 'container', entryId: crateY }))
+    clock.advance(1000)
+    b.emit(tripEntryMoved(trip, crateY, { in: 'container', entryId: crateX }))
+    // Each replica sees the two moves in the opposite order to the other.
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const state = r.state()
+      const view = tripContainmentView(state.trips[trip]!, state)
+      // The lowest `(hlc, device_id)` in the cycle is X's edge, so X's is the
+      // edge reported loose — on every replica, because every replica holds
+      // identical registers.
+      expect([...view.brokenEdges]).toEqual([crateX])
+      expect(view.holderOf(crateX)).toEqual({ kind: 'loose' })
+      expect(view.holderOf(crateY)).toEqual({
+        kind: 'container',
+        entryId: crateX,
+      })
+      expect(view.childrenOf({ kind: 'container', entryId: crateX })).toEqual([
+        crateY,
+      ])
+      expect(view.childrenOf({ kind: 'loose' })).toEqual([crateX])
+    }
+  })
+
+  /**
+   * Different registers on different entity paths: a `trip.container_stage_set`
+   * on a container and a `trip.entry_moved` of one of its **contents** never
+   * contest one another. Device A stages the duffel for the car; concurrently,
+   * Device B moves the stove out of the duffel and into the crate. Both
+   * writes stand — the duffel's stage moves regardless of what is inside it,
+   * and the stove leaves with the holder Device B actually named. The
+   * concurrent stage change on its old container neither blocks the move nor
+   * pulls it back, which is `EntryState.stage`'s own rule: "no fan-out and no
+   * cross-entity write."
+   */
+  it('survives a container stage_set concurrent with a content entry_moved', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const duffel = ENTRY_IDS[0]
+    const crate = ENTRY_IDS[1]
+    const stove = ENTRY_IDS[2]
+
+    a.emit(tripCreated(trip, 'Ardennes'))
+    a.emit(
+      tripEntryAdded(trip, duffel, {
+        from: 'trip_only',
+        name: 'Duffel',
+        container: true,
+      }),
+    )
+    a.emit(
+      tripEntryAdded(trip, crate, {
+        from: 'trip_only',
+        name: 'Crate',
+        container: true,
+      }),
+    )
+    a.emit(
+      tripEntryAdded(trip, stove, {
+        from: 'trip_only',
+        name: 'Stove',
+        container: false,
+      }),
+    )
+    a.emit(tripEntryMoved(trip, stove, { in: 'container', entryId: duffel }))
+    exchange(a, b)
+
+    // Neither device has seen the other's op when it authors its own — B's
+    // move of the stove is the earlier of the two.
+    clock.advance(1000)
+    b.emit(tripEntryMoved(trip, stove, { in: 'container', entryId: crate }))
+    clock.advance(1000)
+    a.emit(tripContainerStageSet(trip, duffel, 'car'))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const state = r.state()
+      const tripState = state.trips[trip]!
+      expect(tripState.entries![duffel]!.stage!.value).toBe('car')
+      expect(stageOf(tripState.entries![duffel]!, state)).toBe('car')
+      // The stove left with the holder B actually named — the concurrent
+      // stage change on its old container neither blocked the move nor
+      // pulled it back.
+      expect(tripState.entries![stove]!.residence!.value).toEqual({
+        in: 'container',
+        entryId: crate,
+      })
+      const view = tripContainmentView(tripState, state)
+      expect(view.holderOf(stove)).toEqual({
+        kind: 'container',
+        entryId: crate,
+      })
+      expect(view.childrenOf({ kind: 'container', entryId: duffel })).toEqual(
+        [],
+      )
+      expect(view.childrenOf({ kind: 'container', entryId: crate })).toEqual([
+        stove,
+      ])
+    }
+  })
+
+  /**
+   * `SET EVERYONE` (`docs/design/README.md`'s per-person Piece sheet) is N
+   * independent `trip.piece_status_set` ops — one per Piece — never one
+   * batch op (spec §9's own named scenario). So a concurrent single-Piece
+   * write on another Device contests only the one register it addresses, and
+   * resolves by plain LWW exactly as an ordinary Piece write does: the rest
+   * of the batch is untouched, not rolled back with it.
+   */
+  it("resolves SET EVERYONE's batch per Piece, not all-or-nothing", () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+    const els = PERSON_IDS[0]
+    const mark = PERSON_IDS[1]
+
+    a.emit(tripCreated(trip, 'Ardennes'))
+    a.emit(tripParticipantAdded(trip, els))
+    a.emit(tripParticipantAdded(trip, mark))
+    a.emit(
+      tripEntryAdded(trip, entry, {
+        from: 'trip_only',
+        name: 'Headlamps',
+        container: false,
+      }),
+    )
+    exchange(a, b)
+
+    // Device A taps `SET EVERYONE → PACKED`: two independent ops, one per
+    // Piece, both authored in the same gesture.
+    clock.advance(1000)
+    const markPacked = a.emit(tripPieceStatusSet(trip, entry, mark, 'packed'))
+    const elsPacked = a.emit(tripPieceStatusSet(trip, entry, els, 'packed'))
+    // Neither device has seen the other's op — Device B, concurrently, sets
+    // just Els's Piece back to `staged`, later than the batch.
+    clock.advance(1000)
+    const elsStaged = b.emit(tripPieceStatusSet(trip, entry, els, 'staged'))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const pieces = r.state().trips[trip]!.entries![entry]!.pieces!
+      // Mark's Piece is untouched by the conflict on Els's — a different
+      // register, never contested, still carrying the batch's own stamp.
+      expect(pieces[mark]!.status).toEqual({
+        value: 'packed',
+        hlc: markPacked.hlc,
+        deviceId: markPacked.device_id,
+      })
+      // Els's Piece resolves by plain LWW between the two writes that did
+      // contest it — B's later single write beats A's batch write, on the
+      // clock alone.
+      expect(pieces[els]!.status).toEqual({
+        value: 'staged',
+        hlc: elsStaged.hlc,
+        deviceId: elsStaged.device_id,
+      })
+    }
+    expect(elsPacked.hlc < elsStaged.hlc).toBe(true)
   })
 })
