@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { aGear, anOp, aTrip, hlcAt } from '../../testUtils/index.ts'
 import {
+  gearRetired,
   tripContainerStageSet,
   tripEntryAdded,
   tripEntryBringCountSet,
@@ -191,6 +192,30 @@ describe('the four loose-reasons', () => {
     ]
 
     expect(viewOf(fold(ops)).holderOf('e-stove')).toEqual({ kind: 'loose' })
+  })
+
+  it('keeps resolving a pointer at a container whose Gear has been retired', () => {
+    // `containment.ts`'s reason 2 makes retired Gear an invalid *home* holder.
+    // There is deliberately no trip twin: retirement says the household no
+    // longer keeps the thing in the depot, and says nothing about whether the
+    // duffel already packed for Saturday still holds the stove. Spec §3.2
+    // lists three pointer reasons and retirement is not among them, so this
+    // test exists to stop a later "fix" cutting live edges mid-pack-out.
+    const ops = [
+      ...theTrip,
+      ...aContainerEntry('g-crate', 'e-crate', 'Crate B', 2),
+      ...anEntry('g-stove', 'e-stove', 'Stove', 3),
+      one(tripEntryMoved(TRIP, 'e-stove', { in: 'container', entryId: 'e-crate' }), 4), // prettier-ignore
+      one(gearRetired('g-crate'), 5),
+    ]
+    const state = fold(ops)
+
+    expect(state.gear['g-crate']?.retired?.value).toBe(true)
+    expect(viewOf(state).holderOf('e-stove')).toEqual({
+      kind: 'container',
+      entryId: 'e-crate',
+    })
+    expect(viewOf(state).brokenEdges.size).toBe(0)
   })
 
   it("reads a pointer at a trip-only container through isContainerEntry's trip-only half", () => {
@@ -449,7 +474,56 @@ describe('a container move moves its contents through the pointer', () => {
     // One register written, on the duffel alone.
     expect(entryOf(after, 'e-duffel').stage?.value).toBe('car')
     expect(entryOf(after, 'e-crate').stage).toBeUndefined()
-    expect(entryOf(after, 'e-stove').status?.value).toBeUndefined()
+    expect(entryOf(after, 'e-stove').status).toBeUndefined()
+  })
+  it('carries a nested subtree with one trip.entry_moved — story 10, the headline claim', () => {
+    // The block's own title: duffel → crate → stove, and the duffel moves
+    // into the trailer. One op, one register, and all three things move,
+    // because containment is a pointer held by the contained thing and the
+    // contents already point at the duffel.
+    const before = fold([
+      ...theTrip,
+      ...aContainerEntry('g-trailer', 'e-trailer', 'Trailer', 2),
+      ...aContainerEntry('g-duffel', 'e-duffel', 'Duffel 90 L', 3),
+      ...aContainerEntry('g-crate', 'e-crate', 'Crate B', 4),
+      ...anEntry('g-stove', 'e-stove', 'Stove', 5),
+      one(tripEntryMoved(TRIP, 'e-crate', { in: 'container', entryId: 'e-duffel' }), 6), // prettier-ignore
+      one(tripEntryMoved(TRIP, 'e-stove', { in: 'container', entryId: 'e-crate' }), 7), // prettier-ignore
+    ])
+
+    expect(tripPath(tripOf(before), before, 'e-stove')).toEqual([
+      { entryId: 'e-duffel', name: 'Duffel 90 L' },
+      { entryId: 'e-crate', name: 'Crate B' },
+    ])
+
+    const after = fold(
+      [one(tripEntryMoved(TRIP, 'e-duffel', { in: 'container', entryId: 'e-trailer' }), 9)], // prettier-ignore
+      before,
+    )
+
+    // Every descendant gained the new ancestor, outermost first.
+    expect(tripPath(tripOf(after), after, 'e-stove')).toEqual([
+      { entryId: 'e-trailer', name: 'Trailer' },
+      { entryId: 'e-duffel', name: 'Duffel 90 L' },
+      { entryId: 'e-crate', name: 'Crate B' },
+    ])
+    expect(tripPath(tripOf(after), after, 'e-crate')).toEqual([
+      { entryId: 'e-trailer', name: 'Trailer' },
+      { entryId: 'e-duffel', name: 'Duffel 90 L' },
+    ])
+    // One register written, on the duffel alone — nothing fanned out.
+    expect(entryOf(after, 'e-duffel').residence?.value).toEqual({
+      in: 'container',
+      entryId: 'e-trailer',
+    })
+    expect(entryOf(after, 'e-crate').residence?.value).toEqual({
+      in: 'container',
+      entryId: 'e-duffel',
+    })
+    expect(entryOf(after, 'e-stove').residence?.value).toEqual({
+      in: 'container',
+      entryId: 'e-crate',
+    })
   })
 })
 

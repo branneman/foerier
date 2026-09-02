@@ -28,10 +28,24 @@ import { entriesOf, entryLabel, isContainerEntry } from './entry.ts'
  * 3. It names an Entry that is **not a container** ({@link isContainerEntry}).
  * 4. It is part of a **cycle** and was the edge broken.
  *
- * One difference from the home tree worth stating: **`trip.entry_removed` has
- * no restore**, so a pointer into a removed container is permanent rather
- * than recoverable. It still reads loose rather than vanishing — nothing is
- * deleted, and the Entry re-added under a new id is a different Entry.
+ * Two differences from the home tree are worth stating, because a reader
+ * mapping these four reasons onto `containment.ts`'s four will otherwise hunt
+ * for them:
+ *
+ * - **`trip.entry_removed` has no restore**, so a pointer into a removed
+ *   container is permanent rather than recoverable. It still reads loose
+ *   rather than vanishing — nothing is deleted, and the Entry re-added under a
+ *   new id is a different Entry.
+ * - **There is no trip twin of the home tree's *retired* reason, and there
+ *   must not be one.** `containment.ts`'s reason 2 makes retired Gear an
+ *   invalid holder; here a depot Entry whose Gear is retired still resolves as
+ *   a container, because {@link isContainerEntry} reads `container` and
+ *   nothing else. That is deliberate: retirement is a **home** fact — it says
+ *   the household no longer keeps the thing in the depot — and it says nothing
+ *   about whether the duffel already packed for Saturday still holds the
+ *   stove. Spec §3.2 lists three pointer reasons and retirement is not among
+ *   them. Adding the gate would silently cut live edges on a Trip mid-pack-out,
+ *   so a test pins the intent.
  *
  * **Every iteration over entry ids is sorted**, for `containment.ts`'s own
  * stated reason: `Object.keys` returns insertion order, which two replicas
@@ -40,17 +54,16 @@ import { entriesOf, entryLabel, isContainerEntry } from './entry.ts'
  * **cannot see**, because it compares folded state and this runs downstream
  * of the fold. Note that `entriesOf`'s order is by *label* and is not that
  * order — sort the ids here.
- */
-
-/**
- * The resolved holder — what the pointer turned out to mean.
+ *
+ * ---
  *
  * **Note `kind`, not `in`**, and `entryId` rather than a bare `id`: a
- * {@link TripResidence} is the raw pointer as written, this is what it
- * resolved to, and they are deliberately different types so the two cannot be
- * confused at a call site. There is **no Place member** — the trip world
- * resolves against Entries and nothing else, which is why this has two
- * members where {@link HolderRef} has three.
+ * {@link TripHolderRef} is the resolved holder — what the pointer turned out
+ * to mean — where a `TripResidence` is the raw pointer as written. They are
+ * deliberately different types so the two cannot be confused at a call site.
+ * There is **no Place member** — the trip world resolves against Entries and
+ * nothing else, which is why this has two members where `HolderRef` has
+ * three.
  */
 export type TripHolderRef =
   { kind: 'container'; entryId: string } | { kind: 'loose' }
@@ -164,6 +177,11 @@ export function tripContainmentView(
   trip: TripState,
   state: DepotState,
 ): TripContainmentView {
+  // `entriesOf`'s label sort is computed and then thrown away by the `.sort()`
+  // below, and that is the right trade: this function needs *which* Entries a
+  // reader may see, `entriesOf` is the one place that answers it (removed and
+  // sourceless in one predicate), and re-deriving the filter here to save a
+  // sort is precisely the drift this file exists to avoid.
   const visible = new Map<string, EntryState>(
     entriesOf(trip, state).map((entry): [string, EntryState] => [
       entry.id,
@@ -176,6 +194,10 @@ export function tripContainmentView(
   const holders = new Map<string, TripHolderRef>()
   for (const id of entryIds) {
     const entry = visible.get(id)
+    // The `undefined` arm is unreachable — `entryIds` are `visible`'s own keys
+    // — and exists for `Map.get`'s signature, not for a real case. Kept so
+    // this loop diffs line-for-line against `containment.ts`, where the
+    // equivalent arm *is* live because it indexes a record it did not build.
     holders.set(
       id,
       entry === undefined ? LOOSE : resolvePointer(visible, state, entry),
@@ -271,6 +293,14 @@ export interface TripPathSegment {
  * which hands back `''` and lets the caller choose a placeholder, because the
  * trip world already has exactly one place that decides what an Entry is
  * called.
+ *
+ * **The price, and it is a constraint on every future caller:** a segment can
+ * no longer distinguish a nameless container from one genuinely named `—`.
+ * A caller that needs *unnamed* as a distinct state — to dim the segment, say
+ * — must be given a **boolean on the segment**, decided here where the raw
+ * `source` is in hand. String-comparing `'—'` at a call site would re-derive
+ * the naming rule from its own output, which is exactly the drift routing the
+ * name through `entryLabel` was meant to prevent.
  *
  * **Terminates on every input.** The effective holder graph is acyclic by
  * construction, every cycle having had an edge broken; the `visited` guard
