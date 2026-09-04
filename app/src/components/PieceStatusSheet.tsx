@@ -65,12 +65,17 @@ import styles from './PieceStatusSheet.module.css'
  * ## Status and residence come from `packingItems`, not a second derivation
  *
  * `shared/src/selectors/packing.ts` already computes, for exactly this set
- * of Pieces, `status: pieceStatusOf(...) ?? 'not_packed'` and
- * `residence: piece?.residence?.value ?? entryResidence` — with a docblock
- * explaining why the two fallbacks are deliberately asymmetric, and an
- * explicit "never null here" guard against a container Entry's `null`
- * status. Restating either here would be the `ownerOf`/`isActive` drift this
- * repo keeps catching: if that asymmetry is ever ruled on again, the packing
+ * of Pieces, `status: pieceStatusOf(...) ?? 'not_packed'` — with an explicit
+ * "never null here" guard against a container Entry's `null` status — and
+ * each Piece's **effective** residence, resolved through the Trip's
+ * containment view. **A Piece with no residence register of its own reads
+ * `loose`** (§5e C0): for per-person gear *where it is* is only ever a
+ * per-Piece fact, so there is no Entry-level residence to fall back to —
+ * `entryResidenceOf` answers `null` for that Kind and neither that selector
+ * nor this sheet asks it for one. (S9a's layered read, Piece-then-Entry, is
+ * what C0 overturned; its spec is a dated record and is not edited.)
+ * Restating either read here would be the `ownerOf`/`isActive` drift this
+ * repo keeps catching: if either is ever ruled on again, the packing
  * screen's rows and this sheet's rows would silently disagree about the
  * same Piece. So this component filters {@link packingItems} to this
  * Entry's `kind === 'piece'` rows and resolves only the **label** — the one

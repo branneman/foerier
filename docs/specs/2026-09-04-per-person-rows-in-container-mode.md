@@ -262,8 +262,10 @@ the change in place, and a status tap has never confirmed.
 
 ## 10. What changed during implementation
 
-Two things this document would otherwise mislead a reader about. Recorded here
-rather than edited into the sections above, the precedent
+Two things this document would otherwise mislead a reader about, and two
+findings the final whole-branch review turned up that are **recorded rather
+than fixed**. All four sit here rather than edited into the sections above, the
+precedent
 [`trips-and-phases.md`](2026-08-29-trips-and-phases.md) §10 and
 [`the-gear-list.md`](2026-08-29-the-gear-list.md) §11 set: a dated spec is left
 as it was written, and what moved lives in its own section.
@@ -300,3 +302,22 @@ lists it is the confusing outcome, and `Loose` means `NOT IN A CONTAINER`, which
 is true of a set with no Pieces. It contributes **0 to every count either way**,
 so nothing arithmetic turns on it, and the boards may prefer it absent — one
 line to change if a round says so.
+
+**An Entry whose id is literally `loose` would collide with the `Loose`
+group.** `PackingGroup.key` is the raw entry id for a container and the
+literal `'loose'` for the group that closes the list, so such an Entry would
+share a React key and a heading id with it. **Pre-existing and not introduced
+by this round** — the key predates it unchanged — and recorded only because
+this round worked in the neighbouring code. The new `byHolder` index is immune
+by construction: its keys carry a `container:` prefix, which is what
+`LOOSE_KEY`'s own comment says can never collide. Ids are minted, not typed, so
+the case is not reachable in practice; the fix, if one is ever wanted, is the
+same prefix on the group key.
+
+**The board's §01 frame is transcribed as a fixture, but its group header
+counts are not asserted from it.** The split that frame draws is pinned — the
+rows, their scoping and their `N ELSEWHERE` — and the header arithmetic C5
+claims is pinned too, by the catcher's `0/3` and `0/0` and the Loose test's
+`0/2`. What is missing is the two meeting: no test reads the frame's own
+headers off the fixture the frame supplied. Not a gap in coverage of the rule,
+only in coverage of the drawn example.

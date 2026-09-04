@@ -27,6 +27,7 @@ import {
   type PackingItem,
   type PersonBucket,
   type StageValue,
+  type TripContainmentView,
   type TripHolderRef,
   type TripResidence,
   type TripState,
@@ -168,6 +169,15 @@ interface PersonGroup {
  * shapes share {@link packingItems} underneath anyway.
  */
 interface PackingView {
+  /**
+   * The whole Trip's items, built once beside the containment view that
+   * resolved them and handed to every reader on the screen that wants one —
+   * the row cluster, the Pack picker's `● NOW`. A second
+   * `packingItems(trip, state)` call anywhere here builds a second
+   * containment view with it (the parameter defaults), which is the
+   * N × O(entries) `containerTotals`' docstring asks callers not to pay.
+   */
+  readonly items: readonly PackingItem[]
   readonly container: ContainerView
   readonly person: readonly PersonGroup[]
   /** ALL mode's rows — every non-container Entry in {@link entriesOf} order,
@@ -178,6 +188,7 @@ interface PackingView {
 }
 
 const EMPTY_VIEW: PackingView = {
+  items: [],
   container: { groups: [], hasContainer: false, disagreementOf: new Map() },
   person: [],
   allEntryIds: [],
@@ -195,11 +206,16 @@ const EMPTY_VIEW: PackingView = {
  * drawn order is re-imposed by filtering the drawn list rather than sorting
  * the walk's.
  *
- * `view` and `items` are built **once** and threaded through
+ * `view` and `items` are built **once** — by {@link packingView}, which is
+ * the screen's single memo over the fold — and threaded through here into
  * {@link containerTotals} and {@link disagreements}: each is O(entries) to
  * build, and this screen draws one group per container, so letting them
  * default would pay N × O(entries) on the list the app is used on most —
- * `containerTotals`' own docstring asks for exactly this.
+ * `containerTotals`' own docstring asks for exactly this. They are
+ * parameters rather than locals so that the one pair the screen holds is
+ * the pair every count, row and residence on it is computed from: a view
+ * built here and items built elsewhere would be two reads of the same fold
+ * with nothing making them agree.
  *
  * ## The tree comes from the view; the rows come from the items
  *
@@ -219,10 +235,13 @@ const EMPTY_VIEW: PackingView = {
  * membership {@link containerTotals} counts by, which is what makes a header
  * agree with the rows drawn beneath it.
  */
-function containerView(trip: TripState, state: DepotState): ContainerView {
-  const view = tripContainmentView(trip, state)
+function containerView(
+  trip: TripState,
+  state: DepotState,
+  view: TripContainmentView,
+  items: readonly PackingItem[],
+): ContainerView {
   const entries = entriesOf(trip, state)
-  const items = packingItems(trip, state, view)
 
   /** `holder`'s children in the **drawn** order. The container tree only —
    * see the docstring. */
@@ -501,15 +520,28 @@ function personGroups(trip: TripState, state: DepotState): PersonGroup[] {
  * items it draws does. For a single or counted Entry that is its own status;
  * for a per-person Entry drawn as one clustered row it is any unpacked Piece,
  * since a row showing `1/3` still holds two pieces of work.
+ *
+ * **The containment view and the items are built here and nowhere else on
+ * this screen.** Both are O(entries) and both default to building themselves
+ * when a caller omits them, so every read that let them default paid for
+ * another pair — one per container group, one per per-person row. They are
+ * built together, from the same `trip` and `state` this one memo is keyed
+ * on, and threaded down; that is also what makes them consistent, since a
+ * view resolved from one fold and items resolved from a later one would
+ * place rows the counts disagree with.
  */
 function packingView(trip: TripState, state: DepotState): PackingView {
+  const containment = tripContainmentView(trip, state)
+  const items = packingItems(trip, state, containment)
+
   const entriesWithLeft = new Set<string>()
-  for (const item of packingItems(trip, state)) {
+  for (const item of items) {
     if (!isPacked(item.status)) entriesWithLeft.add(item.entryId)
   }
 
   return {
-    container: containerView(trip, state),
+    items,
+    container: containerView(trip, state, containment, items),
     person: personGroups(trip, state),
     allEntryIds: entriesOf(trip, state)
       .filter((entry) => !isContainerEntry(entry, state))
@@ -764,7 +796,9 @@ export function Packing() {
     // A Piece's residence is a per-Piece fact and nothing else (ruling C0) —
     // `packingItems`' read, taken from there rather than restated so the
     // picker's `● NOW` cannot disagree with the sheet's `▸ DUFFEL 90 L`.
-    for (const item of packingItems(trip, state)) {
+    // From the memo's own list rather than a fresh call: the same items the
+    // rows behind the picker were drawn from, and no second containment view.
+    for (const item of view.items) {
       if (item.kind !== 'piece') continue
       if (item.entryId !== target.entryId) continue
       if (item.personId !== target.personId) continue
@@ -860,6 +894,7 @@ export function Packing() {
       <PackingRow
         tripId={tripId}
         entryId={item.entryId}
+        tripItems={view.items}
         showResidence
         onOpenPicker={() =>
           setPicker(
@@ -1142,6 +1177,7 @@ export function Packing() {
                           <PackingRow
                             tripId={tripId}
                             entryId={row.entryId}
+                            tripItems={view.items}
                             // Spread rather than passed: under
                             // `exactOptionalPropertyTypes` an absent optional
                             // and one present-and-`undefined` are different
@@ -1296,6 +1332,7 @@ export function Packing() {
                   <PackingRow
                     tripId={tripId}
                     entryId={entryId}
+                    tripItems={view.items}
                     showResidence
                     onOpenPicker={() => setPicker({ kind: 'entry', entryId })}
                     onOpenPieceSheet={() => setSheetEntryId(entryId)}

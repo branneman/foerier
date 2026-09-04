@@ -193,6 +193,15 @@ export interface PackingRowProps {
   /** End the meta line in the item's trip residence — PERSON and ALL mode,
    * where no group header states *where*. See the docstring. */
   showResidence?: boolean
+  /**
+   * The whole Trip's {@link packingItems}, when the caller already holds
+   * them. Optional for the reason `containerTotals`' `view` and `items` are:
+   * a screen builds one list, not one per row — and omitting it here builds
+   * a containment view *and* a list per row, which is the N × O(entries)
+   * that docstring asks callers not to pay. The packing screen threads its
+   * one memo through; the default is for a caller that draws a single row.
+   */
+  tripItems?: readonly PackingItem[]
   /** The row body's *where*: the Pack picker, for this Entry or Piece. */
   onOpenPicker: () => void
   /** The per-person cluster's control, and a per-person row's own body. */
@@ -219,6 +228,7 @@ export function PackingRow({
   personId,
   scopedPersonIds,
   showResidence = false,
+  tripItems,
   onOpenPicker,
   onOpenPieceSheet,
 }: PackingRowProps) {
@@ -239,13 +249,16 @@ export function PackingRow({
    * Gated on the Kind rather than computed and thrown away: `packingItems`
    * is O(entries), and CONTAINER mode draws one of these per row, so the
    * ungated version would pay O(rows × entries) on the list the app is used
-   * on most — `containerTotals`' own note, one level down.
+   * on most — `containerTotals`' own note, one level down. For the same
+   * reason it reads {@link PackingRowProps.tripItems} when the caller holds
+   * them: an omitted list is built here *with a containment view of its
+   * own*, once per row.
    */
   const pieces = useMemo<readonly RowPiece[]>(() => {
     if (trip === undefined || entry === undefined) return []
     if (entryKind(entry, state) !== 'per_person') return []
     const byPerson = new Map<string, PackingItem>()
-    for (const item of packingItems(trip, state)) {
+    for (const item of tripItems ?? packingItems(trip, state)) {
       if (item.kind !== 'piece' || item.entryId !== entryId) continue
       byPerson.set(item.personId, item)
     }
@@ -261,7 +274,7 @@ export function PackingRow({
         },
       ]
     })
-  }, [state, trip, entry, entryId])
+  }, [state, trip, entry, entryId, tripItems])
 
   // The ids are the caller's, and a row can outlive the Entry it names by a
   // fold — another Device's `trip.entry_removed`, arriving between render
@@ -332,8 +345,9 @@ export function PackingRow({
     // `MIXED`, and it needs no branch saying so.
     //
     // `pieces` is read rather than `packingItems` walked a second time: that
-    // memo already holds every Piece of this Entry with the layered residence
-    // read applied.
+    // memo already holds every Piece of this Entry with its own **effective**
+    // residence applied — a Piece naming none reads `loose` (§5e C0), never
+    // its Entry's, which is the read C0 overturned S9a's layering for.
     const subject =
       personId === undefined
         ? pieces
