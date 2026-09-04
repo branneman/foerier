@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   aGear,
+  aPlace,
   anOp,
   aPerson,
   aTrip,
@@ -10,6 +11,7 @@ import {
   stamp,
 } from '../../testUtils/index.ts'
 import {
+  gearRehomed,
   gearRetired,
   gearTagApplied,
   gearTagRemoved,
@@ -21,6 +23,7 @@ import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
 import type { DepotState } from '../state.ts'
 import { normalizeTag, type TagString } from '../tags.ts'
+import { visibleGear } from './depot.ts'
 import {
   dimension,
   dimensionValues,
@@ -446,6 +449,204 @@ describe('the person dimension', () => {
       one(gearRetired('g1'), 3),
     ])
     expect(dimensionValues(state, 'person')).toEqual([])
+  })
+})
+
+/**
+ * A Place and two nested containers, arranged so every case the `container`
+ * dimension has to answer is exercised in one fixture: nested two deep
+ * (both ancestors carried, D5's "any depth"), directly in a Place (the
+ * sentinel — a home, and not Loose, D4), and loose (the sentinel again, for
+ * a different reason). The nesting is `homePath`'s own fixture
+ * (`containment.test.ts`'s "outermost first" case), reused rather than
+ * invented, so a reader who knows that tree already knows this one.
+ *
+ * | id | name | in |
+ * | --- | --- | --- |
+ * | `shelf` | Shelf L-Top | Attic (a Place) — itself a container |
+ * | `crate` | Crate B | Shelf L-Top |
+ * | `tent` | Tent | Crate B — carries `[shelf, crate]` |
+ * | `lamp` | Lamp | Attic directly — no container ancestor |
+ * | `rope` | Rope | nowhere at all |
+ */
+function aContainedDepot(): DepotState {
+  return fold([
+    ...sequence(aPlace({ id: 'attic', name: 'Attic' }), 1),
+    ...sequence(
+      aGear({ id: 'shelf', name: 'Shelf L-Top', container: true }),
+      2,
+    ),
+    ...sequence(aGear({ id: 'crate', name: 'Crate B', container: true }), 3),
+    ...sequence(aGear({ id: 'tent', name: 'Tent' }), 4),
+    ...sequence(aGear({ id: 'lamp', name: 'Lamp' }), 5),
+    ...sequence(aGear({ id: 'rope', name: 'Rope' }), 6),
+    one(gearRehomed('shelf', { in: 'place', id: 'attic' }), 10),
+    one(gearRehomed('crate', { in: 'gear', id: 'shelf' }), 11),
+    one(gearRehomed('tent', { in: 'gear', id: 'crate' }), 12),
+    one(gearRehomed('lamp', { in: 'place', id: 'attic' }), 13),
+  ])
+}
+
+describe("dimension('container')", () => {
+  it('carries every container ancestor, outermost first — the filter reaches any depth (D5)', () => {
+    const state = aContainedDepot()
+    expect(dimension('container').valuesOf(state.gear['tent']!, state)).toEqual(
+      ['shelf', 'crate'],
+    )
+  })
+
+  it('returns the sentinel for gear residing directly in a Place — a home, and not Loose (D4)', () => {
+    const state = aContainedDepot()
+    expect(dimension('container').valuesOf(state.gear['lamp']!, state)).toEqual(
+      ['none'],
+    )
+  })
+
+  it('returns the sentinel for loose gear too', () => {
+    const state = aContainedDepot()
+    expect(dimension('container').valuesOf(state.gear['rope']!, state)).toEqual(
+      ['none'],
+    )
+  })
+
+  it('formats the sentinel as "Not in a container", sentence case — CAPS is the chip’s own transform', () => {
+    const state = aContainedDepot()
+    expect(dimension('container').format('none', state)).toBe(
+      'Not in a container',
+    )
+  })
+
+  it("formats a container id as the container gear's own name", () => {
+    const state = aContainedDepot()
+    expect(dimension('container').format('crate', state)).toBe('Crate B')
+    expect(dimension('container').format('shelf', state)).toBe('Shelf L-Top')
+  })
+
+  it('falls back to an em dash for a container id this replica has not folded', () => {
+    // The `dimension('trip')` and `dimension('person')` precedent: never
+    // throws, draws the same glyph an unrecorded id does everywhere else.
+    expect(
+      dimension('container').format('ghost-crate', aContainedDepot()),
+    ).toBe('—')
+  })
+
+  it('is single arity, hiding its ghost chip once active — invariant 1', () => {
+    expect(dimension('container').arity).toBe('single')
+  })
+
+  it('reads a retired container as holding nothing, exactly as containmentView does', () => {
+    // containmentView's reason 2: gear inside a retired Container reads
+    // loose. This dimension must read that same *effective* fact off the
+    // memo, never re-derive it from the raw residence pointer — the memo is
+    // built from one `containmentView(state)` call for exactly this reason.
+    const state = fold([
+      ...sequence(aGear({ id: 'crate', name: 'Crate B', container: true }), 1),
+      ...sequence(aGear({ id: 'tent', name: 'Tent' }), 2),
+      one(gearRehomed('tent', { in: 'gear', id: 'crate' }), 3),
+      one(gearRetired('crate'), 4),
+    ])
+    expect(dimension('container').valuesOf(state.gear['tent']!, state)).toEqual(
+      ['none'],
+    )
+  })
+
+  it('orders the sentinel first even when a tie would otherwise put a real container id ahead of it', () => {
+    // Same shape as `dimension('trip')`'s own tie test: a container's
+    // `systemIdSource` id is hex, and every hex digit sorts *before* the
+    // letter `n` — so a plain count-desc, value-asc rule would rank a tied
+    // container ahead of the literal string `'none'`. The pin must hold on
+    // the tie, not just when the sentinel already has the higher count.
+    const containerSpecs = aGear({ name: 'Crate B', container: true })
+    const containerId = containerSpecs[0]!.aggregate_id
+    const state = fold([
+      ...sequence(containerSpecs, 1),
+      ...sequence(aGear({ id: 'g1', name: 'Axe' }), 2),
+      ...sequence(aGear({ id: 'g3', name: 'Crampons' }), 3),
+      ...sequence(aGear({ id: 'g4', name: 'Tent' }), 4),
+      one(gearRehomed('g3', { in: 'gear', id: containerId }), 5),
+      one(gearRehomed('g4', { in: 'gear', id: containerId }), 6),
+    ])
+    // The container itself is loose (`crate` carries no container of its
+    // own) and `g1` carries none either → sentinel count 2, tying the
+    // container's own count of 2 (`g3`, `g4`). The pin must hold on the
+    // tie, not just when the sentinel already has the higher count.
+    expect(dimensionValues(state, 'container')).toEqual([
+      { value: 'none', count: 2 },
+      { value: containerId, count: 2 },
+    ])
+  })
+})
+
+describe('the container-ancestors memo', () => {
+  it('is memoised: two calls against the same state return the same array', () => {
+    const state = aContainedDepot()
+    const first = dimension('container').valuesOf(state.gear['tent']!, state)
+    const second = dimension('container').valuesOf(state.gear['tent']!, state)
+    expect(first).toBe(second)
+  })
+
+  it('rebuilds when the fold produces a new state, and answers the new fact', () => {
+    const before = aContainedDepot()
+    expect(
+      dimension('container').valuesOf(before.gear['tent']!, before),
+    ).toEqual(['shelf', 'crate'])
+
+    const after = fold([one(gearRehomed('tent', { in: 'loose' }), 50)], before)
+    expect(after).not.toBe(before)
+    expect(dimension('container').valuesOf(after.gear['tent']!, after)).toEqual(
+      ['none'],
+    )
+    // `before`'s own answer is untouched.
+    expect(
+      dimension('container').valuesOf(before.gear['tent']!, before),
+    ).toEqual(['shelf', 'crate'])
+  })
+})
+
+describe('sliceDepot — grouping by container', () => {
+  it('groups by the immediate container only, even though the filter reaches every ancestor (D5)', () => {
+    const result = sliceDepot(aContainedDepot(), slice({ group: 'container' }))
+    // `tent` carries both `shelf` and `crate` as *values* (D5's "any depth"
+    // filter), but its bucket is `crate` alone — the immediate container,
+    // never the outer one too.
+    expect(
+      result.groups.find((g) => g.key === 'crate')?.gear.map((g) => g.id),
+    ).toEqual(['tent'])
+    // `crate` is itself a piece of gear, and it resides in `shelf` — so it
+    // gets its own bucket under `shelf`, exactly as any other gear would.
+    // The partition covers every visible piece of gear, containers included.
+    expect(
+      result.groups.find((g) => g.key === 'shelf')?.gear.map((g) => g.id),
+    ).toEqual(['crate'])
+  })
+
+  it('puts the sentinel first, labelled identically to the dimension’s own chip (D4)', () => {
+    const result = sliceDepot(aContainedDepot(), slice({ group: 'container' }))
+    expect(result.groups[0]?.key).toBe('none')
+    expect(result.groups[0]?.label).toBe('Not in a container')
+  })
+
+  it('is a partition: every visible piece of gear falls into exactly one bucket, summing to the total', () => {
+    const state = aContainedDepot()
+    const result = sliceDepot(state, slice({ group: 'container' }))
+    const total = result.groups.reduce((sum, g) => sum + g.gear.length, 0)
+    expect(total).toBe(visibleGear(state).length)
+    // Every id appears exactly once across all buckets.
+    const ids = result.groups.flatMap((g) => g.gear.map((gear) => gear.id))
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('never produces the dash "ungrouped" bucket — every gear resolves to a bucket or the sentinel', () => {
+    const result = sliceDepot(aContainedDepot(), slice({ group: 'container' }))
+    expect(result.groups.some((g) => g.key === '')).toBe(false)
+  })
+
+  it('labels a container group with the container gear’s own name', () => {
+    const result = sliceDepot(aContainedDepot(), slice({ group: 'container' }))
+    expect(result.groups.find((g) => g.key === 'shelf')?.label).toBe(
+      'Shelf L-Top',
+    )
+    expect(result.groups.find((g) => g.key === 'crate')?.label).toBe('Crate B')
   })
 })
 
@@ -895,7 +1096,12 @@ describe('sliceDepot — grouping by owner', () => {
 
 describe('the grouping table', () => {
   it('names every key GROUP BY offers, in the order it draws them', () => {
-    expect(GROUP_KEYS.map(groupLabel)).toEqual(['NONE', 'KIND', 'OWNER'])
+    expect(GROUP_KEYS.map(groupLabel)).toEqual([
+      'NONE',
+      'KIND',
+      'OWNER',
+      'CONTAINER',
+    ])
   })
 
   it('never offers TAG, because a multi-valued dimension cannot partition', () => {

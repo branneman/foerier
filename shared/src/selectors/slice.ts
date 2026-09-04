@@ -2,6 +2,7 @@ import { compareStamps, type Stamp } from '../hlc.ts'
 import { stampOf, type Register } from '../registers.ts'
 import type { DepotState, GearState } from '../state.ts'
 import { foldText } from '../text.ts'
+import { containmentView } from './containment.ts'
 import { tagsOf, visibleGear } from './depot.ts'
 import { entriesOf } from './entry.ts'
 import { ownerOf, personLabel } from './owner.ts'
@@ -46,23 +47,24 @@ import {
  * Every dimension a list can be narrowed by. Widened, never restructured, by
  * each slice in the table above.
  */
-export type DimensionId = 'tag' | 'kind' | 'ownership' | 'person' | 'trip'
+export type DimensionId =
+  'tag' | 'kind' | 'ownership' | 'person' | 'trip' | 'container'
 
 /** Components §04's three keys at S3. `newest` is by when gear was recorded. */
 export type SortKey = 'name-asc' | 'name-desc' | 'newest'
 
 /**
- * `NONE · KIND · OWNER`, and **never TAG** — deliberate, and a domain fact
- * rather than a UI preference: tags are multi-valued, so a three-tag piece of
- * gear would land in three groups and the groups would not partition the
- * list. Slicing by tag is the filter's job.
+ * `NONE · KIND · OWNER · CONTAINER`, and **never TAG** — deliberate, and a
+ * domain fact rather than a UI preference: tags are multi-valued, so a
+ * three-tag piece of gear would land in three groups and the groups would
+ * not partition the list. Slicing by tag is the filter's job.
  *
  * Since S4 that rule is **structural rather than prose beside a branch**: a
  * grouping needs a {@link Grouping.keyOf} — "the one bucket this gear falls
  * into" — and Tag has none, so Tag simply has no row in
  * {@link GROUPING_TABLE}.
  */
-export type GroupKey = 'none' | 'kind' | 'owner'
+export type GroupKey = 'none' | 'kind' | 'owner' | 'container'
 
 export interface Dimension {
   id: DimensionId
@@ -173,6 +175,90 @@ function tripMembershipOf(state: DepotState): Map<string, readonly string[]> {
   return index
 }
 
+/**
+ * `NOT IN A CONTAINER`'s raw filter value — the same literal spelling as
+ * {@link NOT_IN_ANY_TRIP} and {@link DIMENSION_TABLE}'s `ownership` row, and
+ * not a collision: a reserved word is scoped to its own dimension (filters
+ * are keyed by {@link DimensionId} before a value is ever compared), so two
+ * dimensions are free to reserve the same plain word for two different
+ * facts. **`docs/design/README.md` §5f D4 — this is deliberately not
+ * `'loose'`.** The glossary's Loose is *a root with no home set*, and this
+ * bucket is wider: it also holds a tent on the Attic floor, which has a
+ * home and is not Loose. Calling the sentinel Loose here would be exactly
+ * the stretch the vocabulary guards exist to refuse.
+ */
+const NOT_IN_A_CONTAINER = 'none'
+
+/**
+ * Each Gear's container ancestors, outermost first — a second cross-cutting
+ * memo, and for a **different** reason than {@link TRIP_MEMBERSHIP}'s.
+ * `Dimension.valuesOf` and `Grouping.keyOf` both receive `(gear, state)` and
+ * no {@link ContainmentView}, and building one is O(depot log depot) — the
+ * sort `containment.ts`'s own header describes. A per-row build, once per
+ * Gear on the Depot's most-visited screen, is O(n² log n)
+ * (`docs/specs/2026-09-04-whereabouts-reaches-the-depot.md` §3.5). This
+ * builds one `containmentView(state)` exactly once per `DepotState` and
+ * walks it once per Gear, memoising the result the same way
+ * `tripMembershipOf` does.
+ *
+ * **The rejected alternative was memoising `containmentView` itself** — in a
+ * module-level `WeakMap`, the same shape as this one — which three other
+ * callers (F4, the Pack picker, gear detail) would also benefit from. It
+ * stays rejected here: `containment.ts`'s own header states, as a property,
+ * that the view is *"memoised only within this one call — nothing is cached
+ * across calls in module state"*, and quietly making that documented purity
+ * claim false, from a file that owns neither it nor the property, is the
+ * wrong place to make that call. `docs/specs/2026-09-04-whereabouts-reaches-the-depot.md`
+ * §3.5 and §7 name it as a candidate instead. So this memo stores only what
+ * `slice.ts` itself needs — each Gear's ancestor list — built from one
+ * *local*, unmemoised `containmentView(state)` call that goes out of scope
+ * the moment the build finishes.
+ */
+const CONTAINER_ANCESTORS = new WeakMap<
+  DepotState,
+  Map<string, readonly string[]>
+>()
+
+/**
+ * Builds (once per state) or returns the cached gear→container-ancestors
+ * index — every id in `state.gear`, mapped to its **container** ancestors
+ * only, outermost first.
+ *
+ * This is `homePath`'s own convention minus its Place segment: this
+ * dimension's vocabulary is container Gear alone, picked never created, so
+ * a Place ancestor (or no ancestor at all) both collapse to the same empty
+ * list, which {@link DIMENSION_TABLE}'s `container` row reads as the
+ * sentinel. The containment graph has out-degree ≤ 1 per node and is
+ * acyclic by construction — `containmentView` has already broken every
+ * cycle — so each id's ancestor list is a strict prefix of its immediate
+ * container's own list, and this recursion computes every list once no
+ * matter how many pieces of gear share a containment branch.
+ */
+function containerAncestorsOf(
+  state: DepotState,
+): Map<string, readonly string[]> {
+  const cached = CONTAINER_ANCESTORS.get(state)
+  if (cached !== undefined) return cached
+
+  const view = containmentView(state)
+  const ancestors = new Map<string, readonly string[]>()
+
+  function ancestorsOf(id: string): readonly string[] {
+    const found = ancestors.get(id)
+    if (found !== undefined) return found
+    const holder = view.holderOf(id)
+    const result =
+      holder.kind === 'gear' ? [...ancestorsOf(holder.id), holder.id] : []
+    ancestors.set(id, result)
+    return result
+  }
+
+  for (const id of Object.keys(state.gear)) ancestorsOf(id)
+
+  CONTAINER_ANCESTORS.set(state, ancestors)
+  return ancestors
+}
+
 const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
   tag: {
     id: 'tag',
@@ -281,6 +367,50 @@ const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
       return trip === undefined ? UNNAMED_TRIP_GLYPH : tripLabel(trip)
     },
     pinned: NOT_IN_ANY_TRIP,
+  },
+  /**
+   * **The home container** ([`docs/design/README.md` §5f](../../../docs/design/README.md))
+   * — home-world only, story 13's last-but-one row, and the second dimension
+   * (after `trip`) whose vocabulary includes a sentinel.
+   *
+   * `valuesOf` answers a **scope**: every container ancestor, at any depth
+   * (D5) — `CONTAINER: CRATE B` matches a piece three containers deep inside
+   * it, because the engine's one filter rule ("every selected value must be
+   * carried") already expresses "at any depth" the moment more than one
+   * ancestor is carried. No second combinator, same as every other
+   * dimension here.
+   *
+   * `pinned` is `NOT_IN_A_CONTAINER` for the same reason `trip` pins
+   * `NOT_IN_ANY_TRIP`: a container's `systemIdSource` id is hex, every hex
+   * digit sorts before the letter `n`, and a tied or busier container would
+   * otherwise outrank the literal sentinel string.
+   */
+  container: {
+    id: 'container',
+    label: 'CONTAINER',
+    // One gear resides in exactly one place, so the *chip* is single-valued
+    // (invariant 1) — but `valuesOf` still answers with more than one value
+    // when nested, because arity governs the ghost add-chip only, never how
+    // many values one answer may carry.
+    arity: 'single',
+    valuesOf: (gear, state) => {
+      const ancestors = containerAncestorsOf(state).get(gear.id)
+      return ancestors === undefined || ancestors.length === 0
+        ? [NOT_IN_A_CONTAINER]
+        : ancestors
+    },
+    // Checked first, the `trip` row's own rule: `NOT_IN_A_CONTAINER` is a
+    // reserved word, not a Gear id, and must never reach `state.gear`. A
+    // container id this replica has not folded yet falls back to the same
+    // `—` `dimension('trip')` and `dimension('person')` draw.
+    format: (value, state) => {
+      if (value === NOT_IN_A_CONTAINER) return 'Not in a container'
+      const container = state.gear[value]
+      // Sentence case — CAPS is the chip's own CSS transform, `KIND_LABELS`'s
+      // rule, restated here rather than re-decided.
+      return container === undefined ? '—' : nameOf(container)
+    },
+    pinned: NOT_IN_A_CONTAINER,
   },
 }
 
@@ -580,10 +710,40 @@ const GROUPING_TABLE: Readonly<Record<Exclude<GroupKey, 'none'>, Grouping>> = {
       key === 'shared' ? 'Shared' : personLabel(state, key),
     pinned: 'shared',
   },
+  /**
+   * **The immediate container is the only thing a partition can be** (D5) —
+   * the fine half of the same fact `container`'s dimension answers coarsely.
+   * `keyOf` reads the **same** {@link containerAncestorsOf} memo `valuesOf`
+   * does, rather than building a second one: `Grouping.keyOf` gets no
+   * `ContainmentView` either, and sharing the memo is what keeps the filter
+   * and the group from ever disagreeing about what contains what. Ancestors
+   * are outermost-first, so the *last* element is the immediate container,
+   * and an empty list is this dimension's own sentinel — never `undefined`,
+   * so the `—` "ungrouped" bucket stays unreachable here, exactly as it is
+   * for `owner`.
+   */
+  container: {
+    id: 'container',
+    label: 'CONTAINER',
+    keyOf: (gear, state) => {
+      const ancestors = containerAncestorsOf(state).get(gear.id)
+      return ancestors === undefined || ancestors.length === 0
+        ? NOT_IN_A_CONTAINER
+        : ancestors[ancestors.length - 1]
+    },
+    // D4: one bucket, one name — identical words to the dimension's own chip.
+    format: (key, state) => dimension('container').format(key, state),
+    pinned: NOT_IN_A_CONTAINER,
+  },
 }
 
 /** What `GROUP BY` offers, in the order the segmented control draws them. */
-export const GROUP_KEYS: readonly GroupKey[] = ['none', 'kind', 'owner']
+export const GROUP_KEYS: readonly GroupKey[] = [
+  'none',
+  'kind',
+  'owner',
+  'container',
+]
 
 /** The segmented control's label for one key. `NONE` has no table row. */
 export function groupLabel(key: GroupKey): string {
