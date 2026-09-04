@@ -631,9 +631,21 @@ Each is taken here, in code, and named so the next round meets it where it looks
 - **"an absent owned-count reads 1" is stated at five sites across two
   workspaces.** Taken here rather than deferred again, for one reason: §2.4's
   home arithmetic reads that default, so this slice's alternative is to author
-  the **sixth** site. `ownedCountOf(gear)` lands in `selectors/depot.ts`, and the
-  five sites — `whereabouts.ts`, `depot.ts`, `claim.ts`, `Depot.tsx`, `Find.tsx`
-  — read it. Delete the entry.
+  another site. `ownedCountOf(gear)` lands in `selectors/depot.ts`.
+
+  **The entry is stale, and the close is smaller than it reads.** Only **two**
+  sites spell the default today: `claim.ts`'s `supply` and `whereabouts.ts`'s
+  own count. `depot.ts`'s went with the `PIECES` arithmetic ruling L retired at
+  the S7 amendment round, and `Find.tsx` reads the register nowhere at all.
+  **The `app/` gates are a different question and stay**: `Depot.tsx`'s
+  `qtyFor`, `GearDetail.tsx`'s `metaLine` and `OverClaimBand`'s F6 guard all
+  test `ownedCount !== undefined`, which asks *did somebody record a count* —
+  `claim.ts` says in as many words that `supply` alone cannot tell a
+  genuinely-owned-one Gear from one nobody recorded a count for, *"which is
+  exactly why a surface must read the register itself before printing
+  `OWNED ×N`"*. Unifying them would undo fix round F6. `GearDetail.tsx:135`'s
+  `?? 1` is a third question again — what an edit sheet prefills — and is left
+  alone. Delete the entry, and say in the deletion what it had wrong.
 
 **Opens:**
 
