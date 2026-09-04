@@ -6,10 +6,17 @@
   }
 
   /*
-   * Compact/Comfortable: the chips scroll sideways rather than wrapping, so
-   * the list keeps its vertical room. Roomy (40em) is where they wrap onto a
-   * second line instead — a shell decision, so a media query, per
-   * frontend-design §3.1.
+   * Narrow: the chips scroll sideways rather than wrapping, so the list keeps
+   * its vertical room. From 40rem of pane they wrap onto a second line
+   * instead.
+   *
+   * A **container** query, not a media query: whether the chips scroll or
+   * wrap is how what exists lays out (`frontend-design.md` §3.2), and the
+   * two differ where it matters — at Split the bar sits in the Depot's 308px
+   * list pane at a viewport of 900, where a width query is already true and
+   * would wrap the chips in a pane narrower than a phone.
+   * `Depot.module.css`'s title-row fold makes the same call for the same
+   * pane, and `.main` there is the container this resolves against.
    */
   .chips {
     display: flex;
@@ -25,7 +32,7 @@
     display: none;
   }
 
-  @media (min-width: 40em) {
+  @container (min-width: 40rem) {
     .chips {
       flex-wrap: wrap;
       overflow-x: visible;

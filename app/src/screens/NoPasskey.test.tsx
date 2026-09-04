@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 import { NoPasskey } from './NoPasskey'
@@ -134,5 +136,25 @@ describe('Continue without a passkey', () => {
     )
 
     expect(container.textContent).not.toContain('Something went wrong')
+  })
+})
+
+/**
+ * Type is stated in the token pairs and never in px (frontend-design §2.1):
+ * a px size does not scale with the reader's font-size, and `.body` here was
+ * the one place in the codebase that had drifted to `15px/22px`. jsdom
+ * computes no styles under `css: false`, so the net reads the stylesheet text.
+ */
+describe('its stylesheet', () => {
+  it('sets no type in px', () => {
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'NoPasskey.module.css'),
+      'utf8',
+    )
+    expect(css).not.toMatch(/(?:font-size|line-height|margin-top):\s*\d+px/)
+    expect(css).toMatch(
+      /\.body\s*\{[^}]*font:\s*var\(--text-body\) var\(--font-ui\)/,
+    )
+    expect(css).toMatch(/\.body\s*\{[^}]*margin-top:\s*var\(--space-12\)/)
   })
 })

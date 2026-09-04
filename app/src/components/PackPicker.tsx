@@ -102,7 +102,9 @@ export interface PackPickerProps {
    * must drop a residence equal to the one it passed as `current` — exactly
    * as the trip screen's SET PHASE emits nothing when the phase tapped is
    * the phase the Trip is already in. `HomePicker` has the identical gap and
-   * the identical contract.
+   * the identical contract, and `GearDetail`'s MOVE is the caller that
+   * honours it there, through `sameResidence`, as `Packing.tsx` does here
+   * through `sameTripResidence`.
    */
   onSelect: (residence: TripResidence) => void
   /** The sheet's heading: the name of the thing being placed. */
@@ -328,9 +330,11 @@ export function PackPicker({
   const nowMark = <span className={styles['now']}>● NOW</span>
 
   return (
-    <Sheet title={title} onClose={onClose}>
-      <p className={styles['fact']}>WHERE IT GOES ON THIS TRIP</p>
-
+    <Sheet
+      title={title}
+      onClose={onClose}
+      description={<p className={styles['fact']}>WHERE IT GOES ON THIS TRIP</p>}
+    >
       {moving !== undefined && (
         <p className={styles['context']} data-testid="moving-context">
           MOVING {moving.name} · {moving.insideCount} INSIDE RIDE ALONG

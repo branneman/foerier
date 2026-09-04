@@ -12,9 +12,10 @@ import styles from './ExpiryChip.module.css'
  * stroke, mono 10/600, inert, and a *status* rather than a value. Two
  * components that share a border radius are not one component.
  *
- * Two callers, which is what moved it out of a screen's CSS module: the
- * invite card on `InviteIssued`, and the outstanding-invite row on People &
- * logins.
+ * Three callers, which is what moved it out of a screen's CSS module: the
+ * invite card on `InviteIssued`, the outstanding-invite row on People &
+ * logins, and the confirm card on `Join` — the same Invite, read from the
+ * other end of the handover.
  */
 export interface ExpiryChipProps {
   /** ISO string or Date — when the Invite dies. */

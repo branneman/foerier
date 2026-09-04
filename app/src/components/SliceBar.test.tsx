@@ -6,6 +6,8 @@ import {
 } from '@foerier/shared'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 import { SliceBar } from './SliceBar'
@@ -355,5 +357,25 @@ describe('SliceBar — expanded', () => {
 
     expect(screen.getByTestId('group-options')).toBeInTheDocument()
     expect(screen.queryByTestId('arrange-readout')).toBeNull()
+  })
+})
+
+/**
+ * Whether the chips scroll or wrap is how what exists *lays out*, so it is a
+ * container query, never a media query (frontend-design §3.2). The two differ
+ * exactly where it matters: at Split the bar sits in the Depot's 308px list
+ * pane at a viewport of 900, where a `min-width: 40em` media query is already
+ * true and would wrap the chips in a pane narrower than a phone —
+ * `Depot.module.css`'s title-row fold makes the same call for the same pane.
+ * jsdom computes no layout, so the assertion reads the stylesheet text.
+ */
+describe('SliceBar — the wrap fold', () => {
+  it('resolves against the pane it is in, not the viewport', () => {
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'SliceBar.module.css'),
+      'utf8',
+    )
+    expect(css).toMatch(/@container \(min-width: 40rem\)/)
+    expect(css).not.toMatch(/@media/)
   })
 })

@@ -150,6 +150,17 @@ describe('the piece picker', () => {
     expect(screen.getByText('WHO BRINGS ONE · 2 OF 3')).toBeInTheDocument()
   })
 
+  it('is a dialog named by the gear, described by the count', async () => {
+    const seed = await seeded(tripPieceRemoved(TRIP, ENTRY, 'kim'))
+    renderPicker(seed)
+
+    // The count reaches a screen reader as the dialog's *description* — the
+    // same visible mono line, wired through `ui/Sheet`'s `description`, the
+    // pattern `PieceStatusSheet` set for this anatomy.
+    const sheet = screen.getByRole('dialog', { name: 'Headlamp' })
+    expect(sheet).toHaveAccessibleDescription('WHO BRINGS ONE · 2 OF 3')
+  })
+
   // Whole-branch review I1: `aria-pressed`, the `BRINGS ONE ✓` marker and
   // the circle's `tone` (`PiecePicker.tsx:115`) all come from `row.included`
   // independently, and nothing pinned any of them to the roster's actual

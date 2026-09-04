@@ -254,8 +254,13 @@ describe('the Pack picker', () => {
     const { store } = await aTripWithContainers()
     renderPicker(store, { title: 'Crate B' })
 
-    expect(screen.getByRole('dialog', { name: 'Crate B' })).toBeInTheDocument()
+    const sheet = screen.getByRole('dialog', { name: 'Crate B' })
+    expect(sheet).toBeInTheDocument()
     expect(screen.getByText('WHERE IT GOES ON THIS TRIP')).toBeInTheDocument()
+    // The fact line is the dialog's *description*, wired through `ui/Sheet`'s
+    // `description` — `PieceStatusSheet`'s pattern for this anatomy, so a
+    // screen reader hears the gear name and then what the sheet is for.
+    expect(sheet).toHaveAccessibleDescription('WHERE IT GOES ON THIS TRIP')
   })
 
   /**

@@ -5,7 +5,12 @@ import { describe, expect, it, vi } from 'vitest'
 import type { InvitePreview } from '../auth/api'
 import { Join } from './Join'
 
-const IN_SIX_DAYS = new Date(Date.now() + 6 * 24 * 3600_000).toISOString()
+// A fresh join Invite: its TTL is 7 days (`auth-design.md` §5), one minute
+// short of it so `ui/ExpiryChip`'s day-floor reads `6 d` rather than `7 d` —
+// the same seeding `InviteIssued.test.tsx` uses for the same chip.
+const IN_SIX_DAYS = new Date(
+  Date.now() + (7 * 24 * 60 - 1) * 60_000,
+).toISOString()
 
 function aPreview(overrides: Partial<InvitePreview> = {}): InvitePreview {
   return {
@@ -52,7 +57,11 @@ describe('the join screen', () => {
     render(<Join {...defaults} preview={aPreview()} />)
 
     expect(screen.getByText('Single use')).toBeInTheDocument()
-    expect(screen.getByText('Expires in 6 d')).toBeInTheDocument()
+    // `ui/ExpiryChip`'s own copy — `docs/design/README.md` §9 draws the
+    // confirm frame's chips as `EXPIRES IN 6 d` + `SINGLE USE`, and the
+    // primitive floors days, so a fresh 7-day link reads `6 d` here exactly
+    // as it does on `InviteIssued`.
+    expect(screen.getByText('EXPIRES IN 6 d')).toBeInTheDocument()
   })
 
   it('marks an expiry under an hour as urgent', () => {
@@ -65,7 +74,7 @@ describe('the join screen', () => {
       />,
     )
 
-    const chip = screen.getByText(/Expires in \d+ min/)
+    const chip = screen.getByText(/EXPIRES IN \d+ min/)
     expect(chip).toHaveAttribute('data-urgent', 'true')
   })
 

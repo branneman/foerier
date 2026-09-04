@@ -1,3 +1,4 @@
+import { ExpiryChip } from '@foerier/ui'
 import { useState } from 'react'
 
 import type { InvitePreview } from '../auth/api'
@@ -32,20 +33,6 @@ export interface JoinProps {
    */
   passkeySaved: boolean
   onOpenDepot: () => void
-}
-
-function expiryChip(expiresAt: string, now = Date.now()) {
-  const remainingMs = new Date(expiresAt).getTime() - now
-  const hours = remainingMs / 3_600_000
-
-  if (hours < 1) {
-    const minutes = Math.max(0, Math.round(remainingMs / 60_000))
-    return { label: `Expires in ${minutes} min`, urgent: true }
-  }
-  if (hours < 48) {
-    return { label: `Expires in ${Math.round(hours)} h`, urgent: false }
-  }
-  return { label: `Expires in ${Math.round(hours / 24)} d`, urgent: false }
 }
 
 /**
@@ -135,8 +122,6 @@ export function Join({
     )
   }
 
-  const chip = expiryChip(preview.expires_at)
-
   // A Household with no Login yet is necessarily one whose first Person is
   // created as they join, so this is where the joiner names themselves.
   const namesThemselves = !preview.person_recorded
@@ -161,9 +146,12 @@ export function Join({
         </div>
 
         <div className={styles['chips']}>
-          <span className={styles['chip']} data-urgent={chip.urgent}>
-            {chip.label}
-          </span>
+          {/* `ui/ExpiryChip`, as on `InviteIssued` and People & logins — one
+              reading of the same fact everywhere it is drawn (§14: floors
+              days, ticks live, amber inside the last hour). A screen-local
+              copy had rounded, so a fresh 7-day link read `7 d` on the day
+              it dies. */}
+          <ExpiryChip expiresAt={preview.expires_at} />
           <span className={styles['chip']}>Single use</span>
         </div>
       </div>

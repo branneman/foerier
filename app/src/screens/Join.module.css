@@ -48,6 +48,7 @@
     gap: var(--space-8);
   }
 
+  /* `SINGLE USE` only — the expiry chip beside it is `ui/ExpiryChip`. */
   .chip {
     border: var(--stroke-chip) solid var(--color-rule-control);
     border-radius: var(--radius-pill);
@@ -58,16 +59,6 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--color-ink-muted);
-  }
-
-  /* Under an hour the expiry chip goes amber (docs/design/README.md §14). */
-  .chip[data-urgent='true'] {
-    border-color: var(--color-brand-amber);
-    /* `color-mix` rather than a literal alpha value, so the tint tracks
-       `--color-brand-amber` through both theme blocks instead of going
-       two-tone in light mode (Task 9's own finding on this exact pattern). */
-    background: color-mix(in srgb, var(--color-brand-amber) 8%, transparent);
-    color: var(--color-brand-amber);
   }
 
   .fact {

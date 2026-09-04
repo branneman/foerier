@@ -17,11 +17,9 @@
   }
 
   .body {
-    font-size: 15px;
-    line-height: 22px;
-    margin-top: 12px;
+    font: var(--text-body) var(--font-ui);
+    margin-top: var(--space-12);
     color: var(--color-ink-muted);
-    font-family: var(--font-ui);
   }
 
   .fact {

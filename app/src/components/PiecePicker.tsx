@@ -86,11 +86,16 @@ export function PiecePicker({ trip, entry, onClose }: PiecePickerProps) {
   }
 
   return (
-    <Sheet title={entryLabel(entry, state)} onClose={onClose} desktopCard>
-      <p className={styles['fact']}>
-        WHO BRINGS ONE · {includedCount} OF {rows.length}
-      </p>
-
+    <Sheet
+      title={entryLabel(entry, state)}
+      onClose={onClose}
+      desktopCard
+      description={
+        <p className={styles['fact']}>
+          WHO BRINGS ONE · {includedCount} OF {rows.length}
+        </p>
+      }
+    >
       <ul className={styles['rows']}>
         {rows.map((row) => (
           <li key={row.personId}>
