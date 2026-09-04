@@ -2,17 +2,21 @@ import {
   containmentView,
   findGear,
   whereabouts,
+  whereaboutsByPerson,
   whereaboutsText,
+  rowWhereabouts,
   type ContainmentView,
   type DepotState,
   type Match,
   type PathSegment,
+  type PersonWhereabouts,
   type WhereaboutsSlice,
 } from '@foerier/shared'
-import { GearRow, Logo } from '@foerier/ui'
+import { GearRow, Logo, PersonCircle } from '@foerier/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'wouter'
 
+import { personInitial, sortedPeople, type PersonRow } from '../depot/people'
 import { useDepot } from '../depot/store'
 import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Find.module.css'
@@ -25,24 +29,23 @@ import styles from './Find.module.css'
  * state — there is nothing here for the network to be in the way of, which
  * is why nothing on this screen reads the sync status.
  *
- * **Left to a later slice, deliberately, same as `whereabouts` itself:**
- * - the amber trip slice and the `▲ LAST SEEN` / `RESOLVE` unaccounted read —
- *   both need an unpack outcome and a trip residence, neither of which exist
- *   before S12/S9-10. `whereabouts` returns exactly one `home` slice today,
- *   and this screen renders exactly that — no placeholder.
- * - `per_person` gear falls through to {@link PlainRow} below, same as
- *   `single`, and that is a deferred seam, not an oversight: story 3 groups
- *   Counted **and** Per-person gear under the quantity-split treatment, but
- *   the two splits are different mechanisms. Counted's is an arithmetic
- *   home/trip *count* split — exactly what `WhereaboutsSlice[]` already
- *   models, which is why {@link CountedCard} can map over `result.slices`
- *   generically today and needs no restructuring once story 11 lands a
- *   second slice. Per-person's is a per-**Piece** breakdown (one row per
- *   participant, `docs/ubiquitous-language.md`), a shape `WhereaboutsSlice`
- *   does not represent at all — routing it through `CountedCard` now would
- *   hard-code a wrong `COUNTED` label and commit to the wrong row semantics
- *   ahead of Pieces existing. It waits for Pieces, rather than being
- *   approximated.
+ * **S9b makes every row state the trip world** (`docs/design/README.md`
+ * §5f D6/D7/D9, spec §4.3). `PlainRow`'s whereabouts slot now reads
+ * {@link rowWhereabouts} — the same call `Depot.tsx`'s row makes, so the two
+ * cannot drift — while its meta keeps the home path, unchanged whether the
+ * gear is out or not (D9). `CountedCard`'s rows already mapped over every
+ * `whereabouts` slice; they draw real trip slices now instead of the sole
+ * `home` one S2b shipped. `PerPersonCard` is new — the work S8 held back
+ * (`docs/design/README.md` §5d I) — and draws one row per **Participant of
+ * the claiming Trip(s)** (D6), a removed Piece reading home with no mention
+ * of the removal (B5), mounted only while at least one Piece is actually
+ * out. A Piece two Trips both claim takes the unaccounted row's own
+ * anatomy, `▲ CLAIMED BY N TRIPS` + `RESOLVE` — and unlike gear detail's
+ * `PIECES` chip, which is a span, this **is** a link (D7), routing to the
+ * first claiming Trip by name A→Z.
+ *
+ * **Still left to S10:** the `▲ LAST SEEN` unaccounted read has no unpack
+ * outcome yet to draw from.
  */
 
 const RECENT_LIMIT = 5
@@ -67,6 +70,14 @@ function pathText(path: readonly PathSegment[]): string {
  * `GearDetail.chipLocation`'s fallback for the identical condition. */
 function sliceText(slice: WhereaboutsSlice): string {
   return whereaboutsText(slice, 'full')
+}
+
+/** `home` or `trip` — the two-worlds colour a slice's own text carries
+ * (`docs/design/README.md` §6: amber for trip, muted for home). The glyph
+ * already names the world; this only reinforces it, same as
+ * `ui/GearRow.module.css`'s identical two classes. */
+function sliceTone(slice: WhereaboutsSlice): 'home' | 'trip' {
+  return slice.kind === 'home' ? 'home' : 'trip'
 }
 
 /**
@@ -122,7 +133,10 @@ function CountedCard({
       <span className={styles['sliceList']}>
         {result.slices.map((slice, index) => (
           <span key={sliceIds[index]} className={styles['sliceRow']}>
-            <span id={sliceIds[index]} className={styles['sliceWhereabouts']}>
+            <span
+              id={sliceIds[index]}
+              className={`${styles['sliceWhereabouts']} ${styles[sliceTone(slice)]}`}
+            >
               {sliceText(slice)}
             </span>
           </span>
@@ -141,18 +155,172 @@ function CountedCard({
  * `Find.module.css` and `Depot.module.css` shared nine byte-identical blocks
  * — the duplication [architecture §12.4](../../../docs/architecture-design.md)
  * named as the reason to extract at this slice.
+ *
+ * **D9: the whereabouts slot takes `rowWhereabouts`**, the same call
+ * `Depot.tsx`'s row makes, so the two rows cannot drift; the meta slot keeps
+ * `match.path` — the **home** path `findGear` already resolved, unchanged
+ * whether the gear is out or not.
  */
-function PlainRow({ match }: { match: Match }) {
+function PlainRow({
+  state,
+  match,
+  view,
+}: {
+  state: DepotState
+  match: Match
+  view: ContainmentView
+}) {
   const text = pathText(match.path)
+  const { text: whereaboutsLabel, tone } = rowWhereabouts(
+    whereabouts(state, match.gear.id, view),
+  )
   return (
     <Link href={`/gear/${match.gear.id}`} asChild>
       <GearRow
         name={match.gear.name?.value ?? ''}
         href={`/gear/${match.gear.id}`}
-        whereabouts="⌂ HOME"
+        whereabouts={whereaboutsLabel}
+        tone={tone}
         {...(text === '' ? {} : { path: `⌂ ${text}` })}
       />
     </Link>
+  )
+}
+
+/**
+ * One Participant's own row inside {@link PerPersonCard} (D6): a 28px
+ * circle, that Person's whereabouts at full density, or — a Piece two
+ * Trips both claim — the unaccounted row's own anatomy, `▲ CLAIMED BY N
+ * TRIPS` plus a `RESOLVE` link (D7). **Unlike gear detail's `PIECES` chip,
+ * which is a span** because "a chip is not a door", this row's `RESOLVE`
+ * really is one: the row *is* the surface naming the conflict here, not
+ * chrome riding a card that already links elsewhere.
+ *
+ * `contested` reads `answer.slice` for its destination rather than looking
+ * it up a second way: `whereaboutsByPerson`'s own contract is that the
+ * first claiming Trip by name A→Z is both the slice a contested Participant
+ * reads *and* `contestedTripIds[0]` — one fact, not two to keep in sync.
+ */
+function contestedInfo(
+  answer: PersonWhereabouts,
+): { tripId: string; tripName: string; count: number } | null {
+  if (answer.contestedTripIds.length < 2 || answer.slice.kind !== 'trip') {
+    return null
+  }
+  return {
+    tripId: answer.slice.tripId,
+    tripName: answer.slice.tripName,
+    count: answer.contestedTripIds.length,
+  }
+}
+
+function PersonPieceRow({
+  person,
+  answer,
+}: {
+  person: PersonRow
+  answer: PersonWhereabouts
+}) {
+  const contested = contestedInfo(answer)
+  return (
+    <div className={styles['personRow']} data-testid="find-person-row">
+      <span className={styles['personMain']}>
+        <PersonCircle label={personInitial(person.label)} size={28} />
+        <span
+          className={`${styles['sliceWhereabouts']} ${
+            contested ? styles['attention'] : styles[sliceTone(answer.slice)]
+          }`}
+        >
+          {contested
+            ? `▲ CLAIMED BY ${contested.count} TRIPS`
+            : whereaboutsText(answer.slice, 'full')}
+        </span>
+      </span>
+      {contested && (
+        <Link
+          href={`/trips/${contested.tripId}`}
+          className={styles['resolve']}
+          aria-label={`Resolve on ${contested.tripName}`}
+        >
+          RESOLVE
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/** `whereaboutsByPerson`'s answer, this screen's People-screen-ordered
+ * roster, and its own gate — "at least one Piece is actually on an active
+ * Trip" — gathered once so the caller can choose {@link PerPersonCard} or
+ * {@link PlainRow} **before** rendering either, rather than mounting a card
+ * component that might render nothing.
+ *
+ * `anyOut` is *not* `people.length > 0`: `whereaboutsByPerson`'s map is
+ * keyed by Participants whether or not their own Piece is included (B5), so
+ * an Entry whose every Piece has been removed still populates it, every
+ * answer reading home — the identical-circles fault §4/D6/B3 exist to
+ * prevent, drawn once more on this surface.
+ */
+function piecePeopleFor(
+  state: DepotState,
+  gearId: string,
+  view: ContainmentView,
+): {
+  people: readonly PersonRow[]
+  answers: ReadonlyMap<string, PersonWhereabouts>
+  anyOut: boolean
+} {
+  const answers = whereaboutsByPerson(state, gearId, view)
+  const people = sortedPeople(state).filter((person) => answers.has(person.id))
+  const anyOut = [...answers.values()].some(
+    (answer) => answer.slice.kind === 'trip',
+  )
+  return { people, answers, anyOut }
+}
+
+/**
+ * The answer-first card for per-person gear — the work S8 held back
+ * (`docs/design/README.md` §5d I): a header naming the gear and the size of
+ * its per-person breakdown, then one {@link PersonPieceRow} per
+ * **Participant of the claiming Trip(s)** (D6), People-screen order.
+ *
+ * The caller mounts this only once {@link piecePeopleFor}'s own `anyOut`
+ * gate has passed; per-person gear with nothing out keeps falling through
+ * to {@link PlainRow} instead.
+ */
+function PerPersonCard({
+  gearId,
+  name,
+  people,
+  answers,
+}: {
+  gearId: string
+  name: string
+  people: readonly PersonRow[]
+  answers: ReadonlyMap<string, PersonWhereabouts>
+}) {
+  return (
+    <div className={styles['card']} data-testid="find-per-person-card">
+      <Link
+        href={`/gear/${gearId}`}
+        className={styles['cardHeader']}
+        aria-label={name}
+      >
+        <span className={styles['name']}>{name}</span>
+        <span className={styles['cardMeta']}>
+          PER-PERSON · ×{people.length}
+        </span>
+      </Link>
+      <div className={styles['sliceList']}>
+        {people.map((person) => {
+          const answer = answers.get(person.id)
+          if (answer === undefined) return null
+          return (
+            <PersonPieceRow key={person.id} person={person} answer={answer} />
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -219,15 +387,28 @@ export function Find() {
 
       {trimmed !== '' && matches.length > 0 && (
         <ul className={styles['list']}>
-          {matches.map((match) => (
-            <li key={match.gear.id}>
-              {match.gear.kind?.value === 'counted' ? (
-                <CountedCard state={state} match={match} view={view} />
-              ) : (
-                <PlainRow match={match} />
-              )}
-            </li>
-          ))}
+          {matches.map((match) => {
+            const kind = match.gear.kind?.value
+            const gearId = match.gear.id
+            const pieces =
+              kind === 'per_person' ? piecePeopleFor(state, gearId, view) : null
+            return (
+              <li key={gearId}>
+                {kind === 'counted' ? (
+                  <CountedCard state={state} match={match} view={view} />
+                ) : pieces !== null && pieces.anyOut ? (
+                  <PerPersonCard
+                    gearId={gearId}
+                    name={match.gear.name?.value ?? ''}
+                    people={pieces.people}
+                    answers={pieces.answers}
+                  />
+                ) : (
+                  <PlainRow state={state} match={match} view={view} />
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
 

@@ -1,4 +1,17 @@
-import { gearRecorded, placeRecorded, type OpSpec } from '@foerier/shared'
+import {
+  gearRecorded,
+  personRecorded,
+  placeRecorded,
+  tripContainerStageSet,
+  tripCreated,
+  tripEntryAdded,
+  tripEntryBringCountSet,
+  tripEntryMoved,
+  tripParticipantAdded,
+  tripPhaseMoved,
+  tripPieceRemoved,
+  type OpSpec,
+} from '@foerier/shared'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
@@ -235,5 +248,213 @@ describe('Find', () => {
     setViewport(SPLIT, DESKTOP)
     renderFind(store)
     expect(screen.queryByText('foerier')).toBeNull()
+  })
+})
+
+/**
+ * S9b: the plain row's whereabouts slot, the counted card's real trip
+ * slices, and the new per-person card (`docs/design/README.md` §6,
+ * §5f D6/D7/D9, spec §4.3).
+ */
+describe('Find — whereabouts reaches the screen', () => {
+  it('reads the trip whereabouts on the plain row while the meta keeps the home path (D9)', async () => {
+    const placeId = anId()
+    const crateId = anId()
+    const tentId = anId()
+    const tripId = anId()
+    const store = await seededStore([
+      placeRecorded(placeId, 'Attic'),
+      gearRecorded(crateId, {
+        name: 'Crate B',
+        container: true,
+        kind: 'single',
+        residence: { in: 'place', id: placeId },
+      }),
+      gearRecorded(tentId, {
+        name: 'Tent',
+        container: false,
+        kind: 'single',
+        residence: { in: 'gear', id: crateId },
+      }),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripEntryAdded(tripId, 'e-duffel', {
+        from: 'trip_only',
+        name: 'Duffel',
+        container: true,
+      }),
+      tripContainerStageSet(tripId, 'e-duffel', 'car'),
+      tripEntryAdded(tripId, 'e-tent', { from: 'depot', gearId: tentId }),
+      tripEntryMoved(tripId, 'e-tent', {
+        in: 'container',
+        entryId: 'e-duffel',
+      }),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'tent')
+
+    const row = screen.getByRole('link', { name: 'Tent' })
+    // D9: the same GearRow with the meta-slot swap — the whereabouts slot
+    // states the trip, the meta beneath keeps the home path unchanged.
+    expect(within(row).getByText('▸ Alps 2026 · CAR')).toBeInTheDocument()
+    expect(within(row).getByText('⌂ Attic ▸ Crate B')).toBeInTheDocument()
+  })
+
+  it('shows one row per slice, at full density, for a Counted gear split home/trip', async () => {
+    const mugId = anId()
+    const tripId = anId()
+    const store = await seededStore([
+      gearRecorded(mugId, {
+        name: 'Mug',
+        container: false,
+        kind: 'counted',
+        owned_count: 5,
+      }),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripEntryAdded(tripId, 'e-mug', { from: 'depot', gearId: mugId }),
+      tripEntryBringCountSet(tripId, 'e-mug', 2),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'mug')
+
+    const card = screen.getByRole('link', { name: 'Mug' })
+    expect(within(card).getByText('COUNTED · ×5')).toBeInTheDocument()
+    expect(within(card).getByText('⌂ LOOSE')).toBeInTheDocument()
+    expect(within(card).getByText('▸ Alps 2026 · LOOSE')).toBeInTheDocument()
+  })
+
+  it('keeps two trip rows apart when two active Trips both claim a Counted gear', async () => {
+    const mugId = anId()
+    const alpsId = anId()
+    const vosgesId = anId()
+    const store = await seededStore([
+      gearRecorded(mugId, {
+        name: 'Mug',
+        container: false,
+        kind: 'counted',
+        owned_count: 5,
+      }),
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'pack_out'),
+      tripEntryAdded(alpsId, 'e-alps', { from: 'depot', gearId: mugId }),
+      tripEntryBringCountSet(alpsId, 'e-alps', 2),
+      tripEntryAdded(vosgesId, 'e-vosges', { from: 'depot', gearId: mugId }),
+      tripEntryBringCountSet(vosgesId, 'e-vosges', 2),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'mug')
+
+    const card = screen.getByRole('link', { name: 'Mug' })
+    expect(within(card).getByText('▸ Alps 2026 · LOOSE')).toBeInTheDocument()
+    expect(within(card).getByText('▸ Vosges · LOOSE')).toBeInTheDocument()
+  })
+
+  it('shows the per-person card with one row per Participant, in People-screen order, a removed Piece reading home with no mention of removal (B5)', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const markId = anId()
+    const elsId = anId()
+    const store = await seededStore([
+      personRecorded(markId, 'Mark'),
+      personRecorded(elsId, 'Els'),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripParticipantAdded(tripId, markId),
+      tripParticipantAdded(tripId, elsId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(tripId, 'e-headlamp', { from: 'depot', gearId }),
+      tripPieceRemoved(tripId, 'e-headlamp', elsId),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'headlamp')
+
+    const card = screen.getByTestId('find-per-person-card')
+    expect(within(card).getByText('PER-PERSON · ×2')).toBeInTheDocument()
+
+    const rows = within(card).getAllByTestId('find-person-row')
+    expect(rows).toHaveLength(2)
+    // People-screen order is alphabetic by label — Els before Mark.
+    expect(
+      within(rows[0] as HTMLElement).getByText('⌂ LOOSE'),
+    ).toBeInTheDocument()
+    expect(
+      within(rows[1] as HTMLElement).getByText('▸ Alps 2026 · LOOSE'),
+    ).toBeInTheDocument()
+  })
+
+  it('renders no per-person card and a plain row for per-person gear with nothing out', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const markId = anId()
+    const store = await seededStore([
+      personRecorded(markId, 'Mark'),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripParticipantAdded(tripId, markId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(tripId, 'e-headlamp', { from: 'depot', gearId }),
+      tripPieceRemoved(tripId, 'e-headlamp', markId),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'headlamp')
+
+    expect(screen.queryByTestId('find-per-person-card')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Headlamp' })).toBeInTheDocument()
+  })
+
+  it("takes the unaccounted row's anatomy for a contested Piece — ▲ CLAIMED BY 2 TRIPS + a RESOLVE link to the first claiming Trip by name (D7)", async () => {
+    const alpsId = anId()
+    const vosgesId = anId()
+    const gearId = anId()
+    const markId = anId()
+    const store = await seededStore([
+      personRecorded(markId, 'Mark'),
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripParticipantAdded(alpsId, markId),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'pack_out'),
+      tripParticipantAdded(vosgesId, markId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(alpsId, 'e-alps', { from: 'depot', gearId }),
+      tripEntryAdded(vosgesId, 'e-vosges', { from: 'depot', gearId }),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'headlamp')
+
+    const card = screen.getByTestId('find-per-person-card')
+    expect(within(card).getByText('▲ CLAIMED BY 2 TRIPS')).toBeInTheDocument()
+    const resolve = within(card).getByRole('link', {
+      name: 'Resolve on Alps 2026',
+    })
+    expect(resolve).toHaveTextContent('RESOLVE')
+    expect(resolve).toHaveAttribute('href', `/trips/${alpsId}`)
   })
 })

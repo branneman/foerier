@@ -110,13 +110,61 @@
     border-top: var(--stroke-rule) solid var(--color-rule-row);
   }
 
-  /* Mono 11, muted for home (`docs/design/README.md` §6) — the trip/amber
-     and unaccounted/attention variants are a later slice's work. */
+  /* Mono 11 (`docs/design/README.md` §6); the colour comes from one of the
+     three modifier classes below, never from this one. */
   .sliceWhereabouts {
     font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
+  }
+
+  /* The two worlds, per principle 3 — the `⌂`/`▸` glyphs already carry the
+     distinction; these only reinforce it, the same pair
+     `ui/GearRow.module.css` and `WhereaboutsCard.module.css` already draw.
+     `.attention` is D7/D8's swap for a Piece two Trips both claim. */
+  .home {
     color: var(--color-ink-muted);
+  }
+
+  .trip {
+    color: var(--color-brand-amber);
+  }
+
+  .attention {
+    color: var(--color-status-attention);
+  }
+
+  /* The per-person card's row (`docs/design/README.md` §6): a 28px circle
+     leading that Participant's own whereabouts, `RESOLVE` pinned right only
+     while contested (D7) — `justify-content` alone handles both, since a
+     lone `.personMain` child aligns to the start with nothing to push
+     against. */
+  .personRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    min-height: 3.5rem;
+    padding-inline: var(--space-16);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .personMain {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  /* Ruling O's 48px hit floor on inline accent text — the same shape
+     `WhereaboutsCard.module.css`'s own `.resolve` takes. */
+  .resolve {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    min-height: max(3rem, 48px);
+    color: var(--color-accent);
+    text-decoration: none;
   }
 
   .recent {
