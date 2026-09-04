@@ -167,6 +167,22 @@
     text-decoration: none;
   }
 
+  /* The per-person row's trailing mini status chip (`docs/design/README.md`
+     §6): `PACKED` / `STAGED` / `NOT PACKED` or `⌂ HOME`, chrome rather than a
+     control — the same bordered-pill shape `GearDetail.module.css`'s
+     `.countChip`/`.pieceChip` already draw, so this file gains no second
+     idiom for "a small fact riding a row". */
+  .statusChip {
+    flex: none;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.625rem;
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
   .recent {
     display: flex;
     flex-direction: column;

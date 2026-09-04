@@ -1,6 +1,7 @@
 import type {
   DepotState,
   StageValue,
+  StatusValue,
   TripResidence,
   TripState,
 } from '../state.ts'
@@ -22,6 +23,7 @@ import {
 import { byNameThenId } from './order.ts'
 import {
   entryResidenceOf,
+  pieceStatusOf,
   sameTripResidence,
   stageOf,
   stageWord,
@@ -116,6 +118,13 @@ export interface PersonWhereabouts {
    *  active Trip, otherwise the Gear's home slice. A **removed** Piece falls
    *  through to home with nothing said about the removal (B5). */
   slice: WhereaboutsSlice
+  /** This Piece's own packing status (`pieceStatusOf`) — `null` exactly when
+   *  `slice` is the home answer, whether because this Person's Piece was
+   *  never included or was tombstoned (B5): a Piece at home has no packing
+   *  status, because it is not on a trip to be packed for. Read from the
+   *  same walk that resolves `slice`'s residence, never a second one — this
+   *  file's own two-surfaces-disagree risk applied to itself. */
+  status: StatusValue | null
   /** The Trips whose Pieces both name this Person — `▲ CLAIMED BY 2 TRIPS`.
    *  Empty in every ordinary case: a Piece belongs to at most one active
    *  Trip (domain §5.2), so this is only reachable once an over-claim has
@@ -189,6 +198,11 @@ interface TripSliceFacts extends SegmentRead {
    *  segment read. A Person's answer is where *their* Piece is, never the
    *  Entry-wide reconciliation above. */
   pieces: ReadonlyMap<string, SegmentRead>
+  /** Each included Piece's own packing status (`pieceStatusOf`), gathered in
+   *  the same walk as `pieces` above rather than a second one — Find's
+   *  per-person row status and `pieces`' own residence must never disagree
+   *  about which Entry they came from. */
+  pieceStatus: ReadonlyMap<string, StatusValue | null>
 }
 
 /**
@@ -243,6 +257,10 @@ interface EntryContribution {
   /** The included Pieces and where each sits — empty unless this Entry has
    *  Pieces at all. */
   pieces: ReadonlyMap<string, ResidenceRead>
+  /** Each included Piece's own packing status, from `pieceStatusOf` in the
+   *  same per-Piece loop that resolves `pieces` above — never a second walk
+   *  of this Entry. Empty wherever `pieces` is. */
+  pieceStatus: ReadonlyMap<string, StatusValue | null>
 }
 
 /**
@@ -331,7 +349,13 @@ function contributionOf(
 ): EntryContribution {
   const entity = trip.entries?.[entry.id]
   if (entity === undefined) {
-    return { residences: [], count: null, pieceCount: null, pieces: new Map() }
+    return {
+      residences: [],
+      count: null,
+      pieceCount: null,
+      pieces: new Map(),
+      pieceStatus: new Map(),
+    }
   }
 
   const kind = entryKind(entity, state)
@@ -350,17 +374,27 @@ function contributionOf(
     )
     // A container is one thing wherever it rides, so every Piece of a
     // per-person container rides with it — there is no per-Piece residence
-    // to refine it with.
+    // to refine it with. `pieceStatusOf` is still called per Person rather
+    // than hardcoded `null` — it already answers `null` for any container
+    // (`statusOf`'s own gate), and calling it here rather than assuming its
+    // answer is what keeps this the *only* place that decides.
     return {
       residences: [segment],
       count,
       pieceCount,
       pieces: new Map(included.map((personId) => [personId, segment])),
+      pieceStatus: new Map(
+        included.map((personId) => [
+          personId,
+          pieceStatusOf(entity.pieces?.[personId], entity, state),
+        ]),
+      ),
     }
   }
 
   if (kind === 'per_person') {
     const pieces = new Map<string, ResidenceRead>()
+    const pieceStatus = new Map<string, StatusValue | null>()
     for (const personId of included) {
       // A Piece with no `residence` of its own reads **loose**, never its
       // Entry's (§5e C0) — for per-person gear *where it is* is only ever a
@@ -379,8 +413,21 @@ function contributionOf(
           null,
         ),
       )
+      // Read in the same per-Piece loop that resolves `pieces` above, off
+      // the same `entity.pieces?.[personId]` this Entry already holds —
+      // never a second walk of the Trip's Entries to find it again.
+      pieceStatus.set(
+        personId,
+        pieceStatusOf(entity.pieces?.[personId], entity, state),
+      )
     }
-    return { residences: [...pieces.values()], count, pieceCount, pieces }
+    return {
+      residences: [...pieces.values()],
+      count,
+      pieceCount,
+      pieces,
+      pieceStatus,
+    }
   }
 
   const holder = view.resolveResidence(entryResidenceOf(entity, state))
@@ -397,6 +444,7 @@ function contributionOf(
     count,
     pieceCount,
     pieces: new Map(),
+    pieceStatus: new Map(),
   }
 }
 
@@ -500,6 +548,7 @@ function tripSlicesOf(state: DepotState): {
         count: number | null
         pieceCount: number | null
         pieces: Map<string, ResidenceRead>
+        pieceStatus: Map<string, StatusValue | null>
       }
     >()
 
@@ -514,6 +563,7 @@ function tripSlicesOf(state: DepotState): {
         count: null,
         pieceCount: null,
         pieces: new Map<string, ResidenceRead>(),
+        pieceStatus: new Map<string, StatusValue | null>(),
       }
       bucket.residences.push(...contribution.residences)
       if (contribution.count !== null) {
@@ -524,6 +574,9 @@ function tripSlicesOf(state: DepotState): {
       }
       for (const [personId, segment] of contribution.pieces) {
         bucket.pieces.set(personId, segment)
+      }
+      for (const [personId, status] of contribution.pieceStatus) {
+        bucket.pieceStatus.set(personId, status)
       }
       gathered.set(source.gearId, bucket)
     }
@@ -537,6 +590,7 @@ function tripSlicesOf(state: DepotState): {
         pieceCount: bucket.pieceCount,
         participantIds: participants,
         pieces: bucket.pieces,
+        pieceStatus: bucket.pieceStatus,
       }
       const list = byGear.get(gearId)
       if (list === undefined) byGear.set(gearId, [facts])
@@ -768,25 +822,31 @@ export function whereaboutsByPerson(
       )
       const first = claiming[0]
       const segment = first?.pieces.get(personId)
+      const included = first !== undefined && segment !== undefined
       byPerson.set(personId, {
         personId,
-        slice:
-          first === undefined || segment === undefined
-            ? // `home` is `undefined` only if `whereabouts` returned no
-              // slices at all, which it never does.
-              (home ?? { kind: 'home', path: [], count: null })
-            : {
-                kind: 'trip',
-                tripId: first.tripId,
-                tripName: first.tripName,
-                container: segment.container,
-                stage: segment.stage,
-                // A Person's slice speaks for **their one Piece**: per-person
-                // gear has no owned-count (invariant 6) and one Person brings
-                // one.
-                count: null,
-                pieceCount: 1,
-              },
+        slice: included
+          ? {
+              kind: 'trip',
+              tripId: first.tripId,
+              tripName: first.tripName,
+              container: segment.container,
+              stage: segment.stage,
+              // A Person's slice speaks for **their one Piece**: per-person
+              // gear has no owned-count (invariant 6) and one Person brings
+              // one.
+              count: null,
+              pieceCount: 1,
+            }
+          : // `home` is `undefined` only if `whereabouts` returned no
+            // slices at all, which it never does.
+            (home ?? { kind: 'home', path: [], count: null }),
+        // `null` exactly when the slice above is home — a Piece at home has
+        // no packing status, whether because it was never included or was
+        // tombstoned (B5). Read off the same `first`/`pieces` walk above,
+        // never a second lookup: `pieceStatus` was gathered in the identical
+        // per-Piece loop that resolved `pieces`.
+        status: included ? (first.pieceStatus.get(personId) ?? null) : null,
         contestedTripIds:
           claiming.length >= 2 ? claiming.map((trip) => trip.tripId) : [],
       })

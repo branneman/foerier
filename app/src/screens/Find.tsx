@@ -1,10 +1,11 @@
 import {
   containmentView,
   findGear,
+  rowWhereabouts,
+  statusLabel,
   whereabouts,
   whereaboutsByPerson,
   whereaboutsText,
-  rowWhereabouts,
   type ContainmentView,
   type DepotState,
   type Match,
@@ -39,10 +40,13 @@ import styles from './Find.module.css'
  * (`docs/design/README.md` §5d I) — and draws one row per **Participant of
  * the claiming Trip(s)** (D6), a removed Piece reading home with no mention
  * of the removal (B5), mounted only while at least one Piece is actually
- * out. A Piece two Trips both claim takes the unaccounted row's own
- * anatomy, `▲ CLAIMED BY N TRIPS` + `RESOLVE` — and unlike gear detail's
- * `PIECES` chip, which is a span, this **is** a link (D7), routing to the
- * first claiming Trip by name A→Z.
+ * out. Each row's trailing slot states that Piece's own packing status
+ * (`PACKED`/`STAGED`/`NOT PACKED`, via `shared`'s `pieceStatusOf`/
+ * `statusLabel` — S9a's own facts, not S10's) or `⌂ HOME`. A Piece two Trips
+ * both claim takes the unaccounted row's own anatomy instead, `▲ CLAIMED BY
+ * N TRIPS` + `RESOLVE` — and unlike gear detail's `PIECES` chip, which is a
+ * span, this **is** a link (D7), routing to the first claiming Trip by name
+ * A→Z.
  *
  * **Still left to S10:** the `▲ LAST SEEN` unaccounted read has no unpack
  * outcome yet to draw from.
@@ -189,12 +193,23 @@ function PlainRow({
 
 /**
  * One Participant's own row inside {@link PerPersonCard} (D6): a 28px
- * circle, that Person's whereabouts at full density, or — a Piece two
- * Trips both claim — the unaccounted row's own anatomy, `▲ CLAIMED BY N
- * TRIPS` plus a `RESOLVE` link (D7). **Unlike gear detail's `PIECES` chip,
- * which is a span** because "a chip is not a door", this row's `RESOLVE`
- * really is one: the row *is* the surface naming the conflict here, not
- * chrome riding a card that already links elsewhere.
+ * circle, that Person's whereabouts at full density, and a trailing slot
+ * that is — in order — `RESOLVE` (D7), that Piece's own packing status, or
+ * `⌂ HOME`.
+ *
+ * **The trailing slot never re-derives anything `whereaboutsByPerson`
+ * already resolved.** `status` came off the identical per-Piece walk that
+ * built `slice`'s own residence (`shared/src/selectors/whereabouts.ts`'s own
+ * risk statement: two surfaces disagreeing, applied to two *slots on one
+ * row* this time) — it is `null` exactly when `slice` is the home answer, so
+ * `status !== null` is what decides `PACKED`/`STAGED`/`NOT PACKED` versus
+ * `⌂ HOME`, never a second look at `slice.kind`. A Piece two Trips both
+ * claim takes the unaccounted row's own anatomy instead, `▲ CLAIMED BY N
+ * TRIPS` plus a `RESOLVE` link (D7), which wins over the status slot.
+ * **Unlike gear detail's `PIECES` chip, which is a span** because "a chip is
+ * not a door", this row's `RESOLVE` really is one: the row *is* the surface
+ * naming the conflict here, not chrome riding a card that already links
+ * elsewhere.
  *
  * `contested` reads `answer.slice` for its destination rather than looking
  * it up a second way: `whereaboutsByPerson`'s own contract is that the
@@ -236,7 +251,7 @@ function PersonPieceRow({
             : whereaboutsText(answer.slice, 'full')}
         </span>
       </span>
-      {contested && (
+      {contested ? (
         <Link
           href={`/trips/${contested.tripId}`}
           className={styles['resolve']}
@@ -244,6 +259,10 @@ function PersonPieceRow({
         >
           RESOLVE
         </Link>
+      ) : (
+        <span className={styles['statusChip']} data-testid="find-person-status">
+          {answer.status !== null ? statusLabel(answer.status) : '⌂ HOME'}
+        </span>
       )}
     </div>
   )

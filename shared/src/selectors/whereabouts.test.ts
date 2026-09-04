@@ -20,6 +20,7 @@ import {
   tripPhaseMoved,
   tripPieceMoved,
   tripPieceRemoved,
+  tripPieceStatusSet,
   type OpSpec,
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
@@ -974,6 +975,54 @@ describe('whereaboutsByPerson — one answer per Participant (D6)', () => {
       count: null,
     })
     expect(kim?.contestedTripIds).toEqual([])
+  })
+
+  // §5f round 1 fix: `status` is read off the same per-Piece walk that
+  // resolves `slice`'s residence, never a second one over the Trip's
+  // Entries — Find's trailing status chip and gear detail's PIECES chip must
+  // never disagree with the residence sitting right beside it.
+  it("carries each included Participant's own packing status (round 1 fix)", () => {
+    const state = fold(
+      log([...perPerson, tripPieceStatusSet(TRIP, 'e-lamp', MARK, 'packed')]),
+    )
+    const byPerson = whereaboutsByPerson(state, 'g-lamp')
+
+    expect(byPerson.get(MARK)?.status).toBe('packed')
+    // Ana's Piece is included but never addressed by a status op — an
+    // absent register reads `not_packed` (`pieceStatusOf`'s own rule).
+    expect(byPerson.get(ANA)?.status).toBe('not_packed')
+  })
+
+  it('reads `status` as null for a Participant whose Piece was removed (home, B5)', () => {
+    const state = fold(
+      log([...perPerson, tripPieceStatusSet(TRIP, 'e-lamp', KIM, 'packed')]),
+    )
+    const kim = whereaboutsByPerson(state, 'g-lamp').get(KIM)
+
+    // Kim's Piece is tombstoned, so her answer falls through to home — a
+    // status op addressed to a removed Piece changes nothing this file
+    // reads: a Piece at home has no packing status, because it is not on a
+    // trip to be packed for.
+    expect(kim?.slice.kind).toBe('home')
+    expect(kim?.status).toBeNull()
+  })
+
+  it('reads `status` as null for a Participant with no Pieces at all (home)', () => {
+    const state = fold(
+      log([
+        ...aPerson({ id: MARK, name: 'Mark' }),
+        ...aGear({ id: 'g-tent', name: 'Tent' }),
+        ...aTrip({
+          id: TRIP,
+          name: 'Alps 2026',
+          phase: 'pack_out',
+          participants: [MARK],
+        }),
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+      ]),
+    )
+
+    expect(whereaboutsByPerson(state, 'g-tent').get(MARK)?.status).toBeNull()
   })
 
   it('unions both Participant sets when two Trips claim, and names the contested', () => {

@@ -10,6 +10,7 @@ import {
   tripParticipantAdded,
   tripPhaseMoved,
   tripPieceRemoved,
+  tripPieceStatusSet,
   type OpSpec,
 } from '@foerier/shared'
 import { cleanup, render, screen, within } from '@testing-library/react'
@@ -456,5 +457,54 @@ describe('Find — whereabouts reaches the screen', () => {
     })
     expect(resolve).toHaveTextContent('RESOLVE')
     expect(resolve).toHaveAttribute('href', `/trips/${alpsId}`)
+    // RESOLVE wins over the trailing status slot — round 1's ordering.
+    expect(within(card).queryByTestId('find-person-status')).toBeNull()
+  })
+
+  it("reads each row's trailing slot as that Piece's own packing status, or ⌂ HOME for a Participant reading home (round 1 fix)", async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const markId = anId()
+    const elsId = anId()
+    const kimId = anId()
+    const store = await seededStore([
+      personRecorded(markId, 'Mark'),
+      personRecorded(elsId, 'Els'),
+      personRecorded(kimId, 'Kim'),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripParticipantAdded(tripId, markId),
+      tripParticipantAdded(tripId, elsId),
+      tripParticipantAdded(tripId, kimId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(tripId, 'e-headlamp', { from: 'depot', gearId }),
+      tripPieceStatusSet(tripId, 'e-headlamp', markId, 'packed'),
+      // Els's Piece is included but never addressed by a status op — an
+      // absent register reads `not_packed` (`pieceStatusOf`'s own rule).
+      tripPieceRemoved(tripId, 'e-headlamp', kimId),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'headlamp')
+
+    const card = screen.getByTestId('find-per-person-card')
+    const rows = within(card).getAllByTestId('find-person-row')
+    // People-screen order: Els, Kim, Mark.
+    expect(
+      within(rows[0] as HTMLElement).getByTestId('find-person-status'),
+    ).toHaveTextContent('NOT PACKED')
+    // Kim's Piece is removed — home, and the trailing slot says so, not a
+    // packing status (a Piece at home has none).
+    expect(
+      within(rows[1] as HTMLElement).getByTestId('find-person-status'),
+    ).toHaveTextContent('⌂ HOME')
+    expect(
+      within(rows[2] as HTMLElement).getByTestId('find-person-status'),
+    ).toHaveTextContent('PACKED')
   })
 })
