@@ -55,7 +55,30 @@ describe('WhereaboutsCard', () => {
 
     expect(screen.getByText('⌂ HOME SLOT')).toBeInTheDocument()
     expect(screen.getByText('Attic ▸ Crate B')).toBeInTheDocument()
-    expect(screen.getByText('×1 THERE')).toBeInTheDocument()
+    // **Single gear carries no count on either row** (S9b, ruling D1: *the
+    // right-hand read names the unit that splits*), so the right-hand slot
+    // is empty here where it used to read `×1 THERE`. The counted case one
+    // test below is where the count is asserted now.
+    expect(screen.queryByText(/THERE$/)).not.toBeInTheDocument()
+  })
+
+  it('names the quantity only where one splits — counted gear (D1)', async () => {
+    const pegId = anId()
+    const slices = await slicesFor(
+      [
+        gearRecorded(pegId, {
+          name: 'Tent peg',
+          container: false,
+          kind: 'counted',
+          owned_count: 6,
+        }),
+      ],
+      pegId,
+    )
+
+    render(<WhereaboutsCard slices={slices} />)
+
+    expect(screen.getByText('×6 THERE')).toBeInTheDocument()
   })
 
   it('shows an empty path as loose rather than as a blank row, and the split-count hint', async () => {

@@ -159,8 +159,20 @@ export {
   UNGROUPED_LABEL,
 } from './selectors/slice.ts'
 
-export type { Whereabouts, WhereaboutsSlice } from './selectors/whereabouts.ts'
-export { whereabouts } from './selectors/whereabouts.ts'
+export type {
+  PersonWhereabouts,
+  TripContainerRead,
+  Whereabouts,
+  WhereaboutsDensity,
+  WhereaboutsSlice,
+} from './selectors/whereabouts.ts'
+export {
+  rowWhereabouts,
+  sliceCountLabel,
+  whereabouts,
+  whereaboutsByPerson,
+  whereaboutsText,
+} from './selectors/whereabouts.ts'
 
 export type { ListTotals } from './selectors/entry.ts'
 export {

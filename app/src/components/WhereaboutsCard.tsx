@@ -1,4 +1,8 @@
-import type { PathSegment, WhereaboutsSlice } from '@foerier/shared'
+import {
+  sliceCountLabel,
+  type PathSegment,
+  type WhereaboutsSlice,
+} from '@foerier/shared'
 
 import styles from './WhereaboutsCard.module.css'
 
@@ -33,15 +37,24 @@ export function WhereaboutsCard({
 }: {
   slices: readonly WhereaboutsSlice[]
 }) {
+  // **The home rows only, until this slice's card task lands.** S9b's
+  // selector answers with `'trip'` slices as well, and `HOME_LABEL` is
+  // hardcoded inside the map below — drawing a trip slice through it would
+  // label the duffel `⌂ HOME SLOT`, a lie the card would state on screen.
+  // Narrowing here keeps the drawn card exactly what it has been since S2b.
+  const homeSlices = slices.filter(
+    (slice): slice is Extract<WhereaboutsSlice, { kind: 'home' }> =>
+      slice.kind === 'home',
+  )
   return (
     <div className={styles['card']}>
-      {slices.map((slice) => (
+      {homeSlices.map((slice) => (
         <div key={slice.kind} className={styles['row']}>
           <div className={styles['rowMain']}>
             <span className={styles['label']}>{HOME_LABEL}</span>
             <span className={styles['path']}>{pathText(slice.path)}</span>
           </div>
-          <span className={styles['count']}>×{slice.count} THERE</span>
+          <span className={styles['count']}>{sliceCountLabel(slice)}</span>
         </div>
       ))}
       <p className={styles['hint']}>

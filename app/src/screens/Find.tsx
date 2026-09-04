@@ -2,6 +2,7 @@ import {
   containmentView,
   findGear,
   whereabouts,
+  whereaboutsText,
   type ContainmentView,
   type DepotState,
   type Match,
@@ -65,8 +66,7 @@ function pathText(path: readonly PathSegment[]): string {
  * (`docs/ubiquitous-language.md`) and matches `WhereaboutsCard.pathText` and
  * `GearDetail.chipLocation`'s fallback for the identical condition. */
 function sliceText(slice: WhereaboutsSlice): string {
-  const text = pathText(slice.path)
-  return text === '' ? '⌂ LOOSE' : `⌂ ${text}`
+  return whereaboutsText(slice, 'full')
 }
 
 /**
@@ -92,10 +92,18 @@ function CountedCard({
 }) {
   const name = match.gear.name?.value ?? ''
   const result = whereabouts(state, match.gear.id, view)
-  const count = result.slices.reduce((sum, slice) => sum + slice.count, 0)
+  // Home holds `owned − Σ out` and each trip slice holds its own share, so
+  // the sum is the owned count whether or not any of it is away (S9b §2.4).
+  const count = result.slices.reduce(
+    (sum, slice) => sum + (slice.count ?? 0),
+    0,
+  )
   const metaId = `find-card-meta-${match.gear.id}`
   const sliceIds = result.slices.map(
-    (slice) => `find-card-slice-${match.gear.id}-${slice.kind}`,
+    (slice) =>
+      `find-card-slice-${match.gear.id}-${slice.kind}${
+        slice.kind === 'trip' ? `-${slice.tripId}` : ''
+      }`,
   )
 
   return (
@@ -113,7 +121,7 @@ function CountedCard({
       </span>
       <span className={styles['sliceList']}>
         {result.slices.map((slice, index) => (
-          <span key={slice.kind} className={styles['sliceRow']}>
+          <span key={sliceIds[index]} className={styles['sliceRow']}>
             <span id={sliceIds[index]} className={styles['sliceWhereabouts']}>
               {sliceText(slice)}
             </span>

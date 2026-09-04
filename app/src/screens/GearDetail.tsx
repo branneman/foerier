@@ -97,9 +97,14 @@ function chipLocation(path: readonly PathSegment[]): string {
 }
 
 /** `×1 ⌂ CRATE B` — one chip per {@link WhereaboutsSlice}, never per unit
- * (Vocabulary guards: depot units of counted gear carry no identity). */
-function chipLabel(slice: WhereaboutsSlice): string {
-  return `×${slice.count} ⌂ ${chipLocation(slice.path)}`
+ * (Vocabulary guards: depot units of counted gear carry no identity).
+ *
+ * **The home arm only.** S9b's selector answers with a `'trip'` slice as
+ * well, and the trip chip (`×1 ▸ ALPS 2026`) plus the whole card rebuild are
+ * the surface task of this slice; this narrowing is what keeps the drawn
+ * screen exactly what it was until that lands. */
+function chipLabel(slice: Extract<WhereaboutsSlice, { kind: 'home' }>): string {
+  return `×${slice.count ?? 1} ⌂ ${chipLocation(slice.path)}`
 }
 
 export function GearDetail() {
@@ -194,6 +199,12 @@ export function GearDetail() {
   const retired = gear.retired?.value === true
   const counted = gear.kind?.value === 'counted'
   const { slices } = whereabouts(state, gearId)
+  // Until this slice's surface tasks land, both groups below draw the home
+  // slice alone — the shape they have drawn since S2b.
+  const homeSlices = slices.filter(
+    (slice): slice is Extract<WhereaboutsSlice, { kind: 'home' }> =>
+      slice.kind === 'home',
+  )
 
   return (
     <div className={styles['screen']}>
@@ -258,7 +269,7 @@ export function GearDetail() {
             </span>
           </div>
           <div className={styles['countChips']}>
-            {slices.map((slice) => (
+            {homeSlices.map((slice) => (
               <span
                 key={slice.kind}
                 className={styles['countChip']}
