@@ -17,6 +17,7 @@ import { ownerOf } from './owner.ts'
 import { piecesOf } from './piece.ts'
 import {
   type TripContainmentView,
+  type TripHolderRef,
   tripContainmentView,
 } from './tripContainment.ts'
 
@@ -161,6 +162,36 @@ export function pieceStatusOf(
 ): StatusValue | null {
   if (isContainerEntry(entry, state)) return null
   return piece?.status?.value ?? 'not_packed'
+}
+
+/**
+ * The Entry's own trip residence, or `null` for a **per-person** Entry —
+ * whose *where* is only ever a per-Piece fact (§5e C0). An absent register on
+ * every other Kind reads {@link TRIP_LOOSE}, which is this file's fourth
+ * absent-reads rule and stated only here.
+ *
+ * **The third instance of a shape the codebase already had twice**, and it is
+ * here for their reason: `bringCountOf` answers `null` for anything
+ * non-Counted whatever the register holds, {@link statusOf} answers `null`
+ * for a container whatever the register holds, and this answers `null` for a
+ * per-person Entry whatever the register holds. `trip.entry_moved` on a
+ * per-person Entry is **fold-but-ignore** — the reducer keeps folding it,
+ * because a peer on another build may write one and
+ * [sync §5.3]'s tolerant reader is absolute, and no reader consults it for
+ * this Kind. Naming the gate is what stops a call site re-deriving it, and
+ * the symptom of a copy is CONTAINER mode and ALL mode stating different
+ * places for the same gear — the fault S9 round 2 exists to remove.
+ *
+ * **This overturns S9a's own decision** that a Piece with no residence reads
+ * its Entry's, then loose. It reads **loose**. S9a's spec §11.2 is a dated
+ * record and is not edited; the round-2 spec is where the overturn lives.
+ */
+export function entryResidenceOf(
+  entry: EntryState,
+  state: DepotState,
+): TripResidence | null {
+  if (entryKind(entry, state) === 'per_person') return null
+  return entry.residence?.value ?? TRIP_LOOSE
 }
 
 /** The container's journey stage, or `null` for a non-container. */
@@ -320,28 +351,48 @@ export const TRIP_LOOSE: TripResidence = Object.freeze({ in: 'loose' })
 const LOOSE = TRIP_LOOSE
 
 /**
+ * The pointer a resolved holder is written back as. {@link TripHolderRef} and
+ * {@link TripResidence} are deliberately different types — one is what a
+ * pointer turned out to mean, the other the pointer as written — and this is
+ * the one place the trip world crosses back, because {@link PackingItem}
+ * carries a residence and every reader of one wants the resolved answer.
+ */
+function residenceOfHolder(holder: TripHolderRef): TripResidence {
+  if (holder.kind === 'loose') return LOOSE
+  return { in: 'container', entryId: holder.entryId }
+}
+
+/**
  * Every item on the Trip, in {@link entriesOf} order with a per-person
  * Entry's Pieces in {@link piecesOf} order.
  *
- * **A Piece with no `residence` register of its own reads its Entry's**, then
- * `loose`. `trip.entry_moved` on a per-person Entry is a legitimate op — the
- * whole headlamp set goes in the duffel — and the Piece ops are the
- * refinement, so reading an absent Piece residence as `loose` would silently
- * discard it. The two registers stay distinct facts about the log; only the
- * read is layered, exactly as the absent reads above are. **This is a
- * decision the spec did not take**, recorded in the slice's own *what changed
- * during implementation*, and it is deliberately *not* symmetric with
- * `status`: an absent Piece status reads `not_packed` rather than the Entry's,
- * because a status is per-Piece work while a residence is where the set rides.
+ * **A Piece with no `residence` register of its own reads `loose`, never its
+ * Entry's** (§5e C0). For per-person gear *where it is* is only ever a
+ * per-Piece fact, so there is no Entry-level residence to fall back to —
+ * {@link entryResidenceOf} answers `null` for that Kind and this function
+ * never asks it for one. **This overturns S9a's layered read**, which is a
+ * dated record left as written; the round-2 spec is where the overturn lives.
+ *
+ * **The residence handed out is the EFFECTIVE one**, resolved through
+ * {@link TripContainmentView}. A residence register is a raw pointer and can
+ * name an Entry this replica has not folded, has seen removed, or that is not
+ * a container at all — the same reasons the containment view already applies
+ * to an Entry's own pointer. Unresolved, such an item lands in **no** group,
+ * and the partition §5e C5 claims — top-level groups plus `Loose` summing to
+ * {@link packingTotals} exactly — silently stops summing. That is the whole
+ * reason this function, and not each caller, resolves them.
+ *
+ * `view` is optional for {@link containerTotals}' reason: a screen builds one
+ * view, not one per group.
  */
 export function packingItems(
   trip: TripState,
   state: DepotState,
+  view: TripContainmentView = tripContainmentView(trip, state),
 ): readonly PackingItem[] {
   const items: PackingItem[] = []
   for (const entry of entriesOf(trip, state)) {
     if (isContainerEntry(entry, state)) continue
-    const entryResidence = entry.residence?.value ?? LOOSE
     if (entryKind(entry, state) === 'per_person') {
       for (const personId of piecesOf(entry, trip)) {
         const piece = entry.pieces?.[personId]
@@ -353,7 +404,9 @@ export function packingItems(
           // Never `null` here: `isContainerEntry` was answered above, and it
           // is the only thing either status function returns `null` for.
           status: pieceStatusOf(piece, entry, state) ?? 'not_packed',
-          residence: piece?.residence?.value ?? entryResidence,
+          residence: residenceOfHolder(
+            view.resolveResidence(piece?.residence?.value),
+          ),
         })
       }
       continue
@@ -373,7 +426,13 @@ export function packingItems(
       // `isContainerEntry` was answered above, and a container is the only
       // thing either status function returns `null` for.
       status: statusOf(entry, state) ?? 'not_packed',
-      residence: entryResidence,
+      // Through {@link entryResidenceOf} rather than the register, so the one
+      // Kind whose Entry-level residence is not a fact is gated in the named
+      // function and nowhere else. `resolveResidence` takes its `null`
+      // directly, which is why no `??` stands here.
+      residence: residenceOfHolder(
+        view.resolveResidence(entryResidenceOf(entry, state)),
+      ),
     })
   }
   return items
@@ -454,21 +513,46 @@ export function subtreeOf(
 }
 
 /**
+ * Is this item inside `entryId`, **at any depth**?
+ *
+ * It reads the **item's own** effective residence, not the holder of the
+ * Entry the item belongs to. For a whole-Entry item the two are the same
+ * fact; for a Piece they are not, and §5e C5 rules that a Piece counts at
+ * *its own* place — so a per-person Entry spanning two groups contributes to
+ * both, each Piece counted once. That is what makes the top-level groups plus
+ * `Loose` a **partition** of the Trip's items, summing to
+ * {@link packingTotals} exactly, so `● 48/61` does not move when a Piece
+ * changes bags.
+ *
+ * `subtree` is `entryId`'s descendants; `entryId` itself is the direct case
+ * and is not in it. Stated once, because {@link containerTotals} and
+ * {@link disagreements} ask the identical question about the identical list
+ * and a header disagreeing with the ▲ line drawn on it is exactly the drift
+ * this file exists to prevent.
+ */
+function isInside(
+  item: PackingItem,
+  entryId: string,
+  subtree: ReadonlySet<string>,
+): boolean {
+  const { residence } = item
+  if (residence.in !== 'container') return false
+  return residence.entryId === entryId || subtree.has(residence.entryId)
+}
+
+/**
  * A container group's `9/12` — **its contents at any depth**. The duffel's
  * twelve include the stuff sack's four, so a nested group's own rows are
  * counted twice on screen: once in its header and once in its ancestor's.
  * That is what "everything in the duffel" means to a household carrying it.
  *
- * The subtree is over **Entries**, which is what {@link tripContainmentView}
- * resolves: a per-person Entry counts under the container its own `residence`
- * names, whatever a `trip.piece_moved` has since said about one of its
- * Pieces. **That is the correct grouping, not a limitation of it.** CONTAINER
- * mode draws a per-person Entry as **one row** carrying a cluster
- * (`PER-PERSON · 1/3`), never one row per Piece, so this function's only
- * consumer groups by the Entry — and grouping by the Entry is what keeps the
- * group header agreeing with the rows drawn under it, which is the precise
- * symptom {@link packingItems} exists to prevent. A Piece's own residence
- * surfaces in ALL mode instead, as the `▸ MIXED` segment.
+ * **It counts Pieces, apportioned** (§5e C5): the filter is each item's own
+ * residence through {@link isInside}, not the holder of the Entry it belongs
+ * to. S9a filtered by the Entry's holder and argued that grouping by the
+ * Entry was what kept a header agreeing with its rows; round 2 overturns it,
+ * because a per-person Entry has no Entry-level residence to group by
+ * ({@link entryResidenceOf}) and the header and its rows then agreed with
+ * each other while both were wrong about where the gear was.
  *
  * Pass `view` **and `items`** when you already have them: each is O(entries)
  * to build, and CONTAINER mode draws one group per container, so a screen
@@ -481,10 +565,10 @@ export function containerTotals(
   state: DepotState,
   entryId: string,
   view: TripContainmentView = tripContainmentView(trip, state),
-  items: readonly PackingItem[] = packingItems(trip, state),
+  items: readonly PackingItem[] = packingItems(trip, state, view),
 ): PackingCount {
   const subtree = subtreeOf(view, entryId)
-  return countOf(items.filter((item) => subtree.has(item.entryId)))
+  return countOf(items.filter((item) => isInside(item, entryId, subtree)))
 }
 
 export type PersonBucketKey =
@@ -624,7 +708,7 @@ export function disagreements(
   state: DepotState,
   view: TripContainmentView = tripContainmentView(trip, state),
 ): readonly Disagreement[] {
-  const items = packingItems(trip, state)
+  const items = packingItems(trip, state, view)
   const rows: Disagreement[] = []
   for (const entry of entriesOf(trip, state)) {
     // `null` for every non-container, so this is also the container gate —
@@ -637,7 +721,10 @@ export function disagreements(
     const subtree = subtreeOf(view, entry.id)
     let notPacked = 0
     for (const item of items) {
-      if (!subtree.has(item.entryId)) continue
+      // {@link isInside}, so the ▲ line counts exactly what the header above
+      // it counts. `3 INSIDE NOT PACKED` on a crate whose header says `0/0`
+      // is the shape these two disagreeing takes.
+      if (!isInside(item, entry.id, subtree)) continue
       if (!countsAsDisagreement(item.status)) continue
       notPacked += item.units
     }

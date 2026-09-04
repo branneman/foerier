@@ -4,9 +4,9 @@ import {
   personRecorded,
   tripCreated,
   tripEntryAdded,
-  tripEntryMoved,
   tripParticipantAdded,
   tripPhaseMoved,
+  tripPieceMoved,
   tripPieceStatusSet,
   type Clock,
   type IdSource,
@@ -91,7 +91,13 @@ function seed(): readonly OpSpec[] {
       kind: 'per_person',
     }),
     tripEntryAdded(ALPS, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
-    tripEntryMoved(ALPS, E_HEADLAMP, { in: 'container', entryId: E_CRATE }),
+    // Written on the **Piece**, not the Entry: for per-person gear *where it
+    // is* is only ever a per-Piece fact, and a `trip.entry_moved` here would
+    // fold and be ignored (§5e C0).
+    tripPieceMoved(ALPS, E_HEADLAMP, 'els', {
+      in: 'container',
+      entryId: E_CRATE,
+    }),
     tripPieceStatusSet(ALPS, E_HEADLAMP, 'els', 'staged'),
   ]
 }

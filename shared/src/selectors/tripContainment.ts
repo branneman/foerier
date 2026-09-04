@@ -1,6 +1,11 @@
 import { compareStamps, type Stamp } from '../hlc.ts'
 import { stampOf } from '../registers.ts'
-import type { DepotState, EntryState, TripState } from '../state.ts'
+import type {
+  DepotState,
+  EntryState,
+  TripResidence,
+  TripState,
+} from '../state.ts'
 import { entriesOf, entryLabel, isContainerEntry } from './entry.ts'
 
 /**
@@ -79,6 +84,24 @@ export interface TripContainmentView {
    */
   childrenOf(ref: TripHolderRef): readonly string[]
   /**
+   * The effective holder of a **raw pointer**, whoever wrote it — an Entry's
+   * `residence` register, or **one Piece's**. Reasons 1–3, applied exactly
+   * once, here, so a caller resolving a pointer that is not an Entry's own
+   * never re-derives them: the symptom of a copy is a Piece pointing at a
+   * removed container landing in *no* group at all, which silently breaks
+   * the partition §5e C5 claims.
+   *
+   * `null` or `undefined` — an absent register, or a Kind whose Entry-level
+   * residence is not a fact at all (`entryResidenceOf`) — read **loose**.
+   *
+   * **Reason 4 is deliberately not applied**, and cannot be: a cycle is a
+   * property of one *Entry's* own edge in the graph, not of a pointer value.
+   * A Piece is a leaf — nothing can point at it — so no Piece pointer is
+   * ever on a cycle, and a Piece naming a container whose own edge was
+   * broken still rides in that container.
+   */
+  resolveResidence(residence: TripResidence | null | undefined): TripHolderRef
+  /**
    * The entry ids reading loose because reason 4 applied — a cycle broke at
    * *their* edge. Reasons 1–3 are not breaks; they are pointers into
    * something the reader cannot see, and they are not listed here.
@@ -102,14 +125,19 @@ const LOOSE: TripHolderRef = Object.freeze({ kind: 'loose' })
  * {@link isContainerEntry}, which is also the only place that answers the
  * container question: re-deriving `state.gear[…]?.container === true` here
  * would miss the trip-only half and cut a live edge.
+ *
+ * It takes the **pointer** rather than the Entry holding it, because a Piece
+ * writes the same shape of pointer and gets the same three reasons — see
+ * {@link TripContainmentView.resolveResidence}, which is this function with
+ * the view's own `visible` and `state` already bound.
  */
 function resolvePointer(
   visible: ReadonlyMap<string, EntryState>,
   state: DepotState,
-  entry: EntryState,
+  residence: TripResidence | null | undefined,
 ): TripHolderRef {
-  const residence = entry.residence?.value
-  if (residence === undefined || residence.in === 'loose') return LOOSE
+  if (residence === undefined || residence === null) return LOOSE
+  if (residence.in === 'loose') return LOOSE
 
   const holder = visible.get(residence.entryId)
   // Reasons 1–3. A self-reference survives this and is caught as a one-node
@@ -193,14 +221,13 @@ export function tripContainmentView(
   // Reasons 1–3.
   const holders = new Map<string, TripHolderRef>()
   for (const id of entryIds) {
-    const entry = visible.get(id)
-    // The `undefined` arm is unreachable — `entryIds` are `visible`'s own keys
-    // — and exists for `Map.get`'s signature, not for a real case. Kept so
-    // this loop diffs line-for-line against `containment.ts`, where the
-    // equivalent arm *is* live because it indexes a record it did not build.
+    // The optional chain's `undefined` arm is unreachable — `entryIds` are
+    // `visible`'s own keys — and exists for `Map.get`'s signature, not for a
+    // real case. `containment.ts`'s equivalent *is* live, because it indexes
+    // a record it did not build.
     holders.set(
       id,
-      entry === undefined ? LOOSE : resolvePointer(visible, state, entry),
+      resolvePointer(visible, state, visible.get(id)?.residence?.value),
     )
   }
 
@@ -262,6 +289,7 @@ export function tripContainmentView(
 
   return {
     holderOf: (entryId) => holders.get(entryId) ?? LOOSE,
+    resolveResidence: (residence) => resolvePointer(visible, state, residence),
     childrenOf: (ref) =>
       ref.kind === 'loose' ? looseChildren : (children.get(ref.entryId) ?? []),
     brokenEdges,

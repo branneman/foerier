@@ -9,8 +9,10 @@ import {
   tripEntryMoved,
   tripEntryRemoved,
   tripEntryStatusSet,
+  tripParticipantAdded,
   tripPieceMoved,
   tripPieceRemoved,
+  tripPieceRestored,
   tripPieceStatusSet,
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
@@ -27,6 +29,7 @@ import {
   countOf,
   countsAsDisagreement,
   disagreements,
+  entryResidenceOf,
   isPacked,
   type PackingItem,
   packingItems,
@@ -59,6 +62,7 @@ const BOX = 'e-box' // container · `car` · everything inside it packed
 const CRATE = 'e-crate' // container · `car` · disagreeing at depth 1
 const DUFFEL = 'e-duffel' // container · `packed` · disagreeing at depth 2
 const SACK = 'e-sack' // container inside the duffel · `home`
+const TOTE = 'e-tote' // container added and then removed — a dangling pointer
 
 // The things that travel.
 const FLAGS = 'e-flags' // trip-only single, in the bin, not packed
@@ -269,6 +273,61 @@ function disagreementsIn(state: DepotState = BASE) {
   return disagreements(tripOf(state), state)
 }
 
+function entryOf(entryId: string, state: DepotState = BASE) {
+  const entry = tripOf(state).entries?.[entryId]
+  if (entry === undefined) throw new Error(`the fold holds no Entry ${entryId}`)
+  return entry
+}
+
+describe('entryResidenceOf is the third reader gate (§5e C0)', () => {
+  it('answers null for a per-person Entry even when a residence was folded', () => {
+    // The tolerant reader's own case: a peer on another build may write
+    // `trip.entry_moved` for a per-person Entry, the reducer folds it, and no
+    // reader consults it for this Kind. `bringCountOf` on non-Counted gear and
+    // `statusOf` on a container are the same shape.
+    const state = withLater(
+      tripEntryMoved(TRIP, HEADLAMP, { in: 'container', entryId: CRATE }),
+    )
+
+    expect(entryOf(HEADLAMP, state).residence?.value).toEqual({
+      in: 'container',
+      entryId: CRATE,
+    })
+    expect(entryResidenceOf(entryOf(HEADLAMP, state), state)).toBeNull()
+  })
+
+  it('answers the register for every other Kind, and loose when absent', () => {
+    expect(entryResidenceOf(entryOf(POT), BASE)).toEqual({
+      in: 'container',
+      entryId: SACK,
+    })
+    // A Counted Entry, a trip-only one and a container are all readable.
+    expect(entryResidenceOf(entryOf(STOVE), BASE)).toEqual({
+      in: 'container',
+      entryId: CRATE,
+    })
+    expect(entryResidenceOf(entryOf(FLAGS), BASE)).toEqual({
+      in: 'container',
+      entryId: BIN,
+    })
+    expect(entryResidenceOf(entryOf(SACK), BASE)).toEqual({
+      in: 'container',
+      entryId: DUFFEL,
+    })
+    // Absent reads loose — the fourth of this file's absent-reads rules.
+    expect(entryOf(UNSYNCED).residence).toBeUndefined()
+    expect(entryResidenceOf(entryOf(UNSYNCED), BASE)).toEqual({ in: 'loose' })
+  })
+
+  it('reads a depot Entry whose Gear has not arrived, rather than gating it', () => {
+    // `entryKind` answers `undefined` for the ordinary cross-aggregate race,
+    // and the gate is on `per_person` specifically — the conservative
+    // direction `isContainerEntry` and `pieceCountOf` already take.
+    expect(BASE.gear['g-not-here']).toBeUndefined()
+    expect(entryResidenceOf(entryOf(UNSYNCED), BASE)).not.toBeNull()
+  })
+})
+
 describe('packingItems is the spine', () => {
   it('gives a Counted Entry one item carrying its whole Bring-count', () => {
     const items = itemsFor(STOVE)
@@ -365,31 +424,32 @@ describe('packingItems is the spine', () => {
     expect(itemsFor(HEADLAMP)[0]?.residence).toEqual({ in: 'loose' })
   })
 
-  it('falls a Piece with no residence back to its Entry residence', () => {
-    // A decision the spec does not take. `trip.entry_moved` on a per-person
-    // Entry is legitimate — the whole headlamp set goes in the duffel — and
-    // the Piece ops refine it; reading absent as loose would discard that.
+  it('reads a Piece with no residence as loose, never its Entry’s (§5e C0)', () => {
+    // Asserted against an Entry that **has** a residence, so S9a's layered
+    // read — absent Piece reads its Entry's, then loose — fails this rather
+    // than passing it by coincidence. For per-person gear *where it is* is
+    // only ever a per-Piece fact, so there is nothing above the Pieces to
+    // fall back to.
     const state = withLater(
       tripEntryMoved(TRIP, HEADLAMP, { in: 'container', entryId: CRATE }),
     )
 
     const pieces = piecesFor(HEADLAMP, state)
     expect(pieces).toHaveLength(2)
-    expect(
-      pieces.every(
-        (piece) =>
-          piece.residence.in === 'container' &&
-          piece.residence.entryId === CRATE,
-      ),
-    ).toBe(true)
-    // The two registers stay distinct facts about the log; only the read is
-    // layered — no Piece residence was written.
+    expect(pieces.every((piece) => piece.residence.in === 'loose')).toBe(true)
+    // The register was genuinely folded — this is the tolerant reader's own
+    // case, not an op that failed to land.
+    expect(tripOf(state).entries?.[HEADLAMP]?.residence?.value).toEqual({
+      in: 'container',
+      entryId: CRATE,
+    })
+    // And no Piece residence was written by that op either.
     expect(
       tripOf(state).entries?.[HEADLAMP]?.pieces?.[MARK]?.residence,
     ).toBeUndefined()
   })
 
-  it('lets a Piece residence override its Entry residence', () => {
+  it('reads each Piece at its own place, ignoring the Entry’s register', () => {
     const state = withLater(
       tripEntryMoved(TRIP, HEADLAMP, { in: 'container', entryId: CRATE }),
       tripPieceMoved(TRIP, HEADLAMP, ANA, {
@@ -401,14 +461,49 @@ describe('packingItems is the spine', () => {
     const byPerson = new Map(
       piecesFor(HEADLAMP, state).map((piece) => [piece.personId, piece]),
     )
-    expect(byPerson.get(MARK)?.residence).toEqual({
-      in: 'container',
-      entryId: CRATE,
-    })
+    expect(byPerson.get(MARK)?.residence).toEqual({ in: 'loose' })
     expect(byPerson.get(ANA)?.residence).toEqual({
       in: 'container',
       entryId: DUFFEL,
     })
+  })
+
+  it('resolves a Piece pointer the reader cannot follow to loose', () => {
+    // The three pointer reasons `tripContainmentView` already applies to an
+    // Entry's own residence, now applied to a Piece's: an Entry this replica
+    // has never folded, a **removed** container, and an Entry that is not a
+    // container at all. Unresolved, each of these lands the Piece in no group
+    // and the partition §5e C5 claims stops summing.
+    const state = withLater(
+      tripParticipantAdded(TRIP, ELS),
+      tripPieceRestored(TRIP, HEADLAMP, KIM),
+      tripEntryAdded(TRIP, TOTE, {
+        from: 'trip_only',
+        name: 'Tote',
+        container: true,
+      }),
+      tripEntryRemoved(TRIP, TOTE),
+      tripPieceMoved(TRIP, HEADLAMP, MARK, { in: 'container', entryId: TOTE }),
+      tripPieceMoved(TRIP, HEADLAMP, KIM, {
+        in: 'container',
+        entryId: 'e-never-folded',
+      }),
+      // The Rope is an ordinary Single, not a container.
+      tripPieceMoved(TRIP, HEADLAMP, ANA, { in: 'container', entryId: ROPE }),
+    )
+
+    const byPerson = new Map(
+      piecesFor(HEADLAMP, state).map((piece) => [piece.personId, piece]),
+    )
+    expect(byPerson.get(MARK)?.residence).toEqual({ in: 'loose' })
+    expect(byPerson.get(KIM)?.residence).toEqual({ in: 'loose' })
+    expect(byPerson.get(ANA)?.residence).toEqual({ in: 'loose' })
+    // Els's Piece never had a register at all, and reads the same way.
+    expect(byPerson.get(ELS)?.residence).toEqual({ in: 'loose' })
+    // The pointers were folded exactly as written — the resolution is a read.
+    expect(
+      tripOf(state).entries?.[HEADLAMP]?.pieces?.[MARK]?.residence?.value,
+    ).toEqual({ in: 'container', entryId: TOTE })
   })
 
   it('reads a Piece residence even where the Entry has none', () => {
@@ -568,6 +663,115 @@ describe('a container group counts its subtree at any depth', () => {
         items.filter((item) => item.entryId !== STOVE),
       ),
     ).toEqual({ packed: 1, total: 3, left: 2 })
+  })
+})
+
+/**
+ * A per-person Entry split three ways, and **deliberately not all of its
+ * pointers valid**: Mark's Piece in the crate, Ana's in the duffel, Kim's
+ * pointing at a container that was added and then **removed**, and Els — a
+ * Participant added here — carrying no `residence` register at all. The
+ * Entry's own `residence` is written too, at `Box`, and must be ignored
+ * everywhere (§5e C0).
+ *
+ * The dangling pointer is the point. A fixture whose pointers all resolve
+ * would pass the partition assertion below against an implementation that
+ * never resolves anything, and the case that silently breaks C5's exactness
+ * is precisely the Piece the reader cannot follow: unresolved it lands in no
+ * group, and the groups quietly stop summing to the total.
+ */
+const SPLIT = withLater(
+  tripParticipantAdded(TRIP, ELS),
+  tripPieceRestored(TRIP, HEADLAMP, KIM),
+  tripEntryAdded(TRIP, TOTE, {
+    from: 'trip_only',
+    name: 'Tote',
+    container: true,
+  }),
+  tripEntryRemoved(TRIP, TOTE),
+  tripEntryMoved(TRIP, HEADLAMP, { in: 'container', entryId: BOX }),
+  tripPieceMoved(TRIP, HEADLAMP, MARK, { in: 'container', entryId: CRATE }),
+  tripPieceMoved(TRIP, HEADLAMP, ANA, { in: 'container', entryId: DUFFEL }),
+  tripPieceMoved(TRIP, HEADLAMP, KIM, { in: 'container', entryId: TOTE }),
+)
+
+/** The four **top-level** containers; the stuff sack is inside the duffel. */
+const TOP_LEVEL = [BIN, BOX, CRATE, DUFFEL] as const
+
+/**
+ * What C5 claims sums to the trip total: every top-level group, plus `Loose`.
+ *
+ * `Loose` is taken from each item's **own** residence and not from
+ * `view.holderOf(item.entryId)`, because the residence is what the screen
+ * draws a row under. Reading the Entry's holder here would let the old
+ * arithmetic pass: a Piece counted in no group would be picked up as loose by
+ * an Entry that is loose, and the sum would close over a screen that had
+ * drawn the Piece in a bag.
+ */
+function partitionOf(state: DepotState): number {
+  const trip = tripOf(state)
+  const items = itemsIn(state)
+  const grouped = TOP_LEVEL.reduce(
+    (sum, entryId) => sum + containerTotals(trip, state, entryId).total,
+    0,
+  )
+  const loose = countOf(
+    items.filter((item) => item.residence.in === 'loose'),
+  ).total
+  return grouped + loose
+}
+
+describe('the container partition is exact (§5e C5)', () => {
+  it('counts a Piece under the container the PIECE names, not the Entry’s', () => {
+    // The Entry's own register says `Box`, and the box holds the mug alone.
+    expect(entryOf(HEADLAMP, SPLIT).residence?.value).toEqual({
+      in: 'container',
+      entryId: BOX,
+    })
+    expect(groupTotals(BOX, SPLIT)).toEqual({ packed: 1, total: 1, left: 0 })
+    // Mark's Piece is in the crate: 3 stove + rope + tarp + pan + 1.
+    expect(groupTotals(CRATE, SPLIT).total).toBe(7)
+    // Ana's is in the duffel, whose three at any depth become four.
+    expect(groupTotals(DUFFEL, SPLIT).total).toBe(4)
+  })
+
+  it('counts a Piece pointing at a REMOVED container under Loose, not nowhere', () => {
+    const byPerson = new Map(
+      piecesFor(HEADLAMP, SPLIT).map((piece) => [piece.personId, piece]),
+    )
+
+    // The pointer is folded exactly as written; the Tote is gone.
+    expect(
+      tripOf(SPLIT).entries?.[HEADLAMP]?.pieces?.[KIM]?.residence?.value,
+    ).toEqual({ in: 'container', entryId: TOTE })
+    expect(entriesOf(tripOf(SPLIT), SPLIT).map((entry) => entry.id)).not.toContain(TOTE) // prettier-ignore
+    expect(byPerson.get(KIM)?.residence).toEqual({ in: 'loose' })
+    // And Els, who never wrote one at all, reads the same way.
+    expect(byPerson.get(ELS)?.residence).toEqual({ in: 'loose' })
+  })
+
+  it('sums the top-level groups plus Loose to the trip total', () => {
+    // 1 (box) + 7 (crate) + 4 (duffel) + 1 (bin) + 3 loose = 16.
+    expect(totalsIn(SPLIT)).toEqual({ packed: 5, total: 16, left: 11 })
+    expect(partitionOf(SPLIT)).toBe(16)
+  })
+
+  it('does not move the trip total when a Piece changes bags', () => {
+    // The assertion C5's claim rests on: `● 48/61` is a property of the
+    // Trip, and moving a Piece between two bags moves both group counts and
+    // neither total.
+    const moved = fold(
+      log(
+        [tripPieceMoved(TRIP, HEADLAMP, MARK, { in: 'container', entryId: BOX })], // prettier-ignore
+        BASE_SPECS.length + 100,
+      ),
+      SPLIT,
+    )
+
+    expect(groupTotals(CRATE, moved).total).toBe(6)
+    expect(groupTotals(BOX, moved).total).toBe(2)
+    expect(totalsIn(moved)).toEqual(totalsIn(SPLIT))
+    expect(partitionOf(moved)).toBe(partitionOf(SPLIT))
   })
 })
 

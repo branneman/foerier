@@ -593,6 +593,8 @@ describe('tripPath', () => {
           ? ({ kind: 'container', entryId: 'e-crate' } as const)
           : ({ kind: 'container', entryId: 'e-duffel' } as const),
       childrenOf: () => [],
+      // `tripPath` never asks; the field is here because the interface has it.
+      resolveResidence: () => ({ kind: 'loose' }) as const,
       brokenEdges: new Set<string>(),
     }
 

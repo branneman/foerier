@@ -7,8 +7,8 @@ import {
   personRecorded,
   tripCreated,
   tripEntryAdded,
-  tripEntryMoved,
   tripParticipantAdded,
+  tripPieceMoved,
   tripPieceRemoved,
   tripPieceStatusSet,
   type Clock,
@@ -133,7 +133,13 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
       kind: 'per_person',
     }),
     tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: GEAR }),
-    tripEntryMoved(TRIP, ENTRY, { in: 'container', entryId: DUFFEL_ENTRY }),
+    // On the **Piece**: a per-person Entry has no residence of its own to
+    // read (§5e C0), and this is the sheet whose whole point is that one
+    // Piece may ride in the duffel while another is loose.
+    tripPieceMoved(TRIP, ENTRY, 'mark', {
+      in: 'container',
+      entryId: DUFFEL_ENTRY,
+    }),
     tripPieceStatusSet(TRIP, ENTRY, 'kim', 'packed'),
     // Never moved: this Entry's own `residence` register stays unset, which
     // `packing.ts` reads as loose — F1's dedicated fixture.

@@ -184,6 +184,7 @@ export {
   countOf,
   countsAsDisagreement,
   disagreements,
+  entryResidenceOf,
   isKnownStage,
   isKnownStatus,
   isPacked,
