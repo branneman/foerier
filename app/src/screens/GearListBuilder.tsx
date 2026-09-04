@@ -13,7 +13,7 @@ import {
 } from '@foerier/shared'
 import { PersonCluster } from '@foerier/ui'
 import { useState } from 'react'
-import { Link, useSearch } from 'wouter'
+import { useSearch } from 'wouter'
 
 import { ActivationConfirm } from '../components/ActivationConfirm'
 import {
@@ -25,8 +25,8 @@ import { overClaimGroups, OverClaimBand } from '../components/OverClaimBand'
 import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
 import { TripOnlySheet } from '../components/TripOnlySheet'
 import { useDepot } from '../depot/store'
-import { syncLabel } from '../depot/syncLabel'
 import { tripParticipants } from '../depot/trips'
+import { BackLink, ScreenBand } from '../shell/ScreenBand'
 import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import { DepotPicker } from './DepotPicker'
 import styles from './GearListBuilder.module.css'
@@ -272,10 +272,11 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const backHref = fromTrips ? '/trips' : `/trips/${tripId}`
   const backLabel = fromTrips ? 'TRIPS' : label
 
+  // The Desktop header row draws the link outside the band — the one place
+  // in the app it is — so it takes `ScreenBand`'s own `BackLink` rather than
+  // spelling the `‹ ` prefix and the style a second time.
   const backLinkElement = header.backLink && (
-    <Link href={backHref} className={styles['back']}>
-      ‹ {backLabel}
-    </Link>
+    <BackLink href={backHref} label={backLabel} />
   )
 
   const startPackOutButton = isDraft && (
@@ -380,16 +381,12 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
         </div>
 
         <div className={styles['builder']}>
-          {!isDesktop && header.band && (
-            <header className={styles['header']}>
-              {backLinkElement}
-              {header.syncLine && (
-                <span className={styles['sync']}>
-                  <span className={styles['syncDot']} aria-hidden="true" />
-                  {syncLabel(sync)}
-                </span>
-              )}
-            </header>
+          {!isDesktop && (
+            <ScreenBand
+              header={header}
+              back={{ href: backHref, label: backLabel }}
+              sync={sync}
+            />
           )}
 
           {!isDesktop && (

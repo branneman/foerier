@@ -1,12 +1,12 @@
 import { Confirm } from '@foerier/ui'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useSearch } from 'wouter'
+import { useLocation, useSearch } from 'wouter'
 
 import type { AuthApi, DeviceRow } from '../auth/api'
 import { formatDate, formatDateTime } from '../format'
 import { useDepot } from '../depot/store'
-import { syncLabel, syncTone } from '../depot/syncLabel'
 import { clearLocalData as clearLocalDataForReal } from '../depot/wiring'
+import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Devices.module.css'
 
@@ -475,28 +475,11 @@ export function Devices({
           People asks one screen along: the back link unless its destination
           is already drawn, the sync line at Split alone — the one mode where
           `AppShell`'s marker is a bare rail dot with no words. */}
-      {header.band && (
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href="/account" className={styles['back']}>
-              ‹ ACCOUNT
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']}>
-              <span
-                className={`${styles['syncDot']} ${
-                  syncTone(sync) === 'unreachable'
-                    ? styles['syncDotUnreachable']
-                    : ''
-                }`}
-                aria-hidden="true"
-              />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
-      )}
+      <ScreenBand
+        header={header}
+        back={{ href: '/account', label: 'ACCOUNT' }}
+        sync={sync}
+      />
 
       <h1 className={styles['title']}>Devices</h1>
       <p className={styles['count']}>

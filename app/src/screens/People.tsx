@@ -12,7 +12,7 @@ import type { AuthApi, InviteRow, LoginRow } from '../auth/api'
 import { sortedPeople } from '../depot/people'
 import { formatDateTime } from '../format'
 import { useDepot } from '../depot/store'
-import { syncLabel, syncTone } from '../depot/syncLabel'
+import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './People.module.css'
 
@@ -640,28 +640,11 @@ export function People({
           answers come to here is `‹ ACCOUNT` at both widths and the sync line
           at Split — but the rule is asked rather than spelled out, because a
           rule spelled per screen is a chance to spell it differently. */}
-      {header.band && (
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href="/account" className={styles['back']}>
-              ‹ ACCOUNT
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']}>
-              <span
-                className={`${styles['syncDot']} ${
-                  syncTone(sync) === 'unreachable'
-                    ? styles['syncDotUnreachable']
-                    : ''
-                }`}
-                aria-hidden="true"
-              />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
-      )}
+      <ScreenBand
+        header={header}
+        back={{ href: '/account', label: 'ACCOUNT' }}
+        sync={sync}
+      />
 
       {body}
     </div>

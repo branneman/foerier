@@ -40,41 +40,6 @@
   /* The band — `Trip.module.css`'s rule verbatim, since it is the same band
      answering the same hook. The difference is entirely in `Packing.tsx`:
      `atDesktopSidebarCarriesDestination: false` keeps the link at Desktop. */
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-12);
-  }
-
-  .back {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-accent);
-    text-decoration: none;
-  }
-
-  .sync {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-ink-faint);
-  }
-
-  .syncDot {
-    width: 0.375rem;
-    height: 0.375rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-accent);
-  }
-
   /* DISPLAY, 28/34 — and 34 at Desktop is the token's business, not this
      file's: every screen title in the app reads the same one. */
   .title {

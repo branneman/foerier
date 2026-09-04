@@ -22,6 +22,7 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { Account } from '../screens/Account'
 import { AddGear } from '../screens/AddGear'
 import { DepotPicker } from '../screens/DepotPicker'
 import { Devices } from '../screens/Devices'
@@ -34,6 +35,7 @@ import { People } from '../screens/People'
 import { Trip } from '../screens/Trip'
 import { setViewport } from '../testSetup'
 import { AppShell } from './AppShell'
+import bandStyles from './ScreenBand.module.css'
 import { DESKTOP, SPLIT } from './useMediaQuery'
 
 /**
@@ -101,12 +103,24 @@ const idleEngine: EngineFactory = () => ({
   bootstrap: () => null,
 })
 
+/** The box unreachable: every screen's own line reads `OFFLINE`, and the dot
+ * beside it has to be amber — the drift `ScreenBand` exists to end. */
+const offlineEngine: EngineFactory = () => ({
+  start() {},
+  stop() {},
+  flush: () => Promise.resolve(),
+  pull: () => Promise.resolve(),
+  status: () => 'offline',
+  bootstrap: () => null,
+})
+
 async function seededStore(
   specs: readonly OpSpec[] = [],
+  engine: EngineFactory = idleEngine,
 ): Promise<StoreApi<DepotStoreState>> {
   const store = createDepotStore({
     log: inMemoryOpLog(),
-    engine: idleEngine,
+    engine,
     author: anAuthor(),
   })
   for (const spec of specs) store.getState().emit(spec)
@@ -146,6 +160,22 @@ const authApi = createAuthApi(
     }
     if (url.endsWith('/auth/devices')) {
       return Promise.resolve(new Response(JSON.stringify({ devices: [] })))
+    }
+    if (url.endsWith('/auth/passkeys')) {
+      return Promise.resolve(new Response(JSON.stringify({ passkeys: [] })))
+    }
+    if (url.endsWith('/auth/me')) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            login_id: 'dddddddd-0000-7000-8000-000000000002',
+            person_id: PERSON,
+            household_id: HOUSEHOLD,
+            household_name: 'Veldkamp',
+            device_id: DEVICE,
+          }),
+        ),
+      )
     }
     throw new Error(`unmocked request: ${method} ${url}`)
   },
@@ -205,6 +235,14 @@ function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
             </Route>
             <Route path="/trips/:id/list">
               {(params) => <GearListBuilder tripId={params.id} />}
+            </Route>
+            <Route path="/account">
+              <Account
+                api={authApi}
+                token={TOKEN}
+                personId={PERSON}
+                onSignOut={() => {}}
+              />
             </Route>
             <Route path="/account/people">
               <People api={authApi} token={TOKEN} personId={PERSON} />
@@ -728,5 +766,116 @@ describe('the back link — withheld only where its destination is already drawn
     // `/account/people` is `Redirect to="/account"` at Desktop, so this link
     // repeated the sidebar's own `Account` row by way of a redirect.
     expect(screen.queryByRole('link', { name: '‹ PEOPLE & LOGINS' })).toBeNull()
+  })
+})
+
+/**
+ * **The dot's tone, asserted through the screens — because that is where it
+ * drifted.** `useScreenHeader` centralised the *decision* about the band,
+ * and for two slices every screen still pasted the *rendering*: the same
+ * fifteen lines of JSX and the same four CSS rules, ten times over. The dot
+ * is amber while the household is unreachable (`docs/design/README.md`,
+ * "6px dot: sage SYNCED / amber OFFLINE"), and only the two screens written
+ * in one slice — `People` and `Devices` — carried it; the other eight drew a
+ * sage dot beside the word `OFFLINE`. `ScreenBand` ends the paste, and this
+ * block is the net under it: one case per screen that draws its own line,
+ * at Split, the one mode where a screen draws it.
+ *
+ * `DepotPicker`'s screen variant is the one sync-line caller not counted:
+ * `App.tsx` redirects `/trips/:id/add` at Split and up, so the width at
+ * which it would draw the line is one it is never mounted at, and standing
+ * it up here would be a fixture describing an app that does not exist.
+ * `InviteIssued` draws no sync line at all.
+ */
+describe('the sync dot at Split — amber while the household is unreachable, on every screen', () => {
+  type Seed = () => Promise<{
+    store: StoreApi<DepotStoreState>
+    path: string
+  }>
+
+  async function offlineStore(specs: readonly OpSpec[] = []) {
+    return seededStore(specs, offlineEngine)
+  }
+
+  async function offlineTrip(suffix: string) {
+    const id = anId()
+    return {
+      store: await offlineStore([tripCreated(id, 'Alps 2026')]),
+      path: `/trips/${id}${suffix}`,
+    }
+  }
+
+  const cases: readonly (readonly [string, Seed, string | null])[] = [
+    [
+      'Add gear',
+      async () => ({ store: await offlineStore(), path: '/add' }),
+      null,
+    ],
+    [
+      'gear detail',
+      async () => {
+        const id = anId()
+        return {
+          store: await offlineStore([
+            gearRecorded(id, {
+              name: 'Tent',
+              container: false,
+              kind: 'single',
+            }),
+          ]),
+          path: `/gear/${id}`,
+        }
+      },
+      null,
+    ],
+    [
+      'a new Trip',
+      async () => ({ store: await offlineStore(), path: '/trips/new' }),
+      null,
+    ],
+    ['a Trip', () => offlineTrip(''), null],
+    ['Packing', () => offlineTrip('/packing'), null],
+    ['the builder', () => offlineTrip('/list'), null],
+    [
+      'Account',
+      async () => ({ store: await offlineStore(), path: '/account' }),
+      'Account',
+    ],
+    [
+      'People',
+      async () => ({ store: await offlineStore(), path: '/account/people' }),
+      'People & logins',
+    ],
+    [
+      'Devices',
+      async () => ({ store: await offlineStore(), path: '/account/devices' }),
+      'Devices',
+    ],
+  ]
+
+  it.each(cases)('turns amber on %s', async (_screen, seed, heading) => {
+    setViewport(SPLIT)
+    const { store, path } = await seed()
+    renderInShell(store, path)
+    if (heading !== null) await screen.findByRole('heading', { name: heading })
+
+    // The screen's own line, not the shell's: at Split the rail carries only
+    // a bare dot, so `OFFLINE` in words is the screen's.
+    const main = screen.getByRole('main')
+    const line = within(main).getByText('OFFLINE')
+    expect(line).toBeVisible()
+    const dot = within(main).getByTestId('screen-band-dot')
+    expect(line).toContainElement(dot)
+    expect(dot).toHaveClass(bandStyles['syncDotUnreachable']!)
+  })
+
+  it('stays sage while the household is reachable', async () => {
+    setViewport(SPLIT)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}`)
+
+    const dot = within(screen.getByRole('main')).getByTestId('screen-band-dot')
+    expect(dot).toHaveClass(bandStyles['syncDot']!)
+    expect(dot).not.toHaveClass(bandStyles['syncDotUnreachable']!)
   })
 })

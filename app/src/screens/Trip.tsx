@@ -28,13 +28,13 @@ import { PhaseSheet } from '../components/PhaseSheet'
 import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
 import { TripOnlySheet } from '../components/TripOnlySheet'
 import { useDepot } from '../depot/store'
-import { syncLabel } from '../depot/syncLabel'
 import {
   parseIsoDate,
   tripChip,
   tripDateRange,
   tripParticipants,
 } from '../depot/trips'
+import { ScreenBand } from '../shell/ScreenBand'
 import {
   DESKTOP,
   SPLIT,
@@ -475,21 +475,11 @@ export function Trip() {
           `‹ TRIPS` goes at Desktop, where the sidebar's own `TRIPS` row is
           what it points at, and the sync line is drawn at **Split alone**,
           where `AppShell` puts only a bare dot in the rail. */}
-      {header.band && (
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href="/trips" className={styles['back']}>
-              ‹ TRIPS
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']}>
-              <span className={styles['syncDot']} aria-hidden="true" />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
-      )}
+      <ScreenBand
+        header={header}
+        back={{ href: '/trips', label: 'TRIPS' }}
+        sync={sync}
+      />
 
       {isDesktop ? (
         // One row, and `EDIT` genuinely last in the document rather than

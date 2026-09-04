@@ -25,7 +25,7 @@ import { Link } from 'wouter'
 import { TagPicker } from '../components/TagPicker'
 import { ValueMenu } from '../components/ValueMenu'
 import { useDepot } from '../depot/store'
-import { syncLabel } from '../depot/syncLabel'
+import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import { qtyFor } from './Depot'
 import styles from './DepotPicker.module.css'
@@ -335,22 +335,15 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
       className={variant === 'screen' ? styles['screen'] : styles['pane']}
       data-testid="depot-picker"
     >
-      {variant === 'screen' && header.band && (
+      {variant === 'screen' && (
         // The same band every pushed screen carries, under the same rule
-        // (`frontend-design.md` §3.3): `useScreenHeader` decides both halves.
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href={`/trips/${tripId}`} className={styles['back']}>
-              ‹ {backLabel}
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']}>
-              <span className={styles['syncDot']} aria-hidden="true" />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
+        // (`frontend-design.md` §3.3): `useScreenHeader` decides both halves
+        // and `ScreenBand` draws them.
+        <ScreenBand
+          header={header}
+          back={{ href: `/trips/${tripId}`, label: backLabel }}
+          sync={sync}
+        />
       )}
 
       {variant === 'screen' ? (

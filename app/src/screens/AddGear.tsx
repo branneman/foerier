@@ -7,12 +7,12 @@ import {
   type Residence,
 } from '@foerier/shared'
 import { useRef, useState } from 'react'
-import { Link, useLocation } from 'wouter'
+import { useLocation } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { useDepot } from '../depot/store'
-import { syncLabel } from '../depot/syncLabel'
+import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './AddGear.module.css'
 
@@ -198,21 +198,11 @@ export function AddGear() {
           sync line is drawn at Split alone, the one mode where `AppShell`'s
           marker is a bare rail dot with no words. `useScreenHeader` decides
           both, and at Desktop it withholds the band entirely. */}
-      {header.band && (
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href="/" className={styles['back']}>
-              ‹ DEPOT
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']}>
-              <span className={styles['syncDot']} aria-hidden="true" />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
-      )}
+      <ScreenBand
+        header={header}
+        back={{ href: '/', label: 'DEPOT' }}
+        sync={sync}
+      />
 
       <div className={styles['titleRow']}>
         <h1 className={styles['title']}>Add gear</h1>

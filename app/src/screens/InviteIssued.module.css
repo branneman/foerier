@@ -8,21 +8,6 @@
     width: 100%;
   }
 
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .back {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    color: var(--color-accent);
-    text-decoration: none;
-  }
-
   .title {
     font: var(--text-display) var(--font-display);
     font-weight: 700;

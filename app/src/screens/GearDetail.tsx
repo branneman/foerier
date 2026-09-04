@@ -25,14 +25,14 @@ import {
 } from '@foerier/shared'
 import { Chip, Confirm, Sheet, Stepper } from '@foerier/ui'
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'wouter'
+import { useParams } from 'wouter'
 
 import { HomePicker, sameResidence } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
 import { WhereaboutsCard } from '../components/WhereaboutsCard'
 import { useDepot } from '../depot/store'
-import { syncLabel } from '../depot/syncLabel'
+import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './GearDetail.module.css'
 
@@ -205,21 +205,11 @@ export function GearDetail() {
           the state is legible at exactly that width. Both are
           `useScreenHeader`'s and nowhere else's; `Depot split` (900) is the
           frame that draws this pane. */}
-      {header.band && (
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href="/" className={styles['back']}>
-              ‹ DEPOT
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']}>
-              <span className={styles['syncDot']} aria-hidden="true" />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
-      )}
+      <ScreenBand
+        header={header}
+        back={{ href: '/', label: 'DEPOT' }}
+        sync={sync}
+      />
 
       <div className={styles['identity']}>
         <h1

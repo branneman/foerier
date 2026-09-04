@@ -7,7 +7,7 @@ import type { AuthApi, DeviceRow, PasskeyRow } from '../auth/api'
 import { BUILD_SHA } from '../build'
 import { formatDate, isToday } from '../format'
 import { useDepot } from '../depot/store'
-import { syncLabel } from '../depot/syncLabel'
+import { ScreenBand } from '../shell/ScreenBand'
 import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Account.module.css'
 import {
@@ -341,21 +341,11 @@ export function Account({
           alone**, the one mode where `AppShell`'s marker is a bare rail dot
           carrying its words only as an `aria-label` — `useScreenHeader` is the
           one place both are decided. */}
-      {header.band && (
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href="/" className={styles['back']}>
-              ‹ DEPOT
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']}>
-              <span className={styles['syncDot']} aria-hidden="true" />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
-      )}
+      <ScreenBand
+        header={header}
+        back={{ href: '/', label: 'DEPOT' }}
+        sync={sync}
+      />
 
       {isDesktop ? (
         <div className={styles['titleRow']}>

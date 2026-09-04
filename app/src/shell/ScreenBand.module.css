@@ -1,0 +1,55 @@
+@layer components {
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  /* Most labels are fixed literals drawn upper-case already (`‹ DEPOT`,
+     `‹ TRIPS`); `DepotPicker`, `GearListBuilder` and `Packing` hand in the
+     Trip's own mixed-case name, so the transform is what makes every band
+     read the same way. */
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .sync {
+    display: flex;
+    align-items: center;
+    /* At Split a detail pane draws the sync line and nothing else — the back
+       link is withheld, because the list it came from is in the pane beside
+       it (`GearDetail`). Without this, `space-between`'s lone child sits at
+       the leading edge; the board draws `● SYNCED` at the trailing one. With
+       two children the auto margin changes nothing. */
+    margin-left: auto;
+    gap: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .syncDot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+    flex: none;
+  }
+
+  /* Amber, not red: unreachable is a fact about the network, never an error
+     about the Quartermaster's work — the same rule `AppShell`'s own marker
+     follows (`docs/design/README.md`: "6px dot: sage SYNCED / amber
+     OFFLINE"). */
+  .syncDotUnreachable {
+    background: var(--color-brand-amber);
+  }
+}

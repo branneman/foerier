@@ -33,7 +33,7 @@ import {
 } from '@foerier/shared'
 import { PersonCircle } from '@foerier/ui'
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'wouter'
+import { useParams } from 'wouter'
 
 import { ContainerMoveConfirm } from '../components/ContainerMoveConfirm'
 import { JourneyRail } from '../components/JourneyRail'
@@ -42,8 +42,8 @@ import { PackPicker, sameTripResidence } from '../components/PackPicker'
 import { PieceStatusSheet } from '../components/PieceStatusSheet'
 import { useDepot } from '../depot/store'
 import { personInitial } from '../depot/people'
-import { syncLabel } from '../depot/syncLabel'
 import { leftLabel, packedLabel, packedPercent, peopleOn } from '../depot/trips'
+import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Packing.module.css'
 
@@ -936,21 +936,12 @@ export function Packing() {
 
   return (
     <div className={styles['screen']}>
-      {header.band && (
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href={`/trips/${tripId}`} className={styles['back']}>
-              ‹ {tripLabel(trip)}
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']} data-testid="packing-sync">
-              <span className={styles['syncDot']} aria-hidden="true" />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
-      )}
+      <ScreenBand
+        header={header}
+        back={{ href: `/trips/${tripId}`, label: tripLabel(trip) }}
+        sync={sync}
+        syncTestId="packing-sync"
+      />
 
       <h1 className={styles['title']}>Pack-out</h1>
 

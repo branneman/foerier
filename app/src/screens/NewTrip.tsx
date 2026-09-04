@@ -7,12 +7,12 @@ import {
 } from '@foerier/shared'
 import { PersonCluster } from '@foerier/ui'
 import { useState } from 'react'
-import { Link, useLocation } from 'wouter'
+import { useLocation } from 'wouter'
 
 import { ParticipantPicker } from '../components/ParticipantPicker'
 import { useDepot } from '../depot/store'
-import { syncLabel } from '../depot/syncLabel'
 import { peopleOn } from '../depot/trips'
+import { ScreenBand } from '../shell/ScreenBand'
 import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import styles from './NewTrip.module.css'
 
@@ -171,21 +171,11 @@ export function NewTrip() {
           bare pane with no sidebar. The sync line is drawn at **Split alone**,
           the one mode where `AppShell`'s marker is a bare rail dot with no
           words. `useScreenHeader` decides both. */}
-      {header.band && (
-        <header className={styles['header']}>
-          {header.backLink && (
-            <Link href="/trips" className={styles['back']}>
-              ‹ TRIPS
-            </Link>
-          )}
-          {header.syncLine && (
-            <span className={styles['sync']}>
-              <span className={styles['syncDot']} aria-hidden="true" />
-              {syncLabel(sync)}
-            </span>
-          )}
-        </header>
-      )}
+      <ScreenBand
+        header={header}
+        back={{ href: '/trips', label: 'TRIPS' }}
+        sync={sync}
+      />
 
       <h1 className={styles['title']}>New trip</h1>
 

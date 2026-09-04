@@ -1,9 +1,10 @@
 import { ExpiryChip, QrCode } from '@foerier/ui'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'wouter'
+import { useLocation } from 'wouter'
 
 import type { AuthApi, IssuedInvite } from '../auth/api'
 import { useDepot } from '../depot/store'
+import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './InviteIssued.module.css'
 
@@ -100,7 +101,7 @@ export function InviteIssued({
    */
   const copy = own
     ? {
-        back: { href: '/account', label: '‹ ACCOUNT' },
+        back: { href: '/account', label: 'ACCOUNT' },
         title: 'Sign in on another device',
         lead: `Open this on the other device. It signs that device in as ${
           subjectName === null ? 'you' : `you, ${subjectName}`
@@ -111,7 +112,7 @@ export function InviteIssued({
       }
     : purpose === 'device'
       ? {
-          back: { href: '/account/people', label: '‹ PEOPLE & LOGINS' },
+          back: { href: '/account/people', label: 'PEOPLE & LOGINS' },
           title: `Device link for ${name}`,
           lead: `Open this on ${name}’s device. It signs that device in as ${name}.`,
           fact: 'The link is the credential. Treat it like a key.',
@@ -119,7 +120,7 @@ export function InviteIssued({
           revokeLabel: 'REVOKE LINK',
         }
       : {
-          back: { href: '/account/people', label: '‹ PEOPLE & LOGINS' },
+          back: { href: '/account/people', label: 'PEOPLE & LOGINS' },
           title: `Invite for ${name}`,
           lead: 'Hand it over yourself — foerier sends no mail.',
           fact: `It creates a login for ${name}. Nothing else can use it.`,
@@ -195,13 +196,9 @@ export function InviteIssued({
 
   return (
     <div className={styles['screen']}>
-      {header.backLink && (
-        <header className={styles['header']}>
-          <Link href={copy.back.href} className={styles['back']}>
-            {copy.back.label}
-          </Link>
-        </header>
-      )}
+      {/* No `sync` handed in: this screen draws no sync line, so the band
+          gates on the back link alone (`frontend-design.md` §3.3). */}
+      <ScreenBand header={header} back={copy.back} />
 
       <h1 className={styles['title']}>{copy.title}</h1>
       <p className={styles['lead']}>{copy.lead}</p>
