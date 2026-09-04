@@ -7,7 +7,7 @@ import {
   type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -21,6 +21,8 @@ import {
   type DepotStoreState,
   type EngineFactory,
 } from '../depot/store'
+import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { Find } from './Find'
 
 /**
@@ -260,5 +262,21 @@ describe('Find', () => {
 
     expect(screen.getByText('RECENT')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'axe' })).toBeInTheDocument()
+  })
+
+  // The logo header is the phone shell's, and Depot withholds it at Desktop
+  // because the sidebar there already carries the logo (`AppShell`). Find
+  // drew it at every width, so Desktop showed two — the one drift the three
+  // destination screens had between them.
+  it('draws the logo header below Desktop and withholds it there', async () => {
+    const store = await seededStore([])
+
+    renderFind(store)
+    expect(screen.getByText('foerier')).toBeInTheDocument()
+    cleanup()
+
+    setViewport(SPLIT, DESKTOP)
+    renderFind(store)
+    expect(screen.queryByText('foerier')).toBeNull()
   })
 })
