@@ -211,12 +211,12 @@ Two rules the suite learned the hard way and that a new class must follow:
 **Tier 2s runs single-threaded, and the project config is what enforces it.**
 `api/vitest.server.config.ts` sets `pool: 'forks'` with
 `poolOptions.forks.singleFork`, so every invocation gets one worker and the
-five files run one after another. It is expressed there rather than as
+files run one after another. It is expressed there rather than as
 `--no-file-parallelism` in the `test:server` script because `fileParallelism`
 is a *root-level* Vitest option, silently ignored inside a project config and
 therefore only ever supplied by that one script — while `npx vitest run
 api/test/server/` is an entirely ordinary thing to type. Run in parallel, the
-five classes delete each other's rows mid-ceremony, and `migrations.test.ts`
+classes delete each other's rows mid-ceremony, and `migrations.test.ts`
 — which proves `0003_op.down()` by actually dropping the `op` table before
 re-creating it — makes a neighbour fail with `relation "op" does not exist`
 on whichever test was in flight. `poolOptions` *is* honoured per project, so
@@ -225,14 +225,60 @@ invoked.
 
 ## Tier 3 — Component tests
 
-**Charter:** React components in isolation — the core-flow screens (F1 Add Gear,
-F2 Find, F3 New Trip, F4 Pack-out, F5 Unpack & Close) rendered in jsdom, primary
-interactions exercised with a fake store injected as the source. Behaviour-focused
-(what the user sees and can do), not pixel/screenshot tests.
+**Charter:** React components in isolation — every screen and every component
+in `app/` and `ui/`, rendered in jsdom, primary interactions exercised.
+Behaviour-focused (what the user sees and can do), not pixel/screenshot tests.
 
-**Tooling:** Vitest + React Testing Library, co-located `*.test.tsx`. Shared `ui/`
-components get their own component tests; `app/` screens are tested with a fake
-Zustand store seeded via factories.
+**Tooling:** Vitest + React Testing Library + `@testing-library/user-event`,
+co-located `*.test.tsx`. Shared `ui/` components get their own component tests.
+
+**How an `app/` suite is built — the conventions the code actually carries,
+which this section once described as "a fake Zustand store seeded via
+factories" and which are nothing of the kind:**
+
+- **The store is real and the log is fake.** A suite builds
+  `createDepotStore({ log: inMemoryOpLog(), engine: noopEngine, author })`
+  and seeds it by **emitting real ops** through the same builders the screen
+  uses, then `await drained()`. The reducer, the selectors and the store's
+  queue are all live; only storage and transport are stubbed. Factories from
+  `shared/testUtils/` seed exactly one suite, `screenBand.test.tsx`.
+- **An op is asserted from the log, never from a spy.** A test that proves a
+  tap authored an op reads `log.all()` (or the seeded log's `authored()`) and
+  filters by `type`; a test that proves a tap authored **nothing** counts the
+  same way. There is no `vi.mock` of a module anywhere in `app/` or `ui/`;
+  `fetch` is injected and faked with a handler table.
+- **The viewport is a `matchMedia` stub, and a test names every breakpoint
+  the width crosses.** `app/src/testSetup.ts` installs it and exports
+  `setViewport(...queries)`; `useMediaQuery` fails open to `false` without it,
+  so an unset test is the phone layout.
+- **`TZ=Europe/Amsterdam` is pinned in `app/vitest.config.ts`**, so a
+  timestamp assertion means something — under UTC it would pass against the
+  bug it exists to catch.
+- **A per-screen suite renders without `AppShell`, and
+  `screenBand.test.tsx` renders inside it.** An absence assertion in the first
+  proves the screen withheld a line and nothing about whether the shell drew
+  one, so the second counts one visible `SYNCED` at each width. That is a
+  permanent property of the two suites ([frontend-design §3.3](frontend-design.md)).
+- **CSS is read as text.** jsdom computes no layout and Vitest processes no
+  CSS modules by default, so a rule about a stylesheet — a drawn size, a hit
+  extension, the absence of a rule — is proved by parsing the `.module.css`
+  file (`app/src/screens/drawnSizes.test.ts` is the canonical case). A class
+  name assertion against the imported module object is tolerable; a regex on
+  the generated class string is not, since it leans on Vitest's `stable`
+  naming.
+- **Queries are role-first**, then accessible name, then text; `data-testid`
+  is a first-class hook on both sides for what has no role. `fireEvent`
+  appears once, in `ui/`'s `Stepper` suite, with a written reason.
+- **What jsdom cannot see is in `KEYBOARD-PASS.md`** at the repo root — seven
+  manual checks (focus order, the optimistic-read timing of `IN LIST ✓`, the
+  scroll lock) that no tier replaces. A change to an overlay or to focus
+  handling reruns it.
+
+The scaffolding above is hand-rolled per suite — `noopEngine` in thirty files,
+`anAuthor()` in thirty-four, the store-and-seed block in thirty-two, the
+router-and-provider wrapper in nineteen. Only the `matchMedia` stub was
+centralised. It is recorded in [technical-debt.md](technical-debt.md); the
+render helper it wants is the same shape `screenBand.test.tsx` already carries.
 
 ## Tier 4 — Contract / API tests
 
@@ -336,8 +382,9 @@ depend on nobody ever adding an `upload-artifact` step.
 mints an Invite by Maintainer script (it needs `DATABASE_URL`, which CI does not
 have and must not), one that proves joining itself — joining consumes an Invite
 from the one Household that is never re-created — and one that signs the run's
-own Device out from under every later spec. So `auth.spec.ts` and
-`deviceLink.spec.ts` stay local-only; `depot.spec.ts` and `shell.spec.ts` carry
+own Device out from under every later spec. So `auth.spec.ts`,
+`deviceLink.spec.ts` and `invite.spec.ts` stay local-only; `depot.spec.ts` and
+`shell.spec.ts` carry
 `@production`. A local run is unchanged: the local project has no grep.
 
 **A signed-in Quartermaster comes from a fixture**

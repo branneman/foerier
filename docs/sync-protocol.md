@@ -648,10 +648,16 @@ one that applies.
 **`trip.entry_moved` on a per-person Entry is that same split a fourth time (S9
 round 2):** for per-person gear _where it is_ is only ever a per-Piece fact
 ([domain §5](domain-model.md#5-aggregates)), so no authoring screen emits the op
-for that Kind and no reader consults the register — folded as received and read
-by nobody, exactly the shape a `bring_count` on non-Counted gear already has,
-which also means a Piece with no `residence` of its own reads **loose** rather
-than its Entry's.
+for that Kind and no reader of *where the gear is* consults the register —
+folded as received, and `entryResidenceOf` is the gate that ignores it, exactly
+the shape a `bring_count` on non-Counted gear already has. This also means a
+Piece with no `residence` of its own reads **loose** rather than its Entry's.
+One reader does still see the register: the trip's containment view
+(`tripContainment.ts`) builds its tree from every visible Entry's raw
+residence, per-person ones included, which is right about the container tree
+and wrong about where per-person gear is — so a count of "what rides along
+inside this container" must come from the items' resolved residences, never
+from that tree.
 
 **Tasks and notes**
 

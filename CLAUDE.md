@@ -226,12 +226,14 @@ is S7's row in the dimension table. See
 **Four things about S6 are worth knowing before touching Trips or phases:**
 
 - **Every question the phase table answers has exactly one function beside it,
-  and the lookup itself is private.** `phaseOf`, `isActive`, `phaseLabel`,
-  `phaseName`, `phaseNext` and `isKnownPhase` each answer one question in one
-  way; the row lookup **five** of them share is unexported precisely so no
-  call site decides for itself what a missing row means (`phaseOf` is the
-  sixth and reads the register rather than the table, so it is the one that
-  never asks). `isActive` is the **only** definition of active-ness in the
+  and the lookup itself is private.** `phaseOf`, `isActive`, `isClosed`,
+  `phaseLabel`, `phaseName`, `phaseNext`, `isKnownPhase` and `isActivePhase`
+  each answer one question in one way; the row lookup **five** of them share
+  (`phaseLabel`, `phaseName`, `isKnownPhase`, `isActivePhase`, `phaseNext`) is
+  unexported precisely so no call site decides for itself what a missing row
+  means. `phaseOf` reads the register rather than the table, so it is the one
+  that never asks, and `isActive` and `isClosed` go through `phaseOf` and
+  `isActivePhase` rather than the table. `isActive` is the **only** definition of active-ness in the
   codebase, and S7's claim selector, S9's whereabouts and S10's close gate all
   call it. This is not theoretical tidiness: three separate reviews in this
   slice caught a call site re-deriving one of them.
@@ -315,11 +317,14 @@ superseded, and `docs/design/README.md` §5 is the shipped authority.
   **The round shipped this inverted and review caught it**, which is why
   `app/src/shell/screenBand.test.tsx` renders a screen *inside* `AppShell` and
   counts: the per-screen suites render without the shell, so their absence
-  assertions prove one side of a two-sided fact. **The hook's reach was every
-  screen that draws either half of the band — eight at this point, ten once
-  S7 adds its two:** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`,
-  `People`, `Devices` and `InviteIssued`, the last of which draws a back link
-  and no sync line, so it gates its band on `backLink`. `splitPane` is true
+  assertions prove one side of a two-sided fact. **The hook's reach is every
+  screen that draws either half of the band — eleven since S9a:** `AddGear`,
+  `GearDetail`, `Trip`, `NewTrip`, `Account`, `People`, `Devices`,
+  `InviteIssued`, `DepotPicker`, `GearListBuilder` and `Packing`.
+  `InviteIssued` draws a back link and no sync line, so it gates its band on
+  `backLink`. The hook decides and `ScreenBand` (`app/src/shell/`) draws —
+  the band was pasted per screen until the pattern audit found the sync
+  dot's tone missing from eight of the ten copies. `splitPane` is true
   for `GearDetail` alone; `AddGear` answers `false` against its own board
   frame, because `Add gear — split 900` draws a pane the app has never built
   and `<Route path="/add">` renders it standalone at every width.
@@ -416,11 +421,14 @@ the builder:**
   the reducer, because the Kind it depends on lives on the Gear aggregate, a
   different aggregate with no ordering against the Trip's; gating there would
   make the fold order-dependent on whether `gear.kind_set` had arrived first.
-  `bringCountOf` is one of several sites gating on `kind === 'counted'`
-  (`shared/src/selectors/depot.ts`, `shared/src/selectors/whereabouts.ts`,
-  `app/src/screens/GearDetail.tsx` and `app/src/screens/Depot.tsx` among the
-  others), and the reader folds a Bring-count on any Entry regardless of what
-  the authoring screen would ever offer.
+  `bringCountOf` is one of many sites gating on `kind === 'counted'`
+  (`shared/src/selectors/whereabouts.ts` and `claim.ts`,
+  `app/src/screens/GearDetail.tsx`, `Depot.tsx`, `Find.tsx`, `AddGear.tsx`
+  and `DepotPicker.tsx` among the others — `depot.ts` no longer is, since
+  `depotCounts` retired its pieces sum), and the reader folds a Bring-count
+  on any Entry regardless of what the authoring screen would ever offer. That
+  the gate is spelled at a dozen sites is the standing gap `patterns.md` §1.2
+  records under `kindOf`.
 - **The over-claim view is a pure function of the fold, with no op, no flag
   and no write of its own.** `overClaims(state)` reads registers only, so
   every replica computes the identical set, and it disappears only when a
@@ -494,13 +502,16 @@ drawn beats derived; and the seventeen floor-orphans split as described below.
   clamp is chosen against what actually sits beside the control — the chip
   grows vertically only, because its row's gap is all that separates it from
   its neighbour. `app/src/screens/drawnSizes.test.ts` is the net, and it works
-  by parsing the stylesheet text, the only technique that sees CSS under
-  `css: false`.
+  by parsing the stylesheet text, the only technique that sees CSS in a
+  Vitest run, which processes no CSS modules by default (no config sets
+  `css`; the default is what skips them).
 - **`UNNAMED_PERSON` is the prose sentinel; the glyph is
   `UNNAMED_PERSON_GLYPH`.** The Person now carries the split the Trip always
   had: `—` is right in a list column, a group header and a circle, and wrong in
   a sentence. `personNameOrUnnamed` decides the substitution once, exactly as
-  `tripNameOrUnnamed` does.
+  `tripNameOrUnnamed` does — both in `shared/src/selectors/`, both reading the
+  `name` register rather than comparing a label to `—`, since the pattern
+  audit moved the Trip one out of `app/` and gave it `UNNAMED_TRIP_GLYPH`.
 - **The standing band is the only surface that settles.** `ActivationConfirm`
   and `ReopenConfirm` render the conflict block facts-only, because a control
   that emits inside a cancellable confirm makes `Cancel` state something false.
@@ -689,6 +700,22 @@ overturned), and a group's membership comes from the **items'** residences and
 never from `childrenOf`, which still resolves a per-person Entry's retired
 register and is right only about the container tree.
 
+**A pattern audit has since named every recurring client-side shape once**, in
+[`docs/patterns.md`](docs/patterns.md), and checked each against every site.
+No op types, no endpoints, no migration. What it found is fixed at the rule
+level and listed as departures where it is not: four sites authored a
+needless write (People's and HomePicker's renames, gear detail's Home picker
+on the current home, a remove-elsewhere confirm that could not see a peer's
+tombstone); the Trip got the sentinel split the Person had; three hit
+extensions never reached 44; two async confirms closed before their request
+resolved; and the screen band — decided once by `useScreenHeader`, rendered
+eleven times — carried the sync dot's amber tone on two screens of ten, so
+`ScreenBand` now draws it. The audit also found `frontend-design.md`
+describing an error boundary, a motion module and a chunk-reload handler
+that were never built; the doc now says so, and `technical-debt.md` carries
+each unfixed finding with an anchor into the catalogue. **Read
+`docs/patterns.md` before adding a screen, an overlay or a selector.**
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**
@@ -765,6 +792,12 @@ or framework choices into the [model](docs/domain-model.md),
 - [`docs/design/`](docs/design/) — the Claude Design boards (`*.dc.html`): visual
   foundations, flows, components, screens. Design intent; `frontend-design.md` is
   how it gets built.
+- [`docs/patterns.md`](docs/patterns.md) — the pattern catalogue: every
+  recurring client-side shape (how a screen reads and writes, what a picker
+  and a confirm may each do, the selector conventions, the CSS rules) named
+  once with its canonical example and its known departures. Read it before
+  adding a screen, an overlay or a selector; the per-slice bullets above are
+  where each was first argued.
 - [`docs/testing.md`](docs/testing.md) — the permanent testing strategy (the
   seven-tier pyramid; the convergence tier is the signature).
 - [`docs/technical-debt.md`](docs/technical-debt.md) — the index of outstanding

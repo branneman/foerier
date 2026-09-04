@@ -132,14 +132,18 @@ items under thirty settled ones.
   [`architecture-design.md`](architecture-design.md) §12.1, anchor:
   `` until there is a `ui/` worth showing off ``
 - **"an absent owned-count reads 1" is stated at five sites across two
-  workspaces.** `shared/src/selectors/whereabouts.ts`, `depot.ts` and
-  `claim.ts` each spell the default, and `app/`'s `Depot.tsx` and `Find.tsx`
-  gate the same question again. The one-function form is an `ownedCountOf(gear)`
-  beside `ownerOf` and `phaseOf`; the extraction reaches four files across two
-  workspaces, which is why S7 named it rather than took it. The drift symptom is
-  a Counted Gear reading `×1` on one surface and nothing on another.
-  [`architecture-design.md`](architecture-design.md) §12.13, anchor:
-  `one of several sites`
+  workspaces, and "an absent kind" has no stated reading at all.**
+  `shared/src/selectors/whereabouts.ts` and `claim.ts` spell the owned-count
+  default, `app/`'s `Depot.tsx` and `Find.tsx` gate the same question again,
+  and the Counted gate itself is spelled at a dozen sites. The one-function
+  form is an `ownedCountOf(gear)` and a `kindOf(gear)` beside `ownerOf` and
+  `phaseOf`; the extraction reaches two workspaces, which is why S7 named it
+  rather than took it. The drift symptom is already visible: gear detail
+  draws `×0 OWNED` in its header, `×1` in the COUNT chips beneath and no
+  segment in the meta line, for one Counted Gear with no register — and its
+  edit sheet seeds `kind` and `owned_count` raw, so an untouched Save on such
+  a Gear authors both. [`patterns.md`](patterns.md) §1.2, anchor:
+  `one-function form is a`
 - **`sequence()` is the sixth hand-rolled clock-stamper in `shared/`.**
   `trip.test.ts`, `claim.test.ts`, `entry.test.ts` and `piece.test.ts` each
   carry a byte-identical `foldAt` that flattens factory specs and stamps
@@ -204,3 +208,85 @@ items under thirty settled ones.
   went unnoticed for three slices rather than one.
   [`testing.md`](testing.md) Tier 5, anchor:
   `Three legs are owed and not written`
+- **The resilience layer's `ErrorBoundary` is drawn and not built.** §6 gives
+  a component crash a home in `ui/ErrorBoundary`, wrapping each screen and
+  panel with an in-place ledger-voice fallback; nothing of the kind exists and
+  `main.tsx` mounts `<App/>` bare, so one card's render error is a white page
+  for the whole app. The other two unbuilt homes — the `motion` module and the
+  chunk-load reload handler — are moot until a module declares a transition
+  or a route is code-split, and become due the same day.
+  [`frontend-design.md`](frontend-design.md) §5, anchor:
+  `no error boundary exists in`
+- **Print gets one viewport.** §6 promises nav hidden, single column,
+  ink-on-white and truncation expanded; the first and third are written, and
+  nothing unpins `.shell__main`'s inner scroller or re-enables the ellipsis
+  rules, so a long Depot prints whatever was on screen.
+  [`frontend-design.md`](frontend-design.md) §6, anchor:
+  `prints one viewport`
+- **The primary font is not preloaded.** §7 says `<link rel="preload">` the
+  Spline Sans woff2; `app/index.html` carries no such link.
+  [`frontend-design.md`](frontend-design.md) §7, anchor:
+  `not yet written`
+- **The store's `refusal` channel has no reader.** An op that could not be
+  written — a 16 KB overflow, an IndexedDB failure — sets `depot.refusal`
+  and is logged to the console, and no screen draws it, so the Quartermaster
+  learns nothing. Blocked on a board: no frame draws a refused write.
+  [`patterns.md`](patterns.md) §2.5, anchor:
+  `read by no screen`
+- **`ReopenConfirm` reads the store; `ActivationConfirm`, its twin, takes
+  `groups`.** Two facts-only confirms with one anatomy and two data-flow
+  shapes; the lift is `groups` as a prop from `PhaseSheet` and `Trips`, which
+  already compute them. `TripCard` has the same shape of debt at one read.
+  [`patterns.md`](patterns.md) §5.2, anchor:
+  `computes its own groups`
+- **Nine touch controls between 32 and 40px carry no hit extension.**
+  `TripCard`'s phase chip, `ui/Chip`'s two sizes rendered as buttons, the
+  slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows,
+  `GearDetail`'s segments (whose parent's `overflow: hidden` would clip one),
+  the Split rail's links and the inline Save/Cancel pair copied into four
+  pickers. Each wants ruling O's `::after` with a clamp chosen against its own
+  row, and the chip's trip-screen twin already has it.
+  [`patterns.md`](patterns.md) §6.5, anchor:
+  `carry no extension`
+- **`desktopCard` is a per-slice choice masquerading as a rule.** Five sheets
+  pass it with no board drawing them as a popover, while their nearest
+  siblings do not, so at Desktop the Owner picker is a centred card and the
+  Home picker a bottom sheet on the same edit sheet. Wants a design ruling,
+  not a code change — and so does the card confirms' Cancel-first versus
+  Action-first order, which the S3-era and S9 boards draw differently.
+  [`patterns.md`](patterns.md) §4.5, anchor:
+  `no board draws as a popover`
+- **Who closes a picker after a pick is decided per component.** `PackPicker`
+  and `PhaseSheet` close themselves; `HomePicker`, `OwnerPicker`,
+  `ParticipantPicker` and `SortGroupSheet` are closed by the caller. A new
+  caller of the second group that forgets `setOpen(false)` gets a sheet that
+  stays up after a tap. [`patterns.md`](patterns.md) §4.3, anchor:
+  `decided per component`
+- **Three `ui/` primitives are hand-rolled at three or more sites.** The
+  segmented control in `AddGear`, `GearDetail` and `Packing`; a status pill in
+  `PackingRow` and `PieceStatusSheet`; the avatar circle in `Account` and
+  `AppShell`, which predates `PersonCircle`. Each is on §5's list and each has
+  reached the bar `GearRow` and `ExpiryChip` moved on.
+  [`patterns.md`](patterns.md) §5.5, anchor:
+  `segmented control is hand-rolled`
+- **The mono-caps label is the most-copied rule in the codebase, and the
+  small sizes have no token.** Seventy-six uppercase-label rules across
+  twenty-nine modules, nineteen carrying the full three-line recipe verbatim;
+  ~170 `font-size` declarations set a raw `rem` because the boards specify
+  mono at 8.5–10px and the token scale stops at 11. A shared class and two or
+  three small `--text-*` pairs would close most of it.
+  [`patterns.md`](patterns.md) §6.2, anchor:
+  `most-copied rule`
+- **`N INSIDE` counts the container tree, not what rides along.** `Packing`'s
+  `insideCount` reads `subtreeOf` on the trip containment view, which builds
+  from every Entry's raw residence register — per-person ones included, the
+  fold-but-ignore register a peer build may write — so the container-move
+  confirm can name pieces the group's rows do not show. The count should come
+  from the items' resolved residences.
+  [`sync-protocol.md`](sync-protocol.md) §4.4, anchor:
+  `must come from the items' resolved residences`
+- **Thirty Tier 3 suites hand-roll the same scaffolding.** `noopEngine`,
+  `anAuthor()`, the store-and-seed block and the router-and-provider wrapper
+  are copied per file; only the `matchMedia` stub was centralised. The render
+  helper it wants is the shape `screenBand.test.tsx` already carries.
+  [`testing.md`](testing.md) Tier 3, anchor: `hand-rolled per suite`

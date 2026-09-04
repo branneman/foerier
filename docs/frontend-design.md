@@ -18,6 +18,12 @@ The conceptual [domain model](domain-model.md),
 [ubiquitous language](ubiquitous-language.md), and
 [user stories](user-stories.md) stay untouched and persistence-ignorant.
 
+The recurring code shapes these decisions have settled into — how a screen
+reads and writes, what a picker and a confirm may each do, the selector
+conventions the app leans on, the CSS rules every module follows — are named
+once, with their canonical examples, in [`patterns.md`](patterns.md). This doc
+says what was decided; that one says what it looks like at the third site.
+
 ---
 
 ## Decisions at a glance
@@ -107,8 +113,10 @@ Three layers, all `rem`/color values, defined in the `tokens` cascade layer:
 - **Semantic** — intent, and the **only** layer that flips theme:
   `--color-bg-base`, `--color-ink-primary`, `--color-status-packed`, etc.
   Components consume *this* layer.
-- **Component** — optional local knobs (`--row-pad-x`, `--pill-radius`), only
-  where a component needs one.
+- **Component** — optional local knobs, only where a component needs one. The
+  ones that exist: `--gutter`, `--nav-size` and `--fab-clearance` on the
+  shell, `--packing-indent` on the packing list, `--stack-gap` and
+  `--cluster-gap` on the two layout utilities.
 
 Because everything traces back to `rem` primitives, changing one thing — the root
 font-size, or a future fluid root — scales the **entire** UI in proportion. That
@@ -302,7 +310,11 @@ withheld at a single width**, because the two answer different questions.
 - **The back link is drawn unless its destination is already on the page**,
   which is not a width alone. At Desktop the labeled sidebar *is* that
   destination — `Trip screen — S6 desktop` draws `TRIPS` and the sync line in
-  the sidebar and neither in the main column — so no screen draws one there.
+  the sidebar and neither in the main column — so no screen whose destination
+  is a sidebar row draws one there. Two screens' destination is one specific
+  Trip, which no sidebar row carries: `Packing`, and `GearListBuilder`'s trip
+  door. Both say so with `atDesktopSidebarCarriesDestination: false` and keep
+  their link at Desktop (S7 review F4; `screenBand.test.tsx` asserts it).
   Below Desktop it depends on the screen: `GearDetail` is the detail half of
   `DepotView` at Split with the Depot list in the pane beside it, and
   `Depot split` contains **no `‹` anywhere**; every other pushed screen has no
@@ -320,10 +332,22 @@ back link not.*
 
 **One hook says it: `useScreenHeader` in `app/src/shell/useMediaQuery.ts`**,
 which composes the two queries it sits beside, takes a `ScreenPlacement`
-(`splitPane`, true only for `GearDetail`) and returns `{band, backLink,
-syncLine}`. It exists because a rule spelled per screen is one chance per screen
-to spell it differently — which is exactly how `Account` came to carry `Trip`'s
-defect from a different slice.
+(`splitPane`, true only for `GearDetail`, and the Desktop flag above) and
+returns `{band, backLink, syncLine}`. It exists because a rule spelled per
+screen is one chance per screen to spell it differently — which is exactly how
+`Account` came to carry `Trip`'s defect from a different slice.
+
+**One component draws it: `ScreenBand` in `app/src/shell/ScreenBand.tsx`.**
+The hook decided the band and, for two slices, each screen still drew it —
+the same fifteen lines of JSX and the same four CSS rules pasted ten times.
+The drift that invites arrived on schedule: the sync dot is amber when the
+box is unreachable, and the two screens written in one slice carried the tone
+while the other eight drew a sage dot beside the word `OFFLINE`. A screen now
+hands the hook's answer, its back link and the sync state to `ScreenBand`,
+and the dot's tone is decided in one place, by `syncTone`. Its own suite is
+`ScreenBand.component.test.tsx`, because on a case-insensitive filesystem
+`ScreenBand.test.tsx` *is* the composed suite below; that composed suite is
+where the amber dot is proved through nine screens at once.
 
 **A screen tested without the shell can only prove half of this.** A per-screen
 suite renders its screen alone, so an absence assertion there says the screen
@@ -334,16 +358,17 @@ pushed screen **inside** `AppShell` and counts one visible `SYNCED` at phone
 width, at Split and at Desktop. That is a permanent property of the two suites,
 not a note about one round.
 
-**The hook's reach is every screen that draws either half of the band — ten,
-since S7.** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`, `People`,
-`Devices` and `InviteIssued` ask it, and no screen spells the rule itself. S7
-adds `GearListBuilder` (`/trips/:id/list`) and `DepotPicker`'s screen variant
-(`/trips/:id/add`), both answering `splitPane: false` — the builder is two
-panes of itself, not a detail pane of a list also on screen, so it does not
-take `GearDetail`'s `true`. Nine of the ten draw a sync line; `InviteIssued`
-does not, which is left open below rather than settled. `splitPane` is true
-for `GearDetail` alone. Three of the answers are worth stating, because they
-are about the app as built rather than as drawn:
+**The hook's reach is every screen that draws either half of the band —
+eleven, since S9a.** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`,
+`People`, `Devices` and `InviteIssued` ask it, and no screen spells the rule
+itself. S7 added `GearListBuilder` (`/trips/:id/list`) and `DepotPicker`'s
+screen variant (`/trips/:id/add`), both answering `splitPane: false` — the
+builder is two panes of itself, not a detail pane of a list also on screen, so
+it does not take `GearDetail`'s `true`. S9a added `Packing`
+(`/trips/:id/packing`), unguarded at every width. Ten of the eleven draw a
+sync line; `InviteIssued` does not, which is left open below rather than
+settled. `splitPane` is true for `GearDetail` alone. Three of the answers are
+worth stating, because they are about the app as built rather than as drawn:
 
 - **`AddGear` answers `splitPane: false`, against its own board frame.**
   `Add gear — split 900` draws it as a pane with the Depot list beside it, and
@@ -355,7 +380,8 @@ are about the app as built rather than as drawn:
   widths `App.tsx` actually mounts them at. `People` has a second render, the
   `inline` variant Account unfolds into its own card at Desktop, which draws no
   band at all. Before S7 they were the **only** two of the eight whose route
-  carried a width guard; S7 makes it four of ten. `/trips/:id/add` redirects
+  carried a width guard; S7 makes it four, and S9a's unguarded `Packing`
+  makes that four of eleven. `/trips/:id/add` redirects
   to `/trips/:id/list` at Split and up, and `/trips/:id/list` redirects to
   `/trips/:id` below it — `App.tsx`'s `isDesktop ? <X/> : <Redirect/>` shape,
   parameterised on `isSplit` instead. `AddGear`, `Trip`, `NewTrip`, `Account`,
@@ -366,7 +392,8 @@ are about the app as built rather than as drawn:
   It draws no sync line, so the back link is the only thing the band could
   hold, and `band` exists precisely so a wrapper is never rendered empty. (For
   `splitPane: false` the two answers coincide — `syncLine` is `isSplit &&
-  !isDesktop` and `backLink` is `!isDesktop`, so the first implies the second —
+  !isDesktop` and `backLink` is `!isDesktop` while the Desktop flag stays at
+  its default, so the first implies the second —
   but the gate names the half the screen actually draws.) Its label is the one
   that is not fixed: `‹ ACCOUNT` from Account's own device link,
   `‹ PEOPLE & LOGINS` from a join Invite and from a device link minted for
@@ -381,7 +408,7 @@ not invent one.** At Split the reader gets exactly what the rail gives
 every screen there — a bare 6px dot whose state is carried only in an
 `aria-label` — and nothing on the page states it in words; the sync
 line's own reason, that Split is the mode where nothing legible says it,
-applies to this screen exactly as it applies to the other seven. What
+applies to this screen exactly as it applies to the other ten. What
 holds it back is not that reason: no board draws `InviteIssued` at Split
 at all — the one frame it has is the phone 393 door — so there is no
 drawn line to build toward. Mitigating, not resolving: the screen's one
@@ -423,15 +450,21 @@ boringly predictable.
   default + `[data-theme]` override. The only layer that flips theme.
 - **base** — element defaults: `html { font-size: 100% }`, body type/color/bg,
   `:focus-visible` amber ring, `::selection`, the print baseline.
-- **layout** — the shell: app grid, tab-bar/rail/sidebar, pane structure, and the
-  five-mode media-query ladder. Viewport-level only.
+- **layout** — the shell's grid, gutters and `--nav-size`, and the four
+  media-query steps that resize them. Viewport-level only. **The nav
+  treatments and the pane structure are not here**: the tab bar, rail and
+  sidebar are styled in `app/src/shell/AppShell.module.css` and the panes in
+  `DepotView.module.css` and `GearListBuilder.module.css`, all under
+  `components`, because which treatment renders is chosen by JS
+  (`useMediaQuery`), not by a CSS ladder — see §3.2 for why.
 - **components** — every `*.module.css`, each wrapping its rules in
   `@layer components { … }`. CSS Modules give scoped names; the layer gives
   cascade order. Component **`@container` queries** live here.
-- **utilities** — a *tiny* hand-rolled set only: `visually-hidden`, `truncate`,
-  and layout primitives (`stack`, `cluster`, `grid-auto`). Not a utility
-  framework — just the handful that earn their keep.
-- **overrides** — escape hatch, near-empty by design.
+- **utilities** — a *tiny* hand-rolled set only: `visually-hidden`,
+  `truncate`, `clamp-2`, `stack`, `cluster`. Not a utility framework — just
+  the handful that earn their keep, and as of this writing only
+  `visually-hidden` has a caller; the other four wait for one.
+- **overrides** — escape hatch, declared and empty.
 
 ### 4.2 File shape
 
@@ -440,8 +473,13 @@ ui/styles/
   reset.css      tokens.css     base.css
   layout.css     utilities.css        (each declares its @layer)
   index.css      → @layer order + @imports + self-hosted @font-face
-ui/components/<Name>/<Name>.module.css → @layer components
+ui/src/<Name>.module.css                       → @layer components
+app/src/{components,screens,shell}/<Name>.module.css → @layer components
 ```
+
+Flat, beside the component, in both workspaces — not a directory per
+component. Most modules live in `app/`, since most components do (§5); the
+layer rule is the same on both sides.
 
 ## 5. Component architecture — the `ui/` package
 
@@ -458,7 +496,11 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
 
   **Built so far: `Chip` (S3), `Sheet` and `Confirm` (the Radix conversion),
   `Stepper` (S7) and `PersonCircle` (S8)** — plus **`PersonCluster`**, which
-  S8 built in `ui/` and which this list has never named. `Sheet` and `Confirm`
+  S8 built in `ui/` and which this list has never named, **`ExpiryChip`**
+  (S3.5, named only under composites below), **`QrCode`** (S3.5, the one
+  module that imports `uqr`), and the `Logo`, `Mark` and three `Icon`
+  components from S0. `ui/src/index.ts` is the authoritative list; this
+  paragraph is the reasoning. `Sheet` and `Confirm`
   converted every overlay in the app in one slice
   ([its spec](specs/2026-08-29-radix-conversion.md)). Two primitives rather
   than one because a picker is a `dialog` and a decision is an `alertdialog`,
@@ -482,26 +524,35 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   `number | null` partway through S7, so the fold is possible now, but Add
   gear's field still owns a label, a fact line and a CTA gate `Stepper`
   does not, and nobody has done the work of folding it in. The rest of
-  this list is unbuilt, and `Popover` is the one with waiting callers — **three
-  of them** now: §4a's desktop tag picker is approximated by `Sheet`'s
-  `desktopCard` until it lands, and so are S8's Piece picker and S9a's Piece
-  status sheet, both popovers from Split up on the boards.
+  this list is unbuilt, and `Popover` is the one with waiting callers — **four
+  of them** that a board draws as a popover: §4a's desktop tag picker and the
+  slice bar's `ValueMenu` are approximated by `Sheet`'s `desktopCard` until it
+  lands, and so are S8's Piece picker and S9a's Piece status sheet, both
+  popovers from Split up on the boards. Four more sheets pass `desktopCard`
+  with no board behind them (`patterns.md` §4.5 records which), which is the
+  count to look at when `Popover` does land.
 - **Composites (`ui/`)** — `GearRow`, `TripCard`, `JourneyRail`,
   `WhereaboutsCard`, `LedgerList`. Presentational; take domain data as **props**.
 
   **Only `GearRow` has moved so far** — `TripCard` and `WhereaboutsCard` are
   still in `app/src/components/` with one caller each, and a second caller is
   the bar `GearRow` cleared (`Depot`, `Find`) and `ExpiryChip` after it
-  (`InviteIssued`, `People`). `WhereaboutsCard` is props-in already and wants
-  nothing but that caller, but `TripCard` reads `useDepot` and would have to
-  lift that read to `Trips` before it could clear the hard rule above at all.
+  (`InviteIssued`, `People`, and since the pattern audit `Join`, which had
+  hand-rolled a rounding copy). `WhereaboutsCard` is props-in already and
+  wants only its second caller plus a type-only `@foerier/shared` import that
+  `ui/`'s `tsc` would have to resolve. `TripCard` is blocked four ways, not
+  one: it reads `useDepot`, renders the router's `Link` where `GearRow` takes
+  `anchorProps`, imports `app/`'s own `depot/trips` helpers and
+  `GearListSection`'s label, and calls `shared/` selectors at runtime.
+  `LedgerList`, named in this list, is story 33 and has never existed.
   **`JourneyRail` was built at S9a and built in `app/`**, making three: it is
   props-in and clears the hard rule already, but it reads `STAGES` and
   `stageLabel` from `@foerier/shared`, which `ui/` does not depend on — so the
   move is either a new dependency edge or a stage table passed down as props,
   and that is a decision rather than a relocation. Its one caller is `Packing`.
-- **Screens / containers (`app/`)** — read Zustand **selectors from `shared/`**,
-  then hand plain data down to `ui/`.
+- **Screens / containers (`app/`)** — read the fold through `useDepot`, derive
+  with **`shared/`'s selectors** (plain functions; `shared/` knows nothing of
+  Zustand), then hand plain data down to `ui/`.
 
 The store-agnostic seam is what lets the **landing page render the real
 components on static demo data** (an architecture goal): `app/` feeds them from
@@ -510,14 +561,22 @@ trivially unit-testable in isolation.
 
 Cross-cutting pieces, also in `ui/`:
 
-- **`ErrorBoundary`** — wraps each screen and each independent panel.
 - **`Icon`** set — inline-SVG React components (the design mandates no rasters;
-  the duffel logo and stroke icons live here).
+  the duffel logo and stroke icons live here). **Built.**
+- **`ErrorBoundary`** — wraps each screen and each independent panel.
+  **Unbuilt**: no error boundary exists in `app/` or `ui/`, and `main.tsx`
+  mounts `<App/>` bare, so a render error in one card is a white page.
 - **`motion`** module — the single place gating transitions behind
-  `prefers-reduced-motion` **and** `prefers-reduced-data`.
+  `prefers-reduced-motion` **and** `prefers-reduced-data`. **Unbuilt**, and
+  currently moot: `base.css` carries the reduced-motion query, no module
+  declares a transition or animation for it to guard, and
+  `prefers-reduced-data` appears nowhere.
 
 The lazy-**chunk-load-error → SW-update → reload+retry** handler is app-shell
-level (in `app/`, near the router), not `ui/`.
+level (in `app/`, near the router), not `ui/`. **Unbuilt, and moot for the
+same reason**: every screen is imported eagerly, there is no `lazy()` or
+`Suspense` in `app/src`, so there is no chunk to fail. It becomes due the day
+a route is code-split. All three are in [`technical-debt.md`](technical-debt.md).
 
 ## 6. Resilience layer
 
@@ -528,14 +587,14 @@ concern has a concrete home and mechanism.
 | --- | --- | --- |
 | Fonts blocked / down | `ui/styles` + build | **Self-hosted** woff2, hashed, Workbox-precached — zero third-party requests to block (privacy add-ons, corporate proxies, blocked CDNs) |
 | FOIT / swap shift | `@font-face` | `font-display: swap` + **metric-matched fallback `@font-face`** (`size-adjust` / `ascent-override` / `line-gap-override`) so the swap doesn't reflow |
-| Reduced motion / low power | `ui/motion` + base | `@media (prefers-reduced-motion: reduce)` kills transitions; `prefers-reduced-data` drops non-essential motion/work |
-| Print | `layout` layer | `@media print`: nav hidden, single column, ink-on-white, truncation expanded |
-| `line-clamp` unsupported | `truncate` utility | `@supports (-webkit-line-clamp: 2)` guard → **fail open** to full content |
+| Reduced motion / low power | `ui/motion` + base | `@media (prefers-reduced-motion: reduce)` kills transitions; `prefers-reduced-data` drops non-essential motion/work. **Built: the base query only** (§5) |
+| Print | `layout` layer | `@media print`: nav hidden, single column, ink-on-white, truncation expanded. **Built: nav hidden and ink-on-white**; nothing yet unpins the shell's inner scroller or expands the ellipsis rules, so a long list prints one viewport |
+| `line-clamp` unsupported | `clamp-2` utility | `@supports (-webkit-line-clamp: 2)` guard → **fail open** to full content |
 | New-CSS fallbacks | discipline + `@supports` | Safe declaration first, enhancement second; `@supports` for structural upgrades (container queries, `color-mix`, `gap`) |
-| Component crash | `ui/ErrorBoundary` | Wraps each screen + panel; in-place terse fallback (ledger voice), not a full-screen white-out; local reset action |
-| Stale client / missing chunk | `app` shell | Catch `import()` rejection → trigger SW update → **reload once** (`sessionStorage` guard against reload loops) + a quiet "new version" header line |
+| Component crash | `ui/ErrorBoundary` | Wraps each screen + panel; in-place terse fallback (ledger voice), not a full-screen white-out; local reset action. **Unbuilt** (§5) |
+| Stale client / missing chunk | `app` shell | Catch `import()` rejection → trigger SW update → **reload once** (`sessionStorage` guard against reload loops) + a quiet "new version" header line. **Unbuilt and moot until a route is code-split** (§5) |
 | Offline | core (op-log / SW) | Already the default; surfaced as one quiet sync-state header line, never a blocking dialog |
-| No JavaScript | `index.html` | Honest one-line `<noscript>` in ledger voice ("foerier needs JavaScript."); lightweight shell skeleton before hydration |
+| No JavaScript | `index.html` | Honest one-line `<noscript>` in ledger voice ("foerier needs JavaScript."). **Built.** The lightweight shell skeleton before hydration is not: the body is one empty `#root` |
 
 **On dropped signals.** The Battery Status API is effectively unavailable
 (removed/never-shipped/gated across browsers), so battery-driven behaviour is not
@@ -551,7 +610,8 @@ seam), so there is nothing to fall back *from*.
   covers each family's whole weight range (600–700 / 400–600) and typically beats
   three static cuts. **3 files, not 8.**
 - **Hashed by Vite, Workbox-precached** → available offline (a CDN never would
-  be). `<link rel="preload">` the primary UI font (Spline Sans) only.
+  be). `<link rel="preload">` the primary UI font (Spline Sans) only — **not
+  yet written**; `app/index.html` carries no preload link.
 - **Metric-matched fallbacks auto-generated** with the **Fontaine** Vite plugin,
   deriving the `size-adjust`-tuned fallback `@font-face` from the real fonts
   rather than hand-tuning. Stacks read
