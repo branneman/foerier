@@ -58,6 +58,7 @@ import { piecesOf } from './selectors/piece.ts'
 import { isActive } from './selectors/trip.ts'
 import { tripContainmentView } from './selectors/tripContainment.ts'
 import type {
+  DepotState,
   EntrySource,
   KindValue,
   Owner,
@@ -443,8 +444,8 @@ const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
  * S7 existed (3.51%, one third of the trip budget's now-50% half); the root
  * branches give up half their old share to buy it (1.75% each).
  *
- * Re-measured over 200 runs at this split (see `arbSpec`'s doc for the exact
- * counter): two devices contesting one **entry** register (any of the 18 —
+ * Re-measured over 200 runs at this split: two devices contesting one
+ * **entry** register (any of the 18 —
  * three fields × two Trips × three entry ids) now happens in roughly
  * **19 runs in 200** (three repeated passes: 18, 19, 20) — a three-fold
  * recovery from the flat-branch draft's 6–7, and no longer thinner than the
@@ -473,6 +474,14 @@ const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
  * `trip.piece_moved` had no Tier-2 coverage of any kind. A zero in a column
  * this table can print is the failure mode a docstring claiming "all
  * twenty-four op types" was hiding.
+ *
+ * **Every figure above is a hand-transcribed measurement, and none of it is
+ * what holds the weights in place.** The suite's
+ * *contests all three levels of the Trip aggregate at the charter floor* is —
+ * it re-derives these three columns on every run and fails under the 12-in-200
+ * floor this doc cites. Read the table as the history of how 12 was arrived
+ * at; read that test for what is true now. Its own 200-run figures do not
+ * reproduce reliably at 200 runs, which is the other thing the test found.
  */
 const arbTripEntrySpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
@@ -624,6 +633,94 @@ const arbOpSets = (): fc.Arbitrary<OpSpec[][]> =>
     maxLength: 4,
   })
 
+/**
+ * Is this node a {@link Register}? Recognised **structurally** — a `value`
+ * beside an `hlc` and a `deviceId` — never from a list of field names, so a
+ * slice adding a register to `TripState`, `EntryState` or `PieceState` is
+ * counted by {@link tripRegisterPaths} without editing anything here. That is
+ * the whole point: the counter below exists because a hand-maintained list
+ * went stale, and a second hand-maintained list would go stale the same way.
+ */
+function isRegisterLike(node: unknown): boolean {
+  return (
+    typeof node === 'object' &&
+    node !== null &&
+    'value' in node &&
+    'hlc' in node &&
+    'deviceId' in node
+  )
+}
+
+function collectRegisterPaths(
+  node: unknown,
+  path: readonly string[],
+  out: string[][],
+): void {
+  if (isRegisterLike(node)) {
+    out.push([...path])
+    return
+  }
+  if (typeof node !== 'object' || node === null) return
+  for (const [key, value] of Object.entries(node)) {
+    collectRegisterPaths(value, [...path, key], out)
+  }
+}
+
+/**
+ * Every register **one device's own ops** wrote, inside the Trip aggregate,
+ * split by the three levels the generator's three arms address:
+ *
+ * - **root** — `trips.<id>.<field>` and the per-participant registers
+ *   `trips.<id>.participants.<personId>`; everything {@link arbTripRootSpec}
+ *   can write.
+ * - **entry** — `trips.<id>.entries.<entryId>.<field>`,
+ *   {@link arbTripEntrySpec}'s.
+ * - **piece** — `trips.<id>.entries.<entryId>.pieces.<personId>.<field>`,
+ *   {@link arbTripPieceSpec}'s.
+ *
+ * The split is by **entity path**, which is how the arms themselves partition
+ * (see `arbTripEntrySpec`'s own note) — so the three counts map one-to-one
+ * onto the three weights, and a weight that stops buying contest shows up in
+ * its own column.
+ */
+function tripRegisterPaths(state: DepotState): {
+  root: ReadonlySet<string>
+  entry: ReadonlySet<string>
+  piece: ReadonlySet<string>
+} {
+  const found: string[][] = []
+  collectRegisterPaths(state.trips, [], found)
+  const out = {
+    root: new Set<string>(),
+    entry: new Set<string>(),
+    piece: new Set<string>(),
+  }
+  for (const segments of found) {
+    const joined = segments.join('.')
+    if (segments[1] !== 'entries') out.root.add(joined)
+    else if (segments[3] === 'pieces') out.piece.add(joined)
+    else out.entry.add(joined)
+  }
+  return out
+}
+
+/**
+ * Runs in {@link CONTEST_SAMPLE} that must contest each level, and the whole
+ * point of {@link tripRegisterPaths}. `testing.md`'s Tier 2 charter states the
+ * floor as **12 runs in 200** — 6% — and this is that same floor at the sample
+ * size that makes it stable (see the test's own doc for why 200 is not).
+ */
+const CONTEST_FLOOR = 60
+
+/**
+ * Ten times the property's own 200. Generation and a local fold only — no
+ * exchange, no convergence assertions — so the extra runs are cheap, and at
+ * 200 the counts swing far too wide to floor: the piece level alone measured
+ * anywhere from 8 to 25 across seven seeds, which is what let three
+ * hand-transcribed passes of "23, 23, 23" look like a stable fact.
+ */
+const CONTEST_SAMPLE = 1000
+
 describe('convergence', () => {
   /**
    * **The guard on {@link arbSpec}'s "every op type" claim**, and the reason
@@ -665,6 +762,83 @@ describe('convergence', () => {
     )
 
     expect([...generated].sort()).toEqual([...folded].sort())
+  })
+
+  /**
+   * **The counter the weight docstrings promised**, and the second half of the
+   * lesson the test above is the first half of.
+   *
+   * `arbTripRootSpec`'s and `arbTripEntrySpec`'s docs argue the trip weight of
+   * 12 from measured contest rates — "22 runs in 200 down to 5", a three-row
+   * table of before/after figures, and a **12-run floor** cited four times.
+   * All of it was prose. `arbTripEntrySpec` even sent the reader to
+   * "`arbSpec`'s doc for the exact counter" and no counter existed there or
+   * anywhere else; that doc describes the op-type test above. So the numbers
+   * justifying the one tuning knob this tier has could not be re-derived, and
+   * nothing failed when a slice moved them — which is exactly how the same
+   * file came to claim "all twenty-four op types" while the reducer folded
+   * thirty-one.
+   *
+   * **A run contests a level when two devices write the same register** at it
+   * — the same register, not merely the same entity: `(entity_path, field)` is
+   * the merge unit (§3.1), so two devices writing `status` and `residence` on
+   * one Entry contest nothing and must not be counted as if they did. Each
+   * replica is folded from **its own ops alone**, which is precisely the
+   * pre-exchange state the property's own divergence starts from.
+   *
+   * Measured over seven seeds at {@link CONTEST_SAMPLE}: root 266–310, entry
+   * 80–95, piece 89–122. The floor sits at {@link CONTEST_FLOOR}, roughly a
+   * third of the thinnest of those — wide enough that fast-check's own
+   * sampling is never what fails it, and narrow enough to catch the regression
+   * it exists for. Adding a fourth arm at the wrong weight cut the entry level
+   * by a factor of four last time (22 in 200 to 5); the same cut here takes
+   * entry from ~90 to ~22 and fails.
+   *
+   * Seeded for the reason the op-type test is: an assertion about the
+   * generator, not about today's luck.
+   */
+  it('contests all three levels of the Trip aggregate at the charter floor', () => {
+    const sets = fc.sample(arbOpSets(), {
+      numRuns: CONTEST_SAMPLE,
+      seed: 20260904,
+    })
+
+    const contested = { root: 0, entry: 0, piece: 0 }
+    for (const opsPerDevice of sets) {
+      const replicas = replicasFor(opsPerDevice.length)
+      opsPerDevice.forEach((specs, i) =>
+        specs.forEach((spec) => replicas[i]!.emit(spec)),
+      )
+      const perDevice = replicas.map((r) => tripRegisterPaths(r.state()))
+
+      for (const level of ['root', 'entry', 'piece'] as const) {
+        const seen = new Set<string>()
+        const shared = perDevice.some((paths) =>
+          [...paths[level]].some((path) => {
+            if (seen.has(path)) return true
+            seen.add(path)
+            return false
+          }),
+        )
+        if (shared) contested[level] += 1
+      }
+    }
+
+    // Reported together rather than as three assertions, so a failure names
+    // every level at once — which of them a new arm diluted is the first
+    // thing the next reader needs, and three separate `expect`s would stop at
+    // the first.
+    expect({
+      root: contested.root >= CONTEST_FLOOR,
+      entry: contested.entry >= CONTEST_FLOOR,
+      piece: contested.piece >= CONTEST_FLOOR,
+      counts: contested,
+    }).toEqual({
+      root: true,
+      entry: true,
+      piece: true,
+      counts: contested,
+    })
   })
 
   it('converges to identical state regardless of arrival order', () => {

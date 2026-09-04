@@ -87,6 +87,21 @@ Covers the crown jewels:
   (never Counted *and* Per-person), at-most-one Piece per Participant, soft-delete
   preserving history.
 
+**Where one rule has two implementations, a test holds them against each
+other.** The containment tree is the standing case: `tripContainment.ts`
+restates `containment.ts`'s traversal, its sorted-id determinism and §3.6's
+cycle break over a different pointer type, and the duplication is deliberate
+(see [CLAUDE.md](../CLAUDE.md)). Each file's own suite pins the rule on its own
+side, so a divergence is not undetectable — but neither file knows the other
+exists, and the cycle-break half is the one that would be **silent**, showing
+up only as two Devices drawing different trees.
+`selectors/containmentParity.test.ts` is the one place that compares them: one
+random functional graph, played into both worlds with the same ids in the same
+order, both views asserted equal. It covers the stamp comparison and not the
+`id` tiebreak beneath it, because equal stamps are unreachable from a real
+replica — a limit the file states and demonstrates by mutation rather than
+assumes.
+
 **Tooling:** Vitest, co-located as `*.test.ts` next to the unit under test.
 Boundaries (clock, `crypto.randomUUID`/UUIDv7, storage) are injected as real
 in-memory fakes — the `health` `RateLimiterTest` gold standard (injected
@@ -127,6 +142,19 @@ stale claim fails instead of merely reading wrong. And **weigh the new branches*
 adding op types at the existing weight dilutes the contest the tier exists to
 create — S9a's own entry-register contest fell from 22 runs in 200 to 5, under
 this file's stated floor, until the trip weight was raised to compensate.
+
+**Both of those are now assertions rather than habits**, and the second one
+took a second pass to notice. `convergence.test.ts` reads `reduce.ts`'s own
+dispatch table and fails if the generator does not reach every type in it; and
+it re-derives the contest rate per level and fails under the 12-in-200 floor
+this paragraph cites. The floor had been argued from measured figures
+transcribed into three docstrings, one of which sent the reader to a counter
+that did not exist — the same shape of claim as *"all twenty-four op types"*,
+one level up, and equally invisible to every tier. **A tuning knob argued from
+a number needs the number computed where it is argued.** Two of those
+transcribed figures do not reproduce: at 200 runs the per-level counts swing
+too wide to floor at all (the piece level measured 8 to 25 across seven seeds),
+so the executable version samples 1000 and floors at the same 6%.
 
 **Tooling:** Vitest in Node, real reducer + fake transport + fake clock/store. No
 real network, no real DB — this tier proves the *algebra*, not the wiring.
@@ -387,6 +415,8 @@ a captured one:
 | `shared/fixtures/s4-ownership.ops.json` | `person.renamed`, `gear.ownership_set` | **S6 — one slice late** |
 | `shared/fixtures/s6-trips.ops.json` | the six Trip root ops | S6 |
 | `shared/fixtures/s7-entries.ops.json` | `trip.entry_added`, `trip.entry_removed`, `trip.entry_bring_count_set` | S7 |
+| `shared/fixtures/s8-pieces.ops.json` | `trip.piece_removed`, `trip.piece_restored` | S8 |
+| `shared/fixtures/s9a-packing.ops.json` | the five packing ops — `trip.entry_status_set`, `trip.piece_status_set`, `trip.entry_moved`, `trip.piece_moved`, `trip.container_stage_set` | S9a |
 
 Most of what each carries is genuinely captured from the app that introduced
 the ops. A handful are **forward-compatibility probes** instead, standing in for
