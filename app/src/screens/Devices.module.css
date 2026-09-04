@@ -125,13 +125,27 @@
    * a button, so the text is the paint. The retired global floor had been
    * painting it 48px tall — a text link occupying a button's box.
    *
-   * The hit area reaches ≥44 through a non-painting `::after`, clamped at
+   * The hit area reaches 48 through a non-painting `::after`, clamped at
    * the row it sits in so it cannot reach a neighbouring control. Both this
    * and `REMOVE` lead to a confirm sheet rather than writing on the tap, so
    * a generous target risks nothing even where the clamp leaves it snug.
+   *
+   * The arithmetic, since a comment is not a declaration (`PackingRow
+   * .body`'s lesson, review F6): `.row` is `align-items: center`, so this
+   * button is content-sized, and with no stated paint it measured its 11/14
+   * label's line-height — 14px, which `inset: -0.625rem 0` grew to 34, short
+   * of the 44 minimum under a note claiming ≥44. It now states `.move`'s 24
+   * (`min-height: 1.5rem`) and takes the matching `inset: -0.75rem 0`:
+   * 24 + 12 + 12 = 48. The row is `min-height: max(2.75rem, 44px)` +
+   * `padding-block: 12` ≥ 68 and the button sits centred in it, so the
+   * extension stops ≥10px inside the row's own edge — rows touch across a
+   * 1px rule with no gap, and this is what keeps a tap meant for one
+   * Device's SIGN OUT off the next. Vertical only: the title group beside
+   * it is not a control.
    */
   .signOut {
     position: relative;
+    min-height: 1.5rem;
     flex-shrink: 0;
     border: 0;
     background: none;
@@ -145,7 +159,7 @@
   .signOut::after {
     content: '';
     position: absolute;
-    inset: -0.625rem 0;
+    inset: -0.75rem 0;
   }
 
   /* ---- footer hint ---- */

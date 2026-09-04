@@ -238,9 +238,22 @@
   /* RETIRE rule (`docs/design/README.md` §4, Voice): attention-coloured
      text, never a filled button — applied here to REMOVE and SIGN OUT. */
   /* §11's attention text, exactly as `.signOut` below — see its note for the
-     paint-vs-hit reasoning and why the generous target is safe here. */
+     paint-vs-hit reasoning and why the generous target is safe here.
+
+     The arithmetic, since a comment is not a declaration: `.row` is
+     `align-items: center`, so this button is content-sized, and with no
+     stated paint it measured its 11/14 label's line-height — 14px, which
+     `inset: -0.625rem 0` grew to 34, short of the 44 minimum under a note
+     claiming ≥44. It now states `.move`'s 24 (`min-height: 1.5rem`) and
+     takes the matching `inset: -0.75rem 0`: 24 + 12 + 12 = 48. The row is
+     `min-height: 2rem` + `padding-block: 12` ≥ 56 and the button sits
+     centred in it, so the extension stops ≥4px inside the row's own edge —
+     rows touch across a 1px rule with no gap, and this is what keeps a tap
+     meant for one passkey's REMOVE off the next. Vertical only: the title
+     group beside it is not a control. */
   .remove {
     position: relative;
+    min-height: 1.5rem;
     flex-shrink: 0;
     border: 0;
     background: none;
@@ -254,7 +267,7 @@
   .remove::after {
     content: '';
     position: absolute;
-    inset: -0.625rem 0;
+    inset: -0.75rem 0;
   }
 
   .summaryLine {
@@ -361,13 +374,30 @@
    * a button, so the text is the paint. The retired global floor had been
    * painting it 48px tall — a text link occupying a button's box.
    *
-   * The hit area reaches ≥44 through a non-painting `::after`, clamped at
-   * the row it sits in so it cannot reach a neighbouring control. Both this
-   * and `REMOVE` lead to a confirm sheet rather than writing on the tap, so
-   * a generous target risks nothing even where the clamp leaves it snug.
+   * The hit area reaches 48 through a non-painting `::after`, clamped at
+   * the footer it sits in so it cannot reach a neighbouring control. Both
+   * this and `REMOVE` lead to a confirm sheet rather than writing on the
+   * tap, so a generous target risks nothing even where the clamp leaves it
+   * snug.
+   *
+   * The arithmetic, since a comment is not a declaration (`PackingRow
+   * .body`'s lesson, review F6): `.footer` is `align-items: center`, so this
+   * is content-sized, and with no stated paint it measured its 13/18 data
+   * line-height — 18px, which `inset: -0.625rem 0` grew to 38, short of the
+   * 44 minimum under a note claiming ≥44. It now states `.move`'s 24
+   * (`min-height: 1.5rem`) and takes the matching `inset: -0.75rem 0`:
+   * 24 + 12 + 12 = 48, centred in the footer's `min-height: max(3.5rem,
+   * 56px)`, so the extension stops 4px inside the footer's top edge and the
+   * section above it. Vertical only: `BUILD` beside it is a label, not a
+   * control. `inline-flex` because below Desktop this is a `<Link>`, and an
+   * anchor — unlike a `<button>` — does not centre its text in a stated
+   * `min-height` on its own.
    */
   .signOut {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
     border: 0;
     background: none;
     padding: 0;
@@ -382,7 +412,7 @@
   .signOut::after {
     content: '';
     position: absolute;
-    inset: -0.625rem 0;
+    inset: -0.75rem 0;
   }
 
   .build {

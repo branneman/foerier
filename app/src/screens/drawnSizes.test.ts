@@ -74,22 +74,77 @@ describe("ruling O's drawn sizes", () => {
     expect(after).toMatch(/inset:\s*-0\.5rem 0/)
   })
 
+  /**
+   * **Review F6's gap, a second time** — the `PackingRow .body` shape, three
+   * screens over. The first version of this case asserted `background: none`,
+   * `position: relative` and that a `::after` *existed*, and never what the
+   * extension was measured from. All three are content-sized flex items in
+   * an `align-items: center` row, so with no stated paint each grew from its
+   * text's line-height: `--text-label` is 11/14 and `--text-data` 13/18, and
+   * `inset: -0.625rem 0` adds 10 each side — 14 + 20 = 34 for `REMOVE` and
+   * the Devices `SIGN OUT`, 18 + 20 = 38 for the Account footer's. Every one
+   * short of the 44 minimum, under a comment that claimed ≥44.
+   *
+   * Now `.move`'s constant: a stated 24 (`min-height: 1.5rem`) and
+   * `inset: -0.75rem 0`, (48 − 24) / 2 = 12 each side, so each reaches 48.
+   * The clamp is measured against the owning row, pinned as the third and
+   * fourth columns: Account's `.row` is `min-height: 2rem` + `padding-block:
+   * 12` ≥ 56, its `.footer` `min-height: max(3.5rem, 56px)` with no
+   * padding, Devices' `.row` `max(2.75rem, 44px)` + 24 ≥ 68 — every one ≥
+   * 48, and since consecutive rows touch across a 1px rule with no gap, 48
+   * is also the most an extension here may take. Vertical-only in every
+   * case: the title group and the `BUILD` line sit beside these, and a
+   * sideways grow gains nothing.
+   */
   it.each([
-    ['Account.module.css', '.signOut'],
-    ['Account.module.css', '.remove'],
-    ['Devices.module.css', '.signOut'],
-  ])('paints %s %s as attention text, never a button', (file, selector) => {
-    const css = moduleCss(file)
-    const rule = ruleBody(css, selector)
+    [
+      'Account.module.css',
+      '.signOut',
+      '.footer',
+      [/min-height:\s*max\(3\.5rem,\s*56px\)/],
+    ],
+    [
+      'Account.module.css',
+      '.remove',
+      '.row',
+      [/min-height:\s*2rem/, /padding-block:\s*var\(--space-12\)/],
+    ],
+    [
+      'Devices.module.css',
+      '.signOut',
+      '.row',
+      [
+        /min-height:\s*max\(2\.75rem,\s*44px\)/,
+        /padding-block:\s*var\(--space-12\)/,
+      ],
+    ],
+  ] as const)(
+    'paints %s %s as attention text, clamped at 48 inside %s',
+    (file, selector, rowSelector, rowBounds) => {
+      const css = moduleCss(file)
+      const rule = ruleBody(css, selector)
 
-    expect(rule).toBeDefined()
-    expect(rule).not.toMatch(FLOOR)
-    // §11 draws these as text: no box of their own, and the hit area is what
-    // makes them tappable.
-    expect(rule).toMatch(/background:\s*none/)
-    expect(rule).toMatch(/position:\s*relative/)
-    expect(ruleBody(css, `${selector}::after`)).toBeDefined()
-  })
+      expect(rule).toBeDefined()
+      expect(rule).not.toMatch(FLOOR)
+      // §11 draws these as text: no box of their own, and the hit area is what
+      // makes them tappable.
+      expect(rule).toMatch(/background:\s*none/)
+      expect(rule).toMatch(/position:\s*relative/)
+      // The painted size, stated — an extension is only worth what it is
+      // measured from, and a content-sized flex item measures from its
+      // line-height unless the stylesheet says otherwise.
+      expect(rule).toMatch(/min-height:\s*1\.5rem/)
+      // 24 + 12 + 12 = 48, vertical-only.
+      expect(ruleBody(css, `${selector}::after`)).toMatch(
+        /inset:\s*-0\.75rem 0/,
+      )
+
+      // The bounds the clamp is measured against.
+      const row = ruleBody(css, rowSelector)
+      expect(row).toBeDefined()
+      for (const bound of rowBounds) expect(row).toMatch(bound)
+    },
+  )
 
   /**
    * The other half of the ruling, and the reason this file does not simply
