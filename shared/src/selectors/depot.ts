@@ -57,6 +57,47 @@ export function looseGear(
 }
 
 /**
+ * The owned-count, or `null` for every Gear that is not Counted.
+ *
+ * **The fifth instance of a shape this codebase already has four of** —
+ * `bringCountOf`, `statusOf`, `stageOf` and `entryResidenceOf`
+ * (`selectors/entry.ts`, `selectors/packing.ts`) each answer `null` for the
+ * Kind or trait whose fact this is not, on the way out, never in the
+ * reducer. `kind` and `ownedCount` are two registers on the same Gear
+ * aggregate with no ordering between them — `gear.recorded` may carry both,
+ * but `gear.kind_set` and `gear.owned_count_set` can arrive in either order
+ * on a later edit — so a reducer that resolved one against the other would
+ * make the fold depend on which had landed first. Both fold unconditionally;
+ * this function is the one place that decides which a reader may see.
+ *
+ * **An absent register on Counted gear reads `1`.** Invariant 6 confines
+ * owned-count to Counted gear, and recording a headlamp as Counted without
+ * touching the stepper means owning one — a Counted gear nobody counted
+ * still owns one, `bringCountOf`'s "adding without touching the stepper
+ * means bringing one" restated for the Gear's own count.
+ *
+ * A Gear whose Kind is edited away from `counted` leaves any `ownedCount`
+ * register exactly as it was — clearing it is a write nobody asked for, and
+ * per-field LWW cascades nothing. This function is what stops that stale
+ * register from being read once the Kind no longer says Counted:
+ * `claim.ts`'s Single branch depends on this reading `null`, so an edit from
+ * Counted back to Single cannot silently raise Single's supply above one.
+ *
+ * **This function does not answer "did somebody record a count".** That is
+ * a different question — `ownedCount !== undefined` on the raw register —
+ * and three `app/` call sites (`Depot.tsx`'s `qtyFor`, `GearDetail.tsx`'s
+ * `metaLine`, `OverClaimBand`'s fix-round-F6 guard) still ask it directly,
+ * deliberately untouched by this function: this `null` collapses "not
+ * Counted" and "no register, but Counted" into one answer, which is right
+ * for `claim.ts`'s arithmetic and wrong for a surface deciding whether to
+ * print `OWNED ×N` at all.
+ */
+export function ownedCountOf(gear: GearState): number | null {
+  if (gear.kind?.value !== 'counted') return null
+  return gear.ownedCount?.value ?? 1
+}
+
+/**
  * `place.removed` has no restore op in the MVP, but it is the same LWW
  * mechanism (§3.5) — so this reads the register rather than assuming absence.
  */

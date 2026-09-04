@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { aGear, anOp, aPlace, hlcAt } from '../../testUtils/index.ts'
 import {
+  gearKindSet,
   gearRehomed,
   gearRetired,
   gearTagApplied,
@@ -15,6 +16,7 @@ import { normalizeTag, type TagString } from '../tags.ts'
 import {
   depotCounts,
   looseGear,
+  ownedCountOf,
   retiredGear,
   tagsOf,
   visibleGear,
@@ -146,5 +148,45 @@ describe('tagsOf', () => {
   it('answers empty for gear no tag op has ever addressed', () => {
     const state = fold(at(aGear({ id: 'g1', name: 'Pot set' }), 1))
     expect(tagsOf(state.gear['g1']!)).toEqual([])
+  })
+})
+
+describe('ownedCountOf', () => {
+  it('reads the register on Counted gear', () => {
+    const state = fold(
+      at(aGear({ id: 'g1', kind: 'counted', ownedCount: 4 }), 1),
+    )
+    expect(ownedCountOf(state.gear['g1']!)).toBe(4)
+  })
+
+  it('reads 1 for Counted gear with no register — nobody counted, one owned', () => {
+    const state = fold(at(aGear({ id: 'g1', kind: 'counted' }), 1))
+    expect(ownedCountOf(state.gear['g1']!)).toBe(1)
+  })
+
+  it('reads null for Single gear', () => {
+    const state = fold(at(aGear({ id: 'g1', kind: 'single' }), 1))
+    expect(ownedCountOf(state.gear['g1']!)).toBeNull()
+  })
+
+  it('reads null for Per-person gear', () => {
+    const state = fold(at(aGear({ id: 'g1', kind: 'per_person' }), 1))
+    expect(ownedCountOf(state.gear['g1']!)).toBeNull()
+  })
+
+  it('reads null for a Gear with an unrecognised kind', () => {
+    const state = fold(
+      at(aGear({ id: 'g1', kind: 'exotic', ownedCount: 3 }), 1),
+    )
+    expect(ownedCountOf(state.gear['g1']!)).toBeNull()
+  })
+
+  it('reads null once a Kind edit moves the Gear away from Counted, whatever the stale register still holds', () => {
+    const ops = [
+      ...at(aGear({ id: 'g1', kind: 'counted', ownedCount: 4 }), 1),
+      one(gearKindSet('g1', 'single'), 2),
+    ]
+    const state = fold(ops)
+    expect(ownedCountOf(state.gear['g1']!)).toBeNull()
   })
 })

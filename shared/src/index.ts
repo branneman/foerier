@@ -120,6 +120,7 @@ export { tripContainmentView, tripPath } from './selectors/tripContainment.ts'
 export {
   depotCounts,
   looseGear,
+  ownedCountOf,
   retiredGear,
   tagsOf,
   visibleGear,

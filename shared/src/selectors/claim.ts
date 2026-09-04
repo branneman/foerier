@@ -1,4 +1,5 @@
 import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
+import { ownedCountOf } from './depot.ts'
 import { bringCountOf, entriesOf, entryKind } from './entry.ts'
 import { piecesOf } from './piece.ts'
 import { isActive, visibleTrips } from './trip.ts'
@@ -257,7 +258,16 @@ function supplyAndClaimed(
     return { supply: 1, claimed: claims.length, contestedPersonIds: [] }
   }
   if (kind === 'counted') {
-    const supply = state.gear[gearId]?.ownedCount?.value ?? 1
+    const gear = state.gear[gearId]
+    // `ownedCountOf` takes a `GearState`, not `GearState | undefined` — and
+    // `gear` is `undefined` exactly when this replica holds a claim against
+    // a `gearId` whose `gear.recorded` has not arrived yet, the same
+    // cross-aggregate race `entryKind` already treats as ordinary rather
+    // than an error. `ownedCountOf` itself already resolves "Counted, no
+    // register" to `1` (invariant 6); the `?? 1` below now means only *the
+    // Gear has not reached this replica*, a different sentence from the one
+    // the old `?? 1` here used to mean.
+    const supply = (gear === undefined ? null : ownedCountOf(gear)) ?? 1
     const claimed = claims.reduce((sum, claim) => sum + claim.count, 0)
     return { supply, claimed, contestedPersonIds: [] }
   }
