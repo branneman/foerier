@@ -9,6 +9,7 @@ import {
   personNameOrUnnamed,
   pieceCountOf,
   pieceStatusOf,
+  sameTripResidence,
   statusGlyph,
   statusLabel,
   statusOf,
@@ -25,7 +26,6 @@ import { useMemo } from 'react'
 import { personInitial } from '../depot/people'
 import { useDepot } from '../depot/store'
 import { tripParticipants } from '../depot/trips'
-import { sameTripResidence } from './PackPicker'
 import styles from './PackingRow.module.css'
 import { residenceLabel, toneForStatus } from './PieceStatusSheet'
 

@@ -350,19 +350,115 @@ describe('whereabouts — one slice per Trip, segment by segment (D2)', () => {
 
     const [slice] = tripSlices(state, 'g-lamp')
     expect(slice?.container).toEqual({ of: 'mixed' })
-    // Both crates are in the car, so the stage still agrees — the two
-    // segments resolve on their own.
+    // Both crates are loose but staged in the car, so the stage still
+    // agrees — the two segments resolve on their own.
     expect(slice?.stage).toBe('car')
     expect(whereaboutsText(slice as WhereaboutsSlice, 'full')).toBe(
       '▸ Alps 2026 · MIXED · CAR',
     )
   })
 
-  it('names one container while dropping a disagreeing stage, with no second MIXED', () => {
-    // One Piece rides in the crate (chain root `car`), the other is loose
-    // (no chain at all). Loose contributes no holder, so the container
-    // segment still resolves to one; the two chain-root stages disagree, so
-    // the stage segment drops — never a second `MIXED`.
+  it('reads MIXED with its stage when two containers share a chain root', () => {
+    // Two Pieces in two different containers, both riding in the duffel. The
+    // container segment disagrees; the stage segment does not, because both
+    // chains root at the same container.
+    const state = fold(
+      log([
+        ...aPerson({ id: 'p-mark', name: 'Mark' }),
+        ...aPerson({ id: 'p-kim', name: 'Kim' }),
+        ...aGear({ id: 'g-duffel', name: 'Duffel 90 L', container: true }),
+        ...aGear({ id: 'g-crate', name: 'Crate B', container: true }),
+        ...aGear({ id: 'g-sack', name: 'Stuff sack', container: true }),
+        ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+        ...aTrip({
+          id: TRIP,
+          name: 'Alps 2026',
+          phase: 'pack_out',
+          participants: ['p-mark', 'p-kim'],
+        }),
+        tripEntryAdded(TRIP, 'e-duffel', {
+          from: 'depot',
+          gearId: 'g-duffel',
+        }),
+        tripContainerStageSet(TRIP, 'e-duffel', 'car'),
+        tripEntryAdded(TRIP, 'e-crate', { from: 'depot', gearId: 'g-crate' }),
+        tripEntryMoved(TRIP, 'e-crate', {
+          in: 'container',
+          entryId: 'e-duffel',
+        }),
+        tripEntryAdded(TRIP, 'e-sack', { from: 'depot', gearId: 'g-sack' }),
+        tripEntryMoved(TRIP, 'e-sack', {
+          in: 'container',
+          entryId: 'e-duffel',
+        }),
+        tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+        tripPieceMoved(TRIP, 'e-lamp', 'p-mark', {
+          in: 'container',
+          entryId: 'e-crate',
+        }),
+        tripPieceMoved(TRIP, 'e-lamp', 'p-kim', {
+          in: 'container',
+          entryId: 'e-sack',
+        }),
+      ]),
+    )
+
+    const [slice] = tripSlices(state, 'g-lamp')
+    expect(slice?.container).toEqual({ of: 'mixed' })
+    expect(slice?.stage).toBe('car')
+    expect(whereaboutsText(slice as WhereaboutsSlice, 'full')).toBe(
+      '▸ Alps 2026 · MIXED · CAR',
+    )
+  })
+
+  it('drops a disagreeing stage without ever drawing a second MIXED', () => {
+    // The same two containers, now rooted apart: the crate rides in the car,
+    // the stuff sack stands loose at `home`. Both segments disagree, and the
+    // stage one **drops** rather than repeating `MIXED`.
+    const state = fold(
+      log([
+        ...aPerson({ id: 'p-mark', name: 'Mark' }),
+        ...aPerson({ id: 'p-kim', name: 'Kim' }),
+        ...aGear({ id: 'g-crate', name: 'Crate B', container: true }),
+        ...aGear({ id: 'g-sack', name: 'Stuff sack', container: true }),
+        ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+        ...aTrip({
+          id: TRIP,
+          name: 'Alps 2026',
+          phase: 'pack_out',
+          participants: ['p-mark', 'p-kim'],
+        }),
+        tripEntryAdded(TRIP, 'e-crate', { from: 'depot', gearId: 'g-crate' }),
+        tripContainerStageSet(TRIP, 'e-crate', 'car'),
+        tripEntryAdded(TRIP, 'e-sack', { from: 'depot', gearId: 'g-sack' }),
+        // No `trip.container_stage_set` on the sack: an absent stage reads
+        // `home`, which is a stage and not the absence of one.
+        tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+        tripPieceMoved(TRIP, 'e-lamp', 'p-mark', {
+          in: 'container',
+          entryId: 'e-crate',
+        }),
+        tripPieceMoved(TRIP, 'e-lamp', 'p-kim', {
+          in: 'container',
+          entryId: 'e-sack',
+        }),
+      ]),
+    )
+
+    const [slice] = tripSlices(state, 'g-lamp')
+    expect(slice?.container).toEqual({ of: 'mixed' })
+    expect(slice?.stage).toBeNull()
+    expect(whereaboutsText(slice as WhereaboutsSlice, 'full')).toBe(
+      '▸ Alps 2026 · MIXED',
+    )
+  })
+
+  it('reads MIXED when one Piece is held and another is loose', () => {
+    // A **loose** residence is a residence, and `sameTripResidence` is what
+    // says so — the same test `PackingRow` already draws `▸ MIXED` from on
+    // F4 for this exact arrangement (D2: `MIXED` is *already the app's word
+    // for this fact*). Naming the crate here would have gear detail and F4
+    // state two different things about one set.
     const state = fold(
       log([
         ...aPerson({ id: 'p-mark', name: 'Mark' }),
@@ -386,15 +482,8 @@ describe('whereabouts — one slice per Trip, segment by segment (D2)', () => {
     )
 
     const [slice] = tripSlices(state, 'g-lamp')
-    expect(slice?.container).toEqual({
-      of: 'one',
-      entryId: 'e-crate',
-      name: 'Crate B',
-    })
+    expect(slice?.container).toEqual({ of: 'mixed' })
     expect(slice?.stage).toBeNull()
-    expect(whereaboutsText(slice as WhereaboutsSlice, 'full')).toBe(
-      '▸ Alps 2026 · Crate B',
-    )
   })
 
   it('reads all-loose residences as no container and no stage', () => {
@@ -762,12 +851,11 @@ describe('whereaboutsByPerson — one answer per Participant (D6)', () => {
     const state = fold(log(perPerson))
     const byPerson = whereaboutsByPerson(state, 'g-lamp')
 
-    // The Entry-wide reconciliation names the duffel and drops the stage:
-    // Mark's Piece rides there (chain root `car`) and Ana's is loose (no
-    // chain at all), so the holders agree and the stages do not. Neither
-    // Person reads that pair — each reads their own Piece's.
+    // The Entry-wide reconciliation is `MIXED` — Mark's Piece rides in the
+    // duffel and Ana's is loose, and a loose residence is a residence.
+    // Neither Person reads that; each reads their own Piece's.
     expect(tripSlices(state, 'g-lamp')[0]).toMatchObject({
-      container: { of: 'one', entryId: 'e-duffel', name: 'Duffel 90 L' },
+      container: { of: 'mixed' },
       stage: null,
     })
 

@@ -9,6 +9,7 @@ import {
   isPacked,
   packingItems,
   personPartition,
+  sameTripResidence,
   stageOf,
   statusGlyph,
   subtreeOf,
@@ -38,7 +39,7 @@ import { useParams } from 'wouter'
 import { ContainerMoveConfirm } from '../components/ContainerMoveConfirm'
 import { JourneyRail } from '../components/JourneyRail'
 import { PackingRow } from '../components/PackingRow'
-import { PackPicker, sameTripResidence } from '../components/PackPicker'
+import { PackPicker } from '../components/PackPicker'
 import { PieceStatusSheet } from '../components/PieceStatusSheet'
 import { useDepot } from '../depot/store'
 import { personInitial } from '../depot/people'

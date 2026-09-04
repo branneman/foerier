@@ -85,6 +85,22 @@ export interface JourneyStage {
   /** `⌂ HOME` · `STAGING` · `CAR` · `PACKED`. */
   label: string
   /**
+   * The **trip-world** word for this stage — `HOME`, `CAR` — with no glyph
+   * of any kind.
+   *
+   * A third string rather than a transform of {@link label}, for
+   * `disagreementLabel`'s reason one column over: `label` is the *rail's*
+   * drawn text and carries the home mark (`⌂ HOME`), which is right on the
+   * rail and wrong everywhere the stage rides inside a **trip** statement.
+   * `docs/design/README.md` §2 makes `⌂` the home mark and `▸` the trip mark
+   * app-wide, so `whereaboutsText`'s `▸ ALPS 2026 · CRATE B · ⌂ HOME` would
+   * put a home glyph inside a trip line — the one thing B1's segment order
+   * exists to state. No function derives one string from the other without
+   * knowing which kind of word each is, which is what the table knows and a
+   * screen does not.
+   */
+  word: string
+  /**
    * The ▲ line's own word for this stage — `IN CAR`, `PACKED` — or `null`
    * where the line never fires.
    *
@@ -111,10 +127,15 @@ export const STATUSES: readonly PackingStatus[] = [
 /** In the rail's drawn order — the sequence a container usually runs, though
  * ruling A15 makes every chip a direct set in either direction. */
 export const STAGES: readonly JourneyStage[] = [
-  { id: 'home', label: '⌂ HOME', disagreementLabel: null },
-  { id: 'staging', label: 'STAGING', disagreementLabel: null },
-  { id: 'car', label: 'CAR', disagreementLabel: 'IN CAR' },
-  { id: 'packed', label: 'PACKED', disagreementLabel: 'PACKED' },
+  { id: 'home', label: '⌂ HOME', word: 'HOME', disagreementLabel: null },
+  { id: 'staging', label: 'STAGING', word: 'STAGING', disagreementLabel: null },
+  { id: 'car', label: 'CAR', word: 'CAR', disagreementLabel: 'IN CAR' },
+  {
+    id: 'packed',
+    label: 'PACKED',
+    word: 'PACKED',
+    disagreementLabel: 'PACKED',
+  },
 ]
 
 /**
@@ -215,8 +236,23 @@ export function statusGlyph(status: StatusValue): string {
   return statusRow(status)?.glyph ?? '○'
 }
 
+/** The rail's drawn text, home mark included. */
 export function stageLabel(stage: StageValue): string {
   return stageRow(stage)?.label ?? stage
+}
+
+/**
+ * The stage's word with no glyph — what a **trip** statement names it, and
+ * what `whereaboutsText`'s stage segment draws.
+ *
+ * A second exported function rather than a parameter on {@link stageLabel},
+ * following this file's own convention that the row lookup stays private and
+ * every question the table answers has exactly one function beside it. An
+ * unrecognised stage renders **verbatim**, exactly as `stageLabel` does — §5.3
+ * obligation 4 stores it verbatim, and inventing a casing for it is coercion.
+ */
+export function stageWord(stage: StageValue): string {
+  return stageRow(stage)?.word ?? stage
 }
 
 /** Ruling A6's threshold, half of it: which stages the ▲ line fires at, and
@@ -349,6 +385,34 @@ export const TRIP_LOOSE: TripResidence = Object.freeze({ in: 'loose' })
 
 /** The module-internal spelling, unchanged at its call sites below. */
 const LOOSE = TRIP_LOOSE
+
+/**
+ * Two {@link TripResidence}es naming the same place — `loose` carries no id,
+ * so two loose pointers are equal by their `in` alone.
+ *
+ * **The one definition both worlds read.** It lived in
+ * `app/src/components/PackPicker.tsx` from S9a, exported so the Pack picker's
+ * `● NOW` mark and every caller suppressing a selection equal to `current`
+ * could not decide *equal* differently. S9b gives it a fourth reader in
+ * `shared/` — whereabouts' `container` segment, which is `MIXED` exactly when
+ * a slice's residences are not all this-equal — so it moves here, beside the
+ * type it compares and {@link TRIP_LOOSE}.
+ *
+ * That move is what keeps two surfaces from disagreeing about one word:
+ * `PackingRow` already draws `▸ MIXED` on F4 the moment two Pieces differ by
+ * this test, **a loose one included**, and ruling D2 adopts `MIXED` precisely
+ * because it is *"already the app's word for this exact fact (F4's ALL
+ * mode)"*. A second comparison in `shared/` would have let gear detail read
+ * `▸ ALPS 2026 · CRATE B` for a set F4 calls `▸ MIXED`.
+ */
+export function sameTripResidence(
+  a: TripResidence | undefined,
+  b: TripResidence,
+): boolean {
+  if (a === undefined) return false
+  if (a.in !== b.in) return false
+  return a.in === 'loose' || b.in === 'loose' ? true : a.entryId === b.entryId
+}
 
 /**
  * The pointer a resolved holder is written back as. {@link TripHolderRef} and

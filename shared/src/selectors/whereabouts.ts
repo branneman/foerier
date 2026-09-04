@@ -1,4 +1,9 @@
-import type { DepotState, StageValue, TripState } from '../state.ts'
+import type {
+  DepotState,
+  StageValue,
+  TripResidence,
+  TripState,
+} from '../state.ts'
 import {
   containmentView,
   homePath,
@@ -14,7 +19,13 @@ import {
   entryLabel,
   isContainerEntry,
 } from './entry.ts'
-import { entryResidenceOf, stageLabel, stageOf } from './packing.ts'
+import {
+  entryResidenceOf,
+  sameTripResidence,
+  stageOf,
+  stageWord,
+  TRIP_LOOSE,
+} from './packing.ts'
 import { piecesOf } from './piece.ts'
 import { isActive, participantIds, tripLabel, visibleTrips } from './trip.ts'
 import {
@@ -143,6 +154,23 @@ interface SegmentRead {
 }
 
 /**
+ * One residence, before the slice's residences are reconciled with each
+ * other: the **effective** pointer (already resolved through
+ * {@link TripContainmentView}) alongside the pair it reads as.
+ *
+ * The raw pointer is carried because the container segment is decided by
+ * {@link sameTripResidence} over these, not by comparing holder ids — a
+ * **loose** residence is a residence, and `PackingRow` already draws
+ * `▸ MIXED` on F4 the moment one Piece is loose and another is in the crate.
+ * Deciding it any other way here would have gear detail read
+ * `▸ ALPS 2026 · CRATE B` for the set F4 calls `▸ MIXED`, which is precisely
+ * the two-surfaces-disagree failure this slice's whole risk is (§1).
+ */
+interface ResidenceRead extends SegmentRead {
+  residence: TripResidence
+}
+
+/**
  * One active Trip's whole hold on one piece of Gear: the reconciled slice
  * (D2), the counts (D1), and the per-Person residences {@link
  * whereaboutsByPerson} hands back one at a time.
@@ -206,14 +234,14 @@ const TRIP_SLICES = new WeakMap<
 interface EntryContribution {
   /** One per thing this Entry places: one for a whole Entry, one per included
    *  Piece for a per-person Entry. */
-  residences: readonly SegmentRead[]
+  residences: readonly ResidenceRead[]
   /** Counted only (D1). */
   count: number | null
   /** Per-person only (D1). */
   pieceCount: number | null
   /** The included Pieces and where each sits — empty unless this Entry has
    *  Pieces at all. */
-  pieces: ReadonlyMap<string, SegmentRead>
+  pieces: ReadonlyMap<string, ResidenceRead>
 }
 
 /**
@@ -258,10 +286,14 @@ function segmentOf(
   view: TripContainmentView,
   holderEntryId: string | null,
   self: string | null,
-): SegmentRead {
+): ResidenceRead {
   const holder =
     holderEntryId === null ? undefined : trip.entries?.[holderEntryId]
   return {
+    residence:
+      holderEntryId === null || holder === undefined
+        ? TRIP_LOOSE
+        : { in: 'container', entryId: holderEntryId },
     container:
       holderEntryId === null || holder === undefined
         ? null
@@ -327,7 +359,7 @@ function contributionOf(
   }
 
   if (kind === 'per_person') {
-    const pieces = new Map<string, SegmentRead>()
+    const pieces = new Map<string, ResidenceRead>()
     for (const personId of included) {
       // A Piece with no `residence` of its own reads **loose**, never its
       // Entry's (§5e C0) — for per-person gear *where it is* is only ever a
@@ -371,29 +403,32 @@ function contributionOf(
  * D2's reconciliation: **each segment on its own**, never one is-it-mixed
  * question governing both.
  *
- * - `container` — the residences' immediate holders. **Loose contributes no
- *   holder**, which is what makes "none (all loose) → `null`" and the mixed
- *   test one rule rather than two: one Piece in the crate and one loose
- *   still names the crate, and it is the *stage* that drops to say they
- *   disagree.
+ * - `container` — **one residence for everybody, or `MIXED`.** The test is
+ *   {@link sameTripResidence}, the app's own, so a slice reads `MIXED`
+ *   exactly when `PackingRow` draws `▸ MIXED` for the same set on F4 — a
+ *   loose residence beside a held one included, since loose *is* a
+ *   residence. When they agree the shared residence names itself, which is
+ *   `null` when that residence is loose ("none (all loose) → `null`").
  * - `stage` — every residence's chain-root stage, compared **by value**. Two
  *   residences under two different roots that both read `car` agree, and the
- *   slice reads `car`; disagreement drops the segment and **never draws a
- *   second `MIXED`**.
+ *   slice reads `car` (`▸ ALPS 2026 · MIXED · CAR`); disagreement drops the
+ *   segment and **never draws a second `MIXED`**.
+ *
+ * The two segments therefore disagree in exactly one direction: `MIXED` with
+ * a stage, and `MIXED` with none. *One container with no stage* is
+ * unreachable by construction — one residence for everybody is one chain root
+ * is one stage — and that is a property of the rules rather than a case with
+ * no test.
  */
-function reconcile(residences: readonly SegmentRead[]): SegmentRead {
-  const holders = new Map<string, TripContainerRead>()
-  for (const residence of residences) {
-    if (residence.container === null) continue
-    if (residence.container.of !== 'one') continue
-    holders.set(residence.container.entryId, residence.container)
-  }
+function reconcile(residences: readonly ResidenceRead[]): SegmentRead {
+  const first = residences[0]
+  const shared =
+    first !== undefined &&
+    residences.every((read) =>
+      sameTripResidence(first.residence, read.residence),
+    )
   const container: TripContainerRead =
-    holders.size === 0
-      ? null
-      : holders.size === 1
-        ? ([...holders.values()][0] ?? null)
-        : { of: 'mixed' }
+    first === undefined ? null : shared ? first.container : { of: 'mixed' }
 
   const stages = new Set<StageValue | null>(
     residences.map((residence) => residence.stage),
@@ -455,10 +490,10 @@ function tripSlicesOf(state: DepotState): {
     const gathered = new Map<
       string,
       {
-        residences: SegmentRead[]
+        residences: ResidenceRead[]
         count: number | null
         pieceCount: number | null
-        pieces: Map<string, SegmentRead>
+        pieces: Map<string, ResidenceRead>
       }
     >()
 
@@ -472,7 +507,7 @@ function tripSlicesOf(state: DepotState): {
         residences: [],
         count: null,
         pieceCount: null,
-        pieces: new Map<string, SegmentRead>(),
+        pieces: new Map<string, ResidenceRead>(),
       }
       bucket.residences.push(...contribution.residences)
       if (contribution.count !== null) {
@@ -588,10 +623,12 @@ function containerText(container: TripContainerRead): string {
  * | `column` | `▸ ALPS 2026 · CAR` | `⌂ HOME` |
  * | `chip` | `▸ ALPS 2026` | `⌂ HAL ▸ LADE 2` |
  *
- * A stage is drawn through `stageLabel`, the one place a stage's word is
- * decided — so an unrecognised one renders **verbatim** rather than being
- * coerced (§5.3 obligation 4), and `home` draws the rail's own `⌂ HOME`,
- * which is what a container still standing in the hall says.
+ * A stage is drawn through `stageWord` and **never `stageLabel`**: `label` is
+ * the *rail's* text and carries the home mark (`⌂ HOME`), which would put a
+ * home-world glyph inside a trip-world line — `docs/design/README.md` §2
+ * makes `⌂` the home mark and `▸` the trip mark app-wide, and B1's segment
+ * order exists to say this line is a trip statement. Both functions render an
+ * unrecognised stage **verbatim** rather than coercing it (§5.3 obligation 4).
  *
  * **Gear detail calls none of these three densities** — its card carries all
  * four segments across two lines and composes them from the slice itself.
@@ -609,7 +646,7 @@ export function whereaboutsText(
   const segments = [slice.tripName]
   if (density === 'full') segments.push(containerText(slice.container))
   if (density !== 'chip' && slice.stage !== null) {
-    segments.push(stageLabel(slice.stage))
+    segments.push(stageWord(slice.stage))
   }
   return `${TRIP_GLYPH} ${segments.join(' · ')}`
 }
