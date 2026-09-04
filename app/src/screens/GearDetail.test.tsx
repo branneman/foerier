@@ -5,6 +5,12 @@ import {
   normalizeTag,
   personRecorded,
   placeRecorded,
+  tripCreated,
+  tripEntryAdded,
+  tripEntryBringCountSet,
+  tripParticipantAdded,
+  tripPhaseMoved,
+  tripPieceRemoved,
   type OpSpec,
   type TagString,
 } from '@foerier/shared'
@@ -673,6 +679,244 @@ describe('Gear detail', () => {
 
     expect(screen.queryByText('LEDGER')).toBeNull()
     expect(screen.queryByText('APPEND-ONLY')).toBeNull()
+  })
+})
+
+/**
+ * S9b: the whereabouts card's trip rows, the COUNT group's trip chips, and
+ * the new PIECES group (`docs/design/README.md` §4, §5f D1/D2/D6/D7/D8).
+ */
+describe('Gear detail — whereabouts reaches the screen', () => {
+  it('lists home chips first, then one COUNT chip per active claiming Trip', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const store = await seededStore([
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      gearRecorded(gearId, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 3,
+      }),
+      tripEntryAdded(tripId, 'e-canister', { from: 'depot', gearId }),
+      tripEntryBringCountSet(tripId, 'e-canister', 1),
+    ])
+    renderGearDetail(store, gearId)
+
+    const chips = screen.getAllByTestId('count-chip')
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      '×2 ⌂ LOOSE',
+      '×1 ▸ Alps 2026',
+    ])
+  })
+
+  it('shows the PIECES group for per-person gear with a Piece on an active Trip, in People-screen order', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const markId = anId()
+    const elsId = anId()
+    const store = await seededStore([
+      personRecorded(markId, 'Mark'),
+      personRecorded(elsId, 'Els'),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripParticipantAdded(tripId, markId),
+      tripParticipantAdded(tripId, elsId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(tripId, 'e-headlamp', { from: 'depot', gearId }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('PIECES')).toBeInTheDocument()
+    expect(screen.getByText('1 PER PERSON')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'PER-PERSON GEAR HAS NO OWNED-COUNT — ITS SUPPLY IS ONE PER PERSON.',
+      ),
+    ).toBeInTheDocument()
+
+    // People-screen order is alphabetic by label — Els before Mark.
+    const chips = screen.getAllByTestId('piece-chip')
+    expect(chips).toHaveLength(2)
+    expect(chips[0]).toHaveTextContent('E ▸ Alps 2026')
+    expect(chips[1]).toHaveTextContent('M ▸ Alps 2026')
+  })
+
+  it('omits the PIECES group for per-person gear with no Piece on any active Trip', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.queryByTestId('pieces-group')).toBeNull()
+  })
+
+  // `whereaboutsByPerson`'s map is keyed by a claiming Trip's Participants
+  // regardless of whether their own Piece is included (B5: a removed Piece
+  // still reads home, rather than vanishing) — so an Entry whose every Piece
+  // is tombstoned still populates the map, every answer reading home. That
+  // is *not* "a Piece on an active Trip": nothing is actually out, so every
+  // chip would draw the identical home path — exactly the identical-circles
+  // fault §4/D6/B3 exist to prevent. The group must stay hidden.
+  it("omits PIECES when every Participant's Piece on the claiming Trip has been removed", async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const markId = anId()
+    const elsId = anId()
+    const store = await seededStore([
+      personRecorded(markId, 'Mark'),
+      personRecorded(elsId, 'Els'),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripParticipantAdded(tripId, markId),
+      tripParticipantAdded(tripId, elsId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(tripId, 'e-headlamp', { from: 'depot', gearId }),
+      tripPieceRemoved(tripId, 'e-headlamp', markId),
+      tripPieceRemoved(tripId, 'e-headlamp', elsId),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.queryByTestId('pieces-group')).toBeNull()
+  })
+
+  // The hazard `whereaboutsByPerson`'s own docstring names: its keys are a
+  // claiming Trip's Participants, whatever Kind of Gear that Trip claims —
+  // so a Counted gear on an active Trip with Participants populates the
+  // exact same map, every answer reading home. The PIECES group must not
+  // render for it regardless, which is what the explicit Kind gate in
+  // `GearDetail` (not merely "the map is non-empty") is for.
+  it('never shows PIECES for Counted gear, even with Participants on its claiming Trip', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const personId = anId()
+    const store = await seededStore([
+      personRecorded(personId, 'Mark'),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripParticipantAdded(tripId, personId),
+      gearRecorded(gearId, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+      tripEntryAdded(tripId, 'e-canister', { from: 'depot', gearId }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.queryByTestId('pieces-group')).toBeNull()
+  })
+
+  it('shows neither COUNT nor PIECES on a Single', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Ice axe',
+        container: false,
+        kind: 'single',
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.queryByTestId('count-group')).toBeNull()
+    expect(screen.queryByTestId('pieces-group')).toBeNull()
+  })
+
+  it('reads a contested Participant\'s chip as "M ▲ 2 TRIPS", with no link (D7)', async () => {
+    const alpsId = anId()
+    const vosgesId = anId()
+    const gearId = anId()
+    const markId = anId()
+    const store = await seededStore([
+      personRecorded(markId, 'Mark'),
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripParticipantAdded(alpsId, markId),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'pack_out'),
+      tripParticipantAdded(vosgesId, markId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(alpsId, 'e-alps', { from: 'depot', gearId }),
+      tripEntryAdded(vosgesId, 'e-vosges', { from: 'depot', gearId }),
+    ])
+    renderGearDetail(store, gearId)
+
+    const chip = screen.getByTestId('piece-chip')
+    expect(chip).toHaveTextContent('M ▲ 2 TRIPS')
+    expect(within(chip).queryByRole('link')).toBeNull()
+    expect(within(chip).queryByRole('button')).toBeNull()
+  })
+
+  it('turns the footer ▲ for over-claimed Counted gear, with the two Counted-only numbers (D8, §6.1)', async () => {
+    const alpsId = anId()
+    const vosgesId = anId()
+    const gearId = anId()
+    const store = await seededStore([
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'pack_out'),
+      gearRecorded(gearId, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+      tripEntryAdded(alpsId, 'e-alps', { from: 'depot', gearId }),
+      tripEntryBringCountSet(alpsId, 'e-alps', 2),
+      tripEntryAdded(vosgesId, 'e-vosges', { from: 'depot', gearId }),
+      tripEntryBringCountSet(vosgesId, 'e-vosges', 2),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('▲ CLAIMED ×4 · OWNED ×2')).toBeInTheDocument()
+    const resolve = screen.getByRole('link', { name: 'Resolve on Alps 2026' })
+    expect(resolve).toHaveTextContent('RESOLVE')
+    expect(resolve).toHaveAttribute('href', `/trips/${alpsId}`)
+  })
+
+  it('falls back to "CLAIMED BY N TRIPS" for an over-claimed Single (every Kind but Counted, §6.1)', async () => {
+    const alpsId = anId()
+    const vosgesId = anId()
+    const gearId = anId()
+    const store = await seededStore([
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'pack_out'),
+      gearRecorded(gearId, {
+        name: 'Ice axe',
+        container: false,
+        kind: 'single',
+      }),
+      tripEntryAdded(alpsId, 'e-alps', { from: 'depot', gearId }),
+      tripEntryAdded(vosgesId, 'e-vosges', { from: 'depot', gearId }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('▲ CLAIMED BY 2 TRIPS')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Resolve on Alps 2026' }),
+    ).toHaveAttribute('href', `/trips/${alpsId}`)
   })
 })
 

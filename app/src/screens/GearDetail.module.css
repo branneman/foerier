@@ -107,6 +107,56 @@
     color: var(--color-ink-faint);
   }
 
+  /* PIECES group (`docs/design/README.md` §4): the same anatomy as COUNT —
+     right-aligned meta, a chip row, a vocabulary-guard hint — because it is
+     structurally the same group over a different unit (People, not units). */
+  .piecesGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .piecesHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .piecesMeta {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .piecesChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+  }
+
+  /* A chip riding a card is chrome (§4) — the circle decorates, it is not a
+     tap target of its own (D7: a chip is not a door). */
+  .pieceChip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.625rem;
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .piecesHint {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
   .actionBar {
     display: flex;
     align-items: center;

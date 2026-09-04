@@ -1,65 +1,144 @@
 import {
   sliceCountLabel,
+  stageWord,
   type PathSegment,
+  type TripContainerRead,
   type WhereaboutsSlice,
 } from '@foerier/shared'
+import { Link } from 'wouter'
 
 import styles from './WhereaboutsCard.module.css'
 
 /**
  * The Whereabouts card (`docs/design/README.md` §4): a surface at radius 12
- * with one stacked row per {@link WhereaboutsSlice} and a footer hint. S2b's
- * `whereabouts` selector always answers with exactly one `'home'` slice, so
- * this renders one `⌂ HOME SLOT` row today — the `▸ ON TRIP` amber row and
- * the `▲ UNACCOUNTED` variant are stories 9–11's work, on `'trip'`/`'lost'`
- * slice kinds that do not exist yet.
+ * with **one stacked row per {@link WhereaboutsSlice}** — home first, then
+ * trip slices by name A→Z, the order `whereabouts` itself already returns —
+ * and a footer that is the card's own summary of what it just said.
  *
- * **Maps over `slices`, never reads `slices[0]`** — the same shape `Find`'s
- * `CountedCard` already takes. That does not make a second slice kind free,
- * though: `HOME_LABEL` is hardcoded inside the map and `key={slice.kind}`
- * collides once two `'trip'` slices exist at once (multiple active trips).
- * The type will force both edits when that lands; this just keeps the
- * iteration shape from needing to change too.
+ * Stays presentational (`frontend-design.md` §5): it takes domain data as
+ * props, reads no store, and imports no selector for domain logic. **Whether
+ * the gear splits is derived here, not passed** (D1): `slices.some((slice) =>
+ * sliceCountLabel(slice) !== null)` is already D1's rule — *the right-hand
+ * read names the unit that splits* — and a second boolean prop would be a
+ * second spelling of it.
  */
 
 const HOME_LABEL = '⌂ HOME SLOT'
+const LOOSE_TEXT = 'LOOSE'
+const MIXED_TEXT = 'MIXED'
 
-/** The path text for one slice's row: the full breadcrumb, or `LOOSE`
+/** The home row's value line: the full breadcrumb, or `LOOSE`
  * (`docs/ubiquitous-language.md`) rather than a blank row for gear residing
  * in no place and no container. */
 function pathText(path: readonly PathSegment[]): string {
-  if (path.length === 0) return 'LOOSE'
+  if (path.length === 0) return LOOSE_TEXT
   return path.map((segment) => segment.name).join(' ▸ ')
 }
 
-export function WhereaboutsCard({
-  slices,
-}: {
+/** The container segment's word: the holder's name, `MIXED` when the
+ *  slice's residences disagree (D2), `LOOSE` when nothing holds it — the
+ *  same word `pathText` draws for the home world's identical condition. */
+function containerText(container: TripContainerRead): string {
+  if (container === null) return LOOSE_TEXT
+  return container.of === 'mixed' ? MIXED_TEXT : container.name
+}
+
+/** A trip row's value line: container named when one or `MIXED` when more,
+ *  the root's stage trailing only when every residence in the slice agrees
+ *  on it (D2, D3) — never a second `MIXED`. */
+function tripValueText(
+  slice: Extract<WhereaboutsSlice, { kind: 'trip' }>,
+): string {
+  const segments = [containerText(slice.container)]
+  if (slice.stage !== null) segments.push(stageWord(slice.stage))
+  return segments.join(' · ')
+}
+
+/** `home:` or `trip:<tripId>` — the composite key two active Trips need
+ *  (the closed defect: `key={slice.kind}` alone collides the moment a
+ *  second `'trip'` slice exists). */
+function rowKey(slice: WhereaboutsSlice): string {
+  return slice.kind === 'home' ? 'home' : `trip:${slice.tripId}`
+}
+
+/** The label line: `⌂ HOME SLOT`, or `▸ ON TRIP — <name>` per active Trip. */
+function rowLabel(slice: WhereaboutsSlice): string {
+  return slice.kind === 'home' ? HOME_LABEL : `▸ ON TRIP — ${slice.tripName}`
+}
+
+/** The value line beneath the label: the home breadcrumb, or the trip's own
+ *  container/stage pair (D2, D3) — never the trip name again, which the
+ *  label line already carries. */
+function rowValue(slice: WhereaboutsSlice): string {
+  return slice.kind === 'home' ? pathText(slice.path) : tripValueText(slice)
+}
+
+export interface WhereaboutsCardOverClaim {
+  /** The footer's stated fact — `claim.ts`'s two Counted-only numbers
+   *  (`CLAIMED ×4 · OWNED ×2`) or the Piece row's string reused for every
+   *  other Kind (`CLAIMED BY N TRIPS`, §6.1). `GearDetail` composes it,
+   *  because the Counted-only branch is a domain rule this presentational
+   *  component must not decide (decision 1). Drawn with a leading `▲`. */
+  text: string
+  /** Where `RESOLVE` routes — the first claiming Trip by name A→Z (D7). */
+  href: string
+  /** `RESOLVE`'s accessible name (D7: `Resolve on <trip>`), named
+   *  independently of `text` because the fact line and the door it opens
+   *  are two different sentences. */
+  resolveLabel: string
+}
+
+export interface WhereaboutsCardProps {
   slices: readonly WhereaboutsSlice[]
-}) {
-  // **The home rows only, until this slice's card task lands.** S9b's
-  // selector answers with `'trip'` slices as well, and `HOME_LABEL` is
-  // hardcoded inside the map below — drawing a trip slice through it would
-  // label the duffel `⌂ HOME SLOT`, a lie the card would state on screen.
-  // Narrowing here keeps the drawn card exactly what it has been since S2b.
-  const homeSlices = slices.filter(
-    (slice): slice is Extract<WhereaboutsSlice, { kind: 'home' }> =>
-      slice.kind === 'home',
-  )
+  /** Present exactly while the gear is over-claimed (D8). */
+  overClaim?: WhereaboutsCardOverClaim
+}
+
+export function WhereaboutsCard({ slices, overClaim }: WhereaboutsCardProps) {
+  const splits = slices.some((slice) => sliceCountLabel(slice) !== null)
+
   return (
     <div className={styles['card']}>
-      {homeSlices.map((slice) => (
-        <div key={slice.kind} className={styles['row']}>
+      {slices.map((slice) => (
+        <div key={rowKey(slice)} className={styles['row']}>
           <div className={styles['rowMain']}>
-            <span className={styles['label']}>{HOME_LABEL}</span>
-            <span className={styles['path']}>{pathText(slice.path)}</span>
+            <span
+              className={`${styles['label']} ${
+                slice.kind === 'trip' ? styles['labelTrip'] : ''
+              }`}
+            >
+              {rowLabel(slice)}
+            </span>
+            <span className={styles['path']}>{rowValue(slice)}</span>
           </div>
-          <span className={styles['count']}>{sliceCountLabel(slice)}</span>
+          <span
+            className={`${styles['count']} ${
+              slice.kind === 'trip' ? styles['countTrip'] : ''
+            }`}
+          >
+            {sliceCountLabel(slice)}
+          </span>
         </div>
       ))}
-      <p className={styles['hint']}>
-        SPLIT COUNT — BOTH TRUE AT ONCE. HOME SLOT IS KEPT WHILE OUT.
-      </p>
+
+      {overClaim === undefined ? (
+        <p className={styles['hint']}>
+          {splits
+            ? 'SPLIT COUNT — BOTH TRUE AT ONCE. HOME SLOT IS KEPT WHILE OUT.'
+            : 'HOME SLOT IS KEPT WHILE OUT.'}
+        </p>
+      ) : (
+        <p className={`${styles['hint']} ${styles['attention']}`}>
+          <span>▲ {overClaim.text}</span>
+          <Link
+            href={overClaim.href}
+            className={styles['resolve']}
+            aria-label={overClaim.resolveLabel}
+          >
+            RESOLVE
+          </Link>
+        </p>
+      )}
     </div>
   )
 }

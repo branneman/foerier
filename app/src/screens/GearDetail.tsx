@@ -10,20 +10,24 @@ import {
   gearTagApplied,
   gearTagRemoved,
   normalizeTag,
+  overClaims,
   ownerLabel,
   ownerOf,
   personLabel,
   residenceOf,
   tagsOf,
   whereabouts,
+  whereaboutsByPerson,
+  whereaboutsText,
   type DepotState,
   type GearState,
   type KindValue,
   type Owner,
   type PathSegment,
+  type PersonWhereabouts,
   type WhereaboutsSlice,
 } from '@foerier/shared'
-import { Chip, Confirm, Sheet, Stepper } from '@foerier/ui'
+import { Chip, Confirm, PersonCircle, Sheet, Stepper } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { useParams } from 'wouter'
 
@@ -31,6 +35,7 @@ import { HomePicker, sameResidence } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
 import { WhereaboutsCard } from '../components/WhereaboutsCard'
+import { personInitial, sortedPeople } from '../depot/people'
 import { useDepot } from '../depot/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
@@ -45,6 +50,16 @@ import styles from './GearDetail.module.css'
  * (the action bar). **S3 adds the tag chips** — the settled chip of
  * Components §06, and the trailing `+ tag` ghost that is the one edit
  * affordance on an otherwise read-only screen.
+ *
+ * **S9b makes the card and COUNT state the trip world too, and adds
+ * PIECES** (§5f D1/D2/D6/D7/D8, spec §4.2): the card draws one row per
+ * {@link WhereaboutsSlice} (home first, then trip slices A→Z) with a footer
+ * that turns ▲ + `RESOLVE` the moment claims exceed supply; `COUNT` gains one
+ * chip per claiming Trip, home chips first; and the new `PIECES` group lists
+ * a per-person Gear's claiming Trip(s)' Participants, each at chip density,
+ * only while a Piece is actually out. `overClaimFooter` is the one place
+ * §6.1's Counted-only rule is decided — `WhereaboutsCard` itself stays
+ * presentational and reads no selector for domain logic.
  *
  * Still not built, and still not placeholder'd: the **LEDGER** group (story
  * 33) and every **weight** segment (story 16), both drawn final on the board
@@ -96,15 +111,85 @@ function chipLocation(path: readonly PathSegment[]): string {
   return last === undefined ? 'LOOSE' : last.name
 }
 
-/** `×1 ⌂ CRATE B` — one chip per {@link WhereaboutsSlice}, never per unit
- * (Vocabulary guards: depot units of counted gear carry no identity).
+/** `home` or `trip:<tripId>` — the same composite key
+ * `WhereaboutsCard`'s own collision fix uses, needed here for the identical
+ * reason: two active Trips both claiming this Gear draw two chips. */
+function chipKey(slice: WhereaboutsSlice): string {
+  return slice.kind === 'home' ? 'home' : `trip:${slice.tripId}`
+}
+
+/** `×1 ⌂ CRATE B` for the home slice, `×1 ▸ ALPS 2026` per trip slice — one
+ * chip per {@link WhereaboutsSlice}, never per unit (Vocabulary guards: depot
+ * units of counted gear carry no identity). Home chips first — `whereabouts`'s
+ * own order, unchanged here.
  *
- * **The home arm only.** S9b's selector answers with a `'trip'` slice as
- * well, and the trip chip (`×1 ▸ ALPS 2026`) plus the whole card rebuild are
- * the surface task of this slice; this narrowing is what keeps the drawn
- * screen exactly what it was until that lands. */
-function chipLabel(slice: Extract<WhereaboutsSlice, { kind: 'home' }>): string {
-  return `×${slice.count ?? 1} ⌂ ${chipLocation(slice.path)}`
+ * `null` when the slice carries no quantity, and the caller skips it rather
+ * than this function inventing one. That replaces the old `×${slice.count ??
+ * 1}`, which re-spelled `ownedCountOf`'s own absent-register default at this
+ * call site — unreachable today (the COUNT group renders only for Counted
+ * gear, whose slices are never null-count), but a defaulting call site reads
+ * as a rule regardless of whether it is ever exercised. */
+function chipLabel(slice: WhereaboutsSlice): string | null {
+  if (slice.count === null) return null
+  return slice.kind === 'home'
+    ? `×${slice.count} ⌂ ${chipLocation(slice.path)}`
+    : `×${slice.count} ▸ ${slice.tripName}`
+}
+
+/** A Participant's own `PIECES` chip text (`docs/design/README.md` §4):
+ * `whereaboutsText` at chip density — `M ▸ ALPS 2026`, `K ⌂ HAL ▸ LADE 2` —
+ * unless two Trips both claim their Piece, in which case D7's Piece-row
+ * string replaces it: `M ▲ 2 TRIPS`. **No route** — D7: *a chip is not a
+ * door and never has been*, which is why this returns text and not a link. */
+function pieceChipText(person: PersonWhereabouts): string {
+  if (person.contestedTripIds.length >= 2) {
+    return `▲ ${person.contestedTripIds.length} TRIPS`
+  }
+  return whereaboutsText(person.slice, 'chip')
+}
+
+/**
+ * §6.1's Counted-only rule, composed here rather than inside
+ * `WhereaboutsCard`: the presentational card must not decide a domain rule
+ * (decision 1), so this is the one place that reads `claim.ts`'s numbers.
+ *
+ * Counted gear states the two numbers `claim.ts` already computed —
+ * `▲ CLAIMED ×4 · OWNED ×2` — because `supply`/`claimed` really are depot
+ * quantities for that Kind. Every other Kind, Single included (D1's own
+ * reason: no quantity to state), falls back to D7's Piece-row string,
+ * `▲ CLAIMED BY N TRIPS`, reused rather than invented.
+ *
+ * `N` is read off `slices` — already one per **claiming Trip**, merged
+ * inside `whereabouts` — rather than `OverClaim.claims.length`, which
+ * counts Entries and would over-count a Trip holding this Gear twice.
+ *
+ * `RESOLVE` routes to the first claiming Trip by name A→Z (D7), which is
+ * `slices`' own order beyond the leading home slice — no second sort.
+ */
+function overClaimFooter(
+  state: DepotState,
+  gear: GearState,
+  gearId: string,
+  slices: readonly WhereaboutsSlice[],
+): { text: string; href: string; resolveLabel: string } | undefined {
+  const tripSlices = slices.filter(
+    (slice): slice is Extract<WhereaboutsSlice, { kind: 'trip' }> =>
+      slice.kind === 'trip',
+  )
+  const first = tripSlices[0]
+  if (first === undefined) return undefined
+
+  const claim = overClaims(state).find((entry) => entry.gearId === gearId)
+  const text =
+    gear.kind?.value === 'counted' && claim !== undefined
+      ? `CLAIMED ×${claim.claimed} · OWNED ×${claim.supply}`
+      : `CLAIMED BY ${tripSlices.length} TRIPS`
+
+  return {
+    text,
+    href: `/trips/${first.tripId}`,
+    resolveLabel: `Resolve on ${first.tripName}`,
+  }
 }
 
 export function GearDetail() {
@@ -198,12 +283,27 @@ export function GearDetail() {
   const name = gear.name?.value ?? ''
   const retired = gear.retired?.value === true
   const counted = gear.kind?.value === 'counted'
-  const { slices } = whereabouts(state, gearId)
-  // Until this slice's surface tasks land, both groups below draw the home
-  // slice alone — the shape they have drawn since S2b.
-  const homeSlices = slices.filter(
-    (slice): slice is Extract<WhereaboutsSlice, { kind: 'home' }> =>
-      slice.kind === 'home',
+  const perPerson = gear.kind?.value === 'per_person'
+  const { slices, overClaimed } = whereabouts(state, gearId)
+  const overClaim = overClaimed
+    ? overClaimFooter(state, gear, gearId, slices)
+    : undefined
+
+  // D6: `whereaboutsByPerson`'s keys are the claiming Trip(s)' Participants,
+  // whatever this Gear's Kind — the `PIECES` group renders only for
+  // per-person gear (`perPerson` above). **The map being non-empty is not
+  // the same fact as "a Piece is on an active Trip"**: a Participant whose
+  // Piece was tombstoned stays in the map and reads home (B5), so an Entry
+  // whose every Piece has been removed still populates it, every answer
+  // reading home — the identical-circles fault §4/D6/B3 exist to prevent.
+  // The group therefore gates on at least one answer actually being a trip
+  // slice, never on the map's size.
+  const pieceAnswers = whereaboutsByPerson(state, gearId)
+  const piecePeople = sortedPeople(state).filter((person) =>
+    pieceAnswers.has(person.id),
+  )
+  const anyPieceOut = [...pieceAnswers.values()].some(
+    (answer) => answer.slice.kind === 'trip',
   )
 
   return (
@@ -258,7 +358,10 @@ export function GearDetail() {
         )}
       </div>
 
-      <WhereaboutsCard slices={slices} />
+      <WhereaboutsCard
+        slices={slices}
+        {...(overClaim === undefined ? {} : { overClaim })}
+      />
 
       {counted && (
         <div className={styles['countGroup']} data-testid="count-group">
@@ -269,19 +372,66 @@ export function GearDetail() {
             </span>
           </div>
           <div className={styles['countChips']}>
-            {homeSlices.map((slice) => (
-              <span
-                key={slice.kind}
-                className={styles['countChip']}
-                data-testid="count-chip"
-              >
-                {chipLabel(slice)}
-              </span>
-            ))}
+            {slices.map((slice) => {
+              const label = chipLabel(slice)
+              if (label === null) return null
+              return (
+                <span
+                  key={chipKey(slice)}
+                  className={styles['countChip']}
+                  data-testid="count-chip"
+                >
+                  {label}
+                </span>
+              )
+            })}
           </div>
           <p className={styles['countHint']}>
             {
               'COUNTED GEAR HAS NO PER-UNIT IDENTITY — UNITS THAT DIFFER ARE SEPARATE SINGLE GEAR.'
+            }
+          </p>
+        </div>
+      )}
+
+      {/* PIECES (`docs/design/README.md` §4, §5f D6): a second group, not a
+          second variant of COUNT — per-person gear has no owned-count at all
+          (invariant 6), and its split is over People, not units. Two gates,
+          neither of which `piecePeople.length` alone can stand in for:
+          `perPerson` — `whereaboutsByPerson`'s keys are a claiming Trip's
+          Participants regardless of what Kind of Gear it claims, so a
+          Counted or Single gear on an active Trip with Participants would
+          otherwise populate this exact map too — and `anyPieceOut` — a
+          Participant whose Piece was tombstoned stays in the map reading
+          home (B5), so an Entry with every Piece removed populates the map
+          as well, with every answer reading home. Both are the identical
+          fault this group exists to refuse: a per-Person breakdown where
+          every answer is the same home path. */}
+      {perPerson && anyPieceOut && (
+        <div className={styles['piecesGroup']} data-testid="pieces-group">
+          <div className={styles['piecesHeader']}>
+            <span className={styles['groupLabel']}>PIECES</span>
+            <span className={styles['piecesMeta']}>1 PER PERSON</span>
+          </div>
+          <div className={styles['piecesChips']}>
+            {piecePeople.map((person) => {
+              const answer = pieceAnswers.get(person.id)
+              if (answer === undefined) return null
+              return (
+                <span
+                  key={person.id}
+                  className={styles['pieceChip']}
+                  data-testid="piece-chip"
+                >
+                  <PersonCircle label={personInitial(person.label)} size={22} />{' '}
+                  <span>{pieceChipText(answer)}</span>
+                </span>
+              )
+            })}
+          </div>
+          <p className={styles['piecesHint']}>
+            {
+              'PER-PERSON GEAR HAS NO OWNED-COUNT — ITS SUPPLY IS ONE PER PERSON.'
             }
           </p>
         </div>
