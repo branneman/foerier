@@ -185,7 +185,22 @@ function looseLine(count: number): string {
     : `${count} pieces of gear become loose.`
 }
 
-function sameResidence(a: Residence | undefined, b: Residence): boolean {
+/**
+ * Are two home residences the same place? Loose equals loose; a Place or a
+ * container equals itself by id; `undefined` — no `current` at all — equals
+ * nothing, so nothing is marked.
+ *
+ * **Exported because the suppression it serves is the caller's job**, the
+ * precedent `PackPicker`'s `sameTripResidence` set. This sheet is pure
+ * selection: it marks the `● NOW` row with this and still reports a tap on
+ * it through `onSelect`, because it cannot know whether the caller means to
+ * author an op from it. `GearDetail`'s MOVE does, so it is the one that has
+ * to drop a selection equal to the current residence — a redundant
+ * `gear.rehomed` moves the stamp LWW compares and can silently beat a
+ * genuine move from an offline Device. Add gear never needs it: there is no
+ * prior residence to be equal to.
+ */
+export function sameResidence(a: Residence | undefined, b: Residence): boolean {
   if (a === undefined) return false
   if (a.in !== b.in) return false
   return a.in === 'loose' || b.in === 'loose' ? true : a.id === b.id
@@ -253,7 +268,15 @@ export function HomePicker({
   function submitRename() {
     if (renamingId === null) return
     const trimmed = renameValue.trim()
-    if (trimmed !== '') emit(placeRenamed(renamingId, trimmed))
+    // Only when it changed — gear detail's `submitEdit` discipline. `startRename`
+    // seeds the field with the current name, so Save-without-editing is the
+    // ordinary way to author a redundant `place.renamed`, and a needless
+    // write is never free: it moves the LWW stamp and can silently beat a
+    // genuine rename queued on a Device that was offline.
+    const current = nameOf(state.places[renamingId])
+    if (trimmed !== '' && trimmed !== current) {
+      emit(placeRenamed(renamingId, trimmed))
+    }
     setRenamingId(null)
     setRenameValue('')
   }

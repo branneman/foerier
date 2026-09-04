@@ -19,7 +19,7 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../depot/opLog'
 import {
   createDepotStore,
   DepotProvider,
@@ -80,9 +80,10 @@ const noopEngine: EngineFactory = () => ({
 
 async function seededStore(
   specs: readonly OpSpec[] = [],
+  log: OpLog = inMemoryOpLog(),
 ): Promise<StoreApi<DepotStoreState>> {
   const store = createDepotStore({
-    log: inMemoryOpLog(),
+    log,
     engine: noopEngine,
     author: anAuthor(),
   })
@@ -237,6 +238,73 @@ describe('Gear detail', () => {
       id: placeId,
     })
     expect(screen.queryByRole('dialog', { name: 'Home' })).toBeNull()
+  })
+
+  /**
+   * A needless write is never free: a `gear.rehomed` naming the home the gear
+   * already has still moves the LWW stamp, and can silently beat a genuine
+   * move queued on a Device that was offline. `HomePicker` reports the `● NOW`
+   * row like any other — suppressing it is the caller's job, exactly as
+   * `Packing.tsx` does for `PackPicker` through `sameTripResidence`.
+   */
+  it('MOVE to the current home emits no gear.rehomed', async () => {
+    const placeId = anId()
+    const gearId = anId()
+    const log = inMemoryOpLog()
+    const store = await seededStore(
+      [
+        placeRecorded(placeId, 'Attic'),
+        gearRecorded(gearId, {
+          name: 'Rope',
+          container: false,
+          kind: 'single',
+          residence: { in: 'place', id: placeId },
+        }),
+      ],
+      log,
+    )
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'MOVE' }))
+    const attic = screen.getByRole('button', { name: /Attic/ })
+    expect(attic).toHaveTextContent('● NOW')
+    await user.click(attic)
+    await user.click(screen.getByRole('button', { name: 'Move gear' }))
+    await store.getState().drained()
+
+    const moves = (await log.all()).filter(
+      (record) => record.op.type === 'gear.rehomed',
+    )
+    expect(moves).toEqual([])
+    // The picker still closes: nothing to write is not a reason to stay.
+    expect(screen.queryByRole('dialog', { name: 'Home' })).toBeNull()
+  })
+
+  /**
+   * An absent `residence` register **is** loose — `looseGear` lists such gear
+   * and the COUNT chip reads `⌂ LOOSE` for it — so the picker must say so
+   * too. Handing it no `current` drew no `● NOW` at all, which left the
+   * one row that *is* the current home indistinguishable from the rest and
+   * gave the caller nothing to suppress a redundant move against.
+   */
+  it('MOVE marks Loose as the current home when the gear has no residence register', async () => {
+    const gearId = anId()
+    const store = await seededStore([
+      placeRecorded(anId(), 'Attic'),
+      gearRecorded(gearId, { name: 'Rope', container: false, kind: 'single' }),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'MOVE' }))
+
+    expect(screen.getByRole('button', { name: /Loose/ })).toHaveTextContent(
+      '● NOW',
+    )
+    expect(screen.getByRole('button', { name: /Attic/ })).not.toHaveTextContent(
+      '● NOW',
+    )
   })
 
   it('EDIT renames and emits gear.renamed', async () => {

@@ -2,6 +2,7 @@ import {
   phaseNext,
   phaseOf,
   tripLabel,
+  tripNameOrUnnamed,
   UNNAMED_PERSON_GLYPH,
   type PackingCount,
   type TripState,
@@ -16,7 +17,6 @@ import {
   packedPercent,
   tripChip,
   tripDateRange,
-  tripNameOrUnnamed,
   tripParticipants,
 } from '../depot/trips'
 import { entryCountLabel } from './GearListSection'

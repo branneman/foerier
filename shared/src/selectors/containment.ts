@@ -1,6 +1,6 @@
 import { compareStamps, type Stamp } from '../hlc.ts'
 import { stampOf } from '../registers.ts'
-import type { DepotState, GearState } from '../state.ts'
+import type { DepotState, GearState, Residence } from '../state.ts'
 
 /**
  * The containment tree is **emergent** ([domain §3](../../../docs/domain-model.md)):
@@ -65,13 +65,36 @@ function isContainer(gear: GearState): boolean {
   return gear.container?.value === true
 }
 
+const LOOSE_RESIDENCE: Residence = Object.freeze({ in: 'loose' })
+
+/**
+ * The gear's home residence **as written** — an absent residence reads
+ * loose, and only this function says so.
+ *
+ * `ownerOf`'s rule (`selectors/owner.ts`) for the residence register: gear
+ * recorded with no home carries no `residence` at all, and the fold keeps it
+ * that way because absent and `{in:'loose'}` are different facts about the
+ * op log even where they are the same fact about the gear. The equivalence
+ * is stated once, here, on the way out — `holderOf` resolves through it, so
+ * `looseGear` already lists such gear, and a picker that marks `● NOW` or a
+ * caller that suppresses a redundant `gear.rehomed` must read the same
+ * answer rather than re-derive it from `gear.residence?.value`.
+ *
+ * **Not the resolved holder.** A pointer at a removed Place or a retired
+ * container reads back exactly as written; the four reasons it might
+ * nonetheless *be* loose are `holderOf`'s, and only that view answers them.
+ */
+export function residenceOf(gear: GearState): Residence {
+  return gear.residence?.value ?? LOOSE_RESIDENCE
+}
+
 /**
  * Reasons 1–3, in one pass: the pointer as written, resolved against the state
  * it points into, with no knowledge of cycles yet.
  */
 function resolvePointer(state: DepotState, gear: GearState): HolderRef {
-  const residence = gear.residence?.value
-  if (residence === undefined || residence.in === 'loose') return LOOSE
+  const residence = residenceOf(gear)
+  if (residence.in === 'loose') return LOOSE
 
   if (residence.in === 'place') {
     const place = state.places[residence.id]

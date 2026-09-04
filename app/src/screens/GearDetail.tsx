@@ -13,6 +13,7 @@ import {
   ownerLabel,
   ownerOf,
   personLabel,
+  residenceOf,
   tagsOf,
   whereabouts,
   type DepotState,
@@ -26,7 +27,7 @@ import { Chip, Confirm, Sheet, Stepper } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'wouter'
 
-import { HomePicker } from '../components/HomePicker'
+import { HomePicker, sameResidence } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
 import { WhereaboutsCard } from '../components/WhereaboutsCard'
@@ -319,13 +320,23 @@ export function GearDetail() {
         <HomePicker
           onClose={() => setMoveOpen(false)}
           onSelect={(residence) => {
-            emit(gearRehomed(gearId, residence))
+            // The picker reports the `● NOW` row like any other, and
+            // suppressing it is this caller's job (`HomePicker`'s `onSelect`
+            // contract, `Packing.tsx`'s `sameTripResidence` shape). A
+            // `gear.rehomed` naming the home the gear already has is a
+            // needless write, and a needless write is never free: it moves
+            // the stamp LWW compares and can silently beat a genuine move
+            // queued on a Device that was offline.
+            if (!sameResidence(residenceOf(gear), residence)) {
+              emit(gearRehomed(gearId, residence))
+            }
             setMoveOpen(false)
           }}
           excludeGearId={gearId}
-          {...(gear.residence?.value === undefined
-            ? {}
-            : { current: gear.residence.value })}
+          // Always passed: an absent register **is** loose (`residenceOf`),
+          // so the Loose row is `● NOW` for gear recorded with no home rather
+          // than nothing being marked at all.
+          current={residenceOf(gear)}
           // MOVE, so the picker draws the context line and confirms before it
           // moves anything (see `HomePicker`'s header for why story 36 makes
           // that necessary).

@@ -102,7 +102,11 @@ export type {
   HolderRef,
   PathSegment,
 } from './selectors/containment.ts'
-export { containmentView, homePath } from './selectors/containment.ts'
+export {
+  containmentView,
+  homePath,
+  residenceOf,
+} from './selectors/containment.ts'
 
 // Beside its twin on purpose: `tripContainment.ts` duplicates the file above
 // deliberately, and the two must not drift.
@@ -166,6 +170,7 @@ export {
   isContainerEntry,
   listTotals,
   pieceCountOf,
+  visibleEntry,
 } from './selectors/entry.ts'
 
 export type {
@@ -222,8 +227,10 @@ export {
   phaseOf,
   PHASES,
   tripLabel,
+  tripNameOrUnnamed,
   tripSections,
   UNNAMED_TRIP,
+  UNNAMED_TRIP_GLYPH,
   visibleTrips,
 } from './selectors/trip.ts'
 

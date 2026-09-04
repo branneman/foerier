@@ -1,6 +1,6 @@
 import {
   personNameOrUnnamed,
-  tripLabel,
+  tripNameOrUnnamed,
   UNNAMED_TRIP,
   type Claim,
   type DepotState,
@@ -9,7 +9,6 @@ import {
 import { useState } from 'react'
 
 import { useDepot } from '../depot/store'
-import { tripNameOrUnnamed } from '../depot/trips'
 import styles from './OverClaimBand.module.css'
 
 /**
@@ -555,18 +554,6 @@ function unionContestedPersonIds(
 }
 
 /**
- * `tripLabel` in a sentence — `—` is right in a list column and wrong mid-
- * sentence, the split `UNNAMED_PERSON` already carries and `UNNAMED_TRIP`
- * repeats (spec §4.5). A Trip not yet in the fold reads the same way: there
- * is no name to state either.
- */
-function tripSentenceLabel(state: DepotState, tripId: string): string {
-  const trip = state.trips[tripId]
-  const label = trip === undefined ? undefined : tripLabel(trip)
-  return label === undefined || label === '—' ? 'an unnamed trip' : label
-}
-
-/**
  * `tripLabel` in a row **and in a settle route** — `Unnamed trip`, words,
  * per spec §4.5, always in its recorded case. Fix round F1 retired the
  * settle route's separate short-name/uppercase treatment: `REMOVE ON` has
@@ -575,8 +562,8 @@ function tripSentenceLabel(state: DepotState, tripId: string): string {
  * `REMOVE ON UNNAMED TRIP` on screen — the same split `.fact` already drew
  * between recorded case in source and all-caps on screen.
  *
- * The substitution itself is `tripNameOrUnnamed`'s (`depot/trips.ts`, beside
- * `tripChip`) — this only adds the "not yet in the fold at all" case that
+ * The substitution itself is `tripNameOrUnnamed`'s (`shared/`, beside
+ * `UNNAMED_TRIP`) — this only adds the "not yet in the fold at all" case that
  * function's `TripState` argument can't express, so `RemoveElsewhereConfirm`
  * (which always holds a resolved Trip) and this row-and-settle-route rule
  * share one substitution instead of two copies drifting apart.
@@ -584,6 +571,24 @@ function tripSentenceLabel(state: DepotState, tripId: string): string {
 function tripRowLabel(state: DepotState, tripId: string): string {
   const trip = state.trips[tripId]
   return trip === undefined ? UNNAMED_TRIP : tripNameOrUnnamed(trip)
+}
+
+/**
+ * {@link tripRowLabel} **mid-sentence** — `claimed by an unnamed trip.` A
+ * name is its own noun phrase and takes no article; the substitute is a
+ * common noun and needs one, so the words come from `UNNAMED_TRIP` with the
+ * article prepended and the sentence's own case applied, rather than from a
+ * second literal that could drift from the row fact beneath the line. A Trip
+ * not yet in the fold reads the same way: there is no name to state either.
+ *
+ * The price, and it is the one `personNameOrUnnamed` already pays: a Trip
+ * genuinely named `Unnamed trip` reads with the article too. The article is
+ * `an` because the substitute begins with a vowel — change the words and
+ * change the article with them.
+ */
+function tripSentenceLabel(state: DepotState, tripId: string): string {
+  const label = tripRowLabel(state, tripId)
+  return label === UNNAMED_TRIP ? `an ${UNNAMED_TRIP.toLowerCase()}` : label
 }
 
 function pluralize(count: number, singular: string, plural: string): string {

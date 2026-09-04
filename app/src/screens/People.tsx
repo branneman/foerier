@@ -271,7 +271,15 @@ export function People({
   function submitRename() {
     if (renamingId === null) return
     const trimmed = renameValue.trim()
-    if (trimmed !== '') emit(personRenamed(renamingId, trimmed))
+    // Only when it changed — gear detail's `submitEdit` discipline. `startRename`
+    // seeds the field with the current name, so Save-without-editing is the
+    // ordinary way to author a redundant `person.renamed`, and a needless
+    // write is never free: it moves the LWW stamp and can silently beat a
+    // genuine rename queued on a Device that was offline.
+    const current = state.people[renamingId]?.name?.value ?? ''
+    if (trimmed !== '' && trimmed !== current) {
+      emit(personRenamed(renamingId, trimmed))
+    }
     setRenamingId(null)
   }
 

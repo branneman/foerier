@@ -1,6 +1,7 @@
 import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
 import { byNameThenId } from './order.ts'
 import { piecesOf } from './piece.ts'
+import { UNNAMED_TRIP_GLYPH } from './trip.ts'
 
 /**
  * **The gear list's read side** — beside `owner.ts` and `trip.ts`, and the
@@ -53,7 +54,9 @@ export interface ListTotals {
  * claim they cannot settle. Nothing is discarded: the moment the
  * `trip.entry_added` arrives the Entry appears.
  *
- * This is the only place that rule is stated.
+ * This is the only place that rule is stated — {@link visibleEntry} asks it
+ * about one Entry by id, through the same predicate, rather than restating
+ * it.
  *
  * Sorted by {@link entryLabel} then `id`, via `byNameThenId`
  * (`selectors/order.ts`) — the one comparator every list in this codebase
@@ -74,9 +77,7 @@ export function entriesOf(
   state: DepotState,
 ): readonly EntryState[] {
   return Object.values(trip.entries ?? {})
-    .filter(
-      (entry) => entry.source !== undefined && entry.removed?.value !== true,
-    )
+    .filter(isVisible)
     .sort((a, b) =>
       byNameThenId(
         { id: a.id, name: { value: entryLabel(a, state) } },
@@ -85,12 +86,37 @@ export function entriesOf(
     )
 }
 
+/** {@link entriesOf}'s predicate: a source to draw, and no tombstone. */
+function isVisible(entry: EntryState): boolean {
+  return entry.source !== undefined && entry.removed?.value !== true
+}
+
+/**
+ * One Entry a reader may see, by id — {@link entriesOf}'s rule asked about a
+ * single Entry, and `undefined` whenever that list would not hold it.
+ *
+ * The case this exists for is the **tombstone**: `trip.entry_removed` does
+ * not delete the Entry, it writes `removed: true` on an entity the fold keeps
+ * (`reduce.ts`'s `writeEntry`), so `trip.entries[id]` stays defined after a
+ * removal and a reader guarding only on `undefined` goes on drawing — and
+ * re-removing — an Entry nobody may see. A sourceless Entry reads
+ * `undefined` for the same reason it is absent from the list.
+ */
+export function visibleEntry(
+  trip: TripState,
+  entryId: string,
+): EntryState | undefined {
+  const entry = trip.entries?.[entryId]
+  return entry !== undefined && isVisible(entry) ? entry : undefined
+}
+
 /**
  * The Gear's name for a depot Entry, the source's own name for a trip-only
  * one — invariant 8's single-sourcing is this one line: a depot Entry is
  * renamed by renaming the Gear, with no Entry-side op at all.
  *
- * Falls back to `tripLabel`'s glyph (`—`) whenever there is no name to draw:
+ * Falls back to `tripLabel`'s glyph ({@link UNNAMED_TRIP_GLYPH}) whenever
+ * there is no name to draw:
  * an unset or blank trip-only name, or a depot Entry whose referenced Gear is
  * unnamed, retired, or not yet in the fold (an id a peer's `trip.entry_added`
  * named before this replica received that Gear's `gear.recorded`). A
@@ -106,7 +132,7 @@ export function entryLabel(entry: EntryState, state: DepotState): string {
       : source.from === 'depot'
         ? (state.gear[source.gearId]?.name?.value ?? '')
         : (source.name ?? '')
-  return name.trim() === '' ? '—' : name
+  return name.trim() === '' ? UNNAMED_TRIP_GLYPH : name
 }
 
 /**

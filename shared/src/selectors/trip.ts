@@ -274,29 +274,67 @@ export function phaseNext(trip: TripState): string | null {
 }
 
 /**
+ * What {@link tripLabel} returns for a Trip with no folded name, and the one
+ * place the trip world spells the glyph — `UNNAMED_PERSON_GLYPH`'s twin.
+ *
+ * Three readers used to spell it for themselves: `tripLabel`, `entryLabel`
+ * (an Entry is a trip-world name, and `tripPath` documents that a nameless
+ * segment gets "that function's `—` glyph") and the `TRIP` dimension's
+ * format for a Trip id this replica has not folded yet. Three copies of a
+ * sentinel is three chances to drift from the one function that produces
+ * it, and a call site that then compares against `'—'` re-derives the naming
+ * rule from its own output. So the sentinel lives beside the label it is a
+ * value of, and every reader imports it.
+ *
+ * Not the same fact as `slice.ts`'s `UNGROUPED_LABEL`, which happens to be
+ * the same character: that names the bucket gear with no value in a grouping
+ * falls into, not a nameless thing.
+ */
+export const UNNAMED_TRIP_GLYPH = '—'
+
+/**
  * The Trip's name for a card, a header or a chip — sentence case, as
  * recorded, never upper-cased here (CAPS is a CSS transform where a surface
  * wants it).
  *
- * An unnamed Trip reads `—`, which is `personLabel`'s rule and the same glyph
- * the ungrouped bucket uses. It is reachable two ways even though F3 requires
- * a name: a `trip.renamed` carrying an explicit `null`, and a Trip whose
- * `trip.created` is still queued on another device while a participant op for
- * it has already arrived.
+ * An unnamed Trip reads {@link UNNAMED_TRIP_GLYPH}, which is `personLabel`'s
+ * rule and the same glyph the ungrouped bucket uses. It is reachable two ways
+ * even though F3 requires a name: a `trip.renamed` carrying an explicit
+ * `null`, and a Trip whose `trip.created` is still queued on another device
+ * while a participant op for it has already arrived.
  */
 export function tripLabel(trip: TripState): string {
   const name = trip.name?.value ?? ''
-  return name.trim() === '' ? '—' : name
+  return name.trim() === '' ? UNNAMED_TRIP_GLYPH : name
 }
 
 /**
  * How a Trip with no name reads **in a sentence**.
  *
- * `tripLabel` returns `—`, which is right in a list column and wrong in the
- * over-claim band's prose. The same split `UNNAMED_PERSON` already carries;
- * `tripLabel` is deliberately unchanged.
+ * `tripLabel` returns {@link UNNAMED_TRIP_GLYPH}, which is right in a list
+ * column and wrong in the over-claim band's prose. The same split
+ * `UNNAMED_PERSON` already carries; `tripLabel` is deliberately unchanged.
  */
 export const UNNAMED_TRIP = 'Unnamed trip'
+
+/**
+ * `tripLabel`'s glyph substituted for the words an unnamed Trip reads as
+ * anywhere its name stands as a word rather than a glyph — a row, a title, a
+ * sentence's subject, an accessible name spoken aloud. `tripLabel` is right
+ * in a list column; wrong everywhere else, the same split
+ * `personNameOrUnnamed` carries for the Person.
+ *
+ * The one place this substitution is decided. `OverClaimBand`'s row fact and
+ * settle route, `RemoveElsewhereConfirm`'s title and body, `ReopenConfirm`'s
+ * and `ActivationConfirm`'s titles and the trip card's accessible names all
+ * call this rather than repeating the rule — the drift it guards against is
+ * concrete, not hypothetical: a Trip reading `Unnamed trip` in one surface
+ * and `—` in the very confirm that surface's own route opens.
+ */
+export function tripNameOrUnnamed(trip: TripState): string {
+  const label = tripLabel(trip)
+  return label === UNNAMED_TRIP_GLYPH ? UNNAMED_TRIP : label
+}
 
 /**
  * The People currently on the Trip, by id.

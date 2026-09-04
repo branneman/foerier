@@ -4,6 +4,7 @@ import {
   personRecorded,
   tripCreated,
   tripEntryAdded,
+  tripEntryRemoved,
   tripParticipantAdded,
   tripPhaseMoved,
   tripRenamed,
@@ -266,6 +267,36 @@ describe('the Remove-on-Alps confirm', () => {
     // renders only under `variant="sheet"`.
     const confirm = screen.getByRole('alertdialog')
     expect(confirm.querySelector('[aria-hidden="true"]')).not.toBeNull()
+  })
+
+  it('renders nothing once the Entry is already removed, so it can never remove it twice', async () => {
+    // The race the guard above is *for*: a peer's `trip.entry_removed` for
+    // this very Entry folds in while the sheet is up. The reducer keeps the
+    // tombstoned Entry as an entity with `removed: true`, so `entries[id]`
+    // stays defined — and a guard on `undefined` alone would keep drawing
+    // the sheet, whose `REMOVE` then authors a second `trip.entry_removed`:
+    // a needless write, moving the stamp LWW compares for nothing.
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const seed = await seeded()
+    seed.store.getState().emit(tripEntryRemoved(ALPS, 'e-alps'))
+    await seed.store.getState().drained()
+    const alreadyRemoved = await seed.removals()
+    expect(alreadyRemoved).toHaveLength(1)
+
+    const { container } = render(
+      <DepotProvider value={seed.store}>
+        <RemoveElsewhereConfirm
+          otherTripId={ALPS}
+          entryId="e-alps"
+          onClose={() => {}}
+        />
+      </DepotProvider>,
+    )
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Remove entry' })).toBeNull()
+    expect(container).toBeEmptyDOMElement()
+    expect(await seed.removals()).toEqual(alreadyRemoved)
   })
 
   it('renders nothing when the Entry is gone from the fold — a live race, not a hypothetical', async () => {

@@ -1,7 +1,11 @@
-import { phaseName, type PhaseKey, type TripState } from '@foerier/shared'
+import {
+  phaseName,
+  tripNameOrUnnamed,
+  type PhaseKey,
+  type TripState,
+} from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
 
-import { tripNameOrUnnamed } from '../depot/trips'
 import styles from './ActivationConfirm.module.css'
 import { OverClaimGroups, type OverClaimGroup } from './OverClaimBand'
 

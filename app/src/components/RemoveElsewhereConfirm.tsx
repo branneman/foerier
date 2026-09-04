@@ -3,12 +3,14 @@ import {
   personNameOrUnnamed,
   piecesOf,
   tripEntryRemoved,
+  tripNameOrUnnamed,
   tripPieceRemoved,
+  visibleEntry,
 } from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
 
 import { useDepot } from '../depot/store'
-import { tripChip, tripNameOrUnnamed } from '../depot/trips'
+import { tripChip } from '../depot/trips'
 import styles from './RemoveElsewhereConfirm.module.css'
 
 /**
@@ -94,7 +96,17 @@ export function RemoveElsewhereConfirm({
   // this confirm is still up. Rendering nothing beats stating facts about
   // data that is not there — the alternative is a body sentence with no
   // subject, `" comes off the Alps 2026 gear list."`.
-  const entry = otherTrip?.entries?.[entryId]
+  //
+  // **"Gone" is `visibleEntry`'s answer, not `entries[id] === undefined`.**
+  // The reducer keeps a removed Entry as an entity with `removed: true`
+  // (`reduce.ts`'s `writeEntry`), so after that peer's tombstone folds the
+  // Entry is still *defined* — and a guard on `undefined` alone kept this
+  // sheet up, with a `REMOVE` that authored a second `trip.entry_removed`:
+  // a needless write, moving the stamp LWW compares for nothing. `entriesOf`
+  // is the one place that says which Entries a reader may see, and
+  // `visibleEntry` is that rule asked about this one.
+  const entry =
+    otherTrip === undefined ? undefined : visibleEntry(otherTrip, entryId)
   if (otherTrip === undefined || entry === undefined) return null
 
   // Ruling G's extra clause on the same guard: the Piece's Person can leave

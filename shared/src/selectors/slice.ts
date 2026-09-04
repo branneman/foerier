@@ -5,7 +5,12 @@ import { foldText } from '../text.ts'
 import { tagsOf, visibleGear } from './depot.ts'
 import { entriesOf } from './entry.ts'
 import { ownerOf, personLabel } from './owner.ts'
-import { isClosed, tripLabel, visibleTrips } from './trip.ts'
+import {
+  isClosed,
+  tripLabel,
+  UNNAMED_TRIP_GLYPH,
+  visibleTrips,
+} from './trip.ts'
 
 /**
  * **The slicing engine** — story 13's "narrow, sort, and group lists by at
@@ -268,12 +273,12 @@ const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
     // Checked first: `NOT_IN_ANY_TRIP` is a reserved word, not a Trip id, so
     // it must never reach `state.trips` lookup. A Trip id this replica has
     // not folded yet (a peer's `trip.entry_added` arriving before its
-    // `trip.created`) falls back to the same `—` `dimension('person')`
-    // draws for a Person whose op has not arrived.
+    // `trip.created`) falls back to `tripLabel`'s own glyph — the same `—`
+    // `dimension('person')` draws for a Person whose op has not arrived.
     format: (value, state) => {
       if (value === NOT_IN_ANY_TRIP) return 'NOT IN ANY TRIP'
       const trip = state.trips[value]
-      return trip === undefined ? '—' : tripLabel(trip)
+      return trip === undefined ? UNNAMED_TRIP_GLYPH : tripLabel(trip)
     },
     pinned: NOT_IN_ANY_TRIP,
   },

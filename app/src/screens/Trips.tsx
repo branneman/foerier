@@ -2,6 +2,7 @@ import {
   listTotals,
   packingTotals,
   tripLabel,
+  tripNameOrUnnamed,
   tripPhaseMoved,
   tripSections,
   type PackingCount,
@@ -16,7 +17,7 @@ import { PhaseSheet } from '../components/PhaseSheet'
 import { ReopenConfirm } from '../components/ReopenConfirm'
 import { TripCard } from '../components/TripCard'
 import { useDepot } from '../depot/store'
-import { tripNameOrUnnamed, tripStartMonth } from '../depot/trips'
+import { tripStartMonth } from '../depot/trips'
 import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trips.module.css'
 

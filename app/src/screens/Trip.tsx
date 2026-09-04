@@ -5,6 +5,7 @@ import {
   tripEntryBringCountSet,
   tripEntryRemoved,
   tripLabel,
+  tripNameOrUnnamed,
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPieceRemoved,
@@ -32,7 +33,6 @@ import {
   parseIsoDate,
   tripChip,
   tripDateRange,
-  tripNameOrUnnamed,
   tripParticipants,
 } from '../depot/trips'
 import {

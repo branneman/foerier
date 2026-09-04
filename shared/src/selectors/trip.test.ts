@@ -22,8 +22,10 @@ import {
   phaseOf,
   PHASES,
   tripLabel,
+  tripNameOrUnnamed,
   tripSections,
   UNNAMED_TRIP,
+  UNNAMED_TRIP_GLYPH,
   visibleTrips,
 } from './trip.ts'
 
@@ -288,6 +290,40 @@ describe('tripLabel', () => {
   it('reads a cleared name as a dash', () => {
     const state = depot(aTrip({ id: 't1' }), [tripRenamed('t1', null)])
     expect(tripLabel(trip(state, 't1'))).toBe('—')
+  })
+
+  it('spells that dash as UNNAMED_TRIP_GLYPH, so a reader can import it', () => {
+    const state = depot(aTrip({ id: 't1' }), [tripRenamed('t1', '   ')])
+    expect(tripLabel(trip(state, 't1'))).toBe(UNNAMED_TRIP_GLYPH)
+  })
+})
+
+describe('UNNAMED_TRIP_GLYPH', () => {
+  it('is the em dash, the same glyph the Person side spells', () => {
+    expect(UNNAMED_TRIP_GLYPH).toBe('—')
+  })
+})
+
+describe('tripNameOrUnnamed', () => {
+  it('reads the recorded name unchanged, exactly as tripLabel does', () => {
+    const state = depot(aTrip({ id: 't1', name: 'Ardennes' }))
+    expect(tripNameOrUnnamed(trip(state, 't1'))).toBe('Ardennes')
+  })
+
+  it('reads the words, never the glyph, for a Trip no op has named', () => {
+    const state = depot([tripParticipantAdded('t1', 'p1')])
+    expect(tripNameOrUnnamed(trip(state, 't1'))).toBe('Unnamed trip')
+    expect(tripNameOrUnnamed(trip(state, 't1'))).not.toBe(UNNAMED_TRIP_GLYPH)
+  })
+
+  it('reads the words for a cleared name', () => {
+    const state = depot(aTrip({ id: 't1' }), [tripRenamed('t1', null)])
+    expect(tripNameOrUnnamed(trip(state, 't1'))).toBe(UNNAMED_TRIP)
+  })
+
+  it('reads the words for a name that is only whitespace', () => {
+    const state = depot(aTrip({ id: 't1' }), [tripRenamed('t1', '   ')])
+    expect(tripNameOrUnnamed(trip(state, 't1'))).toBe(UNNAMED_TRIP)
   })
 })
 

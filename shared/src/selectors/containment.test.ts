@@ -9,7 +9,7 @@ import {
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
-import { containmentView, homePath } from './containment.ts'
+import { containmentView, homePath, residenceOf } from './containment.ts'
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 const DEV_B = 'bbbbbbbb-0000-7000-8000-000000000002'
@@ -317,5 +317,35 @@ describe('homePath', () => {
     expect(homePath(state, 'tent')).toEqual([
       { kind: 'gear', id: 'x', name: 'Crate X' },
     ])
+  })
+})
+
+/**
+ * `residenceOf` reads the **register**, not the resolved holder: it says
+ * nothing about a removed Place or a retired container, which are
+ * `holderOf`'s four reasons. Its one rule is that an absent register reads
+ * loose — stated once for callers that need the raw `Residence` shape (a
+ * picker's `● NOW` mark, a caller suppressing a redundant `gear.rehomed`).
+ */
+describe('residenceOf', () => {
+  it('reads an absent residence register as loose', () => {
+    const state = fold(at(aGear({ id: 'tent', name: 'Tent' }), 1))
+    expect(residenceOf(state.gear['tent']!)).toEqual({ in: 'loose' })
+  })
+
+  it('reads the register as written, whether or not it still resolves', () => {
+    const ops = [
+      ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
+      ...at(aGear({ id: 'tent', name: 'Tent' }), 2),
+      one(gearRehomed('tent', { in: 'place', id: 'attic' }), 3),
+      one(placeRemoved('attic'), 4),
+    ]
+    const state = fold(ops)
+    // `holderOf` reads loose here (reason 1); the register still says Attic.
+    expect(containmentView(state).holderOf('tent')).toEqual({ kind: 'loose' })
+    expect(residenceOf(state.gear['tent']!)).toEqual({
+      in: 'place',
+      id: 'attic',
+    })
   })
 })

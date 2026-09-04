@@ -18,6 +18,7 @@ import {
   entryLabel,
   listTotals,
   pieceCountOf,
+  visibleEntry,
 } from './entry.ts'
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
@@ -193,6 +194,51 @@ describe('entriesOf', () => {
     expect(
       ids(entriesOf(trip(arrivedLowFirst, 't1'), arrivedLowFirst)),
     ).toEqual(expected)
+  })
+})
+
+/**
+ * `entriesOf`'s rule, asked about one Entry by id. The tombstone case is the
+ * one that bites: the reducer keeps a removed Entry as an entity with
+ * `removed: true`, so `trip.entries[id]` stays **defined** after a
+ * `trip.entry_removed`, and a reader checking only for `undefined` goes on
+ * drawing — and re-removing — an Entry nobody may see.
+ */
+describe('visibleEntry', () => {
+  it('reads a listed Entry by id', () => {
+    const state = depot(aTrip({ id: 't1' }), [
+      tripEntryAdded('t1', 'e1', {
+        from: 'trip_only',
+        name: 'Rope',
+        container: false,
+      }),
+    ])
+    expect(visibleEntry(trip(state, 't1'), 'e1')?.id).toBe('e1')
+  })
+
+  it('reads undefined for a tombstoned Entry the fold still holds', () => {
+    const state = depot(
+      aTrip({ id: 't1' }),
+      [
+        tripEntryAdded('t1', 'e1', {
+          from: 'trip_only',
+          name: 'Rope',
+          container: false,
+        }),
+      ],
+      [tripEntryRemoved('t1', 'e1')],
+    )
+    expect(entryOf(state, 't1', 'e1')).toBeDefined()
+    expect(visibleEntry(trip(state, 't1'), 'e1')).toBeUndefined()
+  })
+
+  it('reads undefined for a sourceless Entry, and for an id no op named', () => {
+    const state = depot(aTrip({ id: 't1' }), [
+      tripEntryBringCountSet('t1', 'e1', 3),
+    ])
+    expect(entryOf(state, 't1', 'e1')).toBeDefined()
+    expect(visibleEntry(trip(state, 't1'), 'e1')).toBeUndefined()
+    expect(visibleEntry(trip(state, 't1'), 'e-never')).toBeUndefined()
   })
 })
 

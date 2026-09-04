@@ -7,8 +7,6 @@ import {
   phaseOf,
   pieceInclusion,
   statusGlyph,
-  tripLabel,
-  UNNAMED_TRIP,
   type DepotState,
   type EntryState,
   type PackingCount,
@@ -407,23 +405,6 @@ export function tripChip(trip: TripState, now: number): string {
   const phase = phaseLabel(phaseOf(trip))
   const day = isActive(trip) ? phaseDay(trip, now) : null
   return day === null ? phase : `${phase} · DAY ${day}`
-}
-
-/**
- * `tripLabel`'s `—` substituted for the word an unnamed Trip reads as
- * anywhere its name stands as a word rather than a glyph — a row, a title, a
- * sentence's subject. `tripLabel` is right in a list column; wrong
- * everywhere else, the same split `UNNAMED_PERSON` already carries.
- *
- * The one place this substitution is decided. `OverClaimBand`'s row fact and
- * settle route (`tripRowLabel`) and `RemoveElsewhereConfirm`'s title and body
- * both call this rather than repeating the rule — the drift it guards
- * against is concrete, not hypothetical: a Trip reading `Unnamed trip` in one
- * surface and `—` in the very confirm that surface's own route opens.
- */
-export function tripNameOrUnnamed(trip: TripState): string {
-  const label = tripLabel(trip)
-  return label === '—' ? UNNAMED_TRIP : label
 }
 
 /**

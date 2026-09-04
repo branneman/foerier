@@ -2,13 +2,13 @@ import {
   isActivePhase,
   overClaimsIfActive,
   phaseName,
+  tripNameOrUnnamed,
   type PhaseKey,
   type TripState,
 } from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
 
 import { useDepot } from '../depot/store'
-import { tripNameOrUnnamed } from '../depot/trips'
 import { OverClaimGroups, overClaimGroups } from './OverClaimBand'
 import styles from './ReopenConfirm.module.css'
 

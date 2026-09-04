@@ -133,8 +133,9 @@ function renderPeople(
     failLogins = false,
   } = options
 
+  const log = inMemoryOpLog()
   const store = createDepotStore({
-    log: inMemoryOpLog(),
+    log,
     engine: noopEngine,
     author: anAuthor(),
   })
@@ -195,7 +196,7 @@ function renderPeople(
     </DepotProvider>,
   )
 
-  return { store }
+  return { store, log }
 }
 
 function names(): (string | null)[] {
@@ -271,6 +272,31 @@ describe('the People screen', () => {
     await store.getState().drained()
 
     expect(store.getState().state.people[ELS]?.name?.value).toBe('Elsje')
+  })
+
+  /**
+   * A needless write is never free: an op equal to the current name still
+   * moves the LWW stamp, and can silently beat a genuine rename queued on a
+   * Device that was offline. `startRename` seeds the field with the current
+   * name, so Save-without-editing is the ordinary way to author one.
+   */
+  it('emits no person.renamed when the name was not changed', async () => {
+    const user = userEvent.setup()
+    const { store, log } = renderPeople()
+    const row = await screen.findByTestId(`person-row-${ELS}`)
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    await user.click(within(row).getByRole('button', { name: 'RENAME' }))
+    expect(screen.getByLabelText('New name')).toHaveValue('Els')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await store.getState().drained()
+
+    const renames = (await log.all()).filter(
+      (record) => record.op.type === 'person.renamed',
+    )
+    expect(renames).toEqual([])
+    // The rename UI still closes: nothing to write is not a reason to stay.
+    expect(screen.queryByLabelText('New name')).toBeNull()
   })
 
   it('will not rename a Person to nothing', async () => {

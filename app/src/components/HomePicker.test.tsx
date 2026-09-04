@@ -15,7 +15,7 @@ import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../depot/opLog'
 import {
   createDepotStore,
   DepotProvider,
@@ -65,9 +65,10 @@ const noopEngine: EngineFactory = () => ({
 
 async function seededStore(
   specs: readonly OpSpec[] = [],
+  log: OpLog = inMemoryOpLog(),
 ): Promise<StoreApi<DepotStoreState>> {
   const store = createDepotStore({
-    log: inMemoryOpLog(),
+    log,
     engine: noopEngine,
     author: anAuthor(),
   })
@@ -166,6 +167,36 @@ describe('the Home picker', () => {
     expect(store.getState().state.places[placeId]?.name?.value).toBe('Loft')
     expect(screen.getByRole('button', { name: 'Loft' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Attic' })).toBeNull()
+  })
+
+  /**
+   * A needless write is never free: a `place.renamed` equal to the current
+   * name still moves the LWW stamp, and can silently beat a genuine rename
+   * queued on a Device that was offline. `startRename` seeds the field with
+   * the current name, so Save-without-editing is the ordinary way to author
+   * one.
+   */
+  it('emits no place.renamed when the name was not changed', async () => {
+    const placeId = anId()
+    const log = inMemoryOpLog()
+    const store = await seededStore([placeRecorded(placeId, 'Attic')], log)
+    const user = userEvent.setup()
+    renderPicker(store)
+
+    await enterEditMode(user)
+    await user.click(screen.getByRole('button', { name: 'Rename Attic' }))
+    expect(screen.getByRole('textbox', { name: 'Rename Attic' })).toHaveValue(
+      'Attic',
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await store.getState().drained()
+
+    const renames = (await log.all()).filter(
+      (record) => record.op.type === 'place.renamed',
+    )
+    expect(renames).toEqual([])
+    // The rename UI still closes: nothing to write is not a reason to stay.
+    expect(screen.queryByRole('textbox', { name: 'Rename Attic' })).toBeNull()
   })
 
   it('names the count of gear that becomes loose before removing a Place', async () => {
