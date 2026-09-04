@@ -323,7 +323,14 @@ describe('Account', () => {
     await renderAccount({ personName: 'Mark', householdName: 'Veldkamp' })
 
     expect(await screen.findByText('Mark')).toBeInTheDocument()
-    expect(screen.getByText('VELDKAMP HOUSEHOLD')).toBeInTheDocument()
+    // `findBy`, not `getBy`: the two names arrive from different sources and
+    // only one of them is what the await above gates on. `Mark` is folded
+    // state, present on the first render; the household name is `GET
+    // /auth/me` — a fetch, a `res.json()` stream read and a `setState` later.
+    // Asserting it synchronously made this test a race that the suite lost
+    // roughly once in thirty full runs, always under the load of the other
+    // 105 files and never in isolation.
+    expect(await screen.findByText('VELDKAMP HOUSEHOLD')).toBeInTheDocument()
   })
 
   /**
