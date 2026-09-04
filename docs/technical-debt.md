@@ -195,3 +195,21 @@ items under thirty settled ones.
   Counted gate and the count out again. Two computations of one drawn value, in
   one file. [`frontend-design.md`](frontend-design.md) §5, anchor:
   `` `metaFor` ``
+- **The E2E golden path has stalled two steps behind the app.** Tier 5's journey
+  is meant to grow a leg per slice, and three slices have shipped a step without
+  one: S6 made *build a trip* reachable, S7 the gear list it needs, and S9a
+  *pack an item* — the fifth step by name. The specs still stop after *find it*,
+  so the two most-used screens in the product are covered by no tier above
+  component tests, and nothing failed when they were skipped, which is why it
+  went unnoticed for three slices rather than one.
+  [`testing.md`](testing.md) Tier 5, anchor:
+  `Three legs are owed and not written`
+- **One `npm test` failure has been seen twice and captured never.** Two
+  sightings at unrelated commits, ~30 consecutive clean runs against them, a
+  deliberate hunt that saved every run and caught nothing, and no sign of it in
+  CI. It is not a known-flaky test that can be quarantined, because nobody knows
+  which test it is; the whole debt is the diagnosis. Left open rather than
+  written off, since an intermittent nobody recorded is one the next person
+  meets from scratch. [`testing.md`](testing.md) Running everything locally,
+  anchor:
+  `One unexplained intermittent failure`

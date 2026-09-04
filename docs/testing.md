@@ -114,6 +114,20 @@ broken identically on every replica
 retry/backoff, idempotent re-send of the same UUIDv7 op, per-op push outcomes and
 the dead-letter path, and pull-cursor advancement.
 
+**A slice that adds an op type adds it to the generator, not only to the
+scenarios.** The scenarios pin edges a generator would reach only by luck; the
+generator is what covers the pairs nobody thought to name, and an op type absent
+from it has **no property coverage at all** no matter how many scenarios cite it.
+S9a is the worked example: five hand-written scenarios landed with the ops, the
+generator was left claiming *"all twenty-four op types this build folds"* while
+the reducer folded thirty-one, and one op type — `trip.piece_moved` — had no
+Tier 2 coverage of any kind until a whole-branch review caught it three tasks
+later. Two habits follow. **Make the count executable rather than prose**, so a
+stale claim fails instead of merely reading wrong. And **weigh the new branches**:
+adding op types at the existing weight dilutes the contest the tier exists to
+create — S9a's own entry-register contest fell from 22 runs in 200 to 5, under
+this file's stated floor, until the trip weight was raised to compensate.
+
 **Tooling:** Vitest in Node, real reducer + fake transport + fake clock/store. No
 real network, no real DB — this tier proves the *algebra*, not the wiring.
 
@@ -254,9 +268,17 @@ journey. Deliberately small — edge cases belong in lower tiers.
 
 **Golden path, eventually:** sign in → add gear → find it → build a trip → pack
 an item → close the trip. **Today it stops at the third step** — sign in, record
-gear with the network cut, find it, watch it sync — because the rest of it
-awaits S6–S10. The journey grows a leg per slice; the harness around it does
-not change.
+gear with the network cut, find it, watch it sync. The journey grows a leg per
+slice; the harness around it does not change.
+
+**Three legs are owed and not written, which is a debt rather than a wait.**
+*Build a trip* has been buildable since S6 and *pack an item* since S9a; only
+*close the trip* still awaits S10. Each of those slices shipped without adding
+its leg, and none recorded that it had not — so the path stalled at step three
+while the app grew two steps past it. **A slice that builds a golden-path step
+adds its leg in the same slice, or writes the debt down.** The gap is indexed in
+[`technical-debt.md`](technical-debt.md); this sentence is what makes it
+detectable, and it goes when the legs land.
 
 Two PWA-specific twists this project must cover:
 
@@ -442,3 +464,29 @@ npm run test:contract # Tier 4 (needs the deployed server; E2E_CREDENTIAL_ID +
                       #         E2E_PRIVATE_KEY for the household suite)
 npm run test:e2e      # Tier 5 (Playwright; virtual authenticator)
 ```
+
+`npm test` is the invocation that matters: a bare `npx vitest run` misses the
+`api` project's environment and reports failures that are an artefact of how it
+was started rather than of the code.
+
+### One unexplained intermittent failure
+
+**`npm test` has twice reported a single failure that the next run did not
+reproduce, and neither sighting was captured.** Once mid-S9a and once at that
+slice's final commit — two unrelated points on the branch, so it is not
+something one change introduced. Roughly thirty consecutive clean runs sit
+against those two, including a deliberate hunt that saved every run's output and
+caught nothing, and CI has not shown it.
+
+Recorded rather than dismissed, because an intermittent that nobody wrote down
+is one the next person diagnoses from scratch. **If you see it, save the output
+before re-running** — that is the whole difficulty; both sightings were lost to
+an immediate re-run. One untested hypothesis to start from: several `app` suites
+compute against `Date.now()`, and `app/vitest.config.ts` pins `TZ` precisely
+because those reads are time-sensitive, which is the shape of thing that fails
+once in thirty.
+
+A hunt is only as good as its detector. The first attempt here grepped for the
+word `failed` and matched a **test name** (`lets sign-out be retried after it
+failed`), reporting a catch on a clean run — read the `Tests` summary line
+instead.
