@@ -204,12 +204,3 @@ items under thirty settled ones.
   went unnoticed for three slices rather than one.
   [`testing.md`](testing.md) Tier 5, anchor:
   `Three legs are owed and not written`
-- **One `npm test` failure has been seen twice and captured never.** Two
-  sightings at unrelated commits, ~30 consecutive clean runs against them, a
-  deliberate hunt that saved every run and caught nothing, and no sign of it in
-  CI. It is not a known-flaky test that can be quarantined, because nobody knows
-  which test it is; the whole debt is the diagnosis. Left open rather than
-  written off, since an intermittent nobody recorded is one the next person
-  meets from scratch. [`testing.md`](testing.md) Running everything locally,
-  anchor:
-  `One unexplained intermittent failure`

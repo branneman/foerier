@@ -499,24 +499,42 @@ npm run test:e2e      # Tier 5 (Playwright; virtual authenticator)
 `api` project's environment and reports failures that are an artefact of how it
 was started rather than of the code.
 
-### One unexplained intermittent failure
+### The intermittent, and how it was caught
 
-**`npm test` has twice reported a single failure that the next run did not
-reproduce, and neither sighting was captured.** Once mid-S9a and once at that
-slice's final commit — two unrelated points on the branch, so it is not
-something one change introduced. Roughly thirty consecutive clean runs sit
-against those two, including a deliberate hunt that saved every run's output and
-caught nothing, and CI has not shown it.
+**`npm test` reported a single failure three times across S9a. The third
+sighting was captured, and it was `Account.test.tsx`** — a test that awaited one
+async source and then asserted on another:
 
-Recorded rather than dismissed, because an intermittent that nobody wrote down
-is one the next person diagnoses from scratch. **If you see it, save the output
-before re-running** — that is the whole difficulty; both sightings were lost to
-an immediate re-run. One untested hypothesis to start from: several `app` suites
-compute against `Date.now()`, and `app/vitest.config.ts` pins `TZ` precisely
-because those reads are time-sensitive, which is the shape of thing that fails
-once in thirty.
+```ts
+expect(await screen.findByText('Mark')).toBeInTheDocument()      // folded state
+expect(screen.getByText('VELDKAMP HOUSEHOLD')).toBeInTheDocument() // GET /auth/me
+```
 
-A hunt is only as good as its detector. The first attempt here grepped for the
-word `failed` and matched a **test name** (`lets sign-out be retried after it
-failed`), reporting a catch on a clean run — read the `Tests` summary line
-instead.
+The person's name is folded state, on screen at first render, so `findByText`
+resolves on its first check and waits for nothing else. The household name is a
+`fetch`, a `res.json()` stream read and a `setState` further out, asserted
+synchronously. Nothing sequenced the two. It won roughly twenty-nine runs in
+thirty because the poll that finds the first name usually leaves the response
+enough room, and lost under the load of the other 105 files — which is why the
+file passed twelve times out of twelve when run alone, and why the fix was
+verified by **delaying only `/auth/me`**, where it fails deterministically
+before and passes after.
+
+Whether the two earlier sightings were this same test is unknowable: both were
+lost to an immediate re-run, which is the whole reason the rule below exists.
+Twenty consecutive clean full runs sit against the fix.
+
+Three habits are worth keeping out of it, in the order they mattered:
+
+- **Save the output before re-running.** Two of three sightings were destroyed
+  by the reflex to re-run, and a captured failure took about ten minutes to
+  diagnose from the assertion alone.
+- **A hunt is only as good as its detector.** The first attempt grepped for the
+  word `failed` and matched a **test name** (`lets sign-out be retried after it
+  failed`), reporting a catch on a clean run — read the `Tests` summary line
+  instead.
+- **Awaiting one source proves nothing about another.** The bug shape is a
+  `findBy` on whichever thing renders first, followed by a `getBy` on something
+  that arrives on its own schedule. It reads as sequenced and is not. The
+  earlier `Date.now()`/`TZ` hypothesis recorded here was wrong, and cost the
+  first hunt its direction — a plausible mechanism is not evidence.
