@@ -8,10 +8,12 @@ import {
   tripPhaseMoved,
   tripPieceMoved,
   tripPieceStatusSet,
+  TRIP_LOOSE,
   type Clock,
   type IdSource,
   type OpAuthor,
   type OpSpec,
+  type PackingItem,
 } from '@foerier/shared'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -108,7 +110,9 @@ interface Rendered {
   openPieceSheet: ReturnType<typeof vi.fn>
 }
 
-async function renderPieceRow(): Promise<Rendered> {
+async function renderPieceRow(
+  tripItems?: readonly PackingItem[],
+): Promise<Rendered> {
   const log: OpLog = inMemoryOpLog()
   const store = createDepotStore({
     log,
@@ -132,6 +136,7 @@ async function renderPieceRow(): Promise<Rendered> {
         entryId={E_HEADLAMP}
         personId="els"
         showResidence
+        {...(tripItems === undefined ? {} : { tripItems })}
         onOpenPicker={openPicker}
         onOpenPieceSheet={openPieceSheet}
       />
@@ -213,5 +218,52 @@ describe('a per-Piece packing row', () => {
     expect(rendered.openPicker).toHaveBeenCalledTimes(1)
     expect(rendered.openPieceSheet).not.toHaveBeenCalled()
     expect(screen.queryByTestId('packing-row-cluster')).not.toBeInTheDocument()
+  })
+
+  /**
+   * **The only assertion that proves `tripItems` is read at all**, and it is
+   * here because nothing else can be: the packing screen threads its one
+   * `packingItems` list into every row purely so the row does not rebuild a
+   * containment view of its own, and the default rebuilds an *identical*
+   * list. Delete a `tripItems={view.items}` from `Packing.tsx` and no tier
+   * goes red — the threading is a pure performance fact, so its only
+   * observable consequence is the one this test manufactures.
+   *
+   * So the list handed in **disagrees with the fold on purpose**: the seed
+   * moves Els's Piece into Crate B, and this list says `loose`. A row reading
+   * its prop draws `▸ LOOSE`; a row that quietly fell back to
+   * `packingItems(trip, state)` draws `▸ Crate B`. That is a state the app
+   * cannot produce — every real caller derives the list from the same fold —
+   * and pinning an impossible state is the price of pinning the wiring. It is
+   * the same trade `screenBand.test.tsx` makes when it renders a screen
+   * inside `AppShell` to prove one side of a two-sided fact.
+   *
+   * **The pill is deliberately not part of the claim.** A Piece row's status
+   * comes from the register through `pieceStatusOf`, not from the item, so it
+   * still reads the fold's `◐ STAGED` while the list says `packed`. The two
+   * can only differ here, in a hand-built list; asserting it states where the
+   * prop's reach ends rather than blessing a disagreement.
+   */
+  it('draws its Pieces from `tripItems` when the caller threads them', async () => {
+    await renderPieceRow([
+      {
+        kind: 'piece',
+        entryId: E_HEADLAMP,
+        personId: 'els',
+        units: 1,
+        status: 'packed',
+        residence: TRIP_LOOSE,
+      },
+    ])
+
+    const meta = within(screen.getByTestId('packing-row')).getByTestId(
+      'packing-row-meta',
+    )
+    expect(meta).toHaveTextContent('▸ LOOSE')
+    expect(meta).not.toHaveTextContent('Crate B')
+
+    expect(screen.getByTestId('packing-status-pill')).toHaveTextContent(
+      '◐ STAGED',
+    )
   })
 })

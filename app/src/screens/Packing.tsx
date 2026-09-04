@@ -8,7 +8,6 @@ import {
   isContainerEntry,
   isPacked,
   packingItems,
-  packingTotals,
   personPartition,
   stageOf,
   statusGlyph,
@@ -440,7 +439,9 @@ function containerView(
  * The partition itself is {@link personPartition}'s and is not re-derived
  * here (ruling A7): a Piece goes to its Participant, Personal gear to its
  * owner whether or not they travel, everything else to `Shared`. It is
- * already proved total and proved to sum to {@link packingTotals}.
+ * already proved total and proved to sum to `packingTotals` (no longer
+ * imported here — this screen spells that arithmetic `countOf(view.items)`,
+ * over the list it already holds; see the `totals` line below).
  *
  * **What this function decides is the order, which `shared/` deliberately
  * does not.** `personPartition` returns buckets in person-id order — total
@@ -521,14 +522,25 @@ function personGroups(trip: TripState, state: DepotState): PersonGroup[] {
  * for a per-person Entry drawn as one clustered row it is any unpacked Piece,
  * since a row showing `1/3` still holds two pieces of work.
  *
- * **The containment view and the items are built here and nowhere else on
- * this screen.** Both are O(entries) and both default to building themselves
- * when a caller omits them, so every read that let them default paid for
- * another pair — one per container group, one per per-person row. They are
- * built together, from the same `trip` and `state` this one memo is keyed
- * on, and threaded down; that is also what makes them consistent, since a
- * view resolved from one fold and items resolved from a later one would
- * place rows the counts disagree with.
+ * **The containment view and the items are built once here and threaded to
+ * every reader on this screen that can take one.** Both are O(entries) and
+ * both default to building themselves when a caller omits them, so every read
+ * that let them default paid for another pair — one per container group, one
+ * per per-person row. They are built together, from the same `trip` and
+ * `state` this one memo is keyed on, and threaded down; that is also what
+ * makes them consistent, since a view resolved from one fold and items
+ * resolved from a later one would place rows the counts disagree with.
+ *
+ * **Two readers still build their own, because their signatures take
+ * neither**, and widening them is a `shared/` change this round does not
+ * make: {@link personPartition} (through `personGroups`) takes no `view` and
+ * no `items`, so PERSON mode's buckets cost a second view and a second list;
+ * {@link disagreements} takes the `view` — `containerView` threads it — but
+ * has no `items` parameter, so it builds a third list. Two views and three
+ * lists per fold, then, all of them inside this one memo. That is the number
+ * to beat if a later round widens those two, and it is emphatically not
+ * "one": a docblock claiming otherwise is the kind of freshly-written,
+ * subtly-wrong sentence this file's convention exists to keep out.
  */
 function packingView(trip: TripState, state: DepotState): PackingView {
   const containment = tripContainmentView(trip, state)
@@ -768,7 +780,16 @@ export function Packing() {
   // so the denominator stays reachable, so such a Trip has one Entry and no
   // pieces, and it is a list with something on it rather than an empty one.
   const empty = entriesOf(trip, state).length === 0
-  const totals = packingTotals(trip, state)
+  // `countOf(view.items)` **is** `packingTotals` — that selector is exactly
+  // `countOf(packingItems(trip, state))` — spelled over the memo's own list
+  // rather than through the wrapper, which would rebuild the view and the
+  // items on every render. This line sits outside the memo, so it was the one
+  // build an interaction paid for: opening the Pack picker, opening the Piece
+  // sheet or arming a confirm re-renders on a fold that has not moved, and
+  // each of those re-renders was a full view-plus-items build for a total
+  // that cannot have changed. No signature widened: `countOf` is exported for
+  // this, and the arithmetic stays the one in `packing.ts`.
+  const totals = countOf(view.items)
 
   /** Where the thing the picker is open for rides **now** — the `● NOW`
    * mark, and the value a selection is compared against before anything is
