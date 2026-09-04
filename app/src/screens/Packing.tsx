@@ -4,6 +4,7 @@ import {
   disagreements,
   entriesOf,
   entryLabel,
+  entryResidenceOf,
   isContainerEntry,
   isPacked,
   packingItems,
@@ -78,6 +79,35 @@ const INDENT_CAP = 2
  * `NOT IN A CONTAINER` uses one mode over. */
 const NOT_ATTRIBUTED = 'NOT ATTRIBUTED TO A PERSON'
 
+/** The `Loose` group's key, in {@link PackingGroup.key} and in the index
+ * `containerView` files items under — one spelling, so the two cannot drift. */
+const LOOSE_KEY = 'loose'
+
+/**
+ * One row of one CONTAINER-mode group.
+ *
+ * **A row is no longer just an Entry id** (ruling C1). A per-person Entry
+ * draws one row per group holding at least one of its Pieces, so the same
+ * `entryId` can appear in several groups and each row has to say *which*
+ * Pieces it is drawing.
+ */
+interface PackingGroupRow {
+  readonly entryId: string
+  /** The Entry's Pieces in **this** group, in {@link packingItems} order.
+   * Absent for every other Kind, where the row is its whole Entry. */
+  readonly personIds?: readonly string[]
+  /**
+   * Whether anything **this row draws** is unpacked — the `○ LEFT` filter,
+   * scoped exactly as the row is.
+   *
+   * It cannot be an Entry-level fact any more: a Headlamp whose Piece in the
+   * duffel is packed and whose two loose Pieces are not has one row that the
+   * filter drops and one it keeps, and `entriesWithLeft` — which ALL mode
+   * still uses, because there the row *is* the whole Entry — would keep both.
+   */
+  readonly hasLeft: boolean
+}
+
 /**
  * One group of CONTAINER mode: a trip container, or the `Loose` group that
  * closes the list.
@@ -100,7 +130,7 @@ interface PackingGroup {
   readonly count: PackingCount
   /** This group's own rows, in `entriesOf` order. Nested containers are not
    * rows: they are the groups that follow immediately (ruling A4). */
-  readonly rowIds: readonly string[]
+  readonly rows: readonly PackingGroupRow[]
   /** Entries inside at any depth — the move context's `N INSIDE RIDE ALONG`. */
   readonly insideCount: number
 }
@@ -170,16 +200,104 @@ const EMPTY_VIEW: PackingView = {
  * build, and this screen draws one group per container, so letting them
  * default would pay N × O(entries) on the list the app is used on most —
  * `containerTotals`' own docstring asks for exactly this.
+ *
+ * ## The tree comes from the view; the rows come from the items
+ *
+ * **`childrenOf` builds the CONTAINER TREE and nothing else** — which
+ * container nests inside which, an Entry-level fact the view is right about.
+ * It is **not** what places a row. `tripContainmentView` is deliberately
+ * ungated (it resolves *structure*, and gating a whole Kind inside pointer
+ * resolution would conflate two jobs), so it still resolves a per-person
+ * Entry's own `residence` register — the register ruling C0 retires — and
+ * `childrenOf` will happily list such an Entry under a container holding
+ * none of its Pieces. Placing rows from it would put the ignored fact
+ * straight back on the screen, which is the exact fault this round exists to
+ * remove.
+ *
+ * So row membership is each **item's own** effective residence
+ * ({@link packingItems}), filed under the holder it names. That is the same
+ * membership {@link containerTotals} counts by, which is what makes a header
+ * agree with the rows drawn beneath it.
  */
 function containerView(trip: TripState, state: DepotState): ContainerView {
   const view = tripContainmentView(trip, state)
   const entries = entriesOf(trip, state)
-  const items = packingItems(trip, state)
+  const items = packingItems(trip, state, view)
 
-  /** `holder`'s children in the **drawn** order. */
+  /** `holder`'s children in the **drawn** order. The container tree only —
+   * see the docstring. */
   function childrenInOrder(holder: TripHolderRef): readonly EntryState[] {
     const ids = new Set(view.childrenOf(holder))
     return entries.filter((entry) => ids.has(entry.id))
+  }
+
+  /** The key a group is filed under. `'loose'` can never collide with a
+   * `container:` key whatever an Entry id turns out to be. */
+  const holderKey = (residence: TripResidence): string =>
+    residence.in === 'loose' ? LOOSE_KEY : `container:${residence.entryId}`
+
+  /** Every item, filed under the group it sits in and then under its Entry:
+   * `holder → entryId → the items of that Entry that are there`. One pass,
+   * read once per group. */
+  const byHolder = new Map<string, Map<string, PackingItem[]>>()
+
+  function bucketFor(key: string): Map<string, PackingItem[]> {
+    const existing = byHolder.get(key)
+    if (existing !== undefined) return existing
+    const created = new Map<string, PackingItem[]>()
+    byHolder.set(key, created)
+    return created
+  }
+
+  for (const item of items) {
+    const bucket = bucketFor(holderKey(item.residence))
+    const own = bucket.get(item.entryId)
+    if (own === undefined) bucket.set(item.entryId, [item])
+    else own.push(item)
+  }
+
+  /**
+   * **A non-container Entry that yields no item at all is a per-person Entry
+   * with no Pieces** — no Participant yet, or every Piece tombstoned; every
+   * other Kind yields exactly one. C1 draws a row per group holding one of
+   * its Pieces and there are none, but the Entry is still a line on the gear
+   * list, and a line that draws in no group would vanish from the mode the
+   * screen rests in while ALL mode still lists it.
+   *
+   * `Loose` is where it goes: `Loose` means `NOT IN A CONTAINER` (C4), and a
+   * set with no Pieces is in none. That is also S9a's read for the ordinary
+   * case — an absent Entry residence — and C0's for the case where a peer
+   * wrote it one.
+   */
+  const withItems = new Set(items.map((item) => item.entryId))
+  for (const entry of entries) {
+    if (isContainerEntry(entry, state)) continue
+    if (withItems.has(entry.id)) continue
+    bucketFor(LOOSE_KEY).set(entry.id, [])
+  }
+
+  /** One group's rows, in `entriesOf` order — the drawn order, re-imposed on
+   * the item list exactly as `childrenInOrder` re-imposes it on the walk. */
+  function rowsIn(key: string): readonly PackingGroupRow[] {
+    const bucket = byHolder.get(key)
+    if (bucket === undefined) return []
+    return entries.flatMap((entry) => {
+      const own = bucket.get(entry.id)
+      if (own === undefined) return []
+      const personIds = own.flatMap((item) =>
+        item.kind === 'piece' ? [item.personId] : [],
+      )
+      const hasLeft = own.some((item) => !isPacked(item.status))
+      // `personIds` is omitted rather than passed empty for a whole-Entry
+      // row: under `exactOptionalPropertyTypes` an absent optional and one
+      // present-and-`undefined` are different types, and absent is the fact
+      // — *this row is its whole Entry*.
+      return [
+        personIds.length === 0
+          ? { entryId: entry.id, hasLeft }
+          : { entryId: entry.id, personIds, hasLeft },
+      ]
+    })
   }
 
   const groups: PackingGroup[] = []
@@ -235,11 +353,23 @@ function containerView(trip: TripState, state: DepotState): ContainerView {
             : '',
         stage,
         count: containerTotals(trip, state, entry.id, view, items),
-        rowIds: childrenInOrder({ kind: 'container', entryId: entry.id })
-          .filter((child) => !isContainerEntry(child, state))
-          .map((child) => child.id),
+        // From the items, never from `childrenOf` — see the docstring. A
+        // nested container produces no item at all (`packingItems` skips
+        // containers), so the `!isContainerEntry` filter the id list used to
+        // need is gone with it: a group's rows are its contents, and its
+        // nested containers are the groups that follow.
+        rows: rowsIn(`container:${entry.id}`),
         // `subtreeOf` rather than a third hand-rolled walk (review F4):
         // same edges, same cycle break, one definition.
+        //
+        // **This one stays on the Entry tree, and correctly.** `N INSIDE RIDE
+        // ALONG` counts what a `trip.entry_moved` on this container carries
+        // with it, which is an Entry-level fact about Entry-level pointers —
+        // not what sits in the group. A per-person Entry whose retired
+        // register happens to name this container is counted here and would
+        // not in fact ride along, which is the one place ruling C0's ungated
+        // view still shows; it takes a peer writing an op no shipped control
+        // authors, and gating the view is exactly what the ruling refuses.
         insideCount: subtreeOf(view, entry.id).size,
       })
 
@@ -254,24 +384,24 @@ function containerView(trip: TripState, state: DepotState): ContainerView {
   // would push every journey rail — the screen's spine — permanently
   // off-screen. The Pack picker puts `Loose` first and is equally right: a
   // picker lists destinations, this lists work.
-  const looseRowIds = childrenInOrder({ kind: 'loose' })
-    .filter((entry) => !isContainerEntry(entry, state))
-    .map((entry) => entry.id)
+  const looseRows = rowsIn(LOOSE_KEY)
 
-  if (looseRowIds.length > 0) {
-    const inLoose = new Set(looseRowIds)
+  if (looseRows.length > 0) {
     groups.push({
-      key: 'loose',
+      key: LOOSE_KEY,
       entryId: null,
       name: 'Loose',
       tripOnly: false,
       depth: 0,
       ancestry: '',
       stage: null,
-      // Its own rows and no subtree: everything inside a container is
-      // counted by that container's own header.
-      count: countOf(items.filter((item) => inLoose.has(item.entryId))),
-      rowIds: looseRowIds,
+      // Its own items and no subtree: everything inside a container is
+      // counted by that container's own header. **The filter is the item's
+      // own residence** (ruling C5), the same membership `rowsIn` files by
+      // and `containerTotals` counts by — filing by the Entry's holder
+      // instead would count a Piece here that is drawn in a bag.
+      count: countOf(items.filter((item) => item.residence.in === 'loose')),
+      rows: looseRows,
       insideCount: 0,
     })
   }
@@ -617,12 +747,23 @@ export function Packing() {
   // created after it and read the narrowed `TripState`.
   const currentResidenceOf = (target: PickerTarget): TripResidence => {
     if (target.kind !== 'piece') {
-      return trip.entries?.[target.entryId]?.residence?.value ?? TRIP_LOOSE
+      // **Through `entryResidenceOf`, never the register** (ruling C0). The
+      // two `??`s answer two different questions and both are reachable: the
+      // Entry is `undefined` when another Device removed it between opening
+      // the picker and this render (`PackingRow` guards the same way), and
+      // the gate is `null` for a per-person Entry, whose *where* is only ever
+      // a per-Piece fact — so there is no `● NOW` to mark and `Loose` is the
+      // honest one. No shipped control opens an `entry` picker on that Kind
+      // today (a per-person row's body opens the sheet in every mode), and
+      // reading the retired register here would state a place C0 says does
+      // not exist the moment one did.
+      const entry = trip.entries?.[target.entryId]
+      if (entry === undefined) return TRIP_LOOSE
+      return entryResidenceOf(entry, state) ?? TRIP_LOOSE
     }
-    // A Piece with no residence register of its own reads its Entry's, then
-    // loose — `packingItems`' layered read, taken from there rather than
-    // restated so the picker's `● NOW` cannot disagree with the sheet's
-    // `▸ DUFFEL 90 L`.
+    // A Piece's residence is a per-Piece fact and nothing else (ruling C0) —
+    // `packingItems`' read, taken from there rather than restated so the
+    // picker's `● NOW` cannot disagree with the sheet's `▸ DUFFEL 90 L`.
     for (const item of packingItems(trip, state)) {
       if (item.kind !== 'piece') continue
       if (item.entryId !== target.entryId) continue
@@ -686,6 +827,18 @@ export function Packing() {
     leftOnly
       ? entryIds.filter((entryId) => view.entriesWithLeft.has(entryId))
       : entryIds
+
+  /**
+   * The same filter over CONTAINER mode's rows, where a row is an Entry
+   * **narrowed to one group's Pieces** (ruling C1) and so carries its own
+   * answer. A Headlamp packed in the duffel and unpacked loose keeps its
+   * `Loose` row and drops its duffel one; `entriesWithLeft`, which is an
+   * Entry-level fact, would keep both.
+   */
+  const visibleGroupRows = (
+    rows: readonly PackingGroupRow[],
+  ): readonly PackingGroupRow[] =>
+    leftOnly ? rows.filter((row) => row.hasLeft) : rows
 
   /** The same filter over PERSON mode's items, where the row **is** the item:
    * one Piece can be packed while its siblings in other groups are not. */
@@ -834,21 +987,20 @@ export function Packing() {
           {mode === 'container' && (
             <div className={styles['groups']} data-testid="packing-groups">
               {view.container.groups.map((group) => {
-                const rowIds = visibleRows(group.rowIds)
+                const rows = visibleGroupRows(group.rows)
                 // **A group whose items all filter out draws nothing** — and
                 // the emptiness has to be *caused* by the filter, which is
-                // why `group.rowIds.length > 0` is a separate conjunct and
-                // not a tidier `rowIds.length === 0` alone.
+                // why `group.rows.length > 0` is a separate conjunct and
+                // not a tidier `rows.length === 0` alone.
                 //
-                // `containerView` builds `rowIds` with a
-                // `!isContainerEntry` filter, so **a container whose only
-                // children are nested containers arrives here with no rows
-                // of its own**. Nothing filtered out of it; dropping it
-                // would take its journey rail and its ▲ line off the screen
-                // the moment `○ LEFT` was pressed, and orphan every nested
-                // group beneath it. The rail is that container's own
-                // journey, not its contents'.
-                if (leftOnly && group.rowIds.length > 0 && rowIds.length === 0)
+                // A container produces no item of its own, so **a container
+                // whose only children are nested containers arrives here
+                // with no rows at all**. Nothing filtered out of it;
+                // dropping it would take its journey rail and its ▲ line off
+                // the screen the moment `○ LEFT` was pressed, and orphan
+                // every nested group beneath it. The rail is that
+                // container's own journey, not its contents'.
+                if (leftOnly && group.rows.length > 0 && rows.length === 0)
                   return null
 
                 const headingId = `packing-group-${tripId}-${group.key}`
@@ -982,15 +1134,35 @@ export function Packing() {
                     </div>
 
                     <ul className={styles['rows']}>
-                      {rowIds.map((entryId) => (
-                        <li key={entryId}>
+                      {rows.map((row) => (
+                        // The Entry id keys the row: C1 draws **one** row per
+                        // Entry per group, so it is unique within this list
+                        // even where the same Entry is drawn in three groups.
+                        <li key={row.entryId}>
                           <PackingRow
                             tripId={tripId}
-                            entryId={entryId}
+                            entryId={row.entryId}
+                            // Spread rather than passed: under
+                            // `exactOptionalPropertyTypes` an absent optional
+                            // and one present-and-`undefined` are different
+                            // types, and absent is the fact — *this row is
+                            // its whole Entry*.
+                            {...(row.personIds === undefined
+                              ? {}
+                              : { scopedPersonIds: row.personIds })}
                             onOpenPicker={() =>
-                              setPicker({ kind: 'entry', entryId })
+                              setPicker({
+                                kind: 'entry',
+                                entryId: row.entryId,
+                              })
                             }
-                            onOpenPieceSheet={() => setSheetEntryId(entryId)}
+                            // Ruling C3: **the Entry's** sheet, from every row
+                            // C1 draws — one sheet per Entry, never one per
+                            // row, so the split is seen whole and mended at
+                            // `MOVE`. The scoping stops at the row.
+                            onOpenPieceSheet={() =>
+                              setSheetEntryId(row.entryId)
+                            }
                           />
                         </li>
                       ))}

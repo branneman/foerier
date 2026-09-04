@@ -1268,6 +1268,361 @@ describe('moving what a group holds', () => {
 })
 
 /* ------------------------------------------------------------------------ *
+ * S9 round 2 — the per-person Entry in CONTAINER mode.
+ *
+ * `docs/design/README.md` §5e C1 · C2 · C3 · C4;
+ * `docs/specs/2026-09-04-per-person-rows-in-container-mode.md` §2, §4, §5.
+ * ------------------------------------------------------------------------ */
+
+/**
+ * The board's own round-2 frame, in ops
+ * (`S9 Round 2 …` §01): the Headlamp's three Pieces in three places.
+ *
+ * ```
+ * Crate B      0/1   Headlamp   PER-PERSON · 0/1 · 2 ELSEWHERE   M
+ * Duffel 90 L  1/1   Headlamp   PER-PERSON · 1/1 · 2 ELSEWHERE   E
+ * Loose        0/1   Headlamp   PER-PERSON · 0/1 · 2 ELSEWHERE   K
+ * ```
+ *
+ * Els's Piece rides in the duffel and is packed; Mies's rides in the crate
+ * and is staged; **Kim's names no residence at all**, which reads loose
+ * (ruling C0) and draws under `Loose` (C4) rather than nowhere.
+ *
+ * Three groups, three rows, one Entry — and `0 + 1 + 0 = 1` over `3`, which
+ * is `packingTotals`' own numerator: the rows sum into the headers and the
+ * headers into the trip.
+ */
+function splitFrame(): readonly OpSpec[] {
+  return [
+    ...alps(),
+
+    gearRecorded(CRATE, { name: 'Crate B', container: true, kind: 'single' }),
+    tripEntryAdded(ALPS, E_CRATE, { from: 'depot', gearId: CRATE }),
+
+    gearRecorded(DUFFEL, {
+      name: 'Duffel 90 L',
+      container: true,
+      kind: 'single',
+    }),
+    tripEntryAdded(ALPS, E_DUFFEL, { from: 'depot', gearId: DUFFEL }),
+
+    gearRecorded(HEADLAMP, {
+      name: 'Headlamp',
+      container: false,
+      kind: 'per_person',
+    }),
+    tripEntryAdded(ALPS, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
+
+    tripPieceMoved(ALPS, E_HEADLAMP, 'els', {
+      in: 'container',
+      entryId: E_DUFFEL,
+    }),
+    tripPieceStatusSet(ALPS, E_HEADLAMP, 'els', 'packed'),
+
+    tripPieceMoved(ALPS, E_HEADLAMP, 'mies', {
+      in: 'container',
+      entryId: E_CRATE,
+    }),
+    tripPieceStatusSet(ALPS, E_HEADLAMP, 'mies', 'staged'),
+  ]
+}
+
+/** The same two containers and Headlamp, with every Piece where `residences`
+ * puts it — `undefined` meaning *unplaced*, which reads loose. */
+function headlampIn(
+  residences: Readonly<Record<string, string | undefined>>,
+): readonly OpSpec[] {
+  return [
+    ...alps(),
+    gearRecorded(CRATE, { name: 'Crate B', container: true, kind: 'single' }),
+    tripEntryAdded(ALPS, E_CRATE, { from: 'depot', gearId: CRATE }),
+    gearRecorded(DUFFEL, {
+      name: 'Duffel 90 L',
+      container: true,
+      kind: 'single',
+    }),
+    tripEntryAdded(ALPS, E_DUFFEL, { from: 'depot', gearId: DUFFEL }),
+    gearRecorded(HEADLAMP, {
+      name: 'Headlamp',
+      container: false,
+      kind: 'per_person',
+    }),
+    tripEntryAdded(ALPS, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
+    ...Object.entries(residences).flatMap(([personId, entryId]) =>
+      entryId === undefined
+        ? []
+        : [
+            tripPieceMoved(ALPS, E_HEADLAMP, personId, {
+              in: 'container',
+              entryId,
+            }),
+          ],
+    ),
+  ]
+}
+
+/** The one row of the group named `name` — every fixture below puts exactly
+ * one there, so this says more than `rowFor`, which takes the **first**
+ * Headlamp row on the screen whichever group it landed in. */
+function onlyRowIn(name: string): HTMLElement {
+  return within(groupFor(name)).getByTestId('packing-row')
+}
+
+function metaIn(name: string): HTMLElement {
+  return within(onlyRowIn(name)).getByTestId('packing-row-meta')
+}
+
+describe('a per-person Entry in CONTAINER mode', () => {
+  /**
+   * **Ruling C1**, and the two frames the boards carry are its two ends: all
+   * Pieces together is one clustered row, all Pieces apart is a row under
+   * each group. One rule, both frames.
+   */
+  it('draws one row per group holding at least one of its Pieces', async () => {
+    await renderPacking(`/trips/${ALPS}/packing`, ...splitFrame())
+
+    expect(groupNames()).toEqual(['Crate B', 'Duffel 90 L', 'Loose'])
+    expect(rowNames()).toEqual(['Headlamp', 'Headlamp', 'Headlamp'])
+  })
+
+  /**
+   * **The assertion this round exists for.** `tripContainmentView` is
+   * deliberately **not** gated on the Kind — it resolves *structure*, and a
+   * domain read-rule does not belong inside pointer resolution — so
+   * `childrenOf` still answers with a per-person Entry's own `residence`
+   * register, the one ruling C0 retires. If `containerView` placed rows from
+   * the view, this Headlamp would draw under `Crate B`, which holds none of
+   * its Pieces, and the crate's header would count none of them beneath it.
+   *
+   * Rows come from the **items'** own residences instead, so the row is drawn
+   * where the Pieces are. Revert that and this goes red in both directions at
+   * once: a Headlamp under the crate and none under the duffel.
+   */
+  it('places the row where the Pieces are, never where the Entry register points', async () => {
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...headlampIn({ els: E_DUFFEL, mies: E_DUFFEL, kim: E_DUFFEL }),
+      // A peer on another build wrote it — the reducer folds it (sync §5.3's
+      // tolerant reader is absolute) and no reader consults it.
+      tripEntryMoved(ALPS, E_HEADLAMP, { in: 'container', entryId: E_CRATE }),
+    )
+
+    expect(
+      within(groupFor('Duffel 90 L')).getByTestId('packing-row-name'),
+    ).toHaveTextContent('Headlamp')
+    expect(within(groupFor('Crate B')).queryByTestId('packing-row')).toBeNull()
+    // And the headers agree with the rows drawn under them.
+    expect(within(groupFor('Duffel 90 L')).getByText('0/3')).toBeVisible()
+    expect(within(groupFor('Crate B')).getByText('0/0')).toBeVisible()
+  })
+
+  /** The all-together end of C1's one rule — **today's frame, unchanged**. */
+  it('draws exactly one row when every Piece shares a group', async () => {
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...headlampIn({ els: E_DUFFEL, mies: E_DUFFEL, kim: E_DUFFEL }),
+      tripPieceStatusSet(ALPS, E_HEADLAMP, 'els', 'packed'),
+    )
+
+    expect(rowNames()).toEqual(['Headlamp'])
+    expect(metaIn('Duffel 90 L')).toHaveTextContent('PER-PERSON · 1/3')
+    // `N ELSEWHERE` only above zero — the string is unchanged and only its
+    // meaning is narrowed (C2).
+    expect(metaIn('Duffel 90 L')).not.toHaveTextContent('ELSEWHERE')
+  })
+
+  /**
+   * **Ruling C4.** `Loose` means `NOT IN A CONTAINER`, not *undecided* — a
+   * Piece naming no residence reads loose, so it draws there and the group's
+   * header counts it. Hiding those Pieces would make `Loose`'s own count lie
+   * about its contents, which is the fault this round removes.
+   */
+  it('draws unplaced Pieces under Loose, beside the placed ones elsewhere', async () => {
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...headlampIn({ els: E_DUFFEL }),
+    )
+
+    expect(groupNames()).toEqual(['Crate B', 'Duffel 90 L', 'Loose'])
+    expect(metaIn('Duffel 90 L')).toHaveTextContent(
+      'PER-PERSON · 0/1 · 2 ELSEWHERE',
+    )
+    expect(metaIn('Loose')).toHaveTextContent('PER-PERSON · 0/2 · 1 ELSEWHERE')
+    expect(within(groupFor('Loose')).getByText('0/2')).toBeVisible()
+  })
+
+  /** Ruling C2's two drawn meta lines, verbatim. */
+  it('scopes the meta count to the group and names the rest', async () => {
+    await renderPacking(`/trips/${ALPS}/packing`, ...splitFrame())
+
+    expect(metaIn('Duffel 90 L')).toHaveTextContent(
+      'PER-PERSON · 1/1 · 2 ELSEWHERE',
+    )
+    expect(metaIn('Crate B')).toHaveTextContent(
+      'PER-PERSON · 0/1 · 2 ELSEWHERE',
+    )
+    expect(metaIn('Loose')).toHaveTextContent('PER-PERSON · 0/1 · 2 ELSEWHERE')
+  })
+
+  /** Pinned at N=1 (§5b M): the remainder is a count, not a plural. */
+  it('pins the remainder at 1 ELSEWHERE', async () => {
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...headlampIn({ els: E_DUFFEL, mies: E_DUFFEL }),
+      tripPieceStatusSet(ALPS, E_HEADLAMP, 'els', 'packed'),
+    )
+
+    expect(metaIn('Duffel 90 L')).toHaveTextContent(
+      'PER-PERSON · 1/2 · 1 ELSEWHERE',
+    )
+    expect(metaIn('Loose')).toHaveTextContent('PER-PERSON · 0/1 · 2 ELSEWHERE')
+  })
+
+  /**
+   * **Muted, not amber** (C2): a remainder, not a residence — the residence
+   * is the header, and a set in two bags is not a fault. `css: false`, so the
+   * stylesheet text is the only thing that sees this.
+   */
+  it('draws the remainder muted, never in the residence amber', async () => {
+    const file = '../components/PackingRow.module.css'
+
+    expect(ruleBody(file, '.elsewhere')).toMatch(/--color-ink-faint/)
+    expect(ruleBody(file, '.elsewhere')).not.toMatch(/amber/)
+    expect(ruleBody(file, '.residence')).toMatch(/amber/)
+  })
+
+  /**
+   * `N ELSEWHERE` counts the **whole Entry** under `○ LEFT` — it says where
+   * the rest of the set is, not what the filter shows. The duffel's row (Els,
+   * packed) drops out and takes its now-empty group with it; the crate's and
+   * `Loose`'s stay, both still reading `2 ELSEWHERE`.
+   */
+  it('keeps the remainder whole under ○ LEFT, and filters rows per row', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...splitFrame())
+    await pressLeftOnly(user)
+
+    expect(groupNames()).toEqual(['Crate B', 'Loose'])
+    expect(metaIn('Crate B')).toHaveTextContent(
+      'PER-PERSON · 0/1 · 2 ELSEWHERE',
+    )
+    expect(metaIn('Loose')).toHaveTextContent('PER-PERSON · 0/1 · 2 ELSEWHERE')
+  })
+
+  /** Ruling C2's accessible name, on a scoped row. */
+  it('announces the scoped count and the remainder as one control', async () => {
+    await renderPacking(`/trips/${ALPS}/packing`, ...splitFrame())
+
+    expect(
+      within(onlyRowIn('Duffel 90 L')).getByTestId('packing-row-cluster'),
+    ).toHaveAccessibleName(
+      'Packing status — Headlamp, 1 of 1 packed here, 2 elsewhere',
+    )
+  })
+
+  /**
+   * **Ruling C1's refusal.** The cluster paints the Pieces in this group and
+   * no others — a one-circle cluster is a legal cluster — and a Piece
+   * elsewhere is **never** drawn dashed and dim: that is `PersonCluster`'s
+   * word for *excluded* on the builder, and a removed Piece is not drawn on
+   * F4 at all, so a dashed circle here would read *not bringing one*.
+   */
+  it('paints only this group Pieces, and no circle anywhere is dashed', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...splitFrame())
+
+    for (const group of ['Crate B', 'Duffel 90 L', 'Loose']) {
+      expect(
+        within(onlyRowIn(group)).getAllByTestId('person-circle'),
+      ).toHaveLength(1)
+    }
+    expect(document.querySelectorAll('[data-tone="dashed"]')).toHaveLength(0)
+
+    // The other two modes draw the same primitive over the same fold.
+    for (const mode of ['PERSON', 'ALL']) {
+      await chooseMode(user, mode)
+      expect(document.querySelectorAll('[data-tone="dashed"]')).toHaveLength(0)
+    }
+  })
+
+  /** The cluster **and its count** stay one control (rulings B and A1):
+   * scoping changes what it covers, never that it is one target. */
+  it('gives the scoped cluster no individual circle target', async () => {
+    await renderPacking(`/trips/${ALPS}/packing`, ...splitFrame())
+
+    const row = onlyRowIn('Crate B')
+    const cluster = within(row).getByTestId('packing-row-cluster')
+    for (const circle of within(row).getAllByTestId('person-circle')) {
+      expect(circle.closest('button')).toBe(cluster)
+    }
+  })
+
+  /**
+   * **Ruling C3, verified rather than assumed.** One sheet per Entry, never
+   * one per row: opened from the duffel's row — which draws Els alone — it
+   * lists **all three** Pieces with their three residences, because it is the
+   * one surface where the split is seen whole and mended at `MOVE`.
+   */
+  it('opens the whole Entry sheet from a scoped row', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...splitFrame())
+
+    await user.click(
+      within(onlyRowIn('Duffel 90 L')).getByTestId('packing-row-body'),
+    )
+
+    expect(screen.getByText('PACKING STATUS · 1 OF 3 PACKED')).toBeVisible()
+    const rows = screen.getAllByTestId('piece-status-row')
+    expect(rows).toHaveLength(3)
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('▸ Duffel 90 L'),
+      expect.stringContaining('▸ LOOSE'),
+      expect.stringContaining('▸ Crate B'),
+    ])
+  })
+
+  /** The same sheet from the same Entry's `Loose` row — C3's *from any of its
+   * rows*, which is the half a per-row sheet would fail. */
+  it('opens that same sheet from the Entry other rows', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...splitFrame())
+
+    await user.click(
+      within(onlyRowIn('Loose')).getByTestId('packing-row-cluster'),
+    )
+
+    expect(screen.getByText('PACKING STATUS · 1 OF 3 PACKED')).toBeVisible()
+    expect(screen.getAllByTestId('piece-status-row')).toHaveLength(3)
+  })
+
+  /**
+   * **No ruling reaches this state, so S9a's read is kept.** A per-person
+   * Entry with no Pieces at all — no Participant yet, the ordinary shape of a
+   * Draft — yields no item, so C1's *a group holding at least one of its
+   * Pieces* names none. It is still a line on the gear list, and a line
+   * drawing in no group would vanish from the mode the screen rests in while
+   * ALL mode still lists it. `Loose` is where a thing in no container goes.
+   */
+  it('draws a per-person Entry with no Pieces under Loose', async () => {
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'pack_out'),
+      gearRecorded(HEADLAMP, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(ALPS, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
+    )
+
+    expect(groupNames()).toEqual(['Loose'])
+    expect(metaIn('Loose')).toHaveTextContent('PER-PERSON · 0/0')
+    expect(metaIn('Loose')).not.toHaveTextContent('ELSEWHERE')
+  })
+})
+
+/* ------------------------------------------------------------------------ *
  * PERSON mode, ALL mode, and the `○ LEFT` filter.
  *
  * `docs/design/README.md` §1 and §5e A7 · A7b · A8; spec §4.2.
@@ -1802,14 +2157,16 @@ describe('the ○ LEFT filter', () => {
    * A container holding nothing but nested containers keeps its header: the
    * rail is that container's own journey, not its contents'.
    *
-   * **The `Stove` has to leave the duffel for this fixture to say anything.**
-   * `containerView` builds a group's `rowIds` with a `!isContainerEntry`
-   * filter, so a rows-less container is one whose *only* children are nested
-   * containers — and while the duffel still held the unpacked stove it
-   * survived `○ LEFT` on that row rather than on the rule under test. The
-   * guard reads `group.rowIds.length > 0 && rowIds.length === 0` precisely so
-   * that emptiness has to be **caused** by the filter; drop that first
-   * conjunct and this goes red.
+   * **The `Stove` and Els's Headlamp Piece both have to leave the duffel for
+   * this fixture to say anything.** A container produces no item of its own,
+   * so a rows-less container is one nothing *sits in* — and while the duffel
+   * still held the unpacked stove it survived `○ LEFT` on that row rather
+   * than on the rule under test. Els's Piece is the round-2 half of the same
+   * point: under ruling C1 it draws a Headlamp row **in the duffel**, so the
+   * duffel is rows-less only once the Piece is loose too. The guard reads
+   * `group.rows.length > 0 && rows.length === 0` precisely so that emptiness
+   * has to be **caused** by the filter; drop that first conjunct and this
+   * goes red.
    */
   it('keeps a container group whose only rows are nested groups', async () => {
     const user = userEvent.setup()
@@ -1819,6 +2176,7 @@ describe('the ○ LEFT filter', () => {
       tripEntryMoved(ALPS, E_DRYBAG, { in: 'container', entryId: E_DUFFEL }),
       // Now the duffel's own rows are none: the dry bag is its only child.
       tripEntryMoved(ALPS, E_STOVE, { in: 'loose' }),
+      tripPieceMoved(ALPS, E_HEADLAMP, 'els', { in: 'loose' }),
     )
     await pressLeftOnly(user)
 
@@ -1862,6 +2220,10 @@ describe('the ○ LEFT filter', () => {
       tripEntryMoved(ALPS, E_DRYBAG, { in: 'container', entryId: E_DUFFEL }),
       tripEntryStatusSet(ALPS, E_STOVE, 'packed'),
       tripEntryStatusSet(ALPS, E_ROPE, 'not_packed'),
+      // Els's Headlamp Piece rides in the duffel in `personFrame`, and under
+      // ruling C1 that draws a second, unpacked Headlamp row there — which
+      // would keep the duffel alive on a row this test is not about.
+      tripPieceMoved(ALPS, E_HEADLAMP, 'els', { in: 'loose' }),
     )
     await pressLeftOnly(user)
 

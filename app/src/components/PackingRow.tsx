@@ -1,6 +1,7 @@
 import {
   entryKind,
   entryLabel,
+  entryResidenceOf,
   isPacked,
   nextStatus,
   ownerLabel,
@@ -96,6 +97,32 @@ import { residenceLabel, toneForStatus } from './PieceStatusSheet'
  * its name — `EntryRow`'s badge, same encoding and the same place, a name
  * adjunct rather than trailing-column content.
  *
+ * ## `scopedPersonIds` narrows a per-person row to one group's Pieces
+ *
+ * Ruling C1: in CONTAINER mode a per-person Entry draws **one row per group
+ * holding at least one of its Pieces**, and this prop is which Pieces those
+ * are. The cluster paints them and them alone — a one-circle cluster is a
+ * legal cluster — and the count is scoped with it, because a row's count has
+ * to sum into the header above it.
+ *
+ * What is left over is stated, not drawn: `PER-PERSON · 1/1 · 2 ELSEWHERE`
+ * (ruling C2). **Muted, not amber** — a remainder, not a residence; the
+ * residence is the header, and a set in two bags is not a fault. It appears
+ * **only above zero**, which is what keeps `PER-PERSON · 1/3` standing
+ * unchanged on every drawn frame with its meaning narrowed to *packed over
+ * Pieces in this group*, and it counts the **whole Entry** even under
+ * `○ LEFT`: it says where the rest of the set is, not what the filter shows.
+ *
+ * **The Pieces that are elsewhere are never drawn as dashed circles.** Dashed
+ * and dim is `PersonCluster`'s word for *excluded* on the builder, and a
+ * removed Piece is not drawn on F4 at all — so a dashed circle here would
+ * read *not bringing one*, the state invariant 11 expresses by removal. One
+ * tone may not mean two things across two callers of one primitive.
+ *
+ * Absent, the row is its whole Entry — every Piece, and no remainder. PERSON
+ * and ALL mode pass nothing, and neither does CONTAINER for a Kind that has
+ * no Pieces.
+ *
  * The ownership segment is {@link ownerLabel}'s `PERSONAL E`, not the
  * board's `PERSONAL · E`: `docs/design/README.md` §2 resolved that spelling
  * to the Depot's when S4 shipped the function, and §1's own note says S9
@@ -156,6 +183,13 @@ export interface PackingRowProps {
   entryId: string
   /** Set to draw one Piece of a per-person Entry rather than the Entry. */
   personId?: string
+  /**
+   * The Entry's Pieces **in this group** — CONTAINER mode's scoping, ruling
+   * C1. Deliberately not a near-spelling of `personId` above: that one says
+   * *this row is one Piece*, this one says *this row is the Entry, narrowed
+   * to these Pieces*. See the docstring.
+   */
+  scopedPersonIds?: readonly string[]
   /** End the meta line in the item's trip residence — PERSON and ALL mode,
    * where no group header states *where*. See the docstring. */
   showResidence?: boolean
@@ -183,6 +217,7 @@ export function PackingRow({
   tripId,
   entryId,
   personId,
+  scopedPersonIds,
   showResidence = false,
   onOpenPicker,
   onOpenPieceSheet,
@@ -250,7 +285,21 @@ export function PackingRow({
     ? pieceStatusOf(entry.pieces?.[personId], entry, state)
     : statusOf(entry, state)
 
-  const packedPieces = pieces.filter((piece) => isPacked(piece.status)).length
+  /**
+   * The Pieces this row is *about* — every Piece of the Entry, or the ones
+   * `scopedPersonIds` names (ruling C1). The filter keeps `pieces`' order,
+   * which is `tripParticipants`', so the cluster's circles stay in People
+   * order however the group's items arrived.
+   */
+  const scoped =
+    scopedPersonIds === undefined
+      ? pieces
+      : pieces.filter((piece) => scopedPersonIds.includes(piece.personId))
+
+  const packedHere = scoped.filter((piece) => isPacked(piece.status)).length
+  /** The rest of the set — the **whole** Entry minus what is drawn here, so
+   * it is unmoved by `○ LEFT` (ruling C2). */
+  const elsewhere = pieces.length - scoped.length
 
   // The muted half of the meta line: what the item **is**. A Piece has none
   // — its Entry's ownership and units belong to the Entry, and the board
@@ -260,7 +309,7 @@ export function PackingRow({
     : isPiece
       ? ''
       : isPerPerson
-        ? `PER-PERSON · ${packedPieces}/${pieces.length}`
+        ? `PER-PERSON · ${packedHere}/${scoped.length}`
         : // `SHARED` for a depot Entry whose Gear has not reached this
           // replica — `personPartition`'s rule 3 for the identical state.
           `${gear === undefined ? 'SHARED' : ownerLabel(state, gear)} · ×${pieceCountOf(entry, trip, state)}`
@@ -300,12 +349,18 @@ export function PackingRow({
     }
 
     // No Pieces at all — a single or counted Entry, or a per-person one with
-    // no Participant left holding a Piece. The Entry's own register is the
-    // answer, and it is the one `packingItems` layers a Piece's read over.
+    // no Participant left holding a Piece.
+    //
+    // **Through `entryResidenceOf`, never the register** (ruling C0): for a
+    // per-person Entry that register is folded and read by nobody, so the
+    // gate answers `null` and this row falls to `▸ LOOSE` — the honest read
+    // for a set with no Pieces anywhere, and the one that agrees with the
+    // `Loose` group CONTAINER mode draws it under. Every other Kind reads
+    // its own register through the same call, absent reading loose.
     return residenceLabel(
       trip,
       state,
-      shared ?? entry.residence?.value ?? TRIP_LOOSE,
+      shared ?? entryResidenceOf(entry, state) ?? TRIP_LOOSE,
     )
   }
 
@@ -319,7 +374,17 @@ export function PackingRow({
     emit(tripPieceStatusSet(tripId, entryId, personId, nextStatus(current)))
   }
 
-  const clusterName = `Packing status — ${label}, ${packedPieces} of ${pieces.length} packed`
+  /**
+   * Ruling C2's accessible name. Scoped, it reads
+   * `Headlamp, 1 of 1 packed here, 2 elsewhere`; with nothing elsewhere it is
+   * the S9 string **unchanged**, `Headlamp, 1 of 3 packed` — the same
+   * "only above zero" rule the visible line follows, so a row whose Pieces
+   * all share a group announces exactly what it always did.
+   */
+  const clusterName =
+    elsewhere > 0
+      ? `Packing status — ${label}, ${packedHere} of ${scoped.length} packed here, ${elsewhere} elsewhere`
+      : `Packing status — ${label}, ${packedHere} of ${scoped.length} packed`
 
   return (
     <div className={styles['row']} data-testid="packing-row">
@@ -366,6 +431,19 @@ export function PackingRow({
         {(meta !== '' || residence !== '') && (
           <span className={styles['meta']} data-testid="packing-row-meta">
             {meta}
+            {/* Ruling C2's remainder, muted rather than amber and drawn only
+                above zero. Its own element for the trip card's ▲ reason: a
+                single text node would force the muted class onto the whole
+                meta line or onto none of it, and the scoped count beside it
+                is the ledger. */}
+            {elsewhere > 0 && (
+              <>
+                {' · '}
+                <span className={styles['elsewhere']}>
+                  {elsewhere} ELSEWHERE
+                </span>
+              </>
+            )}
             {/* The separator belongs to neither half — it appears only where
                 both are drawn, which is why it is not baked into either
                 string. */}
@@ -390,8 +468,13 @@ export function PackingRow({
               `role="img"` would announce the roster a second time
               (`EntryRow`'s pattern, commit `83e2d6f`). */}
           <span aria-hidden="true" className={styles['clusterWrap']}>
+            {/* `scoped`, not `pieces`: the cluster paints the Pieces in this
+                group and no others (ruling C1), and every one it paints
+                takes a status tone. **No entry is ever `dashed`** — that is
+                the builder's *excluded*, and a Piece elsewhere is not
+                excluded; it is the meta line's `N ELSEWHERE`. */}
             <PersonCluster
-              people={pieces.map((piece) => ({
+              people={scoped.map((piece) => ({
                 key: piece.personId,
                 label: personInitial(piece.label),
                 tone: toneForStatus(piece.status),

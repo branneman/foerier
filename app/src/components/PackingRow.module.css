@@ -132,6 +132,24 @@
   }
 
   /*
+   * `2 ELSEWHERE` — the rest of a per-person set, closing a scoped row's
+   * meta line in CONTAINER mode (ruling C2).
+   *
+   * **Muted, not amber.** Amber is this app's trip-world *residence* mark
+   * (`.residence` below), and this is a remainder: the residence is the
+   * group header above the row, and a set riding in two bags is not a fault.
+   * `--color-ink-faint` is the board's own `#6A7161`, one step back from the
+   * `--color-ink-muted` the count beside it takes.
+   *
+   * The parchment theme folds faint into muted, so the two halves resolve to
+   * one colour there — which costs nothing, because the word `ELSEWHERE`
+   * carries the whole fact and no encoding leans on the difference.
+   */
+  .elsewhere {
+    color: var(--color-ink-faint);
+  }
+
+  /*
    * `▸ DUFFEL 90 L` · `▸ LOOSE` · `▸ MIXED` — where it rides on this Trip,
    * ending the meta line in PERSON and ALL mode.
    *
