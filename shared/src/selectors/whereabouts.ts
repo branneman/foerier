@@ -19,6 +19,7 @@ import {
   entryLabel,
   isContainerEntry,
 } from './entry.ts'
+import { byNameThenId } from './order.ts'
 import {
   entryResidenceOf,
   sameTripResidence,
@@ -438,24 +439,29 @@ function reconcile(residences: readonly ResidenceRead[]): SegmentRead {
   return { container, stage }
 }
 
-/** A total order over plain id strings, by code point rather than
- *  `localeCompare` — `selectors/order.ts`'s reason applied to a bare string:
- *  `localeCompare` resolves against the host's default locale, so two devices
- *  could order the same pair of ids differently. */
-function compareIds(a: string, b: string): number {
-  if (a === b) return 0
-  return a < b ? -1 : 1
-}
-
-/** Home first, then trip slices **by trip name A→Z with the trip id as a
- *  total tiebreak** — `design/README.md` §4's standing order, and the one
- *  D7's `RESOLVE` destination reads off. */
+/**
+ * Home first, then trip slices **by trip name A→Z with the trip id as a total
+ * tiebreak** — `design/README.md` §4's standing order, and the one D7's
+ * `RESOLVE` destination reads off.
+ *
+ * It is `order.ts`'s {@link byNameThenId} behind a one-line adapter and not a
+ * comparator of its own: that file exists because *"a second copy of a
+ * total-order comparator is exactly how two devices start drawing lists
+ * differently again"*, and a copy that agrees today is still one edit from
+ * diverging invisibly.
+ *
+ * The adapter shape is what the borrowing costs. `byNameThenId` sorts a
+ * `{id, name: {value}}` **register-shaped** entity, and a `TripSliceFacts`
+ * holds neither — its `tripName` is already `tripLabel`'s resolved answer.
+ * Feeding the label rather than the raw register is deliberate, and is
+ * `sortedPeople`'s stated rule: sort by the label a row actually draws, or a
+ * nameless Trip files under an empty string while the reader sees a word.
+ */
 function compareTripFacts(a: TripSliceFacts, b: TripSliceFacts): number {
-  const an = a.tripName.toLowerCase()
-  const bn = b.tripName.toLowerCase()
-  if (an !== bn) return an < bn ? -1 : 1
-  if (a.tripName !== b.tripName) return a.tripName < b.tripName ? -1 : 1
-  return compareIds(a.tripId, b.tripId)
+  return byNameThenId(
+    { id: a.tripId, name: { value: a.tripName } },
+    { id: b.tripId, name: { value: b.tripName } },
+  )
 }
 
 /** Builds (once per state) or returns the cached gear→trip-slices index. */

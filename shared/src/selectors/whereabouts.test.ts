@@ -558,6 +558,91 @@ describe('whereabouts — the stage is the chain root’s (D3)', () => {
   })
 })
 
+describe('whereabouts — a container Entry’s residence is its own (the container check first)', () => {
+  /**
+   * A **per-person container**: `container` and `kind` are orthogonal
+   * registers on the Gear, so a family stuff-sack recorded per-person and
+   * carrying the containment trait is authorable — the shape S9a found for
+   * the Counted container.
+   *
+   * **This fixture pins `view.holderOf(entry.id)` and not
+   * `entryResidenceOf`.** That gate answers `null` for a per-person Entry
+   * (§5e C0: for per-person gear *where it is* is only ever a per-Piece
+   * fact), which is right for a thing that travels and wrong for a
+   * container: a container is one thing wherever it rides, its own residence
+   * is an Entry-level fact whatever its Kind, and reading it through the gate
+   * would draw this sack **loose** while F4 draws it in the duffel, in the
+   * car. Every other container in this file is Single or Counted, where the
+   * two functions agree — so without this case, swapping `holderOf` back for
+   * `entryResidenceOf` passes the whole suite.
+   */
+  const perPersonContainer: readonly OpSpec[] = [
+    ...aPerson({ id: 'p-mark', name: 'Mark' }),
+    ...aPerson({ id: 'p-kim', name: 'Kim' }),
+    ...aGear({ id: 'g-duffel', name: 'Duffel 90 L', container: true }),
+    ...aGear({
+      id: 'g-sack',
+      name: 'Stuff sack',
+      container: true,
+      kind: 'per_person',
+    }),
+    ...aTrip({
+      id: TRIP,
+      name: 'Alps 2026',
+      phase: 'pack_out',
+      participants: ['p-mark', 'p-kim'],
+    }),
+    tripEntryAdded(TRIP, 'e-duffel', { from: 'depot', gearId: 'g-duffel' }),
+    tripContainerStageSet(TRIP, 'e-duffel', 'car'),
+    tripEntryAdded(TRIP, 'e-sack', { from: 'depot', gearId: 'g-sack' }),
+    tripEntryMoved(TRIP, 'e-sack', { in: 'container', entryId: 'e-duffel' }),
+    tripContainerStageSet(TRIP, 'e-sack', 'staging'),
+  ]
+
+  it('reports a per-person container’s own residence and its own stage', () => {
+    const state = fold(log(perPersonContainer))
+    const [slice] = tripSlices(state, 'g-sack')
+
+    // Its own single residence — the duffel — and not `LOOSE`, which is what
+    // `entryResidenceOf`'s per-person `null` would have produced.
+    expect(slice?.container).toEqual({
+      of: 'one',
+      entryId: 'e-duffel',
+      name: 'Duffel 90 L',
+    })
+    // Its own stage: the chain starts at the sack itself because the sack is
+    // a container, and the root of `[sack, duffel]` is the duffel — `car`,
+    // never the sack's own `staging`, which is D3 holding for this Kind too.
+    expect(slice?.stage).toBe('car')
+    expect(whereaboutsText(slice as WhereaboutsSlice, 'full')).toBe(
+      '▸ Alps 2026 · Duffel 90 L · CAR',
+    )
+    // Counts still follow **Kind**, never the container trait: two included
+    // Pieces, no quantity.
+    expect(slice?.pieceCount).toBe(2)
+    expect(slice?.count).toBeNull()
+  })
+
+  it('gives every Participant that same container read, not a per-Piece one', () => {
+    const state = fold(log(perPersonContainer))
+    const byPerson = whereaboutsByPerson(state, 'g-sack')
+
+    // A container is one thing wherever it rides, so there is no per-Piece
+    // residence to refine it with: both Participants read the Entry's own.
+    for (const personId of ['p-mark', 'p-kim']) {
+      expect(byPerson.get(personId)?.slice).toEqual({
+        kind: 'trip',
+        tripId: TRIP,
+        tripName: 'Alps 2026',
+        container: { of: 'one', entryId: 'e-duffel', name: 'Duffel 90 L' },
+        stage: 'car',
+        count: null,
+        pieceCount: 1,
+      })
+    }
+  })
+})
+
 describe('whereabouts — unresolvable residences read loose', () => {
   const base: readonly OpSpec[] = [
     ...aGear({ id: 'g-crate', name: 'Crate B', container: true }),
