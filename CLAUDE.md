@@ -607,7 +607,9 @@ together.
   stated only in `packing.ts` — plus a third that is *not* symmetric: **a Piece
   with no `residence` of its own reads its Entry's**, then loose, because
   moving a whole per-person set into the duffel is a legitimate op and the
-  Piece ops are the refinement.
+  Piece ops are the refinement. (That third read is **overturned by the round
+  below**: no op moves a per-person set, so a Piece with no residence reads
+  **loose**.)
 - **A container is not a piece, and ruling A5 moved numbers that had already
   shipped.** `pieceCountOf` returns `0` for a container Entry and `listTotals`
   follows, because a denominator holding things that can never be marked packed
@@ -661,6 +663,31 @@ together.
   F4**, because the band renders only when the Trip has Entries. Deliberate — a
   route to a screen that can only say `0 ENTRIES.` is a door to an empty room —
   and recorded in `docs/design/README.md` §1 as a code-authored line.
+
+**A round has since ruled the one hole S9a recorded** — a per-person Entry's own
+trip residence could be authored by nobody, so CONTAINER and ALL stated
+different places for the same gear. No op types, no endpoints, no migration, no
+folded state: `reduce.ts` and `state.ts` are untouched across the whole round.
+`entryResidenceOf` joins `bringCountOf` and `statusOf` as the third gate of that
+shape; `packingItems` hands out **effective** residences resolved through the
+trip's containment view; `containerTotals` counts by each item's own residence
+rather than by its Entry's holder; and CONTAINER draws a per-person Entry as
+**one row per group holding at least one of its Pieces**, cluster and count
+scoped to that group, the rest named as `N ELSEWHERE`. See
+[its spec](docs/specs/2026-09-04-per-person-rows-in-container-mode.md), whose
+**§10 records what moved while it was being built**, and
+`docs/design/README.md` §5e C (C0–C5), the shipped authority.
+
+**The one rule to carry into any later packing work:** for per-person gear
+*where it is* is only ever a **per-Piece** fact, and nothing sits above the
+Pieces. `trip.entry_moved` on a per-person Entry is therefore **fold-but-ignore**
+— folded, because [sync §5.3](docs/sync-protocol.md)'s tolerant reader is
+absolute and a peer on another build may write one, and read by nobody. Two
+consequences a call site gets wrong by re-deriving either: a Piece with no
+`residence` of its own reads **loose**, never its Entry's (S9a's spec §11.2,
+overturned), and a group's membership comes from the **items'** residences and
+never from `childrenOf`, which still resolves a per-person Entry's retired
+register and is right only about the container tree.
 
 Four conventions the code now carries that are easy to trip over:
 

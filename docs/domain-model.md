@@ -164,7 +164,11 @@ The Trip root holds, as its **internal** entities and value objects:
   outcome** once recorded, and — for a counted entry — its bring-count and, if
   resolved as `consumed`, its **consumed-count**.
 - **Pieces** — for each per-person entry, the individual per-participant copies,
-  each with its own packing status, trip residence, and unpack outcome.
+  each with its own packing status, trip residence, and unpack outcome. A
+  per-person entry's **own** trip residence is the one piece of trip state
+  nothing reads: for per-person gear _where it is_ is only ever a per-piece
+  fact — each piece is tracked and packed on its own (§6) — so the pieces
+  answer it and nothing sits above them.
 - **Trip containers** — the containers this trip packs into. A trip container
   likewise either references a depot container by identity or is a trip-only one;
   it carries a **journey stage** and a trip residence. (A container brought on a

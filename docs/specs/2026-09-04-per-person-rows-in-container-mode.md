@@ -248,3 +248,55 @@ the change in place, and a status tap has never confirmed.
 - **`▸ MIXED` in CONTAINER mode.** C1 removes the need for it — a row is only
   ever in one group.
 - **Anything in S9b.** It reads what this rules.
+- **A correct `N INSIDE RIDE ALONG`.** The container-move confirm's
+  `insideCount` still walks the Entry tree, so it counts a per-person Entry
+  whose Entry-level `residence` names the container — and under C0 such an
+  Entry does **not** ride along, its Pieces having residences of their own.
+  Reachable only through a foreign client's op, since no shipped control writes
+  that register. Left standing on purpose: the confirm belongs to **ruling
+  A2b**, not to this round's C0–C5, and the consistent fix is one more consumer
+  of the item-residence rule — a decision for a later round rather than a
+  bolt-on past this round's remit. Recorded in the code at the call site too.
+
+---
+
+## 10. What changed during implementation
+
+Two things this document would otherwise mislead a reader about. Recorded here
+rather than edited into the sections above, the precedent
+[`trips-and-phases.md`](2026-08-29-trips-and-phases.md) §10 and
+[`the-gear-list.md`](2026-08-29-the-gear-list.md) §11 set: a dated spec is left
+as it was written, and what moved lives in its own section.
+
+**`tripContainmentView` is deliberately NOT gated on the ruling.** §1 reads as
+though `entryResidenceOf` retires the Entry-level register everywhere, and it
+does not: the view still resolves a per-person Entry's own residence, so
+`holderOf` can place one under a container and `childrenOf` will list it there.
+Gating was considered and refused for three reasons. The view resolves
+**structure**, and its four loose-reasons are about whether a *pointer* can be
+followed — an unfolded target, a removed target, a non-container target, a
+cycle — never about whether a Kind's pointer is meaningful; gating there would
+fold a domain read-rule into pointer resolution, where it does not belong. The
+blast radius is far wider than this round: `holderOf` feeds `tripPath`, the Pack
+picker's exclusion set and every subtree walk. And it would cost moving
+`TRIP_LOOSE` out of `packing.ts` to break an import cycle, churn for no gain.
+
+**The rule is applied once instead, at the read that needs it.** The arithmetic
+reads **item** residences (§3), so row membership reads them too — a group's
+rows come from the items filed under it, never from `childrenOf`. `childrenOf`
+stays correct for the **container tree** (which container nests inside which,
+an Entry-level fact) and is wrong only for placing a non-container row. That is
+the sharpest constraint in the round, and it is pinned by a test that fails the
+moment membership is taken from the holder instead: filing items by
+`view.holderOf(item.entryId)` turns eleven of the fourteen new `Packing.test.tsx`
+assertions red.
+
+**A per-person Entry with no Pieces draws under `Loose`.** A Draft with no
+Participants yet is the ordinary shape of one. It yields no item, so C1's *a
+group holding at least one of its Pieces* names none and the literal rule draws
+it nowhere — **a state no ruling reaches**. Keeping S9a's read is the safer
+half: a line vanishing from the mode the screen rests in while ALL mode still
+lists it is the confusing outcome, and `Loose` means `NOT IN A CONTAINER`, which
+is true of a set with no Pieces. It contributes **0 to every count either way**,
+so nothing arithmetic turns on it, and the boards may prefer it absent — one
+line to change if a round says so.

@@ -645,6 +645,14 @@ asked for a status, and a non-container nothing when asked for a stage. A peer
 on another build that wrote both leaves both folded, and this reader takes the
 one that applies.
 
+**`trip.entry_moved` on a per-person Entry is that same split a fourth time (S9
+round 2):** for per-person gear _where it is_ is only ever a per-Piece fact
+([domain §5](domain-model.md#5-aggregates)), so no authoring screen emits the op
+for that Kind and no reader consults the register — folded as received and read
+by nobody, exactly the shape a `bring_count` on non-Counted gear already has,
+which also means a Piece with no `residence` of its own reads **loose** rather
+than its Entry's.
+
 **Tasks and notes**
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |
