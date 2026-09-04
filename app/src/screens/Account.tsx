@@ -201,6 +201,7 @@ export function Account({
     unsynced,
     blocked,
     error: signOutError,
+    remoteError,
     busy: signOutBusy,
     select: selectDevice,
     openThisDeviceConfirm,
@@ -592,6 +593,7 @@ export function Account({
         <SignOutRemoteSheet
           device={remoteTarget}
           busy={signOutBusy}
+          error={remoteError}
           onCancel={cancelRemote}
           onConfirm={confirmRemote}
         />

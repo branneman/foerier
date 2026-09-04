@@ -6,7 +6,13 @@ import {
   type IdSource,
   type OpAuthor,
 } from '@foerier/shared'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -83,7 +89,9 @@ function noContent(): Response {
 interface Handler {
   method: string
   path: string
-  respond: () => Response
+  /** A `Promise` here is a request held open on purpose — the revoke
+   * confirm's in-flight tests resolve or reject it by hand. */
+  respond: () => Response | Promise<Response>
 }
 
 /** A fetch stub keyed on method + path suffix, standing in for the real HTTP
@@ -123,6 +131,9 @@ function renderPeople(
     invites?: readonly InviteRow[]
     /** Fails `GET /auth/logins` — the offline fallback's own trigger. */
     failLogins?: boolean
+    /** Stands in for every `DELETE /auth/logins/:id` — the revoke
+     * confirm's in-flight tests hand over a promise they settle by hand. */
+    revokeLoginResponds?: () => Promise<Response>
   } = {},
 ) {
   const {
@@ -131,6 +142,7 @@ function renderPeople(
     logins = [],
     invites = [],
     failLogins = false,
+    revokeLoginResponds,
   } = options
 
   const log = inMemoryOpLog()
@@ -170,6 +182,7 @@ function renderPeople(
         method: 'DELETE',
         path: `/auth/logins/${login.id}`,
         respond: () => {
+          if (revokeLoginResponds !== undefined) return revokeLoginResponds()
           revokedLogins.push(login.id)
           return noContent()
         },
@@ -623,6 +636,106 @@ describe('the People screen', () => {
     await user.click(within(row).getByRole('button', { name: 'REVOKE' }))
     await user.click(screen.getByRole('button', { name: 'Revoke login' }))
     expect(revokedLogins).toEqual(['L2'])
+  })
+
+  /**
+   * `Confirm.tsx`'s own rule: `Confirm.Action` closes on click, which is
+   * right for a decision that is over the moment it is taken and wrong for
+   * one that is not. This confirm used to close before the request
+   * resolved, so `revokeBusy` was never visible and a failed revoke was
+   * reported to nobody — the sheet closed and the Login kept its access.
+   */
+  it('keeps the revoke confirm up and disabled while the request is in flight, then closes it', async () => {
+    const user = userEvent.setup()
+    let release: (response: Response) => void = () => {
+      throw new Error('release called before it was assigned')
+    }
+    const gate = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    renderPeople({
+      logins: [
+        { id: 'L1', person_id: MARK, device_count: 1, last_seen_at: NOW_ISO },
+        { id: 'L2', person_id: ELS, device_count: 1, last_seen_at: NOW_ISO },
+      ],
+      revokeLoginResponds: () => gate,
+    })
+
+    const row = await screen.findByTestId(`person-row-${ELS}`)
+    await user.click(within(row).getByRole('button', { name: 'REVOKE' }))
+    await user.click(screen.getByRole('button', { name: 'Revoke login' }))
+
+    expect(
+      screen.getByRole('alertdialog', { name: 'Revoke Els’s login?' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Revoke login' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+
+    release(noContent())
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('alertdialog', { name: 'Revoke Els’s login?' }),
+      ).toBeNull(),
+    )
+  })
+
+  it('keeps the revoke confirm up and says so when the request fails, and Cancel still closes it', async () => {
+    const user = userEvent.setup()
+    renderPeople({
+      logins: [
+        { id: 'L1', person_id: MARK, device_count: 1, last_seen_at: NOW_ISO },
+        { id: 'L2', person_id: ELS, device_count: 1, last_seen_at: NOW_ISO },
+      ],
+      revokeLoginResponds: () => Promise.reject(new Error('offline')),
+    })
+
+    const row = await screen.findByTestId(`person-row-${ELS}`)
+    await user.click(within(row).getByRole('button', { name: 'REVOKE' }))
+    await user.click(screen.getByRole('button', { name: 'Revoke login' }))
+
+    expect(
+      await screen.findByText(
+        'Els’s login could not be revoked. Check your connection.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('alertdialog', { name: 'Revoke Els’s login?' }),
+    ).toBeInTheDocument()
+    // Nothing is discarded by a failed revoke, so the line carries no ▲
+    // (boards §13) — and Els still holds her login.
+    expect(screen.queryByText(/▲/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Revoke login' })).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(
+      screen.queryByRole('alertdialog', { name: 'Revoke Els’s login?' }),
+    ).toBeNull()
+    expect(revokedLogins).toEqual([])
+    expect(within(row).getByText(/SIGNED IN/)).toBeInTheDocument()
+  })
+
+  it('opens a fresh revoke confirm without a failure left over from the last one', async () => {
+    const user = userEvent.setup()
+    renderPeople({
+      logins: [
+        { id: 'L1', person_id: MARK, device_count: 1, last_seen_at: NOW_ISO },
+        { id: 'L2', person_id: ELS, device_count: 1, last_seen_at: NOW_ISO },
+      ],
+      revokeLoginResponds: () => Promise.reject(new Error('offline')),
+    })
+
+    const row = await screen.findByTestId(`person-row-${ELS}`)
+    await user.click(within(row).getByRole('button', { name: 'REVOKE' }))
+    await user.click(screen.getByRole('button', { name: 'Revoke login' }))
+    expect(await screen.findByText(/could not be revoked/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await user.click(within(row).getByRole('button', { name: 'REVOKE' }))
+    expect(
+      screen.getByRole('alertdialog', { name: 'Revoke Els’s login?' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/could not be revoked/)).toBeNull()
   })
 
   it('revokes an invite with no confirm — it kills a link, never data', async () => {

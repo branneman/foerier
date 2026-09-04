@@ -93,15 +93,26 @@ export function DeviceList({
 /**
  * **Remote confirm sheet** (boards §12): no `▲` — revoking another Device
  * destroys nothing, it only loses that Device its access at its next sync.
+ *
+ * **`error`** is the one line the boards do not draw. A revoke is a request,
+ * and a request can fail; when it does the Device keeps its access, and a
+ * sheet that had already closed would have said the opposite. So the sheet
+ * stays up and states it, in the register the screen's own load failure
+ * uses (`Devices could not be loaded. Check your connection.`) — fact
+ * weight, no `▲`, because nothing was discarded.
  */
 export function SignOutRemoteSheet({
   device,
   busy,
+  error,
   onCancel,
   onConfirm,
 }: {
   device: DeviceRow
   busy: boolean
+  /** `api.revokeDevice` rejected. The Device still has access, and the
+   * sheet is the only thing on screen that can say so. */
+  error: boolean
   onCancel: () => void
   onConfirm: () => void
 }) {
@@ -117,17 +128,23 @@ export function SignOutRemoteSheet({
         <>
           {/* Action before Cancel is the boards' own order (§12: "bordered-
               attention 48 `Sign out device` + ghost Cancel"), and Radix gives
-              initial focus to the Cancel wherever it sits in the DOM. */}
-          <Confirm.Action>
-            <button
-              type="button"
-              className={styles['confirmAttention']}
-              onClick={onConfirm}
-              disabled={busy}
-            >
-              Sign out device
-            </button>
-          </Confirm.Action>
+              initial focus to the Cancel wherever it sits in the DOM.
+
+              Deliberately **not** a `Confirm.Action`, for the reason
+              `SignOutThisDeviceSheet` gives below: that part closes the
+              confirm on click, and this decision is not over when it is
+              taken — the request is still in flight. `busy` and `error` are
+              only ever readable because the sheet is still up saying them.
+              It closes from `confirmRemote` once the revoke lands, or from
+              the Cancel. */}
+          <button
+            type="button"
+            className={styles['confirmAttention']}
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            Sign out device
+          </button>
           <Confirm.Cancel>
             <button type="button" className={styles['ghost']} disabled={busy}>
               Cancel
@@ -135,7 +152,13 @@ export function SignOutRemoteSheet({
           </Confirm.Cancel>
         </>
       }
-    />
+    >
+      {error && (
+        <p className={styles['count']}>
+          {label} could not be signed out. Check your connection.
+        </p>
+      )}
+    </Confirm>
   )
 }
 
@@ -282,6 +305,11 @@ export function useDeviceSignOut({
    * the sheet stays open saying so rather than closing over a state the
    * person was never told about (`final-review.md` finding 4). */
   const [error, setError] = useState(false)
+  /** `confirmRemote` rejected. Kept apart from `error` above because the
+   * two sheets are never open together and reset on different openings —
+   * and because a remote failure leaves nothing stopped: the Device simply
+   * still has access, which the sheet stays up to say. */
+  const [remoteError, setRemoteError] = useState(false)
 
   /**
    * Read the count **before** anything that could end the session — the
@@ -303,6 +331,9 @@ export function useDeviceSignOut({
   }, [readUnsyncedCount])
 
   function selectRemote(device: DeviceRow) {
+    // A fresh sheet never opens already showing a failure left over from a
+    // previous, cancelled attempt — `openThisDeviceConfirm`'s rule.
+    setRemoteError(false)
     setRemoteTarget(device)
   }
 
@@ -318,14 +349,23 @@ export function useDeviceSignOut({
   async function confirmRemote() {
     if (remoteTarget === null) return
     setBusy(true)
+    setRemoteError(false)
     try {
       await api.revokeDevice(token, remoteTarget.id)
       onRevoked(remoteTarget.id)
-    } catch (error) {
-      console.error('devices: could not revoke the device', error)
+      // The sheet closes here and nowhere else on this path: its confirm is
+      // a plain button, not a `Confirm.Action`, so that the request has
+      // somewhere to be in flight and somewhere to fail.
+      setRemoteTarget(null)
+    } catch (caught) {
+      // Nothing to roll back — the Device still has access — only something
+      // to say. The sheet stays open, busy clears, and the person can retry
+      // or cancel, rather than watching it close over a revoke that never
+      // happened.
+      console.error('devices: could not revoke the device', caught)
+      setRemoteError(true)
     } finally {
       setBusy(false)
-      setRemoteTarget(null)
     }
   }
 
@@ -380,6 +420,7 @@ export function useDeviceSignOut({
     unsynced,
     blocked,
     error,
+    remoteError,
     busy,
     select,
     openThisDeviceConfirm,
@@ -441,6 +482,7 @@ export function Devices({
     unsynced,
     blocked,
     error,
+    remoteError,
     busy,
     select,
     openThisDeviceConfirm,
@@ -500,6 +542,7 @@ export function Devices({
         <SignOutRemoteSheet
           device={remoteTarget}
           busy={busy}
+          error={remoteError}
           onCancel={cancelRemote}
           onConfirm={confirmRemote}
         />

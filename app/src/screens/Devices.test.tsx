@@ -4,7 +4,7 @@ import {
   type IdSource,
   type OpAuthor,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -93,7 +93,9 @@ function noContent(): Response {
 interface Handler {
   method: string
   path: string
-  respond: () => Response
+  /** A `Promise` here is a request held open on purpose — the remote
+   * confirm's in-flight tests resolve or reject it by hand. */
+  respond: () => Response | Promise<Response>
 }
 
 /** A fetch stub keyed on method + path suffix, standing in for the real HTTP
@@ -141,6 +143,9 @@ async function renderDevices(
     signOutFails?: boolean
     clearLocalData?: (onBlocked: () => void) => Promise<void>
     path?: string
+    /** Stands in for every `DELETE /auth/devices/:id` — the remote
+     * confirm's in-flight tests hand over a promise they settle by hand. */
+    revokeResponds?: () => Promise<Response>
   } = {},
 ) {
   const {
@@ -149,6 +154,7 @@ async function renderDevices(
     signOutFails = false,
     clearLocalData,
     path = '/account/devices',
+    revokeResponds,
   } = options
 
   const store = await aStore(unsyncedCount)
@@ -176,6 +182,7 @@ async function renderDevices(
         method: 'DELETE',
         path: `/auth/devices/${device.id}`,
         respond: () => {
+          if (revokeResponds !== undefined) return revokeResponds()
           revoked.add(device.id)
           return noContent()
         },
@@ -468,6 +475,115 @@ describe('Devices', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(screen.getByText('Edge on Windows')).toBeInTheDocument()
+  })
+
+  /**
+   * `Confirm.tsx`'s own rule: `Confirm.Action` closes on click, which is
+   * right for a decision that is over the moment it is taken and wrong for
+   * one that is not. The remote confirm used to close before the request
+   * resolved, so `busy` was never visible and a failed revoke was reported
+   * to nobody — the sheet closed and the Device kept its access.
+   */
+  it('keeps the remote confirm up and disabled while the revoke is in flight, then closes it', async () => {
+    let release: (response: Response) => void = () => {
+      throw new Error('release called before it was assigned')
+    }
+    const gate = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    await renderDevices({
+      devices: threeDevices(),
+      revokeResponds: () => gate,
+    })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Sign out Edge on Windows' }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out device' }),
+    )
+
+    const sheet = screen.getByRole('alertdialog', {
+      name: 'Sign out Edge on Windows?',
+    })
+    expect(sheet).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Sign out device' }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+
+    release(noContent())
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('alertdialog', {
+          name: 'Sign out Edge on Windows?',
+        }),
+      ).toBeNull(),
+    )
+    expect(screen.queryByText('Edge on Windows')).toBeNull()
+  })
+
+  it('keeps the remote confirm up and says so when the revoke fails, and Cancel still closes it', async () => {
+    await renderDevices({
+      devices: threeDevices(),
+      revokeResponds: () => Promise.reject(new Error('offline')),
+    })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Sign out Edge on Windows' }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out device' }),
+    )
+
+    expect(
+      await screen.findByText(
+        'Edge on Windows could not be signed out. Check your connection.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('alertdialog', { name: 'Sign out Edge on Windows?' }),
+    ).toBeInTheDocument()
+    // Nothing is discarded by a failed revoke, so the line carries no ▲
+    // (boards §12) — and the Device is still listed, because it still has
+    // access.
+    expect(screen.queryByText(/▲/)).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Sign out device' }),
+    ).toBeEnabled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(
+      screen.queryByRole('alertdialog', { name: 'Sign out Edge on Windows?' }),
+    ).toBeNull()
+    expect(screen.getByText('Edge on Windows')).toBeInTheDocument()
+  })
+
+  it('opens a fresh remote confirm without a failure left over from the last one', async () => {
+    await renderDevices({
+      devices: threeDevices(),
+      revokeResponds: () => Promise.reject(new Error('offline')),
+    })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Sign out Edge on Windows' }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out device' }),
+    )
+    expect(
+      await screen.findByText(/could not be signed out/),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out Safari on iPad' }),
+    )
+    expect(
+      screen.getByRole('alertdialog', { name: 'Sign out Safari on iPad?' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/could not be signed out/)).toBeNull()
   })
 
   it("opens this Device's own confirm sheet straight from a `?signout` link", async () => {

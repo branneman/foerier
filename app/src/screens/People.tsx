@@ -229,6 +229,10 @@ export function People({
     name: string
   } | null>(null)
   const [revokeBusy, setRevokeBusy] = useState(false)
+  /** `confirmRevokeLogin` rejected. The Login still has access, and the
+   * sheet — still up, because its confirm is not a `Confirm.Action` — is
+   * the only thing on screen that can say so. */
+  const [revokeError, setRevokeError] = useState(false)
 
   // The same list the owner picker draws, from the same function: two views of
   // one list sorting differently would make "the third one down" mean two
@@ -291,15 +295,31 @@ export function People({
     setAdding(false)
   }
 
+  function startRevokeLogin(loginId: string, name: string) {
+    // A fresh sheet never opens already showing a failure left over from a
+    // previous, cancelled attempt — `useDeviceSignOut`'s rule.
+    setRevokeError(false)
+    setRevoking({ loginId, name })
+  }
+
   async function confirmRevokeLogin() {
     if (revoking === null) return
     setRevokeBusy(true)
+    setRevokeError(false)
     try {
       await api.revokeLogin(token, revoking.loginId)
+      // The sheet closes here and nowhere else on this path: its confirm is
+      // a plain button, not a `Confirm.Action`, so that the request has
+      // somewhere to be in flight and somewhere to fail.
       setRevoking(null)
       void load()
     } catch (error) {
+      // Nothing to roll back — the Login still has access — only something
+      // to say. The sheet stays open, busy clears, and the person can retry
+      // or cancel, rather than watching it close over a revoke that never
+      // happened.
       console.error('people: could not revoke the login', error)
+      setRevokeError(true)
     } finally {
       setRevokeBusy(false)
     }
@@ -490,10 +510,7 @@ export function People({
                         type="button"
                         className={styles['revoke']}
                         onClick={() =>
-                          setRevoking({
-                            loginId: rowState.loginId,
-                            name: person.label,
-                          })
+                          startRevokeLogin(rowState.loginId, person.label)
                         }
                       >
                         REVOKE
@@ -603,17 +620,24 @@ export function People({
             <>
               {/* No `▲`: nothing is discarded here — signing out this
                   device is the only auth action that can, and the only one
-                  that earns that warning. */}
-              <Confirm.Action>
-                <button
-                  type="button"
-                  className={styles['confirmAttention']}
-                  disabled={revokeBusy}
-                  onClick={() => void confirmRevokeLogin()}
-                >
-                  Revoke login
-                </button>
-              </Confirm.Action>
+                  that earns that warning.
+
+                  Deliberately **not** a `Confirm.Action`, for the reason
+                  `Devices.tsx`'s `SignOutThisDeviceSheet` gives: that part
+                  closes the confirm on click, and this decision is not over
+                  when it is taken — the request is still in flight.
+                  `revokeBusy` and `revokeError` are only ever readable
+                  because the sheet is still up saying them. It closes from
+                  `confirmRevokeLogin` once the revoke lands, or from the
+                  Cancel. */}
+              <button
+                type="button"
+                className={styles['confirmAttention']}
+                disabled={revokeBusy}
+                onClick={() => void confirmRevokeLogin()}
+              >
+                Revoke login
+              </button>
               <Confirm.Cancel>
                 <button
                   type="button"
@@ -625,7 +649,19 @@ export function People({
               </Confirm.Cancel>
             </>
           }
-        />
+        >
+          {/* The one line the boards do not draw: a revoke is a request, and
+              a request can fail. When it does the Login keeps its access,
+              and a sheet that had already closed would have said the
+              opposite — so it stays up and states it, in the register the
+              screen's own load failure uses. Fact weight, no `▲`. */}
+          {revokeError && (
+            <p className={styles['nudgeLine']}>
+              {revoking.name}’s login could not be revoked. Check your
+              connection.
+            </p>
+          )}
+        </Confirm>
       )}
     </>
   )
