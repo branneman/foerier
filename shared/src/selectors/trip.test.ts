@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import { anOp, aTrip, hlcAt } from '../../testUtils/index.ts'
+import {
+  anOp,
+  aTrip,
+  DEFAULT_HLC_MS,
+  depot,
+  DEV_A,
+  foldAt,
+  hlcAt,
+  stamp,
+} from '../../testUtils/index.ts'
 import {
   tripParticipantAdded,
   tripParticipantRemoved,
   tripRenamed,
-  type OpSpec,
 } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
 import type { DepotState, TripState } from '../state.ts'
@@ -28,30 +36,6 @@ import {
   UNNAMED_TRIP_GLYPH,
   visibleTrips,
 } from './trip.ts'
-
-const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
-
-/** The factories' own default millisecond, so `hlcAt` here matches theirs. */
-const DEFAULT_MS = 1_700_000_000_000
-
-/**
- * Folds op specs through the real reducer, stamping each with an increasing
- * clock at `ms`. Every fixture in this file goes through the fold rather than
- * hand-shaping a `TripState`, so a selector can never pass against a state the
- * reducer could not produce.
- */
-function foldAt(ms: number, specs: readonly (readonly OpSpec[])[]): DepotState {
-  return fold(
-    specs
-      .flat()
-      .map((spec, i) => anOp(spec, { hlc: hlcAt(i + 1, ms), deviceId: DEV_A })),
-    emptyState(),
-  )
-}
-
-function depot(...specs: readonly (readonly OpSpec[])[]): DepotState {
-  return foldAt(DEFAULT_MS, specs)
-}
 
 function trip(state: DepotState, id: string): TripState {
   return state.trips[id]!
@@ -509,9 +493,7 @@ describe('tripSections', () => {
       aTrip({ id: 't5', name: 'delta', phase: 'something-later' }),
       aTrip({ id: 't6', name: 'echo', start: '2026-09-01' }),
     ]
-    const ops = specs
-      .flat()
-      .map((spec, i) => anOp(spec, { hlc: hlcAt(i + 1), deviceId: DEV_A }))
+    const ops = stamp(specs.flat())
     const forward = tripSections(fold(ops, emptyState()))
     const backward = tripSections(fold([...ops].reverse(), emptyState()))
     expect(ids(backward.active)).toEqual(ids(forward.active))
@@ -560,7 +542,7 @@ describe('phaseDay', () => {
 
   it('reads null when no op has ever addressed the phase', () => {
     const state = depot([tripParticipantAdded('t1', 'p1')])
-    expect(phaseDay(trip(state, 't1'), DEFAULT_MS)).toBeNull()
+    expect(phaseDay(trip(state, 't1'), DEFAULT_HLC_MS)).toBeNull()
   })
 
   it('reads null when the register carries an unparseable clock', () => {
@@ -572,7 +554,7 @@ describe('phaseDay', () => {
       ),
       emptyState(),
     )
-    expect(phaseDay(trip(state, 't1'), DEFAULT_MS)).toBeNull()
+    expect(phaseDay(trip(state, 't1'), DEFAULT_HLC_MS)).toBeNull()
   })
 
   it('never reads below DAY 1, however skewed the authoring clock', () => {

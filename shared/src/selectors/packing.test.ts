@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { anOp, aGear, hlcAt } from '../../testUtils/index.ts'
+import { aGear, depot, stamp } from '../../testUtils/index.ts'
 import {
   tripContainerStageSet,
   tripEntryAdded,
   tripEntryStatusSet,
   type OpSpec,
 } from '../authoring.ts'
-import { emptyState, fold } from '../reduce.ts'
+import { fold } from '../reduce.ts'
 import type { DepotState, EntryState } from '../state.ts'
 import {
   isKnownStage,
@@ -25,11 +25,6 @@ import {
   statusOf,
 } from './packing.ts'
 
-const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
-
-/** The factories' own default millisecond, so `hlcAt` here matches theirs. */
-const DEFAULT_MS = 1_700_000_000_000
-
 const TRIP = 't1'
 
 const CRATE_GEAR = 'g-crate'
@@ -44,36 +39,12 @@ const TRIP_ONLY_CONTAINER = 'e-trip-only-container'
 const TRIP_ONLY_ITEM = 'e-trip-only-item'
 
 /**
- * Folds op specs through the real reducer, stamping each with an increasing
- * clock. Every fixture in this file goes through the fold rather than
- * hand-shaping a `TripState`, so a selector can never pass against a state
- * the reducer could not produce.
- */
-function foldAt(ms: number, specs: readonly (readonly OpSpec[])[]): DepotState {
-  return fold(
-    specs
-      .flat()
-      .map((spec, i) => anOp(spec, { hlc: hlcAt(i + 1, ms), deviceId: DEV_A })),
-    emptyState(),
-  )
-}
-
-function depot(...specs: readonly (readonly OpSpec[])[]): DepotState {
-  return foldAt(DEFAULT_MS, specs)
-}
-
-/**
  * Continues a fold from an existing state, stamped strictly after everything
  * already in it — for the tests that ask "what if a peer also wrote the
  * register a gate is about to hide".
  */
 function foldMore(state: DepotState, ...specs: readonly OpSpec[]): DepotState {
-  return fold(
-    specs.map((spec, i) =>
-      anOp(spec, { hlc: hlcAt(1000 + i, DEFAULT_MS), deviceId: DEV_A }),
-    ),
-    state,
-  )
+  return fold(stamp(specs, { start: 1000 }), state)
 }
 
 function entry(state: DepotState, id: string): EntryState {

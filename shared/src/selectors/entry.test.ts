@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { anOp, aGear, aTrip, hlcAt } from '../../testUtils/index.ts'
+import {
+  anOp,
+  aGear,
+  aTrip,
+  DEFAULT_HLC_MS,
+  depot,
+  DEV_A,
+  hlcAt,
+} from '../../testUtils/index.ts'
 import {
   gearKindSet,
   gearRenamed,
@@ -9,7 +17,7 @@ import {
   tripEntryRemoved,
   type OpSpec,
 } from '../authoring.ts'
-import { emptyState, fold } from '../reduce.ts'
+import { fold } from '../reduce.ts'
 import type { DepotState, EntryState, TripState } from '../state.ts'
 import {
   bringCountOf,
@@ -20,30 +28,6 @@ import {
   pieceCountOf,
   visibleEntry,
 } from './entry.ts'
-
-const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
-
-/** The factories' own default millisecond, so `hlcAt` here matches theirs. */
-const DEFAULT_MS = 1_700_000_000_000
-
-/**
- * Folds op specs through the real reducer, stamping each with an increasing
- * clock. Every fixture in this file goes through the fold rather than
- * hand-shaping a `TripState`, so a selector can never pass against a state
- * the reducer could not produce.
- */
-function foldAt(ms: number, specs: readonly (readonly OpSpec[])[]): DepotState {
-  return fold(
-    specs
-      .flat()
-      .map((spec, i) => anOp(spec, { hlc: hlcAt(i + 1, ms), deviceId: DEV_A })),
-    emptyState(),
-  )
-}
-
-function depot(...specs: readonly (readonly OpSpec[])[]): DepotState {
-  return foldAt(DEFAULT_MS, specs)
-}
 
 function trip(state: DepotState, id: string): TripState {
   return state.trips[id]!
@@ -255,7 +239,7 @@ describe('entryLabel', () => {
     const renamed = fold(
       [
         anOp(gearRenamed('g1', 'Big tent'), {
-          hlc: hlcAt(10, DEFAULT_MS),
+          hlc: hlcAt(10, DEFAULT_HLC_MS),
           deviceId: DEV_A,
         }),
       ],

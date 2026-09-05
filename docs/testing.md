@@ -415,6 +415,16 @@ Three contexts, three strategies — never shared across contexts.
   `aTrip({ participants: [...] })`). Grows one function at a time — no speculative
   fixture library. Tests read as `aGear({ kind: 'counted' })`: exactly the field
   under test, nothing else.
+- **A factory's specs reach a fold through `shared/testUtils/log.ts`, never a
+  local stamper.** `stamp` gives each spec its **own**, increasing counter, and
+  `depot`/`foldAt` fold the result through the real reducer, so a selector can
+  never pass against a state the reducer could not produce. The counter is the
+  whole point and the reason the helper is shared: a stamper that gave one HLC
+  to a whole multi-op factory folded `aTrip({ phase: 'pack_out' })` to a
+  **Draft**, because `trip.phase_moved` sharing `trip.created`'s exact stamp
+  loses the tie on `writeRegister`'s `<= 0` rule rather than moving the
+  register. S5 shipped that bug; six suites had each written the correct
+  version and nothing pinned it until `log.test.ts`.
 - **Tier 2s:** each class seeds its own rows under its registered `household_id`
   and cleans mutable rows in setup; delete-by-both-UUID-and-natural-key to survive
   a persistent `foerier_test` DB (the `health` `init`-block pattern).

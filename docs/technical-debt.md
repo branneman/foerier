@@ -287,17 +287,6 @@ every one of them gets more expensive per slice.
   across those same files, and that reason has expired.
   [`architecture-design.md`](architecture-design.md) §12.11, anchor:
   `the rename is now a self-contained job`
-- **`sequence()` is the sixth hand-rolled clock-stamper in `shared/`.**
-  `trip.test.ts`, `claim.test.ts`, `entry.test.ts` and `piece.test.ts` each
-  carry a byte-identical `foldAt` that flattens factory specs and stamps
-  increasing HLCs, and `slice.test.ts` now carries a fifth spelling of it.
-  The contract they all implement is stated once, in `aTrip`'s own
-  docstring — *"they come back in authoring order, so a caller stamping
-  increasing clocks over the flattened list gets exactly the log a screen
-  would have written"* — so the right home is `shared/testUtils/`, beside
-  that sentence. S5 found the cost: a helper that stamped one HLC across a
-  multi-op factory silently produced Draft Trips where the author wrote
-  `phase: 'pack_out'`. [`testing.md`](testing.md), anchor: `foldAt`
 - **`SliceBar`'s filter plumbing is reproduced in `DepotPicker`.** About
   fifty-five lines — `withFilters`, `apply`, `remove` and both chip-row
   blocks — near-verbatim. Reusing `SliceBar` itself is genuinely wrong (it also

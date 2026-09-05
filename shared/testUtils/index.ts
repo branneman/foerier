@@ -1,6 +1,10 @@
 import type { Clock, IdSource } from '../src/boundaries.ts'
 
 export { aGear, aPerson, aPlace, anOp, aTrip, hlcAt } from './factories.ts'
+export { DEFAULT_HLC_MS } from './factories.ts'
+
+/** Turning factory specs into a log, and a log into folded state. */
+export { depot, DEV_A, foldAt, stamp } from './log.ts'
 
 /** The convergence tier's in-memory client (`docs/testing.md` Tier 2). */
 export type { Replica } from './replica.ts'

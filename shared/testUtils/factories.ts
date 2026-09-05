@@ -21,7 +21,7 @@ import type { KindValue, Owner, PhaseValue, Residence } from '../src/state.ts'
  * hand-shaped payload, so the factory cannot drift from the wire format.
  */
 
-const DEFAULT_HLC_MS = 1_700_000_000_000
+export const DEFAULT_HLC_MS = 1_700_000_000_000
 
 let idCounter = 0
 

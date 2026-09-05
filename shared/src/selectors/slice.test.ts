@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { aGear, anOp, aPerson, aTrip, hlcAt } from '../../testUtils/index.ts'
+import {
+  aGear,
+  anOp,
+  aPerson,
+  aTrip,
+  DEV_A,
+  hlcAt,
+  stamp,
+} from '../../testUtils/index.ts'
 import {
   gearRetired,
   gearTagApplied,
@@ -34,26 +42,8 @@ import {
  * pure function of folded state, so there is nothing to fake.
  */
 
-const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
-
 function one(spec: OpSpec, counter: number): OpEnvelope {
   return anOp(spec, { hlc: hlcAt(counter), deviceId: DEV_A })
-}
-
-/**
- * Stamps each spec with its **own**, increasing counter starting at `start`.
- * The one stamper this file uses for a whole spec array: giving every spec
- * the *same* counter is wrong the moment a factory returns more than one op
- * on the same aggregate — `aTrip({ phase })` returns `[trip.created,
- * trip.phase_moved]`, and a `trip.phase_moved` sharing `trip.created`'s
- * exact stamp loses on the tie (`writeRegister`'s `<= 0` rule) rather than
- * moving it. It is a no-op difference for every single-op factory here
- * (`aGear`, `aPerson`), so one stamper serves both shapes.
- */
-function sequence(specs: readonly OpSpec[], start: number): OpEnvelope[] {
-  return specs.map((s, i) =>
-    anOp(s, { hlc: hlcAt(start + i), deviceId: DEV_A }),
-  )
 }
 
 function aTag(raw: string): TagString {
@@ -91,13 +81,16 @@ function shownIds(state: DepotState, spec: SliceSpec): string[] {
  */
 function aDepot(): DepotState {
   return fold([
-    ...sequence(aGear({ id: 'g-pot', name: 'Pot set', kind: 'single' }), 1),
-    ...sequence(aGear({ id: 'g-axe', name: 'Axe', kind: 'single' }), 2),
-    ...sequence(
-      aGear({ id: 'g-bag', name: 'Sleeping bag', kind: 'counted' }),
-      3,
-    ),
-    ...sequence(aGear({ id: 'g-mug', name: 'Mug', kind: 'per_person' }), 4),
+    ...stamp(aGear({ id: 'g-pot', name: 'Pot set', kind: 'single' }), {
+      start: 1,
+    }),
+    ...stamp(aGear({ id: 'g-axe', name: 'Axe', kind: 'single' }), { start: 2 }),
+    ...stamp(aGear({ id: 'g-bag', name: 'Sleeping bag', kind: 'counted' }), {
+      start: 3,
+    }),
+    ...stamp(aGear({ id: 'g-mug', name: 'Mug', kind: 'per_person' }), {
+      start: 4,
+    }),
     one(gearTagApplied('g-bag', aTag('winter')), 5),
     one(gearTagApplied('g-bag', aTag('sleep')), 6),
     one(gearTagApplied('g-pot', aTag('cooking')), 7),
@@ -123,28 +116,28 @@ function aDepot(): DepotState {
  */
 function anOwnedDepot(): DepotState {
   return fold([
-    ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
-    ...sequence(aPerson({ id: 'mark', name: 'Mark' }), 2),
-    ...sequence(aGear({ id: 'g-tent', name: 'Tent' }), 3),
-    ...sequence(
+    ...stamp(aPerson({ id: 'els', name: 'Els' }), { start: 1 }),
+    ...stamp(aPerson({ id: 'mark', name: 'Mark' }), { start: 2 }),
+    ...stamp(aGear({ id: 'g-tent', name: 'Tent' }), { start: 3 }),
+    ...stamp(
       aGear({ id: 'g-stove', name: 'Stove', owner: { type: 'shared' } }),
-      4,
+      { start: 4 },
     ),
-    ...sequence(
+    ...stamp(
       aGear({
         id: 'g-jacket',
         name: 'Down jacket',
         owner: { type: 'person', personId: 'els' },
       }),
-      5,
+      { start: 5 },
     ),
-    ...sequence(
+    ...stamp(
       aGear({
         id: 'g-boots',
         name: 'Winter boots',
         owner: { type: 'person', personId: 'mark' },
       }),
-      6,
+      { start: 6 },
     ),
   ])
 }
@@ -170,13 +163,17 @@ function anOwnedDepot(): DepotState {
  */
 function aTrippedDepot(): DepotState {
   return fold([
-    ...sequence(aGear({ id: 'g-tent', name: 'Tent' }), 1),
-    ...sequence(aGear({ id: 'g-stove', name: 'Stove' }), 2),
-    ...sequence(aGear({ id: 'g-boots', name: 'Boots' }), 3),
-    ...sequence(aGear({ id: 'g-axe', name: 'Axe' }), 4),
-    ...sequence(aTrip({ id: 't-vosges', name: 'Vosges' }), 10),
-    ...sequence(aTrip({ id: 't-alps', name: 'Alps', phase: 'pack_out' }), 20),
-    ...sequence(aTrip({ id: 't-old', name: 'Old trip', phase: 'closed' }), 30),
+    ...stamp(aGear({ id: 'g-tent', name: 'Tent' }), { start: 1 }),
+    ...stamp(aGear({ id: 'g-stove', name: 'Stove' }), { start: 2 }),
+    ...stamp(aGear({ id: 'g-boots', name: 'Boots' }), { start: 3 }),
+    ...stamp(aGear({ id: 'g-axe', name: 'Axe' }), { start: 4 }),
+    ...stamp(aTrip({ id: 't-vosges', name: 'Vosges' }), { start: 10 }),
+    ...stamp(aTrip({ id: 't-alps', name: 'Alps', phase: 'pack_out' }), {
+      start: 20,
+    }),
+    ...stamp(aTrip({ id: 't-old', name: 'Old trip', phase: 'closed' }), {
+      start: 30,
+    }),
     one(
       tripEntryAdded('t-vosges', 'e1', { from: 'depot', gearId: 'g-tent' }),
       40,
@@ -271,11 +268,11 @@ describe("dimension('trip')", () => {
     const tripSpecs = aTrip({ name: 'Alps' })
     const tripId = tripSpecs[0]!.aggregate_id
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Axe' }), 1),
-      ...sequence(aGear({ id: 'g2', name: 'Boots' }), 2),
-      ...sequence(aGear({ id: 'g3', name: 'Crampons' }), 3),
-      ...sequence(aGear({ id: 'g4', name: 'Tent' }), 4),
-      ...sequence(tripSpecs, 5),
+      ...stamp(aGear({ id: 'g1', name: 'Axe' }), { start: 1 }),
+      ...stamp(aGear({ id: 'g2', name: 'Boots' }), { start: 2 }),
+      ...stamp(aGear({ id: 'g3', name: 'Crampons' }), { start: 3 }),
+      ...stamp(aGear({ id: 'g4', name: 'Tent' }), { start: 4 }),
+      ...stamp(tripSpecs, { start: 5 }),
       one(tripEntryAdded(tripId, 'e1', { from: 'depot', gearId: 'g3' }), 6),
       one(tripEntryAdded(tripId, 'e2', { from: 'depot', gearId: 'g4' }), 7),
     ])
@@ -360,16 +357,16 @@ describe('the ownership dimension', () => {
 
   it('puts the more-used value first when there is no tie', () => {
     const state = fold([
-      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...sequence(aGear({ id: 'g1', name: 'Tent' }), 2),
-      ...sequence(aGear({ id: 'g2', name: 'Stove' }), 3),
-      ...sequence(
+      ...stamp(aPerson({ id: 'els', name: 'Els' }), { start: 1 }),
+      ...stamp(aGear({ id: 'g1', name: 'Tent' }), { start: 2 }),
+      ...stamp(aGear({ id: 'g2', name: 'Stove' }), { start: 3 }),
+      ...stamp(
         aGear({
           id: 'g3',
           name: 'Down jacket',
           owner: { type: 'person', personId: 'els' },
         }),
-        4,
+        { start: 4 },
       ),
     ])
     expect(dimensionValues(state, 'ownership')).toEqual([
@@ -419,15 +416,15 @@ describe('the person dimension', () => {
     // Tag vocabulary work with no Tag entity. Narrowing to someone who owns
     // nothing would return zero, so they are not offered.
     const state = fold([
-      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...sequence(aPerson({ id: 'kees', name: 'Kees' }), 2),
-      ...sequence(
+      ...stamp(aPerson({ id: 'els', name: 'Els' }), { start: 1 }),
+      ...stamp(aPerson({ id: 'kees', name: 'Kees' }), { start: 2 }),
+      ...stamp(
         aGear({
           id: 'g1',
           name: 'Down jacket',
           owner: { type: 'person', personId: 'els' },
         }),
-        3,
+        { start: 3 },
       ),
     ])
     expect(dimensionValues(state, 'person')).toEqual([
@@ -437,14 +434,14 @@ describe('the person dimension', () => {
 
   it('counts nothing from retired gear', () => {
     const state = fold([
-      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...sequence(
+      ...stamp(aPerson({ id: 'els', name: 'Els' }), { start: 1 }),
+      ...stamp(
         aGear({
           id: 'g1',
           name: 'Down jacket',
           owner: { type: 'person', personId: 'els' },
         }),
-        2,
+        { start: 2 },
       ),
       one(gearRetired('g1'), 3),
     ])
@@ -477,24 +474,24 @@ describe("story 4's two narrowings", () => {
 
   it('ANDs ownership with another dimension', () => {
     const state = fold([
-      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...sequence(
+      ...stamp(aPerson({ id: 'els', name: 'Els' }), { start: 1 }),
+      ...stamp(
         aGear({
           id: 'g1',
           name: 'Down jacket',
           kind: 'single',
           owner: { type: 'person', personId: 'els' },
         }),
-        2,
+        { start: 2 },
       ),
-      ...sequence(
+      ...stamp(
         aGear({
           id: 'g2',
           name: 'Socks',
           kind: 'counted',
           owner: { type: 'person', personId: 'els' },
         }),
-        3,
+        { start: 3 },
       ),
     ])
     expect(
@@ -542,8 +539,8 @@ describe('sliceDepot — the resting state', () => {
 
   it('counts retired gear in neither', () => {
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Tent' }), 1),
-      ...sequence(aGear({ id: 'g2', name: 'Old tent' }), 2),
+      ...stamp(aGear({ id: 'g1', name: 'Tent' }), { start: 1 }),
+      ...stamp(aGear({ id: 'g2', name: 'Old tent' }), { start: 2 }),
       one(gearRetired('g2'), 3),
     ])
     const result = sliceDepot(state, EMPTY_SLICE)
@@ -586,7 +583,7 @@ describe('sliceDepot — one dimension at a time', () => {
 
   it('stops offering gear whose tag was removed', () => {
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Tent' }), 1),
+      ...stamp(aGear({ id: 'g1', name: 'Tent' }), { start: 1 }),
       one(gearTagApplied('g1', aTag('winter')), 2),
       one(gearTagRemoved('g1', aTag('winter')), 3),
     ])
@@ -629,7 +626,7 @@ describe('sliceDepot — combining', () => {
   // search fields in one app disagreeing about `ö` is a bug waiting to be
   // filed.
   it('folds case and diacritics in the search, as Find does', () => {
-    const state = fold(sequence(aGear({ id: 'g1', name: 'Ölzeug' }), 1))
+    const state = fold(stamp(aGear({ id: 'g1', name: 'Ölzeug' }), { start: 1 }))
     expect(shownIds(state, slice({ search: 'olz' }))).toEqual(['g1'])
   })
 
@@ -704,7 +701,7 @@ describe('sliceDepot — sorting', () => {
  */
 describe('recordedAt', () => {
   it('is the stamp of the op that first addressed the gear', () => {
-    const state = fold(sequence(aGear({ id: 'g1', name: 'Tent' }), 7))
+    const state = fold(stamp(aGear({ id: 'g1', name: 'Tent' }), { start: 7 }))
     expect(recordedAt(state.gear['g1']!).hlc).toBe(hlcAt(7))
   })
 
@@ -712,7 +709,7 @@ describe('recordedAt', () => {
   // accepts a strictly later write, so nothing a Quartermaster does later can
   // move a gear back up a NEWEST FIRST list.
   it('is not moved by a later edit', () => {
-    const before = fold(sequence(aGear({ id: 'g1', name: 'Tent' }), 7))
+    const before = fold(stamp(aGear({ id: 'g1', name: 'Tent' }), { start: 7 }))
     const after = fold([one(gearTagApplied('g1', aTag('winter')), 99)], before)
     expect(recordedAt(after.gear['g1']!)).toEqual(
       recordedAt(before.gear['g1']!),
@@ -778,8 +775,8 @@ describe('sliceDepot — grouping', () => {
    */
   it('gives an unrecognised kind its own group, labelled as it arrived', () => {
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), 1),
-      ...sequence(aGear({ id: 'g2', name: 'Tent', kind: 'single' }), 2),
+      ...stamp(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), { start: 1 }),
+      ...stamp(aGear({ id: 'g2', name: 'Tent', kind: 'single' }), { start: 2 }),
     ])
     const result = sliceDepot(state, slice({ group: 'kind' }))
     expect(result.groups.map((g) => g.label)).toEqual(['Single', 'sled'])
@@ -796,7 +793,7 @@ describe('sliceDepot — grouping', () => {
         },
         { hlc: hlcAt(1), deviceId: DEV_A },
       ),
-      ...sequence(aGear({ id: 'g2', name: 'Tent', kind: 'single' }), 2),
+      ...stamp(aGear({ id: 'g2', name: 'Tent', kind: 'single' }), { start: 2 }),
     ])
     const result = sliceDepot(state, slice({ group: 'kind' }))
     expect(result.groups.map((g) => g.label)).toEqual(['Single', '—'])
@@ -842,22 +839,22 @@ describe('sliceDepot — grouping by owner', () => {
 
   it('keeps the sort order inside each group', () => {
     const state = fold([
-      ...sequence(aPerson({ id: 'els', name: 'Els' }), 1),
-      ...sequence(
+      ...stamp(aPerson({ id: 'els', name: 'Els' }), { start: 1 }),
+      ...stamp(
         aGear({
           id: 'g-a',
           name: 'Anorak',
           owner: { type: 'person', personId: 'els' },
         }),
-        2,
+        { start: 2 },
       ),
-      ...sequence(
+      ...stamp(
         aGear({
           id: 'g-z',
           name: 'Zip-off trousers',
           owner: { type: 'person', personId: 'els' },
         }),
-        3,
+        { start: 3 },
       ),
     ])
     const result = sliceDepot(
@@ -877,14 +874,14 @@ describe('sliceDepot — grouping by owner', () => {
 
   it('labels a Person whose op has not arrived as a dash, in its own group', () => {
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Tent' }), 1),
-      ...sequence(
+      ...stamp(aGear({ id: 'g1', name: 'Tent' }), { start: 1 }),
+      ...stamp(
         aGear({
           id: 'g2',
           name: 'Down jacket',
           owner: { type: 'person', personId: 'ghost' },
         }),
-        2,
+        { start: 2 },
       ),
     ])
     const result = sliceDepot(state, slice({ group: 'owner' }))
@@ -962,9 +959,9 @@ describe('dimensionValues', () => {
    */
   it('orders by count descending, then tag ascending', () => {
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Pot set' }), 1),
-      ...sequence(aGear({ id: 'g2', name: 'Pan' }), 2),
-      ...sequence(aGear({ id: 'g3', name: 'Kettle' }), 3),
+      ...stamp(aGear({ id: 'g1', name: 'Pot set' }), { start: 1 }),
+      ...stamp(aGear({ id: 'g2', name: 'Pan' }), { start: 2 }),
+      ...stamp(aGear({ id: 'g3', name: 'Kettle' }), { start: 3 }),
       one(gearTagApplied('g1', aTag('cooking')), 4),
       one(gearTagApplied('g2', aTag('cooking')), 5),
       one(gearTagApplied('g3', aTag('cooking')), 6),
@@ -983,7 +980,7 @@ describe('dimensionValues', () => {
 
   it('drops a tag once nothing carries it any more', () => {
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...stamp(aGear({ id: 'g1', name: 'Pot set' }), { start: 1 }),
       one(gearTagApplied('g1', aTag('winter')), 2),
       one(gearTagRemoved('g1', aTag('winter')), 3),
     ])
@@ -998,8 +995,8 @@ describe('dimensionValues', () => {
   // *visible* depot.
   it('does not count retired gear', () => {
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Pot set' }), 1),
-      ...sequence(aGear({ id: 'g2', name: 'Old pan' }), 2),
+      ...stamp(aGear({ id: 'g1', name: 'Pot set' }), { start: 1 }),
+      ...stamp(aGear({ id: 'g2', name: 'Old pan' }), { start: 2 }),
       one(gearTagApplied('g1', aTag('cooking')), 3),
       one(gearTagApplied('g2', aTag('cooking')), 4),
       one(gearRetired('g2'), 5),
@@ -1013,7 +1010,7 @@ describe('dimensionValues', () => {
   // vocabulary exactly as it arrived, because the register is.
   it('offers a non-conforming tag exactly as it was folded', () => {
     const state = fold([
-      ...sequence(aGear({ id: 'g1', name: 'Pot set' }), 1),
+      ...stamp(aGear({ id: 'g1', name: 'Pot set' }), { start: 1 }),
       anOp(
         {
           aggregate: 'gear',
@@ -1050,7 +1047,7 @@ describe('dimensionValues', () => {
   // to be added to.
   it('offers an unrecognised value because it is derived, not declared', () => {
     const state = fold(
-      sequence(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), 1),
+      stamp(aGear({ id: 'g1', name: 'Sled', kind: 'sled' }), { start: 1 }),
     )
     expect(dimensionValues(state, 'kind')).toEqual([
       { value: 'sled', count: 1 },
