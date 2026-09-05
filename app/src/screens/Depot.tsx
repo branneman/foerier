@@ -150,9 +150,20 @@ function Row({
  * anything about the gear inside it — so two same-named stuff sacks stay
  * apart without indentation (`docs/design/README.md` §5f D5). Derived from
  * `group.key` rather than a `SliceGroup` field: the shape reaches every
- * grouping, and only this one has anything to say here. The sentinel
- * (`group.key` is not a Gear id) and every other grouping answer `undefined`
- * — D4: the header's name is already the definition, so it carries no meta.
+ * grouping, and only this one has anything to say here.
+ *
+ * The sentinel check reads `dimension('container').pinned` — the same public
+ * field `dimensionValues` already sorts on — rather than inferring "this key
+ * is the sentinel" from `state.gear[group.key]` being absent. That absence
+ * is not unique to the sentinel: a container id this replica has not yet
+ * folded (the ordinary cross-aggregate sync race `dimension('container')`'s
+ * own `format` already draws `—` for) would otherwise read as the sentinel
+ * too, for a reason that has nothing to do with being the sentinel. D4: the
+ * header's name is already the definition, so the sentinel carries no meta —
+ * but an unfolded container's header falls through to the ordinary branch
+ * below, where `homePath` on an unknown gear id answers `[]` and the `''`
+ * check turns that into no meta line as well. Same pixels as the sentinel,
+ * for the right reason, and the two cases stay distinguishable in the code.
  */
 function groupHomeMeta(
   state: DepotState,
@@ -161,9 +172,10 @@ function groupHomeMeta(
   group: SliceGroup,
 ): string | undefined {
   if (groupKey !== 'container') return undefined
-  const container = state.gear[group.key]
-  if (container === undefined) return undefined
-  const path = homePath(state, container.id, view)
+  if (group.key === dimension('container').pinned) return undefined
+  // `group.key` is already the container's own gear id (the grouping
+  // table's `keyOf`), folded or not — no lookup into `state.gear` needed.
+  const path = homePath(state, group.key, view)
     .map((segment) => segment.name)
     .join(' ▸ ')
   return path === '' ? undefined : path

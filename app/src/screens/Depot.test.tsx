@@ -872,6 +872,18 @@ describe('the Depot grouped by container (S9b, D5)', () => {
     const crateId = anId()
     const tentId = anId()
     const ropeId = anId()
+    // A second container, folded and real, but loose itself — no Place and
+    // no other Gear holds it. Its header must read no meta for a *different*
+    // reason than the sentinel's (D4's "the name is the definition"): it is
+    // not the sentinel value, it carries the container's own real name, and
+    // its home path is genuinely empty rather than absent-because-unfolded.
+    // `groupHomeMeta` tells the two apart by checking
+    // `dimension('container').pinned` first, never by whether `state.gear`
+    // happens to hold the key — that fold-membership check would (wrongly)
+    // treat a container this replica has not yet folded, a genuine
+    // cross-aggregate sync race, as though it were the sentinel too.
+    const bagId = anId()
+    const whistleId = anId()
     const store = await seededStore([
       placeRecorded(atticId, 'Attic'),
       gearRecorded(crateId, {
@@ -887,6 +899,13 @@ describe('the Depot grouped by container (S9b, D5)', () => {
         residence: { in: 'gear', id: crateId },
       }),
       gearRecorded(ropeId, { name: 'Rope', container: false, kind: 'single' }),
+      gearRecorded(bagId, { name: 'Bag', container: true, kind: 'single' }),
+      gearRecorded(whistleId, {
+        name: 'Whistle',
+        container: false,
+        kind: 'single',
+        residence: { in: 'gear', id: bagId },
+      }),
     ])
     const user = userEvent.setup()
     setViewport(SPLIT, DESKTOP)
@@ -899,7 +918,8 @@ describe('the Depot grouped by container (S9b, D5)', () => {
     )
 
     const headers = screen.getAllByTestId('depot-group-header')
-    expect(headers).toHaveLength(2)
+    // Pinned first, then alphabetical by label: sentinel, Bag, Crate B.
+    expect(headers).toHaveLength(3)
 
     // Sentinel first — pinned regardless of alphabetical order — reading
     // exactly the chip's own words (D4), with no meta line at all.
@@ -910,19 +930,30 @@ describe('the Depot grouped by container (S9b, D5)', () => {
       within(headers[0] as HTMLElement).queryByTestId('depot-group-meta'),
     ).toBeNull()
 
-    // Every other header carries the container's own home path.
+    // Bag: a real, folded, non-sentinel container — reads its own name, not
+    // the sentinel's words, and carries no meta because *its own* home path
+    // is empty (it sits loose), never confused with the sentinel case above.
     expect(
-      within(headers[1] as HTMLElement).getByText('Crate B'),
+      within(headers[1] as HTMLElement).getByText('Bag'),
     ).toBeInTheDocument()
     expect(
-      within(headers[1] as HTMLElement).getByTestId('depot-group-meta'),
+      within(headers[1] as HTMLElement).queryByTestId('depot-group-meta'),
+    ).toBeNull()
+
+    // Crate B carries the container's own home path.
+    expect(
+      within(headers[2] as HTMLElement).getByText('Crate B'),
+    ).toBeInTheDocument()
+    expect(
+      within(headers[2] as HTMLElement).getByTestId('depot-group-meta'),
     ).toHaveTextContent('Attic')
 
-    // Counts sum to the shown list: Crate B (loose itself) and Rope fall to
-    // the sentinel; Tent, inside Crate B, is the only member of that group.
+    // Counts sum to the shown list: Crate B (loose itself), Rope and Bag
+    // (also loose itself) fall to the sentinel; Tent (inside Crate B) and
+    // Whistle (inside Bag) are the only members of their own groups.
     const counts = headers.map((header) =>
       Number(within(header).getByTestId('depot-group-count').textContent),
     )
-    expect(counts.reduce((a, b) => a + b, 0)).toBe(3)
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(5)
   })
 })
