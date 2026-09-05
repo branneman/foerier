@@ -68,6 +68,72 @@ jobs:
       - run: npm ci
       - run: npm run test:server
 
+  # Tier 5 against the local stack (docs/testing.md). The complement of
+  # `e2e-prod` below, and the reason it exists: that job always targets the box,
+  # so `grep: /@production/` excludes `auth.spec.ts`, `deviceLink.spec.ts` and
+  # `invite.spec.ts` — each for a good reason (a Maintainer script needing
+  # DATABASE_URL, a spec that proves joining, a spec that signs the run's own
+  # Device out). Three of five spec files therefore ran on a developer's machine
+  # or never, which is how `invite.spec.ts` came to click a back link Desktop
+  # had already stopped drawing: wrong for as long as nobody ran it, and no tier
+  # said so.
+  #
+  # The fix is the local stack, not a change to the grep. Playwright's own
+  # `webServer` block brings up the API (`node src/index.ts`, which migrates on
+  # boot, so no migrate step here) and a production `vite preview` build; all
+  # this job owes it is a Postgres and the URL to reach it.
+  #
+  # It runs on pull requests as well as pushes — unlike `contract` and
+  # `e2e-prod`, which need a deployed SHA — because the whole point is that
+  # these specs run *before* a merge rather than after one.
+  #
+  # It holds no credential of any kind: the Household is minted per test by the
+  # real bootstrap script into a throwaway database that dies with the runner.
+  # That is what makes the report safe to upload, and a browser failure is close
+  # to undiagnosable without one.
+  e2e-local:
+    runs-on: ubuntu-latest
+    # A `vite build` inside `webServer` plus browser startup sits outside
+    # Playwright's per-test timeout.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: foerier
+          POSTGRES_PASSWORD: foerier
+          POSTGRES_DB: foerier_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Read by `playwright.config.ts` (the API server's `DATABASE_URL`) and by
+      # `test/e2e/mintInvite.ts` (the bootstrap script's). Both default to
+      # :5433, which is `docker-compose.dev.yml`'s deliberate non-collision
+      # port and not this runner's.
+      TEST_DATABASE_URL: postgres://foerier:foerier@localhost:5432/foerier_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # No PLAYWRIGHT_BASE_URL: its absence is what selects the local project,
+      # webServer block and all (`test/e2e/production.ts`).
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   # Whether this push contains anything that could change either image.
   # Watchtower redeploys within ~60 s of a `:latest` push, so building on a
   # prose-only commit would restart production to ship a typo fix in a design
@@ -128,7 +194,7 @@ jobs:
   # skips its dependents.
   build-push:
     if: needs.changes.outputs.deployable == 'true'
-    needs: [changes, static-analysis, tests, server-tests]
+    needs: [changes, static-analysis, tests, server-tests, e2e-local]
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -383,11 +383,13 @@ Two PWA-specific twists this project must cover:
 
 **Tooling:** Playwright, `test/e2e/`. Target via `PLAYWRIGHT_BASE_URL` (a local
 production build served by `vite preview` by default; CI's post-deploy job
-points it at `app.foerier.app`). **Trigger:** automatically after every deploy
-to `main` — gated on the `E2E_ENABLED` repository variable, because unlike Tier
-4 this tier cannot degrade without the credential: `globalSetup` throws on an
-empty `E2E_*` rather than skipping, so the variable stays off until the
-credential has been captured.
+points it at `app.foerier.app`). **Trigger: two jobs, two claims.**
+`e2e-local` runs the whole directory against the local stack on every push and
+pull request, and gates the image build. `e2e-prod` runs the `@production`
+subset after every deploy to `main` — gated on the `E2E_ENABLED` repository
+variable, because unlike Tier 4 that job cannot degrade without the
+credential: `globalSetup` throws on an empty `E2E_*` rather than skipping, so
+the variable stays off until the credential has been captured.
 
 **Retargeting is one variable, and that variable switches four things on.**
 Setting `PLAYWRIGHT_BASE_URL` drops the `webServer` block and, with it, adds a
@@ -406,12 +408,23 @@ own Device out from under every later spec. So `auth.spec.ts`,
 `shell.spec.ts` carry
 `@production`. A local run is unchanged: the local project has no grep.
 
-**Local-only means run by nobody, on a schedule of never.** `e2e-prod` is the
-only CI job that runs Tier 5 and it always targets the box, so those three
-files run on a developer's machine or not at all. That is how `invite.spec.ts`
-came to click a `‹ PEOPLE & LOGINS` back link that the screen-band round had
-already taught Desktop to withhold: the spec was wrong for as long as nobody
-ran it, and no tier said so.
+**Local-only used to mean nobody ran them, ever**, and that is how
+`invite.spec.ts` came to click a `‹ PEOPLE & LOGINS` back link that the
+screen-band round had already taught Desktop to withhold: `e2e-prod` was the
+only CI job running Tier 5 and it always targets the box, so those three files
+ran on a developer's machine or not at all — wrong for as long as nobody ran
+it, with no tier to say so.
+
+**`e2e-local` is the complement, and it is where the fix belonged** — a job
+with the local stack, not a change to the grep. It runs the whole directory,
+all five files, on **pull requests as well as pushes**, because these specs
+earn their keep before a merge rather than after one; `e2e-prod` keeps its
+narrower job of proving the box. All the job owes the run is a Postgres and
+`TEST_DATABASE_URL`: Playwright's own `webServer` block brings up the API,
+which migrates on boot, and a production `vite preview` build. It holds no
+credential — the Household is minted per test by the real bootstrap script
+into a database that dies with the runner — which is why it is also the one
+Tier 5 job that may upload its report.
 
 **Locally it is one database, and that needs its own setting.**
 `fullyParallel: false` serialises tests *within* a file; separate spec files

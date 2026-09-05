@@ -68,16 +68,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   owns that file is the one that should make the claim false. Argued in the
   memo's own JSDoc, `shared/src/selectors/slice.ts`, anchor:
   `The rejected alternative was memoising`
-- **Three of the five Tier 5 spec files run in no CI job.** `e2e-prod` is the
-  only job that runs Tier 5 and it always targets the box, where
-  `grep: /@production/` excludes `auth.spec.ts`, `deviceLink.spec.ts` and
-  `invite.spec.ts` — each for a good reason. The consequence is that those
-  three run on a developer's machine or never, and `invite.spec.ts` was found
-  clicking a back link Desktop had stopped drawing, wrong for as long as nobody
-  ran it. The fix is a job with the local stack (the `docker-compose.dev.yml`
-  Postgres those specs already expect), not a change to the grep.
-  [`testing.md`](testing.md) Tier 5, anchor:
-  `run by nobody, on a schedule of never`
 - **The resilience layer's `ErrorBoundary` is drawn and not built.** §6 gives
   a component crash a home in `ui/ErrorBoundary`, wrapping each screen and
   panel with an in-place ledger-voice fallback; nothing of the kind exists and
