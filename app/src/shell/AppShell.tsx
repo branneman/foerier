@@ -1,4 +1,11 @@
-import { IconDepot, IconFind, IconTrips, Logo, Mark } from '@foerier/ui'
+import {
+  IconDepot,
+  IconFind,
+  IconTrips,
+  Logo,
+  Mark,
+  PersonCircle,
+} from '@foerier/ui'
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useRoute } from 'wouter'
 
@@ -118,10 +125,26 @@ function NavItem({
  * (`auth-design.md` §2.1) — and there is then no initial to draw. Inventing
  * one would be a fact the app does not have.
  */
-function AccountAvatar({ initial }: { initial: string | null }) {
+function AccountAvatar({
+  initial,
+  current,
+}: {
+  initial: string | null
+  current: boolean
+}) {
   return (
-    <span className={styles['avatar']}>
-      {initial !== null && <span aria-hidden="true">{initial}</span>}
+    <span aria-hidden="true">
+      {/* `ui/PersonCircle` at its 22, the chrome-cluster size this band has
+          always drawn. The accent-when-current paint used to be a
+          `[aria-current='page'] .avatar` descendant rule reaching in from
+          the link above; the caller states it as a tone instead, which is
+          the primitive's own rule — a `ui/` prop names the paint and the
+          caller owns what it means. */}
+      <PersonCircle
+        {...(initial === null ? {} : { label: initial })}
+        size={22}
+        tone={current ? 'accent' : 'control'}
+      />
     </span>
   )
 }
@@ -150,7 +173,7 @@ function AccountLink({
         className={`${styles['navItem']} ${styles['sidebar']} ${styles['accountRow']}`}
         {...current}
       >
-        <AccountAvatar initial={initial} />
+        <AccountAvatar initial={initial} current={isActive} />
         <span>Account</span>
       </Link>
     )
@@ -165,7 +188,7 @@ function AccountLink({
         {...current}
       >
         <span className={styles['railSquare']}>
-          <AccountAvatar initial={initial} />
+          <AccountAvatar initial={initial} current={isActive} />
         </span>
       </Link>
     )
@@ -178,7 +201,7 @@ function AccountLink({
       aria-label="Account"
       {...current}
     >
-      <AccountAvatar initial={initial} />
+      <AccountAvatar initial={initial} current={isActive} />
     </Link>
   )
 }

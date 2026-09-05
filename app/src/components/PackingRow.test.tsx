@@ -172,7 +172,7 @@ describe('a per-Piece packing row', () => {
     const user = userEvent.setup()
     const rendered = await renderPieceRow()
 
-    const pill = screen.getByTestId('packing-status-pill')
+    const pill = screen.getByTestId('status-pill')
     expect(pill).toHaveTextContent('◐ STAGED')
 
     await user.click(pill)
@@ -246,8 +246,6 @@ describe('a per-Piece packing row', () => {
     expect(meta).toHaveTextContent('▸ LOOSE')
     expect(meta).not.toHaveTextContent('Crate B')
 
-    expect(screen.getByTestId('packing-status-pill')).toHaveTextContent(
-      '◐ STAGED',
-    )
+    expect(screen.getByTestId('status-pill')).toHaveTextContent('◐ STAGED')
   })
 })

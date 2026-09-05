@@ -495,7 +495,8 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   app-shell JS budget. Pure props-in, no data access.
 
   **Built so far: `Chip` (S3), `Sheet` and `Confirm` (the Radix conversion),
-  `Stepper` (S7) and `PersonCircle` (S8)** — plus **`PersonCluster`**, which
+  `Stepper` (S7), `PersonCircle` (S8), and `SegmentedControl` + `StatusPill`
+  (the post-S9 consolidation)** — plus **`PersonCluster`**, which
   S8 built in `ui/` and which this list has never named, **`ExpiryChip`**
   (S3.5, named only under composites below), **`QrCode`** (S3.5, the one
   module that imports `uqr`), and the `Logo`, `Mark` and three `Icon`
@@ -523,7 +524,29 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   Add gear's Owned-count well is not a third: `value`/`onChange` widened to
   `number | null` partway through S7, so the fold is possible now, but Add
   gear's field still owns a label, a fact line and a CTA gate `Stepper`
-  does not, and nobody has done the work of folding it in. The rest of
+  does not, and nobody has done the work of folding it in.
+
+  **`SegmentedControl` and `StatusPill` landed together after S9**, each on
+  §5's own trigger (`patterns.md` §5.5) rather than on a slice. The segmented
+  control had **four** hand-rolled copies — `AddGear` twice, `GearDetail`,
+  `Packing`, `TripOnlySheet` — and only one had worked out that a container
+  with `overflow: hidden` cannot hold a hit extension, because a clipped
+  descendant is not hit-testable and a stylesheet-text test would find the
+  `::after` and pass over a hit area that does not exist. One component, two
+  sizes on `Stepper`'s pattern: h48 in the body face, h40 in mono caps with
+  ruling O's vertical-only clamp. The face rides the size because all four
+  callers co-vary; split them the day a board draws one that does not. `value`
+  takes `undefined` for *nothing selected*, which gear detail's edit sheet
+  genuinely needs — it may not assert a Kind nobody stated. `StatusPill` owns
+  the grammar its two callers share (pill radius, chip stroke, mono caps,
+  glyph then word, 44 by paint rather than by clamp) and takes a `tone`
+  naming the paint, per `PersonCircle`'s rule; its two callers are genuinely
+  two controls, one that states a status and one that writes one.
+  `PersonCircle` itself gained a sixth size, **40**, for the one band where
+  the circle is its own subject — Account's `you` block — and absorbed the two
+  hand-rolled avatars with it.
+
+  The rest of
   this list is unbuilt, and `Popover` is the one with waiting callers — **four
   of them** that a board draws as a popover: §4a's desktop tag picker and the
   slice bar's `ValueMenu` are approximated by `Sheet`'s `desktopCard` until it

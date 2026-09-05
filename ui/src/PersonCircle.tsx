@@ -47,10 +47,9 @@ import styles from './PersonCircle.module.css'
  * a Person with no folded name is a fact the app does not have, and
  * inventing one would be worse than blank.
  *
- * **Sizes are the numbers 22 · 24 · 28 · 30 · 34, not a `sm|md|lg` scale.**
- * Five diameters exist now that S9's two have landed — a t-shirt scale ran
- * out of names at the fourth and would need renaming across every caller to
- * take a fifth.
+ * **Sizes are the numbers 22 · 24 · 28 · 30 · 34 · 40, not a `sm|md|lg`
+ * scale.** Six diameters exist — a t-shirt scale ran out of names at the
+ * fourth and would need renaming across every caller to take a fifth.
  *
  * **A circle is sized by the density of the band it sits in, never by the
  * screen** — `design/README.md` §5d K, which named the scale rather than
@@ -64,6 +63,7 @@ import styles from './PersonCircle.module.css'
  * | 28 | group headers (S9) |
  * | 30 | roster rows — 48px picker and People rows, circle leads the row |
  * | 34 | working rows (S9) — where the circle carries status at glance speed |
+ * | 40 | the subject of its own band — Account's `you` block, and only it |
  *
  * That is why the picker rows draw 30 and the gear-list row's cluster draws
  * 24 while both sit on the same screen: the row's own density decides, not
@@ -79,8 +79,8 @@ import styles from './PersonCircle.module.css'
 export interface PersonCircleProps {
   /** Verbatim content; see the `label`-not-`initial` note above. */
   label?: string | undefined
-  /** 22 · 24 · 28 · 30 · 34 — see the sizes note above. */
-  size: 22 | 24 | 28 | 30 | 34
+  /** 22 · 24 · 28 · 30 · 34 · 40 — see the sizes note above. */
+  size: 22 | 24 | 28 | 30 | 34 | 40
   /**
    * Defaults to `control`, the display-only border every non-login caller
    * draws. See the tone-not-state note above for what each value means —

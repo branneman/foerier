@@ -15,7 +15,7 @@ import {
   type TripResidence,
   type TripState,
 } from '@foerier/shared'
-import { PersonCircle, Sheet } from '@foerier/ui'
+import { PersonCircle, Sheet, StatusPill } from '@foerier/ui'
 import { useMemo } from 'react'
 
 import { useDepot } from '../depot/store'
@@ -144,6 +144,27 @@ export function toneForStatus(
   if (isPacked(status)) return 'filled'
   if (status === 'staged') return 'half'
   return 'control'
+}
+
+/**
+ * `ui/StatusPill`'s tone for the same status — a **different question about
+ * the same value**, and the reason it sits here rather than in `PackingRow`
+ * beside its one caller: `toneForStatus` above answers *what fill does this
+ * circle take*, this answers *what tint does this pill take*, and the two
+ * must gain an arm together the day a fourth status arrives. §1.4's rule,
+ * with the pair kept adjacent so neither can be updated alone.
+ *
+ * Presentational again — `not-packed` is `StatusPill`'s word for its dimmed
+ * paint, not a claim about the domain — and an unrecognised status takes it
+ * too: the pill still reads the status's own word beside a neutral tint,
+ * which is the honest paint for something this build cannot name.
+ */
+export function pillToneForStatus(
+  status: StatusValue,
+): 'not-packed' | 'staged' | 'packed' {
+  if (isPacked(status)) return 'packed'
+  if (status === 'staged') return 'staged'
+  return 'not-packed'
 }
 
 /**
@@ -306,14 +327,16 @@ export function PieceStatusSheet({
         <p className={styles['setEveryoneLabel']}>SET EVERYONE</p>
         <div className={styles['chips']}>
           {STATUSES.map((option) => (
-            <button
+            /* `plain`, not the row tone: three tinted buttons here would
+               compete with the tinted pills on the rows behind them, which
+               is why the board draws these neutral. */
+            <StatusPill
               key={option.id}
-              type="button"
-              className={styles['chip']}
+              glyph={option.glyph}
+              label={option.label}
+              size="action"
               onClick={() => setEveryone(option.id)}
-            >
-              {option.glyph} {option.label}
-            </button>
+            />
           ))}
         </div>
       </div>

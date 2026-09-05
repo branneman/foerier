@@ -141,4 +141,15 @@
     height: 2.125rem;
     font-size: 0.75rem;
   }
+
+  /* 40px — the only size where the circle is the **subject** of its band
+     rather than a marker in someone else's row: Account's `you` block. Its
+     hand-rolled original set the body font rather than a bare size, which is
+     why this row carries a `font` and the five above carry a `font-size`. */
+  .size40 {
+    width: 2.5rem;
+    height: 2.5rem;
+    font: var(--text-body) var(--font-mono);
+    font-weight: 600;
+  }
 }

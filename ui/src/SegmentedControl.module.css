@@ -1,0 +1,91 @@
+@layer components {
+  /* Nothing clips. Two of the three hand-rolled copies carried
+     `overflow: hidden` to cut the end corners, and a clipped descendant is
+     not hit-testable — the dense size's `::after` would be dead on arrival
+     inside one, and a stylesheet-text test would find the rule and say
+     nothing. The end segments round themselves below instead. */
+  .segmented {
+    display: flex;
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+  }
+
+  .segment {
+    /* The containing block for both the visually-hidden radio and the dense
+       size's extension. Without it the 1px input escapes to the initial
+       containing block, and a browser scrolling a focused radio into view
+       jumps the page to its top-left corner. */
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(3rem, 48px);
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .segment + .segment {
+    border-left: var(--stroke-rule) solid var(--color-rule-control);
+  }
+
+  /* The corners `overflow: hidden` used to cut, drawn instead. Inset by the
+     container's own border width so the inner curve sits concentric with the
+     outer one rather than a hair proud of it. */
+  .segment:first-child {
+    border-start-start-radius: calc(var(--radius-control) - var(--stroke-rule));
+    border-end-start-radius: calc(var(--radius-control) - var(--stroke-rule));
+  }
+
+  .segment:last-child {
+    border-start-end-radius: calc(var(--radius-control) - var(--stroke-rule));
+    border-end-end-radius: calc(var(--radius-control) - var(--stroke-rule));
+  }
+
+  /* The radio is the state, not the styling — it stays in the accessibility
+     tree and in the tab order, and is simply not drawn. `display: none` or
+     `visibility: hidden` would take both away with the paint. */
+  .segment input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .segment:has(input:checked) {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-primary);
+    font-weight: 600;
+  }
+
+  /* `GearDetail`'s hand-rolled copy had no rule of this shape at all, so a
+     keyboard user moving through its Kind selector saw nothing. One ring,
+     both sizes. */
+  .segment:has(input:focus-visible) {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* h40 in the mono label face. The face rides the size deliberately — see
+     the component's own docblock. */
+  .segmented[data-size='dense'] .segment {
+    min-height: max(2.5rem, 40px);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  /* Ruling O's hit extension: 40 painted + 4 above and below = 48. **Inset 0
+     horizontally**, because the segments share this row edge to edge and a
+     horizontal grow would put a tap meant for one on its neighbour — ruling
+     B's arithmetic in a different control. `::after` on a `<label>` is
+     hit-testable and activates the input inside it, which is what makes the
+     extension work at all. The default size draws ≥48 and needs none. */
+  .segmented[data-size='dense'] .segment::after {
+    content: '';
+    position: absolute;
+    inset: -0.25rem 0;
+  }
+}

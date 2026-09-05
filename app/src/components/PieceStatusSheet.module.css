@@ -158,26 +158,6 @@
     gap: var(--space-8);
   }
 
-  /* Drawn at 44 explicitly — the status pill's own grammar, and the pill's
-     own floor: no clamp needed because the paint already reaches it. */
-  .chip {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-4);
-    flex: 1;
-    min-height: max(2.75rem, 44px);
-    border: var(--stroke-chip) solid var(--color-rule-control);
-    border-radius: var(--radius-pill);
-    background: none;
-    color: var(--color-ink-primary);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    cursor: pointer;
-  }
-
   /* F7: the hint between the chips and `Close` — the board's own line,
      stating the row's whole interaction model in one sentence rather than
      leaving it to be discovered. */

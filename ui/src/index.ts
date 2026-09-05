@@ -18,6 +18,12 @@ export type { ConfirmProps } from './Confirm'
 export { GearRow } from './GearRow'
 export type { GearRowProps } from './GearRow'
 
+export { SegmentedControl } from './SegmentedControl'
+export type { SegmentedOption, SegmentedControlProps } from './SegmentedControl'
+
+export { StatusPill } from './StatusPill'
+export type { StatusPillProps } from './StatusPill'
+
 export { Stepper } from './Stepper'
 export type { StepperProps } from './Stepper'
 

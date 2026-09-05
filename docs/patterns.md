@@ -500,11 +500,27 @@ centres let a tap meant for one Person land on their neighbour.
 (`InviteIssued`, `People`, since joined by `Join`). A primitive on §5's list
 that is hand-rolled at a third site is the codebase's own trigger to build it.
 
-*Departures:* the segmented control is hand-rolled in `AddGear`, `GearDetail`
-and `Packing`; a status pill in `PackingRow` and `PieceStatusSheet`; the
-avatar circle in `Account` and `AppShell` predates `PersonCircle`; `AddGear`'s
-Owned-count stepper is the recorded not-yet-folded caller of `Stepper`.
-*Argued in:* [`frontend-design.md` §5](frontend-design.md#5-component-architecture--the-ui-package).
+**Three fired at once after S9**, and the count was wrong on the first two.
+`SegmentedControl` was hand-rolled at **four** sites, not the three anyone had
+counted — `TripOnlySheet`'s copy had never been noticed — and one of the four
+was the only one that had solved the `overflow: hidden` hit-testing trap, so
+the primitive inherited that copy's rules and the other three gained them.
+`StatusPill`'s two callers are genuinely two controls (F4's states a status,
+the Piece sheet's writes one), so it owns the **grammar** they share and takes
+one prop per real difference rather than one per divergence. `PersonCircle`
+gained a sixth size, 40, and absorbed the two hand-rolled avatars.
+
+**What a fold is allowed to change, and what it must not.** These three moved
+paint at four points, each recorded: `GearDetail`'s segments gain a focus ring
+they never had and the hit extension their clipping parent had made
+impossible; its checked segment gains the 600 the other copies drew; and the
+nav avatar drops from a 10px initial to the 22 size's own 9px. A fold that
+silently kept every copy's paint would not be a primitive.
+
+*Departures:* `AddGear`'s Owned-count stepper is the recorded not-yet-folded
+caller of `Stepper`.
+*Argued in:* [`frontend-design.md` §5](frontend-design.md#5-component-architecture--the-ui-package);
+`ui/src/SegmentedControl.tsx` and `ui/src/StatusPill.tsx`'s own headers.
 
 ---
 
@@ -574,11 +590,13 @@ examples, and `app/src/screens/drawnSizes.test.ts` pins each case by parsing
 the stylesheet text, asserting the paint, the presence of the extension and —
 where a board states a number — the inset.
 
-*Departures:* nine touch-surface controls between 32 and 40px carry no
+*Departures:* eight touch-surface controls between 32 and 40px carry no
 extension (`TripCard`'s phase chip, `ui/Chip`'s two sizes as buttons, the
-slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows,
-`GearDetail`'s segments — whose parent's `overflow: hidden` would kill one —
-the Split rail's links, and the inline Save/Cancel pair copied four times).
+slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows, the Split
+rail's links, and the inline Save/Cancel pair copied four times).
+`GearDetail`'s segments were the ninth and are closed: folding them into
+`ui/SegmentedControl` removed the `overflow: hidden` that made an extension
+impossible and gave them one.
 *Argued in:* `docs/design/README.md` §5b ruling O; [`frontend-design.md` §2.1](frontend-design.md#21-root-and-units); `ui/styles/base.css`.
 
 ### 6.6 A flex `gap` is not a character; adjacent spans need a real space

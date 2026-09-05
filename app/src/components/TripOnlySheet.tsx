@@ -1,7 +1,8 @@
 import { systemIdSource, tripEntryAdded } from '@foerier/shared'
-import { Sheet } from '@foerier/ui'
+import { SegmentedControl, Sheet } from '@foerier/ui'
 import { useCallback, useState } from 'react'
 
+import { TRAIT_OPTIONS } from '../depot/gear'
 import { useDepot } from '../depot/store'
 import styles from './TripOnlySheet.module.css'
 
@@ -120,26 +121,16 @@ export function TripOnlySheet({ tripId, onClose }: TripOnlySheetProps) {
 
       <fieldset className={styles['segmentedField']}>
         <legend className={styles['label']}>Recorded as</legend>
-        <div className={styles['segmented']}>
-          <label className={styles['segment']}>
-            <input
-              type="radio"
-              name="trip-only-trait"
-              checked={!container}
-              onChange={() => setContainer(false)}
-            />
-            <span>Item</span>
-          </label>
-          <label className={styles['segment']}>
-            <input
-              type="radio"
-              name="trip-only-trait"
-              checked={container}
-              onChange={() => setContainer(true)}
-            />
-            <span>Container</span>
-          </label>
-        </div>
+        {/* `ui/SegmentedControl`, default — `AddGear`'s trait control, and now
+            literally so rather than a copy of it. The boolean is mapped to
+            the glossary's two meta-line words here; the primitive is told
+            nothing about traits. */}
+        <SegmentedControl
+          name="trip-only-trait"
+          options={TRAIT_OPTIONS}
+          value={container ? 'container' : 'item'}
+          onChange={(next) => setContainer(next === 'container')}
+        />
         <p className={styles['fact']}>
           CONTAINERS HOLD OTHER GEAR · FIXED WHEN RECORDED
         </p>

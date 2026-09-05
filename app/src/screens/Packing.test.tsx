@@ -722,7 +722,7 @@ describe('the row', () => {
     await renderPacking(`/trips/${ALPS}/packing`, ...containerFrame())
 
     expect(
-      within(headerFor('Crate B')).queryByTestId('packing-status-pill'),
+      within(headerFor('Crate B')).queryByTestId('status-pill'),
     ).not.toBeInTheDocument()
     // Nor anywhere else: a container is never a row.
     expect(
@@ -736,7 +736,7 @@ describe('the row', () => {
     // Ruling A13: one register, no per-unit identity, so one tap moves the
     // count by two — correct, and needing no UI.
     const row = rowFor('Trekking poles')
-    expect(within(row).getAllByTestId('packing-status-pill')).toHaveLength(1)
+    expect(within(row).getAllByTestId('status-pill')).toHaveLength(1)
     expect(within(row).getByTestId('packing-row-meta')).toHaveTextContent(
       'PERSONAL E · ×2',
     )

@@ -83,49 +83,6 @@
     padding: 0;
   }
 
-  /* 48px segmented control — the phone height everywhere on this screen. */
-  .segmented {
-    display: flex;
-    border: var(--stroke-rule) solid var(--color-rule-control);
-    border-radius: var(--radius-control);
-    overflow: hidden;
-  }
-
-  .segment {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: max(3rem, 48px);
-    color: var(--color-ink-muted);
-    font: var(--text-body) var(--font-ui);
-    cursor: pointer;
-  }
-
-  .segment + .segment {
-    border-left: var(--stroke-rule) solid var(--color-rule-control);
-  }
-
-  /* The radio itself is the state, not the styling — it stays in the
-     accessibility tree and is simply not drawn. */
-  .segment input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .segment:has(input:checked) {
-    background: var(--color-bg-raised);
-    color: var(--color-ink-primary);
-    font-weight: 600;
-  }
-
-  .segment:has(input:focus-visible) {
-    box-shadow: var(--focus-ring);
-  }
-
   /* Stepper-flanked mono well (Components, Add-gear atoms). */
   .stepper {
     display: flex;

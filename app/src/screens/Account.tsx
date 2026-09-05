@@ -1,6 +1,7 @@
 import { guessDeviceLabel as deviceLabelFromUserAgent } from '@foerier/shared'
 import { startRegistration } from '@simplewebauthn/browser'
 import { useCallback, useEffect, useState } from 'react'
+import { PersonCircle } from '@foerier/ui'
 import { Link } from 'wouter'
 
 import type { AuthApi, DeviceRow, PasskeyRow } from '../auth/api'
@@ -360,8 +361,13 @@ export function Account({
         <>
           <h1 className={styles['title']}>Account</h1>
           <div className={styles['you']} data-testid="account-who">
-            <span className={styles['avatar']} aria-hidden="true">
-              {initial}
+            {/* `ui/PersonCircle` at its 40 — this block is the one place in
+                the app where the circle is the subject of its own band, which
+                is what that size exists for. `aria-hidden` stays with the
+                caller: the name is spelled in words immediately beside it, so
+                the initial is decoration here. */}
+            <span aria-hidden="true">
+              <PersonCircle label={initial} size={40} tone="accent" />
             </span>
             <div>
               <div className={styles['youName']}>{personName}</div>

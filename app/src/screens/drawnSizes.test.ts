@@ -291,21 +291,14 @@ describe("ruling O's drawn sizes", () => {
   })
 
   /**
-   * The other end of the same row. `docs/design/README.md`'s touch rule
-   * carves the status pill out at **44** rather than 48, and the board draws
-   * it at that size — so this one states its own paint and needs no
-   * extension at all, which is also what keeps it from reaching back across
-   * the body's.
+   * **The other end of the same row moved to `ui/StatusPill`**, where
+   * `ui/src/StatusPill.test.tsx` makes the same two claims for both callers:
+   * `docs/design/README.md`'s touch rule carves the pill out at **44**
+   * rather than 48, and the board draws it there, so it states its own paint
+   * and grows no extension — which is also what keeps it from reaching back
+   * across `.body`'s. Named here rather than silently deleted, because this
+   * file is where a reader looks for that row's sizes.
    */
-  it('paints the status pill at its own 44 and gives it no extension', () => {
-    const css = moduleCss('..', 'components', 'PackingRow.module.css')
-    const pill = ruleBody(css, '.pill')
-
-    expect(pill).toBeDefined()
-    expect(pill).not.toMatch(FLOOR)
-    expect(pill).toMatch(/min-height:\s*max\(2\.75rem,\s*44px\)/)
-    expect(ruleBody(css, '.pill::after')).toBeUndefined()
-  })
 
   /**
    * Ruling B at 34px (ruling A1): the circles paint the packing row's own
@@ -384,26 +377,20 @@ describe("ruling O's drawn sizes", () => {
   })
 
   /**
-   * **Ruling A10's controls row.** Both are drawn at 40px "unchanged at
-   * every width" and reach 48 through the same vertical-only clamp — inset 0
-   * horizontally, because the three segments and the pill beside them sit on
-   * one row edge to edge, and a sideways grow would put a tap meant for one
-   * control on its neighbour. `.segment`'s own docstring is where the
-   * `overflow: hidden` trap this file exists to catch is spelled out: a
-   * clipped descendant is not hit-testable, so the corners are drawn instead
-   * of cut.
+   * **Ruling A10's controls row — half of it moved.** The mode segments now
+   * come from `ui/SegmentedControl` and are asserted in `ui/src/SegmentedControl.test.tsx`,
+   * where the same two claims are made once for all four callers: 40 painted,
+   * a vertical-only clamp to 48, and **nothing clipping**, because a clipped
+   * descendant is not hit-testable and a stylesheet-text test would otherwise
+   * find the `::after` and pass over a hit area that does not exist. Named
+   * here rather than silently deleted, since this file is where a reader
+   * looks for that screen's sizes.
+   *
+   * The pill beside them is still this screen's own, and still shares the
+   * argument: inset 0 horizontally, because the two controls sit on one row
+   * edge to edge and a sideways grow would put a tap meant for one on the
+   * other.
    */
-  it('paints the packing mode segments at 40px and clamps them at 48', () => {
-    const css = moduleCss('Packing.module.css')
-    const segment = ruleBody(css, '.segment')
-
-    expect(segment).toBeDefined()
-    expect(segment).not.toMatch(FLOOR)
-    expect(segment).toMatch(/min-height:\s*max\(2\.5rem,\s*40px\)/)
-    expect(segment).toMatch(/position:\s*relative/)
-    expect(ruleBody(css, '.segment::after')).toMatch(/inset:\s*-0\.25rem 0/)
-  })
-
   it('paints the ○ LEFT filter pill at 40px and clamps it at 48', () => {
     const css = moduleCss('Packing.module.css')
     const filter = ruleBody(css, '.filter')
@@ -416,21 +403,19 @@ describe("ruling O's drawn sizes", () => {
   })
 
   /**
-   * **F1 (review round 2).** The Piece status sheet's own row and its
-   * `SET EVERYONE` chips state their sizes explicitly rather than having
-   * been shrunk off the retired global floor — the identical shape
-   * `OverClaimBand`'s `.settle`/`.more` test above pins, so an explicit size
-   * is not a category this file excludes; it is one it deliberately keeps
-   * pinned. `.rowButton` (48) gets the same `FLOOR` match that test uses;
-   * `.chip` (44) gets its own explicit regex, the `.pill` test's own shape
-   * one screen over.
+   * **F1 (review round 2).** The Piece status sheet's own row states its size
+   * explicitly rather than having been shrunk off the retired global floor —
+   * the identical shape `OverClaimBand`'s `.settle`/`.more` test above pins,
+   * so an explicit size is not a category this file excludes; it is one it
+   * deliberately keeps pinned.
+   *
+   * Its `SET EVERYONE` chips are `ui/StatusPill`'s `action` size now, pinned
+   * at 44 in that component's own suite alongside the row pill they share a
+   * grammar with.
    */
-  it("leaves the Piece status sheet's row and SET EVERYONE chip explicit", () => {
+  it("leaves the Piece status sheet's row explicit", () => {
     const css = moduleCss('..', 'components', 'PieceStatusSheet.module.css')
 
     expect(ruleBody(css, '.rowButton')).toMatch(FLOOR)
-    expect(ruleBody(css, '.chip')).toMatch(
-      /min-height:\s*max\(2\.75rem,\s*44px\)/,
-    )
   })
 })

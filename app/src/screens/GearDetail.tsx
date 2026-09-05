@@ -32,7 +32,14 @@ import {
   type PersonWhereabouts,
   type WhereaboutsSlice,
 } from '@foerier/shared'
-import { Chip, Confirm, PersonCircle, Sheet, Stepper } from '@foerier/ui'
+import {
+  Chip,
+  Confirm,
+  PersonCircle,
+  SegmentedControl,
+  Sheet,
+  Stepper,
+} from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { useParams } from 'wouter'
 
@@ -40,6 +47,7 @@ import { HomePicker, sameResidence } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
 import { WhereaboutsCard } from '../components/WhereaboutsCard'
+import { KIND_OPTIONS } from '../depot/gear'
 import { personInitial, sortedPeople } from '../depot/people'
 import { useDepot } from '../depot/store'
 import { ScreenBand } from '../shell/ScreenBand'
@@ -70,12 +78,6 @@ import styles from './GearDetail.module.css'
  * 33) and every **weight** segment (story 16), both drawn final on the board
  * and both tagged LATER.
  */
-
-const KIND_OPTIONS: readonly { value: KindValue; label: string }[] = [
-  { value: 'single', label: 'Single' },
-  { value: 'per_person', label: 'Per-person' },
-  { value: 'counted', label: 'Counted' },
-]
 
 /**
  * `ITEM` or `CONTAINER` — the meta line's first segment names the
@@ -575,20 +577,20 @@ export function GearDetail() {
 
             <fieldset className={styles['kindField']}>
               <legend className={styles['label']}>Kind</legend>
-              <div className={styles['segmented']}>
-                {KIND_OPTIONS.map((option) => (
-                  <label key={option.value} className={styles['segment']}>
-                    <input
-                      type="radio"
-                      name="kind"
-                      value={option.value}
-                      checked={kindDraft === option.value}
-                      onChange={() => setKindDraft(option.value)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
+              {/* `ui/SegmentedControl`, dense. This screen's hand-rolled copy is the
+                  one the primitive exists for: it drew no focus ring at all,
+                  so a keyboard user moving through Kind saw nothing, and its
+                  `overflow: hidden` container meant it could never grow the
+                  hit extension ruling O owes a 40px control. Both arrive with
+                  the move; `kindDraft` stays `undefined` for a Gear nobody
+                  gave a Kind, which the primitive draws as nothing checked. */}
+              <SegmentedControl
+                name="kind"
+                options={KIND_OPTIONS}
+                value={kindDraft}
+                onChange={setKindDraft}
+                size="dense"
+              />
             </fieldset>
 
             {/* The 48px bordered row Add gear's HOME and OWNER both use.

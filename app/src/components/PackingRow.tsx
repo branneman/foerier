@@ -20,14 +20,18 @@ import {
   type StatusValue,
   type TripResidence,
 } from '@foerier/shared'
-import { PersonCluster } from '@foerier/ui'
+import { PersonCluster, StatusPill } from '@foerier/ui'
 import { useMemo } from 'react'
 
 import { personInitial } from '../depot/people'
 import { useDepot } from '../depot/store'
 import { tripParticipants } from '../depot/trips'
 import styles from './PackingRow.module.css'
-import { residenceLabel, toneForStatus } from './PieceStatusSheet'
+import {
+  pillToneForStatus,
+  residenceLabel,
+  toneForStatus,
+} from './PieceStatusSheet'
 
 /**
  * **One line of work on F4** — ruling A2, `docs/design/README.md` §1's
@@ -502,15 +506,12 @@ export function PackingRow({
         // `null` is a container (ruling A5), and the narrowing the type
         // demands is the same one the ruling states — see the docstring.
         status !== null && (
-          <button
-            type="button"
-            className={styles['pill']}
-            data-status={status}
-            data-testid="packing-status-pill"
+          <StatusPill
+            glyph={statusGlyph(status)}
+            label={statusLabel(status)}
+            tone={pillToneForStatus(status)}
             onClick={() => advance(status)}
-          >
-            {statusGlyph(status)} {statusLabel(status)}
-          </button>
+          />
         )
       )}
     </div>

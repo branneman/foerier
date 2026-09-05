@@ -268,42 +268,6 @@
     margin: 0;
   }
 
-  .segmented {
-    display: flex;
-    border: var(--stroke-rule) solid var(--color-rule-control);
-    border-radius: var(--radius-control);
-    overflow: hidden;
-  }
-
-  .segment {
-    position: relative;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.5rem;
-    color: var(--color-ink-muted);
-    font: var(--text-label) var(--font-mono);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-
-  .segment:has(input:checked) {
-    background: var(--color-bg-raised);
-    color: var(--color-ink-primary);
-  }
-
-  .segment + .segment {
-    border-left: var(--stroke-rule) solid var(--color-rule-control);
-  }
-
-  .segment input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }
-
   .sheetActions {
     display: flex;
     justify-content: flex-end;

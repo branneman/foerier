@@ -6,11 +6,13 @@ import {
   type Owner,
   type Residence,
 } from '@foerier/shared'
+import { SegmentedControl } from '@foerier/ui'
 import { useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
+import { KIND_OPTIONS, TRAIT_OPTIONS } from '../depot/gear'
 import { useDepot } from '../depot/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
@@ -82,12 +84,6 @@ import styles from './AddGear.module.css'
  * Still **one** `gear.recorded` carrying every field. Nothing new is emitted,
  * and the screen's "no failure state" property is untouched.
  */
-
-const KIND_OPTIONS: readonly { value: KindValue; label: string }[] = [
-  { value: 'single', label: 'Single' },
-  { value: 'per_person', label: 'Per-person' },
-  { value: 'counted', label: 'Counted' },
-]
 
 /** The current Home selection's display label. Undefined reads as `Loose` —
  * the gear has not been given a residence, so it folds loose (invariant 1). */
@@ -247,20 +243,14 @@ export function AddGear() {
 
       <fieldset className={styles['segmentedField']}>
         <legend className={styles['label']}>Kind</legend>
-        <div className={styles['segmented']}>
-          {KIND_OPTIONS.map((option) => (
-            <label key={option.value} className={styles['segment']}>
-              <input
-                type="radio"
-                name="kind"
-                value={option.value}
-                checked={kind === option.value}
-                onChange={() => setKind(option.value)}
-              />
-              <span>{option.label}</span>
-            </label>
-          ))}
-        </div>
+        {/* `ui/SegmentedControl`, default — this is the 48px, body-faced size, and
+            the only caller of it. */}
+        <SegmentedControl
+          name="kind"
+          options={KIND_OPTIONS}
+          value={kind}
+          onChange={setKind}
+        />
       </fieldset>
 
       {/* Inserted below Kind, so nothing at or above the thumb moves. */}
@@ -339,28 +329,17 @@ export function AddGear() {
 
       <fieldset className={styles['segmentedField']}>
         <legend className={styles['label']}>Recorded as</legend>
-        <div className={styles['segmented']}>
-          {/* The glossary's own meta-line words. Not a checkbox: a checkbox
-              reads as a setting, and the trait is fixed at recording. */}
-          <label className={styles['segment']}>
-            <input
-              type="radio"
-              name="trait"
-              checked={!container}
-              onChange={() => setContainer(false)}
-            />
-            <span>Item</span>
-          </label>
-          <label className={styles['segment']}>
-            <input
-              type="radio"
-              name="trait"
-              checked={container}
-              onChange={() => setContainer(true)}
-            />
-            <span>Container</span>
-          </label>
-        </div>
+        {/* The glossary's own meta-line words. Not a checkbox: a checkbox
+            reads as a setting, and the trait is fixed at recording. The
+            boolean is mapped to the two words here rather than teaching the
+            primitive about booleans — `patterns.md` §5.3, the caller owns
+            what a value means. */}
+        <SegmentedControl
+          name="trait"
+          options={TRAIT_OPTIONS}
+          value={container ? 'container' : 'item'}
+          onChange={(next) => setContainer(next === 'container')}
+        />
         <p className={styles['fact']}>
           CONTAINERS HOLD OTHER GEAR · FIXED WHEN RECORDED
         </p>

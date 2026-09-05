@@ -49,20 +49,6 @@
     gap: var(--space-12);
   }
 
-  .avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    flex-shrink: 0;
-    border: var(--stroke-chip) solid var(--color-accent);
-    border-radius: var(--radius-pill);
-    color: var(--color-accent);
-    font: var(--text-body) var(--font-mono);
-    font-weight: 600;
-  }
-
   .youName {
     font: var(--text-heading) var(--font-ui);
     font-weight: 600;

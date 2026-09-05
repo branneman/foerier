@@ -32,7 +32,11 @@ import {
   type TripResidence,
   type TripState,
 } from '@foerier/shared'
-import { PersonCircle } from '@foerier/ui'
+import {
+  PersonCircle,
+  SegmentedControl,
+  type SegmentedOption,
+} from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { useParams } from 'wouter'
 
@@ -55,7 +59,7 @@ import styles from './Packing.module.css'
  */
 type PackingMode = 'container' | 'person' | 'all'
 
-const MODES: readonly { value: PackingMode; label: string }[] = [
+const MODES: readonly SegmentedOption<PackingMode>[] = [
   { value: 'container', label: 'CONTAINER' },
   { value: 'person', label: 'PERSON' },
   { value: 'all', label: 'ALL' },
@@ -1000,20 +1004,19 @@ export function Packing() {
                   recipe (`frontend-design.md` §4.1) rather than a fifth
                   hand-rolled copy of it. */}
               <legend className="visually-hidden">Group by</legend>
-              <div className={styles['segmented']}>
-                {MODES.map((option) => (
-                  <label key={option.value} className={styles['segment']}>
-                    <input
-                      type="radio"
-                      name="packing-mode"
-                      value={option.value}
-                      checked={mode === option.value}
-                      onChange={() => setMode(option.value)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
+              {/* `ui/SegmentedControl`, dense. This screen's own copy was the one of
+                  the three that had already worked out the clipping trap and
+                  the vertical-only extension, so the primitive inherited its
+                  rules wholesale and nothing here is drawn differently. The
+                  fieldset and legend stay: they are what the screen knows and
+                  the primitive does not. */}
+              <SegmentedControl
+                name="packing-mode"
+                options={MODES}
+                value={mode}
+                onChange={setMode}
+                size="dense"
+              />
             </fieldset>
 
             <button

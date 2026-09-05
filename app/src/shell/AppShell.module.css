@@ -85,30 +85,6 @@
     border-radius: 0.625rem;
   }
 
-  /* The 22px avatar circle (`docs/design/README.md` §11 / §3a): muted border
-     and ink until the route is active, then accent — same treatment as
-     `.rail[aria-current='page'] .railSquare` gives the icon squares beside
-     it. Empty when `initial` is `null` — no placeholder letter is drawn. */
-  .avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.375rem;
-    height: 1.375rem;
-    flex: none;
-    border: var(--stroke-chip) solid var(--color-rule-control);
-    border-radius: var(--radius-pill);
-    color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
-    font-weight: 600;
-  }
-
-  [aria-current='page'] .avatar {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-  }
-
   /* Sidebar row: padding 8/10, radius 8, label mono 10.5, count right. */
   .sidebar {
     justify-content: space-between;

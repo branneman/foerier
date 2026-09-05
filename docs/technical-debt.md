@@ -77,11 +77,10 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   or a route is code-split, and become due the same day.
   [`frontend-design.md`](frontend-design.md) §5, anchor:
   `no error boundary exists in`
-- **Nine touch controls between 32 and 40px carry no hit extension.**
+- **Eight touch controls between 32 and 40px carry no hit extension.**
   `TripCard`'s phase chip, `ui/Chip`'s two sizes rendered as buttons, the
-  slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows,
-  `GearDetail`'s segments (whose parent's `overflow: hidden` would clip one),
-  the Split rail's links and the inline Save/Cancel pair copied into four
+  slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows, the
+  Split rail's links and the inline Save/Cancel pair copied into four
   pickers. Each wants ruling O's `::after` with a clamp chosen against its own
   row, and the chip's trip-screen twin already has it.
   [`patterns.md`](patterns.md) §6.5, anchor:
@@ -215,13 +214,6 @@ second pane.
   `JourneyRail` reads the stage table from `shared/`, which `ui/` does not
   depend on. [`frontend-design.md`](frontend-design.md) §5, anchor:
   `` still in `app/src/components/` with one caller each ``
-- **Three `ui/` primitives are hand-rolled at three or more sites.** The
-  segmented control in `AddGear`, `GearDetail` and `Packing`; a status pill in
-  `PackingRow` and `PieceStatusSheet`; the avatar circle in `Account` and
-  `AppShell`, which predates `PersonCircle`. Each is on §5's list and each has
-  reached the bar `GearRow` and `ExpiryChip` moved on.
-  [`patterns.md`](patterns.md) §5.5, anchor:
-  `segmented control is hand-rolled`
 
 ### Waiting on a decision
 

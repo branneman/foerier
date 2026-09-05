@@ -56,6 +56,24 @@ describe('PersonCircle', () => {
     )
   })
 
+  /**
+   * **The sixth size, and the one that is not a roster circle.** Account's
+   * `you` block draws the signed-in Person at 40 — the only place in the app
+   * where the circle is the subject of its own band rather than a marker in
+   * somebody else's row. It folds in here rather than staying hand-rolled
+   * for the reason the other five did: a circle is sized by the density of
+   * the band it sits in, and that is a fact this file should hold all of.
+   */
+  it.each([22, 24, 28, 30, 34, 40] as const)(
+    'draws the %s size from its own class',
+    (size) => {
+      render(<PersonCircle label="M" size={size} />)
+      expect(screen.getByTestId('person-circle')).toHaveClass(
+        styles[`size${size}`] ?? '',
+      )
+    },
+  )
+
   // S9's two, added for the Piece status sheet's packing fills.
   it.each(['filled', 'half'] as const)(
     'renders the %s tone as data-tone',

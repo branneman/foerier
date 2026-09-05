@@ -1,0 +1,62 @@
+@layer components {
+  /* Drawn at 44 rather than clamped to it. Ruling O's `::after` is for a
+     control painted below its target, and would be wrong here twice over:
+     the paint already reaches the floor, and the in-row size sits at the
+     trailing edge of a row body whose own hit area an extension would
+     overlap. */
+  .pill {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    min-height: max(2.75rem, 44px);
+    padding: 11px 14px;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-primary);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .pill:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* The in-row size: smaller type, and the tighter tracking the row's own
+     density asks for. `action` keeps the base size above and only has to
+     say how it shares its row. */
+  .pill[data-size='row'] {
+    font-size: 0.59375rem;
+    letter-spacing: 0.05em;
+  }
+
+  .pill[data-size='action'] {
+    flex: 1;
+  }
+
+  /* **Never colour alone**: the glyph and the word already carry the state,
+     and a tone only tints what they have already said. `plain` is the base
+     rule above and adds nothing. */
+  .pill[data-tone='not-packed'] {
+    border-color: var(--color-status-not-packed);
+    color: var(--color-status-not-packed);
+  }
+
+  .pill[data-tone='staged'] {
+    border-color: var(--color-status-staged);
+    background: color-mix(in srgb, var(--color-status-staged) 8%, transparent);
+    color: var(--color-status-staged);
+  }
+
+  .pill[data-tone='packed'] {
+    border-color: var(--color-status-packed);
+    background: color-mix(in srgb, var(--color-status-packed) 8%, transparent);
+    color: var(--color-status-packed);
+  }
+}

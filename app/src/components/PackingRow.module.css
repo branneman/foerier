@@ -165,52 +165,6 @@
   }
 
   /*
-   * *How far along* — the status pill at the row's right edge, the thumb
-   * side.
-   *
-   * **It states its own 44** (`docs/design/README.md`'s touch rule: "status
-   * pill min 44") rather than leaning on any floor, and it paints that 44,
-   * so there is no extension to clamp and nothing that can reach across the
-   * row body beside it. The board's own padding is 11px 14px.
-   */
-  .pill {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-4);
-    min-height: max(2.75rem, 44px);
-    padding: 11px 14px;
-    border: var(--stroke-chip) solid var(--color-status-not-packed);
-    border-radius: var(--radius-pill);
-    background: none;
-    color: var(--color-status-not-packed);
-    font-family: var(--font-mono);
-    font-size: 0.59375rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-
-  .pill:focus-visible {
-    box-shadow: var(--focus-ring);
-  }
-
-  /* Never colour alone: the glyph and the word already carry the state, and
-     these two tint the pill the status grammar's own way. */
-  .pill[data-status='staged'] {
-    border-color: var(--color-status-staged);
-    background: color-mix(in srgb, var(--color-status-staged) 8%, transparent);
-    color: var(--color-status-staged);
-  }
-
-  .pill[data-status='packed'] {
-    border-color: var(--color-status-packed);
-    background: color-mix(in srgb, var(--color-status-packed) 8%, transparent);
-    color: var(--color-status-packed);
-  }
-
-  /*
    * The per-person row's other track: the cluster **and nothing smaller**.
    * Ruling B at 34px — a 44px target on a 39px pitch puts a tap meant for
    * one Person on their neighbour — so this one control wraps every circle
