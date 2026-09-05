@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { anOp, hlcAt } from '../testUtils/index.ts'
+import { aGear, anOp, hlcAt } from '../testUtils/index.ts'
 import {
   tripConsumedCountSet,
   tripEntryAdded,
@@ -72,6 +72,31 @@ describe('trip.outcome_set', () => {
     expect(state.unfolded.count).toBe(0)
   })
 
+  // The Piece-path half of the null-clear pair pinned above for the Entry.
+  it('folds an explicit null on a Piece outcome, clearing it back to open', () => {
+    const state = foldOf(
+      tripOutcomeSet(TRIP, ENTRY, 'back', KIM),
+      tripOutcomeSet(TRIP, ENTRY, null, KIM),
+    )
+    const piece = state.trips[TRIP]?.entries?.[ENTRY]?.pieces?.[KIM]
+    expect(piece?.outcome).toBeDefined()
+    expect(piece?.outcome?.value).toBeNull()
+  })
+
+  // The reverse of "writes one Piece … leaving the Entry outcome absent"
+  // above: an Entry-path write must not disturb a Piece outcome some earlier
+  // op already set — the two registers hang on different entity paths and
+  // `writeEntry`'s own update never touches `pieces`.
+  it('leaves an existing Piece outcome untouched when the Entry outcome is set', () => {
+    const state = foldOf(
+      tripOutcomeSet(TRIP, ENTRY, 'consumed', KIM),
+      tripOutcomeSet(TRIP, ENTRY, 'back'),
+    )
+    const entry = state.trips[TRIP]?.entries?.[ENTRY]
+    expect(entry?.outcome?.value).toBe('back')
+    expect(entry?.pieces?.[KIM]?.outcome?.value).toBe('consumed')
+  })
+
   it('lands on the Entry when person_id is present but not a string', () => {
     const state = foldOf({
       aggregate: 'trip',
@@ -129,6 +154,21 @@ describe('trip.consumed_count_set', () => {
   it('folds a count on any Entry — the Kind lives on the Gear aggregate', () => {
     const state = foldOf(tripConsumedCountSet(TRIP, ENTRY, 3))
     expect(state.trips[TRIP]?.entries?.[ENTRY]?.consumedCount?.value).toBe(3)
+  })
+
+  // F3 (Task 1 review, fix round 1): the test above proves the reducer does
+  // not gate on Kind, but with no Gear and no `trip.entry_added` the Entry
+  // it writes has no Kind to gate on at all — an inverted gate
+  // (`if (kindOf(gear, state) === 'single') return state`) would pass it
+  // just as green. This one names a real Single depot Entry, so a gate in
+  // either direction would be caught.
+  it('folds a count on a real Single depot Entry too', () => {
+    const state = foldOf(
+      ...aGear({ id: GEAR, kind: 'single' }),
+      tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: GEAR }),
+      tripConsumedCountSet(TRIP, ENTRY, 2),
+    )
+    expect(state.trips[TRIP]?.entries?.[ENTRY]?.consumedCount?.value).toBe(2)
   })
 
   it('ignores a negative or non-integer count', () => {

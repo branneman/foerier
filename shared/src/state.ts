@@ -152,10 +152,11 @@ export type PhaseValue =
  * One Participant's copy of a per-person Entry
  * (`sync-protocol.md` §3.7).
  *
- * S9a declared `status` and `residence`, two of §3.7's four registers for
- * this entity path. S10 adds `outcome`, the third — a register nobody writes
- * is a field every reader must have an opinion about, so each arrives with
- * the slice that writes it, `EntryState`'s own rule one level deeper.
+ * S8 declared `removed` and S9a declared `status` and `residence` — three
+ * of §3.7's four registers for this entity path. S10 adds `outcome`, the
+ * fourth and last, completing the set — a register nobody writes is a field
+ * every reader must have an opinion about, so each arrives with the slice
+ * that writes it, `EntryState`'s own rule one level deeper.
  *
  * `status` and `residence` are declared with **identical types** to the
  * Entry's. A Piece is a thing that travels exactly as an Entry is; nothing

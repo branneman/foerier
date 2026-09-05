@@ -819,16 +819,19 @@ const tripPieceStatusSet: Handler = (state, op, stamp) => {
  *
  * The two-step identity guard (`next === current`, then `next === undefined`)
  * is `setPlaceName`'s and `gearRenamed`'s, copied rather than the naive
- * one-line ternary a nullable write cannot use: `writeNullableIfPresent` can
- * return `undefined` (when the register was never written and the field is
- * absent), and spreading `{ …entry, outcome: next }` with a possibly-`undefined`
- * `next` makes `outcome` a **required** property typed `T | undefined` — a
- * different shape from the optional `outcome?: T` the interface declares, and
- * `exactOptionalPropertyTypes` rejects the two as different types. The first
- * check is the real one; the second exists only because control flow cannot
- * see that `next !== current` already rules out `next` being `undefined`
- * here (`current` losing to itself is the only way this branch produces
- * `undefined`).
+ * one-line ternary a nullable write cannot use: `writeNullableIfPresent`'s
+ * own declared return type is `Register<T | null> | undefined` — it can hand
+ * back `undefined` when its `read` argument is absent — and spreading
+ * `{ …entry, outcome: next }` with a value of that type makes `outcome` a
+ * **required** property typed `T | undefined`, a different shape from the
+ * optional `outcome?: T` the interface declares; `exactOptionalPropertyTypes`
+ * rejects the two as different types on the *declared* type alone. In this
+ * handler `next` can in fact never be `undefined` at runtime — the
+ * `outcome.kind === 'absent'` guard above already returned, so
+ * `writeNullableIfPresent` always reaches `writeRegister`, which never
+ * returns `undefined` — but the type checker cannot see across that earlier
+ * guard into this callback. The first check (`next === current`) is the real
+ * one; the second is purely for the type checker.
  */
 const tripOutcomeSet: Handler = (state, op, stamp) => {
   const entryId = readString(op.payload, 'entry_id')

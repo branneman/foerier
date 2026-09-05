@@ -423,13 +423,31 @@ const arbTripResidence: fc.Arbitrary<TripResidence> = fc.oneof(
  * test itself asserts against.
  *
  * The obvious worry — that diluting the gear ops costs the containment-cycle
- * rate `arbResidence` is tuned for — was measured at 4 and again at 12, and
- * is not real: cycles turn up in 5–15 runs per 200 with no trip ops at all,
- * 11–14 at weight 4, and **8, 10, 11** at weight 12, which is seed noise
- * throughout. (That also puts `arbResidence`'s "17" where it belongs — a
- * single measurement from a generator with fewer op types in it, not a floor
- * to defend.) Not re-measured at 16 — nothing about `arbResidence` or the
- * gear share changed at S10, only the trip arm's own internal split.
+ * rate `arbResidence` is tuned for — was checked at 4 and again at 12 before
+ * S10, and was not real *there*: cycles turn up in 5–15 runs per 200 with no
+ * trip ops at all, 11–14 at weight 4, and **8, 10, 11** at weight 12, which
+ * is seed noise throughout. (That also puts `arbResidence`'s "17" where it
+ * belongs — a single measurement from a generator with fewer op types in it,
+ * not a floor to defend.)
+ *
+ * **This time the worry is real, and re-measuring is what said so.** Raising
+ * the trip weight to 16 is a gear-share change, not merely an internal
+ * reshuffle of the trip arm: the fifteen unweighted gear/place/person
+ * branches went from 15 of 27 total weight units (55.6% of ops) to 15 of 31
+ * (48.4%) — a 13% relative dilution, the identical *kind* of change the
+ * paragraph above measured at 4→12 for exactly this reason. Sampled the same
+ * way (200 runs, `arbOpSets()`, counting a run as a hit when any one
+ * replica's `containmentView(…).brokenEdges` is non-empty), across the same
+ * seven seeds `arbTripEntrySpec`'s table uses: **4–11 per 200 at weight 12**
+ * (with S10's branches already in the trip arm — consistent with the
+ * pre-S10 8–10–11, since branches added *inside* the trip arm do not move
+ * the gear share on their own) falls to **4–8 per 200 at weight 16**. A real,
+ * measured drop — roughly a third off the top of the range — and still
+ * comfortably nonzero, nowhere near the "0 in 200" failure S9a's piece
+ * register hit. No test floors this rate the way {@link CONTEST_FLOOR}
+ * floors the register levels, so nothing but this sentence would ever say so
+ * again; if a later slice pushes the trip weight higher still, re-measure
+ * this number rather than assume it stayed put.
  */
 const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc.tuple(arbTripId, arbTripName).map(([id, name]) => tripCreated(id, name)),
@@ -880,9 +898,14 @@ describe('convergence', () => {
    * the entry and piece arms without touching the trip weight, and the entry
    * level fell to 53–85 across the same seven seeds — one seed under this
    * exact floor, at the exact sample size this test runs. The fixed seed this
-   * test asserts against happened to land at 78 and would have stayed green;
-   * a different seed would not have. Re-tuning the weight to 16, not leaving
-   * it at 12, is what this test's own green result depends on now.
+   * test asserts against happened to land at 78 and would have stayed green
+   * even at the old weight; it was the *other six* seeds that gave it away,
+   * which is the whole point of measuring across several rather than reading
+   * one green result as proof. What weight 16 buys is the property's
+   * robustness **across seeds**, not this one seed's number — and it does
+   * not buy much room: entry's 75–102 is now this file's thinnest margin
+   * over {@link CONTEST_FLOOR}, 25% headroom at the low end, down from the
+   * pre-S10 80–95's 33%.
    *
    * Seeded for the reason the op-type test is: an assertion about the
    * generator, not about today's luck.
