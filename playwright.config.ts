@@ -64,6 +64,15 @@ export default defineConfig({
 
   ...(local
     ? {
+        // **One database, one writer** — the local twin of the production
+        // branch's `workers: 1` (§6.3's "one Household, one writer").
+        // `fullyParallel: false` only serialises tests *within* a file;
+        // separate spec files still run in parallel, and every local spec
+        // mints its Invite into the one `foerier_test`. Racing workers redeem
+        // each other's, and the run fails inside `joinAs` with the server
+        // logging `auth failed: invite join not redeemable` — from a spec
+        // that passes alone. Worth ~2s a run.
+        workers: 1,
         webServer: [
           {
             command: 'npm run dev --workspace api',

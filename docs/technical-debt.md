@@ -70,6 +70,26 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   from the items' resolved residences.
   [`sync-protocol.md`](sync-protocol.md) §4.4, anchor:
   `must come from the items' resolved residences`
+- **From Split up, a Trip with an empty gear list has no drawn door to the
+  gear list.** `+ Add from the depot` is gated on `editable`
+  (`!isSplitOrWider`), so it is the phone's; `EDIT LIST ›` lives inside the
+  `GEAR LIST` band, which renders only once the Trip *has* Entries. A
+  Quartermaster on a laptop therefore cannot add the **first** Entry to a Trip
+  at all — a dead end, not a missing convenience, and worse than the recorded
+  sibling where an empty list also hides `PACKING ›`. Tier 5's gear-list leg
+  navigates by URL because of it. Wants a drawn door, so a board rules where it
+  goes. Argued in the screen's own JSDoc, `app/src/screens/Trip.tsx`, anchor:
+  `has no drawn door to the`
+- **Three of the five Tier 5 spec files run in no CI job.** `e2e-prod` is the
+  only job that runs Tier 5 and it always targets the box, where
+  `grep: /@production/` excludes `auth.spec.ts`, `deviceLink.spec.ts` and
+  `invite.spec.ts` — each for a good reason. The consequence is that those
+  three run on a developer's machine or never, and `invite.spec.ts` was found
+  clicking a back link Desktop had stopped drawing, wrong for as long as nobody
+  ran it. The fix is a job with the local stack (the `docker-compose.dev.yml`
+  Postgres those specs already expect), not a change to the grep.
+  [`testing.md`](testing.md) Tier 5, anchor:
+  `run by nobody, on a schedule of never`
 - **The resilience layer's `ErrorBoundary` is drawn and not built.** §6 gives
   a component crash a home in `ui/ErrorBoundary`, wrapping each screen and
   panel with an in-place ledger-voice fallback; nothing of the kind exists and
@@ -104,16 +124,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   rules, so a long Depot prints whatever was on screen.
   [`frontend-design.md`](frontend-design.md) §6, anchor:
   `prints one viewport`
-- **The E2E golden path has stalled two steps behind the app.** Tier 5's journey
-  is meant to grow a leg per slice, and three slices have shipped a step without
-  one: S6 made *build a trip* reachable, S7 the gear list it needs, and S9a
-  *pack an item* — the fifth step by name. The specs still stop after *find it*,
-  so the two most-used screens in the product are covered by no tier above
-  component tests, and nothing failed when they were skipped, which is why it
-  went unnoticed for three slices rather than one.
-  [`testing.md`](testing.md) Tier 5, anchor:
-  `Three legs are owed and not written`
-
 ### Traps
 
 Correct today, and silently wrong the moment a named future slice lands.

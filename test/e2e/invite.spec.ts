@@ -66,7 +66,14 @@ test('a Quartermaster issues a join Invite from People & logins, and it becomes 
   const secret = match[1]
 
   // 4. Back to People & logins — the row now reads the outstanding invite.
-  await page.getByRole('link', { name: '‹ PEOPLE & LOGINS' }).click()
+  //
+  // By URL, not by a back link: `useScreenHeader` withholds `‹` at Desktop,
+  // where the labeled sidebar **is** the destination
+  // (`frontend-design.md` §3.3), and this project runs at Desktop Chrome.
+  // The spec clicked `‹ PEOPLE & LOGINS` until the screen-band round made
+  // that rule the shipped one; nothing caught it because this file is not
+  // tagged `@production`, so CI has never run it.
+  await page.goto('/account/people')
   await expect(markRow).toContainText('INVITE OUT · SINGLE USE')
 
   // 5. A second browser context with its own virtual authenticator opens

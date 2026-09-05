@@ -355,19 +355,23 @@ violation fails the run naming the rotation procedure.
 **Charter:** the real deployed site in a real browser, exercising exactly one core
 journey. Deliberately small — edge cases belong in lower tiers.
 
-**Golden path, eventually:** sign in → add gear → find it → build a trip → pack
-an item → close the trip. **Today it stops at the third step** — sign in, record
-gear with the network cut, find it, watch it sync. The journey grows a leg per
-slice; the harness around it does not change.
+**Golden path:** sign in → add gear → find it → build a trip → pack an item →
+close the trip. **Today it runs the first five** — sign in, record gear with the
+network cut, find it, watch it sync, build a Trip, list two pieces of gear on
+it, pack one. *Close the trip* awaits S10. The journey grows a leg per slice;
+the harness around it does not change.
 
-**Three legs are owed and not written, which is a debt rather than a wait.**
-*Build a trip* has been buildable since S6 and *pack an item* since S9a; only
-*close the trip* still awaits S10. Each of those slices shipped without adding
-its leg, and none recorded that it had not — so the path stalled at step three
-while the app grew two steps past it. **A slice that builds a golden-path step
-adds its leg in the same slice, or writes the debt down.** The gap is indexed in
-[`technical-debt.md`](technical-debt.md); this sentence is what makes it
-detectable, and it goes when the legs land.
+**A slice that builds a golden-path step adds its leg in the same slice, or
+writes the debt down.** S6, S7 and S9a each shipped a step without one and none
+recorded that it had not, so the path stalled at step three while the app grew
+two steps past it — three slices rather than one, because nothing failed when a
+leg was skipped. The three legs are written; this sentence is what stops the
+next one going the same way.
+
+**One hop in the journey is a `goto`, not a click, and that is a finding rather
+than a shortcut.** From Split up a Trip with an empty gear list draws no door to
+the builder at all, so the leg navigates by URL and says why at the call site.
+It becomes a click the day a door is drawn.
 
 Two PWA-specific twists this project must cover:
 
@@ -401,6 +405,21 @@ own Device out from under every later spec. So `auth.spec.ts`,
 `deviceLink.spec.ts` and `invite.spec.ts` stay local-only; `depot.spec.ts` and
 `shell.spec.ts` carry
 `@production`. A local run is unchanged: the local project has no grep.
+
+**Local-only means run by nobody, on a schedule of never.** `e2e-prod` is the
+only CI job that runs Tier 5 and it always targets the box, so those three
+files run on a developer's machine or not at all. That is how `invite.spec.ts`
+came to click a `‹ PEOPLE & LOGINS` back link that the screen-band round had
+already taught Desktop to withhold: the spec was wrong for as long as nobody
+ran it, and no tier said so.
+
+**Locally it is one database, and that needs its own setting.**
+`fullyParallel: false` serialises tests *within* a file; separate spec files
+still run in parallel, and every local spec mints its Invite into the one
+`foerier_test`. Racing workers redeem each other's, and the run dies inside
+`joinAs` with the server logging `auth failed: invite join not redeemable` —
+from a spec that passes alone. The local project pins `workers: 1` for the same
+reason the production one does.
 
 **A signed-in Quartermaster comes from a fixture**
 (`test/e2e/quartermaster.ts`), and the fixture is two genuinely different acts

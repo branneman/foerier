@@ -3,8 +3,12 @@ import { expect, type Page } from '@playwright/test'
 import { test } from './quartermaster'
 
 /**
- * S2's golden path, end to end: join → add gear → see it in the Depot, with
- * an **offline leg** in the middle.
+ * The golden path, end to end: join → add gear → find it → build a trip →
+ * pack an item, with an **offline leg** in the middle.
+ *
+ * One test, because Tier 5's charter is one journey (`docs/testing.md`) and
+ * a leg is added by the slice that makes its step reachable. `close the trip`
+ * is the sixth step and waits on S10.
  *
  * Offline-first is the product, not a resilience feature bolted to the side,
  * so the smoke test has to prove it rather than assume it: gear recorded with
@@ -79,6 +83,16 @@ async function addGear(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'Depot' })).toBeVisible()
 }
 
+/** The Trip this run builds. Named per run so a re-run against the shared
+ * production Household never reads the last run's Trip as this one's. */
+const TRIP = `Vosges ${Date.now()}`
+
+/** The packing row drawing `name` — rows carry no role of their own, so this
+ * is `Packing.test.tsx`'s own `rowFor` over the same test id. */
+function packingRow(page: Page, name: string) {
+  return page.getByTestId('packing-row').filter({ hasText: name })
+}
+
 test('gear recorded offline reaches the depot, survives a reload, and syncs @production', async ({
   quartermaster,
 }) => {
@@ -148,4 +162,72 @@ test('gear recorded offline reaches the depot, survives a reload, and syncs @pro
   await page.reload()
   await expect(page.getByRole('link', { name: 'Feldflasche' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Zeltbahn' })).toBeVisible()
+
+  // ---- build a trip (S6) --------------------------------------------------
+
+  await page.getByRole('link', { name: 'Trips', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible()
+
+  await page.getByRole('link', { name: 'New trip' }).click()
+  await page.getByRole('textbox', { name: 'Name' }).fill(TRIP)
+  await page.getByRole('button', { name: 'Create trip' }).click()
+
+  // Creating lands on the Trip itself, in `draft` — the phase the reducer
+  // writes at `trip.created`, never a payload field.
+  await expect(page.getByRole('heading', { name: TRIP })).toBeVisible()
+  await expect(page.getByTestId('phase-chip')).toHaveText(/DRAFT/)
+
+  // ---- the gear list (S7) -------------------------------------------------
+
+  // **Reached by URL, because at this width there is no drawn door.**
+  // `+ Add from the depot` is gated on `editable = !isSplitOrWider`, so it is
+  // the phone's; `EDIT LIST ›` lives inside the `GEAR LIST` band, which
+  // renders only once the Trip *has* entries. A Trip with an empty list is
+  // therefore a dead end from Split up — the one hop in this journey a
+  // Quartermaster cannot actually make. Recorded in `technical-debt.md`; this
+  // navigation goes back to a click the day a door is drawn.
+  await page.goto(`${new URL(page.url()).pathname}/list`)
+  await expect(
+    page.getByRole('heading', { name: `${TRIP} — gear list` }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Add Zeltbahn' }).click()
+  await page.getByRole('button', { name: 'Add Feldflasche' }).click()
+
+  // `IN LIST ✓` replaces `+ ADD` on the row itself — the only feedback the
+  // picker gives, so that a batch loop never leaves the keyboard.
+  await expect(page.getByRole('button', { name: 'Add Zeltbahn' })).toHaveCount(
+    0,
+  )
+  await expect(page.getByTestId('gear-list-section')).toContainText('Zeltbahn')
+  await expect(page.getByTestId('gear-list-section')).toContainText(
+    'Feldflasche',
+  )
+
+  // ---- pack an item (S9a) -------------------------------------------------
+
+  // Back to the Trip, where the `GEAR LIST` band now renders — and with it
+  // both of its doors, `PACKING ›` among them.
+  await page.getByRole('link', { name: `‹ ${TRIP}` }).click()
+  await expect(page.getByRole('heading', { name: TRIP })).toBeVisible()
+  await expect(page.getByTestId('gear-list-count')).toContainText('2 ENTRIES')
+
+  await page.getByRole('link', { name: `Open packing for ${TRIP}` }).click()
+  await expect(page.getByRole('heading', { name: 'Pack-out' })).toBeVisible()
+  await expect(page.getByText('● 0/2 PIECES')).toBeVisible()
+
+  // The pill cycles `not_packed → staged → packed`, so packing one piece is
+  // two taps on the same control and each is its own op.
+  const row = packingRow(page, 'Zeltbahn')
+  await row.getByRole('button', { name: /NOT PACKED/ }).click()
+  await row.getByRole('button', { name: /STAGED/ }).click()
+  await expect(row.getByRole('button', { name: /PACKED/ })).toBeVisible()
+
+  await expect(page.getByText('● 1/2 PIECES')).toBeVisible()
+
+  // It survives the round trip: the ops left the device and came back with
+  // the fold, which is the whole reason this leg is here and not in Tier 3.
+  await expect.poll(() => unsyncedCount(page)).toBe(0)
+  await page.reload()
+  await expect(page.getByText('● 1/2 PIECES')).toBeVisible()
 })

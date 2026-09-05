@@ -53,6 +53,16 @@ import styles from './Trip.module.css'
  * editing moves to — the builder is its own route, `/trips/:id/list`, not a
  * second pane grafted onto this screen.
  *
+ * **From Split up, a Trip with an empty gear list has no drawn door to the
+ * builder.** `+ Add from the depot` is gated on `editable`, which is
+ * `!isSplitOrWider`, so it belongs to the phone; `EDIT LIST ›` lives inside
+ * the `GEAR LIST` band, which renders only once the Trip *has* Entries. The
+ * first Entry is therefore unreachable at these widths except by typing the
+ * route — a dead end rather than a missing convenience, and the sibling of
+ * the drawn-and-recorded case where an empty list also hides `PACKING ›`
+ * (`docs/design/README.md` §1). Tier 5's gear-list leg navigates by URL
+ * because of this and says so at the call site.
+ *
  * The title is **the Trip's name alone**: the builder's `— gear list` names a
  * list that does not exist, and its count, its weight and its `Start pack-out`
  * are all facts about Entries. The primary here is the **phase chip**, which
