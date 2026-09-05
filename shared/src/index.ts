@@ -238,6 +238,24 @@ export {
 export type { PieceInclusion } from './selectors/piece.ts'
 export { pieceInclusion, piecesOf } from './selectors/piece.ts'
 
+export type {
+  UnpackCount,
+  UnpackItem,
+  UnpackOutcome,
+} from './selectors/unpack.ts'
+export {
+  consumedCountOf,
+  countOfUnpack,
+  isKnownOutcome,
+  outcomeGlyph,
+  outcomeLabel,
+  outcomeOf,
+  OUTCOMES,
+  pieceOutcomeOf,
+  unpackItems,
+  unpackTotals,
+} from './selectors/unpack.ts'
+
 export type { Phase, PhaseKey, TripSections } from './selectors/trip.ts'
 export {
   isActive,
