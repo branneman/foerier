@@ -21,11 +21,14 @@ import { piecesOf } from './piece.ts'
  * agree on, stated once here rather than at each of them.
  *
  * **The spine is {@link unpackItems}, and it is deliberately not
- * {@link packingItems} — spec §3.1 argues the difference in full.** A
- * container Entry produces an item here (F1: `outcome` is a third register
- * and a container has it, unlike a `status` it can never carry); a trip-only
- * Entry produces none (invariant 18: it never entered the Depot and takes no
- * outcome). Everything else — a Single, a Counted Entry's whole Bring-count, a
+ * `packingItems` — spec §3.1 argues the difference in full.** A container
+ * Entry produces an item here (F1: `outcome` is a third register and a
+ * container has it, unlike a `status` it can never carry); a trip-only Entry
+ * produces none (invariant 18: it never entered the Depot and takes no
+ * outcome). `docs/design/README.md` §7 states the whole rule as the shipped
+ * authority: *"the denominator is every **depot** Entry's units, containers
+ * included (F1) … trip-only Entries take no outcome and are excluded."*
+ * Everything else — a Single, a Counted Entry's whole Bring-count, a
  * per-person Entry fanned out over its included Pieces — matches
  * `packingItems` exactly and reads `pieceCountOf`, which **is** the units
  * table, rather than restating it.
@@ -48,16 +51,8 @@ import { piecesOf } from './piece.ts'
  */
 
 /**
- * The Entry's outcome, or `null` for **open** — the absence of a resolution,
- * whether that is because no `trip.outcome_set` has ever addressed this Entry
- * or because one explicitly cleared it back with `outcome: null`.
- *
- * Both are read alike, and this — with {@link pieceOutcomeOf} — is the **one**
- * place that is stated (`ownerOf`'s rule, `phaseOf`'s, `statusOf`'s and
- * `stageOf`'s, for a sixth and seventh time). The fold conflates nothing:
- * `entry.outcome` being absent and `entry.outcome.value` being `null` are
- * different facts about the op log, but no reader downstream of this function
- * may tell them apart.
+ * The Entry's outcome, or `null` for open — absent and an explicit `null`
+ * both read this way; see this file's header for the rule and why.
  */
 export function outcomeOf(entry: EntryState): OutcomeValue | null {
   return entry.outcome?.value ?? null
@@ -86,8 +81,9 @@ export function pieceOutcomeOf(
  * that inherited "exactly two" would misread the intent.** An absent
  * `consumedCount` register reads the Entry's own **Bring-count**, never `1`
  * and never `null` — `ownerOf`'s rule, `phaseOf`'s, `statusOf`'s, `stageOf`'s,
- * `bringCountOf`'s and `ownedCountOf`'s, for a **third** register reading its
- * own absence as something other than the literal gap.
+ * `bringCountOf`'s and `ownedCountOf`'s: another register reading its own
+ * absence as something other than the literal gap (this file's header
+ * already numbers the running count for `outcomeOf`/`pieceOutcomeOf`).
  *
  * The reason is F9's own ruling: the outcome sheet's stepper opens at the
  * Bring-count, because *all of it used up is the ordinary case*, and the
@@ -218,6 +214,13 @@ export type UnpackItem =
  *   Depot and takes no outcome (invariant 18) — checked first, so a trip-only
  *   *container* (an improvised crate) is excluded exactly like a trip-only
  *   Single, rather than falling into the container branch below.
+ *   `docs/design/README.md` §7: *"the denominator is every **depot** Entry's
+ *   units, containers included (F1) … trip-only Entries take no outcome and
+ *   are excluded."* The check order below is load-bearing and is pinned by
+ *   `unpack.test.ts`'s check-order tests, not by any arithmetic: get it wrong
+ *   and a Trip becomes permanently uncloseable while the rest of the suite
+ *   stays green (no test otherwise builds a trip-only container or a
+ *   per-person container).
  * - **A depot container Entry produces an item, `units: 1`.** Ruling A5
  *   excluded a container from `packingItems` because a container carries a
  *   journey *instead of* a status and can never be marked packed; that
@@ -240,11 +243,16 @@ export function unpackItems(
   const items: UnpackItem[] = []
   for (const entry of entriesOf(trip, state)) {
     const kind = entryKind(entry, state)
-    // Invariant 18, checked before container-ness: a trip-only Entry takes
-    // no outcome whatever it is otherwise, and is still drawn (Task 10), just
-    // not counted here.
+    // Invariant 18, checked BEFORE container-ness: a trip-only Entry takes no
+    // outcome whatever it is otherwise, and is still drawn (Task 10), just
+    // not counted here. This order is pinned by a dedicated test, not by any
+    // total: this function's own docstring explains why a swap is invisible
+    // to every other assertion in this file.
     if (kind === 'trip_only') continue
 
+    // Container-ness checked BEFORE the per-person fan-out, for the same
+    // reason: a per-person depot container is one physical thing with one
+    // Entry-level outcome, not three Pieces to resolve individually.
     const container = isContainerEntry(entry, state)
     if (kind === 'per_person' && !container) {
       for (const personId of piecesOf(entry, trip)) {

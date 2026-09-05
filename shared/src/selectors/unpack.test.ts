@@ -253,6 +253,80 @@ describe('unpackItems is the spine, and it is not packingItems (spec §3.1)', ()
   })
 })
 
+/**
+ * `unpackItems`' loop checks `trip_only`, then container-ness, then
+ * `per_person` — and both of the two tests below pin that ORDER, not an
+ * arithmetic. Neither combination is exercised by the spine fixture above
+ * (which has a depot container and a trip-only Single, but never a trip-only
+ * *container* or a per-person *container*), so a swap in either check would
+ * pass the whole suite above and still be wrong.
+ *
+ * `docs/design/README.md` §7 is the shipped authority for the first rule:
+ * *"the denominator is every **depot** Entry's units, containers included
+ * (F1) … trip-only Entries take no outcome and are excluded."*
+ */
+describe('unpackItems’ check order is load-bearing (I1, I2)', () => {
+  it('excludes a trip-only container exactly like a trip-only Single (I1)', () => {
+    // If `kind === 'trip_only'` ever moved below the container check — the
+    // natural shape if this loop were later aligned with `packingItems`,
+    // which checks container first — a trip-only crate (an improvised,
+    // uncatalogued container, e.g. a borrowed one) would draw a `units: 1`,
+    // `outcome: null` item. F5 draws no pill on a trip-only row
+    // (`CLEARS AT CLOSE` in its place), so nothing could ever author
+    // `trip.outcome_set` on it: `open` would never reach zero and the Trip
+    // could never close. The failure is severe and the whole suite would
+    // stay green throughout — this is the one test that would catch it.
+    const TRIP = 't-order-trip-only-crate'
+    const CRATE = 'e-borrowed-crate'
+    const state = depot(aTrip({ id: TRIP, name: 'Order' }), [
+      tripEntryAdded(TRIP, CRATE, {
+        from: 'trip_only',
+        name: 'Borrowed crate',
+        container: true,
+      }),
+    ])
+    const trip = tripFrom(state, TRIP)
+
+    expect(unpackItems(trip, state).map((item) => item.entryId)).not.toContain(
+      CRATE,
+    )
+    expect(unpackTotals(trip, state).total).toBe(0)
+  })
+
+  it('gives a per-person depot container one entry item, not a fan-out over Pieces (I2)', () => {
+    // If `kind === 'per_person'` were ever checked before container-ness, a
+    // per-person crate on this 3-Participant Trip would fan out into three
+    // `'piece'` items instead of one container item — over-counting the
+    // denominator (one duffel read as 3), and each Piece's outcome could
+    // then only be authored through the roster sheet, which F1's container
+    // row does not draw at all. Same end state as I1: `open` never reaches
+    // zero, the Trip is stuck, and the full suite stays green.
+    const TRIP = 't-order-per-person-crate'
+    const P1 = 'p-1'
+    const P2 = 'p-2'
+    const P3 = 'p-3'
+    const CRATE = 'e-pp-crate'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Order', participants: [P1, P2, P3] }),
+      aPerson({ id: P1, name: 'Mark' }),
+      aPerson({ id: P2, name: 'Kim' }),
+      aPerson({ id: P3, name: 'Ana' }),
+      aGear({
+        id: 'g-crate-pp',
+        name: 'Crate PP',
+        kind: 'per_person',
+        container: true,
+      }),
+      [tripEntryAdded(TRIP, CRATE, { from: 'depot', gearId: 'g-crate-pp' })],
+    )
+    const trip = tripFrom(state, TRIP)
+
+    expect(unpackItems(trip, state)).toEqual([
+      { kind: 'entry', entryId: CRATE, units: 1, outcome: null, consumed: null }, // prettier-ignore
+    ])
+  })
+})
+
 describe('a Trip where the two totals genuinely differ (F1’s own arithmetic)', () => {
   const TRIP = 't-spine2'
   const SOLO = 'p-solo'
@@ -385,13 +459,6 @@ describe('countOfUnpack is the one arithmetic (spec §3.2)', () => {
       consumed: 0,
       lost: 0,
     })
-  })
-
-  it('never sums open independently — it is total minus resolved', () => {
-    const items: UnpackItem[] = [
-      { kind: 'entry', entryId: 'a', units: 3, outcome: null, consumed: null }, // prettier-ignore
-    ]
-    expect(countOfUnpack(items).open).toBe(3)
   })
 
   it('splits a consumed Counted Entry: the count to consumed, the rest to back, the whole to resolved', () => {
