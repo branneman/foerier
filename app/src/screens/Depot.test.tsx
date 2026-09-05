@@ -5,6 +5,12 @@ import {
   normalizeTag,
   personRecorded,
   placeRecorded,
+  tripContainerStageSet,
+  tripCreated,
+  tripEntryAdded,
+  tripEntryBringCountSet,
+  tripEntryMoved,
+  tripPhaseMoved,
   type TagString,
 } from '@foerier/shared'
 import { cleanup, render, screen, within } from '@testing-library/react'
@@ -16,7 +22,18 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+// The exact same CSS module `GearRow` itself resolves `styles[tone]` against
+// — imported here so the tone assertions below check the class the row
+// actually rendered, never the string this file handed in
+// (`screenBand.test.tsx`'s one-sided-assertion lesson).
+import gearRowStyles from '../../../ui/src/GearRow.module.css'
+
+import { inMemoryOpLog } from '../depot/opLog'
+import {
+  createDepotStore,
+  DepotProvider,
+  type DepotStoreState,
+} from '../depot/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anId, seededStore } from '../testUtils'
@@ -666,5 +683,246 @@ describe('the Depot at desktop width', () => {
         name: /NEWEST FIRST/,
       }),
     ).toBeInTheDocument()
+  })
+})
+
+/**
+ * S9b — the whereabouts column and the row's tone (`docs/design/README.md`
+ * §5f D9, spec §4.1). `rowWhereabouts(whereabouts(state, gear.id, view))` is
+ * `Find.tsx`'s `PlainRow` own call, so the two rows cannot drift; the tone is
+ * asserted on the rendered `gear-row-whereabouts` element, never on the
+ * string handed to `GearRow` (`screenBand.test.tsx`'s lesson).
+ */
+describe('the Depot WHEREABOUTS column and the row`s tone (S9b)', () => {
+  it('reads ⌂ HOME with the home tone when nothing claims the gear', async () => {
+    const tentId = anId()
+    const store = await seededStore([
+      gearRecorded(tentId, { name: 'Tent', container: false, kind: 'single' }),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Tent' })
+    const whereaboutsCell = within(row).getByTestId('gear-row-whereabouts')
+    expect(whereaboutsCell).toHaveTextContent('⌂ HOME')
+    expect(whereaboutsCell.className).toContain(gearRowStyles['home'])
+  })
+
+  it('reads the one trip slice with the trip tone, and keeps the home path in the meta (D9)', async () => {
+    const placeId = anId()
+    const crateId = anId()
+    const tentId = anId()
+    const tripId = anId()
+    const store = await seededStore([
+      placeRecorded(placeId, 'Attic'),
+      gearRecorded(crateId, {
+        name: 'Crate B',
+        container: true,
+        kind: 'single',
+        residence: { in: 'place', id: placeId },
+      }),
+      gearRecorded(tentId, {
+        name: 'Tent',
+        container: false,
+        kind: 'single',
+        residence: { in: 'gear', id: crateId },
+      }),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripEntryAdded(tripId, 'e-duffel', {
+        from: 'trip_only',
+        name: 'Duffel',
+        container: true,
+      }),
+      tripContainerStageSet(tripId, 'e-duffel', 'car'),
+      tripEntryAdded(tripId, 'e-tent', { from: 'depot', gearId: tentId }),
+      tripEntryMoved(tripId, 'e-tent', {
+        in: 'container',
+        entryId: 'e-duffel',
+      }),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Tent' })
+    const whereaboutsCell = within(row).getByTestId('gear-row-whereabouts')
+    expect(whereaboutsCell).toHaveTextContent('▸ Alps 2026 · CAR')
+    expect(whereaboutsCell.className).toContain(gearRowStyles['trip'])
+    // D9: home is home no matter where the gear stands — the meta line
+    // never learns of the trip.
+    expect(within(row).getByTestId('gear-row-meta')).toHaveTextContent(
+      'Attic ▸ Crate B',
+    )
+  })
+
+  it('reads ▸ 2 TRIPS with the trip tone once two active Trips claim the gear', async () => {
+    const pegId = anId()
+    const alpsId = anId()
+    const vosgesId = anId()
+    const store = await seededStore([
+      gearRecorded(pegId, {
+        name: 'Peg',
+        container: false,
+        kind: 'counted',
+        owned_count: 9,
+      }),
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'on_trip'),
+      tripEntryAdded(alpsId, 'e-a', { from: 'depot', gearId: pegId }),
+      tripEntryBringCountSet(alpsId, 'e-a', 2),
+      tripEntryAdded(vosgesId, 'e-b', { from: 'depot', gearId: pegId }),
+      tripEntryBringCountSet(vosgesId, 'e-b', 2),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Peg' })
+    const whereaboutsCell = within(row).getByTestId('gear-row-whereabouts')
+    expect(whereaboutsCell).toHaveTextContent('▸ 2 TRIPS')
+    expect(whereaboutsCell.className).toContain(gearRowStyles['trip'])
+  })
+
+  it('reads ▲ 2 TRIPS with the attention tone once the claims exceed supply (D8)', async () => {
+    const pegId = anId()
+    const alpsId = anId()
+    const vosgesId = anId()
+    const store = await seededStore([
+      gearRecorded(pegId, {
+        name: 'Peg',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'on_trip'),
+      tripEntryAdded(alpsId, 'e-a', { from: 'depot', gearId: pegId }),
+      tripEntryBringCountSet(alpsId, 'e-a', 2),
+      tripEntryAdded(vosgesId, 'e-b', { from: 'depot', gearId: pegId }),
+      tripEntryBringCountSet(vosgesId, 'e-b', 2),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Peg' })
+    const whereaboutsCell = within(row).getByTestId('gear-row-whereabouts')
+    expect(whereaboutsCell).toHaveTextContent('▲ 2 TRIPS')
+    expect(whereaboutsCell.className).toContain(gearRowStyles['attention'])
+  })
+
+  it('keeps the HOME column at the home path while WHEREABOUTS states the trip, at desktop width (D9)', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const placeId = anId()
+    const crateId = anId()
+    const tentId = anId()
+    const tripId = anId()
+    const store = await seededStore([
+      placeRecorded(placeId, 'Attic'),
+      gearRecorded(crateId, {
+        name: 'Crate B',
+        container: true,
+        kind: 'single',
+        residence: { in: 'place', id: placeId },
+      }),
+      gearRecorded(tentId, {
+        name: 'Tent',
+        container: false,
+        kind: 'single',
+        residence: { in: 'gear', id: crateId },
+      }),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripEntryAdded(tripId, 'e-duffel', {
+        from: 'trip_only',
+        name: 'Duffel',
+        container: true,
+      }),
+      tripContainerStageSet(tripId, 'e-duffel', 'car'),
+      tripEntryAdded(tripId, 'e-tent', { from: 'depot', gearId: tentId }),
+      tripEntryMoved(tripId, 'e-tent', {
+        in: 'container',
+        entryId: 'e-duffel',
+      }),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Tent' })
+    expect(within(row).getByTestId('gear-row-home')).toHaveTextContent(
+      'Attic ▸ Crate B',
+    )
+    const whereaboutsCell = within(row).getByTestId('gear-row-whereabouts')
+    expect(whereaboutsCell).toHaveTextContent('▸ Alps 2026 · CAR')
+    expect(whereaboutsCell.className).toContain(gearRowStyles['trip'])
+  })
+})
+
+/**
+ * S9b's sixth dimension groups as well as filters (D5): flat headers, the
+ * sentinel first, and every other header carrying the container's own home
+ * path as a muted meta line so two same-named stuff sacks stay apart without
+ * indentation.
+ */
+describe('the Depot grouped by container (S9b, D5)', () => {
+  it('draws flat headers, the sentinel first with no meta, and every other header with the container`s own home path', async () => {
+    const atticId = anId()
+    const crateId = anId()
+    const tentId = anId()
+    const ropeId = anId()
+    const store = await seededStore([
+      placeRecorded(atticId, 'Attic'),
+      gearRecorded(crateId, {
+        name: 'Crate B',
+        container: true,
+        kind: 'single',
+        residence: { in: 'place', id: atticId },
+      }),
+      gearRecorded(tentId, {
+        name: 'Tent',
+        container: false,
+        kind: 'single',
+        residence: { in: 'gear', id: crateId },
+      }),
+      gearRecorded(ropeId, { name: 'Rope', container: false, kind: 'single' }),
+    ])
+    const user = userEvent.setup()
+    setViewport(SPLIT, DESKTOP)
+
+    renderDepot(store)
+    await user.click(
+      within(screen.getByTestId('group-options')).getByRole('button', {
+        name: 'CONTAINER',
+      }),
+    )
+
+    const headers = screen.getAllByTestId('depot-group-header')
+    expect(headers).toHaveLength(2)
+
+    // Sentinel first — pinned regardless of alphabetical order — reading
+    // exactly the chip's own words (D4), with no meta line at all.
+    expect(
+      within(headers[0] as HTMLElement).getByText('Not in a container'),
+    ).toBeInTheDocument()
+    expect(
+      within(headers[0] as HTMLElement).queryByTestId('depot-group-meta'),
+    ).toBeNull()
+
+    // Every other header carries the container's own home path.
+    expect(
+      within(headers[1] as HTMLElement).getByText('Crate B'),
+    ).toBeInTheDocument()
+    expect(
+      within(headers[1] as HTMLElement).getByTestId('depot-group-meta'),
+    ).toHaveTextContent('Attic')
+
+    // Counts sum to the shown list: Crate B (loose itself) and Rope fall to
+    // the sentinel; Tent, inside Crate B, is the only member of that group.
+    const counts = headers.map((header) =>
+      Number(within(header).getByTestId('depot-group-count').textContent),
+    )
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(3)
   })
 })

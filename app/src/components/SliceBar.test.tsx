@@ -361,6 +361,49 @@ describe('SliceBar — expanded', () => {
 })
 
 /**
+ * S9b — `CONTAINER` is the one dimension that both filters and groups (D5),
+ * and the arrange row's hint is the one component that fact reaches
+ * (`docs/design/README.md` §5f D5, spec §4.4). Every other `GROUP BY` value
+ * leaves the hint exactly as S3 shipped it.
+ */
+describe('SliceBar — the arrange-row hint (S9b, D5)', () => {
+  it('states only the standing rule while grouped by anything but CONTAINER', () => {
+    render(
+      <SliceBar
+        spec={{ ...EMPTY_SLICE, group: 'owner' }}
+        result={aResult()}
+        valuesFor={() => []}
+        formatFor={formatValue}
+        onChange={() => {}}
+        layout="expanded"
+      />,
+    )
+
+    expect(
+      screen.getByText(/SEARCH \+ FILTERS COMBINE WITH AND/),
+    ).toHaveTextContent('SEARCH + FILTERS COMBINE WITH AND.')
+    expect(screen.queryByText(/GROUPS FILE EACH GEAR/)).toBeNull()
+  })
+
+  it('gains a second clause naming the partition while grouped by CONTAINER', () => {
+    render(
+      <SliceBar
+        spec={{ ...EMPTY_SLICE, group: 'container' }}
+        result={aResult()}
+        valuesFor={() => []}
+        formatFor={formatValue}
+        onChange={() => {}}
+        layout="expanded"
+      />,
+    )
+
+    expect(screen.getByText(/GROUPS FILE EACH GEAR/)).toHaveTextContent(
+      'GROUPS FILE EACH GEAR UNDER THE CONTAINER IT IS IN.',
+    )
+  })
+})
+
+/**
  * Whether the chips scroll or wrap is how what exists *lays out*, so it is a
  * container query, never a media query (frontend-design §3.2). The two differ
  * exactly where it matters: at Split the bar sits in the Depot's 308px list

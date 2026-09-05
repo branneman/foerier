@@ -104,11 +104,32 @@
     background: var(--color-bg-surface);
   }
 
+  /* Name and meta stack so the count stays a single right-hand column
+     whether or not a group carries a meta line (S9b — CONTAINER's own home
+     path, `docs/design/README.md` §5f D5). */
+  .groupNameStack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
   .groupName {
     font: var(--text-heading) var(--font-ui);
     font-size: 1rem;
     font-weight: 600;
     color: var(--color-ink-primary);
+  }
+
+  /* The container's own home path — muted, same rule as `GearRow`'s meta
+     line, so two same-named stuff sacks stay apart without indentation. */
+  .groupMeta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .groupCount {

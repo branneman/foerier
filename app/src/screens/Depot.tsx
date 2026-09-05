@@ -5,12 +5,15 @@ import {
   dimensionValues,
   homePath,
   ownerLabel,
+  rowWhereabouts,
   sliceDepot,
   tagsOf,
+  whereabouts,
   type ContainmentView,
   type DepotState,
   type DimensionId,
   type GearState,
+  type GroupKey,
   type SliceGroup,
 } from '@foerier/shared'
 import { GearRow, Logo } from '@foerier/ui'
@@ -104,16 +107,22 @@ function Row({
     .join(' ▸ ')
   const kind = gear.kind?.value
   const qty = qtyFor(gear)
+  // D9: the row's whereabouts slot takes `rowWhereabouts`'s text and tone —
+  // the same call `Find.tsx`'s `PlainRow` makes, so the two rows cannot
+  // drift. `HOME` above and the meta below both keep the **home** path
+  // regardless, which is what makes the row itself the two-worlds split
+  // (`docs/design/README.md` §5f D9).
+  const { text: whereaboutsLabel, tone } = rowWhereabouts(
+    whereabouts(state, gear.id, view),
+  )
 
   return (
     <Link href={`/gear/${gear.id}`} asChild>
       <GearRow
         name={gear.name?.value ?? ''}
         href={`/gear/${gear.id}`}
-        // Only the home world exists today; the amber trip read and the ▲
-        // unaccounted read arrive with the trip and outcome slices, and are
-        // deliberately not placeholder'd (the same call `Find` made in S2b).
-        whereabouts="⌂ HOME"
+        whereabouts={whereaboutsLabel}
+        tone={tone}
         layout={layout}
         selected={selected}
         {...(gear.container?.value === true ? { insideCount: inside } : {})}
@@ -135,27 +144,71 @@ function Row({
   )
 }
 
+/**
+ * The container grouping's own meta line: the group's header names a
+ * container, and its meta states **that container's own home path** — never
+ * anything about the gear inside it — so two same-named stuff sacks stay
+ * apart without indentation (`docs/design/README.md` §5f D5). Derived from
+ * `group.key` rather than a `SliceGroup` field: the shape reaches every
+ * grouping, and only this one has anything to say here. The sentinel
+ * (`group.key` is not a Gear id) and every other grouping answer `undefined`
+ * — D4: the header's name is already the definition, so it carries no meta.
+ */
+function groupHomeMeta(
+  state: DepotState,
+  view: ContainmentView,
+  groupKey: GroupKey,
+  group: SliceGroup,
+): string | undefined {
+  if (groupKey !== 'container') return undefined
+  const container = state.gear[group.key]
+  if (container === undefined) return undefined
+  const path = homePath(state, container.id, view)
+    .map((segment) => segment.name)
+    .join(' ▸ ')
+  return path === '' ? undefined : path
+}
+
 function Group({
   group,
   state,
   view,
   layout,
   selectedId,
+  groupKey,
 }: {
   group: SliceGroup
   state: DepotState
   view: ContainmentView
   layout: 'row' | 'table'
   selectedId: string | undefined
+  groupKey: GroupKey
 }) {
+  const meta = groupHomeMeta(state, view, groupKey, group)
+
   return (
     <>
       {group.label !== '' && (
         // Packing's group header minus the journey rail: surface band, name
         // 16/600, right mono count (Screens A §03).
-        <li className={styles['groupHeader']}>
-          <span className={styles['groupName']}>{group.label}</span>
-          <span className={styles['groupCount']}>{group.gear.length}</span>
+        <li className={styles['groupHeader']} data-testid="depot-group-header">
+          <span className={styles['groupNameStack']}>
+            <span className={styles['groupName']}>{group.label}</span>
+            {meta !== undefined && (
+              <span
+                className={styles['groupMeta']}
+                data-testid="depot-group-meta"
+              >
+                {meta}
+              </span>
+            )}
+          </span>
+          <span
+            className={styles['groupCount']}
+            data-testid="depot-group-count"
+          >
+            {group.gear.length}
+          </span>
         </li>
       )}
       {group.gear.map((gear) => (
@@ -309,6 +362,7 @@ export function Depot({ selectedId }: DepotProps = {}) {
                   view={view}
                   layout={layout}
                   selectedId={selectedId}
+                  groupKey={spec.group}
                 />
               ))}
             </ul>
