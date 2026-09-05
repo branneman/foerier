@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&amp;family=Spline+Sans:wght@400;500;600&amp;family=Spline+Sans+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0F130F} a{color:#E2A65B} a:hover{color:#E8E5D5}</style>
+</helmet>
+<div style="width:1200px; padding:32px; background:#0F130F; color:#E8E5D5; font-family:'Spline Sans',sans-serif">
+
+  <div style="display:flex; align-items:center; gap:10px">
+    <svg width="38" height="30" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.7"></path><line x1="10" y1="6.2" x2="10" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><line x1="18" y1="6.2" x2="18" y2="19.8" stroke="#E8E5D5" stroke-width="1.3"></line><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+    <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; position:relative; top:2px">foerier</span>
+    <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.18em; color:#151A15; background:#E2A65B; padding:3px 8px; border-radius:3px; margin-left:8px">S10 ROUND — UNPACK, RESOLVE AND CLOSE · F5</span>
+  </div>
+  <div style="font-size:13.5px; color:#97A08C; margin-top:8px; max-width:880px">Twenty decisions on the slice the tool exists for, ruled before any code. F5 was drawn before S7, S8 and S9 landed; its anatomy survives and it now speaks their grammar as F4's sibling. Ground truth is fixed: two ops (<span style="font-family:'Spline Sans Mono',monospace">trip.outcome_set</span>, <span style="font-family:'Spline Sans Mono',monospace">trip.consumed_count_set</span>), two Depot writes (re-home on the spot, the consumed reduction at close), <span style="color:#E8E5D5">lost writes nothing</span>, resolving hands gear home mid-pass, the close is gated on open = 0 with no override, closing destroys nothing, a phase locks nothing. Reopen is S11; notes and templates are later. <span style="color:#E8E5D5">Lettered F1–F20 and filed as README §5h</span> — §5g and the letter E were taken by round 4, which this brief predates.</div>
+  <div style="display:flex; gap:14px; margin-top:12px; flex-wrap:wrap">
+    <span style="display:inline-flex; align-items:center; gap:6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 6px">BLESSED</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161">THE BOARD OR THE BRIEF'S READING STANDS</span></span>
+    <span style="display:inline-flex; align-items:center; gap:6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161">UNDRAWN SURFACE, DRAWN HERE</span></span>
+    <span style="display:inline-flex; align-items:center; gap:6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E2A65B; border:1px solid rgba(226,166,91,.5); border-radius:3px; padding:2px 6px">REDRAWN</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161">CHANGES A DRAWN VALUE OR ITS MEANING</span></span>
+    <span style="display:inline-flex; align-items:center; gap:6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#D98263; border:1px solid rgba(217,130,99,.5); border-radius:3px; padding:2px 6px">OVERTURNED</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161">A DRAWN OR SPEC'D THING RETIRES</span></span>
+    <span style="display:inline-flex; align-items:center; gap:6px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#D98263; border:1px dashed rgba(217,130,99,.5); border-radius:3px; padding:2px 6px">LOSING CANDIDATE</span><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161">DRAWN BESIDE THE WINNER — NOT BUILT</span></span>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:30px 0 12px">00 — THE REGISTER · F. UNPACK, RESOLVE AND CLOSE — S10</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px">
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F1 — A CONTAINER TAKES AN OUTCOME</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6"><span style="color:#E8E5D5">Yes.</span> A5 excluded containers from the <em>packing</em> arithmetic because a journey stands in for a status; an outcome is a third register and the duffel has one — it is depot gear that must come home or be lost, and a Depot that cannot say so drifts, which is what this slice exists to stop. So <span style="color:#E8E5D5">F5's denominator is not F4's</span>: F4 counts what carries a status, F5 counts what comes home. The board's twin <span style="font-family:'Spline Sans Mono',monospace">61</span> was a mock coincidence; the trip that reads <span style="font-family:'Spline Sans Mono',monospace">48/61 PIECES</span> on F4 reads <span style="font-family:'Spline Sans Mono',monospace">56/62</span> here (61 − 1 trip-only + 2 depot containers). The container row is an ordinary row: no rail (the rail is F4's control), meta <span style="font-family:'Spline Sans Mono',monospace">→ SHELF L-TOP · 12 INSIDE</span>, and its outcome sheet states <span style="font-family:'Spline Sans Mono',monospace">ITS CONTENTS KEEP THEIR OWN OUTCOMES.</span> — no cascade, ever. Frame at 01.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E2A65B">F2 — THE COUNT LINE COUNTS UNITS, RESOLVED</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E2A65B; border:1px solid rgba(226,166,91,.5); border-radius:3px; padding:2px 6px">REDRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6"><span style="color:#E8E5D5">Units</span> (A13's shape: a Counted Entry brought ×4 is four), and the numerator is <span style="color:#E8E5D5">resolved</span>, not back. <span style="font-family:'Spline Sans Mono',monospace">● 56/62 RESOLVED</span> against <span style="font-family:'Spline Sans Mono',monospace">6 OPEN</span> — the bar measures the distance to the gate, and a bar that counted <span style="font-family:'Spline Sans Mono',monospace">BACK</span> could never fill on a trip with one lost item, A5's unreachable-numerator fault re-made. The breakdown moves to the close card's summary, where it already was. A consumed Counted Entry <span style="color:#E8E5D5">splits</span>: bring ×4, consumed ×2 is 2 <span style="font-family:'Spline Sans Mono',monospace">CONSUMED</span> + 2 <span style="font-family:'Spline Sans Mono',monospace">BACK</span>, the domain's <em>the rest came back</em>; the meta reads <span style="font-family:'Spline Sans Mono',monospace">×2 CONSUMED · ×2 BACK</span> and <span style="font-family:'Spline Sans Mono',monospace">TAKEN · EMPTY</span> retires — two words for two states the ledger already names. Frame at 01.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E2A65B">F3 — GROUP BY PLACE; THE SENTINEL IS LOOSE</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E2A65B; border:1px solid rgba(226,166,91,.5); border-radius:3px; padding:2px 6px">REDRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6"><span style="color:#E8E5D5">Grouping by the Place at the root of the home path is blessed</span> — F5 answers <em>where does my body go</em>, D5's partition answers <em>where is it filed</em>; two questions, and the container stays in the row's return path. Not a contradiction of D5: the Depot files, F5 walks. <span style="color:#E8E5D5">The sentinel is redrawn.</span> Its bucket here is exactly gear with no Place at its root — the glossary's Loose, no stretch — so D4's guard permits the word it refused on the Depot: header <span style="font-family:'Spline Sans Mono',monospace">Loose</span>, muted, meta <span style="font-family:'Spline Sans Mono',monospace">NO HOME SLOT</span>. <span style="font-family:'Spline Sans Mono',monospace">No home slot</span> as a header retires. Position <span style="color:#E8E5D5">last</span> (A3: this lists work, and the sibling screen's Loose closes its list), followed by a <span style="font-family:'Spline Sans Mono',monospace">Trip-only</span> group — trip-only Entries are not Loose gear and were wrongly filed under it. Frame at 01.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E2A65B">F4 — F4'S CONTROLS, ONE WORD DIFFERENT</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E2A65B; border:1px solid rgba(226,166,91,.5); border-radius:3px; padding:2px 6px">REDRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">Segmented <span style="font-family:'Spline Sans Mono',monospace; color:#E8E5D5">DESTINATION · PERSON · ALL</span> plus the <span style="font-family:'Spline Sans Mono',monospace; color:#E8E5D5">○ OPEN</span> filter pill. PERSON is real work — <em>give everyone their own bag back</em> — and means what A7 made it mean, whose it is. <span style="font-family:'Spline Sans Mono',monospace">BY DESTINATION</span> as a toggle retires: a toggle with no other state is a mode pretending to be a filter. <span style="font-family:'Spline Sans Mono',monospace">○ OPEN ONLY ✕</span> loses <em>only</em> — a filter pill is already only. ALL is flat, A→Z, each meta ending in the return path (A8's shape). Hint: <span style="font-family:'Spline Sans Mono',monospace">TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOME</span>. Frame at 01.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F5 — THE ROW'S TARGETS; THE PILL OPENS</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">Tap pill → the <span style="color:#E8E5D5">outcome sheet</span>; tap circles → the <span style="color:#E8E5D5">per-Piece outcome sheet</span>; tap row → the <span style="color:#E8E5D5">Home picker</span>, which is the re-home gesture. Four verbs and a count do not cycle, so the pill opens where F4's writes. <span style="color:#E8E5D5">No disclosure mark</span>: a chevron breaks the pill's glyph + word grammar, and the asymmetry is safe in the only direction that matters — a reader expecting a cycle taps once and a sheet opens with nothing written; a reader expecting a sheet on F4 writes one reversible op. The hint states it. Sheets at 02.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E2A65B">F6 — FOUR PILLS; ▲ IS LOST ALONE; CLEARS IS NOT A PILL</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E2A65B; border:1px solid rgba(226,166,91,.5); border-radius:3px; padding:2px 6px">REDRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">The set stands: <span style="font-family:'Spline Sans Mono',monospace; color:#7BB389">● BACK</span> · <span style="font-family:'Spline Sans Mono',monospace">○ OPEN</span> muted · <span style="font-family:'Spline Sans Mono',monospace; color:#6A7161">CONSUMED</span> dashed, no glyph (a consumed thing has no whereabouts to point at) · <span style="font-family:'Spline Sans Mono',monospace; color:#D98263">▲ LOST</span>. ▲ is reserved for LOST — <span style="font-family:'Spline Sans Mono',monospace">OPEN</span> is the day's work, not a fault, which is what keeps the screen from turning amber at the first row. <span style="color:#E8E5D5">Two redraws.</span> <span style="font-family:'Spline Sans Mono',monospace">CLEARS</span> stops being a pill: a pill shape is a control on every row of both screens (§5b O, painted = hit), and a trip-only Entry takes no outcome, so the slot draws faint mono <span style="font-family:'Spline Sans Mono',monospace">CLEARS AT CLOSE</span> with no border. And the row's meta stops changing with the outcome — <span style="font-family:'Spline Sans Mono',monospace">▲ NOT SEEN AT UNPACK</span> retires: <em>the meta is where it goes; the pill is what happened</em>, one ▲ per row. Frame at 01.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F7 — THE PER-PERSON ROW AND ITS SHEET</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6"><span style="color:#E8E5D5">One row per Entry, a 34px cluster, one control</span> — every Piece of one gear shares one return path, and N rows repeating it is the identical-rows fault (B3, I). The circles encode <span style="color:#E8E5D5">three values, not four</span>: filled = resolved (back or consumed), bordered = open, attention ring = lost — the tone Find's per-person card already draws for exactly this Piece. Consumed is not drawable as a fourth tone at 34px without inventing one, and it differs from back only in the Depot count, which the sheet states; the cluster's count reads resolved over Pieces. The sheet is the outcome sheet with a <span style="color:#E8E5D5">roster</span> above the verbs: 48px rows, 30px circles, each row a selection (<span style="font-family:'Spline Sans Mono',monospace">✓</span>), <span style="font-family:'Spline Sans Mono',monospace">EVERYONE</span> selected on open — so <span style="font-family:'Spline Sans Mono',monospace">SET EVERYONE</span> is the default rather than a second control — and the four chips apply to the selection, one op per Piece that changes (§5g E10). Sheet at 02.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F8 — RE-HOME ON THE SPOT IMPLIES BACK</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">The row body opens the shipped Home picker in MOVE mode, context line <span style="font-family:'Spline Sans Mono',monospace">RE-HOMING TENT, 3P · PICKING A HOME MARKS IT BACK</span>. <span style="color:#E8E5D5">Picking implies BACK</span> — you only re-home what you have in hand — and is the one gesture writing two aggregates; an Entry already back writes <span style="font-family:'Spline Sans Mono',monospace">gear.rehomed</span> alone (a redundant outcome write is skipped, E10). A lost item that turns up is re-homed the same way and stops being lost. <span style="color:#E8E5D5">No confirm</span>: A2b — the row visibly jumps to its new destination group, and a second re-home is the reversal; §3c's MOVE confirms because gear detail shows no such jump. Afterwards the meta reads the new return path with a segment for this pass: <span style="font-family:'Spline Sans Mono',monospace">→ CRATE B · RE-HOMED</span>, muted, so the row says why it sits under a room it did not leave from. Sheet at 02.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F9 — THE CONSUMED COUNT, IN THE SHEET</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">On a Counted Entry the <span style="font-family:'Spline Sans Mono',monospace">CONSUMED</span> chip reveals a stepper beneath the verbs, <span style="color:#E8E5D5">opening at the Bring-count</span> (all used up is the ordinary case for a canister; ×0 is not a value — that is BACK), floor ×1, ceiling the Bring-count, and the row's split beside it. The consequence is stated <span style="color:#E8E5D5">once, at the decision</span>: <span style="font-family:'Spline Sans Mono',monospace">THE REST CAME BACK. OWNED ×6 → ×4 AT CLOSE.</span> — that is where the Quartermaster would otherwise learn nothing and later wonder why the Depot has not moved. The close card's hint loses <span style="font-family:'Spline Sans Mono',monospace">CONSUMED REDUCES DEPOT COUNT</span> and keeps only what the close itself does. Per-person gear has no count and no stepper (its supply is one per person). Sheet at 02.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">F10 — THE CLOSE HAS NO CONFIRM</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F; border:1px solid rgba(147,188,159,.5); border-radius:3px; padding:2px 6px">BLESSED</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6"><span style="color:#E8E5D5">Stated so the engineer's default does not add one.</span> The gate is the ceremony: the button is dead until every Entry is decided and says why. The Depot write it makes was stated at the decision that caused it (F9) and is offered back by S11's reopen. Closing destroys nothing (invariant 14). <span style="font-family:'Spline Sans Mono',monospace">ReopenConfirm</span> is not the precedent: it confirms because invariant 19 makes <em>leaving</em> closed deliberate; <em>entering</em> closed has the gate, and a confirm after a gate asks the same question twice. Card at 01 and 05.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F11 — FOUR WIDTHS; THE CLOSE CARD STAYS AT THE FOOT</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">A10's answer verbatim: <span style="color:#E8E5D5">one capped 560px column, centred, from Roomy up, no pane</span>; group cards gain their border and 12px gap (E5, E6); the back link survives Desktop; the sync line at Split alone. The close card is the last row of the list at every width — it is the last decision in reading order, and it is disabled for most of the pass: a docked footer would spend the thumb zone on a control that cannot be pressed (A9's own argument against the pinned bar), and a right-hand column needs a pane F5 does not have. Frames at 05.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F12 — SET PHASE'S CLOSED ROW OPENS F5</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">Both rulings hold. <span style="color:#E8E5D5">Any row tappable</span> stays true: while open &gt; 0 the row reads <span style="font-family:'Spline Sans Mono',monospace">CLOSED</span> with right mono <span style="font-family:'Spline Sans Mono',monospace">6 OPEN ›</span>, and the tap <span style="color:#E8E5D5">routes to F5</span> rather than writing — the only act that can lead to closed. A disabled row is a dead tap in a list built to refuse them (D7: never a ▲ with no door); a row that writes past the gate is invariant 18 broken. At open = 0 the row is the ordinary setter and closes the trip from here as well — the gate, not the screen, is what invariant 18 guards. Excerpt at 04.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F13 — THE CARD'S CTA: CONTINUE UNPACK</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">The rule holds — <em>the CTA names the current phase's verb</em> — and its destination now exists: <span style="font-family:'Spline Sans Mono',monospace; color:#E8E5D5">Continue unpack</span> at Unpack, full-width accent, the slot A11 left empty. The progress line beneath the NEXT line reads F5's arithmetic, <span style="font-family:'Spline Sans Mono',monospace">● 56/62 RESOLVED · 6 OPEN</span>. The CTA does not become <span style="font-family:'Spline Sans Mono',monospace">Close trip</span> at open = 0: closing is F5's card and SET PHASE's row, and a third door for one register is two ways too many (§5's own rule for <span style="font-family:'Spline Sans Mono',monospace">Start pack-out</span>). Card at 04.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F14 — UNPACK › BESIDE PACKING ›, EVERY PHASE</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">The band's trailing slot carries <span style="font-family:'Spline Sans Mono',monospace">PACKING ›</span> and <span style="font-family:'Spline Sans Mono',monospace">UNPACK ›</span> together, gap 14, <span style="color:#E8E5D5">at every phase, Draft included</span> — swapping them by phase is the soft lock the band's own comment refuses. Three routes from Split up. Where the count and the routes do not fit one line (Compact), the slot <span style="color:#E8E5D5">wraps</span>: the routes take a second line, right-aligned, order and gap kept — a layout rule, not new anatomy. Accessible name <span style="font-family:'Spline Sans Mono',monospace">Open unpack for Alps 2026</span>. An empty gear list draws no door (F4's rule, same reason). Band at 04.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F15 — THE OVER-CLAIM BAND RENDERS, FACTS-ONLY</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">The band is a property of the list and F5 is a view of the list, so it renders — between the count block and the controls, the same slot the trip screen gives it — and it goes away by itself when an outcome releases the claim, which is the moment this screen is for. <span style="color:#E8E5D5">Facts-only</span>, §5b I's confirm treatment: <span style="font-family:'Spline Sans Mono',monospace">REMOVE HERE</span> and <span style="font-family:'Spline Sans Mono',monospace">BRING ×N HERE</span> edit the list, and F5 is not the list editor; its own way of settling a claim is the row's pill. Excerpt at 03.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E2A65B">F16 — UNACCOUNTED ON FOUR SURFACES</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E2A65B; border:1px solid rgba(226,166,91,.5); border-radius:3px; padding:2px 6px">REDRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">(1) <span style="font-family:'Spline Sans Mono',monospace">RESOLVE</span> routes to <span style="color:#E8E5D5">gear detail</span>, whose card footer's <span style="font-family:'Spline Sans Mono',monospace">RESOLVE</span> opens the Home picker — the settle the domain names; a closed trip settles nothing. In that context the <span style="font-family:'Spline Sans Mono',monospace">● NOW</span> row is tappable and reads <span style="font-family:'Spline Sans Mono',monospace">● NOW — FOUND HERE</span>: writing the same home is the next fact, not a redundant write. (2) Column and 2-line row: D8's shape — glyph ▲, word B2's read: <span style="font-family:'Spline Sans Mono',monospace; color:#D98263">▲ TESSIN 2025</span>, <span style="font-family:'Spline Sans Mono',monospace; color:#D98263">▲ ×1 TESSIN 2025</span> on Counted (blessed as drawn); over-claimed and unaccounted at once reads the active fact, <span style="font-family:'Spline Sans Mono',monospace">▲ 2 TRIPS</span>. (3) Gear detail: a <span style="color:#E8E5D5">standing, not a row</span> — D8's answer: the home row's glyph turns ▲ and its count subtracts the lost units; the footer reads <span style="font-family:'Spline Sans Mono',monospace; color:#D98263">▲ ×1 LAST SEEN: TESSIN 2025 · OWNED ×3</span> + <span style="font-family:'Spline Sans Mono',monospace">RESOLVE</span>. §4's row variant retires. (4) Precedence confirmed: active Entry · unaccounted · home. Frames at 06.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#D98263">F17 — THE OUTCOME DIMENSION RETIRES</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#D98263; border:1px solid rgba(217,130,99,.5); border-radius:3px; padding:2px 6px">OVERTURNED</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">Ruled as H and B4 were. Story 13's criterion list never names Outcome; <span style="font-family:'Spline Sans Mono',monospace">open</span> is undefined for every gear on no active Trip and, where defined, restates TRIP membership — a filter for a different list; and <span style="font-family:'Spline Sans Mono',monospace">lost</span> alone is a one-value dimension on a glyph the WHEREABOUTS column already draws. The case for it was that both values are standings the column marks; that is the case for the <span style="color:#E8E5D5">column</span>, not for a chip. <span style="color:#E8E5D5">Story 13 completes at S9b</span> with six dimensions and one capability on F4. Cost named: <em>list every unaccounted gear</em> is answered by the WHEREABOUTS column head's sort at Desktop and by Find per gear, and by nothing on the phone — recorded, not built, for a story that asks for it. <span style="font-family:'Spline Sans Mono',monospace">architecture-design.md</span> §8.5 needs the edit. Components §04's last rung is struck.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F18 — THE CLOSED ROW'S META</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6"><span style="font-family:'Spline Sans Mono',monospace">JUL 2025 · 54 PIECES · 1 LOST</span> stands. With zero lost the segment <span style="color:#E8E5D5">drops</span>, as the date does without dates. <span style="font-family:'Spline Sans Mono',monospace">N CONSUMED</span> does <span style="color:#E8E5D5">not</span> join: consumed is settled arithmetic already in the Depot's counts, LOST is the one outcome still open in the world. Its colour follows that: <span style="color:#D98263">attention</span> while any of the N is still unaccounted, <span style="color:#6A7161">muted</span> once every one has been re-homed — the number is history and stays; the colour is the standing and moves. Row at 04.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E8E5D5">F19 — THE EMPTY AND THE FINISHED SCREEN</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E8E5D5; border:1px solid #47523F; border-radius:3px; padding:2px 6px">DRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6"><span style="color:#E8E5D5">Empty:</span> F4's register verbatim — <span style="font-family:'Spline Sans Mono',monospace">0 ENTRIES.</span> + the permanent fact, no count line, no controls, no hint, <span style="color:#E8E5D5">and no close card</span>: closing an empty Trip is fine and is SET PHASE's ordinary row (F12 at open = 0); a card whose only sentence is <em>nothing to resolve</em> is arithmetic nobody asked for. <span style="color:#E8E5D5">Finished:</span> <span style="font-family:'Spline Sans Mono',monospace">● 62/62 RESOLVED · 0 OPEN</span>, bar full, every row drawn with its outcome, the card live: summary, accent <span style="font-family:'Spline Sans Mono',monospace">Close trip</span>, hint <span style="font-family:'Spline Sans Mono',monospace">CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.</span> Under <span style="font-family:'Spline Sans Mono',monospace">○ OPEN</span> with nothing open the list reads one line, <span style="font-family:'Spline Sans Mono',monospace">NOTHING OPEN.</span>, above the card. Frame at 05.</div>
+    </div>
+
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E2A65B">F20 — THE FRAME, REDRAWN NOT ANNOTATED</span><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#E2A65B; border:1px solid rgba(226,166,91,.5); border-radius:3px; padding:2px 6px">REDRAWN</span></div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.6">Eight rulings move pixels on <a href="Screens B - Detail + Trips + Find + Unpack.dc.html">Screens B</a> §04 (F1 · F2 · F3 · F4 · F6 · F7 · F9 · F10's hint), so the frame is redrawn here at 393 with its two annotation cards in the house format, and §04 carries a <span style="font-family:'Spline Sans Mono',monospace">RETIRED</span> mark pointing here — the convention <span style="font-family:'Spline Sans Mono',monospace">Screens A</span> §01 took at the S9 round. What survives untouched: the title, the four verbs' pill treatments, grouping by room, the gated button that says why, the count-line + bar + controls order. Frame at 01.</div>
+    </div>
+
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:34px 0 12px">01 — F5 · UNPACK, DESTINATION MODE, PART-WAY THROUGH · COMPACT/COMFORTABLE 393 · REDRAWN</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+
+    <div data-screen-label="Unpack by destination — S10" style="width:393px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ ALPS 2026</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#7BB389"></span>SYNCED</span>
+      </div>
+      <div style="padding:0 16px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Unpack</div>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">● 56/62 RESOLVED</span><span>6 OPEN</span></div>
+        <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:6px"><div style="width:90%; height:100%; background:#7BB389"></div></div>
+      </div>
+      <div style="display:flex; gap:8px; padding:0 16px 8px; align-items:center">
+        <div style="display:inline-flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:40px">
+          <span style="display:inline-flex; align-items:center; padding:0 12px; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">DESTINATION</span>
+          <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">PERSON</span>
+          <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">ALL</span>
+        </div>
+        <span style="display:inline-flex; align-items:center; height:40px; padding:0 14px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">○ OPEN</span>
+      </div>
+      <div style="padding:0 16px 12px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; line-height:1.7">TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOME</div>
+
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:center">
+        <span style="font-weight:600; font-size:16px">Attic</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">4/5</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Sleeping bag, winter</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ SHELF L-TOP ▸ CRATE B · ×2</div>
+        </div>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #7BB389; border-radius:99px; background:rgba(123,179,137,.08); font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#7BB389; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#151A15" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg>BACK</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Duffel 90 L</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ SHELF L-TOP · 12 INSIDE</div>
+        </div>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #7BB389; border-radius:99px; background:rgba(123,179,137,.08); font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#7BB389; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#151A15" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg>BACK</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Tarp 3×4</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ CRATE A</div>
+        </div>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #97A08C; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#97A08C; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg>OPEN</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Tent, 3p</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ CRATE B · <span style="color:#6A7161">RE-HOMED</span></div>
+        </div>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #7BB389; border-radius:99px; background:rgba(123,179,137,.08); font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#7BB389; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#151A15" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg>BACK</span>
+      </div>
+
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:center">
+        <span style="font-weight:600; font-size:16px">Kelder</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">4/5</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Gas canister 450</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ BAK 3 · ×2 CONSUMED · ×2 BACK</div>
+        </div>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px dashed #6A7161; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#6A7161; flex-shrink:0">CONSUMED</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Cook set</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ BAK 3</div>
+        </div>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #97A08C; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#97A08C; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg>OPEN</span>
+      </div>
+
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:center">
+        <span style="font-weight:600; font-size:16px">Hal</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">3/3</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Headlamp</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ LADE 2 · PER-PERSON · 3/3</div>
+        </div>
+        <div style="display:flex; gap:5px; align-items:center; flex-shrink:0">
+          <span style="width:34px; height:34px; border-radius:50%; background:#7BB389; color:#151A15; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">M</span>
+          <span style="width:34px; height:34px; border-radius:50%; background:#7BB389; color:#151A15; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">E</span>
+          <span style="width:34px; height:34px; border-radius:50%; border:1.5px solid #D98263; color:#D98263; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:12px; font-weight:600">K</span>
+        </div>
+      </div>
+
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:flex-start">
+        <div>
+          <div style="font-weight:600; font-size:16px; color:#97A08C">Loose</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; letter-spacing:.05em; margin-top:3px">NO HOME SLOT</div>
+        </div>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">0/2</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Trekking poles</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">×2</div>
+        </div>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #97A08C; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#97A08C; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg>OPEN</span>
+      </div>
+
+      <div style="background:#1F2620; border-top:1px solid #333C33; padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:flex-start">
+        <div>
+          <div style="font-weight:600; font-size:16px; color:#97A08C">Trip-only</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161; letter-spacing:.05em; margin-top:3px">TAKES NO OUTCOME · CLEARED AT CLOSE</div>
+        </div>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">2</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px">
+        <div>
+          <div style="font-weight:600; font-size:16px; line-height:22px">Passports, all <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; color:#E2A65B; letter-spacing:.06em; border:1px solid rgba(226,166,91,.5); border-radius:3px; padding:2px 5px; position:relative; top:-1px; margin-left:4px">TRIP-ONLY</span></div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">NOT IN DEPOT</div>
+        </div>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em; flex-shrink:0">CLEARS AT CLOSE</span>
+      </div>
+
+      <div style="margin:12px 16px 16px; background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">53 BACK · 2 CONSUMED · 1 LOST · <span style="color:#E8E5D5">6 OPEN</span></div>
+        <button style="width:100%; height:48px; margin-top:10px; background:#28312A; color:#97A08C; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Close trip — 6 open</button>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:8px; line-height:1.6">BACK WRITES HOME AT THE TAP. CLOSE WHEN OPEN = 0 — LOST IS ALWAYS AN ANSWER.</div>
+      </div>
+    </div>
+
+    <div style="width:340px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">DECISIONS ON THIS SCREEN</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">F4's sibling: the same header, count line, bar, segmented control, filter pill and one hint, one word changed in each. <span style="color:#E8E5D5">The count is units resolved</span> (F2) — the bar measures the distance to the gate. Grouped by the room the gear returns to (F3); the container is in the row's return path, never a group. <span style="color:#E8E5D5">The meta is where it goes; the pill is what happened</span> (F6) — one ▲ per row, on <span style="font-family:'Spline Sans Mono',monospace">LOST</span> alone. The Duffel is a row and takes an outcome (F1). The Headlamp is one row, one cluster: two filled, one attention ring for Kees's lost Piece (F7). The Tent was re-homed from the Kelder on the spot; its meta says so (F8). Trip-only Entries close the list and take nothing (F6).</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">STATES COVERED</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Back · open · consumed with the unit split · a lost Piece in a cluster · a container row · a re-homed row · Loose last with <span style="font-family:'Spline Sans Mono',monospace">NO HOME SLOT</span> · trip-only clearing, not a pill · the gated button saying why · filter off, so every outcome is visible. The arithmetic: <span style="font-family:'Spline Sans Mono',monospace">53 + 2 + 1 + 6 = 62</span>, the group headers apportioned by unit.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#E2A65B">WHAT MOVED FROM SCREENS B §04</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65"><span style="font-family:'Spline Sans Mono',monospace">● 52/61 BACK</span> → <span style="font-family:'Spline Sans Mono',monospace">● 56/62 RESOLVED</span>; the breakdown now lives on the card alone. Two pills → segmented + <span style="font-family:'Spline Sans Mono',monospace">○ OPEN</span>. <span style="font-family:'Spline Sans Mono',monospace">×2 TAKEN · ×2 EMPTY</span> → <span style="font-family:'Spline Sans Mono',monospace">×2 CONSUMED · ×2 BACK</span>. <span style="font-family:'Spline Sans Mono',monospace">▲ NOT SEEN AT UNPACK</span> gone from the meta. <span style="font-family:'Spline Sans Mono',monospace">No home slot</span> → <span style="font-family:'Spline Sans Mono',monospace">Loose</span>, last; trip-only in its own closing group; <span style="font-family:'Spline Sans Mono',monospace">CLEARS</span> pill → faint text. The hint line arrives (F4's anatomy). The close hint shrinks to the two facts about closing.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:34px 0 12px">02 — THE THREE SHEETS · OUTCOME (F5 · F9) · PER-PIECE OUTCOME (F7) · RE-HOME (F8) · DRAWN AT 360 TO SIT THREE-UP</div>
+  <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap">
+
+    <div data-screen-label="Outcome sheet — Counted, consumed" style="width:360px; height:600px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 16px"></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Gas canister 450</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; letter-spacing:.05em; margin-top:6px">OUTCOME · ×4 BROUGHT · → BAK 3</div>
+        <div style="display:flex; gap:6px; margin-top:16px">
+          <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:44px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em; color:#97A08C">● BACK</span>
+          <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:44px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em; color:#97A08C">○ OPEN</span>
+          <span style="flex:1.2; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:44px; border:1.5px dashed #97A08C; border-radius:99px; background:#28312A; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em; color:#E8E5D5; box-shadow:0 0 0 2px rgba(226,166,91,.3)">CONSUMED</span>
+          <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:44px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em; color:#97A08C">▲ LOST</span>
+        </div>
+        <div style="margin-top:14px; border:1px solid #333C33; border-radius:12px; padding:12px 14px">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#6A7161">CONSUMED</span>
+            <div style="display:inline-flex; align-items:center; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:48px">
+              <span style="width:48px; display:inline-flex; align-items:center; justify-content:center; color:#E8E5D5; font-size:18px">−</span>
+              <span style="min-width:56px; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:16px; font-weight:600; color:#E8E5D5; border-left:1px solid #47523F; border-right:1px solid #47523F; height:100%">×2</span>
+              <span style="width:48px; display:inline-flex; align-items:center; justify-content:center; color:#E8E5D5; font-size:18px">+</span>
+            </div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#7BB389">×2 BACK</span>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:10px; line-height:1.6">THE REST CAME BACK. OWNED ×6 → ×4 AT CLOSE.</div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:14px; line-height:1.7">ONE OP PER TAP. LOST KEEPS THE HOME SLOT AND STAYS SEARCHABLE.</div>
+      </div>
+    </div>
+
+    <div data-screen-label="Per-Piece outcome sheet — Headlamp" style="width:360px; height:600px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 16px"></div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Headlamp</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; letter-spacing:.05em; margin-top:6px">OUTCOME · 2 OF 3 RESOLVED · → LADE 2</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.12em; color:#6A7161">APPLY TO</span>
+          <span style="display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.06em">EVERYONE</span>
+        </div>
+        <div style="margin-top:8px; border-top:1px solid #2A3129">
+          <div style="display:flex; align-items:center; gap:12px; min-height:48px; border-bottom:1px solid #2A3129">
+            <span style="width:30px; height:30px; border-radius:50%; background:#7BB389; color:#151A15; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">M</span>
+            <div style="flex:1"><div style="font-size:16px; font-weight:600">Mark</div><div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.05em; margin-top:1px">● BACK</div></div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#47523F; letter-spacing:.05em">○</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; min-height:48px; border-bottom:1px solid #2A3129">
+            <span style="width:30px; height:30px; border-radius:50%; background:#7BB389; color:#151A15; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">E</span>
+            <div style="flex:1"><div style="font-size:16px; font-weight:600">Els</div><div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#7BB389; letter-spacing:.05em; margin-top:1px">● BACK</div></div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#47523F; letter-spacing:.05em">○</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; min-height:48px; border-bottom:1px solid #2A3129; background:rgba(147,188,159,.05); margin:0 -20px; padding:0 20px">
+            <span style="width:30px; height:30px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">K</span>
+            <div style="flex:1"><div style="font-size:16px; font-weight:600">Kees</div><div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#97A08C; letter-spacing:.05em; margin-top:1px">○ OPEN</div></div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em">SELECTED ✓</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:14px">
+          <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; height:44px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em; color:#97A08C">● BACK</span>
+          <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; height:44px; border:1.5px solid #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em; color:#97A08C">○ OPEN</span>
+          <span style="flex:1.2; display:inline-flex; align-items:center; justify-content:center; height:44px; border:1.5px dashed #47523F; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em; color:#97A08C">CONSUMED</span>
+          <span style="flex:1; display:inline-flex; align-items:center; justify-content:center; height:44px; border:1.5px solid #D98263; border-radius:99px; background:rgba(217,130,99,.08); font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.05em; color:#D98263">▲ LOST</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:12px; line-height:1.7">EVERYONE IS SELECTED ON OPEN. TAP A ROW TO NARROW. ONE OP PER PIECE THAT CHANGES.</div>
+      </div>
+    </div>
+
+    <div data-screen-label="Re-home on the spot — Home picker" style="width:360px; height:600px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0; position:relative">
+      <div style="position:absolute; inset:0; background:rgba(15,19,15,.62)"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; background:#1F2620; border-top:1px solid #333C33; border-radius:16px 16px 0 0; padding:10px 20px 24px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 16px"></div>
+        <div style="display:flex; justify-content:space-between; align-items:baseline">
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Tent, 3p</div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.08em">EDIT</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; letter-spacing:.05em; margin-top:6px">RE-HOMING TENT, 3P · PICKING A HOME MARKS IT BACK</div>
+        <div style="margin-top:14px; border-top:1px solid #2A3129">
+          <div style="display:flex; align-items:center; justify-content:space-between; min-height:56px; border-bottom:1px solid #2A3129">
+            <div><div style="font-size:16px; font-weight:600; color:#97A08C">Loose</div><div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#6A7161; letter-spacing:.05em; margin-top:1px">NO RESIDENCE — THE DEFAULT</div></div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; min-height:48px; border-bottom:1px solid #2A3129">
+            <span style="font-size:16px; font-weight:600">⌂ Attic</span>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; min-height:48px; border-bottom:1px solid #2A3129; padding-left:16px">
+            <div><div style="font-size:16px; font-weight:600">Crate B</div><div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#6A7161; letter-spacing:.05em; margin-top:1px">SHELF L-TOP</div></div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; min-height:48px; border-bottom:1px solid #2A3129">
+            <span style="font-size:16px; font-weight:600">⌂ Kelder</span>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; min-height:48px; border-bottom:1px solid #2A3129; padding-left:16px">
+            <span style="font-size:16px; font-weight:600">Bak 3</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em">● NOW</span>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; min-height:48px; border-bottom:1px solid #2A3129">
+            <span style="font-size:16px; font-weight:600">⌂ Hal</span>
+          </div>
+          <div style="display:flex; align-items:center; min-height:48px; border-bottom:1px solid #2A3129">
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#93BC9F; letter-spacing:.04em; border:1px dashed #47523F; border-radius:8px; padding:6px 12px">+ New place</span>
+          </div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:12px; line-height:1.7">SELECTION MOVES AND CLOSES. THE ROW MOVES TO ITS NEW ROOM.</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:12px">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE OUTCOME SHEET (F5 · F9)</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Title = the gear name; fact line = Bring-count and return path. Four 44px chips in the pill's grammar, the current outcome raised and focus-ringed; a tap writes one op and the sheet stays until dismissed on the scrim (a picker's dismissal, §15). <span style="color:#E8E5D5">Only Counted gear grows the stepper</span>, only while CONSUMED is the outcome; it opens at the Bring-count. A container's fact line reads <span style="font-family:'Spline Sans Mono',monospace">CONTAINER · 12 INSIDE · ITS CONTENTS KEEP THEIR OWN OUTCOMES.</span> Sheet below Split, popover from Split up — <span style="font-family:'Spline Sans Mono',monospace">ui/Popover</span>'s fourth waiting caller.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE ROSTER (F7)</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The outcome sheet with a roster above the verbs, opened from the cluster on any Piece row. Rows are the Piece status sheet's (48px, 30px circles in the cluster's three tones) and each row is a selection, the Participants picker's <span style="font-family:'Spline Sans Mono',monospace">✓</span> grammar; <span style="font-family:'Spline Sans Mono',monospace">EVERYONE</span> is selected on open and the chip restores it. <span style="color:#E8E5D5">The chips are the verbs, the roster is who</span> — so <span style="font-family:'Spline Sans Mono',monospace">SET EVERYONE</span> needs no second control and a single Piece needs no second sheet. Per-person gear has no count and grows no stepper.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE HOME PICKER, REUSED VERBATIM (F8)</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65"><span style="font-family:'Spline Sans Mono',monospace">HomePicker</span> in MOVE mode, unchanged but for the context line, which states the one thing this caller adds: picking marks it back. <span style="font-family:'Spline Sans Mono',monospace">● NOW</span> on the current home, Loose first, Places with their containers, <span style="font-family:'Spline Sans Mono',monospace">+ New place</span> in the pick path, EDIT mode intact. A container being re-homed carries its own <span style="font-family:'Spline Sans Mono',monospace">N INSIDE RIDE ALONG</span> line and subtree exclusion, as §3c draws. Selection moves and closes; no confirm (A2b).</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:34px 0 12px">03 — F15 · THE OVER-CLAIM BAND ON F5, FACTS-ONLY · PERSON MODE EXCERPT (F4)</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">BETWEEN THE COUNT BLOCK AND THE CONTROLS · ONE ROW, NO ROUTES</div>
+      <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; overflow:hidden; margin-top:10px; padding:0 0 12px">
+        <div style="padding:12px 16px 0">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">● 56/62 RESOLVED</span><span>6 OPEN</span></div>
+          <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:6px"><div style="width:90%; height:100%; background:#7BB389"></div></div>
+        </div>
+        <div style="margin:12px 16px 0; background:rgba(217,130,99,.08); border:1px solid rgba(217,130,99,.35); border-radius:12px; padding:12px 14px">
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:10px; font-weight:600; color:#D98263; letter-spacing:.04em"><span>▲</span> 1 entry is already claimed by Vosges — Oct.</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px">
+            <span style="font-size:15px; font-weight:600">Water filter</span>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#97A08C">SINGLE · STILL OPEN HERE</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; padding:12px 16px 0; align-items:center">
+          <div style="display:inline-flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:40px">
+            <span style="display:inline-flex; align-items:center; padding:0 12px; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">DESTINATION</span>
+            <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">PERSON</span>
+            <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">ALL</span>
+          </div>
+          <span style="display:inline-flex; align-items:center; height:40px; padding:0 14px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">○ OPEN</span>
+        </div>
+      </div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">The band's anatomy verbatim minus its settle routes — the confirms' treatment (§5b I). The fact line names what F5 can do about it: <span style="font-family:'Spline Sans Mono',monospace">STILL OPEN HERE</span> — resolve the row and the claim releases, and the band goes with it. Never dismissible; the fold draws it.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">PERSON MODE · WHOSE IT IS (A7) · GIVE EVERYONE THEIR BAG BACK</div>
+      <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; overflow:hidden; margin-top:10px">
+        <div style="background:#1F2620; padding:12px 14px 10px; display:flex; justify-content:space-between; align-items:center">
+          <div style="display:flex; align-items:center; gap:10px">
+            <span style="width:28px; height:28px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">K</span>
+            <span style="font-weight:600; font-size:16px">Kees</span>
+          </div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">7/9 · 2 OPEN</span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-top:1px solid #2A3129; min-height:64px">
+          <div><div style="font-weight:600; font-size:16px; line-height:22px">Headlamp <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#6A7161">— KEES'S PIECE</span></div><div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ HAL ▸ LADE 2</div></div>
+          <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #D98263; border-radius:99px; background:rgba(217,130,99,.08); font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#D98263; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,1 11.2,10.6 0.8,10.6" fill="none" stroke="#D98263" stroke-width="1.5" stroke-linejoin="round"></polygon></svg>LOST</span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-top:1px solid #2A3129; min-height:64px">
+          <div><div style="font-weight:600; font-size:16px; line-height:22px">Rain jacket, K</div><div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">PERSONAL · K · ×1 · → KEES'S ROOM ▸ KAST</div></div>
+          <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #97A08C; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#97A08C; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg>OPEN</span>
+        </div>
+      </div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">A7's partition unchanged: a Piece to its Participant, Personal gear to its owner, the rest to <span style="font-family:'Spline Sans Mono',monospace">Shared</span>. A Piece row in this mode carries its own pill — one Piece, one outcome — so the cluster is DESTINATION and ALL mode's. The header counts resolved over units, <span style="font-family:'Spline Sans Mono',monospace">7/9 · 2 OPEN</span>, the F4 grammar with <span style="font-family:'Spline Sans Mono',monospace">LEFT</span> → <span style="font-family:'Spline Sans Mono',monospace">OPEN</span>. The return path is the meta's last segment, as the residence is on F4 — and in this mode it carries the full path, since no room header makes one.</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:34px 0 12px">04 — THE DOORS · THE CARD AT UNPACK (F13) · THE BAND (F14) · SET PHASE'S CLOSED ROW (F12) · THE CLOSED LEDGER ROW (F18)</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; align-items:start">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">THE TRIP CARD AT UNPACK · THE SLOT A11 LEFT EMPTY</div>
+      <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; padding:16px 18px; margin-top:10px; display:flex; flex-direction:column; gap:10px">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px"><span style="color:#E2A65B">▸</span> Alps 2026</span>
+          <span style="padding:4px 9px; border-radius:99px; background:rgba(226,166,91,.14); border:1px solid rgba(226,166,91,.5); color:#E2A65B; font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.06em">UNPACK · DAY 1</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; letter-spacing:.03em">2026-08-28 → 2026-09-12</div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; color:#97A08C; letter-spacing:.05em; margin-top:2px">NEXT — RESOLVE EVERY ENTRY, THEN CLOSE</div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-bottom:5px"><span style="color:#E8E5D5">● 56/62 RESOLVED</span><span>6 OPEN</span></div>
+          <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden"><div style="width:90%; height:100%; background:#7BB389"></div></div>
+        </div>
+        <button style="height:48px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; margin-top:4px">Continue unpack</button>
+      </div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">The five-element card at its fifth phase word. The progress line is F5's arithmetic; the CTA names the phase's verb and stays so at open = 0 — closing is not a card's act.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">THE GEAR LIST BAND · 393 · THE ROUTES WRAP</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:8px; margin-top:10px; padding:10px 16px; display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px; white-space:nowrap">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161">GEAR LIST</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; margin-left:auto">35 ENTRIES · 61 PIECES</span>
+          <span style="flex-basis:100%; height:0"></span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em; margin-left:auto">PACKING ›</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em">UNPACK ›</span>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#6A7161; letter-spacing:.1em; margin-top:12px">SPLIT AND UP · ONE LINE (TRAILING SLOT SHOWN; THE COUNT SITS TO ITS LEFT)</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:8px; margin-top:6px; padding:10px 16px; display:flex; align-items:baseline; gap:14px; white-space:nowrap">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#6A7161">GEAR LIST</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em; margin-left:auto">EDIT LIST ›</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em">PACKING ›</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em">UNPACK ›</span>
+        </div>
+        <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">Both doors at every phase; no swap. At Compact the trailing slot wraps its routes to a second right-aligned line, gap 14 kept. An empty list draws neither door.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">THE CLOSED LEDGER ROW (F18)</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#6A7161">
+          <div>JUL 2025 · 54 PIECES · <span style="color:#D98263">1 LOST</span> <span style="color:#47523F">— still unaccounted</span></div>
+          <div>JUL 2025 · 54 PIECES · 1 LOST <span style="color:#47523F">— re-homed since; history stays, colour moves</span></div>
+          <div>JUL 2025 · 54 PIECES <span style="color:#47523F">— zero lost: the segment drops</span></div>
+          <div>54 PIECES · <span style="color:#D98263">1 LOST</span> <span style="color:#47523F">— no dates: that segment drops too</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">SET PHASE · THE CLOSED ROW WHILE OPEN &gt; 0 (F12)</div>
+      <div style="background:#151A15; border:1px solid #333C33; border-radius:16px 16px 0 0; margin-top:10px; padding:10px 16px 14px">
+        <div style="width:36px; height:4px; border-radius:2px; background:#47523F; margin:0 auto 12px"></div>
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">SET PHASE</div>
+        <div style="display:flex; flex-direction:column; margin-top:8px">
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C"><span>DRAFT</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C"><span>PACK-OUT</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C"><span>ON TRIP</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; border-bottom:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5"><span>UNPACK</span><span style="color:#93BC9F">● NOW</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; min-height:36px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C"><span>CLOSED</span><span style="color:#93BC9F; font-weight:600">6 OPEN ›</span></div>
+        </div>
+      </div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">Any row tappable holds. The row's right slot names the gate; the tap opens F5, where the six are. At open = 0 the slot is empty and the row sets the phase, as every other row does. Not drawn: a disabled row — a dead tap in a sheet built to have none.</div>
+      <div style="font-size:11px; color:#D98263; margin-top:8px; line-height:1.6; border-top:1px solid #2A3129; padding-top:8px"><span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.1em">LOSING</span> <span style="color:#97A08C">— <span style="font-family:'Spline Sans Mono',monospace">CLOSED · 6 OPEN — RESOLVE ON UNPACK</span>, dimmed, untappable. Truthful and dead; and a Quartermaster reading it has nowhere to go but back out and hunt for the band's link.</span></div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:34px 0 12px">05 — F11 · F19 · THE WIDTHS AND THE ENDS · ROOMY 540 (FINISHED) · SPLIT 900 · DESKTOP 1024 · EMPTY</div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap">
+    <div data-screen-label="Unpack — Roomy 540, finished" style="width:540px; background:#151A15; border:1px solid #333C33; border-radius:24px; overflow:hidden; flex-shrink:0">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 24px 10px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ ALPS 2026</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#7BB389"></span>SYNCED</span>
+      </div>
+      <div style="padding:0 24px 12px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Unpack</div>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">● 62/62 RESOLVED</span><span>0 OPEN</span></div>
+        <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:6px"><div style="width:100%; height:100%; background:#7BB389"></div></div>
+      </div>
+      <div style="display:flex; gap:8px; padding:0 24px 8px; align-items:center">
+        <div style="display:inline-flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:40px">
+          <span style="display:inline-flex; align-items:center; padding:0 12px; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">DESTINATION</span>
+          <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">PERSON</span>
+          <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">ALL</span>
+        </div>
+        <span style="display:inline-flex; align-items:center; height:40px; padding:0 14px; border-radius:99px; background:#35523F; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">○ OPEN ✕</span>
+      </div>
+      <div style="padding:0 24px 12px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; line-height:1.7">TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOME</div>
+      <div style="padding:0 24px 24px; display:flex; flex-direction:column; gap:12px">
+        <div style="padding:20px 16px; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; letter-spacing:.05em">NOTHING OPEN.</div>
+        <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px">
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C">53 BACK · 8 CONSUMED · 1 LOST · <span style="color:#E8E5D5">0 OPEN</span></div>
+          <button style="width:100%; height:48px; margin-top:10px; background:#93BC9F; color:#151A15; border:none; border-radius:8px; font-family:'Spline Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer">Close trip</button>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; margin-top:8px; line-height:1.6">CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.</div>
+        </div>
+      </div>
+    </div>
+    <div style="width:340px; display:flex; flex-direction:column; gap:12px">
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE FINISHED SCREEN (F19)</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">Drawn with <span style="font-family:'Spline Sans Mono',monospace">○ OPEN</span> still on from the pass, so the list is the one line <span style="font-family:'Spline Sans Mono',monospace">NOTHING OPEN.</span> and the card is the only thing left to do — the F4 <span style="font-family:'Spline Sans Mono',monospace">0 LEFT</span> end state's shape. The button is live and accent; no confirm (F10). The hint is the two facts about closing and one about lost; consumed's number was stated at its decision (F9).</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">ROOMY, AND WHAT A10 GIVES IT (F11)</div>
+        <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.65">The shell's 24px gutter, the 560 cap (not reached at 540), group cards bordered with 12 between (E5, E6), and the close card as the list's last card, sharing its gap. Nothing docks.</div>
+      </div>
+      <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+        <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#93BC9F">THE EMPTY SCREEN (F19)</div>
+        <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; margin-top:10px; padding:14px 16px">
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; line-height:28px">Unpack</div>
+          <div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:14px">0 ENTRIES.</div>
+          <div style="font-size:13px; color:#97A08C; margin-top:4px">The gear list is built from the depot.</div>
+        </div>
+        <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">F4's register, word for word; no count line, controls, hint or card. Closing an empty Trip is SET PHASE's ordinary row at open = 0. Reached by direct link only — the trip screen draws no door to it.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; margin-top:24px">
+    <div data-screen-label="Unpack — split 900" style="width:900px; height:460px; background:#151A15; border:1px solid #333C33; border-radius:16px; overflow:hidden; display:grid; grid-template-columns:56px 1fr">
+      <div style="border-right:1px solid #333C33; display:flex; flex-direction:column; align-items:center; padding:16px 0 14px; gap:8px">
+        <svg width="26" height="21" viewBox="0 0 28 22" style="margin-bottom:8px"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.9" stroke-linecap="round"></path></svg>
+        <div style="width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#97A08C" stroke-width="1.6"></rect><rect x="13" y="3" width="8" height="8" rx="1.5" fill="none" stroke="#97A08C" stroke-width="1.6"></rect><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="#97A08C" stroke-width="1.6"></rect><rect x="13" y="13" width="8" height="8" rx="1.5" fill="#97A08C"></rect></svg></div>
+        <div style="width:40px; height:40px; border-radius:8px; background:#28312A; display:flex; align-items:center; justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24"><line x1="5.5" y1="3" x2="5.5" y2="21" stroke="#93BC9F" stroke-width="1.8" stroke-linecap="round"></line><polygon points="5.5,4 19,7.5 5.5,11" fill="#93BC9F"></polygon></svg></div>
+        <div style="width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#97A08C" stroke-width="1.8"></circle><line x1="15.5" y1="15.5" x2="21" y2="21" stroke="#97A08C" stroke-width="1.8" stroke-linecap="round"></line></svg></div>
+        <div style="margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:12px">
+          <span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; color:#97A08C; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span>
+          <span style="width:6px; height:6px; border-radius:50%; background:#93BC9F"></span>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center; padding:0 24px">
+        <div style="width:560px">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0 10px">
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ ALPS 2026</span>
+            <span style="display:inline-flex; align-items:center; gap:7px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#7BB389"></span>SYNCED</span>
+          </div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Unpack</div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">● 56/62 RESOLVED</span><span>6 OPEN</span></div>
+          <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:6px"><div style="width:90%; height:100%; background:#7BB389"></div></div>
+          <div style="display:flex; gap:8px; margin-top:12px; align-items:center">
+            <div style="display:inline-flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:40px">
+              <span style="display:inline-flex; align-items:center; padding:0 12px; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">DESTINATION</span>
+              <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">PERSON</span>
+              <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">ALL</span>
+            </div>
+            <span style="display:inline-flex; align-items:center; height:40px; padding:0 14px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">○ OPEN</span>
+          </div>
+          <div style="margin-top:8px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; line-height:1.7">TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOME</div>
+          <div style="margin-top:12px; background:#1F2620; border:1px solid #333C33; border-radius:12px; overflow:hidden">
+            <div style="padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:center"><span style="font-weight:600; font-size:16px">Attic</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">4/5</span></div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px; background:#151A15">
+              <div><div style="font-weight:600; font-size:16px; line-height:22px">Sleeping bag, winter</div><div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ SHELF L-TOP ▸ CRATE B · ×2</div></div>
+              <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #7BB389; border-radius:99px; background:rgba(123,179,137,.08); font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#7BB389; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#7BB389"></circle><path d="M3.6,6.4 L5.3,8 L8.5,4.4" stroke="#151A15" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg>BACK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; margin-top:24px">
+    <div data-screen-label="Unpack — desktop 1024" style="width:1024px; height:440px; background:#151A15; border:1px solid #333C33; border-radius:16px; overflow:hidden; display:grid; grid-template-columns:216px 1fr">
+      <div style="border-right:1px solid #333C33; padding:18px 14px; display:flex; flex-direction:column; gap:4px">
+        <div style="display:flex; align-items:center; gap:8px; padding:0 8px 14px"><svg width="26" height="21" viewBox="0 0 28 22"><path d="M8,6 L20,6 Q25.5,6.5 25.5,13 Q25.5,19.5 20,20 L8,20 Q2.5,19.5 2.5,13 Q2.5,6.5 8,6 Z" fill="none" stroke="#E8E5D5" stroke-width="1.9"></path><path d="M11,5.6 Q14,1.6 17,5.6" fill="none" stroke="#E2A65B" stroke-width="1.7" stroke-linecap="round"></path></svg><span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:18px">foerier</span></div>
+        <div style="display:flex; justify-content:space-between; padding:10px 12px; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10px; letter-spacing:.08em; color:#97A08C"><span>DEPOT</span><span>128</span></div>
+        <div style="display:flex; justify-content:space-between; padding:10px 12px; border-radius:8px; background:#28312A; font-family:'Spline Sans Mono',monospace; font-size:10px; letter-spacing:.08em; color:#E8E5D5"><span>TRIPS</span><span>3</span></div>
+        <div style="display:flex; justify-content:space-between; padding:10px 12px; border-radius:8px; font-family:'Spline Sans Mono',monospace; font-size:10px; letter-spacing:.08em; color:#97A08C"><span>FIND</span></div>
+        <span style="flex:1"></span>
+        <div style="display:flex; align-items:center; gap:8px; padding:10px 12px"><span style="width:22px; height:22px; border-radius:50%; border:1.5px solid #47523F; display:inline-flex; align-items:center; justify-content:center; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600">M</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; letter-spacing:.08em; color:#97A08C">ACCOUNT</span></div>
+        <div style="display:inline-flex; align-items:center; gap:7px; padding:0 12px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#97A08C; letter-spacing:.08em"><span style="width:6px; height:6px; border-radius:50%; background:#7BB389"></span>SYNCED 14:32</div>
+      </div>
+      <div style="display:flex; justify-content:center; padding:0 24px">
+        <div style="width:560px">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0 10px">
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#93BC9F; letter-spacing:.06em">‹ ALPS 2026</span>
+          </div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; line-height:34px">Unpack</div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C"><span style="color:#E8E5D5">● 56/62 RESOLVED</span><span>6 OPEN</span></div>
+          <div style="height:6px; border-radius:3px; background:#333C33; overflow:hidden; margin-top:6px"><div style="width:90%; height:100%; background:#7BB389"></div></div>
+          <div style="display:flex; gap:8px; margin-top:12px; align-items:center">
+            <div style="display:inline-flex; border:1px solid #47523F; border-radius:8px; overflow:hidden; height:40px">
+              <span style="display:inline-flex; align-items:center; padding:0 12px; background:#28312A; color:#E8E5D5; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em">DESTINATION</span>
+              <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">PERSON</span>
+              <span style="display:inline-flex; align-items:center; padding:0 12px; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; border-left:1px solid #47523F">ALL</span>
+            </div>
+            <span style="display:inline-flex; align-items:center; height:40px; padding:0 14px; border-radius:99px; border:1px solid #47523F; color:#97A08C; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em">○ OPEN</span>
+          </div>
+          <div style="margin-top:8px; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.05em; line-height:1.7">TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOME</div>
+          <div style="margin-top:12px; background:#1F2620; border:1px solid #333C33; border-radius:12px; overflow:hidden">
+            <div style="padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:center"><span style="font-weight:600; font-size:16px">Attic</span><span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C">4/5</span></div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; border-top:1px solid #2A3129; min-height:64px; background:#151A15">
+              <div><div style="font-weight:600; font-size:16px; line-height:22px">Tarp 3×4</div><div style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#97A08C; margin-top:2px">→ CRATE A</div></div>
+              <span style="display:inline-flex; align-items:center; gap:6px; padding:11px 14px; border:1.5px solid #97A08C; border-radius:99px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.05em; color:#97A08C; flex-shrink:0"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.4" fill="none" stroke="#97A08C" stroke-width="1.6"></circle></svg>OPEN</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="font-size:12px; color:#97A08C; margin-top:12px; line-height:1.65; max-width:900px">Split: the 56px rail with its bare sync dot; the pane band carries <span style="font-family:'Spline Sans Mono',monospace">‹ ALPS 2026</span> and <span style="font-family:'Spline Sans Mono',monospace">● SYNCED</span> — the one mode where the words are legible only here. Desktop: the 216px sidebar carries <span style="font-family:'Spline Sans Mono',monospace">TRIPS</span> and the sync line; the back link survives because the sidebar names the list, not this Trip (F4's own reason). Both draw the capped 560 column, centred; the list continues below the fold and the close card is its last card.</div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:34px 0 12px">06 — F16 · UNACCOUNTED FOR — GEAR DETAIL'S CARD, THE DEPOT COLUMN, FIND, THE SETTLE ROUTE</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; align-items:start">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">RULED · GEAR DETAIL · HEADLAMP (COUNTED ×3, ONE LOST ON TESSIN 2025, ON NO TRIP NOW)</div>
+      <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; overflow:hidden; margin-top:10px">
+        <div style="padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <div><div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#D98263">▲ HOME SLOT</div><div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#E8E5D5; margin-top:4px">HAL ▸ LADE 2</div></div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#97A08C; flex-shrink:0">×2 THERE</span>
+        </div>
+        <div style="border-top:1px solid #2A3129; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9px; color:#D98263; letter-spacing:.05em">▲ ×1 LAST SEEN: TESSIN 2025 · OWNED ×3</span>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em; flex-shrink:0">RESOLVE</span>
+        </div>
+      </div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">D8's shape for a standing: the home row's glyph turns ▲, its count reads what is on the shelf (owned − out − unaccounted, so the home quantity stops over-stating), and the footer carries the arithmetic and the one door. Not a row in the stack — a lost unit is not a slice with a place. The home slot is kept, as the domain promises. Single: <span style="font-family:'Spline Sans Mono',monospace">▲ LAST SEEN: TESSIN 2025</span>, no counts.</div>
+    </div>
+    <div style="background:#1F2620; border:1px dashed rgba(217,130,99,.45); border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#D98263">LOSING · THE ROW FORM, AS §4 AND SCREENS B §01 DREW IT</div>
+      <div style="background:#151A15; border:1px solid #333C33; border-radius:12px; overflow:hidden; margin-top:10px; opacity:.75">
+        <div style="padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <div><div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161">⌂ HOME SLOT</div><div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#E8E5D5; margin-top:4px">HAL ▸ LADE 2</div></div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:10px; color:#D98263; text-decoration:line-through; flex-shrink:0">×3 THERE</span>
+        </div>
+        <div style="border-top:1px solid #2A3129; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; text-decoration:line-through">
+          <div><div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#D98263">▲ UNACCOUNTED</div><div style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#E8E5D5; margin-top:4px">LAST SEEN: TESSIN 2025</div></div>
+          <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em; flex-shrink:0">RESOLVE</span>
+        </div>
+      </div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65">Drawn before B2 made the rows slices. A row claims a place; unaccounted is the absence of one. And with the home row untouched it reads <span style="font-family:'Spline Sans Mono',monospace">×3 THERE</span> — the over-statement the brief names, since <span style="font-family:'Spline Sans Mono',monospace">lost</span> writes nothing to the owned-count. Retired on <a href="Screens B - Detail + Trips + Find + Unpack.dc.html">Screens B</a> §01's variant.</div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:16px 18px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">THE ONE-SLOT SURFACES · AND WHERE RESOLVE GOES</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161; margin-top:12px">DEPOT COLUMN · 130PX · BLESSED AS DRAWN</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:6px">
+        <span style="width:130px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em; color:#D98263; background:#151A15; border:1px solid #2A3129; border-radius:6px; padding:6px 8px">▲ ×1 TESSIN 2025</span>
+        <span style="width:130px; font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.04em; color:#D98263; background:#151A15; border:1px solid #2A3129; border-radius:6px; padding:6px 8px">▲ 2 TRIPS</span>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8px; color:#6A7161; letter-spacing:.06em; margin-top:6px">LEFT: UNACCOUNTED, COUNTED · RIGHT: OVER-CLAIMED AND UNACCOUNTED AT ONCE — THE ACTIVE FACT WINS</div>
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#6A7161; margin-top:14px">FIND · PER-PERSON CARD ROW · UNCHANGED</div>
+      <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid #2A3129; border-radius:8px; background:#151A15; min-height:48px; margin-top:6px">
+        <span style="width:28px; height:28px; border-radius:50%; border:1.5px solid #D98263; color:#D98263; display:inline-flex; align-items:center; justify-content:center; font-family:'Spline Sans Mono',monospace; font-size:11px; font-weight:600">K</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:11px; color:#D98263; flex:1">▲ LAST SEEN: TESSIN 2025</span>
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:9.5px; font-weight:600; color:#93BC9F; letter-spacing:.05em">RESOLVE</span>
+      </div>
+      <div style="font-size:12px; color:#97A08C; margin-top:10px; line-height:1.65"><span style="font-family:'Spline Sans Mono',monospace">RESOLVE</span> → gear detail → the card footer's <span style="font-family:'Spline Sans Mono',monospace">RESOLVE</span> opens the Home picker with context <span style="font-family:'Spline Sans Mono',monospace">RESOLVING HEADLAMP · LAST SEEN: TESSIN 2025</span>; its <span style="font-family:'Spline Sans Mono',monospace">● NOW — FOUND HERE</span> row is tappable, because writing the same home is the settling fact. A contested Piece keeps D7's route to the band: the two ▲s have two doors because they have two settlers.</div>
+    </div>
+  </div>
+
+  <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.24em; color:#93BC9F; margin:34px 0 12px">07 — EVERY STRING THIS ROUND INTRODUCES OR RETIRES · F17'S RUNG</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; align-items:start">
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#93BC9F">NEW</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#E8E5D5; line-height:1.5">
+        <div>● 56/62 RESOLVED <span style="color:#6A7161">· 6 OPEN (count line)</span></div>
+        <div>DESTINATION · PERSON · ALL <span style="color:#6A7161">· ○ OPEN</span></div>
+        <div>TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOME</div>
+        <div>→ SHELF L-TOP · 12 INSIDE <span style="color:#6A7161">(container row)</span></div>
+        <div>→ BAK 3 · ×2 CONSUMED · ×2 BACK</div>
+        <div>→ CRATE B · RE-HOMED</div>
+        <div>Loose <span style="color:#6A7161">· NO HOME SLOT</span> · Trip-only <span style="color:#6A7161">· TAKES NO OUTCOME · CLEARED AT CLOSE</span></div>
+        <div>CLEARS AT CLOSE <span style="color:#6A7161">(faint text, not a pill)</span></div>
+        <div>OUTCOME · ×4 BROUGHT · → BAK 3 <span style="color:#6A7161">(sheet fact)</span></div>
+        <div>THE REST CAME BACK. OWNED ×6 → ×4 AT CLOSE.</div>
+        <div>ITS CONTENTS KEEP THEIR OWN OUTCOMES.</div>
+        <div>APPLY TO · EVERYONE · SELECTED ✓</div>
+        <div>RE-HOMING TENT, 3P · PICKING A HOME MARKS IT BACK</div>
+        <div>RESOLVING HEADLAMP · LAST SEEN: TESSIN 2025 · ● NOW — FOUND HERE</div>
+        <div>▲ ×1 LAST SEEN: TESSIN 2025 · OWNED ×3 <span style="color:#6A7161">(card footer)</span></div>
+        <div>Continue unpack · UNPACK › <span style="color:#6A7161">· a11y: Open unpack for Alps 2026</span></div>
+        <div>6 OPEN › <span style="color:#6A7161">(SET PHASE's CLOSED row)</span></div>
+        <div>NOTHING OPEN.</div>
+        <div>BACK WRITES HOME AT THE TAP. CLOSE WHEN OPEN = 0 — LOST IS ALWAYS AN ANSWER.</div>
+        <div>CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.</div>
+      </div>
+    </div>
+    <div style="background:#1F2620; border:1px solid #333C33; border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:#D98263">RETIRED</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px; font-family:'Spline Sans Mono',monospace; font-size:10.5px; color:#97A08C; line-height:1.5">
+        <div style="text-decoration:line-through">● 52/61 BACK <span style="text-decoration:none; color:#6A7161">(F2 — resolved, units)</span></div>
+        <div style="text-decoration:line-through">○ OPEN ONLY ✕ · BY DESTINATION <span style="text-decoration:none; color:#6A7161">(F4)</span></div>
+        <div style="text-decoration:line-through">×2 TAKEN · ×2 EMPTY <span style="text-decoration:none; color:#6A7161">(F2)</span></div>
+        <div style="text-decoration:line-through">▲ NOT SEEN AT UNPACK <span style="text-decoration:none; color:#6A7161">(F6 — the meta is where it goes)</span></div>
+        <div style="text-decoration:line-through">No home slot <span style="text-decoration:none; color:#6A7161">(F3 — the header is Loose)</span></div>
+        <div style="text-decoration:line-through">CLEARS <span style="text-decoration:none; color:#6A7161">(F6 — as a pill)</span></div>
+        <div style="text-decoration:line-through">CONSUMED REDUCES DEPOT COUNT <span style="text-decoration:none; color:#6A7161">(F9 — stated at the decision instead)</span></div>
+        <div style="text-decoration:line-through">▲ UNACCOUNTED · LAST SEEN: TESSIN 2025 <span style="text-decoration:none; color:#6A7161">(F16 — as a card row)</span></div>
+        <div style="text-decoration:line-through">OUTCOME · S10 <span style="text-decoration:none; color:#6A7161">(F17 — the dimension)</span></div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; border-top:1px solid #2A3129; padding-top:12px; margin-top:12px">
+        <span style="font-family:'Spline Sans Mono',monospace; font-size:8.5px; letter-spacing:.12em; color:#6A7161">THE LADDER — NO RUNGS LEFT</span>
+        <span style="display:inline-flex; align-items:center; height:28px; padding:0 11px; border-radius:99px; border:1px solid rgba(217,130,99,.4); color:#D98263; font-family:'Spline Sans Mono',monospace; font-size:9px; letter-spacing:.05em; text-decoration:line-through">OUTCOME · S10</span>
+      </div>
+    </div>
+    <div style="background:#1F2620; border:1px solid rgba(217,130,99,.35); border-radius:12px; padding:14px 16px">
+      <div style="font-family:'Spline Sans Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.14em; color:#D98263">WHERE THESE RULINGS CONTRADICT A DOC, PLAINLY</div>
+      <div style="font-size:12px; color:#97A08C; margin-top:8px; line-height:1.7"><span style="color:#E8E5D5">architecture-design.md §8.5</span> assigns Outcome to S10 as story 13's sixth row; F17 retires it and the table needs the edit — story 13 completes at S9b. <span style="color:#E8E5D5">README §7</span> is rewritten in place (F1–F10, F19); <span style="color:#E8E5D5">§4</span>'s unaccounted row variant becomes D8's standing (F16); <span style="color:#E8E5D5">§5</span> gains the CTA, the second door, the CLOSED row and the LOST colour rule; <span style="color:#E8E5D5">§6</span>'s RESOLVE gains its destination; the Vocabulary guard for <em>Unaccounted</em> names the route. Boards: <span style="color:#E8E5D5">Screens B §04</span> retired for this board; §01's unaccounted variant, §02's card and band, §06's row annotated; <span style="color:#E8E5D5">Screens A</span> §02's column annotated blessed; <span style="color:#E8E5D5">Components §04</span>'s last rung struck, §11 gains the standing's door. F1 and F2 move numbers a spec may be written around: F5's denominator differs from F4's by design, and units split. No op is added; the two ops and two Depot writes are exactly the brief's.</div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px; padding-top:16px; border-top:1px solid #2A3129; font-family:'Spline Sans Mono',monospace; font-size:9px; color:#6A7161; letter-spacing:.06em; line-height:1.8">
+    TWENTY RULINGS · 12 DRAWN (F1 · F5 · F7 · F8 · F9 · F11 · F12 · F13 · F14 · F15 · F18 · F19) · 6 REDRAWN (F2 · F3 · F4 · F6 · F16 · F20) · 1 BLESSED (F10) · 1 OVERTURNED (F17) · NOTHING DEFERRED · REOPEN, NOTES AND TEMPLATES UNTOUCHED (S11 · S12 · S14)<br>
+    THE REGISTER IS MIRRORED IN <a href="README.md">README.md</a> §5h · STANDS ON <a href="S9 Round - Packing and the Journey.dc.html">S9 ROUND</a> A2 · A2b · A3 · A5 · A7 · A8 · A9 · A10 · A11 · A13 · <a href="S9 Round 3 - Whereabouts Reaches the Depot.dc.html">ROUND 3</a> B2 · D4 · D5 · D7 · D8 · <a href="S9 Round 4 - The Leftovers the Code Took.dc.html">ROUND 4</a> E5 · E6 · E10 · <a href="S7 Amendments - Rulings A-O.dc.html">S7</a> I · O
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
