@@ -927,6 +927,23 @@ artifacts with no external consumer.
   `git checkout main && git merge --ff-only <branch>`. History stays linear, so
   `git log` reads as the order work actually landed rather than something to
   untangle from a merge bubble. (Same rule as the sibling repos.)
+- **The ff-merge happens locally, and the suite runs on the merged `main`
+  before anything is pushed.** In order: rebase onto `main`, `git merge
+  --ff-only` into the local `main`, run the **full suite there**, and only then
+  `git push`. Never push a branch straight onto the remote `main` — including
+  by `git push origin HEAD:main`, which lands the same commits and skips the
+  only run that proves what `main` will actually be. A suite that passed on the
+  branch passed on the branch; the rebase is exactly where a resolution can be
+  green in isolation and wrong once integrated.
+  **From a worktree this needs one extra step, and it is not optional.** A
+  worktree cannot check out `main` — it is checked out in the main
+  checkout — and `git push . HEAD:main` is refused for the same reason
+  (`branch is currently checked out`). So **leave the worktree first, keeping
+  it**, do the ff-merge and the suite run in the main checkout, push from
+  there, and return to the worktree if there is more to do. Pushing
+  `HEAD:main` from inside the worktree is the shortcut this rule exists to
+  forbid: it also leaves the maintainer's own `main` behind the remote,
+  needing a pull to catch up to work that was supposedly merged locally.
 - **Squash a small slice; keep a large one's history.** The delivery model says
   a slice lands in one atomic commit, and for a slice of a few hundred lines
   that is right — the commit *is* the reviewable unit. Past roughly a thousand
