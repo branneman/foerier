@@ -802,8 +802,10 @@ or framework choices into the [model](docs/domain-model.md),
   seven-tier pyramid; the convergence tier is the signature).
 - [`docs/technical-debt.md`](docs/technical-debt.md) — the index of outstanding
   technical work: one line per item, each pointing at the document that argues
-  it plus a verbatim anchor to grep for. **Not where the reasoning lives**, and
-  never pointed back at — entries are deleted when the debt closes.
+  it plus a verbatim anchor to grep for, sorted into five sections by **what is
+  in the way** — wrong today, traps, specified and not built, waiting on a
+  decision, consolidation. **Not where the reasoning lives**, and never pointed
+  back at — entries are deleted when the debt closes.
 
 Keep the design docs — stories, language, model — mutually consistent. A new or
 changed concept updates the language and the model together, and the stories
