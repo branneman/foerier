@@ -1,5 +1,6 @@
 import type { DepotState, GearState, PlaceState } from '../state.ts'
 import { containmentView, type ContainmentView } from './containment.ts'
+import { isCounted } from './kind.ts'
 import { byNameThenId } from './order.ts'
 
 /**
@@ -93,7 +94,7 @@ export function looseGear(
  * print `OWNED ×N` at all.
  */
 export function ownedCountOf(gear: GearState): number | null {
-  if (gear.kind?.value !== 'counted') return null
+  if (!isCounted(gear)) return null
   return gear.ownedCount?.value ?? 1
 }
 

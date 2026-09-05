@@ -1,6 +1,7 @@
 import {
   containmentView,
   findGear,
+  kindOf,
   ownedCountOf,
   rowWhereabouts,
   statusLabel,
@@ -409,7 +410,7 @@ export function Find() {
       {trimmed !== '' && matches.length > 0 && (
         <ul className={styles['list']}>
           {matches.map((match) => {
-            const kind = match.gear.kind?.value
+            const kind = kindOf(match.gear)
             const gearId = match.gear.id
             const pieces =
               kind === 'per_person' ? piecePeopleFor(state, gearId, view) : null

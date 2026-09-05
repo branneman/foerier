@@ -9,6 +9,8 @@ import {
   gearRetired,
   gearTagApplied,
   gearTagRemoved,
+  isCounted,
+  isPerPerson,
   LOOSE_TEXT,
   normalizeTag,
   overClaims,
@@ -183,7 +185,7 @@ function overClaimFooter(
 
   const claim = overClaims(state).find((entry) => entry.gearId === gearId)
   const text =
-    gear.kind?.value === 'counted' && claim !== undefined
+    isCounted(gear) && claim !== undefined
       ? `CLAIMED ×${claim.claimed} · OWNED ×${claim.supply}`
       : `CLAIMED BY ${tripSlices.length} TRIPS`
 
@@ -284,8 +286,8 @@ export function GearDetail() {
 
   const name = gear.name?.value ?? ''
   const retired = gear.retired?.value === true
-  const counted = gear.kind?.value === 'counted'
-  const perPerson = gear.kind?.value === 'per_person'
+  const counted = isCounted(gear)
+  const perPerson = isPerPerson(gear)
   const { slices, overClaimed } = whereabouts(state, gearId)
   const overClaim = overClaimed
     ? overClaimFooter(state, gear, gearId, slices)

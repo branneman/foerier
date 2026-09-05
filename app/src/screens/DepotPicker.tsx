@@ -6,6 +6,7 @@ import {
   EMPTY_SLICE,
   entriesOf,
   homePath,
+  kindOf,
   ownerInitial,
   sliceDepot,
   systemIdSource,
@@ -177,7 +178,7 @@ function filtersActiveLabel(count: number): string {
  * `undefined` when there is nothing to draw.
  */
 function rowSuffix(gear: GearState, state: DepotState): string | undefined {
-  const kind = gear.kind?.value
+  const kind = kindOf(gear)
   if (kind === 'counted') return qtyFor(gear)
   if (kind === 'per_person') return dimension('kind').format(kind, state)
   return ownerInitial(state, gear)

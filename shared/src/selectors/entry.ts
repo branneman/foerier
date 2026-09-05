@@ -1,4 +1,5 @@
 import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
+import { isCounted, kindOf } from './kind.ts'
 import { byNameThenId } from './order.ts'
 import { piecesOf } from './piece.ts'
 import { UNNAMED_TRIP_GLYPH } from './trip.ts'
@@ -9,10 +10,10 @@ import { UNNAMED_TRIP_GLYPH } from './trip.ts'
  * surfaces (the builder, the trip screen, the claim selector) must agree on,
  * stated once here rather than at each of them.
  *
- * `bringCountOf` is one of several sites gating on `kind === 'counted'`
- * (`selectors/depot.ts`, `selectors/whereabouts.ts`,
- * `app/src/screens/GearDetail.tsx` among them) — the reason the question
- * moves behind one function instead of yet another copy of the gate.
+ * `bringCountOf` is one of many sites gating on *is this Gear Counted*, and
+ * the gate itself is no longer spelled here: `isCounted` (`selectors/kind.ts`)
+ * is the one place it lives, so the next surface to ask cannot spell it
+ * differently from this one.
  */
 
 /**
@@ -162,7 +163,12 @@ export function entryKind(
 ): KindValue | 'trip_only' | undefined {
   const source = entry.source?.value
   if (source === undefined || source.from === 'trip_only') return 'trip_only'
-  return state.gear[source.gearId]?.kind?.value
+  // `kindOf` takes a `GearState`, not `GearState | undefined`, precisely so
+  // this arm has to be written out: an unsynced Gear and a Gear carrying no
+  // `kind` register are different facts, and this function is the one place
+  // allowed to answer `undefined` for both.
+  const gear = state.gear[source.gearId]
+  return gear === undefined ? undefined : kindOf(gear)
 }
 
 /**
@@ -202,8 +208,9 @@ export function isContainerEntry(
  * aggregate — the reducer cannot gate on it without making the fold
  * order-dependent on whether `gear.kind_set` had arrived, so `bringCount`
  * folds for any Entry (`state.ts`'s own note on the register). The gate lives
- * here instead, on the way out — one of several sites asking "is this Gear
- * Counted", stated once so the next one never re-derives it.
+ * on the way out instead, and the *question* it asks — "is this Gear
+ * Counted" — is `isCounted`'s (`selectors/kind.ts`), stated once so the next
+ * site never re-derives it.
  *
  * **An absent register on a Counted Entry reads `1`.** Adding Counted gear
  * without touching the stepper means bringing one, and writing a register to
@@ -221,7 +228,7 @@ export function bringCountOf(
 ): number | null {
   const source = entry.source?.value
   if (source === undefined || source.from !== 'depot') return null
-  if (state.gear[source.gearId]?.kind?.value !== 'counted') return null
+  if (!isCounted(state.gear[source.gearId])) return null
   return entry.bringCount?.value ?? 1
 }
 

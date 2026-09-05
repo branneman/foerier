@@ -4,6 +4,7 @@ import {
   dimension,
   dimensionValues,
   homePath,
+  kindOf,
   ownerLabel,
   rowWhereabouts,
   sliceDepot,
@@ -105,7 +106,7 @@ function Row({
   const path = homePath(state, gear.id, view)
     .map((segment) => segment.name)
     .join(' ▸ ')
-  const kind = gear.kind?.value
+  const kind = kindOf(gear)
   const qty = qtyFor(gear)
   // D9: the row's whereabouts slot takes `rowWhereabouts`'s text and tone —
   // the same call `Find.tsx`'s `PlainRow` makes, so the two rows cannot

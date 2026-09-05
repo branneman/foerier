@@ -5,6 +5,7 @@ import { foldText } from '../text.ts'
 import { containmentView } from './containment.ts'
 import { tagsOf, visibleGear } from './depot.ts'
 import { entriesOf } from './entry.ts'
+import { kindOf } from './kind.ts'
 import { ownerOf, personLabel } from './owner.ts'
 import {
   isClosed,
@@ -273,8 +274,11 @@ const DIMENSION_TABLE: Readonly<Record<DimensionId, Dimension>> = {
     id: 'kind',
     label: 'KIND',
     arity: 'single',
+    // No value at all for a Gear with no `kind` register: `kindOf` reads an
+    // absent one as *no Kind* rather than defaulting it (`selectors/kind.ts`),
+    // so such gear carries nothing this dimension could narrow on.
     valuesOf: (gear) => {
-      const kind = gear.kind?.value
+      const kind = kindOf(gear)
       return kind === undefined ? [] : [kind]
     },
     // An unrecognised kind is drawn exactly as it arrived (§5.3 obligation
@@ -694,7 +698,7 @@ const GROUPING_TABLE: Readonly<Record<Exclude<GroupKey, 'none'>, Grouping>> = {
   kind: {
     id: 'kind',
     label: 'KIND',
-    keyOf: (gear) => gear.kind?.value,
+    keyOf: (gear) => kindOf(gear),
     format: (key, state) => dimension('kind').format(key, state),
   },
   owner: {

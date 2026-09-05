@@ -127,6 +127,8 @@ export {
   visiblePlaces,
 } from './selectors/depot.ts'
 
+export { isCounted, isPerPerson, kindOf } from './selectors/kind.ts'
+
 export {
   ownerInitial,
   ownerLabel,
