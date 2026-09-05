@@ -144,6 +144,13 @@ function Row({
   )
 }
 
+/** Whether `group` is the CONTAINER dimension's own sentinel bucket — the
+ * one test both the meta line and the header's tone gate on, read from
+ * `dimension('container').pinned` rather than re-derived. */
+function isContainerSentinel(groupKey: GroupKey, group: SliceGroup): boolean {
+  return groupKey === 'container' && group.key === dimension('container').pinned
+}
+
 /**
  * The container grouping's own meta line: the group's header names a
  * container, and its meta states **that container's own home path** — never
@@ -152,18 +159,19 @@ function Row({
  * `group.key` rather than a `SliceGroup` field: the shape reaches every
  * grouping, and only this one has anything to say here.
  *
- * The sentinel check reads `dimension('container').pinned` — the same public
- * field `dimensionValues` already sorts on — rather than inferring "this key
- * is the sentinel" from `state.gear[group.key]` being absent. That absence
- * is not unique to the sentinel: a container id this replica has not yet
- * folded (the ordinary cross-aggregate sync race `dimension('container')`'s
- * own `format` already draws `—` for) would otherwise read as the sentinel
- * too, for a reason that has nothing to do with being the sentinel. D4: the
- * header's name is already the definition, so the sentinel carries no meta —
- * but an unfolded container's header falls through to the ordinary branch
- * below, where `homePath` on an unknown gear id answers `[]` and the `''`
- * check turns that into no meta line as well. Same pixels as the sentinel,
- * for the right reason, and the two cases stay distinguishable in the code.
+ * The sentinel check ({@link isContainerSentinel}) reads
+ * `dimension('container').pinned` — the same public field `dimensionValues`
+ * already sorts on — rather than inferring "this key is the sentinel" from
+ * `state.gear[group.key]` being absent. That absence is not unique to the
+ * sentinel: a container id this replica has not yet folded (the ordinary
+ * cross-aggregate sync race `dimension('container')`'s own `format` already
+ * draws `—` for) would otherwise read as the sentinel too, for a reason that
+ * has nothing to do with being the sentinel. D4: the header's name is
+ * already the definition, so the sentinel carries no meta — but an unfolded
+ * container's header falls through to the ordinary branch below, where
+ * `homePath` on an unknown gear id answers `[]` and the `''` check turns
+ * that into no meta line as well. Same pixels as the sentinel, for the right
+ * reason, and the two cases stay distinguishable in the code.
  */
 function groupHomeMeta(
   state: DepotState,
@@ -172,7 +180,7 @@ function groupHomeMeta(
   group: SliceGroup,
 ): string | undefined {
   if (groupKey !== 'container') return undefined
-  if (group.key === dimension('container').pinned) return undefined
+  if (isContainerSentinel(groupKey, group)) return undefined
   // `group.key` is already the container's own gear id (the grouping
   // table's `keyOf`), folded or not — no lookup into `state.gear` needed.
   const path = homePath(state, group.key, view)
@@ -197,6 +205,10 @@ function Group({
   groupKey: GroupKey
 }) {
   const meta = groupHomeMeta(state, view, groupKey, group)
+  // D4: the sentinel names an absence, not a container, and reads muted —
+  // F4's sentinel-header tone, the same rule `Packing.tsx`'s `.looseName`
+  // already carries for its own Loose and Shared groups.
+  const sentinel = isContainerSentinel(groupKey, group)
 
   return (
     <>
@@ -205,7 +217,13 @@ function Group({
         // 16/600, right mono count (Screens A §03).
         <li className={styles['groupHeader']} data-testid="depot-group-header">
           <span className={styles['groupNameStack']}>
-            <span className={styles['groupName']}>{group.label}</span>
+            <span
+              className={`${styles['groupName']} ${
+                sentinel ? styles['sentinelName'] : ''
+              }`}
+            >
+              {group.label}
+            </span>
             {meta !== undefined && (
               <span
                 className={styles['groupMeta']}

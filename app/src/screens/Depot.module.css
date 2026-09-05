@@ -121,6 +121,14 @@
     color: var(--color-ink-primary);
   }
 
+  /* `Not in a container` names an absence rather than a container — F4's
+     sentinel-header tone, which D4 cites by name and `Packing.tsx`'s own
+     `.looseName` already carries for the identical reason on the Loose and
+     Shared groups. */
+  .sentinelName {
+    color: var(--color-ink-muted);
+  }
+
   /* The container's own home path — muted, same rule as `GearRow`'s meta
      line, so two same-named stuff sacks stay apart without indentation. */
   .groupMeta {

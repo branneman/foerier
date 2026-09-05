@@ -38,6 +38,7 @@ import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anId, seededStore } from '../testUtils'
 import { Depot } from './Depot'
+import depotStyles from './Depot.module.css'
 
 /** The only way a `TagString` is made (`shared/src/tags.ts`). */
 function aTag(raw: string): TagString {
@@ -922,28 +923,36 @@ describe('the Depot grouped by container (S9b, D5)', () => {
     expect(headers).toHaveLength(3)
 
     // Sentinel first — pinned regardless of alphabetical order — reading
-    // exactly the chip's own words (D4), with no meta line at all.
-    expect(
-      within(headers[0] as HTMLElement).getByText('Not in a container'),
-    ).toBeInTheDocument()
+    // exactly the chip's own words (D4), with no meta line at all, and
+    // muted (F4's sentinel-header tone, D4). Asserted on the rendered
+    // element's class, never on the string handed in
+    // (`screenBand.test.tsx`'s one-sided-assertion lesson) — a two-sided
+    // check, the same shape as the whereabouts tone assertions above, so a
+    // stylesheet that muted every header would not pass it.
+    const sentinelName = within(headers[0] as HTMLElement).getByText(
+      'Not in a container',
+    )
+    expect(sentinelName).toBeInTheDocument()
+    expect(sentinelName.className).toContain(depotStyles['sentinelName'])
     expect(
       within(headers[0] as HTMLElement).queryByTestId('depot-group-meta'),
     ).toBeNull()
 
     // Bag: a real, folded, non-sentinel container — reads its own name, not
-    // the sentinel's words, and carries no meta because *its own* home path
-    // is empty (it sits loose), never confused with the sentinel case above.
-    expect(
-      within(headers[1] as HTMLElement).getByText('Bag'),
-    ).toBeInTheDocument()
+    // the sentinel's words, carries no meta because *its own* home path is
+    // empty (it sits loose), never confused with the sentinel case above,
+    // and is not muted — the sentinel's tone names only the sentinel.
+    const bagName = within(headers[1] as HTMLElement).getByText('Bag')
+    expect(bagName).toBeInTheDocument()
+    expect(bagName.className).not.toContain(depotStyles['sentinelName'])
     expect(
       within(headers[1] as HTMLElement).queryByTestId('depot-group-meta'),
     ).toBeNull()
 
-    // Crate B carries the container's own home path.
-    expect(
-      within(headers[2] as HTMLElement).getByText('Crate B'),
-    ).toBeInTheDocument()
+    // Crate B carries the container's own home path, and is not muted.
+    const crateName = within(headers[2] as HTMLElement).getByText('Crate B')
+    expect(crateName).toBeInTheDocument()
+    expect(crateName.className).not.toContain(depotStyles['sentinelName'])
     expect(
       within(headers[2] as HTMLElement).getByTestId('depot-group-meta'),
     ).toHaveTextContent('Attic')
