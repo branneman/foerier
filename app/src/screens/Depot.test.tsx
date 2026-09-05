@@ -28,12 +28,7 @@ import type { StoreApi } from 'zustand/vanilla'
 // (`screenBand.test.tsx`'s one-sided-assertion lesson).
 import gearRowStyles from '../../../ui/src/GearRow.module.css'
 
-import { inMemoryOpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+import { DepotProvider, type DepotStoreState } from '../depot/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anId, seededStore } from '../testUtils'

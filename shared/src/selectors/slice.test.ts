@@ -471,15 +471,16 @@ describe('the person dimension', () => {
  */
 function aContainedDepot(): DepotState {
   return fold([
-    ...sequence(aPlace({ id: 'attic', name: 'Attic' }), 1),
-    ...sequence(
-      aGear({ id: 'shelf', name: 'Shelf L-Top', container: true }),
-      2,
-    ),
-    ...sequence(aGear({ id: 'crate', name: 'Crate B', container: true }), 3),
-    ...sequence(aGear({ id: 'tent', name: 'Tent' }), 4),
-    ...sequence(aGear({ id: 'lamp', name: 'Lamp' }), 5),
-    ...sequence(aGear({ id: 'rope', name: 'Rope' }), 6),
+    ...stamp(aPlace({ id: 'attic', name: 'Attic' }), { start: 1 }),
+    ...stamp(aGear({ id: 'shelf', name: 'Shelf L-Top', container: true }), {
+      start: 2,
+    }),
+    ...stamp(aGear({ id: 'crate', name: 'Crate B', container: true }), {
+      start: 3,
+    }),
+    ...stamp(aGear({ id: 'tent', name: 'Tent' }), { start: 4 }),
+    ...stamp(aGear({ id: 'lamp', name: 'Lamp' }), { start: 5 }),
+    ...stamp(aGear({ id: 'rope', name: 'Rope' }), { start: 6 }),
     one(gearRehomed('shelf', { in: 'place', id: 'attic' }), 10),
     one(gearRehomed('crate', { in: 'gear', id: 'shelf' }), 11),
     one(gearRehomed('tent', { in: 'gear', id: 'crate' }), 12),
@@ -540,8 +541,10 @@ describe("dimension('container')", () => {
     // memo, never re-derive it from the raw residence pointer — the memo is
     // built from one `containmentView(state)` call for exactly this reason.
     const state = fold([
-      ...sequence(aGear({ id: 'crate', name: 'Crate B', container: true }), 1),
-      ...sequence(aGear({ id: 'tent', name: 'Tent' }), 2),
+      ...stamp(aGear({ id: 'crate', name: 'Crate B', container: true }), {
+        start: 1,
+      }),
+      ...stamp(aGear({ id: 'tent', name: 'Tent' }), { start: 2 }),
       one(gearRehomed('tent', { in: 'gear', id: 'crate' }), 3),
       one(gearRetired('crate'), 4),
     ])
@@ -559,10 +562,10 @@ describe("dimension('container')", () => {
     const containerSpecs = aGear({ name: 'Crate B', container: true })
     const containerId = containerSpecs[0]!.aggregate_id
     const state = fold([
-      ...sequence(containerSpecs, 1),
-      ...sequence(aGear({ id: 'g1', name: 'Axe' }), 2),
-      ...sequence(aGear({ id: 'g3', name: 'Crampons' }), 3),
-      ...sequence(aGear({ id: 'g4', name: 'Tent' }), 4),
+      ...stamp(containerSpecs, { start: 1 }),
+      ...stamp(aGear({ id: 'g1', name: 'Axe' }), { start: 2 }),
+      ...stamp(aGear({ id: 'g3', name: 'Crampons' }), { start: 3 }),
+      ...stamp(aGear({ id: 'g4', name: 'Tent' }), { start: 4 }),
       one(gearRehomed('g3', { in: 'gear', id: containerId }), 5),
       one(gearRehomed('g4', { in: 'gear', id: containerId }), 6),
     ])
