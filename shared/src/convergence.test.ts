@@ -26,6 +26,7 @@ import {
   placeRecorded,
   placeRemoved,
   placeRenamed,
+  tripConsumedCountSet,
   tripContainerStageSet,
   tripCreated,
   tripDatesSet,
@@ -34,6 +35,7 @@ import {
   tripEntryMoved,
   tripEntryRemoved,
   tripEntryStatusSet,
+  tripOutcomeSet,
   tripParticipantAdded,
   tripParticipantRemoved,
   tripPhaseMoved,
@@ -62,6 +64,7 @@ import type {
   EntrySource,
   KindValue,
   Owner,
+  OutcomeValue,
   PhaseValue,
   Residence,
   StageValue,
@@ -353,6 +356,22 @@ const arbStage = fc.constantFrom<StageValue[]>(
   'ferry',
 )
 /**
+ * {@link arbStatus}'s convention exactly — the three known outcomes plus one
+ * unrecognised — with `null` drawn as a fifth, equally-likely member rather
+ * than through `fc.option`'s skewed default. `null` is not an edge case here:
+ * it is `outcome`'s own clear-to-open write (S10, `writeNullableIfPresent`),
+ * and the property this file proves needs it to contest, lose and win a
+ * register exactly as `'lost'` or `'back'` would — an `fc.option` bias would
+ * under-sample the one path this slice actually introduces.
+ */
+const arbOutcome = fc.constantFrom<(OutcomeValue | null)[]>(
+  'back',
+  'consumed',
+  'lost',
+  'mislaid',
+  null,
+)
+/**
  * **Over {@link ENTRY_IDS}, not a fresh pool**, and that is the whole point:
  * a trip residence names a *container Entry on the same Trip*, so drawing the
  * target from the same three ids is what makes two devices move two things
@@ -391,13 +410,26 @@ const arbTripResidence: fc.Arbitrary<TripResidence> = fc.oneof(
  * silently thins every register under it. See {@link arbTripEntrySpec}'s doc
  * for the measured before-and-after.
  *
+ * **S10 re-set it again, to 16 in 31 (~52% of ops).** Two more op types
+ * (eighteen now) landed as two more branches on {@link arbTripEntrySpec}'s
+ * arm and one more on {@link arbTripPieceSpec}'s — at the old weight of 12
+ * this cut the entry-level contest rate from the 80–95-in-1000 S9a measured
+ * to 53–102 across seven seeds, one of which (53) fell **below**
+ * {@link CONTEST_FLOOR}. That is the guard the "generates every op type" test
+ * has a sibling for: a slice can add a handler, remember the generator entry,
+ * and still starve the property that entry was supposed to feed. 16 restores
+ * entry to 75–102 and piece to 86–109 across the same seven seeds — see
+ * {@link arbTripEntrySpec}'s table for the fixed-seed figures the enforced
+ * test itself asserts against.
+ *
  * The obvious worry — that diluting the gear ops costs the containment-cycle
  * rate `arbResidence` is tuned for — was measured at 4 and again at 12, and
  * is not real: cycles turn up in 5–15 runs per 200 with no trip ops at all,
  * 11–14 at weight 4, and **8, 10, 11** at weight 12, which is seed noise
  * throughout. (That also puts `arbResidence`'s "17" where it belongs — a
  * single measurement from a generator with fewer op types in it, not a floor
- * to defend.)
+ * to defend.) Not re-measured at 16 — nothing about `arbResidence` or the
+ * gear share changed at S10, only the trip arm's own internal split.
  */
 const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc.tuple(arbTripId, arbTripName).map(([id, name]) => tripCreated(id, name)),
@@ -475,13 +507,37 @@ const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
  * this table can print is the failure mode a docstring claiming "all
  * twenty-four op types" was hiding.
  *
+ * **S10: two more branches here (`trip.outcome_set` with no `person_id`,
+ * `trip.consumed_count_set`), one more on {@link arbTripPieceSpec}
+ * (`trip.outcome_set` with `person_id`), and the trip weight re-set a second
+ * time, from 12 to 16.** Unlike the table above this is measured at
+ * {@link CONTEST_SAMPLE} (1000), the scale the enforced test itself now runs
+ * at, across seven seeds (the fixed one the test asserts against, `20260904`,
+ * plus six probes):
+ *
+ * | contest, runs in 1000 | before S10, weight 12 | branches added, still weight 12 | S10 at weight 16 |
+ * | --- | --- | --- | --- |
+ * | root register | 266–310 | 268–306 | 332–364 |
+ * | entry register | 80–95 | **53**–85 | 75–102 |
+ * | piece register | 89–122 | 72–101 | 86–109 |
+ *
+ * The middle column is the failure this re-tune exists to fix: at the old
+ * weight of 12, one seed in seven (`1`) put the entry level at **53**,
+ * *below* {@link CONTEST_FLOOR} — the fixed seed the enforced test actually
+ * runs at (`20260904`) happened to land at 78 and pass, which is exactly the
+ * "green by luck" shape a seeded, floored property test exists to catch and
+ * very nearly didn't. Diluting a shared arm's branches without re-measuring
+ * its floor is the same mistake S9a's own middle column records; the fix is
+ * the same knob, moved again.
+ *
  * **Every figure above is a hand-transcribed measurement, and none of it is
  * what holds the weights in place.** The suite's
  * *contests all three levels of the Trip aggregate at the charter floor* is —
- * it re-derives these three columns on every run and fails under the 12-in-200
- * floor this doc cites. Read the table as the history of how 12 was arrived
- * at; read that test for what is true now. Its own 200-run figures do not
- * reproduce reliably at 200 runs, which is the other thing the test found.
+ * it re-derives these three columns on every run and fails under
+ * {@link CONTEST_FLOOR}. Read the tables as the history of how 12, then 16,
+ * were arrived at; read that test for what is true now. Its own figures do
+ * not reproduce identically seed to seed, which is the other thing both
+ * re-tunes found.
  */
 const arbTripEntrySpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
@@ -506,12 +562,28 @@ const arbTripEntrySpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbEntryId, arbStage)
     .map(([id, entryId, stage]) => tripContainerStageSet(id, entryId, stage)),
+  // S10's two ops (§4.4), the fourth slice to join this arm rather than form
+  // its own: `trip.outcome_set` with no `person_id` writes `entries.<id>.
+  // outcome`, and `trip.consumed_count_set` writes `entries.<id>.
+  // consumedCount` — both entry-path registers, `tripEntryStatusSet`'s
+  // reasoning restated. `trip.outcome_set`'s **other** shape — `person_id`
+  // present — belongs on {@link arbTripPieceSpec} instead, since that is the
+  // register it actually writes; splitting one op type across two arms by the
+  // path its own payload chooses is new at S10; see this file's `it('lands on
+  // the Entry when person_id is present but not a string')`-style pinning in
+  // `reduce.outcomes.test.ts` for the two-path split itself.
+  fc
+    .tuple(arbTripId, arbEntryId, arbOutcome)
+    .map(([id, entryId, outcome]) => tripOutcomeSet(id, entryId, outcome)),
+  fc
+    .tuple(arbTripId, arbEntryId, fc.nat({ max: 5 }))
+    .map(([id, entryId, count]) => tripConsumedCountSet(id, entryId, count)),
 )
 
 /**
- * S8's two Piece ops and S9a's two, the third arm — every branch writing a
- * register on `entries.<entryId>.pieces.<personId>`, one level below
- * {@link arbTripEntrySpec}'s path.
+ * S8's two Piece ops, S9a's two, and S10's one, the third arm — every branch
+ * writing a register on `entries.<entryId>.pieces.<personId>`, one level
+ * below {@link arbTripEntrySpec}'s path.
  *
  * **A third arm rather than four more branches of the second**, for the
  * reason that arm's own doc gives about not being a flat branch: folded in,
@@ -523,6 +595,11 @@ const arbTripEntrySpec: fc.Arbitrary<OpSpec> = fc.oneof(
  * `trip.piece_removed` and `trip.piece_restored` shipped a slice before this
  * one and were never generated at all; `trip.piece_moved` had **no Tier-2
  * coverage of any kind** until this arm existed.
+ *
+ * S10's `trip.outcome_set` with `person_id` present is the fifth branch,
+ * drawing `personId` from the same {@link arbPersonId} pool the four above
+ * do — it has to land on a Piece something else already addresses, or it
+ * never actually contests anything.
  */
 const arbTripPieceSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
@@ -540,6 +617,11 @@ const arbTripPieceSpec: fc.Arbitrary<OpSpec> = fc.oneof(
     .tuple(arbTripId, arbEntryId, arbPersonId, arbTripResidence)
     .map(([id, entryId, personId, residence]) =>
       tripPieceMoved(id, entryId, personId, residence),
+    ),
+  fc
+    .tuple(arbTripId, arbEntryId, arbPersonId, arbOutcome)
+    .map(([id, entryId, personId, outcome]) =>
+      tripOutcomeSet(id, entryId, outcome, personId),
     ),
 )
 
@@ -616,7 +698,7 @@ const arbSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbPersonId, fc.option(arbName, { nil: null }))
     .map(([id, name]) => personRenamed(id, name)),
-  { arbitrary: arbTripSpec, weight: 12 },
+  { arbitrary: arbTripSpec, weight: 16 },
 )
 
 /**
@@ -786,13 +868,21 @@ describe('convergence', () => {
    * replica is folded from **its own ops alone**, which is precisely the
    * pre-exchange state the property's own divergence starts from.
    *
-   * Measured over seven seeds at {@link CONTEST_SAMPLE}: root 266–310, entry
-   * 80–95, piece 89–122. The floor sits at {@link CONTEST_FLOOR}, roughly a
-   * third of the thinnest of those — wide enough that fast-check's own
-   * sampling is never what fails it, and narrow enough to catch the regression
-   * it exists for. Adding a fourth arm at the wrong weight cut the entry level
-   * by a factor of four last time (22 in 200 to 5); the same cut here takes
-   * entry from ~90 to ~22 and fails.
+   * Measured over seven seeds at {@link CONTEST_SAMPLE}, at S10's weight of
+   * 16: root 332–364, entry 75–102, piece 86–109. (Before S10: root 266–310,
+   * entry 80–95, piece 89–122, at weight 12 — see
+   * {@link arbTripEntrySpec}'s doc for what moved and why.) The floor sits at
+   * {@link CONTEST_FLOOR}, roughly a third of the thinnest of those — wide
+   * enough that fast-check's own sampling is never what fails it, and narrow
+   * enough to catch the regression it exists for.
+   *
+   * **This is not hypothetical any more.** S10 added three branches across
+   * the entry and piece arms without touching the trip weight, and the entry
+   * level fell to 53–85 across the same seven seeds — one seed under this
+   * exact floor, at the exact sample size this test runs. The fixed seed this
+   * test asserts against happened to land at 78 and would have stayed green;
+   * a different seed would not have. Re-tuning the weight to 16, not leaving
+   * it at 12, is what this test's own green result depends on now.
    *
    * Seeded for the reason the op-type test is: an assertion about the
    * generator, not about today's luck.
