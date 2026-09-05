@@ -1,8 +1,9 @@
 import {
+  containerText,
+  LOOSE_TEXT,
   sliceCountLabel,
   stageWord,
   type PathSegment,
-  type TripContainerRead,
   type WhereaboutsSlice,
 } from '@foerier/shared'
 import { Link } from 'wouter'
@@ -24,23 +25,15 @@ import styles from './WhereaboutsCard.module.css'
  */
 
 const HOME_LABEL = '⌂ HOME SLOT'
-const LOOSE_TEXT = 'LOOSE'
-const MIXED_TEXT = 'MIXED'
 
 /** The home row's value line: the full breadcrumb, or `LOOSE`
  * (`docs/ubiquitous-language.md`) rather than a blank row for gear residing
- * in no place and no container. */
+ * in no place and no container. `LOOSE_TEXT` and `containerText` are
+ * `whereabouts.ts`'s own exports (S9b review finding 3) — this file no
+ * longer keeps a private copy of either. */
 function pathText(path: readonly PathSegment[]): string {
   if (path.length === 0) return LOOSE_TEXT
   return path.map((segment) => segment.name).join(' ▸ ')
-}
-
-/** The container segment's word: the holder's name, `MIXED` when the
- *  slice's residences disagree (D2), `LOOSE` when nothing holds it — the
- *  same word `pathText` draws for the home world's identical condition. */
-function containerText(container: TripContainerRead): string {
-  if (container === null) return LOOSE_TEXT
-  return container.of === 'mixed' ? MIXED_TEXT : container.name
 }
 
 /** A trip row's value line: container named when one or `MIXED` when more,

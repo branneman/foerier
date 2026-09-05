@@ -167,6 +167,9 @@ export type {
   WhereaboutsSlice,
 } from './selectors/whereabouts.ts'
 export {
+  containerText,
+  LOOSE_TEXT,
+  MIXED_TEXT,
   rowWhereabouts,
   sliceCountLabel,
   whereabouts,

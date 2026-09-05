@@ -144,12 +144,15 @@ const ATTENTION_GLYPH = '▲'
 
 /** `WhereaboutsCard.pathText`'s and `GearDetail.chipLocation`'s own fallback
  *  for gear residing in no Place and no container — the ubiquitous-language
- *  term, reused here so the card and the column cannot draw two words for one
- *  condition. */
-const LOOSE_TEXT = 'LOOSE'
+ *  term, **exported** so the card and the column read the one spelling
+ *  rather than each declaring their own (finding 3 of the S9b review: a
+ *  private copy in each of two `app/` files is exactly the two-surfaces
+ *  divergence this file's own header warns against). */
+export const LOOSE_TEXT = 'LOOSE'
 
-/** The word F4's ALL mode already uses for this exact fact (D2). */
-const MIXED_TEXT = 'MIXED'
+/** The word F4's ALL mode already uses for this exact fact (D2), exported
+ *  for the same reason as {@link LOOSE_TEXT}. */
+export const MIXED_TEXT = 'MIXED'
 
 /**
  * The two segments a slice's residences reconcile into, before either is
@@ -306,6 +309,12 @@ function segmentOf(
   holderEntryId: string | null,
   self: string | null,
 ): ResidenceRead {
+  // `holder === undefined` is a **defensive** re-test, not a live rule:
+  // every `holderEntryId` this function is ever called with came out of
+  // `TripContainmentView.resolveResidence`, which returns a container id
+  // only from `visible` and a holder id only from `holders` — both subsets
+  // of `trip.entries` — so `holder` is unreachable here. Kept as a guard
+  // rather than a non-null assertion; do not take it for a rule to copy.
   const holder =
     holderEntryId === null ? undefined : trip.entries?.[holderEntryId]
   return {
@@ -667,8 +676,10 @@ export function whereabouts(
 }
 
 /** The container segment's word: the holder's name, `MIXED` when the slice's
- *  residences disagree, `LOOSE` when nothing holds it. */
-function containerText(container: TripContainerRead): string {
+ *  residences disagree, `LOOSE` when nothing holds it. **Exported** —
+ *  `WhereaboutsCard.tsx` read a byte-identical private copy of this until
+ *  the S9b review's finding 3; both now call this one. */
+export function containerText(container: TripContainerRead): string {
   if (container === null) return LOOSE_TEXT
   return container.of === 'mixed' ? MIXED_TEXT : container.name
 }

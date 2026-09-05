@@ -9,6 +9,7 @@ import {
   gearRetired,
   gearTagApplied,
   gearTagRemoved,
+  LOOSE_TEXT,
   normalizeTag,
   overClaims,
   ownerLabel,
@@ -99,16 +100,17 @@ function metaLine(state: DepotState, gear: GearState): string {
 
 /** The innermost segment's name, or `LOOSE` for a loose slice — the COUNT
  * chip's location word (`docs/design/README.md` §4: `×1 ⌂ CRATE B`).
- * `LOOSE` is the ubiquitous-language term for gear with no residence
- * (`docs/ubiquitous-language.md`) and matches `WhereaboutsCard`'s own
- * `pathText` fallback for the identical condition — fix round 1 caught this
- * chip disagreeing with the card two elements above it on the same screen.
+ * `LOOSE_TEXT` is `whereabouts.ts`'s own export (S9b review finding 3), the
+ * one spelling `WhereaboutsCard`'s `pathText` fallback and the Depot column
+ * also read — fix round 1 caught this chip disagreeing with the card two
+ * elements above it on the same screen; a third private literal here would
+ * have been the same fault a third time.
  * CAPS is a CSS transform on `.countChip` (`GearDetail.module.css`), not
  * applied here, matching how the rest of this codebase renders label
  * text. */
 function chipLocation(path: readonly PathSegment[]): string {
   const last = path[path.length - 1]
-  return last === undefined ? 'LOOSE' : last.name
+  return last === undefined ? LOOSE_TEXT : last.name
 }
 
 /** `home` or `trip:<tripId>` — the same composite key
