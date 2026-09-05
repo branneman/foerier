@@ -1,6 +1,6 @@
 import { parseHlc } from '../hlc.ts'
 import { stampOf } from '../registers.ts'
-import type { DepotState, PhaseValue, TripState } from '../state.ts'
+import type { HouseholdState, PhaseValue, TripState } from '../state.ts'
 import { byNameThenId } from './order.ts'
 
 /**
@@ -414,7 +414,7 @@ function startOfLocalDay(ms: number): number {
  * `place.removed`, and the reason is that every later surface counts through
  * this function, including the sidebar's Trips badge.
  */
-export function visibleTrips(state: DepotState): readonly TripState[] {
+export function visibleTrips(state: HouseholdState): readonly TripState[] {
   return Object.values(state.trips)
     .filter((trip) => trip.deleted?.value !== true)
     .sort(byNameThenId)
@@ -448,7 +448,7 @@ export interface TripSections {
  * card, but over-claim is guarded rather than prevented (§5.2), so two active
  * Trips are a reachable and legitimate state and the section renders N.
  */
-export function tripSections(state: DepotState): TripSections {
+export function tripSections(state: HouseholdState): TripSections {
   const active: TripState[] = []
   const planned: TripState[] = []
   const closed: TripState[] = []

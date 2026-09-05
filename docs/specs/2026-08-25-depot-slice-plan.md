@@ -82,10 +82,10 @@ That asymmetry is deliberate, not an omission.
 | `api/src/sync/service.ts` | Push (seq allocation) and pull |
 | `api/src/sync/routes.ts` | `POST /sync/push` · `GET /sync/pull` |
 | `api/test/server/sync.test.ts` | Tier 2s, UUID registry slot #4 |
-| `app/src/depot/opLog.ts` | IndexedDB op log + in-memory fake |
-| `app/src/depot/transport.ts` | HTTP transport + in-memory fake |
-| `app/src/depot/syncEngine.ts` | Outbox, pull cursor, backoff, dead-letter |
-| `app/src/depot/store.ts` | Zustand store; `emit` is the one authoring path |
+| `app/src/household/opLog.ts` | IndexedDB op log + in-memory fake |
+| `app/src/household/transport.ts` | HTTP transport + in-memory fake |
+| `app/src/household/syncEngine.ts` | Outbox, pull cursor, backoff, dead-letter |
+| `app/src/household/store.ts` | Zustand store; `emit` is the one authoring path |
 | `app/src/screens/Depot.tsx` | The Depot list |
 | `app/src/screens/AddGear.tsx` | F1 |
 | `app/src/screens/GearDetail.tsx` | Identity + action bar (S2a); cards in S2b |
@@ -638,7 +638,7 @@ with the accessors because they are what first give it meaning.
   - `interface GearState { id: string; name?: Register<string | null>; container?: Register<boolean>; kind?: Register<KindValue>; residence?: Register<Residence>; ownedCount?: Register<number>; owner?: Register<Owner>; retired?: Register<boolean> }`
   - `interface PersonState { id: string; name?: Register<string | null> }`
   - `interface UnfoldedOps { readonly count: number; readonly types: Readonly<Record<string, number>> }`
-  - `interface DepotState { readonly places: …; readonly gear: …; readonly people: …; readonly unfolded: UnfoldedOps }`
+  - `interface HouseholdState { readonly places: …; readonly gear: …; readonly people: …; readonly unfolded: UnfoldedOps }`
 - Produces, from `payloads.ts`:
   - `type Read<T> = { kind: 'absent' } | { kind: 'null' } | { kind: 'value'; value: T }`
   - `readString` · `readOpen` · `readBoolean` · `readCount` · `readResidence` · `readOwner`, each `(p: Record<string, unknown>, key: string) => Read<…>`
@@ -724,7 +724,7 @@ export interface UnfoldedOps {
   readonly types: Readonly<Record<string, number>>
 }
 
-export interface DepotState {
+export interface HouseholdState {
   readonly places: Readonly<Record<string, PlaceState>>
   readonly gear: Readonly<Record<string, GearState>>
   readonly people: Readonly<Record<string, PersonState>>
@@ -1124,19 +1124,19 @@ Commit message: `Add typed op builders`
 - Modify: `shared/src/index.ts`
 
 **Interfaces:**
-- Consumes: `DepotState`, `PlaceState` (Task 3), `writeRegister`, `Register` (Task 2), `Read` accessors (Task 3), `OpEnvelope` (`ops.ts`)
+- Consumes: `HouseholdState`, `PlaceState` (Task 3), `writeRegister`, `Register` (Task 2), `Read` accessors (Task 3), `OpEnvelope` (`ops.ts`)
 - Produces:
-  - `emptyState(): DepotState`
-  - `applyOp(state: DepotState, op: OpEnvelope): DepotState`
-  - `fold(ops: Iterable<OpEnvelope>, from?: DepotState): DepotState`
+  - `emptyState(): HouseholdState`
+  - `applyOp(state: HouseholdState, op: OpEnvelope): HouseholdState`
+  - `fold(ops: Iterable<OpEnvelope>, from?: HouseholdState): HouseholdState`
 
 **Design notes.**
 
 - `applyOp` is **pure**, with structural sharing: it copies the touched entity,
-  the map that holds it, and the top-level `DepotState`. Nothing else. Purity
+  the map that holds it, and the top-level `HouseholdState`. Nothing else. Purity
   is the property the convergence tier asserts, so a mutable fast path would
   make that tier prove something weaker than it claims.
-- The op-type dispatch is a `Record<string, (state, op, stamp) => DepotState>`
+- The op-type dispatch is a `Record<string, (state, op, stamp) => HouseholdState>`
   table, not a `switch`. A table makes "is this type known?" a lookup, which is
   exactly the question the tolerant reader asks.
 - **Unknown type** → `unfolded.count + 1` and `unfolded.types[type] + 1`,
@@ -1197,7 +1197,7 @@ Remaining tests, by exact name:
 - [ ] **Step 3: Implement `shared/src/reduce.ts`**
 
 ```ts
-type Handler = (state: DepotState, op: OpEnvelope, stamp: Stamp) => DepotState
+type Handler = (state: HouseholdState, op: OpEnvelope, stamp: Stamp) => HouseholdState
 
 const handlers: Record<string, Handler> = {
   'place.recorded': (s, op, st) =>
@@ -1210,7 +1210,7 @@ const handlers: Record<string, Handler> = {
   // …
 }
 
-export function applyOp(state: DepotState, op: OpEnvelope): DepotState {
+export function applyOp(state: HouseholdState, op: OpEnvelope): HouseholdState {
   const handler = handlers[op.type]
   if (handler === undefined) return noteUnfolded(state, op.type)
   return handler(state, op, { hlc: op.hlc, deviceId: op.device_id })
@@ -1345,15 +1345,15 @@ And in a new `shared/testUtils/factories.test.ts`:
 - Produces, from `containment.ts`:
   - `type HolderRef = { kind: 'place'; id: string } | { kind: 'gear'; id: string } | { kind: 'loose' }`
   - `interface ContainmentView { holderOf(gearId: string): HolderRef; childrenOf(ref: HolderRef): readonly string[]; brokenEdges: ReadonlySet<string> }`
-  - `containmentView(state: DepotState): ContainmentView`
+  - `containmentView(state: HouseholdState): ContainmentView`
   - `interface PathSegment { kind: 'place' | 'gear'; id: string; name: string }`
-  - `homePath(state: DepotState, gearId: string, view?: ContainmentView): PathSegment[]` — outermost first, `[]` for loose
+  - `homePath(state: HouseholdState, gearId: string, view?: ContainmentView): PathSegment[]` — outermost first, `[]` for loose
 - Produces, from `depot.ts`:
-  - `visibleGear(state: DepotState): readonly GearState[]` — not retired, sorted by name then id
-  - `retiredGear(state: DepotState): readonly GearState[]`
-  - `looseGear(state: DepotState): readonly GearState[]`
-  - `visiblePlaces(state: DepotState): readonly PlaceState[]` — not removed
-  - `depotCounts(state: DepotState): { gear: number; pieces: number }` — `pieces` sums `ownedCount ?? 1` over visible gear
+  - `visibleGear(state: HouseholdState): readonly GearState[]` — not retired, sorted by name then id
+  - `retiredGear(state: HouseholdState): readonly GearState[]`
+  - `looseGear(state: HouseholdState): readonly GearState[]`
+  - `visiblePlaces(state: HouseholdState): readonly PlaceState[]` — not removed
+  - `depotCounts(state: HouseholdState): { gear: number; pieces: number }` — `pieces` sums `ownedCount ?? 1` over visible gear
 
 **The four reasons a residence pointer does not lead where it says.** All of
 them are the selector's job; the reducer never walks the tree and nothing is
@@ -1457,7 +1457,7 @@ Remaining tests, by exact name:
 
 **Interfaces:**
 - Produces, from `replica.ts`:
-  - `interface Replica { readonly deviceId: string; emit(spec: OpSpec): OpEnvelope; receive(ops: readonly OpEnvelope[]): void; log(): readonly OpEnvelope[]; state(): DepotState }`
+  - `interface Replica { readonly deviceId: string; emit(spec: OpSpec): OpEnvelope; receive(ops: readonly OpEnvelope[]): void; log(): readonly OpEnvelope[]; state(): HouseholdState }`
   - `createReplica(opts: { deviceId: string; householdId: string; clock: FakeClock }): Replica`
   - `exchange(a: Replica, b: Replica): void` — each receives every op the other holds and it does not
 
@@ -1911,7 +1911,7 @@ pass
 ### Task 16: The local op log
 
 **Files:**
-- Create: `app/src/depot/opLog.ts`, `app/src/depot/opLog.test.ts`
+- Create: `app/src/household/opLog.ts`, `app/src/household/opLog.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -1984,7 +1984,7 @@ By exact name:
 ### Task 17: The transport
 
 **Files:**
-- Create: `app/src/depot/transport.ts`, `app/src/depot/transport.test.ts`
+- Create: `app/src/household/transport.ts`, `app/src/household/transport.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -2015,7 +2015,7 @@ and error mapping. A network throw maps to
 ### Task 18: The sync engine — outbox, cursor, backoff, dead-letter
 
 **Files:**
-- Create: `app/src/depot/syncEngine.ts`, `app/src/depot/syncEngine.test.ts`
+- Create: `app/src/household/syncEngine.ts`, `app/src/household/syncEngine.test.ts`
 
 **Interfaces:**
 - Consumes: `OpLog` (Task 16), `Transport` (Task 17), `Clock`, `HlcClock`
@@ -2086,14 +2086,14 @@ By exact name:
 ### Task 19: The depot store, and closing the pendingFirstPerson seam
 
 **Files:**
-- Create: `app/src/depot/store.ts`, `app/src/depot/store.test.ts`
+- Create: `app/src/household/store.ts`, `app/src/household/store.test.ts`
 - Modify: `app/src/auth/pendingFirstPerson.ts`, `app/package.json` (add `zustand`)
 
 **Interfaces:**
 - Produces:
-  - `interface DepotStoreState { state: DepotState; status: 'loading' | 'bootstrapping' | 'ready'; sync: SyncStatus; bootstrap: BootstrapProgress | null; deadLetterCount: number; emit(spec: OpSpec): void }`
-  - `createDepotStore(deps: { log: OpLog; engine: SyncEngine; author: OpAuthor }): StoreApi<DepotStoreState>`
-  - `useDepot` — the React hook bound to the app's store instance
+  - `interface HouseholdStoreState { state: HouseholdState; status: 'loading' | 'bootstrapping' | 'ready'; sync: SyncStatus; bootstrap: BootstrapProgress | null; deadLetterCount: number; emit(spec: OpSpec): void }`
+  - `createHouseholdStore(deps: { log: OpLog; engine: SyncEngine; author: OpAuthor }): StoreApi<HouseholdStoreState>`
+  - `useHousehold` — the React hook bound to the app's store instance
 - Modified in `pendingFirstPerson.ts`:
   - `flushPendingFirstPerson(pending: PendingFirstPerson | null, emit: (spec: OpSpec) => void, store: PendingStore): Promise<boolean>`
 
@@ -2364,9 +2364,9 @@ client read-side code. Branch `s2b-find` from `main` once S2a has landed.
 - Produces:
   - `type WhereaboutsSlice = { kind: 'home'; path: PathSegment[]; count: number }`
   - `interface Whereabouts { gearId: string; slices: WhereaboutsSlice[] }`
-  - `whereabouts(state: DepotState, gearId: string, view?: ContainmentView): Whereabouts`
+  - `whereabouts(state: HouseholdState, gearId: string, view?: ContainmentView): Whereabouts`
   - `interface Match { gear: GearState; path: PathSegment[] }`
-  - `findGear(state: DepotState, query: string): readonly Match[]`
+  - `findGear(state: HouseholdState, query: string): readonly Match[]`
 
 **Design notes.**
 

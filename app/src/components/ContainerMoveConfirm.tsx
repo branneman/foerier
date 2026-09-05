@@ -31,7 +31,7 @@ import styles from './ContainerMoveConfirm.module.css'
  *
  * ## It states, and hands the decision back
  *
- * No store, no op, no `useDepot`: whichever screen opened the Pack picker
+ * No store, no op, no `useHousehold`: whichever screen opened the Pack picker
  * knows what is moving, which is the fact that decides whether a confirm is
  * owed at all, so it also owns the write. That is why {@link PackPicker}
  * simply selects and closes rather than holding a pending move the way

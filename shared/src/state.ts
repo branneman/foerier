@@ -326,12 +326,12 @@ export interface UnfoldedOps {
 
 /**
  * With `trips`, this is the fold of **everything**, not just the depot. The
- * name stays: renaming it reaches `DepotStoreState`, `DepotProvider`,
- * `useDepot`, `DepotView` and every screen across three workspaces, and S5 is
+ * name stays: renaming it reaches `HouseholdStoreState`, `HouseholdProvider`,
+ * `useHousehold`, `DepotView` and every screen across three workspaces, and S5 is
  * in flight through those same files. Recorded as a misnomer rather than
  * fixed here (spec §2).
  */
-export interface DepotState {
+export interface HouseholdState {
   readonly places: Readonly<Record<string, PlaceState>>
   readonly gear: Readonly<Record<string, GearState>>
   readonly people: Readonly<Record<string, PersonState>>

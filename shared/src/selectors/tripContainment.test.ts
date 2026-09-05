@@ -13,7 +13,7 @@ import {
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
-import type { DepotState, EntryState, TripState } from '../state.ts'
+import type { HouseholdState, EntryState, TripState } from '../state.ts'
 import { entriesOf, entryLabel } from './entry.ts'
 import { stageOf, statusOf } from './packing.ts'
 import { tripContainmentView, tripPath } from './tripContainment.ts'
@@ -37,24 +37,24 @@ function one(spec: OpSpec, counter: number, deviceId = DEV_A): OpEnvelope {
   return anOp(spec, { hlc: hlcAt(counter), deviceId })
 }
 
-function tripOf(state: DepotState): TripState {
+function tripOf(state: HouseholdState): TripState {
   const trip = state.trips[TRIP]
   if (trip === undefined) throw new Error(`the fold holds no Trip ${TRIP}`)
   return trip
 }
 
-function entryOf(state: DepotState, entryId: string): EntryState {
+function entryOf(state: HouseholdState, entryId: string): EntryState {
   const entry = tripOf(state).entries?.[entryId]
   if (entry === undefined) throw new Error(`the fold holds no Entry ${entryId}`)
   return entry
 }
 
-function viewOf(state: DepotState) {
+function viewOf(state: HouseholdState) {
   return tripContainmentView(tripOf(state), state)
 }
 
 /** The labels `entriesOf` draws, in the order it draws them. */
-function entriesOfLabels(state: DepotState): string[] {
+function entriesOfLabels(state: HouseholdState): string[] {
   return entriesOf(tripOf(state), state).map((entry) =>
     entryLabel(entry, state),
   )

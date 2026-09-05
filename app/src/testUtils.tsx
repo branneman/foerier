@@ -9,13 +9,13 @@ import { render } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog } from './depot/opLog'
+import { inMemoryOpLog } from './household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
   type EngineFactory,
-} from './depot/store'
+} from './household/store'
 
 /**
  * The Tier 3 scaffolding, in one place (`docs/testing.md` Tier 3).
@@ -134,8 +134,8 @@ export async function seededStore(
     author?: OpAuthor
     log?: ReturnType<typeof inMemoryOpLog>
   } = {},
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
+): Promise<StoreApi<HouseholdStoreState>> {
+  const store = createHouseholdStore({
     log: options.log ?? inMemoryOpLog(),
     engine: options.engine ?? noopEngine,
     author: options.author ?? anAuthor(),
@@ -148,7 +148,7 @@ export async function seededStore(
 /** The component under a store, for a screen that reads no route. */
 export function renderWithStore(
   ui: ReactNode,
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
 ) {
-  return render(<DepotProvider value={store}>{ui}</DepotProvider>)
+  return render(<HouseholdProvider value={store}>{ui}</HouseholdProvider>)
 }

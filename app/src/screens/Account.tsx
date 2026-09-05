@@ -7,7 +7,7 @@ import { Link } from 'wouter'
 import type { AuthApi, DeviceRow, PasskeyRow } from '../auth/api'
 import { BUILD_SHA } from '../build'
 import { formatDate, isToday } from '../format'
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Account.module.css'
@@ -22,7 +22,7 @@ import { People, loginVerbClause } from './People'
 export interface AccountProps {
   api: AuthApi
   token: string
-  /** The Login's `person_id` — the key `useDepot` reads the name through. */
+  /** The Login's `person_id` — the key `useHousehold` reads the name through. */
   personId: string
   /** Ends the App-level session — `useSession`'s `signOut`, threaded down
    * through `App.tsx`. Account's own DEVICES card unfolds the same rows and
@@ -163,13 +163,13 @@ export function Account({
   onSignOut,
   clearLocalData,
 }: AccountProps) {
-  const peopleCount = useDepot(
+  const peopleCount = useHousehold(
     (depot) => Object.keys(depot.state.people).length,
   )
-  const personName = useDepot(
+  const personName = useHousehold(
     (depot) => depot.state.people[personId]?.name?.value ?? null,
   )
-  const sync = useDepot((depot) => depot.sync)
+  const sync = useHousehold((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
   // `splitPane: false` — `/account` is its own screen at every width, not a
   // pane of a list that is also on screen. (`DepotView` and, since S7, the

@@ -211,7 +211,7 @@ export interface TripState {
   participants?: Readonly<Record<string, Register<boolean>>>
 }
 
-export interface DepotState {
+export interface HouseholdState {
   readonly places: …
   readonly gear: …
   readonly people: …
@@ -229,8 +229,8 @@ without a cast. §3.4 says what the app then does with one.
 costs one optional field, it keeps `TripState` matching §3.7's row, and the
 alternative is S14 editing a type three slices' worth of code already reads.
 
-**`DepotState` is now the fold of everything, not just the depot.** The name
-stays. Renaming it reaches `DepotStoreState`, `DepotProvider`, `useDepot`,
+**`HouseholdState` is now the fold of everything, not just the depot.** The name
+stays. Renaming it reaches `HouseholdStoreState`, `HouseholdProvider`, `useHousehold`,
 `DepotView` and every screen in three workspaces, and S5 is in flight across
 those same files. Recorded as a misnomer, not fixed here.
 
@@ -736,7 +736,7 @@ somebody has to notice.
   untouched, and an active Trip at S6 still reports nothing, because it holds
   nothing.
 - **A Trip-membership dimension** — S7's row (§3.7).
-- **Renaming `DepotState`** — §2.
+- **Renaming `HouseholdState`** — §2.
 - **A phase transition graph.** Invariant 16 makes every move legal; encoding a
   graph would be building the thing the invariant forbids.
 

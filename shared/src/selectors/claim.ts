@@ -1,4 +1,9 @@
-import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
+import type {
+  HouseholdState,
+  EntryState,
+  KindValue,
+  TripState,
+} from '../state.ts'
 import { ownedCountOf } from './depot.ts'
 import { bringCountOf, entriesOf, entryKind } from './entry.ts'
 import { piecesOf } from './piece.ts'
@@ -122,7 +127,7 @@ function claimFor(
   kind: ClaimableKind,
   trip: TripState,
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): Claim {
   if (kind === 'single') {
     return { tripId: trip.id, entryId: entry.id, count: 1 }
@@ -152,7 +157,7 @@ function claimFor(
  * hypothetical. A Trip already active by `extraTripId` is not duplicated.
  */
 function claimingTrips(
-  state: DepotState,
+  state: HouseholdState,
   extraTripId?: string,
 ): readonly TripState[] {
   const visible = visibleTrips(state)
@@ -199,7 +204,7 @@ function claimingTrips(
  * check to `claimFor`: that would let two Trips both claim the one duffel.
  */
 function claimsByGear(
-  state: DepotState,
+  state: HouseholdState,
   trips: readonly TripState[],
 ): ReadonlyMap<string, { kind: ClaimableKind; claims: readonly Claim[] }> {
   const byGear = new Map<string, { kind: ClaimableKind; claims: Claim[] }>()
@@ -249,7 +254,7 @@ function claimsByGear(
  * reason.
  */
 function supplyAndClaimed(
-  state: DepotState,
+  state: HouseholdState,
   gearId: string,
   kind: ClaimableKind,
   claims: readonly Claim[],
@@ -299,7 +304,7 @@ function supplyAndClaimed(
 }
 
 function overClaimsAmong(
-  state: DepotState,
+  state: HouseholdState,
   trips: readonly TripState[],
 ): readonly OverClaim[] {
   const byGear = claimsByGear(state, trips)
@@ -325,13 +330,13 @@ function overClaimsAmong(
  * set; it disappears only when a Quartermaster removes an Entry or lowers a
  * Bring-count, both ordinary ops that merge like any other.
  */
-export function overClaims(state: DepotState): readonly OverClaim[] {
+export function overClaims(state: HouseholdState): readonly OverClaim[] {
   return overClaimsAmong(state, claimingTrips(state))
 }
 
 /** The over-claims that name `tripId` among their claims. */
 export function overClaimsFor(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
 ): readonly OverClaim[] {
   return overClaims(state).filter((overClaim) =>
@@ -348,7 +353,7 @@ export function overClaimsFor(
  * re-derives activeness inline.
  */
 export function overClaimsIfActive(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
 ): readonly OverClaim[] {
   return overClaimsAmong(state, claimingTrips(state, tripId))

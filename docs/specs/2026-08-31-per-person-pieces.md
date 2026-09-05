@@ -211,17 +211,17 @@ and on `EntryState`:
 `writePiece` nests inside `writeEntry` exactly as `writeEntry` nests inside
 `writeTrip` — the third level of the same pattern, with the same
 identity-propagation guard, so a losing write returns the identical
-`DepotState` and does not invalidate `slice.ts`'s existing `WeakMap` memo:
+`HouseholdState` and does not invalidate `slice.ts`'s existing `WeakMap` memo:
 
 ```ts
 function writePiece(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
   entryId: string,
   personId: string,
   stamp: Stamp,
   update: (piece: PieceState, stamp: Stamp) => PieceState,
-): DepotState {
+): HouseholdState {
   return writeEntry(state, tripId, entryId, stamp, (entry, st) => {
     const existing = entry.pieces?.[personId]
     const current = existing ?? { id: personId }

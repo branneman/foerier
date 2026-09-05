@@ -4,12 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { anAuthor, noopEngine } from '../testUtils'
 import { TripOnlySheet } from './TripOnlySheet'
 
@@ -23,7 +23,7 @@ import { TripOnlySheet } from './TripOnlySheet'
 const TRIP = 'tttttttt-0000-7000-8000-000000000012'
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   /** The `trip.entry_added` ops emitted **since** the seed — the sheet's
    * whole output. */
   entryAdds: () => Promise<readonly unknown[]>
@@ -31,7 +31,7 @@ interface Seeded {
 
 async function seededTrip(): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -56,14 +56,14 @@ async function entryAddOps(log: OpLog): Promise<readonly unknown[]> {
 function renderSheet(seeded: Seeded) {
   let closed = 0
   render(
-    <DepotProvider value={seeded.store}>
+    <HouseholdProvider value={seeded.store}>
       <TripOnlySheet
         tripId={TRIP}
         onClose={() => {
           closed += 1
         }}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return { closes: () => closed }
 }
@@ -159,9 +159,9 @@ describe('the trip-only entry sheet', () => {
     const seeded = await seededTrip()
 
     const first = render(
-      <DepotProvider value={seeded.store}>
+      <HouseholdProvider value={seeded.store}>
         <TripOnlySheet tripId={TRIP} onClose={() => {}} />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
     await user.type(screen.getByLabelText('Name'), 'Camp table')
     await user.click(screen.getByRole('radio', { name: 'Container' }))
@@ -169,9 +169,9 @@ describe('the trip-only entry sheet', () => {
     first.unmount()
 
     render(
-      <DepotProvider value={seeded.store}>
+      <HouseholdProvider value={seeded.store}>
         <TripOnlySheet tripId={TRIP} onClose={() => {}} />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     // Mount is the reset — `HomePicker`'s bug is what this proves absent

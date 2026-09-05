@@ -303,7 +303,7 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import { emptyState, fold } from './reduce.ts'
-import type { DepotState } from './state.ts'
+import type { HouseholdState } from './state.ts'
 
 const TRIP = '66666666-0000-7000-8000-000000000001'
 const ENTRY = '77777777-0000-7000-8000-000000000001'
@@ -316,7 +316,7 @@ function anOp(spec: OpSpec, hlc: string, deviceId = DEV_A) {
   /* … as in reduce.pieces.test.ts … */
 }
 
-function foldOf(...ops: readonly ReturnType<typeof anOp>[]): DepotState {
+function foldOf(...ops: readonly ReturnType<typeof anOp>[]): HouseholdState {
   return fold(ops, emptyState())
 }
 
@@ -869,17 +869,17 @@ statuses must widen an existing mechanism, not rewrite hard-coded cases.
 
 **Interfaces:**
 - Consumes: `EntryState`, `PieceState`, `StatusValue`, `StageValue`,
-  `TripState`, `DepotState` (Task 1); `entryKind` (`selectors/entry.ts`).
+  `TripState`, `HouseholdState` (Task 1); `entryKind` (`selectors/entry.ts`).
 - Produces:
-  - `isContainerEntry(entry: EntryState, state: DepotState): boolean` — in `entry.ts`
+  - `isContainerEntry(entry: EntryState, state: HouseholdState): boolean` — in `entry.ts`
   - `type StatusKey = 'not_packed' | 'staged' | 'packed'`
   - `type StageKey = 'home' | 'staging' | 'car' | 'packed'`
   - `interface PackingStatus { id: StatusKey; label: string; glyph: string; packed: boolean }`
   - `interface JourneyStage { id: StageKey; label: string; disagreementLabel: string | null }`
   - `const STATUSES: readonly PackingStatus[]`, `const STAGES: readonly JourneyStage[]`
-  - `statusOf(entry: EntryState, state: DepotState): StatusValue | null`
-  - `pieceStatusOf(piece: PieceState | undefined, entry: EntryState, state: DepotState): StatusValue | null`
-  - `stageOf(entry: EntryState, state: DepotState): StageValue | null`
+  - `statusOf(entry: EntryState, state: HouseholdState): StatusValue | null`
+  - `pieceStatusOf(piece: PieceState | undefined, entry: EntryState, state: HouseholdState): StatusValue | null`
+  - `stageOf(entry: EntryState, state: HouseholdState): StageValue | null`
   - `statusLabel(status: StatusValue): string`, `statusGlyph(status: StatusValue): string`
   - `stageLabel(stage: StageValue): string`, `stageDisagreementLabel(stage: StageValue): string | null`
   - `nextStatus(status: StatusValue): StatusValue`
@@ -913,7 +913,7 @@ touched (spec §3.6) — this is a new function beside them.
  */
 export function isContainerEntry(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): boolean {
   const source = entry.source?.value
   if (source === undefined) return false
@@ -1035,7 +1035,7 @@ Expected: FAIL — no such module.
 
 ```ts
 import type {
-  DepotState,
+  HouseholdState,
   EntryState,
   PieceState,
   StageValue,
@@ -1159,7 +1159,7 @@ function stageRow(stage: StageValue): JourneyStage | undefined {
  */
 export function statusOf(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): StatusValue | null {
   if (isContainerEntry(entry, state)) return null
   return entry.status?.value ?? 'not_packed'
@@ -1173,7 +1173,7 @@ export function statusOf(
 export function pieceStatusOf(
   piece: PieceState | undefined,
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): StatusValue | null {
   if (isContainerEntry(entry, state)) return null
   return piece?.status?.value ?? 'not_packed'
@@ -1182,7 +1182,7 @@ export function pieceStatusOf(
 /** The container's journey stage, or `null` for a non-container. */
 export function stageOf(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): StageValue | null {
   if (!isContainerEntry(entry, state)) return null
   return entry.stage?.value ?? 'home'
@@ -1305,8 +1305,8 @@ traversal, the `parentOf` functional-graph argument, the `seen` guard and
 - Produces:
   - `type TripHolderRef = { kind: 'container'; entryId: string } | { kind: 'loose' }`
   - `interface TripContainmentView { holderOf(entryId: string): TripHolderRef; childrenOf(ref: TripHolderRef): readonly string[]; brokenEdges: ReadonlySet<string> }`
-  - `tripContainmentView(trip: TripState, state: DepotState): TripContainmentView`
-  - `tripPath(trip: TripState, state: DepotState, entryId: string, view?: TripContainmentView): readonly TripPathSegment[]` where `TripPathSegment = { entryId: string; name: string }`, outermost first — the Pack picker's skipped-ancestry line and ALL mode's residence segment both read it.
+  - `tripContainmentView(trip: TripState, state: HouseholdState): TripContainmentView`
+  - `tripPath(trip: TripState, state: HouseholdState, entryId: string, view?: TripContainmentView): readonly TripPathSegment[]` where `TripPathSegment = { entryId: string; name: string }`, outermost first — the Pack picker's skipped-ancestry line and ALL mode's residence segment both read it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1579,7 +1579,7 @@ Run: `npx vitest run shared/src/selectors/entry.test.ts` — FAIL, `0` received 
 export function pieceCountOf(
   entry: EntryState,
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): number {
   if (isContainerEntry(entry, state)) return 0
   switch (entryKind(entry, state)) {
@@ -1666,9 +1666,9 @@ precedent `the-gear-list.md` §11 sets.
   `tripContainmentView` (Task 3).
 - Produces:
   - `type PackingItem = { kind: 'entry'; entryId: string; units: number; status: StatusValue; residence: TripResidence } | { kind: 'piece'; entryId: string; personId: string; units: 1; status: StatusValue; residence: TripResidence }`
-  - `packingItems(trip: TripState, state: DepotState): readonly PackingItem[]`
+  - `packingItems(trip: TripState, state: HouseholdState): readonly PackingItem[]`
   - `interface PackingCount { readonly packed: number; readonly total: number; readonly left: number }`
-  - `packingTotals(trip: TripState, state: DepotState): PackingCount`
+  - `packingTotals(trip: TripState, state: HouseholdState): PackingCount`
   - `countOf(items: readonly PackingItem[]): PackingCount`
   - `containerTotals(trip, state, entryId, view?): PackingCount`
   - `type PersonBucketKey = { kind: 'person'; personId: string } | { kind: 'shared' }`
@@ -1878,7 +1878,7 @@ const LOOSE: TripResidence = Object.freeze({ in: 'loose' })
  */
 export function packingItems(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): readonly PackingItem[] {
   const items: PackingItem[] = []
   for (const entry of entriesOf(trip, state)) {
@@ -1933,7 +1933,7 @@ export function countOf(items: readonly PackingItem[]): PackingCount {
 
 export function packingTotals(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): PackingCount {
   return countOf(packingItems(trip, state))
 }
@@ -1946,7 +1946,7 @@ export function packingTotals(
  */
 export function containerTotals(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   entryId: string,
   view: TripContainmentView = tripContainmentView(trip, state),
 ): PackingCount {
@@ -2009,7 +2009,7 @@ export interface PersonBucket {
  */
 export function personPartition(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): readonly PersonBucket[] { /* … */ }
 
 export interface Disagreement {
@@ -2039,7 +2039,7 @@ export interface Disagreement {
  */
 export function disagreements(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   view: TripContainmentView = tripContainmentView(trip, state),
 ): readonly Disagreement[] { /* … */ }
 ```
@@ -2168,7 +2168,7 @@ this is that file with two capabilities removed and one pointer type changed.
 **Interfaces:**
 - Consumes: `tripContainmentView`, `tripPath`, `stageOf`, `stageLabel`,
   `entryLabel`, `entriesOf`, `isContainerEntry`, `TripResidence`; `ui/Sheet`,
-  `ui/Confirm`; `useDepot`.
+  `ui/Confirm`; `useHousehold`.
 - Produces:
   - `interface PackPickerProps { tripId: string; onClose(): void; onSelect(residence: TripResidence): void; title: string; excludeEntryId?: string; current?: TripResidence; moving?: { name: string; insideCount: number } }`
   - `interface ContainerMoveConfirmProps { movingName: string; destinationName: string; insideCount: number; onConfirm(): void; onCancel(): void }`
@@ -2332,7 +2332,7 @@ opens the Piece picker in the builder.
 **Interfaces:**
 - Consumes: `pieceStatusOf`, `nextStatus`, `statusGlyph`, `statusLabel`,
   `STATUSES`, `isPacked` (Tasks 2 and 5); `piecesOf`, `pieceInclusion`;
-  `tripParticipants` (`app/src/depot/trips.ts`, for drawn order);
+  `tripParticipants` (`app/src/household/trips.ts`, for drawn order);
   `ui/PersonCircle` at **30** (ruling K: the row's height sets the circle);
   `ui/Sheet`.
 - Produces:
@@ -2463,7 +2463,7 @@ itself, so the screen is reachable and testable before a single group renders.
 - Modify: `ui/src/PersonCircle.tsx` + `.module.css` + `.test.tsx` (sizes 28, 34)
 
 **Interfaces:**
-- Consumes: `useScreenHeader`, `useDepot`, `tripLabel`, `packingTotals`,
+- Consumes: `useScreenHeader`, `useHousehold`, `tripLabel`, `packingTotals`,
   `entriesOf`.
 - Produces: `export function Packing()` — reads `useParams<{ id: string }>()`
   exactly as `Trip` does.
@@ -2805,7 +2805,7 @@ wiring the segmented control Task 9 drew.
 - Modify: `app/src/screens/Packing.tsx` + `.module.css` + `.test.tsx`
 
 **Interfaces:**
-- Consumes: `personPartition` (Task 5), `sortedPeople` (`app/src/depot/people.ts`),
+- Consumes: `personPartition` (Task 5), `sortedPeople` (`app/src/household/people.ts`),
   `personLabel`, `personNameOrUnnamed`, `UNNAMED_PERSON_GLYPH`, `isPacked`,
   `tripPath` (Task 3); `ui/PersonCircle` at **28**.
 - Produces: no new exported surface.

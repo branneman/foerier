@@ -6,12 +6,12 @@ import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { createAuthApi, type DeviceRow } from '../auth/api'
-import { inMemoryOpLog } from '../depot/opLog'
+import { inMemoryOpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, anId, noopEngine } from '../testUtils'
@@ -19,10 +19,10 @@ import { Devices } from './Devices'
 
 /**
  * Every test seeds a **real** store — `inMemoryOpLog` plus the real reducer
- * behind `createDepotStore` — exactly as `Account.test.tsx` does. The one
+ * behind `createHouseholdStore` — exactly as `Account.test.tsx` does. The one
  * hand override is `unsyncedCount` itself: the count this screen reads is a
  * fact about the outbox and the dead-letter set together
- * (`depot/store.ts`'s own `unsyncedCount`), and this suite is about what the
+ * (`household/store.ts`'s own `unsyncedCount`), and this suite is about what the
  * screen *does* with that number, not about re-proving the outbox math —
  * that belongs to `store.test.ts`.
  */
@@ -31,8 +31,8 @@ const TOKEN = 'foe_test_token'
 
 async function aStore(
   unsyncedCount: number,
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
+): Promise<StoreApi<HouseholdStoreState>> {
+  const store = createHouseholdStore({
     log: inMemoryOpLog(),
     engine: noopEngine,
     author: anAuthor(),
@@ -158,14 +158,14 @@ async function renderDevices(
     <Router hook={location.hook} searchHook={location.searchHook}>
       <Switch>
         <Route path="/account/devices">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <Devices
               api={api}
               token={TOKEN}
               onSignedOut={onSignedOut}
               {...(clearLocalData === undefined ? {} : { clearLocalData })}
             />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
         <Route path="/signin">
           <p>Sign-in screen</p>
@@ -188,9 +188,9 @@ describe('Devices', () => {
 
     render(
       <Router hook={location.hook} searchHook={location.searchHook}>
-        <DepotProvider value={store}>
+        <HouseholdProvider value={store}>
           <Devices api={api} token={TOKEN} onSignedOut={vi.fn()} />
-        </DepotProvider>
+        </HouseholdProvider>
       </Router>,
     )
 

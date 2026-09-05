@@ -1287,11 +1287,11 @@ byte-exact.
   the moment between the freeze and the redirect, not a resting place.
 - **The sign-in screen's unsynced count is read before the session ends**, for
   the obvious reason that ending it drops the store that can answer. The
-  number is `DepotStoreState.unsyncedCount()` — the outbox plus the
+  number is `HouseholdStoreState.unsyncedCount()` — the outbox plus the
   dead-letter, which do not overlap — and it is the whole reassurance of that
   screen: the work is on the device and flushes after the next sign-in.
 - **Still owed to the Account screen: `sign out this device`.** Its destructive
-  half exists — `clearLocalData()` in `app/src/depot/wiring.ts`, the one path
+  half exists — `clearLocalData()` in `app/src/household/wiring.ts`, the one path
   that clears the local log — and so does the count its confirm sheet must
   state, but S2a builds no Account screen, so nothing calls either yet. A 401
   must never take that path.
@@ -1438,7 +1438,7 @@ retired outright.
   alone**, which is then the element that has to announce the state, since no
   text sits beside it.
 - **Counts are handed in, not read.** `AppShell` renders *outside* the
-  `DepotProvider` — deliberately, so the nav never depends on a store the
+  `HouseholdProvider` — deliberately, so the nav never depends on a store the
   signed-out shell has never had — so `App` reads the counts and passes a map
   keyed by href. A destination with no entry simply draws no count, which is
   how the board reads it, and the rule for which destinations get one is not a
@@ -1782,7 +1782,7 @@ no migration; see its [spec](specs/2026-08-29-people-and-ownership.md).
   `personId` to a Person" — and put the parameter one function too early, on
   `valuesOf`. Right about the need, off by one about the place. The correction
   reached `app/`, where `SliceBar` took a bound `formatFor` beside the
-  `valuesFor` it already had, keeping the component free of `DepotState`.
+  `valuesFor` it already had, keeping the component free of `HouseholdState`.
 - **Add gear gained an `OWNER` row, and that is a departure.** The board's F1
   order is settled and reasoned and carries no owner. Without it, S4's only
   route to attributing gear is one gear-detail visit per item and the Depot's
@@ -1900,13 +1900,27 @@ Six op types, no endpoints, no migration; see its
   `titleTone` on `Sheet` that `PhaseSheet` alone passes, and it belongs to
   whichever slice next opens `ui/`'s overlay primitives rather than to a
   one-caller detour through the shared package.
-- **`DepotState` is now the fold of everything, not just the depot, and the name
-  stays.** Renaming reaches `DepotStoreState`, `DepotProvider`, `useDepot`,
-  `DepotView` and every screen in three workspaces, and S5 was in flight across
-  those same files when S6 landed. Recorded as a misnomer rather than fixed
-  under a slice that would have to merge against it. **The reason has since
-  expired** — S5 has landed, so the rename is now a self-contained job for
-  whichever slice wants it, and no longer blocked on anything.
+- **`DepotState` was the fold of everything, not just the depot, and the name
+  stayed at S6 for a reason that has since expired — it is now
+  `HouseholdState`.** The rename reached `DepotStoreState`, `DepotProvider`,
+  `useDepot`, `useDepotStore`, `createSessionDepot` and their family across
+  three workspaces, and S5 was in flight over those same files when S6 landed,
+  so it was recorded as a misnomer rather than fixed under a slice that would
+  have to merge against it. It was paid after S9, as its own commit.
+
+  **The glossary already drew the line the code was crossing**, which is what
+  made the new name a lookup rather than a choice: *Household* is "the people,
+  depot, and trips that belong together: everything… every record belongs to
+  exactly one household", and *Depot* is "the household's entire owned
+  inventory of gear". The fold of one household's whole op log is a
+  `HouseholdState`; the gear inventory is the Depot.
+
+  **What deliberately kept its name** is everything that really is the depot:
+  the `Depot` screen, `DepotView`, `DepotPicker`, `depotCounts` and
+  `shared/src/selectors/depot.ts`. `app/src/depot/` moved to
+  `app/src/household/` with the identifiers, since what it holds — the op log,
+  the store, the sync engine, the display selectors for People and Trips — is
+  the client's household data layer and never was the depot.
 - **S6 paid S4's fixture debt, and the payment is weaker than the original would
   have been.** §8.7 obliges every slice from S2 onwards to capture an op fixture
   for its own op types; S4's spec said the rule applied and no file landed, so
@@ -2063,8 +2077,8 @@ aggregate. Three op types, no endpoints, no migration; see its
   Depot's most-visited screen. S3 passed `state` into the dimension table's
   signature so it "would not be reshaped by the first dimension that needs
   it"; S7 is that dimension, and the fix is a module-level `WeakMap<
-  DepotState, …>` memo inside `slice.ts` rather than a change to the
-  signature — `DepotState`'s immutability is what makes the key exact instead
+  HouseholdState, …>` memo inside `slice.ts` rather than a change to the
+  signature — `HouseholdState`'s immutability is what makes the key exact instead
   of approximate.
 - **Ten sentences in the feature spec turned out false once the code
   existed, and none of them are corrected in place** — the shape CLAUDE.md's
@@ -2325,7 +2339,7 @@ all nine of its open decisions **before** a line of it existed.
   tolerant-reader obligation, and an installed PWA holding S9a ops queued
   offline is unaffected in both directions. That is what made the seam clean
   enough to cut. What replaces convergence as the risk is **agreement** — every
-  answer here is a pure function of `DepotState`, so every replica computes the
+  answer here is a pure function of `HouseholdState`, so every replica computes the
   identical one by construction, and the only failure left is two *surfaces*
   disagreeing about one Gear. It is not theoretical: as first built, gear detail
   read `▸ ALPS 2026 · CRATE B` for a set F4's ALL mode already called
@@ -2352,7 +2366,7 @@ all nine of its open decisions **before** a line of it existed.
   next cross-aggregate dimension should expect the same memo, not a new
   mechanism*; this slice needed two, and neither is new machinery — the second
   is not even a dimension. `whereabouts.ts` carries `TRIP_SLICES`, a
-  `WeakMap<DepotState, …>` built by one pass over the active Trips — it is
+  `WeakMap<HouseholdState, …>` built by one pass over the active Trips — it is
   called once per row on a 128-row Depot and once per match on Find, on every
   keystroke — with `overClaims(state)` read **once** into a set of gear ids,
   since reading it per row would double the cost the memo exists to remove.

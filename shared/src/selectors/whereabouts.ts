@@ -1,5 +1,5 @@
 import type {
-  DepotState,
+  HouseholdState,
   StageValue,
   StatusValue,
   TripResidence,
@@ -48,7 +48,7 @@ import {
  * `⌂ HAL ▸ LADE 2` for a headlamp that is in the duffel, in the car.
  *
  * **The whole risk of this file is two surfaces disagreeing**, not
- * convergence: every answer here is a pure function of `DepotState`, so every
+ * convergence: every answer here is a pure function of `HouseholdState`, so every
  * replica computes the same one by construction. What can go wrong is the
  * Depot column saying `⌂ HOME` while gear detail says `▸ ALPS 2026`, which is
  * why each rule below is stated in exactly one place and read from there —
@@ -222,7 +222,7 @@ interface TripSliceFacts extends SegmentRead {
  * cross-aggregate dimension should expect to need the same memo, not a new
  * mechanism"*.
  *
- * `DepotState` is immutable and its identity changes on exactly the folds
+ * `HouseholdState` is immutable and its identity changes on exactly the folds
  * that could change the answer — the reducer returns the same object when a
  * write loses — so the key is exact rather than approximate, and a `WeakMap`
  * lets superseded states be collected.
@@ -232,7 +232,7 @@ interface TripSliceFacts extends SegmentRead {
  * would double the cost this memo exists to remove.
  */
 const TRIP_SLICES = new WeakMap<
-  DepotState,
+  HouseholdState,
   {
     byGear: Map<string, readonly TripSliceFacts[]>
     overClaimed: ReadonlySet<string>
@@ -281,7 +281,7 @@ interface EntryContribution {
  */
 function chainRootStage(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   view: TripContainmentView,
   start: string | null,
 ): StageValue | null {
@@ -304,7 +304,7 @@ function chainRootStage(
  */
 function segmentOf(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   view: TripContainmentView,
   holderEntryId: string | null,
   self: string | null,
@@ -352,7 +352,7 @@ function segmentOf(
  */
 function contributionOf(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   view: TripContainmentView,
   entry: { id: string },
 ): EntryContribution {
@@ -522,7 +522,7 @@ function compareTripFacts(a: TripSliceFacts, b: TripSliceFacts): number {
 }
 
 /** Builds (once per state) or returns the cached gear→trip-slices index. */
-function tripSlicesOf(state: DepotState): {
+function tripSlicesOf(state: HouseholdState): {
   byGear: Map<string, readonly TripSliceFacts[]>
   overClaimed: ReadonlySet<string>
 } {
@@ -653,7 +653,7 @@ function sliceOf(facts: TripSliceFacts): WhereaboutsSlice {
  * one per row. The Trip's own views are built inside the memo.
  */
 export function whereabouts(
-  state: DepotState,
+  state: HouseholdState,
   gearId: string,
   view: ContainmentView = containmentView(state),
 ): Whereabouts {
@@ -807,13 +807,13 @@ export function sliceCountLabel(slice: WhereaboutsSlice): string | null {
  * `MIXED` still gives Mark `DUFFEL 90 L · CAR` and Ana `LOOSE`.
  *
  * **A Map keyed by id, and not an ordered list, on purpose.** The order both
- * callers draw is People-screen order, which lives in `app/src/depot/people.ts`'s
+ * callers draw is People-screen order, which lives in `app/src/household/people.ts`'s
  * `sortedPeople` and exists there because *"the People screen and the owner
  * picker are two views of one list"*. Returning a second ordering from
  * `shared/` would make three.
  */
 export function whereaboutsByPerson(
-  state: DepotState,
+  state: HouseholdState,
   gearId: string,
   view: ContainmentView = containmentView(state),
 ): ReadonlyMap<string, PersonWhereabouts> {

@@ -27,13 +27,13 @@ import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
 import { TripOnlySheet } from '../components/TripOnlySheet'
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import {
   parseIsoDate,
   tripChip,
   tripDateRange,
   tripParticipants,
-} from '../depot/trips'
+} from '../household/trips'
 import { ScreenBand } from '../shell/ScreenBand'
 import {
   DESKTOP,
@@ -200,9 +200,9 @@ import styles from './Trip.module.css'
 export function Trip() {
   const params = useParams<{ id: string }>()
   const tripId = params.id
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-  const sync = useDepot((depot) => depot.sync)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
+  const sync = useHousehold((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
   const isSplitOrWider = useMediaQuery(SPLIT)
   // `splitPane: false` because the trip screen is not a pane of a list that

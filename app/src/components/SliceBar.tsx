@@ -62,7 +62,7 @@ export interface SliceBarProps {
    * Injected rather than called here, for the same reason `valuesFor` is: a
    * value is not always self-describing. S4's `PERSON` carries person ids and
    * draws names, so formatting needs the depot — and threading the whole
-   * `DepotState` through a presentational component to reach one lookup would
+   * `HouseholdState` through a presentational component to reach one lookup would
    * be the wrong seam. The screen owns the state; this owns the anatomy.
    */
   formatFor: (id: DimensionId, value: string) => string

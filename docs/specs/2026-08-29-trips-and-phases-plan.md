@@ -16,7 +16,7 @@
 - **Ops mirror the wire — `snake_case`, never transformed.** Folded state, selectors and React props are ordinary `camelCase`. `authoring.ts` and `payloads.ts` are the only two places the boundary is crossed.
 - **`null` clears a nullable register; an absent field leaves it alone.** [sync §1.3](../sync-protocol.md) is the authority — *not* §5.3 obligation 5, which runs the other way only.
 - **A register whose declared type includes `null` takes an explicit `null` as a clear; one whose type does not treats `null` as malformed and ignores it.** `TripState.name`, `.startDate` and `.endDate` are `Register<string | null>` → `writeNullableIfPresent`. `.phase`, `.fromTripId`, `.participants` are not → `writeRegister` behind a `kind !== 'value'` guard.
-- **Every handler propagates identity on a lost write.** If `writeRegister` returns the register it was given, the handler returns the *identical* entity object and `writeTrip` returns the identical `DepotState`. A spread on a lost write invalidates a memo downstream for nothing.
+- **Every handler propagates identity on a lost write.** If `writeRegister` returns the register it was given, the handler returns the *identical* entity object and `writeTrip` returns the identical `HouseholdState`. A spread on a lost write invalidates a memo downstream for nothing.
 - **An absent `phase` register reads `draft`** (spec §3.2). Read it through `phaseOf`, never by re-deriving `trip.phase?.value ?? 'draft'` at a call site. The symptom of a call site that re-derives is a Trip that appears in one section and is drawn with another section's chip.
 - **`isActive` is the only definition of active-ness.** S7's claims, S9's whereabouts and S10's close gate all call it. Never inline the three-phase test.
 - **A phase this build does not recognise is stored verbatim, is not active, and files under `PLANNED`** (spec §3.4). `PhaseValue` is open past its five members, like `KindValue`.
@@ -35,7 +35,7 @@
 
 | Path | Responsibility |
 | --- | --- |
-| `shared/src/state.ts` | Modify: `PhaseValue`, `TripState`, `DepotState.trips` |
+| `shared/src/state.ts` | Modify: `PhaseValue`, `TripState`, `HouseholdState.trips` |
 | `shared/src/authoring.ts` | Modify: six builders — `tripCreated`, `tripRenamed`, `tripDatesSet`, `tripPhaseMoved`, `tripParticipantAdded`, `tripParticipantRemoved` |
 | `shared/src/reduce.ts` | Modify: `writeTrip`; five handlers under six keys; `emptyState()` gains `trips: {}` |
 | `shared/src/selectors/trip.ts` | **Create**: `PHASES`, `phaseOf`, `phaseLabel`, `isActive`, `phaseDay`, `tripLabel`, `participantIds`, `visibleTrips`, `tripSections` |
@@ -58,7 +58,7 @@
 
 | Path | Responsibility |
 | --- | --- |
-| `app/src/depot/trips.ts` | **Create**: `tripParticipants(state, trip)` — display order from `sortedPeople` |
+| `app/src/household/trips.ts` | **Create**: `tripParticipants(state, trip)` — display order from `sortedPeople` |
 | `app/src/components/PhaseSheet.tsx` (+ `.module.css`) | **Create**: SET PHASE, five rows, `● NOW`, the reopen confirm |
 | `app/src/components/ParticipantPicker.tsx` (+ `.module.css`) | **Create**: the multi-select sheet, `+ New person` |
 | `app/src/components/TripCard.tsx` (+ `.module.css`) | **Create**: the active / planned card, `@container` 2-up |
@@ -87,7 +87,7 @@
 - Test: `shared/src/reduce.test.ts`
 
 **Interfaces:**
-- Produces: `PhaseValue`, `TripState`, `DepotState.trips`; the six builders; `aTrip(overrides?)`.
+- Produces: `PhaseValue`, `TripState`, `HouseholdState.trips`; the six builders; `aTrip(overrides?)`.
 - Consumes: `writeNullableIfPresent`, `writeRegister`, `readString`, `readOpen` — all already in `reduce.ts` / `payloads.ts`. **No new payload reader is needed**; a date is read with `readString` (spec §1.4).
 
 - [ ] **Step 1: Write the failing tests** in `shared/src/reduce.test.ts`, matching the file's existing `describe`/`it` style:
@@ -99,8 +99,8 @@
   - `trip.dates_set`: `{start}` alone leaves `endDate` untouched; `{end: null}` clears the end and not the start; `{start: 'not-a-date'}` is stored verbatim.
   - `trip.phase_moved`: each of the five values; an unrecognised value stored verbatim.
   - Participants: two adds of different People union; add-vs-remove of the same Person resolves by plain LWW; a removal folds to `false`, not a dropped key.
-  - A lost write on any Trip register returns the identical `DepotState`.
-- [ ] **Step 2: `state.ts`** — add `PhaseValue` (open, modelled exactly on `KindValue`, with its comment about obligation 4), `TripState` (spec §2, every field documented, `deleted` marked *declared, never written here*), and `trips` on `DepotState`.
+  - A lost write on any Trip register returns the identical `HouseholdState`.
+- [ ] **Step 2: `state.ts`** — add `PhaseValue` (open, modelled exactly on `KindValue`, with its comment about obligation 4), `TripState` (spec §2, every field documented, `deleted` marked *declared, never written here*), and `trips` on `HouseholdState`.
 - [ ] **Step 3: `authoring.ts`** — six builders. `tripCreated(id, name: string)` and `tripRenamed(id, name: string | null)`; `tripDatesSet(id, dates: {start?: string | null; end?: string | null})` omitting an absent key entirely (`gearRecorded`'s spread idiom); `tripPhaseMoved(id, phase: PhaseValue)`; `tripParticipantAdded/Removed(id, personId)` emitting `{person_id}`. Document why `tripCreated` takes `string` while the reader accepts `null` (spec §1.2).
 - [ ] **Step 4: `reduce.ts`** — `emptyState()` gains `trips: {}`; `writeTrip` beside the other three (spec §2 says why it is a fourth copy and not a generic); handlers:
   - `tripCreated` — `name` via `writeNullableIfPresent`, `phase` via `writeRegister(_, 'draft', st)`, `fromTripId` via `writeIfPresent(readString(...))`. Identity check across all three before spreading.
@@ -123,7 +123,7 @@
 
 **Interfaces:**
 - Produces: `PhaseKey`, `Phase`, `PHASES`, `phaseOf`, `phaseLabel`, `isActive`, `phaseDay`, `tripLabel`, `participantIds`, `visibleTrips`, `TripSections`, `tripSections`.
-- Consumes: `stampOf`, `parseHlc`, `TripState`, `DepotState`.
+- Consumes: `stampOf`, `parseHlc`, `TripState`, `HouseholdState`.
 
 - [ ] **Step 1: Write the failing tests** in `trip.test.ts`:
   - `phaseOf` on an absent register reads `'draft'`; on a written register reads the value; on an unrecognised value reads it verbatim.
@@ -172,9 +172,9 @@
 
 ---
 
-## Task 5: `app/src/depot/trips.ts`
+## Task 5: `app/src/household/trips.ts`
 
-**Files:** Create `app/src/depot/trips.ts` (+ its test)
+**Files:** Create `app/src/household/trips.ts` (+ its test)
 
 - [ ] **Step 1:** `tripParticipants(state, trip): readonly PersonRow[]` — `sortedPeople(state)` filtered to `participantIds(trip)`. Document why the display order comes from `sortedPeople` and not from `participantIds` (spec §3.3).
 - [ ] **Step 2:** a test that a Participant whose Person op has not folded yet still appears, labelled `—`. (`participantIds` names person ids; `sortedPeople` only lists folded People, so this case needs a decision — **include them**, appended after the folded ones in id order, so a Participant never silently vanishes.)
@@ -186,7 +186,7 @@
 
 **Files:** Create `app/src/components/PhaseSheet.tsx`, `.module.css`, `PhaseSheet.test.tsx`
 
-**Interfaces:** `PhaseSheetProps { trip: TripState; onClose(): void }`. Emits `trip.phase_moved` through `useDepot(d => d.emit)`.
+**Interfaces:** `PhaseSheetProps { trip: TripState; onClose(): void }`. Emits `trip.phase_moved` through `useHousehold(d => d.emit)`.
 
 - [ ] **Step 1: Write the failing tests** — five rows in `PHASES` order; the current one marked `● NOW`; tapping a **backwards** row emits `trip.phase_moved` with that phase; `unpack → closed` emits with **no** confirm; `closed → anything` opens the confirm and emits only on confirm, not on cancel; an unrecognised current phase marks no row and states the value verbatim.
 - [ ] **Step 2:** build on `ui/`'s `Sheet` (title `Set phase`, `desktopCard`), rows styled after `OwnerPicker`'s.

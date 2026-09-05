@@ -7,7 +7,7 @@ import {
   tripParticipantRemoved,
   tripPieceRemoved,
 } from '../authoring.ts'
-import type { DepotState, TripState } from '../state.ts'
+import type { HouseholdState, TripState } from '../state.ts'
 import { pieceCountOf } from './entry.ts'
 import { pieceInclusion, piecesOf } from './piece.ts'
 
@@ -19,11 +19,11 @@ const MARK = 'c0000000-0000-7000-8000-000000000001'
 const ELS = 'c0000000-0000-7000-8000-000000000002'
 const KIM = 'c0000000-0000-7000-8000-000000000003'
 
-function trip(state: DepotState, id: string): TripState {
+function trip(state: HouseholdState, id: string): TripState {
   return state.trips[id]!
 }
 
-function entryOf(state: DepotState) {
+function entryOf(state: HouseholdState) {
   return state.trips[TRIP]!.entries![ENTRY]!
 }
 

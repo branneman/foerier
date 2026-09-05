@@ -17,21 +17,24 @@ import { App } from '../App'
 import { createAuthApi } from '../auth/api'
 import { inMemoryPendingStore } from '../auth/pendingFirstPerson'
 import { inMemorySessionStore, type Session } from '../auth/sessionStore'
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
-import { createSyncEngine, type SyncEngine } from '../depot/syncEngine'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
+import { createSyncEngine, type SyncEngine } from '../household/syncEngine'
 import {
   createFakeServer,
   fakeTransport,
   type PullBody,
   type Transport,
   type TransportResult,
-} from '../depot/transport'
-import { createSessionDepot, type DepotFactory } from '../depot/wiring'
+} from '../household/transport'
+import {
+  createSessionHousehold,
+  type HouseholdFactory,
+} from '../household/wiring'
 import { Join } from '../screens/Join'
 import { renderWithStore } from '../testUtils'
 import { FirstSync } from './FirstSync'
@@ -39,7 +42,7 @@ import { FirstSync } from './FirstSync'
 /**
  * Every test drives a **real** first sync: the real `createSyncEngine` paging
  * a real `createFakeServer` through a real `inMemoryOpLog`, folded by the real
- * `createDepotStore`. Nothing here hand-shapes a `BootstrapProgress` — the
+ * `createHouseholdStore`. Nothing here hand-shapes a `BootstrapProgress` — the
  * numbers on the screen are the numbers the engine actually reported, which
  * is the only way this file can prove that `RETRY NOW` resumes rather than
  * restarts.
@@ -151,13 +154,13 @@ function controllable(inner: Transport): Wire {
 }
 
 interface Harness {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   engine: SyncEngine
   wire: Wire
   log: OpLog
 }
 
-const built: StoreApi<DepotStoreState>[] = []
+const built: StoreApi<HouseholdStoreState>[] = []
 
 afterEach(() => {
   for (const store of built.splice(0)) store.getState().stopSync()
@@ -185,7 +188,7 @@ function harness(
   const hlc = createHlcClock(fixedClock())
   let engine: SyncEngine | null = null
 
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     author: { household_id: HOUSEHOLD, device_id: THIS_DEVICE, ids, hlc },
     engine: (hooks) => {
@@ -213,15 +216,15 @@ function harness(
   return { store, engine, wire, log }
 }
 
-function renderFirstSync(store: StoreApi<DepotStoreState>): void {
+function renderFirstSync(store: StoreApi<HouseholdStoreState>): void {
   renderWithStore(<FirstSync />, store)
 }
 
 /** The join screen's success frame, which composes the same card. */
-function renderJoinSuccess(store: StoreApi<DepotStoreState>): string[] {
+function renderJoinSuccess(store: StoreApi<HouseholdStoreState>): string[] {
   const opened: string[] = []
   render(
-    <DepotProvider value={store}>
+    <HouseholdProvider value={store}>
       <Join
         preview={null}
         deadEnd={null}
@@ -233,7 +236,7 @@ function renderJoinSuccess(store: StoreApi<DepotStoreState>): string[] {
         passkeySaved
         onOpenDepot={() => opened.push('depot')}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return opened
 }
@@ -468,8 +471,8 @@ describe('the first-sync fold', () => {
     // harness-built store in this file — otherwise `afterEach` never calls
     // `stopSync()` on it, and this engine's 30 s interval and DOM listeners
     // outlive the test.
-    const createDepot: DepotFactory = async (forSession) => {
-      const store = await createSessionDepot(forSession, {
+    const createDepot: HouseholdFactory = async (forSession) => {
+      const store = await createSessionHousehold(forSession, {
         log,
         transport: wire.transport,
       })

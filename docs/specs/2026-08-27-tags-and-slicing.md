@@ -184,7 +184,7 @@ export interface Dimension {
   /** `multi` keeps its ghost add-chip while active; `single` hides it. */
   arity: 'single' | 'multi'
   /** The values this gear carries in this dimension. Empty is legal. */
-  valuesOf(gear: GearState, state: DepotState): readonly string[]
+  valuesOf(gear: GearState, state: HouseholdState): readonly string[]
   /** How one value is drawn: `#winter`, `COUNTED`. */
   format(value: string): string
 }
@@ -309,7 +309,7 @@ export function tagsOf(gear: GearState): readonly string[]
 
 /** The household's whole tag vocabulary with counts, for both pickers.
  *  Sorted by count descending, then tag ascending. */
-export function depotTags(state: DepotState): readonly TagCount[]
+export function depotTags(state: HouseholdState): readonly TagCount[]
 ```
 
 The sort is descending-count-first because the boards draw it that way —

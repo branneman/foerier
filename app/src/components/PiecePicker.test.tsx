@@ -15,12 +15,12 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { anAuthor, noopEngine } from '../testUtils'
 import { PiecePicker } from './PiecePicker'
 
@@ -45,7 +45,7 @@ function anId(): string {
 const ids: IdSource = { next: anId }
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   trip: () => TripState
   entry: () => EntryState
   /** Every `trip.piece_*` op authored **since** the seed — the picker's
@@ -58,7 +58,7 @@ interface Seeded {
  * test asking about a tombstone does not repeat the whole setup. */
 async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor({ ids }),
@@ -104,9 +104,9 @@ async function allPieceOps(
 
 function renderPicker(seed: Seeded) {
   render(
-    <DepotProvider value={seed.store}>
+    <HouseholdProvider value={seed.store}>
       <PiecePicker trip={seed.trip()} entry={seed.entry()} onClose={() => {}} />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
 }
 

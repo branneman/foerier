@@ -3,7 +3,7 @@ import type { IdSource } from '../src/boundaries.ts'
 import { createHlcClock } from '../src/hlc.ts'
 import type { OpEnvelope } from '../src/ops.ts'
 import { applyOp, emptyState } from '../src/reduce.ts'
-import type { DepotState } from '../src/state.ts'
+import type { HouseholdState } from '../src/state.ts'
 import type { FakeClock } from './index.ts'
 
 /**
@@ -29,7 +29,7 @@ export interface Replica {
   emit(spec: OpSpec): OpEnvelope
   receive(ops: readonly OpEnvelope[]): void
   log(): readonly OpEnvelope[]
-  state(): DepotState
+  state(): HouseholdState
 }
 
 /**

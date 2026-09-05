@@ -8,7 +8,7 @@ import {
 } from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
 
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import { OverClaimGroups, overClaimGroups } from './OverClaimBand'
 import styles from './ReopenConfirm.module.css'
 
@@ -112,7 +112,7 @@ export function ReopenConfirm({
   onCancel,
   onConfirm,
 }: ReopenConfirmProps) {
-  const state = useDepot((depot) => depot.state)
+  const state = useHousehold((depot) => depot.state)
 
   const overClaims = isActivePhase(to) ? overClaimsIfActive(state, trip.id) : []
   const groups = overClaimGroups(overClaims, trip.id, state)

@@ -9,9 +9,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'wouter'
 
 import type { AuthApi, InviteRow, LoginRow } from '../auth/api'
-import { sortedPeople } from '../depot/people'
+import { sortedPeople } from '../household/people'
 import { formatDateTime } from '../format'
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './People.module.css'
@@ -204,9 +204,9 @@ export function People({
   personId,
   variant = 'list',
 }: PeopleProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-  const sync = useDepot((depot) => depot.sync)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
+  const sync = useHousehold((depot) => depot.sync)
 
   // `splitPane: false` — `/account/people` has no two-pane view: below Desktop
   // it is a screen of its own, and at Desktop it is not this component at all

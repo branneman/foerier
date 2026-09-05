@@ -14,13 +14,13 @@ import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { createAuthApi } from '../auth/api'
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { DEVICE, fixedClock, HOUSEHOLD, seededStore } from '../testUtils'
 import { InviteIssued } from './InviteIssued'
 
 /**
  * Every test seeds a **real** store, exactly as `Account.test.tsx` and
- * `Devices.test.tsx` do — never a hand-shaped `DepotState`.
+ * `Devices.test.tsx` do — never a hand-shaped `HouseholdState`.
  */
 
 /** The signed-in Login's Person, in every test that does not say otherwise. */
@@ -61,7 +61,7 @@ function anAuthor(): OpAuthor {
  */
 function seededHousehold(
   specs: readonly OpSpec[] = [],
-): Promise<StoreApi<DepotStoreState>> {
+): Promise<StoreApi<HouseholdStoreState>> {
   return seededStore(specs, { author: anAuthor() })
 }
 
@@ -188,7 +188,7 @@ async function renderInviteIssued(
     return (
       <StrictMode>
         <Router hook={location.hook}>
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <InviteIssued
               api={currentApi}
               token={TOKEN}
@@ -196,7 +196,7 @@ async function renderInviteIssued(
               subjectPersonId={subjectPersonId}
               purpose={purpose}
             />
-          </DepotProvider>
+          </HouseholdProvider>
         </Router>
       </StrictMode>
     )

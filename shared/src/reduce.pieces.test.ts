@@ -8,12 +8,12 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import { emptyState, fold } from './reduce.ts'
-import type { DepotState } from './state.ts'
+import type { HouseholdState } from './state.ts'
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 const DEFAULT_MS = 1_700_000_000_000
 
-function depot(...specs: readonly (readonly OpSpec[])[]): DepotState {
+function depot(...specs: readonly (readonly OpSpec[])[]): HouseholdState {
   return fold(
     specs
       .flat()

@@ -2,8 +2,8 @@ import { systemIdSource, tripEntryAdded } from '@foerier/shared'
 import { SegmentedControl, Sheet } from '@foerier/ui'
 import { useCallback, useState } from 'react'
 
-import { TRAIT_OPTIONS } from '../depot/gear'
-import { useDepot } from '../depot/store'
+import { TRAIT_OPTIONS } from '../household/gear'
+import { useHousehold } from '../household/store'
 import styles from './TripOnlySheet.module.css'
 
 /**
@@ -74,7 +74,7 @@ export interface TripOnlySheetProps {
 }
 
 export function TripOnlySheet({ tripId, onClose }: TripOnlySheetProps) {
-  const emit = useDepot((depot) => depot.emit)
+  const emit = useHousehold((depot) => depot.emit)
 
   const [name, setName] = useState('')
   const [container, setContainer] = useState(false)

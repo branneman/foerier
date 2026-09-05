@@ -1,6 +1,6 @@
 /**
  * The build's identity, in one place because two very different things read
- * it: the sign-in screen shows it, and `depot/store.ts` keys the local
+ * it: the sign-in screen shows it, and `household/store.ts` keys the local
  * snapshot on it (`docs/sync-protocol.md` §5.3).
  *
  * ## Why dev does not fall back to a constant

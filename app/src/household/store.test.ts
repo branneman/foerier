@@ -8,7 +8,7 @@ import {
   MAX_OP_BYTES,
   placeRecorded,
   type Clock,
-  type DepotState,
+  type HouseholdState,
   type IdSource,
   type OpAuthor,
   type OpEnvelope,
@@ -26,11 +26,11 @@ import {
 } from '../auth/pendingFirstPerson'
 import { inMemoryOpLog, type OpLog } from './opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  useDepot,
-  type DepotSnapshot,
-  type DepotStoreState,
+  createHouseholdStore,
+  HouseholdProvider,
+  useHousehold,
+  type HouseholdSnapshot,
+  type HouseholdStoreState,
   type EngineFactory,
   type SyncHooks,
 } from './store'
@@ -93,7 +93,7 @@ function anAuthor(device = DEVICE): OpAuthor {
 
 /** Awaits every piece of work the store has queued so far. Not a durability
  * signal — that is `emitDurable`, and the suite says so where it matters. */
-function drained(store: { getState(): DepotStoreState }): Promise<void> {
+function drained(store: { getState(): HouseholdStoreState }): Promise<void> {
   return store.getState().drained()
 }
 
@@ -255,7 +255,7 @@ function liveEngines(
   return { factory, built }
 }
 
-const running: DepotStoreState[] = []
+const running: HouseholdStoreState[] = []
 
 /** Every store the suite starts is stopped again, so no engine is left
  * holding an interval or a `window` listener between files. */
@@ -270,7 +270,7 @@ function startStore(deps: {
   sha?: string
   snapshotDebounceMs?: number
 }) {
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log: deps.log,
     engine: deps.engine,
     author: deps.author ?? anAuthor(),
@@ -438,7 +438,7 @@ describe('the depot store', () => {
     await tick()
     await drained(store)
 
-    const snapshot = await log.readMeta<DepotSnapshot>('snapshot')
+    const snapshot = await log.readMeta<HouseholdSnapshot>('snapshot')
     expect(snapshot?.sha).toBe(SHA)
     expect(snapshot?.lsn).toBe(1)
     expect(snapshot?.state.places[placeId]?.name?.value).toBe('Shed')
@@ -604,15 +604,15 @@ describe('the depot store', () => {
     expect(pulled.ok && pulled.body.ops).toHaveLength(1)
   })
 
-  it('exposes the store through useDepot', async () => {
+  it('exposes the store through useHousehold', async () => {
     const log = inMemoryOpLog()
     const { factory } = fakeEngines()
     const store = startStore({ log, engine: factory })
     await drained(store)
 
     const wrapper = ({ children }: { children: ReactNode }) =>
-      createElement(DepotProvider, { value: store }, children)
-    const { result } = renderHook(() => useDepot((state) => state.status), {
+      createElement(HouseholdProvider, { value: store }, children)
+    const { result } = renderHook(() => useHousehold((state) => state.status), {
       wrapper,
     })
 
@@ -645,11 +645,11 @@ async function seededForSnapshot(snapshotSha: string): Promise<{
   )
 
   const ghostId = anId()
-  const ghost: DepotState = fold(
+  const ghost: HouseholdState = fold(
     [anOp(placeRecorded(ghostId, 'Attic'), author)],
     emptyState(),
   )
-  const snapshot: DepotSnapshot = { sha: snapshotSha, lsn: 1, state: ghost }
+  const snapshot: HouseholdSnapshot = { sha: snapshotSha, lsn: 1, state: ghost }
   await log.writeMeta('snapshot', snapshot)
 
   return { log, ghostId, placeId, gearId }

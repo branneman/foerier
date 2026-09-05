@@ -8,7 +8,7 @@ import {
   subtreeOf,
   tripContainmentView,
   tripPath,
-  type DepotState,
+  type HouseholdState,
   type EntryState,
   type TripContainmentView,
   type TripHolderRef,
@@ -18,7 +18,7 @@ import {
 import { Sheet } from '@foerier/ui'
 import { useMemo } from 'react'
 
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import styles from './PackPicker.module.css'
 
 /**
@@ -185,7 +185,7 @@ function excludedSubtree(
  */
 function containerRowsUnder(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   view: TripContainmentView,
   excluded: ReadonlySet<string>,
   order: ReadonlyMap<string, number>,
@@ -260,7 +260,7 @@ export function PackPicker({
   current,
   moving,
 }: PackPickerProps) {
-  const state = useDepot((depot) => depot.state)
+  const state = useHousehold((depot) => depot.state)
 
   // The Trip is looked up **inside** the memo: it is derived from `state` and
   // never varies independently of it, so naming both in the dependency list

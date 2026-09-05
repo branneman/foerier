@@ -13,7 +13,7 @@ import {
 } from './payloads.ts'
 import { writeRegister, type Register } from './registers.ts'
 import type {
-  DepotState,
+  HouseholdState,
   EntryState,
   GearState,
   PersonState,
@@ -27,7 +27,7 @@ import type {
  * The fold's starting point (`sync-protocol.md` §8.4): no places, no gear, no
  * people, no trips, and nothing unfolded.
  */
-export function emptyState(): DepotState {
+export function emptyState(): HouseholdState {
   return {
     places: {},
     gear: {},
@@ -41,7 +41,7 @@ export function emptyState(): DepotState {
  * §5.3 obligation 1: an unknown `type` is retained, not rejected. Counted
  * here so it is observable, not just silently tolerated.
  */
-function noteUnfolded(state: DepotState, type: string): DepotState {
+function noteUnfolded(state: HouseholdState, type: string): HouseholdState {
   return {
     ...state,
     unfolded: {
@@ -63,11 +63,11 @@ function noteUnfolded(state: DepotState, type: string): DepotState {
  * `gear`.
  */
 function writePlace(
-  state: DepotState,
+  state: HouseholdState,
   id: string,
   stamp: Stamp,
   update: (place: PlaceState, stamp: Stamp) => PlaceState,
-): DepotState {
+): HouseholdState {
   const current = state.places[id] ?? { id }
   const updated = update(current, stamp)
   if (updated === current) return state
@@ -79,11 +79,11 @@ function writePlace(
  * `GearState` at `id`, applies `update`, and copies only what changed.
  */
 function writeGear(
-  state: DepotState,
+  state: HouseholdState,
   id: string,
   stamp: Stamp,
   update: (gear: GearState, stamp: Stamp) => GearState,
-): DepotState {
+): HouseholdState {
   const current = state.gear[id] ?? { id }
   const updated = update(current, stamp)
   if (updated === current) return state
@@ -96,11 +96,11 @@ function writeGear(
  * changed.
  */
 function writePerson(
-  state: DepotState,
+  state: HouseholdState,
   id: string,
   stamp: Stamp,
   update: (person: PersonState, stamp: Stamp) => PersonState,
-): DepotState {
+): HouseholdState {
   const current = state.people[id] ?? { id }
   const updated = update(current, stamp)
   if (updated === current) return state
@@ -119,11 +119,11 @@ function writePerson(
  * four is read far more often than it is written.
  */
 function writeTrip(
-  state: DepotState,
+  state: HouseholdState,
   id: string,
   stamp: Stamp,
   update: (trip: TripState, stamp: Stamp) => TripState,
-): DepotState {
+): HouseholdState {
   const current = state.trips[id] ?? { id }
   const updated = update(current, stamp)
   if (updated === current) return state
@@ -154,12 +154,12 @@ function writeTrip(
  * like every other writer here.
  */
 function writeEntry(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
   entryId: string,
   stamp: Stamp,
   update: (entry: EntryState, stamp: Stamp) => EntryState,
-): DepotState {
+): HouseholdState {
   return writeTrip(state, tripId, stamp, (trip, st) => {
     const existing = trip.entries?.[entryId]
     const current = existing ?? { id: entryId }
@@ -178,13 +178,13 @@ function writeEntry(
  * not invalidated by an op that changed nothing.
  */
 function writePiece(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
   entryId: string,
   personId: string,
   stamp: Stamp,
   update: (piece: PieceState, stamp: Stamp) => PieceState,
-): DepotState {
+): HouseholdState {
   return writeEntry(state, tripId, entryId, stamp, (entry, st) => {
     const existing = entry.pieces?.[personId]
     const current = existing ?? { id: personId }
@@ -254,7 +254,11 @@ function writeNullableIfPresent<T>(
   return writeRegister(current, value, stamp)
 }
 
-type Handler = (state: DepotState, op: OpEnvelope, stamp: Stamp) => DepotState
+type Handler = (
+  state: HouseholdState,
+  op: OpEnvelope,
+  stamp: Stamp,
+) => HouseholdState
 
 /**
  * `place.recorded` and `place.renamed` both just set `name` (`sync-protocol.md`
@@ -496,7 +500,7 @@ const tripCreated: Handler = (state, op, stamp) =>
     )
     // Identity across all three before the spread, not after: a wholly lost
     // write must return the identical `TripState` so `writeTrip` can return
-    // the identical `DepotState`. `phase` is never `undefined` here —
+    // the identical `HouseholdState`. `phase` is never `undefined` here —
     // `writeRegister` always returns a register — so only the two optional
     // reads need the `undefined` guard on the way out.
     if (
@@ -914,10 +918,10 @@ const handlers: Record<string, Handler> = {
 /**
  * Applies one op to `state` and returns the next state. Pure, with structural
  * sharing: only the touched entity, the map holding it, and the top-level
- * `DepotState` are copied. An unknown `type` is retained via `noteUnfolded`
+ * `HouseholdState` are copied. An unknown `type` is retained via `noteUnfolded`
  * rather than folded or rejected.
  */
-export function applyOp(state: DepotState, op: OpEnvelope): DepotState {
+export function applyOp(state: HouseholdState, op: OpEnvelope): HouseholdState {
   const handler = handlers[op.type]
   if (handler === undefined) return noteUnfolded(state, op.type)
   return handler(state, op, { hlc: op.hlc, deviceId: op.device_id })
@@ -932,8 +936,8 @@ export function applyOp(state: DepotState, op: OpEnvelope): DepotState {
  */
 export function fold(
   ops: Iterable<OpEnvelope>,
-  from: DepotState = emptyState(),
-): DepotState {
+  from: HouseholdState = emptyState(),
+): HouseholdState {
   let state = from
   for (const op of ops) {
     state = applyOp(state, op)

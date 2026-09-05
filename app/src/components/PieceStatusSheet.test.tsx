@@ -18,12 +18,12 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { anAuthor, noopEngine } from '../testUtils'
 import { PieceStatusSheet } from './PieceStatusSheet'
 
@@ -65,7 +65,7 @@ function anId(): string {
 const ids: IdSource = { next: anId }
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   /** Every `trip.piece_status_set` op authored **since** the seed. */
   statusOps: () => Promise<readonly { personId: unknown; status: unknown }[]>
 }
@@ -80,7 +80,7 @@ interface Seeded {
  */
 async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor({ ids }),
@@ -150,14 +150,14 @@ function renderSheet(
   entryId: string = ENTRY,
 ) {
   render(
-    <DepotProvider value={seed.store}>
+    <HouseholdProvider value={seed.store}>
       <PieceStatusSheet
         tripId={TRIP}
         entryId={entryId}
         onClose={() => {}}
         onOpenPieceMove={onOpenPieceMove}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
 }
 

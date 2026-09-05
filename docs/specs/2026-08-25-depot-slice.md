@@ -223,7 +223,7 @@ remembered.
 | --- | --- |
 | `hlc.ts` | `formatHlc` / `parseHlc` against §2.2's fixed-width grammar; `issue(state, clock)` and `receive(state, remoteHlc, clock)` implementing §2.4 / §2.5 verbatim; `DRIFT_BOUND_MS`; counter overflow; `compareStamps` |
 | `registers.ts` | `Register<T> = {value, hlc, deviceId}` and one strict-greater `write`. The entire merge |
-| `state.ts` | `DepotState = {places, gear, people, unfolded}`; entity shapes, registers inline, camelCase |
+| `state.ts` | `HouseholdState = {places, gear, people, unfolded}`; entity shapes, registers inline, camelCase |
 | `payloads.ts` | Validating accessors: `readString`, `readInt`, `readBool`, `readResidence`, `readOpen` (an enum-like that keeps unknown members verbatim) |
 | `authoring.ts` | Typed builders, one per op type, emitting snake_case payloads |
 | `reduce.ts` | `emptyState`, `applyOp`, `fold` |

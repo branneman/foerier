@@ -12,7 +12,7 @@ import {
 import { Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import { ActivationConfirm } from './ActivationConfirm'
 import { overClaimGroups } from './OverClaimBand'
 import styles from './PhaseSheet.module.css'
@@ -65,8 +65,8 @@ export interface PhaseSheetProps {
 }
 
 export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   // The phase a reopen is waiting on, and `null` when nothing is. Mount is
   // the reset — `ui/`'s primitives have no `open` prop, so a caller writes

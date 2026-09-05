@@ -10,7 +10,7 @@ import {
   fold,
   tripCreated,
   tripPhaseMoved,
-  type DepotState,
+  type HouseholdState,
   type OpAuthor,
   type OpEnvelope,
   type OpSpec,
@@ -19,20 +19,23 @@ import {
 import { App } from './App'
 import { createAuthApi } from './auth/api'
 import { BUILD_SHA } from './build'
-import type { DepotSnapshot } from './depot/store'
+import type { HouseholdSnapshot } from './household/store'
 import {
   inMemoryPendingStore,
   type PendingFirstPerson,
   type PendingStore,
 } from './auth/pendingFirstPerson'
 import { inMemorySessionStore, type Session } from './auth/sessionStore'
-import { inMemoryOpLog, type OpLog } from './depot/opLog'
+import { inMemoryOpLog, type OpLog } from './household/opLog'
 import {
   createFakeServer,
   fakeTransport,
   type FakeServer,
-} from './depot/transport'
-import { createSessionDepot, type DepotFactory } from './depot/wiring'
+} from './household/transport'
+import {
+  createSessionHousehold,
+  type HouseholdFactory,
+} from './household/wiring'
 import { DESKTOP, SPLIT } from './shell/useMediaQuery'
 import { setViewport } from './testSetup'
 
@@ -56,8 +59,8 @@ const noNetwork: typeof fetch = () => {
  * wiring code runs, with its two ends replaced.
  */
 function fakeDepot(server: FakeServer, log: OpLog) {
-  const factory: DepotFactory = (session) =>
-    createSessionDepot(session, { log, transport: fakeTransport(server) })
+  const factory: HouseholdFactory = (session) =>
+    createSessionHousehold(session, { log, transport: fakeTransport(server) })
   return factory
 }
 
@@ -143,7 +146,7 @@ function aLogOfTrips(
  * register is therefore written onto a folded state, exactly as
  * `shared/src/selectors/trip.test.ts` writes it for its own `visibleTrips`
  * test. The app's seam for handing the store a state it did not fold is the
- * **snapshot** (`depot/store.ts`), keyed on `BUILD_SHA` and already driven
+ * **snapshot** (`household/store.ts`), keyed on `BUILD_SHA` and already driven
  * this way by `depot/store.test.ts`; `lsn: 0` over a log with no ops means
  * nothing folds forward on top of it.
  */
@@ -157,7 +160,7 @@ async function aLogOfTwoTripsOneDeleted(): Promise<OpLog> {
     ],
     emptyState(),
   )
-  const state: DepotState = {
+  const state: HouseholdState = {
     ...folded,
     trips: {
       ...folded.trips,
@@ -171,7 +174,7 @@ async function aLogOfTwoTripsOneDeleted(): Promise<OpLog> {
       },
     },
   }
-  const snapshot: DepotSnapshot = { sha: BUILD_SHA, lsn: 0, state }
+  const snapshot: HouseholdSnapshot = { sha: BUILD_SHA, lsn: 0, state }
   await log.writeMeta('snapshot', snapshot)
   return log
 }

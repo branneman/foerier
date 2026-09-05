@@ -5,7 +5,7 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { setViewport } from '../testSetup'
 import { anId, seededStore } from '../testUtils'
 import { DepotView } from './DepotView'
@@ -18,11 +18,11 @@ import { DESKTOP, SPLIT } from './useMediaQuery'
  * it because the board draws S3's own tag chips inside the missing pane.
  */
 
-function renderView(store: StoreApi<DepotStoreState>, path: string) {
+function renderView(store: StoreApi<HouseholdStoreState>, path: string) {
   const location = memoryLocation({ path, record: true })
   render(
     <Router hook={location.hook}>
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <Switch>
           <Route path="/">
             <DepotView />
@@ -31,7 +31,7 @@ function renderView(store: StoreApi<DepotStoreState>, path: string) {
             <DepotView />
           </Route>
         </Switch>
-      </DepotProvider>
+      </HouseholdProvider>
     </Router>,
   )
 }

@@ -13,12 +13,12 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { anAuthor, noopEngine, SEEDED_AT } from '../testUtils'
 import { RemoveElsewhereConfirm } from './RemoveElsewhereConfirm'
 
@@ -38,13 +38,13 @@ afterEach(() => {
 })
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   removals: () => Promise<readonly unknown[]>
 }
 
 async function seeded(): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -95,7 +95,7 @@ function renderConfirm(
 ) {
   let closed = 0
   render(
-    <DepotProvider value={seed.store}>
+    <HouseholdProvider value={seed.store}>
       <RemoveElsewhereConfirm
         otherTripId={overrides.otherTripId ?? ALPS}
         entryId={overrides.entryId ?? 'e-alps'}
@@ -104,7 +104,7 @@ function renderConfirm(
           closed += 1
         }}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return { closes: () => closed }
 }
@@ -122,7 +122,7 @@ async function seededPiece(): Promise<
   Seeded & { pieceRemovals: () => Promise<readonly unknown[]> }
 > {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -246,13 +246,13 @@ describe('the Remove-on-Alps confirm', () => {
     expect(alreadyRemoved).toHaveLength(1)
 
     const { container } = render(
-      <DepotProvider value={seed.store}>
+      <HouseholdProvider value={seed.store}>
         <RemoveElsewhereConfirm
           otherTripId={ALPS}
           entryId="e-alps"
           onClose={() => {}}
         />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     expect(screen.queryByRole('alertdialog')).toBeNull()
@@ -269,13 +269,13 @@ describe('the Remove-on-Alps confirm', () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const seed = await seeded()
     const { container } = render(
-      <DepotProvider value={seed.store}>
+      <HouseholdProvider value={seed.store}>
         <RemoveElsewhereConfirm
           otherTripId={ALPS}
           entryId="e-does-not-exist"
           onClose={() => {}}
         />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     expect(screen.queryByRole('alertdialog')).toBeNull()
@@ -297,7 +297,7 @@ describe('the Remove-on-Alps confirm', () => {
   it('reads an unnamed other Trip as Unnamed trip, in title and body', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const log: OpLog = inMemoryOpLog()
-    const store = createDepotStore({
+    const store = createHouseholdStore({
       log,
       engine: noopEngine,
       author: anAuthor(),
@@ -323,13 +323,13 @@ describe('the Remove-on-Alps confirm', () => {
     await store.getState().drained()
 
     render(
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <RemoveElsewhereConfirm
           otherTripId={ALPS}
           entryId="e-alps"
           onClose={() => {}}
         />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     const confirm = screen.getByRole('alertdialog')
@@ -399,14 +399,14 @@ describe("the confirm's Piece variant (ruling G)", () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const seed = await seededPiece()
     const { container } = render(
-      <DepotProvider value={seed.store}>
+      <HouseholdProvider value={seed.store}>
         <RemoveElsewhereConfirm
           otherTripId={ALPS}
           entryId="e-alps"
           personId="never-a-participant"
           onClose={() => {}}
         />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     expect(screen.queryByRole('alertdialog')).toBeNull()
@@ -428,7 +428,7 @@ describe("the confirm's Piece variant (ruling G)", () => {
   it('reads an unrecorded Person as Unnamed person, in title and body', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const log: OpLog = inMemoryOpLog()
-    const store = createDepotStore({
+    const store = createHouseholdStore({
       log,
       engine: noopEngine,
       author: anAuthor(),
@@ -452,14 +452,14 @@ describe("the confirm's Piece variant (ruling G)", () => {
     await store.getState().drained()
 
     render(
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <RemoveElsewhereConfirm
           otherTripId={ALPS}
           entryId="e-alps"
           personId="ghost"
           onClose={() => {}}
         />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     const confirm = screen.getByRole('alertdialog')

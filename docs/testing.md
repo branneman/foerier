@@ -238,7 +238,7 @@ factories" and which are nothing of the kind:**
 
 - **The store is real and the log is fake.** `seededStore(specs)`
   (`app/src/testUtils.tsx`) builds
-  `createDepotStore({ log: inMemoryOpLog(), engine: noopEngine, author })`
+  `createHouseholdStore({ log: inMemoryOpLog(), engine: noopEngine, author })`
   and seeds it by **emitting real ops** through the same builders the screen
   uses, then awaits `drained()` — which is the half a caller forgets, since
   `emit` is durable-first and a store handed back unawaited is empty. The

@@ -58,7 +58,7 @@ import { piecesOf } from './selectors/piece.ts'
 import { isActive } from './selectors/trip.ts'
 import { tripContainmentView } from './selectors/tripContainment.ts'
 import type {
-  DepotState,
+  HouseholdState,
   EntrySource,
   KindValue,
   Owner,
@@ -683,7 +683,7 @@ function collectRegisterPaths(
  * onto the three weights, and a weight that stops buying contest shows up in
  * its own column.
  */
-function tripRegisterPaths(state: DepotState): {
+function tripRegisterPaths(state: HouseholdState): {
   root: ReadonlySet<string>
   entry: ReadonlySet<string>
   piece: ReadonlySet<string>

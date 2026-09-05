@@ -2558,7 +2558,7 @@ Boards §11, both widths. Spec §6.1, §6.2.
 
 **Interfaces:**
 - Consumes: `api.me()`, `api.listPasskeys()`, `api.listDevices()`, `api.addPasskeyOptions()`, `api.addPasskeyVerify()`
-- Produces: `<Account />`, rendered inside `DepotProvider`, reading the Person's name with `useDepot`
+- Produces: `<Account />`, rendered inside `HouseholdProvider`, reading the Person's name with `useHousehold`
 
 - [ ] **Step 1: Add the client API methods**
 
@@ -2708,7 +2708,7 @@ Boards §12. Spec §7.
 - Modify: `app/src/App.tsx`
 
 **Interfaces:**
-- Consumes: `api.listDevices`, `api.revokeDevice`, `api.signOut`, `clearLocalData` from `app/src/depot/wiring`, `unsyncedCount` via `useDepot`
+- Consumes: `api.listDevices`, `api.revokeDevice`, `api.signOut`, `clearLocalData` from `app/src/household/wiring`, `unsyncedCount` via `useHousehold`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2943,14 +2943,14 @@ The initial is `aria-hidden`, for the same reason the sidebar count is: a name t
 
 - [ ] **Step 4: Hand the initial in from `App`**
 
-`AppShell` renders outside `DepotProvider`, so `App` resolves it where it resolves `depotCounts`. Extend `useDestinationCounts` or add a sibling hook:
+`AppShell` renders outside `HouseholdProvider`, so `App` resolves it where it resolves `depotCounts`. Extend `useDestinationCounts` or add a sibling hook:
 
 ```ts
 /**
  * The letter in the avatar (`docs/design/README.md` §11).
  *
  * Read here rather than inside `AppShell` for the same reason the counts are:
- * the shell renders *outside* `DepotProvider`, deliberately, so the nav never
+ * the shell renders *outside* `HouseholdProvider`, deliberately, so the nav never
  * depends on a store the signed-out shell has never had.
  *
  * Null rather than a placeholder when the Person is not folded yet — a Login
@@ -2958,7 +2958,7 @@ The initial is `aria-hidden`, for the same reason the sidebar count is: a name t
  * invented letter is worse than an empty circle.
  */
 function useAccountInitial(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   personId: string,
 ): string | null {
   const state = useStore(store, (depot) => depot.state)

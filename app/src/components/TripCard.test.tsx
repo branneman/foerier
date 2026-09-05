@@ -17,7 +17,7 @@ import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { SEEDED_AT, seededStore } from '../testUtils'
 import { TripCard } from './TripCard'
 
@@ -38,7 +38,7 @@ const TRIP = 'tttttttt-0000-7000-8000-000000000001'
 const A_DAY = 24 * 60 * 60 * 1000
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   trip: () => TripState
 }
 
@@ -87,7 +87,7 @@ function renderCard(
   const location = memoryLocation({ path: '/trips', record: true })
   render(
     <Router hook={location.hook}>
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <TripCard
           trip={trip()}
           variant={variant}
@@ -96,7 +96,7 @@ function renderCard(
           progress={progress}
           onOpenPhase={onOpenPhase}
         />
-      </DepotProvider>
+      </HouseholdProvider>
     </Router>,
   )
   return location

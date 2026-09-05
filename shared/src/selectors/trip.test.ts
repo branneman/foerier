@@ -16,7 +16,7 @@ import {
   tripRenamed,
 } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
-import type { DepotState, TripState } from '../state.ts'
+import type { HouseholdState, TripState } from '../state.ts'
 import {
   isActive,
   isActivePhase,
@@ -37,7 +37,7 @@ import {
   visibleTrips,
 } from './trip.ts'
 
-function trip(state: DepotState, id: string): TripState {
+function trip(state: HouseholdState, id: string): TripState {
   return state.trips[id]!
 }
 
@@ -352,7 +352,7 @@ describe('visibleTrips', () => {
     // handler will — the selector has to honour it now, because every later
     // surface counts through this function (spec §2's table).
     const state = depot(aTrip({ id: 't1' }), aTrip({ id: 't2' }))
-    const withDeleted: DepotState = {
+    const withDeleted: HouseholdState = {
       ...state,
       trips: {
         ...state.trips,
@@ -395,7 +395,7 @@ describe('tripSections', () => {
 
   it('excludes a deleted Trip from every section', () => {
     const state = depot(aTrip({ id: 't1' }))
-    const withDeleted: DepotState = {
+    const withDeleted: HouseholdState = {
       ...state,
       trips: {
         t1: {

@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { aGear, anOp, hlcAt } from '../../testUtils/index.ts'
 import type { OpSpec } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
-import type { DepotState } from '../state.ts'
+import type { HouseholdState } from '../state.ts'
 import { isCounted, isPerPerson, kindOf } from './kind.ts'
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 
-function depot(...specs: readonly OpSpec[][]): DepotState {
+function depot(...specs: readonly OpSpec[][]): HouseholdState {
   return fold(
     specs
       .flat()

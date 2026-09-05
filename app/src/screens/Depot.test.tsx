@@ -28,7 +28,7 @@ import type { StoreApi } from 'zustand/vanilla'
 // (`screenBand.test.tsx`'s one-sided-assertion lesson).
 import gearRowStyles from '../../../ui/src/GearRow.module.css'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anId, seededStore } from '../testUtils'
@@ -44,21 +44,21 @@ function aTag(raw: string): TagString {
 
 /**
  * Every test seeds a **real** store — `inMemoryOpLog` plus the real reducer
- * behind `createDepotStore` — by emitting real ops through `emit`, never by
- * hand-shaping `DepotState`. The engine is a no-op fake: this screen never
+ * behind `createHouseholdStore` — by emitting real ops through `emit`, never by
+ * hand-shaping `HouseholdState`. The engine is a no-op fake: this screen never
  * talks to the network, and the store's own suite (`depot/store.test.ts`)
  * already proves the sync half.
  */
 
-function renderDepot(store: StoreApi<DepotStoreState>, path = '/') {
+function renderDepot(store: StoreApi<HouseholdStoreState>, path = '/') {
   const location = memoryLocation({ path, record: true })
   render(
     <Router hook={location.hook}>
       <Switch>
         <Route path="/">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <Depot />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
         <Route path="/gear/:id">
           {(params) => <p>Gear detail {params['id']}</p>}

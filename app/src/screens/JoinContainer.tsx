@@ -6,7 +6,7 @@ import type { StoreApi } from 'zustand/vanilla'
 import type { AuthApi, InvitePreview, SignedIn } from '../auth/api'
 import type { PendingStore } from '../auth/pendingFirstPerson'
 import type { Session } from '../auth/sessionStore'
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { Join, type DeadEndReason } from './Join'
 import { FAILURE_MESSAGE, NoPasskey } from './NoPasskey'
 
@@ -20,7 +20,7 @@ export interface JoinContainerProps {
    * success frame's first-sync card renders inside, so it is nullable rather
    * than required.
    */
-  depot?: StoreApi<DepotStoreState> | null
+  depot?: StoreApi<HouseholdStoreState> | null
   /**
    * The register ceremony — `@simplewebauthn/browser`'s `startRegistration`
    * by default. Injectable for the same reason `app/src/auth/api.ts` injects
@@ -353,6 +353,6 @@ export function JoinContainer({
   return depot === null ? (
     join
   ) : (
-    <DepotProvider value={depot}>{join}</DepotProvider>
+    <HouseholdProvider value={depot}>{join}</HouseholdProvider>
   )
 }

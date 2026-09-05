@@ -22,12 +22,12 @@ import {
 
 /**
  * Every test seeds a **real** store — `inMemoryOpLog` plus the real reducer
- * behind `createDepotStore` — by emitting real ops through `emit`, exactly as
+ * behind `createHouseholdStore` — by emitting real ops through `emit`, exactly as
  * `GearDetail.test.tsx` and `Find.test.tsx` do, then reads `slices` off the
  * real `whereabouts` selector. `WhereaboutsCard` itself takes only
  * `slices: WhereaboutsSlice[]` and an optional `overClaim`
  * (`docs/design/README.md` §4) — never a full store or a hand-shaped
- * `DepotState`.
+ * `HouseholdState`.
  */
 
 async function slicesFor(

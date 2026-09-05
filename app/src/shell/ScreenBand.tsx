@@ -1,7 +1,7 @@
 import { Link } from 'wouter'
 
-import type { SyncStatus } from '../depot/syncEngine'
-import { syncLabel, syncTone } from '../depot/syncLabel'
+import type { SyncStatus } from '../household/syncEngine'
+import { syncLabel, syncTone } from '../household/syncLabel'
 import styles from './ScreenBand.module.css'
 import type { ScreenHeader } from './useMediaQuery'
 

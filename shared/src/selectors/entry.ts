@@ -1,4 +1,9 @@
-import type { DepotState, EntryState, KindValue, TripState } from '../state.ts'
+import type {
+  HouseholdState,
+  EntryState,
+  KindValue,
+  TripState,
+} from '../state.ts'
 import { isCounted, kindOf } from './kind.ts'
 import { byNameThenId } from './order.ts'
 import { piecesOf } from './piece.ts'
@@ -75,7 +80,7 @@ export interface ListTotals {
  */
 export function entriesOf(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): readonly EntryState[] {
   return Object.values(trip.entries ?? {})
     .filter(isVisible)
@@ -125,7 +130,7 @@ export function visibleEntry(
  * falls back here rather than throwing, since this function has to answer
  * something for any `EntryState` it is handed.
  */
-export function entryLabel(entry: EntryState, state: DepotState): string {
+export function entryLabel(entry: EntryState, state: HouseholdState): string {
   const source = entry.source?.value
   const name =
     source === undefined
@@ -159,7 +164,7 @@ export function entryLabel(entry: EntryState, state: DepotState): string {
  */
 export function entryKind(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): KindValue | 'trip_only' | undefined {
   const source = entry.source?.value
   if (source === undefined || source.from === 'trip_only') return 'trip_only'
@@ -191,7 +196,7 @@ export function entryKind(
  */
 export function isContainerEntry(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): boolean {
   const source = entry.source?.value
   if (source === undefined) return false
@@ -224,7 +229,7 @@ export function isContainerEntry(
  */
 export function bringCountOf(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): number | null {
   const source = entry.source?.value
   if (source === undefined || source.from !== 'depot') return null
@@ -266,7 +271,7 @@ export function bringCountOf(
 export function pieceCountOf(
   entry: EntryState,
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): number {
   if (isContainerEntry(entry, state)) return 0
   switch (entryKind(entry, state)) {
@@ -294,7 +299,7 @@ export function pieceCountOf(
  * count with its noun — `1 PIECE` vs `2 PIECES` — is the screens' job, not
  * this one's: this returns numbers.
  */
-export function listTotals(trip: TripState, state: DepotState): ListTotals {
+export function listTotals(trip: TripState, state: HouseholdState): ListTotals {
   const entries = entriesOf(trip, state)
   let pieces = 0
   let perPerson = 0

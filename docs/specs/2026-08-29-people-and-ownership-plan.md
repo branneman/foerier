@@ -16,7 +16,7 @@
 - **Ops mirror the wire — `snake_case`, never transformed.** Folded state, selectors and React props are ordinary `camelCase`. `authoring.ts` and `payloads.ts` are the only two places the boundary is crossed.
 - **`null` clears a nullable register; an absent field leaves it alone.** [sync §1.3](../sync-protocol.md) is the authority — *not* §5.3 obligation 5, which runs the other way only.
 - **A register whose declared type includes `null` takes an explicit `null` as a clear; one whose type does not treats `null` as malformed and ignores it.** `PersonState.name` is `Register<string | null>`, so `person.renamed` goes through `writeNullableIfPresent`. `GearState.owner` is `Register<Owner>`, so `gear.ownership_set` goes through `writeRegister` behind a `kind !== 'value'` guard.
-- **Every handler propagates identity on a lost write.** If `writeRegister` returns the register it was given, the handler returns the *identical* entity object and `writeGear`/`writePerson` return the identical `DepotState`. A spread on a lost write invalidates a memo downstream for nothing.
+- **Every handler propagates identity on a lost write.** If `writeRegister` returns the register it was given, the handler returns the *identical* entity object and `writeGear`/`writePerson` return the identical `HouseholdState`. A spread on a lost write invalidates a memo downstream for nothing.
 - **An absent `owner` register reads `SHARED`** (spec §1.3). Read it through `ownerOf`, never by re-deriving `gear.owner?.value ?? …` at a call site.
 - **A media query decides which elements *exist*; a container query decides how what exists *lays out*** ([frontend-design §3.2](../frontend-design.md)).
 - **Tier 0 runs on every commit** (pre-commit: `tsc --noEmit` across workspaces, ESLint, Prettier). A commit that fails it is not a commit.
@@ -56,7 +56,7 @@
 | `app/src/screens/People.tsx` (+ `.module.css`) | **Create**: the People screen, EDIT mode, `+ NEW PERSON` |
 | `app/src/components/SliceBar.tsx` | Modify: `formatFor` prop; `groupLabel` from `shared/` |
 | `app/src/components/SortGroupSheet.tsx` | Modify: `GROUPS` derived from `GROUP_KEYS` |
-| `app/src/depot/slicePrefs.ts` | Modify: `GROUPS` ← `GROUP_KEYS` |
+| `app/src/household/slicePrefs.ts` | Modify: `GROUPS` ← `GROUP_KEYS` |
 | `app/src/screens/AddGear.tsx` (+ `.module.css`) | Modify: the `OWNER` row after `HOME`, carrying over |
 | `app/src/screens/GearDetail.tsx` | Modify: `ownerLabel` from `shared/`; `OWNER` row in the Edit sheet |
 | `app/src/screens/Depot.tsx` | Modify: owner in the meta line and the table column; `formatFor` |
@@ -401,8 +401,8 @@ Message: *Fold the two ops S4 owes, and answer a question §4.2 deferred* — `p
 - Modify: `shared/src/index.ts`, `app/src/screens/GearDetail.tsx` (delete the private copy)
 
 **Interfaces:**
-- Consumes: `DepotState`, `GearState`, `Owner` from `state.ts`; the factories from Task 1.
-- Produces: `ownerOf(gear: GearState): Owner`; `ownerLabel(state: DepotState, gear: GearState): string`; `personLabel(state: DepotState, personId: string): string`.
+- Consumes: `HouseholdState`, `GearState`, `Owner` from `state.ts`; the factories from Task 1.
+- Produces: `ownerOf(gear: GearState): Owner`; `ownerLabel(state: HouseholdState, gear: GearState): string`; `personLabel(state: HouseholdState, personId: string): string`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -492,7 +492,7 @@ Expected: FAIL — `./owner.ts` does not exist.
 Create `shared/src/selectors/owner.ts`:
 
 ```ts
-import type { DepotState, GearState, Owner } from '../state.ts'
+import type { HouseholdState, GearState, Owner } from '../state.ts'
 
 /**
  * **Ownership on the way out** — the one module that decides what an ownership
@@ -542,7 +542,7 @@ export function ownerOf(gear: GearState): Owner {
  * That is `AppShell`'s `AccountAvatar` rule — "`null` draws an empty circle
  * rather than a placeholder letter" — applied to text.
  */
-export function ownerLabel(state: DepotState, gear: GearState): string {
+export function ownerLabel(state: HouseholdState, gear: GearState): string {
   const owner = ownerOf(gear)
   if (owner.type === 'shared') return 'SHARED'
   const initial = (state.people[owner.personId]?.name?.value ?? '')
@@ -561,7 +561,7 @@ export function ownerLabel(state: DepotState, gear: GearState): string {
  * uses. A chip with an empty label would look broken and a raw UUID would look
  * worse; `—` is selectable, countable, and honest.
  */
-export function personLabel(state: DepotState, personId: string): string {
+export function personLabel(state: HouseholdState, personId: string): string {
   const name = state.people[personId]?.name?.value ?? ''
   return name.trim() === '' ? '—' : name
 }
@@ -604,7 +604,7 @@ Message: *Say once what an absent owner means* — three surfaces need the answe
 
 **Interfaces:**
 - Consumes: `ownerOf`, `personLabel` from Task 2.
-- Produces: `DimensionId` widened to `'tag' | 'kind' | 'ownership' | 'person'`; `Dimension.format(value: string, state: DepotState): string` — **a signature change every caller must follow**.
+- Produces: `DimensionId` widened to `'tag' | 'kind' | 'ownership' | 'person'`; `Dimension.format(value: string, state: HouseholdState): string` — **a signature change every caller must follow**.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -754,7 +754,7 @@ Update the file's header table so it shows S4's row as landed rather than pendin
    * anticipation was right and the placement was off by one. `valuesOf`
    * returns the id; it is `format` that has to turn it into a name.
    */
-  format(value: string, state: DepotState): string
+  format(value: string, state: HouseholdState): string
 ```
 
 Give `tag` and `kind` the new signature (both ignore `state`), and add the two rows to `DIMENSION_TABLE` after `kind`:
@@ -956,9 +956,9 @@ interface Grouping {
   /** The segmented control's label: `KIND`, `OWNER`. */
   label: string
   /** This gear's single bucket, or `undefined` for the `—` bucket. */
-  keyOf(gear: GearState, state: DepotState): string | undefined
+  keyOf(gear: GearState, state: HouseholdState): string | undefined
   /** The group header's text. */
-  format(key: string, state: DepotState): string
+  format(key: string, state: HouseholdState): string
   /**
    * A key that sorts before every other group regardless of its label.
    *
@@ -1008,7 +1008,7 @@ export function groupLabel(key: GroupKey): string {
 ```ts
 function groupGear(
   gear: readonly GearState[],
-  state: DepotState,
+  state: HouseholdState,
   group: GroupKey,
 ): readonly SliceGroup[] {
   if (gear.length === 0) return []
@@ -1157,8 +1157,8 @@ Message: *Prove the two new registers converge* — the ownership race is §8.3'
 ## Task 6: The slice bar carries four dimensions and three groupings
 
 **Files:**
-- Modify: `app/src/components/SliceBar.tsx`, `app/src/components/SortGroupSheet.tsx`, `app/src/depot/slicePrefs.ts`, `app/src/screens/Depot.tsx`
-- Test: `app/src/components/SliceBar.test.tsx`, `app/src/depot/slicePrefs.test.ts`
+- Modify: `app/src/components/SliceBar.tsx`, `app/src/components/SortGroupSheet.tsx`, `app/src/household/slicePrefs.ts`, `app/src/screens/Depot.tsx`
+- Test: `app/src/components/SliceBar.test.tsx`, `app/src/household/slicePrefs.test.ts`
 
 **Interfaces:**
 - Consumes: `GROUP_KEYS`, `groupLabel`, `DimensionId`, `dimension` from Tasks 3–4.
@@ -1200,7 +1200,7 @@ it('reads OWNER in the arrange readout when grouped by owner', () => {
 })
 ```
 
-Append to `app/src/depot/slicePrefs.test.ts`:
+Append to `app/src/household/slicePrefs.test.ts`:
 
 ```ts
 it('round-trips a group of owner', () => {
@@ -1230,7 +1230,7 @@ In `app/src/components/SliceBar.tsx`:
    * Injected rather than called here for the same reason `valuesFor` is: a
    * dimension's label is not always intrinsic to its value. S4's `PERSON`
    * carries person ids and draws names, so formatting needs the depot; this
-   * component does not, and threading the whole `DepotState` through a
+   * component does not, and threading the whole `HouseholdState` through a
    * presentational component to reach one lookup would be the wrong seam.
    */
   formatFor: (id: DimensionId, value: string) => string
@@ -1259,7 +1259,7 @@ const GROUPS: readonly { key: GroupKey; label: string }[] = GROUP_KEYS.map(
 
 Update the module's doc comment: `GROUP BY` now offers `NONE · KIND · OWNER`, and the reason it never offers TAG is that a grouping needs a `keyOf` and Tag has none — point at `slice.ts`'s `Grouping` rather than restating the rule.
 
-In `app/src/depot/slicePrefs.ts`, replace `const GROUPS: readonly GroupKey[] = ['none', 'kind']` with `GROUP_KEYS` imported from `@foerier/shared`, and delete the now-redundant local constant. This is the whole of the persistence change: a previously-stored `owner` was already rejected by `readMember` and fell back to `none`, so nothing migrates.
+In `app/src/household/slicePrefs.ts`, replace `const GROUPS: readonly GroupKey[] = ['none', 'kind']` with `GROUP_KEYS` imported from `@foerier/shared`, and delete the now-redundant local constant. This is the whole of the persistence change: a previously-stored `owner` was already rejected by `readMember` and fell back to `none`, so nothing migrates.
 
 - [ ] **Step 5: Supply `formatFor` from `Depot.tsx`**
 
@@ -1294,7 +1294,7 @@ Message: *Bind the formatter where the state is, and derive GROUP BY from one li
 - Create: `app/src/components/OwnerPicker.tsx`, `app/src/components/OwnerPicker.module.css`, `app/src/components/OwnerPicker.test.tsx`
 
 **Interfaces:**
-- Consumes: `ui/`'s `Sheet`; `useDepot`; `personRecorded`, `personLabel`, `systemIdSource` from `@foerier/shared`.
+- Consumes: `ui/`'s `Sheet`; `useHousehold`; `personRecorded`, `personLabel`, `systemIdSource` from `@foerier/shared`.
 - Produces:
 
 ```ts
@@ -1396,7 +1396,7 @@ import {
 import { Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import styles from './OwnerPicker.module.css'
 
 /**
@@ -1432,8 +1432,8 @@ export interface OwnerPickerProps {
 }
 
 export function OwnerPicker({ value, onSelect, onClose }: OwnerPickerProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -1896,7 +1896,7 @@ In `app/src/screens/Depot.tsx`:
 ```ts
 /** `PERSONAL E · ATTIC ▸ CRATE B · ×2` — the row's meta slot. */
 function metaFor(
-  state: DepotState,
+  state: HouseholdState,
   gear: GearState,
   view: ContainmentView,
 ): string | undefined {
@@ -1946,7 +1946,7 @@ Message: *Fill the slot that has been reading an em dash since S3* — `GearRow`
 - Modify: `app/src/App.tsx`, `app/src/screens/Account.tsx`, `app/src/screens/Account.test.tsx`
 
 **Interfaces:**
-- Consumes: `personRecorded`, `personRenamed`, `personLabel`, `systemIdSource`, `useDepot`, `useMediaQuery`'s Desktop predicate (read `Account.tsx` for the existing hook name).
+- Consumes: `personRecorded`, `personRenamed`, `personLabel`, `systemIdSource`, `useHousehold`, `useMediaQuery`'s Desktop predicate (read `Account.tsx` for the existing hook name).
 - Produces:
 
 ```ts
@@ -2116,10 +2116,10 @@ task and must be written, not summarised:
 
 The component body:
 
-- `const state = useDepot((depot) => depot.state)` and `emit` likewise.
+- `const state = useHousehold((depot) => depot.state)` and `emit` likewise.
 - People sorted by `personLabel(state, id)`, case-insensitive, id as tiebreak —
   the same comparator `OwnerPicker` uses. Extract it into
-  `app/src/depot/people.ts` as `sortedPeople(state)` and have `OwnerPicker`
+  `app/src/household/people.ts` as `sortedPeople(state)` and have `OwnerPicker`
   import it, so the two lists cannot drift.
 - `editing`, `renamingId`, `renameValue`, `adding`, `newName` — the same five
   pieces of state `HomePicker` holds, and for the same reason: mount resets
@@ -2196,7 +2196,7 @@ the `DEVICES` section's exact shape:
         </section>
 ```
 
-with `const peopleCount = useDepot((depot) => Object.keys(depot.state.people).length)`.
+with `const peopleCount = useHousehold((depot) => Object.keys(depot.state.people).length)`.
 
 Rewrite the `PEOPLE & LOGINS is omitted outright` paragraph in the `Account`
 doc comment. It now reads that the section is titled **`PEOPLE`** because that
@@ -2213,7 +2213,7 @@ Expected: PASS across the workspace.
 - [ ] **Step 8: Commit**
 
 Stage the three new files, `App.tsx`, `Account.tsx`, `OwnerPicker.tsx` (for the
-extracted comparator), `app/src/depot/people.ts`, and both test files.
+extracted comparator), `app/src/household/people.ts`, and both test files.
 
 Message: *Record the household, and draw only what S4 can know* — the screen is
 the board's minus its login half, and the three things left empty are S5's,

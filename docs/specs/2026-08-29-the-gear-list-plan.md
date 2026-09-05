@@ -368,12 +368,12 @@ Import `EntrySource` from `./state.ts` at the top of the file.
  * sixth should re-open the argument.
  */
 function writeEntry(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
   entryId: string,
   stamp: Stamp,
   update: (entry: EntryState, stamp: Stamp) => EntryState,
-): DepotState {
+): HouseholdState {
   return writeTrip(state, tripId, stamp, (trip, st) => {
     const current = trip.entries?.[entryId] ?? { id: entryId }
     const updated = update(current, st)
@@ -631,14 +631,14 @@ git commit -m "Fold the gear list's three ops into the Trip's first nested map"
 - Modify: `shared/src/index.ts`
 
 **Interfaces:**
-- Consumes: `EntryState`, `EntrySource`, `TripState`, `DepotState`, `KindValue` (Task 1 + existing); `participantIds` (`selectors/trip.ts:272`); `byNameThenId` (`selectors/order.ts:31`).
+- Consumes: `EntryState`, `EntrySource`, `TripState`, `HouseholdState`, `KindValue` (Task 1 + existing); `participantIds` (`selectors/trip.ts:272`); `byNameThenId` (`selectors/order.ts:31`).
 - Produces:
-  - `entriesOf(trip: TripState, state: DepotState): readonly EntryState[]` — takes `state` because it sorts by `entryLabel`, which resolves a depot Entry's name through the Depot
-  - `entryLabel(entry: EntryState, state: DepotState): string`
-  - `entryKind(entry: EntryState, state: DepotState): KindValue | 'trip_only'`
-  - `bringCountOf(entry: EntryState, state: DepotState): number | null`
-  - `pieceCountOf(entry: EntryState, trip: TripState, state: DepotState): number`
-  - `listTotals(trip: TripState, state: DepotState): ListTotals`
+  - `entriesOf(trip: TripState, state: HouseholdState): readonly EntryState[]` — takes `state` because it sorts by `entryLabel`, which resolves a depot Entry's name through the Depot
+  - `entryLabel(entry: EntryState, state: HouseholdState): string`
+  - `entryKind(entry: EntryState, state: HouseholdState): KindValue | 'trip_only'`
+  - `bringCountOf(entry: EntryState, state: HouseholdState): number | null`
+  - `pieceCountOf(entry: EntryState, trip: TripState, state: HouseholdState): number`
+  - `listTotals(trip: TripState, state: HouseholdState): ListTotals`
   - `interface ListTotals { entries: number; pieces: number; perPerson: number; tripOnly: number }`
 
 - [ ] **Step 1: Write the failing tests**
@@ -713,7 +713,7 @@ Expected: FAIL — module not found.
 
 ```ts
 import type {
-  DepotState,
+  HouseholdState,
   EntryState,
   KindValue,
   TripState,
@@ -750,7 +750,7 @@ export interface ListTotals {
  */
 export function entriesOf(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): readonly EntryState[] {
   return Object.values(trip.entries ?? {})
     .filter(
@@ -769,15 +769,15 @@ The remaining functions:
 
 ```ts
 /** The Gear's name for a depot Entry, the source's own for a trip-only one. */
-export function entryLabel(entry: EntryState, state: DepotState): string
+export function entryLabel(entry: EntryState, state: HouseholdState): string
 /** The Kind that governs the row, or `'trip_only'` for an Entry with no Gear. */
-export function entryKind(entry: EntryState, state: DepotState): KindValue | 'trip_only'
+export function entryKind(entry: EntryState, state: HouseholdState): KindValue | 'trip_only'
 /** The Bring-count, or `null` for every Entry that is not a Counted depot Entry. */
-export function bringCountOf(entry: EntryState, state: DepotState): number | null
+export function bringCountOf(entry: EntryState, state: HouseholdState): number | null
 /** How many things this Entry is. */
-export function pieceCountOf(entry: EntryState, trip: TripState, state: DepotState): number
+export function pieceCountOf(entry: EntryState, trip: TripState, state: HouseholdState): number
 /** The four numbers the footer and the section band draw. */
-export function listTotals(trip: TripState, state: DepotState): ListTotals
+export function listTotals(trip: TripState, state: HouseholdState): ListTotals
 ```
 
 `bringCountOf` returns `null` unless `entry.source?.value.from === 'depot'` **and** the referenced Gear's `kind?.value === 'counted'`; when it is Counted, `entry.bringCount?.value ?? 1`. This is the **fourth** site gating on `kind === 'counted'` (`shared/src/selectors/depot.ts:107`, `shared/src/selectors/whereabouts.ts:62`, `app/src/screens/GearDetail.tsx:78` are the other three), and the reason the question moves behind one function.
@@ -816,9 +816,9 @@ git commit -m "Read the gear list through one selector per question"
 - Produces:
   - `interface Claim { tripId: string; entryId: string; count: number; personIds?: readonly string[] }`
   - `interface OverClaim { gearId: string; kind: KindValue; claims: readonly Claim[]; supply: number; claimed: number; contestedPersonIds: readonly string[] }`
-  - `overClaims(state: DepotState): readonly OverClaim[]`
-  - `overClaimsFor(state: DepotState, tripId: string): readonly OverClaim[]`
-  - `overClaimsIfActive(state: DepotState, tripId: string): readonly OverClaim[]`
+  - `overClaims(state: HouseholdState): readonly OverClaim[]`
+  - `overClaimsFor(state: HouseholdState, tripId: string): readonly OverClaim[]`
+  - `overClaimsIfActive(state: HouseholdState, tripId: string): readonly OverClaim[]`
   - `isClosed(trip: TripState): boolean`
   - `UNNAMED_TRIP = 'Unnamed trip'`
 
@@ -1017,14 +1017,14 @@ Widen `DimensionId` to `'tag' | 'kind' | 'ownership' | 'person' | 'trip'` and ad
 /**
  * The gear→trips index, memoised on the folded state.
  *
- * `DepotState` is immutable and its identity changes on exactly the folds
+ * `HouseholdState` is immutable and its identity changes on exactly the folds
  * that could change this answer — the reducer returns the same object when a
  * write loses — so the key is exact rather than approximate, and a `WeakMap`
  * lets superseded states be collected. No signature changes: S3 passed
  * `state` into `valuesOf` so the table would not be reshaped by the first
  * dimension that needed it, and this is that dimension.
  */
-const TRIP_MEMBERSHIP = new WeakMap<DepotState, Map<string, readonly string[]>>()
+const TRIP_MEMBERSHIP = new WeakMap<HouseholdState, Map<string, readonly string[]>>()
 ```
 
 Build the whole index on first ask for a given state: iterate `visibleTrips(state)`, skip `isClosed`, and for each `entriesOf` push the trip id under each depot Entry's `gearId`.

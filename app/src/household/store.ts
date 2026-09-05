@@ -3,7 +3,7 @@ import {
   emptyState,
   fold,
   MAX_OP_BYTES,
-  type DepotState,
+  type HouseholdState,
   type OpAuthor,
   type OpEnvelope,
   type OpSpec,
@@ -38,14 +38,14 @@ import {
  * A crash between the append and the fold loses a render, not a fact. The
  * reverse order loses the fact. `emit` returns `void` and **the UI never
  * awaits it** (architecture §3: no async in any render path); everything it
- * does runs on {@link createDepotStore}'s single work queue, which is also
+ * does runs on {@link createHouseholdStore}'s single work queue, which is also
  * what keeps the HLC counter from racing itself — every op is stamped inside
  * the queue, so authoring order, `lsn` order and HLC order are the same
  * order, always.
  *
  * ## Durability is answered per op, never by the queue being empty
  *
- * {@link DepotStoreState.emitDurable} resolves when **that** op is in the
+ * {@link HouseholdStoreState.emitDurable} resolves when **that** op is in the
  * log and rejects when it is not — refused for size, or refused by the log
  * itself. A caller that must not act until an op is durable (clearing the
  * joiner's name, `auth/pendingFirstPerson.ts`) waits on that and nothing
@@ -57,7 +57,7 @@ import {
  *
  * A rejected append loses authored work more completely than an oversized op
  * does, because the user believes it saved. Both land in
- * {@link DepotStoreState.refusal}, which is the channel a screen reads to say
+ * {@link HouseholdStoreState.refusal}, which is the channel a screen reads to say
  * so.
  *
  * ## Memory is folded from the log, never from the caller's hand
@@ -84,7 +84,7 @@ import {
  * A 401 freezes the engine permanently and unwires its timer and both DOM
  * listeners. Recovery is a **new** engine, once the app has a token again —
  * hence `deps.engine` is a factory rather than an instance, and
- * {@link DepotStoreState.resumeSync} builds a replacement rather than
+ * {@link HouseholdStoreState.resumeSync} builds a replacement rather than
  * restarting the corpse.
  */
 
@@ -108,16 +108,16 @@ export interface OpRefusal {
  * The materialised fold, and the two facts that decide whether it may be
  * used: the build that produced it and the `lsn` it covers up to.
  */
-export interface DepotSnapshot {
+export interface HouseholdSnapshot {
   sha: string
   /** Every record with `lsn <= this` is already folded into `state`. */
   lsn: number
-  state: DepotState
+  state: HouseholdState
 }
 
-export interface DepotStoreState {
+export interface HouseholdStoreState {
   /** The fold. Pure in-memory, read synchronously by every selector. */
-  state: DepotState
+  state: HouseholdState
   /** `loading` until the first fold completes; then `bootstrapping` for as
    * long as the engine reports a first sync, else `ready`. */
   status: 'loading' | 'bootstrapping' | 'ready'
@@ -126,7 +126,7 @@ export interface DepotStoreState {
   /** Ops the household will never accept (§6.5). Visible, never silent. */
   deadLetterCount: number
   /**
-   * Set when {@link DepotStoreState.emit} refused to author, cleared by the
+   * Set when {@link HouseholdStoreState.emit} refused to author, cleared by the
    * next op it accepts. A refusal is not an error to throw at a render — it
    * is a fact a screen shows.
    */
@@ -185,7 +185,7 @@ export interface SyncHooks {
 
 export type EngineFactory = (hooks: SyncHooks) => SyncEngine
 
-export interface DepotStoreDeps {
+export interface HouseholdStoreDeps {
   log: OpLog
   /**
    * A **factory**, not an instance: a 401 freezes an engine for good, and the
@@ -202,9 +202,9 @@ export interface DepotStoreDeps {
  * closed tab rarely loses more than a second of folding work. */
 export const SNAPSHOT_DEBOUNCE_MS = 2_000
 
-export function createDepotStore(
-  deps: DepotStoreDeps,
-): StoreApi<DepotStoreState> {
+export function createHouseholdStore(
+  deps: HouseholdStoreDeps,
+): StoreApi<HouseholdStoreState> {
   const sha = deps.sha ?? BUILD_SHA
   const debounceMs = deps.snapshotDebounceMs ?? SNAPSHOT_DEBOUNCE_MS
 
@@ -259,10 +259,10 @@ export function createDepotStore(
    * log instead. That is the recovery §8.4 promises: the log is the truth and
    * the snapshot is only ever an accelerator.
    */
-  async function readSnapshot(): Promise<DepotSnapshot | null> {
-    let snapshot: DepotSnapshot | null
+  async function readSnapshot(): Promise<HouseholdSnapshot | null> {
+    let snapshot: HouseholdSnapshot | null
     try {
-      snapshot = await deps.log.readMeta<DepotSnapshot>('snapshot')
+      snapshot = await deps.log.readMeta<HouseholdSnapshot>('snapshot')
     } catch (error) {
       console.warn('depot: the snapshot could not be read', error)
       return null
@@ -306,7 +306,7 @@ export function createDepotStore(
       enqueue(async () => {
         // Read `lastLsn` and the state inside the job, so the pair is the one
         // the queue last produced rather than two moments spliced together.
-        const snapshot: DepotSnapshot = {
+        const snapshot: HouseholdSnapshot = {
           sha,
           lsn: lastLsn,
           state: store.getState().state,
@@ -458,7 +458,7 @@ export function createDepotStore(
     })
   }
 
-  const store = createStore<DepotStoreState>(() => ({
+  const store = createStore<HouseholdStoreState>(() => ({
     state: emptyState(),
     status: 'loading',
     sync: 'idle',
@@ -513,20 +513,22 @@ export function createDepotStore(
  * the session) rather than reached for as a module global — so a test renders
  * a screen over a store it seeded, and a sign-out can replace the whole thing.
  */
-const DepotContext = createContext<StoreApi<DepotStoreState> | null>(null)
+const HouseholdContext = createContext<StoreApi<HouseholdStoreState> | null>(
+  null,
+)
 
-export const DepotProvider = DepotContext.Provider
+export const HouseholdProvider = HouseholdContext.Provider
 
 /**
  * The store above this component, or `null` where there is none — unlike
- * {@link useDepot}, which throws.
+ * {@link useHousehold}, which throws.
  *
  * The join screen is the reason: it renders in the window between a Device
  * signing in and its depot being built, so the first-sync card it composes
  * has to tolerate the absence rather than take the screen down with it.
  */
-export function useDepotStore(): StoreApi<DepotStoreState> | null {
-  return useContext(DepotContext)
+export function useHouseholdStore(): StoreApi<HouseholdStoreState> | null {
+  return useContext(HouseholdContext)
 }
 
 /**
@@ -534,10 +536,12 @@ export function useDepotStore(): StoreApi<DepotStoreState> | null {
  * for changes, which is the whole reason the reducer returns identical
  * objects for a lost write (architecture §3).
  */
-export function useDepot<T>(selector: (state: DepotStoreState) => T): T {
-  const store = useContext(DepotContext)
+export function useHousehold<T>(
+  selector: (state: HouseholdStoreState) => T,
+): T {
+  const store = useContext(HouseholdContext)
   if (store === null) {
-    throw new Error('useDepot: no DepotProvider above this component')
+    throw new Error('useHousehold: no HouseholdProvider above this component')
   }
   return useStore(store, selector)
 }

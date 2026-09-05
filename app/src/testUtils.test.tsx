@@ -2,7 +2,7 @@ import { gearRecorded, parseHlc } from '@foerier/shared'
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { useDepot } from './depot/store'
+import { useHousehold } from './household/store'
 import {
   anAuthor,
   countingIds,
@@ -81,7 +81,7 @@ describe('noopEngine', () => {
 })
 
 describe('renderWithStore', () => {
-  it('puts the store where useDepot can read it', async () => {
+  it('puts the store where useHousehold can read it', async () => {
     const store = await seededStore([
       gearRecorded('g1', {
         name: 'Zeltbahn',
@@ -91,7 +91,7 @@ describe('renderWithStore', () => {
     ])
 
     function Probe() {
-      const name = useDepot((s) => s.state.gear['g1']?.name?.value)
+      const name = useHousehold((s) => s.state.gear['g1']?.name?.value)
       return <p>{name}</p>
     }
 

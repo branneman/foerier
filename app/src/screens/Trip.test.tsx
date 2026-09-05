@@ -17,8 +17,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
-import { createDepotStore, DepotProvider } from '../depot/store'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
+import { createHouseholdStore, HouseholdProvider } from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, noopEngine, SEEDED_AT } from '../testUtils'
@@ -64,7 +64,7 @@ async function renderTrip(
   ...specs: readonly OpSpec[]
 ): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -78,9 +78,9 @@ async function renderTrip(
     <Router hook={location.hook}>
       <Switch>
         <Route path="/trips/:id">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <Trip />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
       </Switch>
     </Router>,

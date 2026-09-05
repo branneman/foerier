@@ -18,7 +18,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { seededStore } from '../testUtils'
 import {
   OverClaimBand,
@@ -50,13 +50,13 @@ const JURA = 'trip-jura'
 
 async function seeded(
   ...specs: readonly OpSpec[]
-): Promise<StoreApi<DepotStoreState>> {
+): Promise<StoreApi<HouseholdStoreState>> {
   const store = await seededStore(specs)
   return store
 }
 
 function renderBand(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   tripId: string,
   overrides: {
     onRemoveHere?: (entryId: string) => void
@@ -73,7 +73,7 @@ function renderBand(
   const state = store.getState().state
   const overClaims = overClaimsFor(state, tripId)
   render(
-    <DepotProvider value={store}>
+    <HouseholdProvider value={store}>
       <OverClaimBand
         tripId={tripId}
         overClaims={overClaims}
@@ -85,7 +85,7 @@ function renderBand(
           onRemovePieceThere: overrides.onRemovePieceThere ?? vi.fn(),
         }}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return overClaims
 }
@@ -786,9 +786,9 @@ describe('a per-person over-claim', () => {
     const groups = overClaimGroups(overClaimsFor(state, HERE), HERE, state)
 
     render(
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <OverClaimGroups tripId={HERE} groups={groups} />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     expect(screen.getByTestId('over-claim-attention')).toBeInTheDocument()
@@ -981,7 +981,7 @@ describe('when there is nothing to settle', () => {
     )
 
     const { container } = render(
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <OverClaimBand
           tripId={HERE}
           overClaims={[]}
@@ -993,7 +993,7 @@ describe('when there is nothing to settle', () => {
             onRemovePieceThere: vi.fn(),
           }}
         />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     expect(screen.queryByTestId('over-claim-band')).toBeNull()

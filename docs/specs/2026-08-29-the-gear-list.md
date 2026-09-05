@@ -52,7 +52,7 @@ slices (S8 · S9 · S10 · S14) write into the one it declares.
 | Split and up | The trip screen **reads**; the builder route **edits**, in two panes |
 | The over-claim surface | **A standing band on `/trips/:id`**, at every width, never dismissible ([§4.5](#45-the-over-claim-band)) |
 | Trip membership dimension | `dimension('trip')`, label **`TRIP`**, arity **`multi`**, sentinel **first**, `NOT IN ANY TRIP`. Values are every **non-closed** Trip ([§3.6](#36-trip-membership-joins-the-dimension-table)) |
-| The first cross-aggregate dimension | A `WeakMap` keyed on `DepotState` ([§3.7](#37-the-first-cross-aggregate-dimension-needs-an-index)) |
+| The first cross-aggregate dimension | A `WeakMap` keyed on `HouseholdState` ([§3.7](#37-the-first-cross-aggregate-dimension-needs-an-index)) |
 | `ui/Stepper` | **Built**, two sizes; Add gear and gear detail's Owned-count fold in as callers ([§4.8](#48-uistepper--one-control-two-sizes-three-callers)) |
 | Per-person rows | **`×N` alone.** Circles are S8's; the board books them under `CIRCLES — S8 · PIECES` ([§6](#6-what-the-design-round-settled)) |
 | The progress line | **Not S7's, and it lands *below* the NEXT line, not above** ([§4.9](#49-the-count-nouns-reach-back-into-s6s-shipped-strings)) |
@@ -91,12 +91,12 @@ returns the original object and `fold` stays cheap:
 
 ```ts
 function writeEntry(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
   entryId: string,
   stamp: Stamp,
   update: (entry: EntryState, stamp: Stamp) => EntryState,
-): DepotState
+): HouseholdState
 ```
 
 Entity creation stays implicit at **both** levels: a `trip.entry_added` for a
@@ -260,11 +260,11 @@ call site re-derives one — the discipline S6 paid for three times over.
 
 ```ts
 entriesOf(trip: TripState): readonly EntryState[]
-entryLabel(entry: EntryState, state: DepotState): string
-entryKind(entry: EntryState, state: DepotState): KindValue | 'trip_only'
-bringCountOf(entry: EntryState, state: DepotState): number | null
-pieceCountOf(entry: EntryState, trip: TripState, state: DepotState): number
-listTotals(trip: TripState, state: DepotState): ListTotals
+entryLabel(entry: EntryState, state: HouseholdState): string
+entryKind(entry: EntryState, state: HouseholdState): KindValue | 'trip_only'
+bringCountOf(entry: EntryState, state: HouseholdState): number | null
+pieceCountOf(entry: EntryState, trip: TripState, state: HouseholdState): number
+listTotals(trip: TripState, state: HouseholdState): ListTotals
 ```
 
 `entriesOf` applies [§1.3](#13-an-entry-with-no-source-is-folded-retained-and-not-drawn)'s
@@ -318,9 +318,9 @@ export interface OverClaim {
   readonly contestedPersonIds: readonly string[]
 }
 
-overClaims(state: DepotState): readonly OverClaim[]
-overClaimsFor(state: DepotState, tripId: string): readonly OverClaim[]
-overClaimsIfActive(state: DepotState, tripId: string): readonly OverClaim[]
+overClaims(state: HouseholdState): readonly OverClaim[]
+overClaimsFor(state: HouseholdState, tripId: string): readonly OverClaim[]
+overClaimsIfActive(state: HouseholdState, tripId: string): readonly OverClaim[]
 ```
 
 - **Single** — supply is one. More than one active Trip holding an unresolved
@@ -426,8 +426,8 @@ that needs it" — that settled the *signature* and left the *cost* to whoever
 arrived first. This is it.
 
 The fix is a memo, not a reshape: a module-level
-`WeakMap<DepotState, Map<string, readonly string[]>>` inside `slice.ts`, built on
-first ask and keyed on the folded state. `DepotState` is immutable and its
+`WeakMap<HouseholdState, Map<string, readonly string[]>>` inside `slice.ts`, built on
+first ask and keyed on the folded state. `HouseholdState` is immutable and its
 identity changes on exactly the folds that could change the answer (the reducer
 returns the same object when a write loses), so the key is exact rather than
 approximate, and a `WeakMap` lets superseded states be collected.
@@ -926,7 +926,7 @@ is what S7 collides with, and what it does about each.
   adds a Sheet caller — but the trip-only sheet's title is `Trip-only entry`,
   sentence case in the display face, which is what `Sheet` already does. The debt
   is not triggered and `titleTone` is not built.
-- **`DepotState` is a misnomer.** Its deferral expired when S5 landed. S7 declines
+- **`HouseholdState` is a misnomer.** Its deferral expired when S5 landed. S7 declines
   it: this slice already reaches `TripState`, `slice.ts`, three routes and four
   screens, and the rename reaches every screen in three workspaces.
 - **`ui/Popover` is unbuilt with a waiting caller.** The `TRIP` picker renders
@@ -984,7 +984,7 @@ promoting it quietly is what the scope tags exist to prevent.
 - **The slicing engine over a Trip's list** — story 13's engine off the Depot,
   booked by the boards and owned by no slice.
 - **Weight totals** — `EST 48.2 KG`, story 16, `LATER`.
-- **Renaming `DepotState`**, and the rest of [§7](#7-technical-debt-this-slice-touches)'s
+- **Renaming `HouseholdState`**, and the rest of [§7](#7-technical-debt-this-slice-touches)'s
   untouched list.
 - **The whole keyboard surface** — `↑↓ ROW · ENTER ADD/REMOVE · T TRIP-ONLY`
   under the 1024 builder, the `/` focus-search hint in both pane search

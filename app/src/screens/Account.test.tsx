@@ -6,7 +6,7 @@ import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
 import { createAuthApi, type DeviceRow, type PasskeyRow } from '../auth/api'
-import { DepotProvider } from '../depot/store'
+import { HouseholdProvider } from '../household/store'
 import { setViewport } from '../testSetup'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { anId, DEVICE, HOUSEHOLD, seededStore } from '../testUtils'
@@ -14,7 +14,7 @@ import { Account } from './Account'
 
 /**
  * Every test seeds a **real** store, exactly as `GearDetail.test.tsx` and
- * `AddGear.test.tsx` do — never a hand-shaped `DepotState`.
+ * `AddGear.test.tsx` do — never a hand-shaped `HouseholdState`.
  */
 
 const PERSON_ID = '0f0000aa-0000-4000-8000-0000000000aa'
@@ -244,7 +244,7 @@ async function renderAccount(
 
   render(
     <Router hook={location.hook}>
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <Account
           api={api}
           token={TOKEN}
@@ -252,7 +252,7 @@ async function renderAccount(
           onSignOut={onSignOut}
           {...(clearLocalData === undefined ? {} : { clearLocalData })}
         />
-      </DepotProvider>
+      </HouseholdProvider>
     </Router>,
   )
 

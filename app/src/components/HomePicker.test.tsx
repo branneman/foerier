@@ -11,25 +11,25 @@ import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { anAuthor, anId, noopEngine } from '../testUtils'
 import { HomePicker } from './HomePicker'
 
 /**
  * Every test seeds a **real** store by emitting real ops, exactly as
- * `Depot.test.tsx` does — never a hand-shaped `DepotState`.
+ * `Depot.test.tsx` does — never a hand-shaped `HouseholdState`.
  */
 
 async function seededStore(
   specs: readonly OpSpec[] = [],
   log: OpLog = inMemoryOpLog(),
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
+): Promise<StoreApi<HouseholdStoreState>> {
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -42,7 +42,7 @@ async function seededStore(
 type PickerProps = Parameters<typeof HomePicker>[0]
 
 function renderPicker(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   props: Partial<PickerProps> = {},
 ) {
   // Real no-ops, not `vi.fn()`, wherever a test does not assert on the call —
@@ -50,13 +50,13 @@ function renderPicker(
   // (`docs/testing.md`).
   const selected: Residence[] = []
   render(
-    <DepotProvider value={store}>
+    <HouseholdProvider value={store}>
       <HomePicker
         onClose={() => {}}
         onSelect={(residence) => selected.push(residence)}
         {...props}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return { selected }
 }
@@ -653,14 +653,14 @@ describe('the Home picker — MOVE', () => {
     function Harness() {
       const [open, setOpen] = useState(true)
       return (
-        <DepotProvider value={store}>
+        <HouseholdProvider value={store}>
           <button type="button" onClick={() => setOpen(true)}>
             Open the picker
           </button>
           {open && (
             <HomePicker onClose={() => setOpen(false)} onSelect={() => {}} />
           )}
-        </DepotProvider>
+        </HouseholdProvider>
       )
     }
     render(<Harness />)

@@ -5,14 +5,14 @@ import {
   entryLabel,
   pieceCountOf,
   UNGROUPED_LABEL,
-  type DepotState,
+  type HouseholdState,
   type EntryState,
   type TripState,
 } from '@foerier/shared'
 import { useState } from 'react'
 
-import { useDepot } from '../depot/store'
-import { tripPieces } from '../depot/trips'
+import { useHousehold } from '../household/store'
+import { tripPieces } from '../household/trips'
 import { EntryRow } from './EntryRow'
 import styles from './GearListSection.module.css'
 import { PiecePicker } from './PiecePicker'
@@ -92,7 +92,7 @@ const GROUPS: readonly { key: GroupKey; label: string }[] = [
  * through unchanged; everything else — `entryKind` reading `undefined`, or
  * any Kind string none of the four cases name — maps to `'ungrouped'`.
  */
-function rowKind(entry: EntryState, state: DepotState): GroupKey {
+function rowKind(entry: EntryState, state: HouseholdState): GroupKey {
   switch (entryKind(entry, state)) {
     case 'single':
       return 'single'
@@ -134,7 +134,7 @@ export function GearListSection({
   onBringCountChange,
   onRemove,
 }: GearListSectionProps) {
-  const state = useDepot((depot) => depot.state)
+  const state = useHousehold((depot) => depot.state)
   const entries = entriesOf(trip, state)
 
   // Which Entry's `PiecePicker` is open, if any — held here rather than by

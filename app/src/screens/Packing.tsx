@@ -20,7 +20,7 @@ import {
   tripPath,
   tripPieceMoved,
   TRIP_LOOSE,
-  type DepotState,
+  type HouseholdState,
   type Disagreement,
   type EntryState,
   type PackingCount,
@@ -45,9 +45,14 @@ import { JourneyRail } from '../components/JourneyRail'
 import { PackingRow } from '../components/PackingRow'
 import { PackPicker } from '../components/PackPicker'
 import { PieceStatusSheet } from '../components/PieceStatusSheet'
-import { useDepot } from '../depot/store'
-import { personInitial } from '../depot/people'
-import { leftLabel, packedLabel, packedPercent, peopleOn } from '../depot/trips'
+import { useHousehold } from '../household/store'
+import { personInitial } from '../household/people'
+import {
+  leftLabel,
+  packedLabel,
+  packedPercent,
+  peopleOn,
+} from '../household/trips'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Packing.module.css'
@@ -241,7 +246,7 @@ const EMPTY_VIEW: PackingView = {
  */
 function containerView(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   view: TripContainmentView,
   items: readonly PackingItem[],
 ): ContainerView {
@@ -460,7 +465,7 @@ function containerView(
  * answer differently on purpose: the Depot files gear, F4 lists work — the
  * `Loose`-last argument (ruling A3) for the second time on this screen.
  */
-function personGroups(trip: TripState, state: DepotState): PersonGroup[] {
+function personGroups(trip: TripState, state: HouseholdState): PersonGroup[] {
   const buckets = personPartition(trip, state)
 
   const byPerson = new Map<string, PersonBucket>()
@@ -543,7 +548,7 @@ function personGroups(trip: TripState, state: DepotState): PersonGroup[] {
  * "one": a docblock claiming otherwise is the kind of freshly-written,
  * subtly-wrong sentence this file's convention exists to keep out.
  */
-function packingView(trip: TripState, state: DepotState): PackingView {
+function packingView(trip: TripState, state: HouseholdState): PackingView {
   const containment = tripContainmentView(trip, state)
   const items = packingItems(trip, state, containment)
 
@@ -718,9 +723,9 @@ interface PendingMove {
 export function Packing() {
   const params = useParams<{ id: string }>()
   const tripId = params.id
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-  const sync = useDepot((depot) => depot.sync)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
+  const sync = useHousehold((depot) => depot.sync)
   const header = useScreenHeader({
     splitPane: false,
     // See the docstring: the sidebar carries `TRIPS`, never one Trip's name,

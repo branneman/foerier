@@ -4,28 +4,28 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { seededStore } from '../testUtils'
 import { OwnerPicker } from './OwnerPicker'
 
 /**
  * Every test seeds a **real** store by emitting real ops, exactly as
- * `HomePicker.test.tsx` does — never a hand-shaped `DepotState`.
+ * `HomePicker.test.tsx` does — never a hand-shaped `HouseholdState`.
  */
 
 function renderPicker(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   value: Owner = { type: 'shared' },
 ) {
   const selected: Owner[] = []
   render(
-    <DepotProvider value={store}>
+    <HouseholdProvider value={store}>
       <OwnerPicker
         value={value}
         onSelect={(owner) => selected.push(owner)}
         onClose={() => {}}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return { selected }
 }

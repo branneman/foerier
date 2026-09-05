@@ -16,8 +16,8 @@ import { pieceLabel } from '../components/GearListSection'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { ReopenConfirm } from '../components/ReopenConfirm'
 import { TripCard } from '../components/TripCard'
-import { useDepot } from '../depot/store'
-import { tripStartMonth } from '../depot/trips'
+import { useHousehold } from '../household/store'
+import { tripStartMonth } from '../household/trips'
 import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trips.module.css'
 
@@ -80,8 +80,8 @@ const REOPEN_TO: PhaseKey = 'unpack'
  * `+ Add gear` (`docs/design/README.md` §5).
  */
 export function Trips() {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
   const isSplit = useMediaQuery(SPLIT)
 
   // Memoed on the fold, as `Depot` memoes `depotCounts`: the partition and its

@@ -260,12 +260,6 @@ One rule, several spellings; or one thing under the wrong name. Nothing
 observable changes when these close, which is why none is urgent and why
 every one of them gets more expensive per slice.
 
-- **`DepotState` is a misnomer** — it is the fold of everything, Trips included.
-  The rename reaches `DepotStoreState`, `DepotProvider`, `useDepot`, `DepotView`
-  and every screen in three workspaces; it was held back by S5 being in flight
-  across those same files, and that reason has expired.
-  [`architecture-design.md`](architecture-design.md) §12.11, anchor:
-  `the rename is now a self-contained job`
 - **`SliceBar`'s filter plumbing is reproduced in `DepotPicker`.** About
   fifty-five lines — `withFilters`, `apply`, `remove` and both chip-row
   blocks — near-verbatim. Reusing `SliceBar` itself is genuinely wrong (it also

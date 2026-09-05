@@ -7,7 +7,7 @@ import {
   phaseOf,
   pieceInclusion,
   statusGlyph,
-  type DepotState,
+  type HouseholdState,
   type EntryState,
   type PackingCount,
   type TripState,
@@ -64,7 +64,7 @@ import { sortedPeople, type PersonRow } from './people'
  * identically. The row is honest and the next pull fills the name in.
  */
 export function tripParticipants(
-  state: DepotState,
+  state: HouseholdState,
   trip: TripState,
 ): readonly PersonRow[] {
   return peopleOn(state, participantIds(trip))
@@ -90,7 +90,7 @@ export function tripParticipants(
  * keeps the caller's order, because there is no label to sort it by.
  */
 export function peopleOn(
-  state: DepotState,
+  state: HouseholdState,
   ids: readonly string[],
 ): readonly PersonRow[] {
   if (ids.length === 0) return []
@@ -129,7 +129,7 @@ export interface TripPieceRow {
  * `Map`.
  */
 export function tripPieces(
-  state: DepotState,
+  state: HouseholdState,
   trip: TripState,
   entry: EntryState,
 ): readonly TripPieceRow[] {

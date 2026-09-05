@@ -1,7 +1,7 @@
 import { type KindValue } from '@foerier/shared'
 import { PersonCluster, Stepper } from '@foerier/ui'
 
-import { personInitial } from '../depot/people'
+import { personInitial } from '../household/people'
 
 import styles from './EntryRow.module.css'
 
@@ -126,7 +126,7 @@ export interface EntryRowProps {
    * Every Participant on this Entry's Trip and whether their Piece is
    * included — read only for `per_person` rows, ignored by every other
    * Kind. Ordered by `GearListSection` through `tripPieces`
-   * (`app/src/depot/trips.ts`), the one join `PiecePicker` also calls, in
+   * (`app/src/household/trips.ts`), the one join `PiecePicker` also calls, in
    * display order — **not** `pieceInclusion`'s own id order
    * (`shared/src/selectors/piece.ts`'s own docstring says why the two
    * differ). An empty array is ruling C's domain fact — no Participants, so

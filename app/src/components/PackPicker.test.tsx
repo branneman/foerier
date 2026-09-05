@@ -16,14 +16,14 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { anId, seededStore } from '../testUtils'
 import { PackPicker } from './PackPicker'
 
 /**
  * `HomePicker.test.tsx`'s harness, over the Trip's world instead of the
  * household's: a **real** store seeded by emitting real ops, never a
- * hand-shaped `DepotState`.
+ * hand-shaped `HouseholdState`.
  */
 
 const TRIP = 'tttttttt-0000-7000-8000-000000000009'
@@ -31,7 +31,7 @@ const TRIP = 'tttttttt-0000-7000-8000-000000000009'
 type PickerProps = Parameters<typeof PackPicker>[0]
 
 function renderPicker(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   props: Partial<PickerProps> = {},
 ) {
   // Real no-ops and a real array, not `vi.fn()`, per `HomePicker.test.tsx`'s
@@ -39,7 +39,7 @@ function renderPicker(
   const selected: TripResidence[] = []
   const closes: number[] = []
   render(
-    <DepotProvider value={store}>
+    <HouseholdProvider value={store}>
       <PackPicker
         tripId={TRIP}
         title="Crate B"
@@ -47,7 +47,7 @@ function renderPicker(
         onSelect={(residence) => selected.push(residence)}
         {...props}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return { selected, closes: () => closes.length }
 }
@@ -84,7 +84,7 @@ function moduleCss(): string {
 }
 
 interface Fixture {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   duffel: string
   crate: string
   sack: string

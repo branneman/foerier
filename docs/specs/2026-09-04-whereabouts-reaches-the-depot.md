@@ -44,7 +44,7 @@ is not lost, and names the three seams it did not reach.
 | An over-claim | A **Whereabouts fact**: the home count floors at `×0`, the card's footer turns ▲, and the one-slot surfaces swap the glyph — D8 ([§2.5](#25-an-over-claim-is-a-whereabouts-fact)) |
 | B1's segment ladder | One function, `whereaboutsText(slice, density)`, three densities — `full · column · chip`. Home's `column` form is `⌂ HOME` because that density's surfaces state the home path in a neighbouring slot ([§3.2](#32-b1s-ladder-is-one-function)) |
 | B2's one-named-two-counted | A second function, `rowWhereabouts(w)`, because it reads the whole answer rather than one slice — and it is the only thing the Depot column and Find's plain row call ([§3.3](#33-b2-is-about-the-answer-not-the-slice)) |
-| Cost | Whereabouts becomes **cross-aggregate**, so it takes S7's `WeakMap<DepotState, …>` memo verbatim; the `CONTAINER` dimension takes a second one ([§3.5](#35-two-memos-and-why-neither-is-new-machinery)) |
+| Cost | Whereabouts becomes **cross-aggregate**, so it takes S7's `WeakMap<HouseholdState, …>` memo verbatim; the `CONTAINER` dimension takes a second one ([§3.5](#35-two-memos-and-why-neither-is-new-machinery)) |
 | `CONTAINER` | A **dimension row and a grouping row**, so `SliceBar`, `ValueMenu` and `SortGroupSheet` change **not at all** — S3's altitude test, passed by the sixth dimension. Sentinel `NOT IN A CONTAINER`; filter deep, group flat — D4, D5 ([§4.4](#44-the-container-dimension-changes-no-component)) |
 | `STATUS` | **Never built.** Ruling B4 retired it; `architecture-design.md` §8.5 already carries the correction |
 | Fixture | **None, and that is the rule rather than an exception** — the fixture rule pins **wire formats**, and this slice adds no op type ([§5.4](#54-no-fixture-and-why-that-is-not-s4s-mistake-again)) |
@@ -62,7 +62,7 @@ the reason the seam was cut here rather than anywhere else.
   evolution rule, no tolerant-reader obligation. An installed PWA holding S9a
   ops queued offline is unaffected by S9b landing, in both directions.
 - **Its whole risk is in agreement, not in convergence.** Every surface here
-  computes from `DepotState`, so every replica computes the same answer by
+  computes from `HouseholdState`, so every replica computes the same answer by
   construction. What can go wrong is two *surfaces* disagreeing — the Depot
   column saying `⌂ HOME` while gear detail says `▸ ALPS 2026` — which is why
   every rule below is stated in exactly one function and read from there.
@@ -334,7 +334,7 @@ map and reads home, which is why the strictest reading (only the differing) was
 also refused: it would drop Kees from the frame B5 draws him in.
 
 **A Map keyed by id, and not an ordered list, on purpose.** The order both
-callers draw is *People-screen order*, which lives in `app/src/depot/people.ts`'s
+callers draw is *People-screen order*, which lives in `app/src/household/people.ts`'s
 `sortedPeople` and exists there because *"the People screen and the owner picker
 are two views of one list; if they sorted differently, picking 'the third one
 down' would mean two different People."* Returning a second ordering from
@@ -349,10 +349,10 @@ scanning every active Trip's Entries, which is S7's exact problem one dimension
 later, and it takes S7's exact answer:
 
 ```ts
-const TRIP_SLICES = new WeakMap<DepotState, Map<string, TripSliceFacts[]>>()
+const TRIP_SLICES = new WeakMap<HouseholdState, Map<string, TripSliceFacts[]>>()
 ```
 
-`DepotState` is immutable and its identity changes on exactly the folds that
+`HouseholdState` is immutable and its identity changes on exactly the folds that
 could change the answer, so the key is exact rather than approximate, and a
 `WeakMap` lets superseded states be collected. `slice.ts`'s `tripMembershipOf`
 states the whole argument, and this is the second instance of it — the sentence
@@ -369,7 +369,7 @@ The `CONTAINER` dimension needs a second memo for a different reason:
 `Dimension.valuesOf` receives `(gear, state)` and no view, and building a
 `containmentView` is O(depot log depot). A per-row build is O(n² log n) on the
 app's most-visited screen. So `slice.ts` gains
-`CONTAINER_ANCESTORS = new WeakMap<DepotState, Map<string, readonly string[]>>()`
+`CONTAINER_ANCESTORS = new WeakMap<HouseholdState, Map<string, readonly string[]>>()`
 beside `TRIP_MEMBERSHIP`, holding each Gear's container ancestors, outermost
 first.
 
@@ -656,7 +656,7 @@ Each is taken here, in code, and named so the next round meets it where it looks
   file.
 
 **Already open and unchanged:** `Popover`'s three waiting callers, the
-`DepotState` misnomer, `sequence()`'s sixth clock-stamper, the
+`HouseholdState` misnomer, `sequence()`'s sixth clock-stamper, the
 two-panes-one-scroller entry, `InvitePreview`'s missing person name, the two 401
 body shapes, `landing/`, and the three `ui/` composites still in `app/` — **to
 which this slice adds no fourth**, `PerPersonCard` being a Find-local card rather
@@ -677,7 +677,7 @@ than a named §5 composite.
 - **F4's slice bar.** B4 puts the packing-status capability on F4 and notes that
   its segmented control plus `○ LEFT` already answer story 13's worked example.
   Giving F4 the full treatment stays story 13's scope: recorded, not built.
-- **`ui/Popover`, the `WhereaboutsCard` move into `ui/`, the `DepotState`
+- **`ui/Popover`, the `WhereaboutsCard` move into `ui/`, the `HouseholdState`
   rename.** None is this slice's, and each has a stated blocker.
 
 ---

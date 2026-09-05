@@ -1,4 +1,4 @@
-import type { DepotState, GearState, Owner } from '../state.ts'
+import type { HouseholdState, GearState, Owner } from '../state.ts'
 
 /**
  * **Ownership on the way out** — the one module that decides what an ownership
@@ -50,7 +50,7 @@ export function ownerOf(gear: GearState): Owner {
  * That is `AppShell`'s `AccountAvatar` rule — "`null` draws an empty circle
  * rather than a placeholder letter" — applied to text.
  */
-export function ownerLabel(state: DepotState, gear: GearState): string {
+export function ownerLabel(state: HouseholdState, gear: GearState): string {
   const owner = ownerOf(gear)
   if (owner.type === 'shared') return 'SHARED'
   const initial = initialOf(state, owner.personId)
@@ -64,7 +64,7 @@ export function ownerLabel(state: DepotState, gear: GearState): string {
  * a Person's, not an owner register's), which is exactly the drift this
  * module's own header warns a second copy invites; a third one inside this
  * file would be the same mistake one line closer to home. */
-function initialOf(state: DepotState, personId: string): string {
+function initialOf(state: HouseholdState, personId: string): string {
   return (state.people[personId]?.name?.value ?? '')
     .trim()
     .charAt(0)
@@ -87,7 +87,7 @@ function initialOf(state: DepotState, personId: string): string {
  * layout, which is why this returns `undefined` rather than `''`.
  */
 export function ownerInitial(
-  state: DepotState,
+  state: HouseholdState,
   gear: GearState,
 ): string | undefined {
   const owner = ownerOf(gear)
@@ -123,7 +123,7 @@ export const UNNAMED_PERSON_GLYPH = '—'
  * look broken and a raw UUID would look worse; `—` is selectable, countable,
  * and honest.
  */
-export function personLabel(state: DepotState, personId: string): string {
+export function personLabel(state: HouseholdState, personId: string): string {
   const name = state.people[personId]?.name?.value ?? ''
   return name.trim() === '' ? UNNAMED_PERSON_GLYPH : name
 }
@@ -151,7 +151,7 @@ export const UNNAMED_PERSON = 'Unnamed person'
  * directly beneath it.
  */
 export function personNameOrUnnamed(
-  state: DepotState,
+  state: HouseholdState,
   personId: string,
 ): string {
   const label = personLabel(state, personId)

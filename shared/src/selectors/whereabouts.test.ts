@@ -25,7 +25,7 @@ import {
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
-import type { DepotState } from '../state.ts'
+import type { HouseholdState } from '../state.ts'
 import { dimension } from './slice.ts'
 import {
   rowWhereabouts,
@@ -55,7 +55,7 @@ function log(specs: readonly OpSpec[], from = 0): OpEnvelope[] {
 
 /** The trip slices of one Gear's answer, in the order `whereabouts` returns them. */
 function tripSlices(
-  state: DepotState,
+  state: HouseholdState,
   gearId: string,
 ): readonly Extract<WhereaboutsSlice, { kind: 'trip' }>[] {
   return whereabouts(state, gearId).slices.filter(
@@ -65,7 +65,7 @@ function tripSlices(
 }
 
 function homeSlice(
-  state: DepotState,
+  state: HouseholdState,
   gearId: string,
 ): Extract<WhereaboutsSlice, { kind: 'home' }> {
   const slice = whereabouts(state, gearId).slices[0]
@@ -1086,7 +1086,7 @@ describe('whereabouts — the memo is keyed on the fold’s identity', () => {
     )
     expect(tripSlices(removed, 'g-tent')).toHaveLength(0)
     // The earlier state is untouched — the cache is keyed on identity, not
-    // on content, and `DepotState` is immutable.
+    // on content, and `HouseholdState` is immutable.
     expect(tripSlices(base, 'g-tent')).toHaveLength(1)
   })
 

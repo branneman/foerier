@@ -10,8 +10,8 @@ import { useState } from 'react'
 import { useLocation } from 'wouter'
 
 import { ParticipantPicker } from '../components/ParticipantPicker'
-import { useDepot } from '../depot/store'
-import { peopleOn } from '../depot/trips'
+import { useHousehold } from '../household/store'
+import { peopleOn } from '../household/trips'
 import { ScreenBand } from '../shell/ScreenBand'
 import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import styles from './NewTrip.module.css'
@@ -85,9 +85,9 @@ import styles from './NewTrip.module.css'
  * below Split, and from the shell's nav above it.
  */
 export function NewTrip() {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-  const sync = useDepot((depot) => depot.sync)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
+  const sync = useHousehold((depot) => depot.sync)
   const [, navigate] = useLocation()
 
   const [name, setName] = useState('')

@@ -16,8 +16,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createAuthApi, type InviteRow, type LoginRow } from '../auth/api'
-import { inMemoryOpLog } from '../depot/opLog'
-import { createDepotStore, DepotProvider } from '../depot/store'
+import { inMemoryOpLog } from '../household/opLog'
+import { createHouseholdStore, HouseholdProvider } from '../household/store'
 import { SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { DEVICE, HOUSEHOLD, ids, noopEngine } from '../testUtils'
@@ -122,7 +122,7 @@ function renderPeople(
   } = options
 
   const log = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -175,14 +175,14 @@ function renderPeople(
   )
 
   render(
-    <DepotProvider value={store}>
+    <HouseholdProvider value={store}>
       <People
         api={api}
         token={TOKEN}
         personId={personId}
         {...(variant === undefined ? {} : { variant })}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
 
   return { store, log }
@@ -336,7 +336,7 @@ describe('the People screen', () => {
     // `AppShell`'s `AccountAvatar` rule: `null` draws an empty circle rather
     // than a placeholder letter, because inventing one is a fact the app does
     // not have. Reachable through an explicit name clear.
-    const store = createDepotStore({
+    const store = createHouseholdStore({
       log: inMemoryOpLog(),
       engine: noopEngine,
       author: anAuthor(),
@@ -360,9 +360,9 @@ describe('the People screen', () => {
       ]),
     )
     render(
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <People api={api} token={TOKEN} personId="ghost" />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     // The circle itself moved to `ui/`'s `PersonCircle`, whose fixed
@@ -378,7 +378,7 @@ describe('the People screen', () => {
 
   it('starts a rename of an unnamed Person from an empty field, not from a dash', async () => {
     const user = userEvent.setup()
-    const store = createDepotStore({
+    const store = createHouseholdStore({
       log: inMemoryOpLog(),
       engine: noopEngine,
       author: anAuthor(),
@@ -402,9 +402,9 @@ describe('the People screen', () => {
       ]),
     )
     render(
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <People api={api} token={TOKEN} personId="ghost" />
-      </DepotProvider>,
+      </HouseholdProvider>,
     )
 
     await user.click(await screen.findByRole('button', { name: 'EDIT' }))

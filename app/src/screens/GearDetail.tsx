@@ -24,7 +24,7 @@ import {
   whereabouts,
   whereaboutsByPerson,
   whereaboutsText,
-  type DepotState,
+  type HouseholdState,
   type GearState,
   type KindValue,
   type Owner,
@@ -47,9 +47,9 @@ import { HomePicker, sameResidence } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
 import { WhereaboutsCard } from '../components/WhereaboutsCard'
-import { KIND_OPTIONS } from '../depot/gear'
-import { personInitial, sortedPeople } from '../depot/people'
-import { useDepot } from '../depot/store'
+import { KIND_OPTIONS } from '../household/gear'
+import { personInitial, sortedPeople } from '../household/people'
+import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './GearDetail.module.css'
@@ -102,7 +102,7 @@ function traitLabel(gear: GearState): string {
  * it was a second, quieter reading of the same register — `nothing` where
  * the selector says `×1` — and it disagreed with the COUNT header six
  * elements down this same screen. */
-function metaLine(state: DepotState, gear: GearState): string {
+function metaLine(state: HouseholdState, gear: GearState): string {
   const owned = ownedCountOf(gear)
   const parts = [traitLabel(gear), ownerLabel(state, gear)]
   if (owned !== null) parts.push(`×${owned}`)
@@ -180,7 +180,7 @@ function pieceChipText(person: PersonWhereabouts): string {
  * `slices`' own order beyond the leading home slice — no second sort.
  */
 function overClaimFooter(
-  state: DepotState,
+  state: HouseholdState,
   gear: GearState,
   gearId: string,
   slices: readonly WhereaboutsSlice[],
@@ -208,9 +208,9 @@ function overClaimFooter(
 export function GearDetail() {
   const params = useParams<{ id: string }>()
   const gearId = params.id
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-  const sync = useDepot((depot) => depot.sync)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
+  const sync = useHousehold((depot) => depot.sync)
   // `splitPane`: at Split this screen is the right-hand pane of `DepotView`,
   // with the Depot list drawn in the left one.
   const header = useScreenHeader({ splitPane: true })

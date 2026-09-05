@@ -4,8 +4,8 @@ import { useLocation, useSearch } from 'wouter'
 
 import type { AuthApi, DeviceRow } from '../auth/api'
 import { formatDate, formatDateTime } from '../format'
-import { useDepot } from '../depot/store'
-import { clearLocalData as clearLocalDataForReal } from '../depot/wiring'
+import { useHousehold } from '../household/store'
+import { clearLocalData as clearLocalDataForReal } from '../household/wiring'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Devices.module.css'
@@ -294,8 +294,8 @@ export function useDeviceSignOut({
   clearLocalData = clearLocalDataForReal,
 }: UseDeviceSignOutArgs) {
   const [, navigate] = useLocation()
-  const readUnsyncedCount = useDepot((depot) => depot.unsyncedCount)
-  const stopSync = useDepot((depot) => depot.stopSync)
+  const readUnsyncedCount = useHousehold((depot) => depot.unsyncedCount)
+  const stopSync = useHousehold((depot) => depot.stopSync)
 
   const [remoteTarget, setRemoteTarget] = useState<DeviceRow | null>(null)
   const [thisDeviceOpen, setThisDeviceOpen] = useState(false)
@@ -457,7 +457,7 @@ export function Devices({
   onSignedOut,
   clearLocalData,
 }: DevicesProps) {
-  const sync = useDepot((depot) => depot.sync)
+  const sync = useHousehold((depot) => depot.sync)
   // `splitPane: false` — `/account/devices` has no two-pane view, and at
   // Desktop it has no render at all: `App.tsx` redirects it to `/account`
   // there, where the same rows unfold into that screen's own card.

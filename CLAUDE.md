@@ -447,7 +447,7 @@ the builder:**
   Gear's own registers in constant time.** Answering it per Gear means
   scanning every Trip's Entries — O(gear × entries) on the Depot's
   most-visited screen — so `slice.ts` carries a module-level
-  `WeakMap<DepotState, …>` memo, keyed on the fold's own immutable identity,
+  `WeakMap<HouseholdState, …>` memo, keyed on the fold's own immutable identity,
   rather than a change to the dimension table's signature. The next
   cross-aggregate dimension should expect to need the same memo, not a new
   mechanism.

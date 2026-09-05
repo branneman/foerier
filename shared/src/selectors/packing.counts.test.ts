@@ -17,7 +17,7 @@ import {
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
-import type { DepotState, TripState } from '../state.ts'
+import type { HouseholdState, TripState } from '../state.ts'
 import {
   entriesOf,
   isContainerEntry,
@@ -214,11 +214,11 @@ function log(specs: readonly OpSpec[], from = 0): OpEnvelope[] {
 const BASE = fold(log(BASE_SPECS))
 
 /** The fixture, plus ops stamped strictly after every one of its own. */
-function withLater(...specs: readonly OpSpec[]): DepotState {
+function withLater(...specs: readonly OpSpec[]): HouseholdState {
   return fold(log(specs, BASE_SPECS.length), BASE)
 }
 
-function tripOf(state: DepotState): TripState {
+function tripOf(state: HouseholdState): TripState {
   const trip = state.trips[TRIP]
   if (trip === undefined) throw new Error(`the fold holds no Trip ${TRIP}`)
   return trip
@@ -226,13 +226,13 @@ function tripOf(state: DepotState): TripState {
 
 const TRIP_STATE = tripOf(BASE)
 
-function itemsIn(state: DepotState): readonly PackingItem[] {
+function itemsIn(state: HouseholdState): readonly PackingItem[] {
   return packingItems(tripOf(state), state)
 }
 
 function itemsFor(
   entryId: string,
-  state: DepotState = BASE,
+  state: HouseholdState = BASE,
 ): readonly PackingItem[] {
   return itemsIn(state).filter((item) => item.entryId === entryId)
 }
@@ -245,24 +245,24 @@ function isPieceItem(item: PackingItem): item is PieceItem {
 
 function piecesFor(
   entryId: string,
-  state: DepotState = BASE,
+  state: HouseholdState = BASE,
 ): readonly PieceItem[] {
   return itemsFor(entryId, state).filter(isPieceItem)
 }
 
-function totalsIn(state: DepotState = BASE) {
+function totalsIn(state: HouseholdState = BASE) {
   return packingTotals(tripOf(state), state)
 }
 
-function groupTotals(entryId: string, state: DepotState = BASE) {
+function groupTotals(entryId: string, state: HouseholdState = BASE) {
   return containerTotals(tripOf(state), state, entryId)
 }
 
-function bucketsIn(state: DepotState = BASE) {
+function bucketsIn(state: HouseholdState = BASE) {
   return personPartition(tripOf(state), state)
 }
 
-function bucketFor(personId: string, state: DepotState = BASE) {
+function bucketFor(personId: string, state: HouseholdState = BASE) {
   const bucket = bucketsIn(state).find(
     (candidate) =>
       candidate.key.kind === 'person' && candidate.key.personId === personId,
@@ -271,11 +271,11 @@ function bucketFor(personId: string, state: DepotState = BASE) {
   return bucket
 }
 
-function disagreementsIn(state: DepotState = BASE) {
+function disagreementsIn(state: HouseholdState = BASE) {
   return disagreements(tripOf(state), state)
 }
 
-function entryOf(entryId: string, state: DepotState = BASE) {
+function entryOf(entryId: string, state: HouseholdState = BASE) {
   const entry = tripOf(state).entries?.[entryId]
   if (entry === undefined) throw new Error(`the fold holds no Entry ${entryId}`)
   return entry
@@ -710,7 +710,7 @@ const TOP_LEVEL = [BIN, BOX, CRATE, DUFFEL] as const
  * an Entry that is loose, and the sum would close over a screen that had
  * drawn the Piece in a bag.
  */
-function partitionOf(state: DepotState): number {
+function partitionOf(state: HouseholdState): number {
   const trip = tripOf(state)
   const items = itemsIn(state)
   const grouped = TOP_LEVEL.reduce(

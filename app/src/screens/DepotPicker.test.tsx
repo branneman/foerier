@@ -14,12 +14,12 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, noopEngine } from '../testUtils'
@@ -28,21 +28,21 @@ import styles from './DepotPicker.module.css'
 
 /**
  * `Trip.test.tsx`'s fixtures — a **real** store, seeded by emitting real ops,
- * never a hand-shaped `DepotState`.
+ * never a hand-shaped `HouseholdState`.
  */
 
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
 const JURA = 'tttttttt-0000-7000-8000-00000000000b'
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   /** Everything the *screen* authored — the seed is subtracted. */
   authored: () => Promise<readonly { type: string; payload: object }[]>
 }
 
 async function seededStore(...specs: readonly OpSpec[]): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -67,7 +67,7 @@ async function seededStore(...specs: readonly OpSpec[]): Promise<Seeded> {
  * `+ Add gear` are both `<Link>`s) with `/trips/:id` and `/add` as
  * destinations a test can assert against without simulating full navigation. */
 function renderPicker(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   props: { tripId?: string; variant?: 'screen' | 'pane' } = {},
 ) {
   const tripId = props.tripId ?? ALPS
@@ -79,9 +79,9 @@ function renderPicker(
     <Router hook={location.hook}>
       <Switch>
         <Route path="/trips/:id/add">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <DepotPicker tripId={tripId} variant={props.variant ?? 'screen'} />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
         <Route path="/trips/:id">{(params) => <p>Trip {params.id}</p>}</Route>
         <Route path="/add">

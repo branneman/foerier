@@ -12,7 +12,7 @@ import {
   tripPhaseMoved,
   tripParticipantRemoved,
   tripPieceRemoved,
-  type DepotState,
+  type HouseholdState,
   type OpAuthor,
   type OpSpec,
   type TripState,
@@ -33,7 +33,7 @@ import {
 
 /**
  * Every fixture goes through the **real** reducer, never a hand-shaped
- * `DepotState` — the rule `shared/src/selectors/trip.test.ts` follows, for the
+ * `HouseholdState` — the rule `shared/src/selectors/trip.test.ts` follows, for the
  * same reason: a selector must never pass against a state the fold could not
  * produce, and the unfolded-Person case below is precisely a state only the
  * fold can produce.
@@ -59,7 +59,7 @@ function anAuthor(): OpAuthor {
   }
 }
 
-function depot(...specs: readonly OpSpec[]): DepotState {
+function depot(...specs: readonly OpSpec[]): HouseholdState {
   const author = anAuthor()
   return fold(
     specs.map((spec) => authorOp(author, spec)),
@@ -67,7 +67,7 @@ function depot(...specs: readonly OpSpec[]): DepotState {
   )
 }
 
-function theTrip(state: DepotState): TripState {
+function theTrip(state: HouseholdState): TripState {
   return state.trips[TRIP]!
 }
 

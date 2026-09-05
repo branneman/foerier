@@ -12,8 +12,8 @@ import { useLocation } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
-import { KIND_OPTIONS, TRAIT_OPTIONS } from '../depot/gear'
-import { useDepot } from '../depot/store'
+import { KIND_OPTIONS, TRAIT_OPTIONS } from '../household/gear'
+import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './AddGear.module.css'
@@ -105,9 +105,9 @@ interface Recorded {
 }
 
 export function AddGear() {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-  const sync = useDepot((depot) => depot.sync)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
+  const sync = useHousehold((depot) => depot.sync)
   const [, navigate] = useLocation()
 
   const [name, setName] = useState('')

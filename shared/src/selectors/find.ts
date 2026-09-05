@@ -1,4 +1,4 @@
-import type { DepotState, GearState } from '../state.ts'
+import type { HouseholdState, GearState } from '../state.ts'
 import { foldText } from '../text.ts'
 import { containmentView, homePath, type PathSegment } from './containment.ts'
 
@@ -42,7 +42,10 @@ function byName(a: GearState, b: GearState): number {
  * `retiredGear`, not here). An empty (or all-whitespace) query matches
  * nothing, rather than the whole depot.
  */
-export function findGear(state: DepotState, query: string): readonly Match[] {
+export function findGear(
+  state: HouseholdState,
+  query: string,
+): readonly Match[] {
   const needle = foldText(query.trim())
   if (needle === '') return []
 

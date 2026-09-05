@@ -8,7 +8,7 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anId, seededStore } from '../testUtils'
@@ -16,21 +16,21 @@ import { AddGear } from './AddGear'
 
 /**
  * Every test seeds a **real** store — `inMemoryOpLog` plus the real reducer
- * behind `createDepotStore` — by emitting real ops through `emit`, exactly as
+ * behind `createHouseholdStore` — by emitting real ops through `emit`, exactly as
  * `Depot.test.tsx` does. The new gear's own id is minted by the screen
  * itself (`systemIdSource`), so a test recovers it by reading back the sole
  * entry in `state.gear` rather than by choosing it up front.
  */
 
-function renderAddGear(store: StoreApi<DepotStoreState>) {
+function renderAddGear(store: StoreApi<HouseholdStoreState>) {
   const location = memoryLocation({ path: '/add', record: true })
   render(
     <Router hook={location.hook}>
       <Switch>
         <Route path="/add">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <AddGear />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
         <Route path="/gear/:id">
           {(params) => <p>Gear detail {params['id']}</p>}
@@ -42,7 +42,7 @@ function renderAddGear(store: StoreApi<DepotStoreState>) {
 }
 
 /** The one gear entry a test's store holds after a submit, and its id. */
-function soleGear(store: StoreApi<DepotStoreState>) {
+function soleGear(store: StoreApi<HouseholdStoreState>) {
   const entries = Object.entries(store.getState().state.gear)
   expect(entries).toHaveLength(1)
   const entry = entries[0]

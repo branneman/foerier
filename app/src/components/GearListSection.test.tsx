@@ -16,7 +16,11 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, useDepot, type DepotStoreState } from '../depot/store'
+import {
+  HouseholdProvider,
+  useHousehold,
+  type HouseholdStoreState,
+} from '../household/store'
 import { seededStore } from '../testUtils'
 import { GearListSection } from './GearListSection'
 
@@ -30,7 +34,7 @@ import { GearListSection } from './GearListSection'
 const TRIP = 'tttttttt-0000-7000-8000-000000000008'
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   trip: () => TripState
 }
 
@@ -48,14 +52,14 @@ function renderSection(
   } = {},
 ) {
   render(
-    <DepotProvider value={seed.store}>
+    <HouseholdProvider value={seed.store}>
       <GearListSection
         trip={seed.trip()}
         editable={overrides.editable ?? true}
         onBringCountChange={overrides.onBringCountChange ?? vi.fn()}
         onRemove={overrides.onRemove ?? vi.fn()}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
 }
 
@@ -68,11 +72,11 @@ function renderSection(
  * (`shared/src/selectors/entry.ts`), so a stale `trip` prop would never see
  * it fold. `Trip.tsx` avoids this by deriving `trip` fresh from
  * `state.trips[tripId]` on every render (`state` itself is a live
- * `useDepot` subscription); this wrapper is that same shape, reused here so
+ * `useHousehold` subscription); this wrapper is that same shape, reused here so
  * the test exercises the real re-fold path rather than a frozen snapshot.
  */
 function ReactiveGearListSection({ tripId }: { tripId: string }) {
-  const trip = useDepot((depot) => depot.state.trips[tripId]!)
+  const trip = useHousehold((depot) => depot.state.trips[tripId]!)
   return (
     <GearListSection
       trip={trip}
@@ -502,9 +506,9 @@ describe('GearListSection', () => {
         }),
       )
       render(
-        <DepotProvider value={seed.store}>
+        <HouseholdProvider value={seed.store}>
           <ReactiveGearListSection tripId={TRIP} />
-        </DepotProvider>,
+        </HouseholdProvider>,
       )
 
       expect(screen.queryByTestId('piece-row')).toBeNull()

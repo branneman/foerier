@@ -328,7 +328,7 @@ name; it does not carry the Person's name, for the reason the sidebar's count is
 
 **The avatar carries an initial, and the chrome cannot read it.** The boards
 draw `M` inside the circle for Mark — folded state, from the Person the Login
-points at. But `AppShell` renders *outside* `DepotProvider`
+points at. But `AppShell` renders *outside* `HouseholdProvider`
 ([§12.6](../architecture-design.md#126-consequences-of-the-r3-shell-round)),
 deliberately, so the nav never depends on a store the signed-out shell has never
 had.
@@ -339,7 +339,7 @@ and passes it to `AppShell` as a prop. A Login whose `person_id` matches no
 folded Person has no initial to draw — the half-finished bootstrap of
 [§2.1](../auth-design.md) — so the circle renders empty rather than with a
 placeholder letter, and the accessible name stays `Account` either way. Account
-*itself* is a screen, renders inside the provider, and uses `useDepot()`
+*itself* is a screen, renders inside the provider, and uses `useHousehold()`
 normally.
 
 ### 6.4 The QR code needs a dependency, and which one was measured
@@ -405,7 +405,7 @@ Boards §12's second confirm sheet, and the only auth surface carrying `▲`.
 
 ### 7.1 The count is exact, and omitted rather than zeroed
 
-`store.unsyncedCount()` (`app/src/depot/store.ts:471`) gains its second caller.
+`store.unsyncedCount()` (`app/src/household/store.ts:471`) gains its second caller.
 The line reads `▲ 4 changes not yet synced. Signing out clears them.` and is
 **omitted entirely** when the count is zero — not rendered as `0 changes`, which
 would invent a warning where there is nothing to warn about.
@@ -416,7 +416,7 @@ line: ending the session drops the store that can answer the question.
 
 ### 7.2 `clearLocalData()` finally has its caller
 
-`app/src/depot/wiring.ts:243` is genuinely uncalled today and its doc comment
+`app/src/household/wiring.ts:243` is genuinely uncalled today and its doc comment
 already names this screen as the caller. The sequence:
 
 ```

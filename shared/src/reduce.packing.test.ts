@@ -10,7 +10,7 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import { emptyState, fold } from './reduce.ts'
-import type { DepotState } from './state.ts'
+import type { HouseholdState } from './state.ts'
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 const DEFAULT_MS = 1_700_000_000_000
@@ -20,7 +20,7 @@ const ENTRY = '77777777-0000-7000-8000-000000000001'
 const CRATE = '77777777-0000-7000-8000-000000000002'
 const MARK = '88888888-0000-7000-8000-000000000001'
 
-function foldOf(...specs: readonly OpSpec[]): DepotState {
+function foldOf(...specs: readonly OpSpec[]): HouseholdState {
   return fold(
     specs.map((spec, i) =>
       anOp(spec, { hlc: hlcAt(i + 1, DEFAULT_MS), deviceId: DEV_A }),

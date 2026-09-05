@@ -12,7 +12,7 @@ import {
   tagsOf,
   whereabouts,
   type ContainmentView,
-  type DepotState,
+  type HouseholdState,
   type DimensionId,
   type GearState,
   type GroupKey,
@@ -23,8 +23,8 @@ import { useMemo } from 'react'
 import { Link } from 'wouter'
 
 import { SliceBar } from '../components/SliceBar'
-import { useDepot } from '../depot/store'
-import { useSliceSpec } from '../depot/useSliceSpec'
+import { useHousehold } from '../household/store'
+import { useSliceSpec } from '../household/useSliceSpec'
 import { DESKTOP, SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Depot.module.css'
 
@@ -59,7 +59,7 @@ import styles from './Depot.module.css'
  * a shape the reducer cannot produce.
  */
 function metaFor(
-  state: DepotState,
+  state: HouseholdState,
   gear: GearState,
   view: ContainmentView,
 ): string | undefined {
@@ -101,7 +101,7 @@ function Row({
   layout,
   selected,
 }: {
-  state: DepotState
+  state: HouseholdState
   gear: GearState
   view: ContainmentView
   layout: 'row' | 'table'
@@ -181,7 +181,7 @@ function isContainerSentinel(groupKey: GroupKey, group: SliceGroup): boolean {
  * reason, and the two cases stay distinguishable in the code.
  */
 function groupHomeMeta(
-  state: DepotState,
+  state: HouseholdState,
   view: ContainmentView,
   groupKey: GroupKey,
   group: SliceGroup,
@@ -205,7 +205,7 @@ function Group({
   groupKey,
 }: {
   group: SliceGroup
-  state: DepotState
+  state: HouseholdState
   view: ContainmentView
   layout: 'row' | 'table'
   selectedId: string | undefined
@@ -270,7 +270,7 @@ export interface DepotProps {
 }
 
 export function Depot({ selectedId }: DepotProps = {}) {
-  const state = useDepot((depot) => depot.state)
+  const state = useHousehold((depot) => depot.state)
   const [spec, setSpec] = useSliceSpec()
   const isDesktop = useMediaQuery(DESKTOP)
   const isSplit = useMediaQuery(SPLIT)

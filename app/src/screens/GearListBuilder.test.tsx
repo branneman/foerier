@@ -14,12 +14,12 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, noopEngine } from '../testUtils'
@@ -27,21 +27,21 @@ import { GearListBuilder } from './GearListBuilder'
 
 /**
  * `Trip.test.tsx`'s and `DepotPicker.test.tsx`'s own fixtures — a **real**
- * store, seeded by emitting real ops, never a hand-shaped `DepotState`.
+ * store, seeded by emitting real ops, never a hand-shaped `HouseholdState`.
  */
 
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
 const JURA = 'tttttttt-0000-7000-8000-00000000000b'
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   /** Everything the *screen* authored — the seed is subtracted. */
   authored: () => Promise<readonly { type: string; payload: object }[]>
 }
 
 async function seededStore(...specs: readonly OpSpec[]): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -71,7 +71,7 @@ async function seededStore(...specs: readonly OpSpec[]): Promise<Seeded> {
  * review, the multi-param regression below).
  */
 function renderBuilder(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   props: { tripId?: string; door?: 'trips' | 'trip'; path?: string } = {},
 ) {
   const tripId = props.tripId ?? ALPS
@@ -85,9 +85,9 @@ function renderBuilder(
     <Router hook={location.hook} searchHook={location.searchHook}>
       <Switch>
         <Route path="/trips/:id/list">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <GearListBuilder tripId={tripId} />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
         <Route path="/trips/:id">{(params) => <p>Trip {params.id}</p>}</Route>
         <Route path="/trips">
@@ -445,9 +445,9 @@ describe('the gear list builder — the two doors', () => {
     })
     render(
       <Router hook={location.hook} searchHook={location.searchHook}>
-        <DepotProvider value={store}>
+        <HouseholdProvider value={store}>
           <GearListBuilder tripId={ALPS} />
-        </DepotProvider>
+        </HouseholdProvider>
       </Router>,
     )
 

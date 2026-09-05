@@ -1,4 +1,4 @@
-import type { DepotState, GearState, PlaceState } from '../state.ts'
+import type { HouseholdState, GearState, PlaceState } from '../state.ts'
 import { containmentView, type ContainmentView } from './containment.ts'
 import { isCounted } from './kind.ts'
 import { byNameThenId } from './order.ts'
@@ -18,12 +18,12 @@ function isRetired(gear: GearState): boolean {
   return gear.retired?.value === true
 }
 
-function allGear(state: DepotState): GearState[] {
+function allGear(state: HouseholdState): GearState[] {
   return Object.values(state.gear)
 }
 
 /** Everything in the depot that has not been retired, sorted for display. */
-export function visibleGear(state: DepotState): readonly GearState[] {
+export function visibleGear(state: HouseholdState): readonly GearState[] {
   return allGear(state)
     .filter((gear) => !isRetired(gear))
     .sort(byNameThenId)
@@ -33,7 +33,7 @@ export function visibleGear(state: DepotState): readonly GearState[] {
  * The retired half of the same partition. Retiring is a soft delete
  * (invariant 7) — the gear is still here, and `gear.restored` brings it back.
  */
-export function retiredGear(state: DepotState): readonly GearState[] {
+export function retiredGear(state: HouseholdState): readonly GearState[] {
   return allGear(state).filter(isRetired).sort(byNameThenId)
 }
 
@@ -48,7 +48,7 @@ export function retiredGear(state: DepotState): readonly GearState[] {
  * is not waiting for a home.
  */
 export function looseGear(
-  state: DepotState,
+  state: HouseholdState,
   view: ContainmentView = containmentView(state),
 ): readonly GearState[] {
   return allGear(state)
@@ -107,7 +107,7 @@ export function ownedCountOf(gear: GearState): number | null {
  * `place.removed` has no restore op in the MVP, but it is the same LWW
  * mechanism (§3.5) — so this reads the register rather than assuming absence.
  */
-export function visiblePlaces(state: DepotState): readonly PlaceState[] {
+export function visiblePlaces(state: HouseholdState): readonly PlaceState[] {
   return Object.values(state.places)
     .filter((place) => place.removed?.value !== true)
     .sort(byNameThenId)
@@ -151,7 +151,7 @@ export function tagsOf(gear: GearState): readonly string[] {
  * `selectors/entry.ts`, where a Bring-count is a number a Quartermaster
  * actually authored. Trip surfaces are untouched by this.
  */
-export function depotCounts(state: DepotState): {
+export function depotCounts(state: HouseholdState): {
   gear: number
 } {
   return { gear: visibleGear(state).length }

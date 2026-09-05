@@ -30,17 +30,17 @@ The test-suite conventions are **not** here; they live in
 ### 1.1 One store per session, one hook, the whole fold
 
 The client has one Zustand vanilla store, built **per signed-in session** by
-`createSessionDepot` (`app/src/depot/wiring.ts`) and handed down through
-`DepotProvider`. A screen or component reads it with `useDepot(selector)`
-(`app/src/depot/store.ts`) and nothing else — there is no module-level store to
-import. Nearly every reader takes the whole fold, `useDepot(d => d.state)`,
+`createSessionHousehold` (`app/src/household/wiring.ts`) and handed down through
+`HouseholdProvider`. A screen or component reads it with `useHousehold(selector)`
+(`app/src/household/store.ts`) and nothing else — there is no module-level store to
+import. Nearly every reader takes the whole fold, `useHousehold(d => d.state)`,
 and derives with `shared/` selectors inside `useMemo(…, [state])`, because the
 reducer returns the **identical** object for a lost write, so the fold's
 identity is the memo key (`Depot.tsx` is the worked example: `containmentView`,
 `sliceDepot`, `depotCounts`, each memoised on `state`).
 
 `AppShell` sits **outside** the provider on purpose and is fed counts and the
-avatar initial as props from `App.tsx`. `useDepotStore()` — the nullable
+avatar initial as props from `App.tsx`. `useHouseholdStore()` — the nullable
 variant — has one caller, `FirstSync`, which renders before a depot exists.
 
 *Drift symptom:* a component importing a store module, or holding a second
@@ -179,7 +179,7 @@ a confirm naming a conflict between two other Trips entirely.
 ### 1.7 A cross-aggregate dimension memoises on the fold's identity
 
 `sliceDepot`'s Trip-membership dimension cannot be answered from a Gear's own
-registers, so `slice.ts` carries a module-level `WeakMap<DepotState, …>` keyed
+registers, so `slice.ts` carries a module-level `WeakMap<HouseholdState, …>` keyed
 on the fold — the same identity guarantee §1.1 leans on — rather than a change
 to the dimension table's signature. The prediction that the next such reader
 would want the same memo and not a new mechanism held at S9b, twice:
@@ -200,7 +200,7 @@ remove.
 
 ### 1.8 App-side display selectors compose `shared/` answers
 
-`app/src/depot/trips.ts` and `people.ts` are the shelf for **display**
+`app/src/household/trips.ts` and `people.ts` are the shelf for **display**
 derivations that need nothing from the store or the DOM — `tripChip`,
 `tripDateRange`, `packedLabel`, `sortedPeople`, `personInitial`. They compose
 `shared/` selectors and formatting; they hold no rule a `shared/` selector

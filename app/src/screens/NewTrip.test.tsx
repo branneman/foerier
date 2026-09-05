@@ -8,12 +8,12 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, noopEngine } from '../testUtils'
@@ -25,7 +25,7 @@ import styles from './NewTrip.module.css'
  * screen.
  *
  * Every test drives a **real** store — `inMemoryOpLog` plus the real reducer
- * behind `createDepotStore` — and reads the log back, as `AddGear.test.tsx`
+ * behind `createHouseholdStore` — and reads the log back, as `AddGear.test.tsx`
  * does. Reading the *log* rather than the fold is the point here and not a
  * habit: the fold cannot tell one op from three, and the single most important
  * property of this screen is that a Trip with a name and nothing else costs
@@ -37,14 +37,14 @@ import styles from './NewTrip.module.css'
 type OpPayload = Record<string, unknown>
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   /** Everything the *screen* authored — the seed is subtracted. */
   authored: () => Promise<readonly { type: string; payload: OpPayload }[]>
 }
 
 async function seeded(...specs: readonly OpSpec[]): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -70,9 +70,9 @@ function renderNewTrip({ store }: Seeded) {
     <Router hook={location.hook}>
       <Switch>
         <Route path="/trips/new">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <NewTrip />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
         <Route path="/trips/:id">
           {(params) => <p>Trip {params['id']}</p>}
@@ -84,7 +84,7 @@ function renderNewTrip({ store }: Seeded) {
 }
 
 /** The one Trip a store holds after a create, and its id. */
-function soleTrip(store: StoreApi<DepotStoreState>): string {
+function soleTrip(store: StoreApi<HouseholdStoreState>): string {
   const tripIds = Object.keys(store.getState().state.trips)
   expect(tripIds).toHaveLength(1)
   const id = tripIds[0]

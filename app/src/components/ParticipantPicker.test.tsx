@@ -4,14 +4,14 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { seededStore } from '../testUtils'
 import { ParticipantPicker } from './ParticipantPicker'
 
 /**
  * `OwnerPicker.test.tsx`'s fixtures, because this is `OwnerPicker`'s twin: a
  * **real** store seeded by emitting real ops, never a hand-shaped
- * `DepotState`.
+ * `HouseholdState`.
  */
 
 /** Every toggle the picker asked for, in order — it emits no `trip.*` op of
@@ -19,13 +19,13 @@ import { ParticipantPicker } from './ParticipantPicker'
 type Toggle = { personId: string; next: boolean }
 
 function renderPicker(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   selected: readonly string[] = [],
 ) {
   const toggles: Toggle[] = []
   let closed = 0
   render(
-    <DepotProvider value={store}>
+    <HouseholdProvider value={store}>
       <ParticipantPicker
         selected={selected}
         onToggle={(personId, next) => toggles.push({ personId, next })}
@@ -33,7 +33,7 @@ function renderPicker(
           closed += 1
         }}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return { toggles, closes: () => closed }
 }

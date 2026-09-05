@@ -15,13 +15,13 @@ import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { createAuthApi } from '../auth/api'
-import { inMemoryOpLog } from '../depot/opLog'
+import { inMemoryOpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
   type EngineFactory,
-} from '../depot/store'
+} from '../household/store'
 import { Account } from '../screens/Account'
 import { AddGear } from '../screens/AddGear'
 import { DepotPicker } from '../screens/DepotPicker'
@@ -117,8 +117,8 @@ const offlineEngine: EngineFactory = () => ({
 async function seededStore(
   specs: readonly OpSpec[] = [],
   engine: EngineFactory = idleEngine,
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
+): Promise<StoreApi<HouseholdStoreState>> {
+  const store = createHouseholdStore({
     log: inMemoryOpLog(),
     engine,
     author: anAuthor(),
@@ -193,7 +193,7 @@ const authApi = createAuthApi(
  * every width, the two below reached from Account's own card and from the
  * People rows it unfolds inline at Desktop — so it is counted at all three.
  */
-function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
+function renderInShell(store: StoreApi<HouseholdStoreState>, path: string) {
   const location = memoryLocation({ path, record: true })
   render(
     // `searchHook` wired (not just `hook`) so `GearListBuilder`'s own
@@ -203,7 +203,7 @@ function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
     // `path` actually asks for.
     <Router hook={location.hook} searchHook={location.searchHook}>
       <AppShell syncLine="SYNCED" syncTone="reachable">
-        <DepotProvider value={store}>
+        <HouseholdProvider value={store}>
           <Switch>
             <Route path="/add">
               <AddGear />
@@ -271,7 +271,7 @@ function renderInShell(store: StoreApi<DepotStoreState>, path: string) {
               )}
             </Route>
           </Switch>
-        </DepotProvider>
+        </HouseholdProvider>
       </AppShell>
     </Router>,
   )
@@ -283,7 +283,7 @@ function syncLines(): readonly HTMLElement[] {
 }
 
 async function aGear(): Promise<{
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   id: string
 }> {
   const id = anId()
@@ -294,7 +294,7 @@ async function aGear(): Promise<{
 }
 
 async function aTrip(): Promise<{
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   id: string
 }> {
   const id = anId()
@@ -789,7 +789,7 @@ describe('the back link — withheld only where its destination is already drawn
  */
 describe('the sync dot at Split — amber while the household is unreachable, on every screen', () => {
   type Seed = () => Promise<{
-    store: StoreApi<DepotStoreState>
+    store: StoreApi<HouseholdStoreState>
     path: string
   }>
 

@@ -19,8 +19,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
-import { createDepotStore, DepotProvider } from '../depot/store'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
+import { createHouseholdStore, HouseholdProvider } from '../household/store'
 import { DEVICE, HOUSEHOLD, noopEngine, SEEDED_AT } from '../testUtils'
 import { PackingRow } from './PackingRow'
 
@@ -98,7 +98,7 @@ async function renderPieceRow(
   tripItems?: readonly PackingItem[],
 ): Promise<Rendered> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -111,7 +111,7 @@ async function renderPieceRow(
   const openPieceSheet = vi.fn()
 
   render(
-    <DepotProvider value={store}>
+    <HouseholdProvider value={store}>
       {/* `showResidence` because **PERSON mode is the only caller that
           passes `personId`, and it passes both** — rendering a Piece row
           without it would pin a configuration the app never draws. */}
@@ -124,7 +124,7 @@ async function renderPieceRow(
         onOpenPicker={openPicker}
         onOpenPieceSheet={openPieceSheet}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
 
   return {

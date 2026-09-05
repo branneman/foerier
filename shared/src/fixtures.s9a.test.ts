@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fixture from '../fixtures/s9a-packing.ops.json' with { type: 'json' }
-import type { DepotState, EntryState } from './state.ts'
+import type { HouseholdState, EntryState } from './state.ts'
 import type { OpEnvelope } from './ops.ts'
 import { fold } from './reduce.ts'
 
@@ -64,7 +64,10 @@ const MARK = 'p-s9a-1'
 const ELS = 'p-s9a-2'
 const KIM = 'p-s9a-3'
 
-function entryOf(state: DepotState, entryId: string): EntryState | undefined {
+function entryOf(
+  state: HouseholdState,
+  entryId: string,
+): EntryState | undefined {
   return state.trips[TRIP]?.entries?.[entryId]
 }
 

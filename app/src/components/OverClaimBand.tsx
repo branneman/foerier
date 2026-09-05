@@ -3,12 +3,12 @@ import {
   tripNameOrUnnamed,
   UNNAMED_TRIP,
   type Claim,
-  type DepotState,
+  type HouseholdState,
   type OverClaim,
 } from '@foerier/shared'
 import { useState } from 'react'
 
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import styles from './OverClaimBand.module.css'
 
 /**
@@ -118,7 +118,7 @@ export function OverClaimBand({
   settle,
 }: OverClaimBandProps) {
   // Hooks run unconditionally — the empty-band `null` returns after this.
-  const state = useDepot((depot) => depot.state)
+  const state = useHousehold((depot) => depot.state)
   const groups = overClaimGroups(overClaims, tripId, state)
 
   if (groups.length === 0) return null
@@ -212,7 +212,7 @@ export function ConflictRows({
   overClaims,
   settle,
 }: ConflictRowsProps) {
-  const state = useDepot((depot) => depot.state)
+  const state = useHousehold((depot) => depot.state)
   const [expanded, setExpanded] = useState(false)
 
   const relevant = overClaims.filter(
@@ -257,7 +257,7 @@ export function ConflictRows({
 interface ConflictRowProps {
   readonly overClaim: OverClaim
   readonly tripId: string
-  readonly state: DepotState
+  readonly state: HouseholdState
   /** See {@link ConflictRows}'s `nameEachRow`. */
   readonly nameRow: boolean
   /** Absent renders the block facts-only — ruling I. */
@@ -401,7 +401,7 @@ function PersonSettleRoutes({
   readonly overClaim: OverClaim
   readonly here: Claim | undefined
   readonly otherTripIds: readonly string[]
-  readonly state: DepotState
+  readonly state: HouseholdState
   readonly settle: SettleRoutes
 }) {
   return (
@@ -568,7 +568,7 @@ function unionContestedPersonIds(
  * (which always holds a resolved Trip) and this row-and-settle-route rule
  * share one substitution instead of two copies drifting apart.
  */
-function tripRowLabel(state: DepotState, tripId: string): string {
+function tripRowLabel(state: HouseholdState, tripId: string): string {
   const trip = state.trips[tripId]
   return trip === undefined ? UNNAMED_TRIP : tripNameOrUnnamed(trip)
 }
@@ -586,7 +586,7 @@ function tripRowLabel(state: DepotState, tripId: string): string {
  * `an` because the substitute begins with a vowel — change the words and
  * change the article with them.
  */
-function tripSentenceLabel(state: DepotState, tripId: string): string {
+function tripSentenceLabel(state: HouseholdState, tripId: string): string {
   const label = tripRowLabel(state, tripId)
   return label === UNNAMED_TRIP ? `an ${UNNAMED_TRIP.toLowerCase()}` : label
 }
@@ -662,7 +662,7 @@ export interface OverClaimGroup {
 export function overClaimGroups(
   overClaims: readonly OverClaim[],
   tripId: string,
-  state: DepotState,
+  state: HouseholdState,
 ): readonly OverClaimGroup[] {
   const relevant = overClaims.filter(
     (overClaim) => hereClaims(overClaim, tripId).length > 0,
@@ -715,7 +715,7 @@ export function overClaimGroups(
 function crossTripLine(
   overClaims: readonly OverClaim[],
   tripId: string,
-  state: DepotState,
+  state: HouseholdState,
 ): string {
   const entries = entriesIn(overClaims, tripId)
   const noun = pluralize(entries, 'entry', 'entries')
@@ -759,7 +759,7 @@ function hereOnlyDepotLine(
 function hereOnlyPersonLine(
   overClaims: readonly OverClaim[],
   tripId: string,
-  state: DepotState,
+  state: HouseholdState,
 ): string {
   const entries = entriesIn(overClaims, tripId)
   const noun = pluralize(entries, 'entry', 'entries')
@@ -791,7 +791,7 @@ function hereOnlyPersonLine(
 function rowFact(
   overClaim: OverClaim,
   tripId: string,
-  state: DepotState,
+  state: HouseholdState,
   nameRow: boolean,
 ): string {
   // Ruling F's correction: `nameRow` is the caller's multi-Trip heuristic

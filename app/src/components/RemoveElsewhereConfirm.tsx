@@ -9,8 +9,8 @@ import {
 } from '@foerier/shared'
 import { Confirm } from '@foerier/ui'
 
-import { useDepot } from '../depot/store'
-import { tripChip } from '../depot/trips'
+import { useHousehold } from '../household/store'
+import { tripChip } from '../household/trips'
 import styles from './RemoveElsewhereConfirm.module.css'
 
 /**
@@ -83,8 +83,8 @@ export function RemoveElsewhereConfirm({
   onClose,
   personId,
 }: RemoveElsewhereConfirmProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   const otherTrip = state.trips[otherTripId]
   // Unreachable from `OverClaimBand`'s own `REMOVE ON` route when it opens —

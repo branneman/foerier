@@ -8,8 +8,8 @@ import {
 } from '@foerier/shared'
 import { PersonCircle, Sheet } from '@foerier/ui'
 
-import { useDepot } from '../depot/store'
-import { tripPieces } from '../depot/trips'
+import { useHousehold } from '../household/store'
+import { tripPieces } from '../household/trips'
 import styles from './PiecePicker.module.css'
 
 /**
@@ -66,8 +66,8 @@ export interface PiecePickerProps {
 }
 
 export function PiecePicker({ trip, entry, onClose }: PiecePickerProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   // `tripPieces` (`depot/trips.ts`) is the one join this row and
   // `EntryRow`'s trailing slot both call — `pieceInclusion`'s own order is

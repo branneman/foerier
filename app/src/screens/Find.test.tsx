@@ -20,13 +20,13 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog } from '../depot/opLog'
+import { inMemoryOpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
   type EngineFactory,
-} from '../depot/store'
+} from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, anId, noopEngine } from '../testUtils'
@@ -34,10 +34,10 @@ import { Find } from './Find'
 
 /**
  * Every test seeds a **real** store — `inMemoryOpLog` plus the real reducer
- * behind `createDepotStore` — by emitting real ops through `emit`, exactly as
+ * behind `createHouseholdStore` — by emitting real ops through `emit`, exactly as
  * `Depot.test.tsx` does. `findGear` and `whereabouts` (`@foerier/shared`) are
  * the real selectors from the previous task; nothing here hand-shapes a
- * `DepotState`.
+ * `HouseholdState`.
  */
 
 /**
@@ -58,8 +58,8 @@ const offlineEngine: EngineFactory = () => ({
 async function seededStore(
   specs: readonly OpSpec[],
   engine: EngineFactory = noopEngine,
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
+): Promise<StoreApi<HouseholdStoreState>> {
+  const store = createHouseholdStore({
     log: inMemoryOpLog(),
     engine,
     author: anAuthor(),
@@ -69,15 +69,15 @@ async function seededStore(
   return store
 }
 
-function renderFind(store: StoreApi<DepotStoreState>) {
+function renderFind(store: StoreApi<HouseholdStoreState>) {
   const location = memoryLocation({ path: '/', record: true })
   render(
     <Router hook={location.hook}>
       <Switch>
         <Route path="/">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <Find />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
         <Route path="/gear/:id">
           {(params) => <p>Gear detail {params['id']}</p>}

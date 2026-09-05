@@ -1,7 +1,7 @@
 import type { OpSpec } from '../src/authoring.ts'
 import type { OpEnvelope } from '../src/ops.ts'
 import { emptyState, fold } from '../src/reduce.ts'
-import type { DepotState } from '../src/state.ts'
+import type { HouseholdState } from '../src/state.ts'
 import { anOp, DEFAULT_HLC_MS, hlcAt } from './factories.ts'
 
 /**
@@ -21,7 +21,7 @@ import { anOp, DEFAULT_HLC_MS, hlcAt } from './factories.ts'
  * have said so if the sixth had not been.
  *
  * Fixtures go through the **real reducer**, never a hand-shaped
- * {@link DepotState}, so a selector can never pass against a state the
+ * {@link HouseholdState}, so a selector can never pass against a state the
  * reducer could not produce.
  */
 
@@ -65,11 +65,13 @@ export function stamp(
 export function foldAt(
   ms: number,
   specs: readonly (readonly OpSpec[])[],
-): DepotState {
+): HouseholdState {
   return fold(stamp(specs.flat(), { ms }), emptyState())
 }
 
 /** {@link foldAt} at the factories' own default millisecond — the common case. */
-export function depot(...specs: readonly (readonly OpSpec[])[]): DepotState {
+export function depot(
+  ...specs: readonly (readonly OpSpec[])[]
+): HouseholdState {
   return foldAt(DEFAULT_HLC_MS, specs)
 }

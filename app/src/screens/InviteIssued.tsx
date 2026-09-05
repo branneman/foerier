@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 
 import type { AuthApi, IssuedInvite } from '../auth/api'
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './InviteIssued.module.css'
@@ -80,7 +80,7 @@ export function InviteIssued({
 }: InviteIssuedProps) {
   const own = subjectPersonId === personId
   const header = useScreenHeader({ splitPane: false })
-  const subjectName = useDepot(
+  const subjectName = useHousehold(
     (depot) => depot.state.people[subjectPersonId]?.name?.value ?? null,
   )
   const name = subjectName ?? 'this person'

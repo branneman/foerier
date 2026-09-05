@@ -15,7 +15,7 @@ import {
   tripLabel,
   visibleGear,
   type ContainmentView,
-  type DepotState,
+  type HouseholdState,
   type DimensionId,
   type GearState,
   type SliceSpec,
@@ -26,7 +26,7 @@ import { Link } from 'wouter'
 
 import { TagPicker } from '../components/TagPicker'
 import { ValueMenu } from '../components/ValueMenu'
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import { qtyFor } from './Depot'
@@ -178,7 +178,7 @@ function filtersActiveLabel(count: number): string {
  * label for per-person, the owner's bare initial for everything else —
  * `undefined` when there is nothing to draw.
  */
-function rowSuffix(gear: GearState, state: DepotState): string | undefined {
+function rowSuffix(gear: GearState, state: HouseholdState): string | undefined {
   const kind = kindOf(gear)
   if (kind === 'counted') return qtyFor(gear)
   if (kind === 'per_person') return dimension('kind').format(kind, state)
@@ -192,7 +192,7 @@ function rowSuffix(gear: GearState, state: DepotState): string | undefined {
  * to `homePath`'s own default, per S7 review F3 — see the call site. */
 function rowMeta(
   gear: GearState,
-  state: DepotState,
+  state: HouseholdState,
   view: ContainmentView,
 ): string {
   const segments = homePath(state, gear.id, view).map((segment) => segment.name)
@@ -205,9 +205,9 @@ function rowMeta(
 }
 
 export function DepotPicker({ tripId, variant }: DepotPickerProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-  const sync = useDepot((depot) => depot.sync)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
+  const sync = useHousehold((depot) => depot.sync)
   // `splitPane: false` — this is not the detail pane of a list also on
   // screen. Only the `'screen'` variant renders what it answers: the `'pane'`
   // variant's own band (back link + sync) belongs to Task 11's builder page,
@@ -237,7 +237,7 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
    *
    * Amendment ruling K: `IN LIST ✓` renders from the local op **at the tap,
    * in front of the work queue**. `emit` is deliberately durable-first —
-   * append to the log, then fold, then nudge the outbox (`depot/store.ts`) —
+   * append to the log, then fold, then nudge the outbox (`household/store.ts`) —
    * and that ordering is not up for renegotiation, because reversing it turns
    * a lost render into a lost fact. But it does mean the folded answer to
    * "is this in the list" arrives a queue-turn after the tap that put it

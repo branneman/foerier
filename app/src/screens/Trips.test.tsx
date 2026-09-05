@@ -15,8 +15,11 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
-import { createDepotStore, type DepotStoreState } from '../depot/store'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
+import {
+  createHouseholdStore,
+  type HouseholdStoreState,
+} from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import {
@@ -31,7 +34,7 @@ import { Trips } from './Trips'
 /**
  * A **real** store seeded by emitting real ops, as every screen test in this
  * directory does. It matters more than usual here because the three sections
- * are `tripSections`' partition and its order: a hand-shaped `DepotState`
+ * are `tripSections`' partition and its order: a hand-shaped `HouseholdState`
  * could put a Trip in a section the fold would never place it in, and the
  * assertion that the list reads top to bottom would then prove nothing.
  */
@@ -39,14 +42,14 @@ import { Trips } from './Trips'
 /** The seed's wall clock — `DAY N` counts local calendar days from it. */
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   /** The phase moves authored **since** the seed — the screen's own output. */
   moves: () => Promise<readonly { trip: string; phase: unknown }[]>
 }
 
 async function seeded(...specs: readonly OpSpec[]): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),

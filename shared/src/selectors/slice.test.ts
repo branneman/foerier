@@ -21,7 +21,7 @@ import {
 } from '../authoring.ts'
 import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
-import type { DepotState } from '../state.ts'
+import type { HouseholdState } from '../state.ts'
 import { normalizeTag, type TagString } from '../tags.ts'
 import { visibleGear } from './depot.ts'
 import {
@@ -61,7 +61,7 @@ function slice(overrides: Partial<SliceSpec> = {}): SliceSpec {
 }
 
 /** Every gear the result holds, in the order it holds it, across groups. */
-function shownIds(state: DepotState, spec: SliceSpec): string[] {
+function shownIds(state: HouseholdState, spec: SliceSpec): string[] {
   return sliceDepot(state, spec).groups.flatMap((group) =>
     group.gear.map((gear) => gear.id),
   )
@@ -82,7 +82,7 @@ function shownIds(state: DepotState, spec: SliceSpec): string[] {
  * `NAME Z→A` produce the same list and the sort tests below would pass
  * without the sort ever being consulted.
  */
-function aDepot(): DepotState {
+function aDepot(): HouseholdState {
   return fold([
     ...stamp(aGear({ id: 'g-pot', name: 'Pot set', kind: 'single' }), {
       start: 1,
@@ -117,7 +117,7 @@ function aDepot(): DepotState {
  * | `g-jacket` | Down jacket | Els |
  * | `g-boots` | Winter boots | Mark |
  */
-function anOwnedDepot(): DepotState {
+function anOwnedDepot(): HouseholdState {
   return fold([
     ...stamp(aPerson({ id: 'els', name: 'Els' }), { start: 1 }),
     ...stamp(aPerson({ id: 'mark', name: 'Mark' }), { start: 2 }),
@@ -164,7 +164,7 @@ function anOwnedDepot(): DepotState {
  * real hex id, because a hand-named id would not exercise the tiebreak the
  * pin exists for.
  */
-function aTrippedDepot(): DepotState {
+function aTrippedDepot(): HouseholdState {
   return fold([
     ...stamp(aGear({ id: 'g-tent', name: 'Tent' }), { start: 1 }),
     ...stamp(aGear({ id: 'g-stove', name: 'Stove' }), { start: 2 }),
@@ -310,7 +310,7 @@ describe('the Trip-membership index', () => {
     )
     expect(beforeTent).toEqual(['t-alps', 't-vosges'])
 
-    // Removing Vosges's Entry folds to a *new* `DepotState` object — the
+    // Removing Vosges's Entry folds to a *new* `HouseholdState` object — the
     // memo's key changes, so this is not the same cache entry as `before`'s.
     const after = fold([one(tripEntryRemoved('t-vosges', 'e1'), 50)], before)
     expect(after).not.toBe(before)
@@ -469,7 +469,7 @@ describe('the person dimension', () => {
  * | `lamp` | Lamp | Attic directly — no container ancestor |
  * | `rope` | Rope | nowhere at all |
  */
-function aContainedDepot(): DepotState {
+function aContainedDepot(): HouseholdState {
   return fold([
     ...stamp(aPlace({ id: 'attic', name: 'Attic' }), { start: 1 }),
     ...stamp(aGear({ id: 'shelf', name: 'Shelf L-Top', container: true }), {

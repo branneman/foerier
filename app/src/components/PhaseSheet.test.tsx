@@ -11,12 +11,12 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { anAuthor, noopEngine } from '../testUtils'
 import activationStyles from './ActivationConfirm.module.css'
 import { PhaseSheet } from './PhaseSheet'
@@ -35,7 +35,7 @@ const THIRD_TRIP = 'tttttttt-0000-7000-8000-000000000003'
 const GEAR = 'gggggggg-0000-7000-8000-000000000001'
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   trip: () => TripState
   /** The phases moved to **since** the seed — the sheet's whole output. */
   moves: () => Promise<readonly unknown[]>
@@ -46,7 +46,7 @@ async function seededTrip(
   name = 'Alps 2026',
 ): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -75,7 +75,7 @@ async function seededTrip(
  */
 async function seededDraftClash(name = 'Vosges — Oct'): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -120,7 +120,7 @@ async function seededDraftClash(name = 'Vosges — Oct'): Promise<Seeded> {
  */
 async function seededUnrelatedClash(): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -163,14 +163,14 @@ async function phaseMoves(log: OpLog): Promise<readonly unknown[]> {
 function renderSheet(seeded: Seeded) {
   let closed = 0
   render(
-    <DepotProvider value={seeded.store}>
+    <HouseholdProvider value={seeded.store}>
       <PhaseSheet
         trip={seeded.trip()}
         onClose={() => {
           closed += 1
         }}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
   return { closes: () => closed }
 }

@@ -1,7 +1,7 @@
 import { compareStamps, type Stamp } from '../hlc.ts'
 import { stampOf } from '../registers.ts'
 import type {
-  DepotState,
+  HouseholdState,
   EntryState,
   TripResidence,
   TripState,
@@ -133,7 +133,7 @@ const LOOSE: TripHolderRef = Object.freeze({ kind: 'loose' })
  */
 function resolvePointer(
   visible: ReadonlyMap<string, EntryState>,
-  state: DepotState,
+  state: HouseholdState,
   residence: TripResidence | null | undefined,
 ): TripHolderRef {
   if (residence === undefined || residence === null) return LOOSE
@@ -203,7 +203,7 @@ function lowestEdgeOf(
  */
 export function tripContainmentView(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): TripContainmentView {
   // `entriesOf`'s label sort is computed and then thrown away by the `.sort()`
   // below, and that is the right trade: this function needs *which* Entries a
@@ -337,7 +337,7 @@ export interface TripPathSegment {
  */
 export function tripPath(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   entryId: string,
   view: TripContainmentView = tripContainmentView(trip, state),
 ): readonly TripPathSegment[] {

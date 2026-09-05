@@ -1,5 +1,5 @@
 import type {
-  DepotState,
+  HouseholdState,
   EntryState,
   PieceState,
   StageValue,
@@ -165,7 +165,7 @@ function stageRow(stage: StageValue): JourneyStage | undefined {
  */
 export function statusOf(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): StatusValue | null {
   if (isContainerEntry(entry, state)) return null
   return entry.status?.value ?? 'not_packed'
@@ -179,7 +179,7 @@ export function statusOf(
 export function pieceStatusOf(
   piece: PieceState | undefined,
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): StatusValue | null {
   if (isContainerEntry(entry, state)) return null
   return piece?.status?.value ?? 'not_packed'
@@ -209,7 +209,7 @@ export function pieceStatusOf(
  */
 export function entryResidenceOf(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): TripResidence | null {
   if (entryKind(entry, state) === 'per_person') return null
   return entry.residence?.value ?? TRIP_LOOSE
@@ -218,7 +218,7 @@ export function entryResidenceOf(
 /** The container's journey stage, or `null` for a non-container. */
 export function stageOf(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): StageValue | null {
   if (!isContainerEntry(entry, state)) return null
   return entry.stage?.value ?? 'home'
@@ -451,7 +451,7 @@ function residenceOfHolder(holder: TripHolderRef): TripResidence {
  */
 export function packingItems(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   view: TripContainmentView = tripContainmentView(trip, state),
 ): readonly PackingItem[] {
   const items: PackingItem[] = []
@@ -531,7 +531,7 @@ export function countOf(items: readonly PackingItem[]): PackingCount {
 /** The Trip's own `● 5/13 PIECES · 8 LEFT`, over {@link packingItems}. */
 export function packingTotals(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): PackingCount {
   return countOf(packingItems(trip, state))
 }
@@ -626,7 +626,7 @@ function isInside(
  */
 export function containerTotals(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   entryId: string,
   view: TripContainmentView = tripContainmentView(trip, state),
   items: readonly PackingItem[] = packingItems(trip, state, view),
@@ -670,7 +670,7 @@ export function containerTotals(
  */
 export function ridesAlongCount(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   entryId: string,
   view: TripContainmentView = tripContainmentView(trip, state),
   items: readonly PackingItem[] = packingItems(trip, state, view),
@@ -739,7 +739,7 @@ export interface PersonBucket {
  */
 export function personPartition(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
 ): readonly PersonBucket[] {
   // Rule 2, resolved once per Entry rather than once per item. Only Personal
   // ownership is recorded: every Entry absent from this map is rule 3.
@@ -826,7 +826,7 @@ export interface Disagreement {
  */
 export function disagreements(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   view: TripContainmentView = tripContainmentView(trip, state),
 ): readonly Disagreement[] {
   const items = packingItems(trip, state, view)

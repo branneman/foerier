@@ -11,12 +11,12 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog } from '../depot/opLog'
+import { inMemoryOpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { anAuthor, noopEngine } from '../testUtils'
 import { ReopenConfirm } from './ReopenConfirm'
 import styles from './ReopenConfirm.module.css'
@@ -29,8 +29,8 @@ import styles from './ReopenConfirm.module.css'
  *
  * A **real** store, seeded by emitting real ops (`PhaseSheet.test.tsx`'s own
  * rule, and now load-bearing rather than optional here): Task 14 gives this
- * component its own `useDepot` reads, for `overClaimsIfActive` and for the
- * settle routes' emits, so every render needs a `DepotProvider` above it —
+ * component its own `useHousehold` reads, for `overClaimsIfActive` and for the
+ * settle routes' emits, so every render needs a `HouseholdProvider` above it —
  * not only a hand-folded `TripState` passed in as a prop.
  */
 
@@ -39,12 +39,12 @@ const OTHER_TRIP = 'tttttttt-0000-7000-8000-000000000002'
 const GEAR = 'gggggggg-0000-7000-8000-000000000001'
 
 interface Seeded {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   trip: () => TripState
 }
 
 async function aClosedTrip(name = 'Tessin 2025'): Promise<Seeded> {
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log: inMemoryOpLog(),
     engine: noopEngine,
     author: anAuthor(),
@@ -62,7 +62,7 @@ async function aClosedTrip(name = 'Tessin 2025'): Promise<Seeded> {
  * Trip would cause on reopening" case does at the selector tier.
  */
 async function aClosedTripClash(): Promise<Seeded> {
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log: inMemoryOpLog(),
     engine: noopEngine,
     author: anAuthor(),
@@ -99,14 +99,14 @@ function renderConfirm(
   },
 ) {
   render(
-    <DepotProvider value={seeded.store}>
+    <HouseholdProvider value={seeded.store}>
       <ReopenConfirm
         trip={seeded.trip()}
         to={props.to}
         onCancel={props.onCancel ?? (() => {})}
         onConfirm={props.onConfirm ?? (() => {})}
       />
-    </DepotProvider>,
+    </HouseholdProvider>,
   )
 }
 

@@ -10,7 +10,7 @@ import {
 import { PersonCluster } from '@foerier/ui'
 import { Link } from 'wouter'
 
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import {
   leftLabel,
   packedLabel,
@@ -18,7 +18,7 @@ import {
   tripChip,
   tripDateRange,
   tripParticipants,
-} from '../depot/trips'
+} from '../household/trips'
 import { entryCountLabel } from './GearListSection'
 import styles from './TripCard.module.css'
 
@@ -249,7 +249,7 @@ export function TripCard({
   progress,
   onOpenPhase,
 }: TripCardProps) {
-  const state = useDepot((depot) => depot.state)
+  const state = useHousehold((depot) => depot.state)
 
   const label = tripLabel(trip)
   // The prose half of the glyph/prose split (`docs/design/README.md` §5c):

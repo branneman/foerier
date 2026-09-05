@@ -9,7 +9,7 @@ import {
   whereaboutsByPerson,
   whereaboutsText,
   type ContainmentView,
-  type DepotState,
+  type HouseholdState,
   type Match,
   type PathSegment,
   type PersonWhereabouts,
@@ -19,8 +19,12 @@ import { GearRow, Logo, PersonCircle } from '@foerier/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'wouter'
 
-import { personInitial, sortedPeople, type PersonRow } from '../depot/people'
-import { useDepot } from '../depot/store'
+import {
+  personInitial,
+  sortedPeople,
+  type PersonRow,
+} from '../household/people'
+import { useHousehold } from '../household/store'
 import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Find.module.css'
 
@@ -103,7 +107,7 @@ function CountedCard({
   match,
   view,
 }: {
-  state: DepotState
+  state: HouseholdState
   match: Match
   view: ContainmentView
 }) {
@@ -173,7 +177,7 @@ function PlainRow({
   match,
   view,
 }: {
-  state: DepotState
+  state: HouseholdState
   match: Match
   view: ContainmentView
 }) {
@@ -284,7 +288,7 @@ function PersonPieceRow({
  * prevent, drawn once more on this surface.
  */
 function piecePeopleFor(
-  state: DepotState,
+  state: HouseholdState,
   gearId: string,
   view: ContainmentView,
 ): {
@@ -347,7 +351,7 @@ function PerPersonCard({
 }
 
 export function Find() {
-  const state = useDepot((depot) => depot.state)
+  const state = useHousehold((depot) => depot.state)
   const isDesktop = useMediaQuery(DESKTOP)
   const [query, setQuery] = useState('')
   const [recent, setRecent] = useState<string[]>([])

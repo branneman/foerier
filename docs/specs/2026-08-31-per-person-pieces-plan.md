@@ -103,12 +103,12 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import { emptyState, fold } from './reduce.ts'
-import type { DepotState } from './state.ts'
+import type { HouseholdState } from './state.ts'
 
 const DEV_A = 'aaaaaaaa-0000-7000-8000-000000000001'
 const DEFAULT_MS = 1_700_000_000_000
 
-function depot(...specs: readonly (readonly OpSpec[])[]): DepotState {
+function depot(...specs: readonly (readonly OpSpec[])[]): HouseholdState {
   return fold(
     specs
       .flat()
@@ -235,13 +235,13 @@ In `shared/src/reduce.ts`, directly beneath `writeEntry`:
  * not invalidated by an op that changed nothing.
  */
 function writePiece(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
   entryId: string,
   personId: string,
   stamp: Stamp,
   update: (piece: PieceState, stamp: Stamp) => PieceState,
-): DepotState {
+): HouseholdState {
   return writeEntry(state, tripId, entryId, stamp, (entry, st) => {
     const existing = entry.pieces?.[personId]
     const current = existing ?? { id: personId }
@@ -508,7 +508,7 @@ import { participantIds } from './trip.ts'
  * Person label through `tripParticipants`, and ruling E then sorts excluded
  * circles to the front; both live at the cluster, not here.
  *
- * Takes no `DepotState`: unlike `entryKind` or `bringCountOf` this asks
+ * Takes no `HouseholdState`: unlike `entryKind` or `bringCountOf` this asks
  * nothing of another aggregate.
  */
 export interface PieceInclusion {
@@ -896,7 +896,7 @@ git commit -m "Cap a cluster at four slots, and never hide the exception"
 
 **Interfaces:**
 - Consumes: `pieceInclusion` (Task 2), `PersonCircle` (Task 5),
-  `ui/Sheet`, `tripParticipants` (`app/src/depot/trips.ts`), `useDepot`.
+  `ui/Sheet`, `tripParticipants` (`app/src/household/trips.ts`), `useHousehold`.
 - Produces: `PiecePicker` with
   `{ trip: TripState; entry: EntryState; onClose: () => void }`.
 

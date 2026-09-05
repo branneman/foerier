@@ -574,8 +574,8 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   `Sheet` and `Confirm` already use to keep routing in `app/`. Designing that
   view model against a single screen is the second reason to wait for the
   second caller, not just the bar. `TripCard` is blocked four ways, not
-  one: it reads `useDepot`, renders the router's `Link` where `GearRow` takes
-  `anchorProps`, imports `app/`'s own `depot/trips` helpers and
+  one: it reads `useHousehold`, renders the router's `Link` where `GearRow` takes
+  `anchorProps`, imports `app/`'s own `household/trips` helpers and
   `GearListSection`'s label, and calls `shared/` selectors at runtime.
   `LedgerList`, named in this list, is story 33 and has never existed.
   **`JourneyRail` was built at S9a and built in `app/`**, making three: it is
@@ -583,7 +583,7 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   `stageLabel` from `@foerier/shared`, which `ui/` does not depend on — so the
   move is either a new dependency edge or a stage table passed down as props,
   and that is a decision rather than a relocation. Its one caller is `Packing`.
-- **Screens / containers (`app/`)** — read the fold through `useDepot`, derive
+- **Screens / containers (`app/`)** — read the fold through `useHousehold`, derive
   with **`shared/`'s selectors** (plain functions; `shared/` knows nothing of
   Zustand), then hand plain data down to `ui/`.
 

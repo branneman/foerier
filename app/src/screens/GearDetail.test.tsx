@@ -21,12 +21,12 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
 import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-} from '../depot/store'
+  createHouseholdStore,
+  HouseholdProvider,
+  type HouseholdStoreState,
+} from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, anId, noopEngine } from '../testUtils'
@@ -42,16 +42,16 @@ function aTag(raw: string): TagString {
 
 /**
  * Every test seeds a **real** store — `inMemoryOpLog` plus the real reducer
- * behind `createDepotStore` — by emitting real ops through `emit`, exactly as
+ * behind `createHouseholdStore` — by emitting real ops through `emit`, exactly as
  * `Depot.test.tsx` and `AddGear.test.tsx` do. Never a hand-shaped
- * `DepotState`.
+ * `HouseholdState`.
  */
 
 async function seededStore(
   specs: readonly OpSpec[] = [],
   log: OpLog = inMemoryOpLog(),
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
+): Promise<StoreApi<HouseholdStoreState>> {
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -61,15 +61,18 @@ async function seededStore(
   return store
 }
 
-function renderGearDetail(store: StoreApi<DepotStoreState>, gearId: string) {
+function renderGearDetail(
+  store: StoreApi<HouseholdStoreState>,
+  gearId: string,
+) {
   const location = memoryLocation({ path: `/gear/${gearId}`, record: true })
   const result = render(
     <Router hook={location.hook}>
       <Switch>
         <Route path="/gear/:id">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <GearDetail />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
         <Route path="/">
           <p>Depot list</p>

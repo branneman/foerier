@@ -8,7 +8,7 @@ import {
   tripPieceRemoved,
   type OpSpec,
 } from '../authoring.ts'
-import type { DepotState } from '../state.ts'
+import type { HouseholdState } from '../state.ts'
 import { overClaims, overClaimsFor, overClaimsIfActive } from './claim.ts'
 
 describe('Single gear', () => {
@@ -391,7 +391,7 @@ describe('per-person claims read Pieces', () => {
   const ELS = 'p-els'
   const KIM = 'p-kim'
 
-  function twoTripFold(...extra: readonly OpSpec[]): DepotState {
+  function twoTripFold(...extra: readonly OpSpec[]): HouseholdState {
     return depot(
       aGear({ id: GEAR, kind: 'per_person' }),
       aTrip({ id: ALPS, phase: 'pack_out', participants: [MARK, ELS] }),

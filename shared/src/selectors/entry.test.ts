@@ -18,7 +18,7 @@ import {
   type OpSpec,
 } from '../authoring.ts'
 import { fold } from '../reduce.ts'
-import type { DepotState, EntryState, TripState } from '../state.ts'
+import type { HouseholdState, EntryState, TripState } from '../state.ts'
 import {
   bringCountOf,
   entriesOf,
@@ -29,12 +29,12 @@ import {
   visibleEntry,
 } from './entry.ts'
 
-function trip(state: DepotState, id: string): TripState {
+function trip(state: HouseholdState, id: string): TripState {
   return state.trips[id]!
 }
 
 function entryOf(
-  state: DepotState,
+  state: HouseholdState,
   tripId: string,
   entryId: string,
 ): EntryState | undefined {

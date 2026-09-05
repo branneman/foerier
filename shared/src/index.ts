@@ -21,7 +21,7 @@ export type { Register } from './registers.ts'
 export { stampOf, writeRegister } from './registers.ts'
 
 export type {
-  DepotState,
+  HouseholdState,
   EntrySource,
   EntryState,
   GearState,

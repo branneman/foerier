@@ -261,7 +261,7 @@ export interface AppShellProps {
   /**
    * The letter the avatar draws, or `null` for an empty circle
    * (`docs/design/README.md` §11). `AppShell` renders outside
-   * `DepotProvider`, deliberately, so this is handed in rather than read
+   * `HouseholdProvider`, deliberately, so this is handed in rather than read
    * here — see `useAccountInitial` in `App.tsx`.
    */
   accountInitial?: string | null

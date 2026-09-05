@@ -9,7 +9,7 @@ import {
   STATUSES,
   tripPieceStatusSet,
   UNNAMED_PERSON_GLYPH,
-  type DepotState,
+  type HouseholdState,
   type EntryState,
   type StatusValue,
   type TripResidence,
@@ -18,8 +18,8 @@ import {
 import { PersonCircle, Sheet, StatusPill } from '@foerier/ui'
 import { useMemo } from 'react'
 
-import { useDepot } from '../depot/store'
-import { tripParticipants } from '../depot/trips'
+import { useHousehold } from '../household/store'
+import { tripParticipants } from '../household/trips'
 import styles from './PieceStatusSheet.module.css'
 
 /**
@@ -188,7 +188,7 @@ export function pillToneForStatus(
  */
 export function residenceLabel(
   trip: TripState,
-  state: DepotState,
+  state: HouseholdState,
   residence: TripResidence,
 ): string {
   if (residence.in === 'loose') return '▸ LOOSE'
@@ -205,8 +205,8 @@ export function PieceStatusSheet({
   onClose,
   onOpenPieceMove,
 }: PieceStatusSheetProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   const trip: TripState | undefined = state.trips[tripId]
   const entry: EntryState | undefined = trip?.entries?.[entryId]

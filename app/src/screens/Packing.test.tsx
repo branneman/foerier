@@ -13,7 +13,7 @@ import {
   tripPhaseMoved,
   tripPieceMoved,
   tripPieceStatusSet,
-  type DepotState,
+  type HouseholdState,
   type OpSpec,
   type PhaseValue,
   type StageValue,
@@ -26,8 +26,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
-import { inMemoryOpLog, type OpLog } from '../depot/opLog'
-import { createDepotStore, DepotProvider } from '../depot/store'
+import { inMemoryOpLog, type OpLog } from '../household/opLog'
+import { createHouseholdStore, HouseholdProvider } from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, noopEngine } from '../testUtils'
@@ -74,7 +74,7 @@ interface Seeded {
   /** The fold, for the one assertion that has to prove a *positive* control:
    * that the seed genuinely over-claims, so the band's absence is F4's own
    * decision rather than an empty selector. */
-  state: () => DepotState
+  state: () => HouseholdState
 }
 
 /** Renders `/trips/:id/packing` at `path`, over a store seeded with `specs`. */
@@ -83,7 +83,7 @@ async function renderPacking(
   ...specs: readonly OpSpec[]
 ): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
-  const store = createDepotStore({
+  const store = createHouseholdStore({
     log,
     engine: noopEngine,
     author: anAuthor(),
@@ -97,9 +97,9 @@ async function renderPacking(
     <Router hook={location.hook}>
       <Switch>
         <Route path="/trips/:id/packing">
-          <DepotProvider value={store}>
+          <HouseholdProvider value={store}>
             <Packing />
-          </DepotProvider>
+          </HouseholdProvider>
         </Route>
       </Switch>
     </Router>,

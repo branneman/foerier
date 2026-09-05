@@ -1,8 +1,8 @@
 import { useStore } from 'zustand'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { useDepotStore, type DepotStoreState } from '../depot/store'
-import type { BootstrapProgress } from '../depot/syncEngine'
+import { useHouseholdStore, type HouseholdStoreState } from '../household/store'
+import type { BootstrapProgress } from '../household/syncEngine'
 import styles from './FirstSync.module.css'
 
 /**
@@ -75,7 +75,7 @@ const FOLDING_COPY =
   'instantly and works offline.'
 
 export function FirstSync(props: FirstSyncProps) {
-  const store = useDepotStore()
+  const store = useHouseholdStore()
   // The join screen renders before its Device has a depot. No store is no
   // fold in progress, which is exactly what the ungated frame shows.
   if (store === null) return <FirstSyncFrame progress={null} {...props} />
@@ -85,7 +85,7 @@ export function FirstSync(props: FirstSyncProps) {
 function BoundFirstSync({
   store,
   ...props
-}: FirstSyncProps & { store: StoreApi<DepotStoreState> }) {
+}: FirstSyncProps & { store: StoreApi<HouseholdStoreState> }) {
   const progress = useStore(store, (depot) => depot.bootstrap)
   return (
     <FirstSyncFrame

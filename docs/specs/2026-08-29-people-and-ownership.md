@@ -176,7 +176,7 @@ S3's table comment anticipated this exactly:
 
 The anticipation was right and the parameter is one function off. It is
 `format` that resolves a `personId` to a name, not `valuesOf` — `valuesOf`
-returns the id. So `format(value: string, state: DepotState): string`.
+returns the id. So `format(value: string, state: HouseholdState): string`.
 
 `SliceBar` stays state-free: it gains a bound **`formatFor(id, value)`** prop
 beside its existing `valuesFor(id)`, and `Depot.tsx` supplies both from the
@@ -219,8 +219,8 @@ format`. It generalises onto a **`GROUPINGS` table** beside the dimension table:
 interface Grouping {
   id: Exclude<GroupKey, 'none'>
   label: string                                  // 'KIND', 'OWNER'
-  keyOf(gear: GearState, state: DepotState): string | undefined
-  format(key: string, state: DepotState): string
+  keyOf(gear: GearState, state: HouseholdState): string | undefined
+  format(key: string, state: HouseholdState): string
 }
 ```
 

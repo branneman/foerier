@@ -6,7 +6,7 @@ import {
   systemIdSource,
   visiblePlaces,
   type ContainmentView,
-  type DepotState,
+  type HouseholdState,
   type HolderRef,
   type PlaceState,
   type Residence,
@@ -14,7 +14,7 @@ import {
 import { Confirm, Sheet } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 
-import { useDepot } from '../depot/store'
+import { useHousehold } from '../household/store'
 import styles from './HomePicker.module.css'
 
 /**
@@ -136,7 +136,7 @@ function excludedSubtree(
  * container-gear is ever returned (invariant 2); a plain item under the same
  * holder is simply never a row here. */
 function containerRowsUnder(
-  state: DepotState,
+  state: HouseholdState,
   view: ContainmentView,
   holder: HolderRef,
   excluded: ReadonlySet<string>,
@@ -213,8 +213,8 @@ export function HomePicker({
   current,
   moving,
 }: HomePickerProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   const [editing, setEditing] = useState(false)
   const [addingPlace, setAddingPlace] = useState(false)

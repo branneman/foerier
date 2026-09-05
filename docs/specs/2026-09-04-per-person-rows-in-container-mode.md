@@ -60,7 +60,7 @@ no call site re-derives it:
  *  *where* is only ever a per-Piece fact (§5e C0). */
 export function entryResidenceOf(
   entry: EntryState,
-  state: DepotState,
+  state: HouseholdState,
 ): TripResidence | null
 ```
 

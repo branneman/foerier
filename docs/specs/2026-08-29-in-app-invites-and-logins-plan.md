@@ -1913,7 +1913,7 @@ Change the props to `InviteIssuedProps` as declared above, derive `own`, and rep
 
 ```tsx
   const own = subjectPersonId === personId
-  const subjectName = useDepot(
+  const subjectName = useHousehold(
     (depot) => depot.state.people[subjectPersonId]?.name?.value ?? null,
   )
   const name = subjectName ?? 'this person'

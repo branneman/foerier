@@ -21,9 +21,12 @@ import {
 import { indexedDbSessionStore, type SessionStore } from './auth/sessionStore'
 import { useSession } from './auth/useSession'
 import { FirstSync } from './components/FirstSync'
-import { DepotProvider, type DepotStoreState } from './depot/store'
-import { syncLine, syncTone } from './depot/syncLabel'
-import { createSessionDepot, type DepotFactory } from './depot/wiring'
+import { HouseholdProvider, type HouseholdStoreState } from './household/store'
+import { syncLine, syncTone } from './household/syncLabel'
+import {
+  createSessionHousehold,
+  type HouseholdFactory,
+} from './household/wiring'
 import { DepotView } from './shell/DepotView'
 import { Account } from './screens/Account'
 import { AddGear } from './screens/AddGear'
@@ -88,9 +91,9 @@ function SignedInShell({
   onSignedOut,
   children,
 }: {
-  store: StoreApi<DepotStoreState>
+  store: StoreApi<HouseholdStoreState>
   personId: string
-  onSignedOut: (store: StoreApi<DepotStoreState>) => void
+  onSignedOut: (store: StoreApi<HouseholdStoreState>) => void
   children: ReactNode
 }) {
   const sync = useStore(store, (depot) => depot.sync)
@@ -109,9 +112,9 @@ function SignedInShell({
   // pull is a bootstrap until the first page carries `household_seq`.
   if (bootstrap !== null) {
     return (
-      <DepotProvider value={store}>
+      <HouseholdProvider value={store}>
         <FirstSync variant="screen" />
-      </DepotProvider>
+      </HouseholdProvider>
     )
   }
 
@@ -122,7 +125,7 @@ function SignedInShell({
       counts={counts}
       accountInitial={accountInitial}
     >
-      <DepotProvider value={store}>{children}</DepotProvider>
+      <HouseholdProvider value={store}>{children}</HouseholdProvider>
     </AppShell>
   )
 }
@@ -142,11 +145,11 @@ function SignedInShell({
  * does not hold a collection.
  *
  * Read here rather than inside `AppShell` because the shell is rendered
- * *outside* the `DepotProvider` — deliberately, so the nav does not depend on
+ * *outside* the `HouseholdProvider` — deliberately, so the nav does not depend on
  * a store the signed-out shell has never had.
  */
 function useDestinationCounts(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
 ): Readonly<Partial<Record<string, number>>> {
   const state = useStore(store, (depot) => depot.state)
   // Both memoed on the fold rather than recomputed on every sync tick:
@@ -160,7 +163,7 @@ function useDestinationCounts(
  * The letter in the avatar (`docs/design/README.md` §11).
  *
  * Read here rather than inside `AppShell` for the same reason the counts are:
- * the shell renders *outside* `DepotProvider`, deliberately, so the nav never
+ * the shell renders *outside* `HouseholdProvider`, deliberately, so the nav never
  * depends on a store the signed-out shell has never had.
  *
  * Null rather than a placeholder when the Person is not folded yet — a Login
@@ -168,7 +171,7 @@ function useDestinationCounts(
  * invented letter is worse than an empty circle.
  */
 function useAccountInitial(
-  store: StoreApi<DepotStoreState>,
+  store: StoreApi<HouseholdStoreState>,
   personId: string,
 ): string | null {
   const state = useStore(store, (depot) => depot.state)
@@ -208,14 +211,14 @@ export interface AppProps {
   api?: AuthApi
   sessionStore?: SessionStore
   pendingStore?: PendingStore
-  createDepot?: DepotFactory
+  createDepot?: HouseholdFactory
 }
 
 export function App({
   api = createAuthApi(),
   sessionStore = indexedDbSessionStore,
   pendingStore = defaultPendingStore,
-  createDepot = createSessionDepot,
+  createDepot = createSessionHousehold,
 }: AppProps = {}) {
   const { session, loading, sessionLost, signIn, signOut, handleUnauthorized } =
     useSession(sessionStore)
@@ -224,7 +227,7 @@ export function App({
   const isDesktop = useMediaQuery(DESKTOP)
   const isSplitOrWider = useMediaQuery(SPLIT)
   const [depotStore, setDepotStore] =
-    useState<StoreApi<DepotStoreState> | null>(null)
+    useState<StoreApi<HouseholdStoreState> | null>(null)
   const [unsyncedCount, setUnsyncedCount] = useState(0)
 
   /**
@@ -234,7 +237,7 @@ export function App({
    * flushes after the next sign-in, and saying so needs a real number.
    */
   const onSignedOut = useCallback(
-    (store: StoreApi<DepotStoreState>) => {
+    (store: StoreApi<HouseholdStoreState>) => {
       void store
         .getState()
         .unsyncedCount()
@@ -253,7 +256,7 @@ export function App({
   /**
    * One depot per signed-in session. Building it starts the engine; the
    * cleanup stops it, and the next session gets a fresh one rather than a
-   * resumed one — matching `depot/store.ts`'s "a frozen engine is never
+   * resumed one — matching `household/store.ts`'s "a frozen engine is never
    * resumed" rule.
    *
    * Signing out does not clear the local log from here. That is
@@ -268,7 +271,7 @@ export function App({
     }
 
     let cancelled = false
-    let built: StoreApi<DepotStoreState> | null = null
+    let built: StoreApi<HouseholdStoreState> | null = null
 
     requestPersistentStorage()
 

@@ -6,8 +6,8 @@ import {
 import { PersonCircle, Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
-import { sortedPeople } from '../depot/people'
-import { useDepot } from '../depot/store'
+import { sortedPeople } from '../household/people'
+import { useHousehold } from '../household/store'
 import styles from './ParticipantPicker.module.css'
 
 /**
@@ -72,8 +72,8 @@ export function ParticipantPicker({
   onToggle,
   onClose,
 }: ParticipantPickerProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   // Mount resets these — `ui/`'s `Sheet` has no `open` prop, so a caller
   // writes `{open && <ParticipantPicker …/>}` and closing genuinely unmounts.

@@ -1,6 +1,6 @@
 import { compareStamps, type Stamp } from '../hlc.ts'
 import { stampOf } from '../registers.ts'
-import type { DepotState, GearState, Residence } from '../state.ts'
+import type { HouseholdState, GearState, Residence } from '../state.ts'
 
 /**
  * The containment tree is **emergent** ([domain §3](../../../docs/domain-model.md)):
@@ -92,7 +92,7 @@ export function residenceOf(gear: GearState): Residence {
  * Reasons 1–3, in one pass: the pointer as written, resolved against the state
  * it points into, with no knowledge of cycles yet.
  */
-function resolvePointer(state: DepotState, gear: GearState): HolderRef {
+function resolvePointer(state: HouseholdState, gear: GearState): HolderRef {
   const residence = residenceOf(gear)
   if (residence.in === 'loose') return LOOSE
 
@@ -131,7 +131,7 @@ function resolvePointer(state: DepotState, gear: GearState): HolderRef {
  * is ever restructured.
  */
 function lowestEdgeOf(
-  state: DepotState,
+  state: HouseholdState,
   cycle: readonly string[],
 ): string | undefined {
   let best: { id: string; stamp: Stamp } | undefined
@@ -163,7 +163,7 @@ function lowestEdgeOf(
  * failure mode outright — a failure mode the convergence tier cannot see,
  * because it compares folded state and this runs downstream of the fold.
  */
-export function containmentView(state: DepotState): ContainmentView {
+export function containmentView(state: HouseholdState): ContainmentView {
   const gearIds = Object.keys(state.gear).sort()
 
   // Reasons 1–3.
@@ -268,7 +268,7 @@ function nameOf(entity: { name?: { value: string | null } }): string {
  * stops rather than looping.
  */
 export function homePath(
-  state: DepotState,
+  state: HouseholdState,
   gearId: string,
   view: ContainmentView = containmentView(state),
 ): PathSegment[] {

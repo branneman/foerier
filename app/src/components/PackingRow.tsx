@@ -23,9 +23,9 @@ import {
 import { PersonCluster, StatusPill } from '@foerier/ui'
 import { useMemo } from 'react'
 
-import { personInitial } from '../depot/people'
-import { useDepot } from '../depot/store'
-import { tripParticipants } from '../depot/trips'
+import { personInitial } from '../household/people'
+import { useHousehold } from '../household/store'
+import { tripParticipants } from '../household/trips'
 import styles from './PackingRow.module.css'
 import {
   pillToneForStatus,
@@ -236,8 +236,8 @@ export function PackingRow({
   onOpenPicker,
   onOpenPieceSheet,
 }: PackingRowProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   const trip = state.trips[tripId]
   const entry = trip?.entries?.[entryId]

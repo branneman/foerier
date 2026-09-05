@@ -1,6 +1,6 @@
 import { compareStamps, type Stamp } from '../hlc.ts'
 import { stampOf, type Register } from '../registers.ts'
-import type { DepotState, GearState } from '../state.ts'
+import type { HouseholdState, GearState } from '../state.ts'
 import { foldText } from '../text.ts'
 import { containmentView } from './containment.ts'
 import { tagsOf, visibleGear } from './depot.ts'
@@ -85,7 +85,7 @@ export interface Dimension {
    * need it: S7's Trip membership is a cross-aggregate question. Costing it
    * now saves the table being reshaped by the first dimension that asks.
    */
-  valuesOf(gear: GearState, state: DepotState): readonly string[]
+  valuesOf(gear: GearState, state: HouseholdState): readonly string[]
   /**
    * How one value is drawn. Sentence case and the `#` a tag chip draws but
    * never stores; CAPS is a CSS transform where a surface wants it, matching
@@ -98,7 +98,7 @@ export interface Dimension {
    * by one: `valuesOf` returns the id, and it is `format` that has to turn it
    * into a name.
    */
-  format(value: string, state: DepotState): string
+  format(value: string, state: HouseholdState): string
   /**
    * A value that sorts before every other value whatever its count — the
    * boards' Loose-first rule. `Grouping.pinned`'s field (below), same name
@@ -140,7 +140,7 @@ const NOT_IN_ANY_TRIP = 'none'
  * does not: answering per Gear means scanning every Trip's Entries, an
  * O(gear × entries) cost this screen cannot absorb per render.
  *
- * `DepotState` is immutable and its identity changes on exactly the folds
+ * `HouseholdState` is immutable and its identity changes on exactly the folds
  * that could change this answer — the reducer returns the same object when a
  * write loses — so the key is exact rather than approximate, and a
  * `WeakMap` lets superseded states be collected. No signature changes: S3
@@ -148,12 +148,14 @@ const NOT_IN_ANY_TRIP = 'none'
  * first dimension that needed it, and this is that dimension.
  */
 const TRIP_MEMBERSHIP = new WeakMap<
-  DepotState,
+  HouseholdState,
   Map<string, readonly string[]>
 >()
 
 /** Builds (once per state) or returns the cached gear→trips index. */
-function tripMembershipOf(state: DepotState): Map<string, readonly string[]> {
+function tripMembershipOf(
+  state: HouseholdState,
+): Map<string, readonly string[]> {
   const cached = TRIP_MEMBERSHIP.get(state)
   if (cached !== undefined) return cached
 
@@ -198,7 +200,7 @@ const NOT_IN_A_CONTAINER = 'none'
  * sort `containment.ts`'s own header describes. A per-row build, once per
  * Gear on the Depot's most-visited screen, is O(n² log n)
  * (`docs/specs/2026-09-04-whereabouts-reaches-the-depot.md` §3.5). This
- * builds one `containmentView(state)` exactly once per `DepotState` and
+ * builds one `containmentView(state)` exactly once per `HouseholdState` and
  * walks it once per Gear, memoising the result the same way
  * `tripMembershipOf` does.
  *
@@ -216,7 +218,7 @@ const NOT_IN_A_CONTAINER = 'none'
  * the moment the build finishes.
  */
 const CONTAINER_ANCESTORS = new WeakMap<
-  DepotState,
+  HouseholdState,
   Map<string, readonly string[]>
 >()
 
@@ -236,7 +238,7 @@ const CONTAINER_ANCESTORS = new WeakMap<
  * matter how many pieces of gear share a containment branch.
  */
 function containerAncestorsOf(
-  state: DepotState,
+  state: HouseholdState,
 ): Map<string, readonly string[]> {
   const cached = CONTAINER_ANCESTORS.get(state)
   if (cached !== undefined) return cached
@@ -467,7 +469,7 @@ export interface DimensionValue {
  * sixth dimension's row an addition rather than a new branch here.
  */
 export function dimensionValues(
-  state: DepotState,
+  state: HouseholdState,
   id: DimensionId,
 ): readonly DimensionValue[] {
   const of = dimension(id)
@@ -616,7 +618,7 @@ function nameOf(gear: GearState): string {
  */
 function passesFilters(
   gear: GearState,
-  state: DepotState,
+  state: HouseholdState,
   filters: SliceSpec['filters'],
 ): boolean {
   for (const [id, selected] of Object.entries(filters)) {
@@ -678,9 +680,9 @@ interface Grouping {
   /** The segmented control's label: `KIND`, `OWNER`. */
   label: string
   /** This gear's single bucket, or `undefined` for the `—` bucket. */
-  keyOf(gear: GearState, state: DepotState): string | undefined
+  keyOf(gear: GearState, state: HouseholdState): string | undefined
   /** The group header's text. */
-  format(key: string, state: DepotState): string
+  format(key: string, state: HouseholdState): string
   /**
    * A key that sorts before every other group whatever its label.
    *
@@ -756,7 +758,7 @@ export function groupLabel(key: GroupKey): string {
 
 function groupGear(
   gear: readonly GearState[],
-  state: DepotState,
+  state: HouseholdState,
   group: GroupKey,
 ): readonly SliceGroup[] {
   if (gear.length === 0) return []
@@ -809,7 +811,10 @@ function groupGear(
  * Pure, and a fold of local state like every other selector here: there is
  * nothing for the network to be in the way of.
  */
-export function sliceDepot(state: DepotState, spec: SliceSpec): SliceResult {
+export function sliceDepot(
+  state: HouseholdState,
+  spec: SliceSpec,
+): SliceResult {
   const all = visibleGear(state)
   // The same fold `selectors/find.ts` applies to a query — two search fields
   // in one app disagreeing about whether `Ölzeug` matches `olzeug` is a bug

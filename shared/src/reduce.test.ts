@@ -1274,7 +1274,7 @@ describe('trips', () => {
       tripPhaseMovedOp('t1', 'pack_out', at(9)),
     ])
     // Every handler propagates identity: a late-arriving older op must not
-    // fabricate a new Trip, a new `trips` map or a new `DepotState`, each of
+    // fabricate a new Trip, a new `trips` map or a new `HouseholdState`, each of
     // which invalidates a memo downstream for nothing. The two multi-register
     // handlers are the ones that could get this wrong — a spread placed
     // before the identity check would still copy on a wholly lost write.

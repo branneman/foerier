@@ -12,9 +12,9 @@ import type { StoreApi } from 'zustand/vanilla'
 
 import type { Session } from '../auth/sessionStore'
 import { inMemoryOpLog, type OpLog } from './opLog'
-import type { DepotStoreState } from './store'
+import type { HouseholdStoreState } from './store'
 import { createFakeServer, fakeTransport, type Transport } from './transport'
-import { createSessionDepot, restoreHlcClock } from './wiring'
+import { createSessionHousehold, restoreHlcClock } from './wiring'
 
 /**
  * The wiring, driven over real fakes — an in-memory log and the in-memory
@@ -66,15 +66,15 @@ async function until(
   throw new Error('the condition never held')
 }
 
-const stores: StoreApi<DepotStoreState>[] = []
+const stores: StoreApi<HouseholdStoreState>[] = []
 
 /** Every store here starts an engine, which arms an interval and two DOM
  * listeners. Nothing is left running between cases. */
 async function depot(
   log: OpLog,
   transport: Transport,
-): Promise<StoreApi<DepotStoreState>> {
-  const store = await createSessionDepot(SESSION, {
+): Promise<StoreApi<HouseholdStoreState>> {
+  const store = await createSessionHousehold(SESSION, {
     log,
     transport,
     clock: fixedClock(),
@@ -246,7 +246,7 @@ describe('the session depot', () => {
 
   it('mints real UUIDv7 op ids by default', async () => {
     const log = inMemoryOpLog()
-    const store = await createSessionDepot(SESSION, {
+    const store = await createSessionHousehold(SESSION, {
       log,
       transport: fakeTransport(createFakeServer()),
       clock: fixedClock(),

@@ -834,7 +834,7 @@ correct: this slice creates the facts that make it reachable.
 
 **Already open and unchanged by this slice:** `ownedCountOf`'s five sites,
 `sequence()`'s sixth hand-rolled clock-stamper, `Popover`'s waiting callers (now
-three), the `DepotState` misnomer, and the two-panes-one-scroller entry — which
+three), the `HouseholdState` misnomer, and the two-panes-one-scroller entry — which
 F4 does not add to, having no panes.
 
 ---

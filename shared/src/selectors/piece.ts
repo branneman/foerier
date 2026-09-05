@@ -30,7 +30,7 @@ import { participantIds } from './trip.ts'
  * Person label through `tripParticipants`, and ruling E then sorts excluded
  * circles to the front; both live at the cluster, not here.
  *
- * Takes no `DepotState`: unlike `entryKind` or `bringCountOf` this asks
+ * Takes no `HouseholdState`: unlike `entryKind` or `bringCountOf` this asks
  * nothing of another aggregate.
  */
 export interface PieceInclusion {

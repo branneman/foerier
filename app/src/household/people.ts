@@ -1,7 +1,7 @@
 import {
   personLabel,
   UNNAMED_PERSON_GLYPH,
-  type DepotState,
+  type HouseholdState,
 } from '@foerier/shared'
 
 /** A Person, and the label every surface draws them by. */
@@ -25,7 +25,7 @@ export interface PersonRow {
  * owner picker are two views of one list; if they sorted differently, picking
  * "the third one down" would mean two different People.
  */
-export function sortedPeople(state: DepotState): readonly PersonRow[] {
+export function sortedPeople(state: HouseholdState): readonly PersonRow[] {
   return Object.values(state.people)
     .map((person) => ({ id: person.id, label: personLabel(state, person.id) }))
     .sort((a, b) => {

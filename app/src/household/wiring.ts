@@ -16,8 +16,8 @@ import type { Session } from '../auth/sessionStore'
 import { DB_NAME } from '../db'
 import { indexedDbOpLog, type OpLog } from './opLog'
 import {
-  createDepotStore,
-  type DepotStoreState,
+  createHouseholdStore,
+  type HouseholdStoreState,
   type EngineFactory,
 } from './store'
 import { createSyncEngine, type SyncEngine } from './syncEngine'
@@ -27,12 +27,12 @@ import { createHttpTransport, type Transport } from './transport'
  * Where the client's four pieces are finally joined into one running depot:
  * the durable op log, the HLC, the `/sync` transport, and the engine that
  * drains the outbox — assembled **once per signed-in session** and handed to
- * the app through `DepotProvider`.
+ * the app through `HouseholdProvider`.
  *
  * Everything is injectable, because everything above this module has to be
  * drivable without a browser or a server (`docs/testing.md`): Tier 3 renders
  * the whole app over an `inMemoryOpLog` and a `fakeTransport`, and only Tier 5
- * exercises what `createSessionDepot` builds by default.
+ * exercises what `createSessionHousehold` builds by default.
  *
  * ## The engine's lifecycle is the session's lifecycle
  *
@@ -149,7 +149,7 @@ export async function restoreHlcClock(
   return persistingHlcClock(inner, log)
 }
 
-export interface SessionDepotDeps {
+export interface SessionHouseholdDeps {
   log?: OpLog
   transport?: Transport
   clock?: Clock
@@ -158,14 +158,14 @@ export interface SessionDepotDeps {
 
 /** How the app builds a depot for a session. Injected so that Tier 3 can
  * render the real `App` over real fakes. */
-export type DepotFactory = (
+export type HouseholdFactory = (
   session: Session,
-) => Promise<StoreApi<DepotStoreState>>
+) => Promise<StoreApi<HouseholdStoreState>>
 
-export async function createSessionDepot(
+export async function createSessionHousehold(
   session: Session,
-  deps: SessionDepotDeps = {},
-): Promise<StoreApi<DepotStoreState>> {
+  deps: SessionHouseholdDeps = {},
+): Promise<StoreApi<HouseholdStoreState>> {
   const log = deps.log ?? indexedDbOpLog()
   const clock = deps.clock ?? systemClock
   const transport =
@@ -199,9 +199,9 @@ export async function createSessionDepot(
     hlc,
   }
 
-  const store = createDepotStore({ log, engine: buildEngine, author })
+  const store = createHouseholdStore({ log, engine: buildEngine, author })
 
-  // `engine` was assigned by `buildEngine`, which `createDepotStore` calls
+  // `engine` was assigned by `buildEngine`, which `createHouseholdStore` calls
   // synchronously — but TypeScript's control flow cannot see an assignment
   // made inside a callback, so the value is handed to a function with a
   // declared parameter type rather than narrowed here.
@@ -239,7 +239,7 @@ function firstSync(engine: SyncEngine | null): void {
  * The confirm sheet that states the unsynced count before this runs belongs
  * to the Devices screen (`screens/Devices.tsx`, S3.5's Task 10), which is
  * this function's one caller; the count behind it is the store's own
- * `unsyncedCount()` (`depot/store.ts`) — `deadLetterCount` plus the length of
+ * `unsyncedCount()` (`household/store.ts`) — `deadLetterCount` plus the length of
  * `log.outbox(…)` — read while the store is still alive, before the sheet's
  * confirm button ever runs this.
  *

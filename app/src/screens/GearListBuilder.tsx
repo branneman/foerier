@@ -24,8 +24,8 @@ import {
 import { overClaimGroups, OverClaimBand } from '../components/OverClaimBand'
 import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
 import { TripOnlySheet } from '../components/TripOnlySheet'
-import { useDepot } from '../depot/store'
-import { tripParticipants } from '../depot/trips'
+import { useHousehold } from '../household/store'
+import { tripParticipants } from '../household/trips'
 import { BackLink, ScreenBand } from '../shell/ScreenBand'
 import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
 import { DepotPicker } from './DepotPicker'
@@ -149,9 +149,9 @@ export interface GearListBuilderProps {
 }
 
 export function GearListBuilder({ tripId }: GearListBuilderProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
-  const sync = useDepot((depot) => depot.sync)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
+  const sync = useHousehold((depot) => depot.sync)
   const isDesktop = useMediaQuery(DESKTOP)
   const [tripOnlyOpen, setTripOnlyOpen] = useState(false)
   // Whether the Draft → Pack-out preview is up — `PhaseSheet.tsx`'s own

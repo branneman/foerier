@@ -2,8 +2,8 @@ import { personRecorded, systemIdSource, type Owner } from '@foerier/shared'
 import { Sheet } from '@foerier/ui'
 import { useState } from 'react'
 
-import { sortedPeople } from '../depot/people'
-import { useDepot } from '../depot/store'
+import { sortedPeople } from '../household/people'
+import { useHousehold } from '../household/store'
 import styles from './OwnerPicker.module.css'
 
 /**
@@ -45,8 +45,8 @@ export interface OwnerPickerProps {
 }
 
 export function OwnerPicker({ value, onSelect, onClose }: OwnerPickerProps) {
-  const state = useDepot((depot) => depot.state)
-  const emit = useDepot((depot) => depot.emit)
+  const state = useHousehold((depot) => depot.state)
+  const emit = useHousehold((depot) => depot.emit)
 
   // Mount resets these — `ui/`'s `Sheet` has no `open` prop, so a caller
   // writes `{open && <OwnerPicker …/>}` and closing genuinely unmounts. That

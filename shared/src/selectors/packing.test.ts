@@ -8,7 +8,7 @@ import {
   type OpSpec,
 } from '../authoring.ts'
 import { fold } from '../reduce.ts'
-import type { DepotState, EntryState } from '../state.ts'
+import type { HouseholdState, EntryState } from '../state.ts'
 import {
   isKnownStage,
   isKnownStatus,
@@ -43,11 +43,14 @@ const TRIP_ONLY_ITEM = 'e-trip-only-item'
  * already in it — for the tests that ask "what if a peer also wrote the
  * register a gate is about to hide".
  */
-function foldMore(state: DepotState, ...specs: readonly OpSpec[]): DepotState {
+function foldMore(
+  state: HouseholdState,
+  ...specs: readonly OpSpec[]
+): HouseholdState {
   return fold(stamp(specs, { start: 1000 }), state)
 }
 
-function entry(state: DepotState, id: string): EntryState {
+function entry(state: HouseholdState, id: string): EntryState {
   return state.trips[TRIP]!.entries![id]!
 }
 
