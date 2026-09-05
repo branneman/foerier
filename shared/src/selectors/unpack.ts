@@ -6,6 +6,12 @@ import type {
   TripState,
 } from '../state.ts'
 import {
+  containmentView,
+  homePath,
+  type ContainmentView,
+  type PathSegment,
+} from './containment.ts'
+import {
   bringCountOf,
   entriesOf,
   entryKind,
@@ -354,4 +360,71 @@ export function unpackTotals(
   state: HouseholdState,
 ): UnpackCount {
   return countOfUnpack(unpackItems(trip, state))
+}
+
+/**
+ * F5's grouping (spec §3.4) — the Place at the **root** of a piece of gear's
+ * home path, `null` for the `Loose` bucket.
+ *
+ * **This is a second partition over the containment tree, not a reuse of
+ * `slice.ts`'s `container` dimension (D5), and the two must not be
+ * reconciled.** D5 files by the **immediate** holder — a gear nested inside
+ * Crate B, itself in the Attic, is filed under Crate B, because D5 answers
+ * *where is this filed*. F5 answers a different question, *where does my
+ * body go*: unpacking is walking the house once and emptying as you go, and
+ * the room you walk to is the only fact that answers it, so this function
+ * reads {@link homePath}'s **first** segment rather than its last, and the
+ * container the gear actually sits in stays in the row's meta
+ * ({@link returnPathOf}) rather than in the grouping. Both questions are
+ * right about the identical tree; merging them would answer neither
+ * correctly for anything nested more than one level deep.
+ *
+ * **`null` is the `Loose` bucket, and the word is a deliberate reversal of
+ * D4's refusal on the Depot's own sentinel.** D4 declined `Loose` for the
+ * Depot's "not in a container" bucket because that bucket also held gear
+ * standing on the Attic floor — which has a home and is not lost, so calling
+ * it Loose would have been a lie. This bucket is a different, narrower fact:
+ * it is exactly the gear with **no Place at all** at the root of its home
+ * path — never rehomed, rehomed to `loose` outright, resting in a container
+ * that is itself loose, or pointed at a Place `homePath` cannot resolve
+ * (removed, or broken by a cycle: {@link homePath}'s own four reasons,
+ * re-read here rather than re-tested). That is precisely what the glossary's
+ * **Loose** means, so D4's guard permits the word here — the guard is against
+ * the word standing for the wrong fact, not against the word itself.
+ *
+ * Pass `view` when a screen already has one — {@link homePath}'s reason and
+ * `containerTotals`'s (`packing.ts`): building it is O(depot), and F5 groups
+ * every row on the screen, so a caller wants one view for the whole list, not
+ * one per row.
+ */
+export function unpackDestinationOf(
+  gearId: string,
+  state: HouseholdState,
+  view: ContainmentView = containmentView(state),
+): string | null {
+  const segments = homePath(state, gearId, view)
+  return segments[0]?.kind === 'place' ? segments[0].id : null
+}
+
+/**
+ * The full home path for a row's meta — {@link homePath}'s own answer,
+ * outermost first, for a **depot** Entry only.
+ *
+ * A trip-only Entry names no Gear, so it has no home path to draw: it is not
+ * grouped by {@link unpackDestinationOf} at all, drawn instead in its own
+ * closing group after `Loose` (spec §3.4), and this function answers `[]`
+ * for one rather than throwing — the same shape {@link entryKind}'s
+ * `'trip_only'` case takes throughout this file.
+ *
+ * `view` is the same optional parameter {@link unpackDestinationOf} takes,
+ * for the identical reason — a screen builds one view for the whole list.
+ */
+export function returnPathOf(
+  entry: EntryState,
+  state: HouseholdState,
+  view: ContainmentView = containmentView(state),
+): readonly PathSegment[] {
+  const source = entry.source?.value
+  if (source === undefined || source.from !== 'depot') return []
+  return homePath(state, source.gearId, view)
 }

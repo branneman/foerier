@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { aGear, aPerson, aTrip, depot } from '../../testUtils/index.ts'
+import { aGear, aPerson, aPlace, aTrip, depot } from '../../testUtils/index.ts'
 import {
+  gearRehomed,
+  placeRemoved,
   tripConsumedCountSet,
   tripEntryAdded,
   tripEntryBringCountSet,
@@ -21,7 +23,9 @@ import {
   outcomeLabel,
   outcomeOf,
   pieceOutcomeOf,
+  returnPathOf,
   type UnpackItem,
+  unpackDestinationOf,
   unpackItems,
   unpackTotals,
 } from './unpack.ts'
@@ -593,5 +597,103 @@ describe('the outcome table', () => {
   it('knows exactly the three named outcomes, in the sheet’s chip order', () => {
     expect(OUTCOMES.map((row) => row.id)).toEqual(['back', 'consumed', 'lost'])
     expect(OUTCOMES.every((row) => isKnownOutcome(row.id))).toBe(true)
+  })
+})
+
+/**
+ * F5's grouping — spec §3.4. `unpackDestinationOf` answers *where does my
+ * body go* (the Place at the root of the home path); `slice.ts`'s `container`
+ * dimension answers the different question *where is this filed* (the
+ * immediate holder). The nested-container-loose case below is the one that
+ * tells the two apart: it has a container to file under, and no Place to walk
+ * to.
+ */
+describe('unpackDestinationOf: the Place at the root of the home path (spec §3.4)', () => {
+  const ATTIC = 'place-attic'
+  const REMOVED_PLACE = 'place-removed'
+
+  const state = depot(
+    aPlace({ id: ATTIC, name: 'Attic' }),
+    aPlace({ id: REMOVED_PLACE, name: 'Shed' }),
+    [placeRemoved(REMOVED_PLACE)],
+    aGear({
+      id: 'g-direct',
+      name: 'Direct',
+      residence: { in: 'place', id: ATTIC },
+    }),
+    aGear({ id: 'g-crate', name: 'Crate B', container: true }),
+    aGear({ id: 'g-nested', name: 'Nested' }),
+    [gearRehomed('g-crate', { in: 'place', id: ATTIC })],
+    [gearRehomed('g-nested', { in: 'gear', id: 'g-crate' })],
+    aGear({ id: 'g-loose', name: 'Loose' }),
+    aGear({ id: 'g-loose-crate', name: 'Loose crate', container: true }),
+    aGear({ id: 'g-in-loose-crate', name: 'In loose crate' }),
+    [gearRehomed('g-in-loose-crate', { in: 'gear', id: 'g-loose-crate' })],
+    aGear({
+      id: 'g-at-removed',
+      name: 'At removed place',
+      residence: { in: 'place', id: REMOVED_PLACE },
+    }),
+  )
+
+  it('reads the Attic for gear directly in the Attic', () => {
+    expect(unpackDestinationOf('g-direct', state)).toBe(ATTIC)
+  })
+
+  it('reads the Attic for gear nested in Crate B, itself in the Attic', () => {
+    expect(unpackDestinationOf('g-nested', state)).toBe(ATTIC)
+  })
+
+  it('reads null for loose gear', () => {
+    expect(unpackDestinationOf('g-loose', state)).toBeNull()
+  })
+
+  it('reads null for gear in a container that is itself loose — there is no Place at the root, which is exactly what Loose means', () => {
+    // `g-loose-crate` has never been rehomed, so it is loose itself
+    // (`residenceOf`'s own default) — the case that tells this grouping apart
+    // from `slice.ts`'s `container` dimension, which would file this gear
+    // under `g-loose-crate` and stop there.
+    expect(unpackDestinationOf('g-in-loose-crate', state)).toBeNull()
+  })
+
+  it('reads null for gear at a removed Place — through the view’s own resolution, not a second test of `removed`', () => {
+    expect(unpackDestinationOf('g-at-removed', state)).toBeNull()
+  })
+})
+
+describe('returnPathOf: the full home path for a row’s meta, depot Entries only (spec §3.4)', () => {
+  const TRIP = 't-return-path'
+  const ATTIC = 'place-attic'
+  const DEPOT = 'e-depot'
+  const TRIPONLY = 'e-triponly'
+
+  const state = depot(
+    aTrip({ id: TRIP, name: 'Return path' }),
+    aPlace({ id: ATTIC, name: 'Attic' }),
+    aGear({ id: 'g-crate', name: 'Crate B', container: true }),
+    aGear({ id: 'g-tent', name: 'Tent' }),
+    [gearRehomed('g-crate', { in: 'place', id: ATTIC })],
+    [gearRehomed('g-tent', { in: 'gear', id: 'g-crate' })],
+    [
+      tripEntryAdded(TRIP, DEPOT, { from: 'depot', gearId: 'g-tent' }),
+      tripEntryAdded(TRIP, TRIPONLY, {
+        from: 'trip_only',
+        name: 'Rope',
+        container: false,
+      }),
+    ],
+  )
+
+  const trip = tripFrom(state, TRIP)
+
+  it('returns the segments homePath returns, outermost first, for a depot Entry', () => {
+    expect(returnPathOf(entryFrom(trip, DEPOT), state)).toEqual([
+      { kind: 'place', id: ATTIC, name: 'Attic' },
+      { kind: 'gear', id: 'g-crate', name: 'Crate B' },
+    ])
+  })
+
+  it('answers [] for a trip-only Entry — it names no Gear and is never asked', () => {
+    expect(returnPathOf(entryFrom(trip, TRIPONLY), state)).toEqual([])
   })
 })

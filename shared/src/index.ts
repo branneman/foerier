@@ -252,6 +252,8 @@ export {
   outcomeOf,
   OUTCOMES,
   pieceOutcomeOf,
+  returnPathOf,
+  unpackDestinationOf,
   unpackItems,
   unpackTotals,
 } from './selectors/unpack.ts'
