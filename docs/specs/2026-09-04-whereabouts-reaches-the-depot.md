@@ -695,6 +695,22 @@ quietly fixed where a reader would never learn it had been wrong.
 
 ### 9.1 Sentences in this document that are wrong
 
+- **§6.1 says `GearRow`'s `tone` comment "is corrected in the same commit
+  rather than left to read as a lie", and it was not.** The comment still read
+  _"`attention` with story 11's `lost` outcome"_ through Tasks 1–6 and was only
+  corrected at the docs task, two tasks after the sentence claiming it. This is
+  the worst kind of wrong sentence in a spec and it deserves its own entry
+  rather than a line in §9.4's list of docblocks that rotted: **rot is drift,
+  and this was a false completion claim** — the document asserted an act, in the
+  past tense, that nobody had performed. Two things make it worth a paragraph.
+  It was **self-referential**: §6.1 was written in the pass that was supposed to
+  do the correcting, which is exactly the shape of claim nobody re-reads,
+  because the sentence and the deed look like one thing on the page. And it is
+  this repo's own S4-fixture lesson in a new costume — _a spec sentence saying a
+  standing rule applies produces no artefact, and no tier notices its absence_ —
+  which holds identically for a spec sentence saying a correction was made. The
+  next spec tempted to promise something about its own commit should read this
+  entry first: state the obligation, never the discharge.
 - **"`SliceBar`, `ValueMenu` and `SortGroupSheet` change _not at all_" is
   untrue of `SliceBar`.** The Decisions table says it and §4.4 argues it, and
   the argument survives the exception: the **dimension row and the grouping
@@ -866,7 +882,9 @@ what §1 predicted this slice's failures would look like.
   and attention variants were _"a later slice's work"_, `Depot.tsx`'s comment
   beside its `whereabouts="⌂ HOME"` literal, and `ui/GearRow.tsx`'s `tone`
   comment naming story 11's `lost` outcome as when `attention` arrives (§6.1's
-  third seam).
+  third seam). **The last of those five is listed again in §9.1, and belongs
+  there more than here** — the other four had merely gone stale, while §6.1
+  claimed that one already fixed.
 - **`slice.test.ts`'s dimension-table docblock had been stale since S7** — _"S7,
   S8, S9 and S10 each add a row … these pin the four rows that exist"_ — and
   undercounted by two by the time this slice landed. It also promised a row for
