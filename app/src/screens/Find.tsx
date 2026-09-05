@@ -1,6 +1,7 @@
 import {
   containmentView,
   findGear,
+  ownedCountOf,
   rowWhereabouts,
   statusLabel,
   whereabouts,
@@ -107,12 +108,13 @@ function CountedCard({
 }) {
   const name = match.gear.name?.value ?? ''
   const result = whereabouts(state, match.gear.id, view)
-  // Home holds `owned − Σ out` and each trip slice holds its own share, so
-  // the sum is the owned count whether or not any of it is away (S9b §2.4).
-  const count = result.slices.reduce(
-    (sum, slice) => sum + (slice.count ?? 0),
-    0,
-  )
+  // The header states the owned count, not the sum of the slices: D8 floors
+  // the home slice at zero while a trip slice keeps its honest count, so an
+  // over-claimed gear's slices sum to more than `owned` the moment `out >
+  // owned` (`whereabouts`'s own docstring). `ownedCountOf` is the one
+  // function that answers this for Counted gear — the review's blocker 1
+  // caught the sum standing in for it here.
+  const count = ownedCountOf(match.gear) ?? 0
   const metaId = `find-card-meta-${match.gear.id}`
   const sliceIds = result.slices.map(
     (slice) =>

@@ -329,6 +329,37 @@ describe('Find — whereabouts reaches the screen', () => {
     expect(within(card).getByText('▸ Alps 2026 · LOOSE')).toBeInTheDocument()
   })
 
+  // Blocker 1 from the final whole-branch review: summing the slices double
+  // counts the moment a Trip over-claims. D8 floors the home slice at zero
+  // while the trip slice keeps its honest `bring_count`, so an owned-count
+  // of 2 with a bring-count of 4 must still read the owned count, ×2 — not
+  // the sum, ×4, which is what a reader would tap into gear detail and find
+  // contradicted by its own header (`×2 OWNED`) and footer
+  // (`▲ CLAIMED ×4 · OWNED ×2`).
+  it('states the owned count, not the sum of the slices, for an over-claimed Counted gear', async () => {
+    const mugId = anId()
+    const tripId = anId()
+    const store = await seededStore([
+      gearRecorded(mugId, {
+        name: 'Mug',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+      tripCreated(tripId, 'Alps 2026'),
+      tripPhaseMoved(tripId, 'pack_out'),
+      tripEntryAdded(tripId, 'e-mug', { from: 'depot', gearId: mugId }),
+      tripEntryBringCountSet(tripId, 'e-mug', 4),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'mug')
+
+    const card = screen.getByRole('link', { name: 'Mug' })
+    expect(within(card).getByText('COUNTED · ×2')).toBeInTheDocument()
+  })
+
   it('keeps two trip rows apart when two active Trips both claim a Counted gear', async () => {
     const mugId = anId()
     const alpsId = anId()
