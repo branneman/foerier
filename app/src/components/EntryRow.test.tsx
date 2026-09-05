@@ -264,6 +264,39 @@ describe('EntryRow', () => {
       // content of its own for a trip-only row in editable mode.
       expect(screen.queryByTestId('entry-row-count')).toBeNull()
     })
+
+    /**
+     * `PackingRow` carries the identical note beside its own two spans: the
+     * flex `gap` between the name and the badge separates them on screen,
+     * but a gap is not a character. Without a real space the row's text
+     * content — everything a screen reader reads out as it crosses the
+     * row — glues the two into `PassportsTRIP-ONLY`.
+     *
+     * Asserted as the **whole** row's text content, and with the glued
+     * spelling named on its own line, because the two `toHaveTextContent`
+     * calls above match each span in isolation and a substring match cannot
+     * see a missing separator between them. That is exactly how this defect
+     * survived S7: the assertion that was supposed to pin the name matched
+     * the suffix as a substring.
+     */
+    it('separates the label from the badge, so the row does not announce PassportsTRIP-ONLY', () => {
+      render(
+        <EntryRow
+          label="Passports"
+          kind="trip_only"
+          bringCount={null}
+          pieceCount={1}
+          pieces={[]}
+          editable
+          onBringCountChange={vi.fn()}
+          onRemove={vi.fn()}
+          onOpenPiecePicker={vi.fn()}
+        />,
+      )
+      const row = screen.getByTestId('entry-row')
+      expect(row.textContent).toContain('Passports TRIP-ONLY')
+      expect(row.textContent).not.toContain('PassportsTRIP-ONLY')
+    })
   })
 
   describe('editable rows end in a remove control, on every Kind', () => {

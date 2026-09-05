@@ -374,9 +374,14 @@ export function PackPicker({
                       {row.name}
                     </span>
                     {/* `EntryRow`'s badge, same encoding and the same place:
-                        a name adjunct, never trailing-column content. */}
+                        a name adjunct, never trailing-column content — and
+                        carrying its leading `{' '}` for the same reason, the
+                        flex `gap` being no character at all. */}
                     {row.tripOnly && (
-                      <span className={styles['badge']}>TRIP-ONLY</span>
+                      <>
+                        {' '}
+                        <span className={styles['badge']}>TRIP-ONLY</span>
+                      </>
                     )}
                   </span>
                   {row.skipped !== '' && (

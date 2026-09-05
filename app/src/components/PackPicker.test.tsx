@@ -265,6 +265,20 @@ describe('the Pack picker', () => {
       within(rowFor('Crate, borrowed')).getByText('TRIP-ONLY'),
     ).toBeInTheDocument()
     expect(within(rowFor('Duffel 90 L')).queryByText('TRIP-ONLY')).toBeNull()
+
+    /**
+     * `EntryRow`'s and `PackingRow`'s note, on the `TRIP-ONLY` badge: the row's
+     * flex `gap` separates the two spans on screen and a gap is not a
+     * character, so without a real space the row announces them as one
+     * glued word. Asserted over the row's whole text content, because a
+     * `getByText` on the badge alone matches it in isolation and cannot
+     * see a missing separator in front of it.
+     */
+    const nameLine = rowFor('Crate, borrowed').querySelector(
+      '[data-testid="pack-row-name"]',
+    )?.parentElement
+    expect(nameLine?.textContent).toContain('Crate, borrowed TRIP-ONLY')
+    expect(nameLine?.textContent).not.toContain('borrowedTRIP-ONLY')
   })
 
   /**

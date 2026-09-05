@@ -194,10 +194,19 @@ export function EntryRow({
       >
         {label}
       </span>
+      {/* The leading `{' '}` is not decoration, and `PackingRow` carries the
+          identical note beside its own badge: `.row`'s flex `gap` separates
+          the two spans on screen, but a gap is not a character. Without it
+          the row's text content — everything a screen reader reads crossing
+          the row — announces `PassportsTRIP-ONLY`, one word, the badge glued
+          to the gear's name. */}
       {isTripOnly && (
-        <span className={styles['badge']} data-testid="entry-row-badge">
-          TRIP-ONLY
-        </span>
+        <>
+          {' '}
+          <span className={styles['badge']} data-testid="entry-row-badge">
+            TRIP-ONLY
+          </span>
+        </>
       )}
       {isTripOnly && <span className={styles['spacer']} aria-hidden="true" />}
       {trailingContent !== null && (

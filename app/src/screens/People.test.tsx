@@ -207,6 +207,22 @@ describe('the People screen', () => {
     expect(screen.getByTestId(`person-row-${ELS}`)).not.toHaveTextContent('YOU')
   })
 
+  /**
+   * `EntryRow`'s and `PackingRow`'s note, on the `YOU` badge: the row's
+   * flex `gap` separates the two spans on screen and a gap is not a
+   * character, so without a real space the row announces them as one
+   * glued word. Asserted over the row's whole text content, because a
+   * `getByText` on the badge alone matches it in isolation and cannot
+   * see a missing separator in front of it.
+   */
+  it('separates the name from the YOU badge', async () => {
+    renderPeople()
+
+    const row = await screen.findByTestId(`person-row-${MARK}`)
+    expect(row.textContent).toContain('Mark YOU')
+    expect(row.textContent).not.toContain('MarkYOU')
+  })
+
   it('records a new Person', async () => {
     const user = userEvent.setup()
     renderPeople()

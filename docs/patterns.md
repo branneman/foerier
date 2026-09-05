@@ -581,7 +581,29 @@ slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows,
 the Split rail's links, and the inline Save/Cancel pair copied four times).
 *Argued in:* `docs/design/README.md` §5b ruling O; [`frontend-design.md` §2.1](frontend-design.md#21-root-and-units); `ui/styles/base.css`.
 
-### 6.6 Variants: a modifier class for a boolean, `data-*` for an enumeration, ARIA for state the DOM already carries
+### 6.6 A flex `gap` is not a character; adjacent spans need a real space
+
+Two sibling `<span>`s separated on screen by `gap` or `margin` are separated
+by **nothing** in the DOM's text, so the row's text content — which is what a
+screen reader reads as it crosses the row, and what an enclosing `<button>`
+takes as its accessible name — glues them into one word. Any adjacent pair
+that reads as one sentence carries an explicit `{' '}` between them, inside
+the same conditional as the second span so it never renders alone. Four sites
+draw a name-plus-badge pair this way (`EntryRow`, `PackingRow`, `PackPicker`,
+`Devices`, `People`), and `PackingRow`'s `— ELS'S PIECE` suffix is the same
+shape without a badge.
+
+**A `getByText` on the badge cannot see this**, because it matches that span
+in isolation; the assertion has to read the *parent's* whole text content and
+name the glued spelling on its own line. That is exactly how the defect
+survived S7 — the assertion meant to pin the name matched the suffix as a
+substring.
+
+*Departures:* none known.
+*Argued in:* `PackingRow.tsx`'s `.nameLine` note;
+[`specs/2026-09-01-packing-and-the-journey.md`](specs/2026-09-01-packing-and-the-journey.md) §11.5.
+
+### 6.7 Variants: a modifier class for a boolean, `data-*` for an enumeration, ARIA for state the DOM already carries
 
 `.retired`, `.selected`, `.dense`, `.inline` sit beside the base class;
 `data-tone`, `data-status`, `data-stage-state`, `data-urgent` carry an

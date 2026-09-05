@@ -474,8 +474,14 @@ export function People({
                   <span className={styles['name']} data-testid="person-name">
                     {person.label}
                   </span>
+                  {/* `EntryRow`'s note, same shape: the row's flex `gap`
+                      is not a character, so without a real space the row
+                      announces `MarkYOU`. */}
                   {person.id === personId && (
-                    <span className={styles['badge']}>YOU</span>
+                    <>
+                      {' '}
+                      <span className={styles['badge']}>YOU</span>
+                    </>
                   )}
 
                   {meta !== null && (

@@ -219,6 +219,23 @@ describe('Devices', () => {
     expect(document.body.textContent).not.toMatch(/\d+\.\d+\.\d+\.\d+/)
   })
 
+  /**
+   * `EntryRow`'s and `PackingRow`'s note, on the `THIS DEVICE` badge: the row's
+   * flex `gap` separates the two spans on screen and a gap is not a
+   * character, so without a real space the row announces them as one
+   * glued word. Asserted over the row's whole text content, because a
+   * `getByText` on the badge alone matches it in isolation and cannot
+   * see a missing separator in front of it.
+   */
+  it('separates the device name from its badge', async () => {
+    await renderDevices({ devices: threeDevices() })
+
+    const badge = await screen.findByText('THIS DEVICE')
+    const group = badge.parentElement
+    expect(group?.textContent).toContain('Firefox on Android THIS DEVICE')
+    expect(group?.textContent).not.toContain('AndroidTHIS DEVICE')
+  })
+
   it('states a passkey-less current Device as a plain fact, not a warning', async () => {
     await renderDevices({
       devices: [aDevice({ current: true, enrolled_passkey_here: false })],

@@ -65,8 +65,14 @@ export function DeviceList({
             <div>
               <div className={styles['rowTitleGroup']}>
                 <span className={styles['rowTitle']}>{label}</span>
+                {/* `EntryRow`'s note, same shape: `.rowTitleGroup`'s flex
+                    `gap` is not a character, so without a real space the row
+                    announces `Firefox on AndroidTHIS DEVICE`. */}
                 {device.current && (
-                  <span className={styles['badge']}>THIS DEVICE</span>
+                  <>
+                    {' '}
+                    <span className={styles['badge']}>THIS DEVICE</span>
+                  </>
                 )}
               </div>
               <div className={styles['rowMeta']}>{deviceMeta(device)}</div>
