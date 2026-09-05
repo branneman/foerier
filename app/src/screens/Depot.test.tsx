@@ -219,6 +219,25 @@ describe('the Depot list', () => {
     )
   })
 
+  it('reads ×1 for a Counted gear nobody counted', async () => {
+    // The QTY column and the row meta both go through `ownedCountOf`, whose
+    // stated reading of an absent register on Counted gear is `1`. Drawing
+    // nothing here was this list's own third answer to gear detail's two.
+    const canisterId = anId()
+    const store = await seededStore([
+      gearRecorded(canisterId, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+      }),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Gas canister' })
+    expect(within(row).getByTestId('gear-row-meta')).toHaveTextContent('×1')
+  })
+
   it('filters rows by the search field', async () => {
     const axeId = anId()
     const stoveId = anId()

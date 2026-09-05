@@ -13,6 +13,7 @@ import {
   isPerPerson,
   LOOSE_TEXT,
   normalizeTag,
+  ownedCountOf,
   overClaims,
   ownerLabel,
   ownerOf,
@@ -91,12 +92,17 @@ function traitLabel(gear: GearState): string {
  * (invariant 6: owned-count exists only for counted gear); an unrecognised
  * `kind` simply never matches `'counted'`, so it neither crashes nor is
  * coerced into showing a count it does not own — obligation 4
- * (`sync-protocol.md` §5.3) at this line's altitude. */
+ * (`sync-protocol.md` §5.3) at this line's altitude.
+ *
+ * **`ownedCountOf` decides both halves of that**, the Kind gate and what an
+ * absent register reads as. The old `ownedCount !== undefined` test beside
+ * it was a second, quieter reading of the same register — `nothing` where
+ * the selector says `×1` — and it disagreed with the COUNT header six
+ * elements down this same screen. */
 function metaLine(state: DepotState, gear: GearState): string {
+  const owned = ownedCountOf(gear)
   const parts = [traitLabel(gear), ownerLabel(state, gear)]
-  if (gear.kind?.value === 'counted' && gear.ownedCount?.value !== undefined) {
-    parts.push(`×${gear.ownedCount.value}`)
-  }
+  if (owned !== null) parts.push(`×${owned}`)
   return parts.filter((part) => part !== '').join(' · ')
 }
 
@@ -286,7 +292,12 @@ export function GearDetail() {
 
   const name = gear.name?.value ?? ''
   const retired = gear.retired?.value === true
-  const counted = isCounted(gear)
+  // **The gate and the number are one call.** `ownedCountOf` is `null` for
+  // exactly the Kinds that draw no COUNT group, so a second `isCounted`
+  // beside it would be two tests that have to agree — and the `?? 0` that
+  // used to stand between them was the third answer this screen gave to
+  // "how many does the household own".
+  const owned = ownedCountOf(gear)
   const perPerson = isPerPerson(gear)
   const { slices, overClaimed } = whereabouts(state, gearId)
   const overClaim = overClaimed
@@ -367,13 +378,11 @@ export function GearDetail() {
         {...(overClaim === undefined ? {} : { overClaim })}
       />
 
-      {counted && (
+      {owned !== null && (
         <div className={styles['countGroup']} data-testid="count-group">
           <div className={styles['countHeader']}>
             <span className={styles['groupLabel']}>COUNT</span>
-            <span className={styles['countOwned']}>
-              ×{gear.ownedCount?.value ?? 0} OWNED
-            </span>
+            <span className={styles['countOwned']}>×{owned} OWNED</span>
           </div>
           <div className={styles['countChips']}>
             {slices.map((slice) => {

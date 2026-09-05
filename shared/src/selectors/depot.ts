@@ -86,12 +86,17 @@ export function looseGear(
  *
  * **This function does not answer "did somebody record a count".** That is
  * a different question — `ownedCount !== undefined` on the raw register —
- * and three `app/` call sites (`Depot.tsx`'s `qtyFor`, `GearDetail.tsx`'s
- * `metaLine`, `OverClaimBand`'s fix-round-F6 guard) still ask it directly,
- * deliberately untouched by this function: this `null` collapses "not
- * Counted" and "no register, but Counted" into one answer, which is right
- * for `claim.ts`'s arithmetic and wrong for a surface deciding whether to
- * print `OWNED ×N` at all.
+ * and exactly **one** `app/` call site still asks it: `OverClaimBand`'s
+ * fix-round-F6 guard, which decides whether to print `OWNED ×N` beside a
+ * conflict at all, and would otherwise state a number nobody recorded. This
+ * `null` collapses "not Counted" and "no register, but Counted" into one
+ * answer, which is right for `claim.ts`'s arithmetic and for every `×N` a
+ * screen draws, and wrong only for that one guard.
+ *
+ * `Depot.tsx`'s `qtyFor` and `GearDetail.tsx`'s `metaLine` used to ask it
+ * too, and each answered *nothing* where this function says `×1` — three
+ * readings of one register, two of them on the same screen. They read this
+ * now, so **a Counted gear nobody counted draws `×1` everywhere**.
  */
 export function ownedCountOf(gear: GearState): number | null {
   if (!isCounted(gear)) return null

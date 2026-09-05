@@ -5,6 +5,7 @@ import {
   dimensionValues,
   homePath,
   kindOf,
+  ownedCountOf,
   ownerLabel,
   rowWhereabouts,
   sliceDepot,
@@ -66,13 +67,10 @@ function metaFor(
   const path = homePath(state, gear.id, view)
     .map((segment) => segment.name)
     .join(' ▸ ')
-  // `ownedCount` outlives a `kind_set` back to `single` untouched, so it is
-  // gated on `kind` here exactly as `depotCounts` and `GearDetail`'s
-  // `metaLine` gate it (§12.4 — the three must agree).
-  const count =
-    gear.kind?.value === 'counted' && gear.ownedCount?.value !== undefined
-      ? `×${gear.ownedCount.value}`
-      : ''
+  // Through `qtyFor`, which is `ownedCountOf` — the same number the
+  // QTY column draws one slot over, so the table and the row cannot state
+  // different quantities for the same gear.
+  const count = qtyFor(gear) ?? ''
   const meta = [owner, path, count].filter((part) => part !== '').join(' · ')
   return meta === '' ? undefined : meta
 }
@@ -81,11 +79,19 @@ function metaFor(
  * Exported for `DepotPicker.tsx`'s second caller (S7 review F1): the picker's
  * row draws the same `×N` for a Counted piece of gear, and a second copy of
  * this exact expression would be the drift `owner.ts`'s own docstring warns
- * about, just one file over. */
+ * about, just one file over.
+ *
+ * **`ownedCountOf` and no second gate.** It already answers `null` for
+ * everything that is not Counted — the one case the old
+ * `ownedCount !== undefined` test was protecting against, gear edited from
+ * `×6` back to Single whose register outlives the `kind_set` — and it
+ * already states that a Counted gear nobody counted owns **one**. Asking the
+ * raw register here re-decided that reading a third way, so a Counted gear
+ * with no register drew `×1` in gear detail's COUNT chips, `×0` in its COUNT
+ * header and nothing at all here. */
 export function qtyFor(gear: GearState): string | undefined {
-  return gear.kind?.value === 'counted' && gear.ownedCount?.value !== undefined
-    ? `×${gear.ownedCount.value}`
-    : undefined
+  const owned = ownedCountOf(gear)
+  return owned === null ? undefined : `×${owned}`
 }
 
 function Row({

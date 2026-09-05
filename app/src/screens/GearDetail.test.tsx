@@ -180,6 +180,25 @@ describe('Gear detail', () => {
     expect(screen.getByText('ITEM · SHARED · ×3')).toBeInTheDocument()
   })
 
+  it('reads ×1 on every surface for a Counted gear nobody counted', async () => {
+    // `ownedCountOf` already says an absent register on Counted gear reads
+    // `1`; before this, the meta line drew nothing, the COUNT header drew
+    // `×0 OWNED` and the Depot's QTY column drew nothing — three answers to
+    // one question, two of them on this screen.
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+      }),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('ITEM · SHARED · ×1')).toBeInTheDocument()
+    expect(screen.getByText('×1 OWNED')).toBeInTheDocument()
+  })
+
   it('MOVE opens the home picker and emits gear.rehomed', async () => {
     const placeId = anId()
     const gearId = anId()
