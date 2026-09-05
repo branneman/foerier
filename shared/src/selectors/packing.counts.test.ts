@@ -35,7 +35,9 @@ import {
   packingItems,
   packingTotals,
   personPartition,
+  ridesAlongCount,
   STATUSES,
+  subtreeOf,
 } from './packing.ts'
 import { participantIds } from './trip.ts'
 import { tripContainmentView } from './tripContainment.ts'
@@ -754,6 +756,33 @@ describe('the container partition is exact (§5e C5)', () => {
     // 1 (box) + 7 (crate) + 4 (duffel) + 1 (bin) + 3 loose = 16.
     expect(totalsIn(SPLIT)).toEqual({ packed: 5, total: 16, left: 11 })
     expect(partitionOf(SPLIT)).toBe(16)
+  })
+
+  it('counts what rides along from the items, never from the Entry tree', () => {
+    // `N INSIDE RIDE ALONG` used to be `subtreeOf(view, entryId).size`, which
+    // is the **container** tree — built from every Entry's raw `residence`,
+    // per-person ones included. Under C0 that register is fold-but-ignore, so
+    // the confirm named pieces the group's own rows do not draw.
+    const trip = tripOf(SPLIT)
+
+    // The Box: its rows are the mug alone, and the Headlamp Entry's ignored
+    // pointer used to make that two.
+    const view = tripContainmentView(trip, SPLIT)
+    expect(subtreeOf(view, BOX).size).toBe(2)
+    expect(ridesAlongCount(trip, SPLIT, BOX)).toBe(1)
+
+    // The Crate: four Entries by the tree, seven things by the rows — the
+    // Stove's Bring-count is three and Mark's Piece is in there too.
+    expect(subtreeOf(view, CRATE).size).toBe(4)
+    expect(ridesAlongCount(trip, SPLIT, CRATE)).toBe(7)
+
+    // The Duffel: four things that can be packed, plus the stuff sack, which
+    // rides along and is not a piece (ruling A5).
+    expect(groupTotals(DUFFEL, SPLIT).total).toBe(4)
+    expect(ridesAlongCount(trip, SPLIT, DUFFEL)).toBe(5)
+
+    // The stuff sack itself holds two and nests nothing.
+    expect(ridesAlongCount(trip, SPLIT, SACK)).toBe(2)
   })
 
   it('does not move the trip total when a Piece changes bags', () => {

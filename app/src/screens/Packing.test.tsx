@@ -1085,8 +1085,11 @@ describe('moving what a group holds', () => {
       within(headerFor('Crate B')).getByTestId('packing-group-move'),
     )
 
+    // Six, not the Entry tree's five: the trekking poles are a Bring-count of
+    // two and the stuff sack is a thing that rides along while contributing
+    // no packable piece (ruling A5). `ridesAlongCount` is the argument.
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'MOVING Crate B · 5 INSIDE RIDE ALONG',
+      'MOVING Crate B · 6 INSIDE RIDE ALONG',
     )
     expect(screen.getByTestId('moving-footer')).toHaveTextContent(
       'Crate B AND EVERYTHING INSIDE IT ARE NOT OFFERED.',
@@ -1371,6 +1374,30 @@ describe('a per-person Entry in CONTAINER mode', () => {
     // And the headers agree with the rows drawn under them.
     expect(within(groupFor('Duffel 90 L')).getByText('0/3')).toBeVisible()
     expect(within(groupFor('Crate B')).getByText('0/0')).toBeVisible()
+  })
+
+  /**
+   * The header agreeing with its rows is C5; the **move confirm** agreeing
+   * with both is the same fact one surface further out. `insideCount` used to
+   * be `subtreeOf(view, entryId).size` — the Entry tree — so the crate, which
+   * draws no rows and counts `0/0`, told a Quartermaster that one thing rode
+   * along inside it.
+   */
+  it('counts nothing riding along in a container whose rows are all elsewhere', async () => {
+    const user = userEvent.setup()
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...headlampIn({ els: E_DUFFEL, mies: E_DUFFEL, kim: E_DUFFEL }),
+      tripEntryMoved(ALPS, E_HEADLAMP, { in: 'container', entryId: E_CRATE }),
+    )
+
+    await user.click(
+      within(headerFor('Crate B')).getByTestId('packing-group-move'),
+    )
+
+    expect(screen.getByTestId('moving-context')).toHaveTextContent(
+      'MOVING Crate B · 0 INSIDE RIDE ALONG',
+    )
   })
 
   /** The all-together end of C1's one rule — **today's frame, unchanged**. */

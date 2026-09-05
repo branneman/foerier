@@ -635,6 +635,56 @@ export function containerTotals(
   return countOf(items.filter((item) => isInside(item, entryId, subtree)))
 }
 
+/**
+ * `N INSIDE RIDE ALONG` — how many things travel with this container when a
+ * `trip.entry_moved` moves it. The container-move confirm's number, and the
+ * Pack picker's context line.
+ *
+ * **From the items, never from the Entry tree.** This was
+ * `subtreeOf(view, entryId).size` until now, which counts *Entries* over the
+ * trip containment view — a view built from every Entry's **raw** residence
+ * register, per-person ones included. Since ruling C0 that register is
+ * fold-but-ignore for a per-person Entry ({@link entryResidenceOf} gates it
+ * out, `sync-protocol.md` §4.4 states it), so a peer on another build writing
+ * one made the confirm name pieces the group's own rows do not draw. The
+ * items already carry **effective** residences ({@link packingItems}) and
+ * {@link isInside} already asks the membership question C5 requires a header
+ * to agree with its rows on — so this asks the same two functions.
+ *
+ * **Two populations, added, and ruling A5 is why it is two.** A container is
+ * not a piece: {@link pieceCountOf} gives it `0` units, so the packable total
+ * a group's `9/12` states leaves every nested container out. They still ride
+ * along — a crate holding one empty stuff sack is not empty — so each nested
+ * container at any depth counts as one thing beside the units. Those come
+ * from the container tree, and correctly: a container's own residence
+ * register is the one every reader consults.
+ *
+ * The copy is deliberately noun-free (`5 INSIDE RIDE ALONG`), which is what
+ * lets one number cover both: `PIECES` is the trip's packable arithmetic and
+ * says nothing about the bag it is packed into.
+ *
+ * **No board reaches the arithmetic.** Every drawn `… RIDE ALONG` is a flat
+ * crate of plain gear, where units, items and Entries are the same number —
+ * so the Counted Entry's Bring-count and the nested container's `+1` are
+ * code-authored and want a ruling.
+ */
+export function ridesAlongCount(
+  trip: TripState,
+  state: DepotState,
+  entryId: string,
+  view: TripContainmentView = tripContainmentView(trip, state),
+  items: readonly PackingItem[] = packingItems(trip, state, view),
+): number {
+  const subtree = subtreeOf(view, entryId)
+  const units = countOf(
+    items.filter((item) => isInside(item, entryId, subtree)),
+  ).total
+  const containers = entriesOf(trip, state).filter(
+    (entry) => subtree.has(entry.id) && isContainerEntry(entry, state),
+  ).length
+  return units + containers
+}
+
 export type PersonBucketKey =
   { kind: 'person'; personId: string } | { kind: 'shared' }
 

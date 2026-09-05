@@ -217,6 +217,7 @@ export {
   packingTotals,
   personPartition,
   pieceStatusOf,
+  ridesAlongCount,
   sameTripResidence,
   STAGES,
   stageDisagreementLabel,

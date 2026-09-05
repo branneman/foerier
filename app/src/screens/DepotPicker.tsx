@@ -7,6 +7,7 @@ import {
   entriesOf,
   homePath,
   kindOf,
+  LOOSE_TEXT,
   ownerInitial,
   sliceDepot,
   systemIdSource,
@@ -100,12 +101,12 @@ import styles from './DepotPicker.module.css'
  * Bring-count), where the owner changes nothing about the add.
  *
  * `Components` §03's "no whereabouts" still holds narrowly: no world chip, no
- * status, ever — only the meta slot's own contents changed. `LOOSE` is
- * spelled in literal caps rather than left to `.meta`'s CSS transform,
- * matching `Find.tsx`'s `'⌂ LOOSE'` and `GearDetail.tsx`'s `chipLocation`
- * fallback for the identical question — a third, CSS-dependent spelling here
- * would have been the drift `owner.ts`'s own docstring warns about, one
- * screen over.
+ * status, ever — only the meta slot's own contents changed. `LOOSE` comes
+ * from `whereabouts.ts`'s `LOOSE_TEXT` — the one spelling gear detail's
+ * `chipLocation` and the Depot's whereabouts column also read — rather than
+ * a literal of this screen's own, and in literal caps rather than left to
+ * `.meta`'s CSS transform, so the word cannot drift here while every other
+ * surface follows the export.
  *
  * ## An unknown `tripId` draws `No such trip.` rather than the picker
  *
@@ -195,7 +196,10 @@ function rowMeta(
   view: ContainmentView,
 ): string {
   const segments = homePath(state, gear.id, view).map((segment) => segment.name)
-  const location = segments.length === 0 ? 'LOOSE' : segments.join(' ▸ ')
+  // `LOOSE_TEXT`, never a private literal: `whereabouts.ts` owns the one
+  // spelling, and the Depot column, gear detail's card and its COUNT chip all
+  // read it. A fourth copy here is the drift the export exists to end.
+  const location = segments.length === 0 ? LOOSE_TEXT : segments.join(' ▸ ')
   const suffix = rowSuffix(gear, state)
   return suffix === undefined ? location : `${location} · ${suffix}`
 }

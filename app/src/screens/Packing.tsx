@@ -9,10 +9,10 @@ import {
   isPacked,
   packingItems,
   personPartition,
+  ridesAlongCount,
   sameTripResidence,
   stageOf,
   statusGlyph,
-  subtreeOf,
   tripContainmentView,
   tripContainerStageSet,
   tripEntryMoved,
@@ -378,18 +378,14 @@ function containerView(
         // need is gone with it: a group's rows are its contents, and its
         // nested containers are the groups that follow.
         rows: rowsIn(`container:${entry.id}`),
-        // `subtreeOf` rather than a third hand-rolled walk (review F4):
-        // same edges, same cycle break, one definition.
-        //
-        // **This one stays on the Entry tree, and correctly.** `N INSIDE RIDE
-        // ALONG` counts what a `trip.entry_moved` on this container carries
-        // with it, which is an Entry-level fact about Entry-level pointers —
-        // not what sits in the group. A per-person Entry whose retired
-        // register happens to name this container is counted here and would
-        // not in fact ride along, which is the one place ruling C0's ungated
-        // view still shows; it takes a peer writing an op no shipped control
-        // authors, and gating the view is exactly what the ruling refuses.
-        insideCount: subtreeOf(view, entry.id).size,
+        // `ridesAlongCount`, which reads the **items'** effective residences
+        // and adds the nested containers ruling A5 leaves out of the units.
+        // It used to be `subtreeOf(view, entry.id).size` — the Entry tree,
+        // built from raw residence registers — and a per-person Entry whose
+        // fold-but-ignore register named this container was counted as riding
+        // along while its Pieces sat elsewhere and its row was drawn in
+        // another group. See the selector for the whole argument.
+        insideCount: ridesAlongCount(trip, state, entry.id, view, items),
       })
 
       pushContainersUnder({ kind: 'container', entryId: entry.id }, depth + 1)
