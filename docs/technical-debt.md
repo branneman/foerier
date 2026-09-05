@@ -49,16 +49,6 @@ entry.
 Something is incorrect right now — what a screen states, what a control
 offers, or what the tiers claim to cover. Nothing here is blocked on anything.
 
-- **"an absent kind" has no stated reading at all.** `kind` is read raw at
-  `Depot.tsx`, `DepotPicker.tsx`, `GearDetail.tsx`, `slice.ts` and
-  `whereabouts.ts`, with absence treated differently at each, and the Counted
-  gate itself is spelled at a dozen sites. The one-function form is a
-  `kindOf(gear)` beside `ownerOf`, `phaseOf` and — since S9b — `ownedCountOf`;
-  the extraction reaches two workspaces. The drift symptom is a Counted Gear
-  reading `×1` on one surface, `×0` on a second and nothing on a third, and
-  gear detail's edit sheet still seeds `kind` raw, so an untouched Save on a
-  Gear with no register authors one. [`patterns.md`](patterns.md) §1.2,
-  anchor: `one-function form is a`
 - **Three callers now want a memoised `containmentView`.** `whereabouts`, the
   `CONTAINER` dimension and every list screen that hoists one by hand each
   build their own; `slice.ts` memoises the *ancestor index* instead, because
@@ -66,14 +56,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   owns that file is the one that should make the claim false. Argued in the
   memo's own JSDoc, `shared/src/selectors/slice.ts`, anchor:
   `The rejected alternative was memoising`
-- **`N INSIDE` counts the container tree, not what rides along.** `Packing`'s
-  `insideCount` reads `subtreeOf` on the trip containment view, which builds
-  from every Entry's raw residence register — per-person ones included, the
-  fold-but-ignore register a peer build may write — so the container-move
-  confirm can name pieces the group's rows do not show. The count should come
-  from the items' resolved residences.
-  [`sync-protocol.md`](sync-protocol.md) §4.4, anchor:
-  `must come from the items' resolved residences`
 - **From Split up, a Trip with an empty gear list has no drawn door to the
   gear list.** `+ Add from the depot` is gated on `editable`
   (`!isSplitOrWider`), so it is the phone's; `EDIT LIST ›` lives inside the

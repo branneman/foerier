@@ -2421,6 +2421,43 @@ all nine of its open decisions **before** a line of it existed.
   group is a partition and files by immediate holder (D5) — and nothing else on
   the bar can say so. The next dimension that groups as well as filters
   inherits the same question, and it is a copy-edit, not a reshape.
+- **Two standing debts were folded in before the branch merged, both sitting
+  directly under S9b's own work.** The first: `kind` was the register
+  [`patterns.md`](patterns.md) §1.2 had no row for and no function behind, read
+  raw at ten sites with the Counted gate spelled at nineteen. `kindOf`,
+  `isCounted` and `isPerPerson` (`shared/src/selectors/kind.ts`) are the
+  one-function form, and the reading they state is that an absent `kind` is
+  **no Kind** — the second register after an Entry's `source` deliberately
+  given no default, because reading it as Single would assert a Kind nobody
+  stated into the one value `claim.ts` branches on. The bullet above about
+  `ownedCountOf`'s three non-callers is **narrowed by this**: two of the three
+  were the same drift the debt named, so `Depot.tsx`'s `qtyFor` and
+  `GearDetail.tsx`'s `metaLine` now read `ownedCountOf` and only
+  `OverClaimBand`'s F6 guard still asks the raw register. The visible
+  consequence is that **a Counted Gear nobody counted draws `×1` everywhere**,
+  where the Depot's QTY column and row meta drew nothing; that number was
+  already `ownedCountOf`'s stated reading, and the point of the change is that
+  no surface disagrees with it. Gear detail's edit sheet seeds both drafts
+  through their gates as S4 made the owner draft seed through `ownerOf`, so an
+  untouched Save on a Gear with no register authors nothing — which matters
+  because a needless write moves the stamp LWW compares and can therefore beat
+  and silently discard a genuine concurrent write from a Device that was
+  offline.
+- **The second: `N INSIDE RIDE ALONG` counted the Entry tree, and the fix is
+  one more consumer of the item-residence rule** — the shape §5e C's own §9
+  predicted when it left this standing. `subtreeOf(view, entryId).size` counts
+  *Entries* over a view built from raw residence registers, per-person ones
+  included, so a container drawing no rows and counting `0/0` in its header
+  could still claim one thing rode along inside it. `ridesAlongCount`
+  (`packing.ts`) asks `packingItems` and `isInside`, the two functions ruling
+  C5 already makes a header agree with its rows through. **It counts units plus
+  nested containers, and ruling A5 is why that is two populations:** a
+  container is not a piece, so the packable total leaves every nested container
+  out, and a crate holding one empty stuff sack is not empty. **No board
+  reaches the arithmetic** — every drawn `… RIDE ALONG` is a flat crate of
+  plain gear, where units, items and Entries are one number — so the Counted
+  Entry's Bring-count and the nested container's `+1` are code-authored and
+  want a ruling; recorded in `design/README.md` §1.
 - **Story 13 is one row from complete, and the `WhereaboutsCard` trap that S2b
   laid for this slice is sprung and closed.** §8.5's table has `Outcome` at S10
   and nothing else; `HOME_LABEL` is no longer hardcoded inside the card's map

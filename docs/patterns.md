@@ -71,24 +71,42 @@ rule drifts from the filter. The symptom is always the same shape: a row
 labelled `SHARED` vanishing under `OWNERSHIP: SHARED`; a Trip listed in one
 section drawn with another section's chip. It also shapes the edit sheets: a
 draft is **seeded through the selector**, so an untouched Save on a pre-default
-row authors nothing (`GearDetail`'s `openEdit` seeds `owner` through
-`ownerOf`).
+row authors nothing — `GearDetail`'s `openEdit` seeds `owner` through
+`ownerOf`, `kind` through `kindOf` and the owned-count through
+`countedOwnedCount`, the Kind-free half of `ownedCountOf` a sheet needs
+because it seeds against the Kind it is about to write rather than the one the
+register holds. A needless write is not cosmetic here: it moves the stamp LWW
+compares, so it can beat and silently discard a genuine concurrent write from
+a Device that was offline.
 
-One register deliberately gets **no** default: an Entry with no `source` is
-not a line anybody can draw a default for, so `entriesOf` (`entry.ts`) folds
-it, retains it, and excludes it from every list, count and claim. An absent
-Gear `kind` still has no selector, which is a known gap (*Departures*).
+**Two registers deliberately get no default, and they still have one
+function each.** An Entry with no `source` is not a line anybody can draw a
+default for, so `entriesOf` (`entry.ts`) folds it, retains it, and excludes it
+from every list, count and claim. A Gear with no `kind` is the second:
+`kindOf` (`kind.ts`) answers `undefined`, never `'single'` — reading it as
+Single would assert a Kind nobody stated, and `claim.ts` branches on this
+value, so the misread would raise an over-claim the reader cannot settle. Each
+surface decides what it *draws* for "no Kind" (the KIND dimension carries no
+value, the grouping files it under `—`, the COUNT group does not render); what
+none of them may do is invent one. **A register with no default still wants
+the one function** — `kind.ts` is also where the Counted and per-person
+**gates** live, `isCounted` and `isPerPerson`, previously spelled at nineteen
+sites across two workspaces.
 
-*Departures:* `kind` is read raw at several sites with absence treated
-differently at each (`Depot.tsx`, `DepotPicker.tsx`, `GearDetail.tsx`,
-`slice.ts`, `whereabouts.ts`); the one-function form is a `kindOf` beside
-`ownerOf`, and the symptom is a Counted Gear reading `×1` on one surface,
-`×0` on a second and nothing on a third. `owned_count` was the other half of
-this departure until S9b took it: `ownedCountOf` is a row of the table above,
-and the three `app/` sites that test `ownedCount !== undefined` are **not**
-callers of it — they ask *did anybody record a count*, which fix round F6
-requires to stay a separate question.
-*Argued in:* `owner.ts` (the original), [§12.10](architecture-design.md#1210-consequences-of-s4-people-and-ownership),
+Two of those gates take `GearState | undefined` while `kindOf` does not, which
+is the second half of the rule: *is this Gear Counted* has one honest answer
+for a Gear this replica has not folded — no — while *what Kind is this Gear*
+is not a question you can ask of a Gear that is not there. That is what keeps
+`entryKind`'s two `undefined`s distinguishable, a cross-aggregate sync race
+being a different fact from a Gear that arrived without a Kind.
+
+`ownedCount !== undefined` survives at exactly **one** `app/` site,
+`OverClaimBand`'s F6 guard, which asks *did anybody record a count* before
+printing `OWNED ×N` beside a conflict. Every other `×N` reads `ownedCountOf`;
+until this pass two of them did not, and a Counted Gear nobody counted drew
+`×1` on one surface, `×0` on a second and nothing on a third.
+
+*Argued in:* `kind.ts`, `owner.ts` (the original), [§12.10](architecture-design.md#1210-consequences-of-s4-people-and-ownership),
 [§12.11](architecture-design.md#1211-consequences-of-s6-trips-and-phases),
 [§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
 

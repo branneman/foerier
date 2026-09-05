@@ -655,9 +655,11 @@ Piece with no `residence` of its own reads **loose** rather than its Entry's.
 One reader does still see the register: the trip's containment view
 (`tripContainment.ts`) builds its tree from every visible Entry's raw
 residence, per-person ones included, which is right about the container tree
-and wrong about where per-person gear is — so a count of "what rides along
-inside this container" must come from the items' resolved residences, never
-from that tree.
+and wrong about where per-person gear is. So `N INSIDE RIDE ALONG` is counted
+from the items' **resolved** residences and not from that tree
+(`ridesAlongCount`, `packing.ts`), plus the nested containers ruling A5 leaves
+out of the packable units — the tree being the right source for those, since a
+container's own residence register is the one every reader consults.
 
 **Tasks and notes**
 
