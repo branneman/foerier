@@ -17,7 +17,19 @@ Four rules keep an entry's shape:
   durable doc to this file. Each doc has to stay readable, and correct, alone.
 - **Every entry carries a verbatim anchor** — a phrase from the owning document,
   chosen because it _disappears_ when the debt is paid. Staleness is then
-  detectable rather than remembered: `grep -rF "<anchor>" docs app/src api/src`.
+  detectable rather than remembered:
+  `grep -rF "<anchor>" docs shared/src ui/src app/src api/src --exclude=technical-debt.md`.
+  **Three things that command has to get right, each of which has been wrong.**
+  It must **exclude this file**: every anchor is quoted verbatim in its own
+  entry, so a sweep that reads the index finds every anchor it looks for and can
+  never report a stale one — a check that only ever passes, and the one that let
+  S9b's closed `metaFor` entry survive to a merge. It must reach **`shared/` and
+  `ui/`**, which the earlier `docs app/src api/src` did not, so an anchor living
+  in `shared/src/selectors/` read as stale while it was live. And a miss is
+  **not proof of staleness**, because Prettier rewraps prose: three of the four
+  misses in S9b's sweep were anchors split across a line break, which `grep -F`
+  cannot see. So **choose an anchor short enough to survive rewrapping**, and
+  re-read the owning section before deleting a line.
   An entry whose anchor no longer appears is either **closed** (delete the line)
   or **moved** (fix the pointer); it is never a reason to re-argue the debt here.
   An entry that resists an anchor is a debt recorded nowhere durable, and wants a
@@ -169,7 +181,7 @@ second pane.
   from Split up on the boards, and all three are approximated by `Sheet`'s
   `desktopCard` until the primitive lands.
   [`frontend-design.md`](frontend-design.md) §5, anchor:
-  `desktop tag picker is approximated by`
+  `is the one with waiting callers`
 - **`AddGear`'s CTA is not pinned to the thumb zone**, where `NewTrip`'s and
   `Trip`'s are. Three fields do not fill a phone, so the primary and the fact
   line beneath it sit mid-screen on exactly the device the thumb zone exists for.
