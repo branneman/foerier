@@ -679,3 +679,212 @@ than a named §5 composite.
   Giving F4 the full treatment stays story 13's scope: recorded, not built.
 - **`ui/Popover`, the `WhereaboutsCard` move into `ui/`, the `DepotState`
   rename.** None is this slice's, and each has a stated blocker.
+
+---
+
+## 9. What changed during implementation
+
+Written after the slice landed. **Nothing above this line has been edited.**
+[`the-gear-list.md` §11](2026-08-29-the-gear-list.md#11-what-changed-during-implementation)
+sets the precedent and
+[`packing-and-the-journey.md` §11](2026-09-01-packing-and-the-journey.md#11-what-changed-during-implementation)
+follows it: a dated spec is a record of what was believed when it was written,
+and correcting it in place destroys the evidence of what moved. So a sentence
+above that turned out false is listed here, beside the reason, rather than
+quietly fixed where a reader would never learn it had been wrong.
+
+### 9.1 Sentences in this document that are wrong
+
+- **"`SliceBar`, `ValueMenu` and `SortGroupSheet` change _not at all_" is
+  untrue of `SliceBar`.** The Decisions table says it and §4.4 argues it, and
+  the argument survives the exception: the **dimension row and the grouping
+  row** really do change no component, and the sixth dimension proved S3's
+  altitude claim with all three components compiling and passing their existing
+  suites unedited. But D5's own last-but-one clause — _the arrange row's hint
+  gains a second clause while the group is active_ — is a component edit, and
+  §4.4 lists it two bullets above the sentence that denies it. `CONTAINER` is
+  the first dimension whose filter and grouping answer different questions, and
+  nothing else on the bar can say so. Known false before the code was written,
+  and recorded here rather than fixed above.
+- **The hint's punctuation is a choice this document does not make.** D5 quotes
+  the clause without a terminator; it ships as two period-terminated
+  sentences — `SEARCH + FILTERS COMBINE WITH AND.` then
+  `GROUPS FILE EACH GEAR UNDER THE CONTAINER IT IS IN.` — following
+  `WhereaboutsCard`'s own two-clause footer. Reversible, and this is where a
+  later editor should look.
+- **§2.6 lists `packing.ts` as untouched, and it moved twice.**
+  `sameTripResidence` moved _into_ it from `app/src/components/PackPicker.tsx`
+  (§9.3), and `STAGES` gained a `word` column with `stageWord` beside
+  `stageLabel` (§9.2). Both are exported from `shared/src/index.ts`, which §2.6
+  does name.
+- **§2.3's container rule is stated over holders and ships stated over
+  residences.** The table reads _"the residences' **immediate** holders: one →
+  name it; several → `mixed`; none (all loose) → `null`"_, which only parses if
+  a loose residence contributes no holder — and under that reading gear detail
+  answered `▸ ALPS 2026 · CRATE B` for a set F4's ALL mode already called
+  `▸ MIXED`, because `PackingRow` compares residences and **a loose residence
+  is a residence**. `reconcile` now asks whether every residence in the slice is
+  `sameTripResidence` to the first: if so that residence names itself (`null`
+  when it is loose), otherwise `MIXED`. D2 adopts the word precisely because it
+  is _"already the app's word for this exact fact"_, so the two surfaces had to
+  agree — which is the failure §1 names as this slice's whole risk, realised
+  once and caught in review.
+- **§5.1's D2 case _container named, stage dropped_ is unreachable by
+  construction.** One residence for everybody is one chain root is one stage, so
+  the stage can only drop where the container is already `MIXED`. `reconcile`'s
+  docstring states the asymmetry as a property so no reader hunts for a test
+  that cannot exist, and three reachable cases replace it: two Pieces in two
+  containers **sharing** a root (`▸ ALPS 2026 · MIXED · CAR`), two whose roots
+  **differ** (`▸ ALPS 2026 · MIXED`), and one held beside one loose (`MIXED`,
+  the F4 agreement above).
+- **`PersonWhereabouts` has three fields, not two.** §3.4 gives it `slice` and
+  `contestedTripIds`; it ships with `status` as well (§9.2).
+- **§7 says "Delete the entry" of the owned-count debt, and the entry had a
+  second half.** Its title also carries _"an absent kind has no stated reading
+  at all"_, which S9b does not close — `kindOf` is still unwritten. The entry is
+  **narrowed** to that half rather than deleted, and the owned-count half is
+  gone with its reasoning in the commit that removed it, per the index's own
+  rule that the argument never lives in the index.
+
+### 9.2 Decisions this document did not take
+
+Each was forced by the code and is recorded where it is implemented, not only
+here.
+
+- **A per-person Entry that is also a container reads its own residence through
+  `view.holderOf`, not `entryResidenceOf`.** `container` and `kind` are
+  orthogonal registers — S9a found the Counted-container case the same way — and
+  since §5e C0 `entryResidenceOf` answers `null` for a per-person Kind, which is
+  right for a thing that travels and wrong for a container, which is one thing
+  wherever it rides. So the **container check comes before Kind** for the
+  residence, as `packingItems` and `statusOf` both already do, while the
+  **counts follow Kind**, which is `claim.ts`'s permanent divergence from
+  `pieceCountOf`. The choice had no test and reverting it passed all 46; a
+  per-person container — a family stuff sack carrying both registers, inside a
+  duffel staged in the car — now pins all three halves of it, and the block
+  comment says every other container in the suite is Single or Counted, where
+  the two functions agree.
+- **The stage segment renders `stageWord`, never `stageLabel`.** `STAGES`'
+  `label` is the _rail's_ text and its `home` row is `⌂ HOME`, so the trip line
+  could have read `▸ ALPS 2026 · CRATE B · ⌂ HOME` — a home-world glyph inside a
+  trip-world statement, against `design/README.md` §2's app-wide marks and
+  against the whole point of B1's segment order. The table gains a `word`
+  column (`HOME · STAGING · CAR · PACKED`) and `stageWord` joins `stageLabel`
+  and `stageDisagreementLabel`, the row lookup staying private per that file's
+  convention that every question the table answers has exactly one function of
+  its own. An unrecognised stage renders verbatim through either. The rail is
+  untouched.
+- **`PersonWhereabouts` carries the packing status, resolved in the same
+  per-Piece walk that resolves the residence.** §4.3 draws a trailing mini
+  status chip on Find's per-piece row; deriving it in the screen would have
+  meant a second walk of the Trip's Entries. It is threaded from
+  `contributionOf` through `TripSliceFacts` to `whereaboutsByPerson`, which
+  reads it off the identical `first.pieces` lookup, and it is `null` exactly
+  when the Person's answer is home — **one `included` boolean now gates slice
+  and status together**, replacing two separate checks that could have drifted.
+  Gear detail's `PIECES` chip stays circle-plus-whereabouts with no status, per
+  §4's own drawn anatomy.
+- **The trip-slice comparator borrows `order.ts`'s `byNameThenId` behind a
+  one-line adapter.** A local `compareTripFacts` agreed with it byte for
+  byte — which is what makes it a defect rather than a bug, since _"a second
+  copy of a total-order comparator is exactly how two devices start drawing
+  lists differently again"_. The adapter is what borrowing costs and the
+  docstring says so: `byNameThenId` sorts register-shaped `{id, name: {value}}`
+  entities and a `TripSliceFacts` holds neither, its `tripName` being
+  `tripLabel`'s already-resolved answer. Feeding the **label** is deliberate and
+  is `sortedPeople`'s stated rule — sort by the label a row draws, or a nameless
+  Trip files under an empty string while the reader sees a word.
+- **Both per-person surfaces gate on _at least one answer is a trip slice_,
+  never on the map's size.** `whereaboutsByPerson` keys on every Participant of
+  a claiming Trip whether or not their Piece is included (B5), so a per-person
+  Entry whose every Piece has been tombstoned still fills the map — with every
+  answer reading the identical home path, which is exactly B3's
+  identical-circles fault on the surface B3 built. Gear detail and Find each
+  compute the boolean in the parent, before the card is mounted, because a JSX
+  element is never itself `null` and testing one for null-ness to decide on a
+  fallback silently never falls back.
+- **`1 PIECE OUT` / `N PIECES OUT`.** `GearListSection.tsx`'s own noun rule, one
+  file over; no board draws the singular.
+- **A Person's own slice carries `count: null, pieceCount: 1`.** A Person's
+  answer speaks for their one Piece. Neither field is drawn at either density
+  the callers use, so it is inert — but it had to be something, and `1` is the
+  only honest number.
+- **An unrecognised or unsynced Kind gets both counts `null` on a trip slice** —
+  D1's Single arm taken as the conservative direction, since asserting a
+  quantity for a Kind this build has no rule for is the stronger claim. It
+  matches `claim.ts`'s `isClaimableKind` posture rather than `pieceCountOf`'s
+  count-it-as-one.
+- **`whereabouts` on a `gearId` not in the fold answers a home slice with an
+  empty path**, plus whatever trip slices name it. It cannot throw.
+- **The grouped `CONTAINER` header reads the sentinel off
+  `dimension('container').pinned`, not off an absent `state.gear` lookup.** The
+  lookup is a proxy — it answers _this key names no folded Gear_ — and the two
+  causes of a header with no meta line are now distinct code paths: the
+  sentinel's (D4, _the name is the definition_) and a real container whose own
+  home path is empty. The sentinel's name is muted through a `.sentinelName`
+  modifier mirroring `Packing.tsx`'s `.looseName`, which D4 states and the first
+  cut missed; the test asserts the class **and** its absence on two real
+  headers, since a one-sided check passes against a stylesheet that mutes
+  everything.
+- **`dimension('container').format` falls back to the existing private
+  `nameOf`** for a container with no name register, rather than inventing an
+  `UNNAMED_GEAR` sentinel: no such vocabulary exists, because unlike a Person or
+  a Trip a piece of Gear is named at `gear.recorded` in every path that creates
+  one.
+- **`PerPersonCard`'s header `×N` is the Participant roster size**, the
+  per-person analogue of `COUNTED`'s owned count. An inference, not a quoted
+  rule.
+- **Find's `CountedCard` grows no over-claim footer.** D8 puts one ▲ and one
+  door on gear detail's card — _one screen, one ▲, one door_ — and Find's
+  counted card is not that card. Its per-piece rows still carry D7's `RESOLVE`,
+  which is a different fact about a different row.
+
+### 9.3 What review caught, and what it says about the seam
+
+Four of the five findings are one surface disagreeing with another, which is
+what §1 predicted this slice's failures would look like.
+
+- **Gear detail contradicting F4's `▸ MIXED`** (§9.1) — the risk statement
+  realised, and the fix was a move into `shared/` rather than a second rule.
+- **The `PIECES` gate on the map's size**, found on gear detail and guarded in
+  advance on Find because of it.
+- **The sentinel header's muted tone**, stated by D4 and shipped on
+  `ink-primary`.
+- **The missing trailing status chip on Find's per-piece rows.** The first pass
+  reasoned it waited on S10; that was wrong. S9a already shipped
+  `pieceStatusOf`, and what S10 owns is the separate `▲ LAST SEEN` unaccounted
+  read — a different sentence in the same paragraph of `design/README.md` §6.
+- **The duplicated comparator** (§9.2), which agreed and was therefore invisible
+  to every test.
+
+### 9.4 What the slice found in shipped code
+
+- **Five docblocks and comments had turned false and were deleted rather than
+  left to read as lies**, on S9a's §3.6 obligation: `Find.tsx`'s two (per-person
+  gear _"waits for Pieces"_, and the amber trip slice _"deliberately not
+  placeholder'd"_), `Find.module.css`'s `.sliceWhereabouts` note that the trip
+  and attention variants were _"a later slice's work"_, `Depot.tsx`'s comment
+  beside its `whereabouts="⌂ HOME"` literal, and `ui/GearRow.tsx`'s `tone`
+  comment naming story 11's `lost` outcome as when `attention` arrives (§6.1's
+  third seam).
+- **`slice.test.ts`'s dimension-table docblock had been stale since S7** — _"S7,
+  S8, S9 and S10 each add a row … these pin the four rows that exist"_ — and
+  undercounted by two by the time this slice landed. It also promised a row for
+  S8 and one for S9a, both of which rulings H and B4 retired. Corrected here,
+  because a count in a test's own header is the one place a reader trusts
+  without checking.
+- **`overClaims` reaches the memo but the memo does not reach `overClaims`.**
+  The `TRIP_SLICES` build walks each active Trip's Entries once for the slices,
+  and `overClaims(state)` walks them again inside itself. Fusing them would mean
+  exporting `claimsByGear` or duplicating the supply rule, and duplicating it is
+  precisely what this slice must not do. It is one extra O(entries) pass **per
+  fold**, not per row, so the memo still removes the cost that mattered.
+  Recorded, not fixed.
+- **`containerAncestorsOf` cannot produce a container id the fold does not
+  hold**, and that is a real architectural difference rather than an oversight.
+  `resolvePointer` already resolves an unresolvable home pointer to `LOOSE` one
+  layer below it, so every ancestor it yields is by construction already a key
+  of the same `state`. `dimension('trip')` and `dimension('person')` have no
+  such gate — a Trip id or an `owner.personId` is read with no existence check
+  at fold time — which is why their `format` arms must defend against a ghost id
+  and this one need not, though it is written to anyway.
