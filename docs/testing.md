@@ -29,7 +29,7 @@ the purity of the merge logic and the convergence of divergent replicas.
 ## The pyramid
 
 ```
-[T5] E2E smoke          ← Playwright, real app.foerier.app, one golden path (+ an offline leg)
+[T5] E2E smoke          ← Playwright, one golden path (+ an offline leg): local stack every push/PR, app.foerier.app after deploy
 [T4] Contract / API     ← real deployed server, verifies the box (migrations, Caddy, WebAuthn origin)
 [T2s] Server integration ← real Hono + local Postgres (foerier_test), endpoints + household isolation
 [T3] Component          ← React Testing Library, core-flow screens (F1–F5)
@@ -352,8 +352,10 @@ violation fails the run naming the rotation procedure.
 
 ## Tier 5 — E2E smoke tests
 
-**Charter:** the real deployed site in a real browser, exercising exactly one core
-journey. Deliberately small — edge cases belong in lower tiers.
+**Charter:** the real app in a real browser, exercising exactly one core
+journey. Deliberately small — edge cases belong in lower tiers. **Two targets,
+not one:** the local stack on every push and pull request, and the deployed
+site after every deploy — the same specs, retargeted by one variable.
 
 **Golden path:** sign in → add gear → find it → build a trip → pack an item →
 close the trip. **Today it runs the first five** — sign in, record gear with the
@@ -368,10 +370,14 @@ two steps past it — three slices rather than one, because nothing failed when 
 leg was skipped. The three legs are written; this sentence is what stops the
 next one going the same way.
 
-**One hop in the journey is a `goto`, not a click, and that is a finding rather
-than a shortcut.** From Split up a Trip with an empty gear list draws no door to
-the builder at all, so the leg navigates by URL and says why at the call site.
-It becomes a click the day a door is drawn.
+**One hop in the journey used to be a `goto` rather than a click, and it was
+a finding rather than a shortcut — now closed.** From Split up a Trip with an
+empty gear list drew no door to the builder at all, so the leg navigated by URL
+and said why at the call site; the empty region now draws `EDIT LIST ›` and the
+leg clicks it. Worth keeping as a shape rather than as history: **a `goto` that
+stands in for a control nobody can reach is a product defect wearing a test's
+clothes**, and writing down *why* the shortcut existed is what let it be paid
+rather than copied into the next leg.
 
 Two PWA-specific twists this project must cover:
 
@@ -479,7 +485,8 @@ Three contexts, three strategies — never shared across contexts.
   (`test/contract/deployment.test.ts:12-15`): its charter is everything
   reachable unauthenticated, which is what lets it run from the first deploy
   rather than from the first feature that needs a Household.
-- **Tier 5 locally** mints a fresh Household per test by invoking the real
+- **Tier 5 against the local stack** — a developer's machine and the
+  `e2e-local` job alike — mints a fresh Household per test by invoking the real
   Maintainer bootstrap script (`test/e2e/mintInvite.ts:11-46`), deliberately
   rather than seeding rows directly — `auth-design.md` §3.4 makes that script
   the only way a Household's first Login is ever arranged, so a test that
@@ -498,6 +505,10 @@ Three contexts, three strategies — never shared across contexts.
   exactly the cloned-authenticator case the counter exists to catch
   (`api/test/server/auth.test.ts` pins the rejection). Both jobs pin every
   third-party action by SHA, declare `permissions: {}`, and upload nothing.
+  **That rule is about the credential, not about Tier 5:** `e2e-local` holds
+  none — each of its tests mints its own Household into a database that dies
+  with the runner — so it is the one Tier 5 job that may upload its report,
+  which is most of what makes a browser failure in CI diagnosable.
   Setup beyond the reset is **client-side**, pushed through the real
   `/sync/push`: the server grows no fixture generator, and for Tier 5 the golden
   path records its own gear through the UI anyway.
@@ -580,13 +591,30 @@ nothing else reached the path.
 
 ## CI triggers summary
 
-| Tier | When it runs |
-| --- | --- |
-| 0 (static analysis) | Every commit (pre-commit hook) and every push (CI) |
-| 1–3 (unit / convergence / component) | Every push to `main` |
-| 2s (server integration) | Every push to `main` (local `foerier_test` in CI) |
-| 4 (contract / API) | After every deploy to `main` (polls `/version` for the SHA) |
-| 5 (E2E smoke) | After every deploy to `main` — the `@production` subset only |
+**Before the deploy, on every push *and every pull request* to `main`:**
+
+| Tier | Job | Notes |
+| --- | --- | --- |
+| 0 (static analysis) | `static-analysis` | also every commit, via the pre-commit hook |
+| 1–3 (unit / convergence / component) | `tests` | |
+| 2s (server integration) | `server-tests` | local `foerier_test` Postgres as a service |
+| 5 (E2E smoke) | `e2e-local` | the **whole** directory against the local stack |
+
+**These four gate the image build.** `build-push` needs all of them, so a
+broken golden path stops an image existing rather than being found afterwards
+against the box. That is the one place the pyramid inverts on purpose: Tier 5
+is the slowest tier and it still runs before the deploy, because the journey it
+proves is the product.
+
+**After the deploy, on pushes to `main` only:**
+
+| Tier | Job | Notes |
+| --- | --- | --- |
+| 4 (contract / API) | `contract` | polls `/version` until the pushed SHA is served |
+| 5 (E2E smoke) | `e2e-prod` | the `@production` subset only; gated on `E2E_ENABLED` |
+
+Both post-deploy jobs hold the CI credential; neither runs on a pull request,
+where a fork could read it.
 
 ## Running everything locally
 
@@ -596,7 +624,8 @@ npm test              # Tiers 1–3 + convergence
 npm run test:server   # Tier 2s (needs a local foerier_test Postgres)
 npm run test:contract # Tier 4 (needs the deployed server; E2E_CREDENTIAL_ID +
                       #         E2E_PRIVATE_KEY for the household suite)
-npm run test:e2e      # Tier 5 (Playwright; virtual authenticator)
+npm run test:e2e      # Tier 5 (Playwright; virtual authenticator; needs the
+                      #         same local foerier_test Postgres as Tier 2s)
 ```
 
 `npm test` is the invocation that matters: a bare `npx vitest run` misses the
