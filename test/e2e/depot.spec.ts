@@ -179,14 +179,16 @@ test('gear recorded offline reaches the depot, survives a reload, and syncs @pro
 
   // ---- the gear list (S7) -------------------------------------------------
 
-  // **Reached by URL, because at this width there is no drawn door.**
+  // **Reached by a click, which it could not be until the door existed.**
   // `+ Add from the depot` is gated on `editable = !isSplitOrWider`, so it is
   // the phone's; `EDIT LIST ›` lives inside the `GEAR LIST` band, which
-  // renders only once the Trip *has* entries. A Trip with an empty list is
-  // therefore a dead end from Split up — the one hop in this journey a
-  // Quartermaster cannot actually make. Recorded in `technical-debt.md`; this
-  // navigation goes back to a click the day a door is drawn.
-  await page.goto(`${new URL(page.url()).pathname}/list`)
+  // renders only once the Trip *has* entries — so a Trip with an empty list
+  // was a dead end from Split up, and this hop was a `page.goto` standing in
+  // for a journey a Quartermaster could not actually make. The empty region
+  // now draws that same `EDIT LIST ›`, and this leg is the only tier that
+  // proves the whole path from *create a trip* to *add its first entry* is
+  // walkable at a laptop width.
+  await page.getByRole('link', { name: 'EDIT LIST ›' }).click()
   await expect(
     page.getByRole('heading', { name: `${TRIP} — gear list` }),
   ).toBeVisible()

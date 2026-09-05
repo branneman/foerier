@@ -9,7 +9,7 @@ import {
   tripPhaseMoved,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -198,11 +198,17 @@ describe('the trip screen — the header the board draws', () => {
   /**
    * The gear-list region: the count, then **one permanent domain fact** — the
    * gear list is built from the depot, which is as true now as it was before
-   * this slice. From Split up the screen only ever reads, so an empty list
-   * there draws no control at all — a stronger claim than "no button whose
-   * name says add".
+   * this slice. From Split up the screen only ever *edits through the
+   * builder*, so the region draws no add control of its own — a stronger
+   * claim than "no button whose name says add" — and the one door it does
+   * draw is `EDIT LIST ›`, the band's own door, in the empty region's own
+   * slot.
+   *
+   * This assertion used to read `querySelectorAll('button, a')` is empty,
+   * which pinned the dead end rather than the rule. It is updated **with**
+   * the fix and not around it (S9a §11.5's lesson, one slice on).
    */
-  it('says the gear list is empty and says where it comes from, with no control from Split up', async () => {
+  it('says the gear list is empty and says where it comes from, with no add control from Split up', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     setViewport(SPLIT)
     await renderTrip(`/trips/${ALPS}`, ...alps())
@@ -210,10 +216,35 @@ describe('the trip screen — the header the board draws', () => {
     const region = screen.getByTestId('gear-list')
     expect(region).toHaveTextContent('0 ENTRIES.')
     expect(region).toHaveTextContent('The gear list is built from the depot.')
-    expect(region.querySelectorAll('button, a')).toHaveLength(0)
+    expect(region.querySelectorAll('button')).toHaveLength(0)
     expect(screen.queryByRole('button', { name: /add/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /add/i })).toBeNull()
-    expect(screen.queryByText('EDIT LIST ›')).toBeNull()
+  })
+
+  /**
+   * **The dead end this closes.** `+ Add from the depot` is the phone's, and
+   * `EDIT LIST ›` lived inside the `GEAR LIST` band, which renders only once
+   * the Trip *has* Entries — so from Split up a Quartermaster could not add
+   * the **first** Entry to a Trip at all.
+   *
+   * The door is the band's own: same route, same copy, same gate
+   * (`!editable`), placed where the phone's own add affordances sit, after
+   * the region's two lines. It is emphatically **not** a second `PACKING ›`:
+   * that door stays withheld here, because a route to a screen that can only
+   * say `0 ENTRIES.` back is the dead affordance the empty region's rule
+   * forbids, while an empty gear list is the exact state in which you most
+   * need the builder.
+   */
+  it('from Split up: an empty gear list still reaches the builder, and still not F4', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(SPLIT)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    const region = screen.getByTestId('gear-list')
+    const edit = within(region).getByRole('link', { name: 'EDIT LIST ›' })
+    expect(edit).toHaveAttribute('href', `/trips/${ALPS}/list`)
+    expect(within(region).queryByText('PACKING ›')).toBeNull()
+    expect(screen.queryByRole('link', { name: /Open packing/ })).toBeNull()
   })
 
   /**

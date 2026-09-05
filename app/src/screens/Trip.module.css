@@ -482,6 +482,34 @@
     inset: -0.6875rem;
   }
 
+  /* `EDIT LIST ›` again, in the empty region rather than the band — the same
+     door, drawn the same way, in the one state where the band does not
+     render at all.
+
+     It takes `min-height: max(3rem, 48px)` where `.editList` above may not,
+     and for that rule's own stated reason read forwards: the band forbids a
+     `min-height` because `.gearListBand`/`.gearListTrailing` are
+     `align-items: baseline` and a taller box would push the link off the
+     baseline it shares with `.gearListCount`. Here there is no such row —
+     `.gear` is a plain column with nothing beside this link — so ruling O's
+     standalone clause applies unchanged and the hit area is simply *drawn*,
+     with no `::after` to clamp against a neighbour that does not exist.
+     `TripCard.module.css`'s `.buildList` is the precedent named in that
+     rule, and this is its twin: same paint, same reason it is allowed. */
+  .editListEmpty {
+    /* No `align-self`: `.gear` is a centred column and this link is one more
+       centred line in it, under the two it belongs to. */
+    display: inline-flex;
+    align-items: center;
+    min-height: max(3rem, 48px);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
   /* `PACKING ›` — `.editList`'s twin in the same band, so every word of that
      rule's reasoning above applies here unchanged: the baseline row forbids
      a `min-height`, and the `::after` is what makes an 11px link reachable

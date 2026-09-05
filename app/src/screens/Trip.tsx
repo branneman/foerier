@@ -53,15 +53,22 @@ import styles from './Trip.module.css'
  * editing moves to — the builder is its own route, `/trips/:id/list`, not a
  * second pane grafted onto this screen.
  *
- * **From Split up, a Trip with an empty gear list has no drawn door to the
- * builder.** `+ Add from the depot` is gated on `editable`, which is
- * `!isSplitOrWider`, so it belongs to the phone; `EDIT LIST ›` lives inside
- * the `GEAR LIST` band, which renders only once the Trip *has* Entries. The
- * first Entry is therefore unreachable at these widths except by typing the
- * route — a dead end rather than a missing convenience, and the sibling of
- * the drawn-and-recorded case where an empty list also hides `PACKING ›`
- * (`docs/design/README.md` §1). Tier 5's gear-list leg navigates by URL
- * because of this and says so at the call site.
+ * **The empty region carries `EDIT LIST ›` from Split up, and that closes a
+ * dead end.** `+ Add from the depot` is gated on `editable`, which is
+ * `!isSplitOrWider`, so it belongs to the phone; `EDIT LIST ›` lived inside
+ * the `GEAR LIST` band, which renders only once the Trip *has* Entries —
+ * between them the **first** Entry was unreachable at these widths except by
+ * typing the route. The region now draws the band's own door: same route,
+ * same copy, same `!editable` gate, placed where the phone's add affordances
+ * sit, after the region's two lines.
+ *
+ * It is deliberately **not** the sibling case below, which stands: an empty
+ * list still hides `PACKING ›`, because a route to a screen that can only
+ * say `0 ENTRIES.` back is a dead affordance, while an empty gear list is
+ * the one state in which the *builder* is most wanted. Two doors, opposite
+ * answers, one reason each. Placement is a code-authored call — no board
+ * draws this region with a control at these widths — and is carried into
+ * `docs/design/README.md` §5 so the next round meets it where it looks.
  *
  * The title is **the Trip's name alone**: the builder's `— gear list` names a
  * list that does not exist, and its count, its weight and its `Start pack-out`
@@ -643,6 +650,28 @@ export function Trip() {
           <p className={styles['gearSource']}>
             The gear list is built from the depot.
           </p>
+          {/* From Split up this is the region's only door, and it closes a
+              dead end rather than adding an affordance: `+ Add from the
+              depot` below is the phone's, and `EDIT LIST ›` lives in the
+              `GEAR LIST` band, which renders only once the Trip *has*
+              Entries — so a Quartermaster on a laptop could not add the
+              **first** Entry to a Trip at all.
+
+              The band's own door, unchanged: same route, same copy, same
+              `!editable` gate, sitting where the phone's add affordances sit
+              — after the region's two lines. **Not** a second `PACKING ›`:
+              that one stays withheld here for the reason the code-authored
+              line in `design/README.md` §1 gives (a route to a screen that
+              can only say `0 ENTRIES.` back), and an empty gear list is the
+              one state in which the *builder* is most needed. */}
+          {!editable && (
+            <Link
+              href={`/trips/${tripId}/list`}
+              className={styles['editListEmpty']}
+            >
+              EDIT LIST ›
+            </Link>
+          )}
         </section>
       ) : (
         <div

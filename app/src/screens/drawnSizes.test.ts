@@ -56,6 +56,33 @@ describe("ruling O's drawn sizes", () => {
     expect(ruleBody(css, '.chip::after')).toBeDefined()
   })
 
+  /**
+   * The two `EDIT LIST ›` links are the same door drawn twice, and only one
+   * of them may take the floor. In the `GEAR LIST` band `.editList` sits in
+   * an `align-items: baseline` row beside `.gearListCount`, so a taller box
+   * would push it off that baseline — it keeps its 11px paint and reaches 44
+   * through a symmetric `::after`. In the empty region there is no such row,
+   * so ruling O's standalone clause applies and the hit area is simply
+   * drawn. Pinned together, because the failure this guards is the copy: a
+   * second author giving the band's link the floor, or the region's link an
+   * extension it has nothing to clamp against.
+   */
+  it('floors the empty region\u2019s EDIT LIST, and never the band\u2019s', () => {
+    const css = moduleCss('Trip.module.css')
+    const empty = ruleBody(css, '.editListEmpty')
+    const inBand = ruleBody(css, '.editList')
+
+    expect(empty).toBeDefined()
+    expect(empty).toMatch(FLOOR)
+    expect(empty).not.toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.editListEmpty::after')).toBeUndefined()
+
+    expect(inBand).toBeDefined()
+    expect(inBand).not.toMatch(FLOOR)
+    expect(inBand).toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.editList::after')).toMatch(/inset:\s*-0\.6875rem/)
+  })
+
   it('paints the Depot column head as its drawn band, not a 48px box', () => {
     const css = moduleCss('Depot.module.css')
     const head = ruleBody(css, '.columnHead')

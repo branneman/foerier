@@ -68,16 +68,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   owns that file is the one that should make the claim false. Argued in the
   memo's own JSDoc, `shared/src/selectors/slice.ts`, anchor:
   `The rejected alternative was memoising`
-- **From Split up, a Trip with an empty gear list has no drawn door to the
-  gear list.** `+ Add from the depot` is gated on `editable`
-  (`!isSplitOrWider`), so it is the phone's; `EDIT LIST ›` lives inside the
-  `GEAR LIST` band, which renders only once the Trip *has* Entries. A
-  Quartermaster on a laptop therefore cannot add the **first** Entry to a Trip
-  at all — a dead end, not a missing convenience, and worse than the recorded
-  sibling where an empty list also hides `PACKING ›`. Tier 5's gear-list leg
-  navigates by URL because of it. Wants a drawn door, so a board rules where it
-  goes. Argued in the screen's own JSDoc, `app/src/screens/Trip.tsx`, anchor:
-  `has no drawn door to the`
 - **Three of the five Tier 5 spec files run in no CI job.** `e2e-prod` is the
   only job that runs Tier 5 and it always targets the box, where
   `grep: /@production/` excludes `auth.spec.ts`, `deviceLink.spec.ts` and
