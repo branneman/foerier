@@ -205,15 +205,21 @@ second pane.
   components are what close it.
   [`architecture-design.md`](architecture-design.md) §12.1, anchor:
   `` until there is a `ui/` worth showing off ``
-- **Three of §5's `ui/` composites are still in `app/`.** `TripCard`,
-  `WhereaboutsCard` and — since S9a — `JourneyRail` are named there and live in
-  `app/src/components/`, each with one caller, and a second caller is the bar
-  both moves so far have cleared (`GearRow`, `ExpiryChip`).
-  `WhereaboutsCard` wants only that caller; `TripCard` reads the store, which
-  §5's hard rule forbids in `ui/`, so it owes a lifted read as well; and
-  `JourneyRail` reads the stage table from `shared/`, which `ui/` does not
-  depend on. [`frontend-design.md`](frontend-design.md) §5, anchor:
-  `` still in `app/src/components/` with one caller each ``
+- **Three of §5's `ui/` composites are still in `app/`, and none of the three
+  is merely waiting for a second caller.** `TripCard`, `WhereaboutsCard` and —
+  since S9a — `JourneyRail` are named there and live in
+  `app/src/components/`, each with exactly one caller, so §5.5's own bar (a
+  second caller) has not been reached for any of them. Each also owes work
+  beyond the move: `TripCard` reads the store, which §5's hard rule forbids in
+  `ui/`; `JourneyRail` reads the stage table from `shared/`, which `ui/` does
+  not depend on; and `WhereaboutsCard` **owes both of those plus a router
+  import** — it reads four values and two types from `shared/` and renders
+  wouter's `<Link>` for `RESOLVE`. Its move is therefore an API redesign, not
+  a relocation: every `shared/` value has to arrive pre-resolved as a row view
+  model and the `RESOLVE` link has to arrive as a `ReactNode` from the caller.
+  Doing it before a second caller exists would also design that view model
+  against a single screen. [`frontend-design.md`](frontend-design.md) §5,
+  anchor: `` still in `app/src/components/` with one caller each ``
 
 ### Waiting on a decision
 

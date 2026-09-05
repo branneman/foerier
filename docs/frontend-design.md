@@ -561,9 +561,19 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   still in `app/src/components/` with one caller each, and a second caller is
   the bar `GearRow` cleared (`Depot`, `Find`) and `ExpiryChip` after it
   (`InviteIssued`, `People`, and since the pattern audit `Join`, which had
-  hand-rolled a rounding copy). `WhereaboutsCard` is props-in already and
-  wants only its second caller plus a type-only `@foerier/shared` import that
-  `ui/`'s `tsc` would have to resolve. `TripCard` is blocked four ways, not
+  hand-rolled a rounding copy). `WhereaboutsCard` is props-in already, and
+  the rest of that sentence used to read *"wants only its second caller plus a
+  type-only `@foerier/shared` import"* — which was wrong on both halves and is
+  corrected here. The `shared/` import is **not** type-only:
+  `containerText`, `LOOSE_TEXT`, `sliceCountLabel` and `stageWord` are runtime
+  values called on every render, so it is `JourneyRail`'s blocker exactly, not
+  a lighter one. And it renders the router's `Link` for `RESOLVE`, which is
+  `TripCard`'s second blocker. Its move is therefore an **API redesign**: each
+  `shared/`-derived string has to arrive pre-resolved as a row view model, and
+  `RESOLVE` has to arrive as a `ReactNode` the caller builds — the shape
+  `Sheet` and `Confirm` already use to keep routing in `app/`. Designing that
+  view model against a single screen is the second reason to wait for the
+  second caller, not just the bar. `TripCard` is blocked four ways, not
   one: it reads `useDepot`, renders the router's `Link` where `GearRow` takes
   `anchorProps`, imports `app/`'s own `depot/trips` helpers and
   `GearListSection`'s label, and calls `shared/` selectors at runtime.
