@@ -215,6 +215,24 @@ describe('the depot picker — rows', () => {
     expect(row).toHaveTextContent('+ ADD')
   })
 
+  it('appends ×1 for Counted gear nobody counted, the reading every surface shares', async () => {
+    // The picker's suffix goes through `qtyFor`, which is `ownedCountOf`, so
+    // it reads a Counted gear with no register as `×1` — the same `×1` gear
+    // detail's COUNT header and the Depot's QTY column now draw. It used to
+    // draw no suffix at all and fall through to the owner's initial.
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Vosges — Oct'),
+      gearRecorded('canister', {
+        name: 'Gas canister 450',
+        container: false,
+        kind: 'counted',
+      }),
+    )
+    renderPicker(store)
+
+    expect(rowMeta(screen.getByTestId('depot-picker-row'))).toBe('LOOSE · ×1')
+  })
+
   it('draws PER-PERSON for per-person gear, the Kind label CSS upper-cases', async () => {
     const { store } = await seededStore(
       tripCreated(ALPS, 'Vosges — Oct'),

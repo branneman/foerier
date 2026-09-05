@@ -679,9 +679,16 @@ export function ridesAlongCount(
   const units = countOf(
     items.filter((item) => isInside(item, entryId, subtree)),
   ).total
-  const containers = entriesOf(trip, state).filter(
-    (entry) => subtree.has(entry.id) && isContainerEntry(entry, state),
-  ).length
+  // Straight off the subtree ids, never `entriesOf`: that sorts the whole
+  // gear list by label — a `entryLabel` gear lookup per Entry — for a filter
+  // that wants no order, and `containerView` calls this once **per
+  // container**. Every id in the subtree is already a visible Entry, the view
+  // being built from `entriesOf`, so the map lookup needs no second gate.
+  let containers = 0
+  for (const id of subtree) {
+    const entry = trip.entries?.[id]
+    if (entry !== undefined && isContainerEntry(entry, state)) containers += 1
+  }
   return units + containers
 }
 
