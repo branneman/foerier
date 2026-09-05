@@ -1110,9 +1110,12 @@ describe('the grouping table', () => {
 })
 
 /**
- * The dimension table is what makes §8.5 affordable: S7, S8, S9 and S10 each
- * add a **row**, not a branch — as S4 just did, twice. These pin the four
- * rows that exist.
+ * The dimension table is what makes §8.5 affordable: a slice that narrows the
+ * Depot adds a **row**, not a branch — as S4 did, twice, S7 did with `TRIP`
+ * and S9b with `CONTAINER`. Not every slice on §8.5's ladder brings one: S8's
+ * `PIECES BY PERSON` and S9a's `STATUS` were both retired by their own design
+ * rounds (rulings H and B4), so `OUTCOME` at S10 is the last one owed. These
+ * pin the **six** rows that exist.
  *
  * `format` takes the depot as well as the value, because a value is not
  * always self-describing: `PERSON` carries ids and draws names. Tag, Kind and

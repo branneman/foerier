@@ -56,10 +56,11 @@ export interface GearRowProps {
   href: string
   /** `⌂ HOME` · `▸ ALPS · CAR` · `▲ ×1 TESSIN 2025` · `RETIRED`. */
   whereabouts: string
-  /** Which world the whereabouts names — muted, amber, or attention. Only
-   * `home` is reachable today; `trip` arrives with the trip slices and
-   * `attention` with story 11's `lost` outcome. Drawn on the board for all
-   * three, so the slot is named rather than invented later. */
+  /** Which world the whereabouts names — muted, amber, or attention. All
+   * three are reachable since S9b: `trip` with the trip slices, and
+   * `attention` with ruling D8's over-claim — one slice earlier than S2b
+   * expected when it wrote that this arm arrived with story 11's `lost`
+   * outcome, which will be its second caller rather than its first. */
   tone?: 'home' | 'trip' | 'attention'
   /** How much gear sits inside this container, at any depth. */
   insideCount?: number

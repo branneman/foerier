@@ -195,13 +195,16 @@ export function SliceBar({
         <div className={styles['arrangeRow']}>
           <SortGroupOptions inline spec={spec} onChange={onChange} />
           {/* S9b — the one component `CONTAINER` makes spec §4.4's "changes
-           * no component" untrue (`docs/design/README.md` §5f D5). Every
-           * other dimension needs nothing from this component; grouping by a
-           * partition does, because nothing else on the bar tells a
-           * household that GROUP BY CONTAINER files by immediate holder
-           * while the CONTAINER chip itself still filters to any depth.
-           * Carry this note to Task 7: the next dimension that groups as
-           * well as filters inherits the same question. */}
+           * no component" untrue (`docs/design/README.md` §5f D5; recorded
+           * in that spec's own §9.1). Every other dimension needs nothing
+           * from this component; grouping by a partition does, because
+           * nothing else on the bar tells a household that GROUP BY
+           * CONTAINER files by immediate holder while the CONTAINER chip
+           * itself still filters to any depth. The next dimension that
+           * groups as well as filters inherits the same question. The second
+           * clause is punctuated as a second sentence, following
+           * `WhereaboutsCard`'s footer; D5 quotes it without a terminator,
+           * so that half is reversible (`design/README.md` §2). */}
           <span className={styles['hint']}>
             SEARCH + FILTERS COMBINE WITH AND.
             {spec.group === 'container' &&
