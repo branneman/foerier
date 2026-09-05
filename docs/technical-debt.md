@@ -315,8 +315,3 @@ every one of them gets more expensive per slice.
   three small `--text-*` pairs would close most of it.
   [`patterns.md`](patterns.md) §6.2, anchor:
   `most-copied rule`
-- **Thirty Tier 3 suites hand-roll the same scaffolding.** `noopEngine`,
-  `anAuthor()`, the store-and-seed block and the router-and-provider wrapper
-  are copied per file; only the `matchMedia` stub was centralised. The render
-  helper it wants is the shape `screenBand.test.tsx` already carries.
-  [`testing.md`](testing.md) Tier 3, anchor: `hand-rolled per suite`

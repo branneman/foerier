@@ -1,5 +1,4 @@
 import {
-  createHlcClock,
   personRecorded,
   tripCreated,
   tripDatesSet,
@@ -7,12 +6,9 @@ import {
   tripEntryStatusSet,
   tripParticipantAdded,
   tripPhaseMoved,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import userEvent from '@testing-library/user-event'
@@ -20,14 +16,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { inMemoryOpLog, type OpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-  type EngineFactory,
-} from '../depot/store'
+import { createDepotStore, type DepotStoreState } from '../depot/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
+import {
+  anAuthor,
+  anId,
+  noopEngine,
+  renderWithStore,
+  SEEDED_AT,
+} from '../testUtils'
 import { Trips } from './Trips'
 
 /**
@@ -38,42 +36,7 @@ import { Trips } from './Trips'
  * assertion that the list reads top to bottom would then prove nothing.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
-
 /** The seed's wall clock — `DAY N` counts local calendar days from it. */
-const SEEDED_AT = 1_700_000_000_000
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => SEEDED_AT }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 interface Seeded {
   store: StoreApi<DepotStoreState>
@@ -105,11 +68,7 @@ async function phaseMoves(log: OpLog) {
 }
 
 function renderTrips({ store }: Seeded) {
-  render(
-    <DepotProvider value={store}>
-      <Trips />
-    </DepotProvider>,
-  )
+  renderWithStore(<Trips />, store)
 }
 
 /** Every drawn Trip, in DOM order — cards and ledger rows alike. */

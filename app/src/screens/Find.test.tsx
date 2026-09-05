@@ -1,12 +1,4 @@
-import {
-  createHlcClock,
-  gearRecorded,
-  placeRecorded,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
-  type OpSpec,
-} from '@foerier/shared'
+import { gearRecorded, placeRecorded, type OpSpec } from '@foerier/shared'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
@@ -23,6 +15,7 @@ import {
 } from '../depot/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
+import { anAuthor, anId, noopEngine } from '../testUtils'
 import { Find } from './Find'
 
 /**
@@ -32,42 +25,6 @@ import { Find } from './Find'
  * the real selectors from the previous task; nothing here hand-shapes a
  * `DepotState`.
  */
-
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
-
-let nextId = 0
-
-/** A fresh, canonical-shaped id, distinct per call — never reused across
- * tests, so a failing assertion names the id it actually saw. */
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => 1_700_000_000_000 }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 /**
  * Reports its status as `offline` from the moment the store builds it

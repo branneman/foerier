@@ -3,7 +3,6 @@ import {
   personRecorded,
   personRenamed,
   type Clock,
-  type IdSource,
   type OpAuthor,
 } from '@foerier/shared'
 import {
@@ -18,13 +17,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createAuthApi, type InviteRow, type LoginRow } from '../auth/api'
 import { inMemoryOpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type EngineFactory,
-} from '../depot/store'
+import { createDepotStore, DepotProvider } from '../depot/store'
 import { SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
+import { DEVICE, HOUSEHOLD, ids, noopEngine } from '../testUtils'
 import { People, type PeopleProps } from './People'
 
 /**
@@ -35,8 +31,6 @@ import { People, type PeopleProps } from './People'
  * (`MARK`, `ELS`, `KEES`) so every test can name a row by who it belongs to.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const TOKEN = 'foe_test_token'
 
 const MARK = 'mark'
@@ -46,15 +40,6 @@ const KEES = 'kees'
 const NOW = Date.now()
 const NOW_ISO = new Date(NOW).toISOString()
 const DAY = 24 * 60 * 60_000
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
 
 function fixedClock(): Clock {
   return { now: () => NOW }
@@ -68,15 +53,6 @@ function anAuthor(): OpAuthor {
     hlc: createHlcClock(fixedClock()),
   }
 }
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), { status: 200 })

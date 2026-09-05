@@ -1,12 +1,8 @@
 import {
-  createHlcClock,
   gearRecorded,
   tripCreated,
   tripEntryAdded,
   tripPhaseMoved,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
   type PhaseValue,
   type TripState,
 } from '@foerier/shared'
@@ -20,8 +16,8 @@ import {
   createDepotStore,
   DepotProvider,
   type DepotStoreState,
-  type EngineFactory,
 } from '../depot/store'
+import { anAuthor, noopEngine } from '../testUtils'
 import activationStyles from './ActivationConfirm.module.css'
 import { PhaseSheet } from './PhaseSheet'
 
@@ -33,43 +29,10 @@ import { PhaseSheet } from './PhaseSheet'
  * reads, which is the register's own stamp.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const TRIP = 'tttttttt-0000-7000-8000-000000000001'
 const OTHER_TRIP = 'tttttttt-0000-7000-8000-000000000002'
 const THIRD_TRIP = 'tttttttt-0000-7000-8000-000000000003'
 const GEAR = 'gggggggg-0000-7000-8000-000000000001'
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => 1_700_000_000_000 }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 interface Seeded {
   store: StoreApi<DepotStoreState>

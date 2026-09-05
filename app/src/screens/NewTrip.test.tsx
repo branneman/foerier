@@ -1,12 +1,4 @@
-import {
-  createHlcClock,
-  personRecorded,
-  personRenamed,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
-  type OpSpec,
-} from '@foerier/shared'
+import { personRecorded, personRenamed, type OpSpec } from '@foerier/shared'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
@@ -21,10 +13,10 @@ import {
   createDepotStore,
   DepotProvider,
   type DepotStoreState,
-  type EngineFactory,
 } from '../depot/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
+import { anAuthor, noopEngine } from '../testUtils'
 import { NewTrip } from './NewTrip'
 import styles from './NewTrip.module.css'
 
@@ -41,40 +33,6 @@ import styles from './NewTrip.module.css'
  * same state and still be the waste spec §4.2 forbids — it moves a stamp, and
  * at this slice a moved stamp is visible, because `phaseDay` reads one.
  */
-
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => 1_700_000_000_000 }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 type OpPayload = Record<string, unknown>
 

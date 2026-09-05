@@ -1,5 +1,4 @@
 import {
-  createHlcClock,
   gearRecorded,
   personRecorded,
   tripCreated,
@@ -8,9 +7,6 @@ import {
   tripParticipantAdded,
   tripPhaseMoved,
   tripRenamed,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -22,8 +18,8 @@ import {
   createDepotStore,
   DepotProvider,
   type DepotStoreState,
-  type EngineFactory,
 } from '../depot/store'
+import { anAuthor, noopEngine, SEEDED_AT } from '../testUtils'
 import { RemoveElsewhereConfirm } from './RemoveElsewhereConfirm'
 
 /**
@@ -32,44 +28,10 @@ import { RemoveElsewhereConfirm } from './RemoveElsewhereConfirm'
  * hand-shaped state would test a shape the reducer might never produce.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000013'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000013'
 const HERE = 'trip-here'
 const ALPS = 'trip-alps'
 
-const SEEDED_AT = 1_700_000_000_000
 const A_DAY = 24 * 60 * 60 * 1000
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => SEEDED_AT }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 afterEach(() => {
   vi.restoreAllMocks()

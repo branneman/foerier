@@ -236,12 +236,15 @@ co-located `*.test.tsx`. Shared `ui/` components get their own component tests.
 which this section once described as "a fake Zustand store seeded via
 factories" and which are nothing of the kind:**
 
-- **The store is real and the log is fake.** A suite builds
+- **The store is real and the log is fake.** `seededStore(specs)`
+  (`app/src/testUtils.tsx`) builds
   `createDepotStore({ log: inMemoryOpLog(), engine: noopEngine, author })`
   and seeds it by **emitting real ops** through the same builders the screen
-  uses, then `await drained()`. The reducer, the selectors and the store's
-  queue are all live; only storage and transport are stubbed. Factories from
-  `shared/testUtils/` seed exactly one suite, `screenBand.test.tsx`.
+  uses, then awaits `drained()` — which is the half a caller forgets, since
+  `emit` is durable-first and a store handed back unawaited is empty. The
+  reducer, the selectors and the store's queue are all live; only storage and
+  transport are stubbed. Factories from `shared/testUtils/` seed exactly one
+  suite, `screenBand.test.tsx`.
 - **An op is asserted from the log, never from a spy.** A test that proves a
   tap authored an op reads `log.all()` (or the seeded log's `authored()`) and
   filters by `type`; a test that proves a tap authored **nothing** counts the
@@ -274,11 +277,23 @@ factories" and which are nothing of the kind:**
   scroll lock) that no tier replaces. A change to an overlay or to focus
   handling reruns it.
 
-The scaffolding above is hand-rolled per suite — `noopEngine` in thirty files,
-`anAuthor()` in thirty-four, the store-and-seed block in thirty-two, the
-router-and-provider wrapper in nineteen. Only the `matchMedia` stub was
-centralised. It is recorded in [technical-debt.md](technical-debt.md); the
-render helper it wants is the same shape `screenBand.test.tsx` already carries.
+**The scaffolding is shared; the render helper is not.** `app/src/testUtils.tsx`
+holds what every suite needs identically — `noopEngine`, `anAuthor`,
+`fixedClock`, the `ids` source, `seededStore`, and the `HOUSEHOLD` / `DEVICE` /
+`SEEDED_AT` constants. A suite's own `render<Thing>` is **not** duplication: it
+names that component's props and its real-fake counters, and belongs beside the
+tests that read them, so only the two that were a bare provider wrap call
+`renderWithStore`.
+
+Two things a suite still keeps for itself, each for a reason worth knowing:
+
+- **Its own id source, when it hand-names entity ids under `eeeeeeee`.** The
+  shared source mints under that prefix too, so its counter eventually reaches
+  the named constant and `opLog.append` refuses the duplicate.
+  `PieceStatusSheet` names an Entry `eeeeeeee-…-008`, which is the ninth id the
+  shared source would produce.
+- **Its own `anAuthor`, when its clock is not the fixed one.** `People` reads
+  `NOW`, and the shared author would silently move it to `SEEDED_AT`.
 
 ## Tier 4 — Contract / API tests
 

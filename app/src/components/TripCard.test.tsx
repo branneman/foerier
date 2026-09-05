@@ -1,13 +1,9 @@
 import {
-  createHlcClock,
   personRecorded,
   tripCreated,
   tripDatesSet,
   tripParticipantAdded,
   tripPhaseMoved,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
   type OpSpec,
   type PackingCount,
   type TripState,
@@ -21,13 +17,8 @@ import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-  type EngineFactory,
-} from '../depot/store'
+import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { SEEDED_AT, seededStore } from '../testUtils'
 import { TripCard } from './TripCard'
 
 /**
@@ -41,44 +32,10 @@ import { TripCard } from './TripCard'
  * so an unpinned `now` would make `DAY N` a different number every run.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const TRIP = 'tttttttt-0000-7000-8000-000000000001'
 
 /** The seed's wall clock, and the day every `DAY N` below counts from. */
-const SEEDED_AT = 1_700_000_000_000
 const A_DAY = 24 * 60 * 60 * 1000
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => SEEDED_AT }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 interface Seeded {
   store: StoreApi<DepotStoreState>
@@ -86,13 +43,7 @@ interface Seeded {
 }
 
 async function seeded(...specs: readonly OpSpec[]): Promise<Seeded> {
-  const store = createDepotStore({
-    log: inMemoryOpLog(),
-    engine: noopEngine,
-    author: anAuthor(),
-  })
-  for (const spec of specs) store.getState().emit(spec)
-  await store.getState().drained()
+  const store = await seededStore(specs)
   return { store, trip: () => store.getState().state.trips[TRIP]! }
 }
 

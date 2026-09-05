@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import {
-  createHlcClock,
   gearRecorded,
   personRecorded,
   tripCreated,
@@ -11,9 +10,7 @@ import {
   tripPieceMoved,
   tripPieceRemoved,
   tripPieceStatusSet,
-  type Clock,
   type IdSource,
-  type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen, within } from '@testing-library/react'
@@ -26,8 +23,8 @@ import {
   createDepotStore,
   DepotProvider,
   type DepotStoreState,
-  type EngineFactory,
 } from '../depot/store'
+import { anAuthor, noopEngine } from '../testUtils'
 import { PieceStatusSheet } from './PieceStatusSheet'
 
 /**
@@ -50,8 +47,6 @@ import { PieceStatusSheet } from './PieceStatusSheet'
  * proven separately below by reading `PieceStatusSheet.module.css` as text.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000008'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000008'
 const TRIP = 'tttttttt-0000-7000-8000-000000000008'
 const ENTRY = 'eeeeeeee-0000-7000-8000-000000000008'
 const GEAR = 'gggggggg-0000-7000-8000-000000000008'
@@ -59,7 +54,6 @@ const DUFFEL_ENTRY = 'eeeeeeee-0000-7000-8000-00000000000d'
 const DUFFEL_GEAR = 'gggggggg-0000-7000-8000-00000000000d'
 const LOOSE_ENTRY = 'eeeeeeee-0000-7000-8000-00000000000e'
 const LOOSE_GEAR = 'gggggggg-0000-7000-8000-00000000000e'
-const SEEDED_AT = 1_700_000_000_000
 
 let nextId = 0
 
@@ -69,28 +63,6 @@ function anId(): string {
 }
 
 const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => SEEDED_AT }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 interface Seeded {
   store: StoreApi<DepotStoreState>
@@ -111,7 +83,7 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
   const store = createDepotStore({
     log,
     engine: noopEngine,
-    author: anAuthor(),
+    author: anAuthor({ ids }),
   })
   const specs: readonly OpSpec[] = [
     personRecorded('mark', 'Mark'),

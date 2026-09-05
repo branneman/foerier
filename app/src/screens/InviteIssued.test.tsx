@@ -1,7 +1,6 @@
 import {
   createHlcClock,
   personRecorded,
-  type Clock,
   type IdSource,
   type OpAuthor,
   type OpSpec,
@@ -15,13 +14,8 @@ import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { createAuthApi } from '../auth/api'
-import { inMemoryOpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-  type EngineFactory,
-} from '../depot/store'
+import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { DEVICE, fixedClock, HOUSEHOLD, seededStore } from '../testUtils'
 import { InviteIssued } from './InviteIssued'
 
 /**
@@ -29,8 +23,6 @@ import { InviteIssued } from './InviteIssued'
  * `Devices.test.tsx` do — never a hand-shaped `DepotState`.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 /** The signed-in Login's Person, in every test that does not say otherwise. */
 const MARK = '0f0000aa-0000-4000-8000-0000000000aa'
 /** A second, distinct Person — the subject of the "for someone else" cases. */
@@ -38,10 +30,6 @@ const ELS = '0f0000aa-0000-4000-8000-0000000000bb'
 const TOKEN = 'foe_test_token'
 const SECRET = 'kJ2nQ7xWpL0aZ4vRtY8sMc1BdF6hGjNe3UiOkPqXwSb'
 const INVITE_ID = 'eeeeeeee-0000-7000-8000-00000000001'
-
-function fixedClock(): Clock {
-  return { now: () => 1_700_000_000_000 }
-}
 
 // Each seed now emits **two** person ops in the same `seededStore` call (Mark
 // and Els) — a single constant id here would collide, since `opLog.append`
@@ -65,26 +53,16 @@ function anAuthor(): OpAuthor {
   }
 }
 
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
-
-async function seededStore(
+/**
+ * The shared seed, authored by **this suite's own** id source. `INVITE_ID`
+ * below is a hand-named `eeeeeeee-…` id, and the default source mints ids
+ * under that same prefix — so the counter would eventually reach it and
+ * `opLog.append` would refuse the duplicate.
+ */
+function seededHousehold(
   specs: readonly OpSpec[] = [],
 ): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
-    log: inMemoryOpLog(),
-    engine: noopEngine,
-    author: anAuthor(),
-  })
-  for (const spec of specs) store.getState().emit(spec)
-  await store.getState().drained()
-  return store
+  return seededStore(specs, { author: anAuthor() })
 }
 
 function jsonResponse(body: unknown): Response {
@@ -155,7 +133,7 @@ async function renderInviteIssued(
   // read a name off whichever one `subjectPersonId` points at, and a test
   // asking for Els must find her recorded exactly as a test asking for Mark
   // does.
-  const store = await seededStore([
+  const store = await seededHousehold([
     personRecorded(MARK, 'Mark'),
     personRecorded(ELS, 'Els'),
   ])

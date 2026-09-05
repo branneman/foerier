@@ -2,16 +2,12 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import {
-  createHlcClock,
   gearRecorded,
   placeRecorded,
   tripContainerStageSet,
   tripCreated,
   tripEntryAdded,
   tripEntryMoved,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
   type OpSpec,
   type TripResidence,
 } from '@foerier/shared'
@@ -20,13 +16,8 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-  type EngineFactory,
-} from '../depot/store'
+import { DepotProvider, type DepotStoreState } from '../depot/store'
+import { anId, seededStore } from '../testUtils'
 import { PackPicker } from './PackPicker'
 
 /**
@@ -35,53 +26,7 @@ import { PackPicker } from './PackPicker'
  * hand-shaped `DepotState`.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000009'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000009'
 const TRIP = 'tttttttt-0000-7000-8000-000000000009'
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => 1_700_000_000_000 }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
-
-async function seededStore(
-  specs: readonly OpSpec[] = [],
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
-    log: inMemoryOpLog(),
-    engine: noopEngine,
-    author: anAuthor(),
-  })
-  for (const spec of specs) store.getState().emit(spec)
-  await store.getState().drained()
-  return store
-}
 
 type PickerProps = Parameters<typeof PackPicker>[0]
 

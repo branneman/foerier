@@ -1,5 +1,4 @@
 import {
-  createHlcClock,
   gearRecorded,
   personRecorded,
   tripCreated,
@@ -8,9 +7,6 @@ import {
   tripEntryBringCountSet,
   tripParticipantAdded,
   tripPhaseMoved,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
@@ -22,13 +18,10 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
 import { inMemoryOpLog, type OpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type EngineFactory,
-} from '../depot/store'
+import { createDepotStore, DepotProvider } from '../depot/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
+import { anAuthor, noopEngine, SEEDED_AT } from '../testUtils'
 import { Trip } from './Trip'
 
 /**
@@ -53,45 +46,10 @@ import { Trip } from './Trip'
  * removal.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
-
 /** The seed's wall clock — `DAY N` counts local calendar days from it. */
-const SEEDED_AT = 1_700_000_000_000
 
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
 const JURA = 'tttttttt-0000-7000-8000-00000000000b'
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => SEEDED_AT }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 type OpPayload = Record<string, unknown>
 

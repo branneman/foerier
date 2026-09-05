@@ -1,28 +1,15 @@
-import {
-  createHlcClock,
-  personRecorded,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
-  type OpSpec,
-} from '@foerier/shared'
+import { personRecorded, type OpSpec } from '@foerier/shared'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
-import type { StoreApi } from 'zustand/vanilla'
 
 import { createAuthApi, type DeviceRow, type PasskeyRow } from '../auth/api'
-import { inMemoryOpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-  type EngineFactory,
-} from '../depot/store'
+import { DepotProvider } from '../depot/store'
 import { setViewport } from '../testSetup'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
+import { anId, DEVICE, HOUSEHOLD, seededStore } from '../testUtils'
 import { Account } from './Account'
 
 /**
@@ -30,54 +17,8 @@ import { Account } from './Account'
  * `AddGear.test.tsx` do — never a hand-shaped `DepotState`.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
 const PERSON_ID = '0f0000aa-0000-4000-8000-0000000000aa'
 const TOKEN = 'foe_test_token'
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => 1_700_000_000_000 }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
-
-async function seededStore(
-  specs: readonly OpSpec[] = [],
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
-    log: inMemoryOpLog(),
-    engine: noopEngine,
-    author: anAuthor(),
-  })
-  for (const spec of specs) store.getState().emit(spec)
-  await store.getState().drained()
-  return store
-}
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), { status: 200 })

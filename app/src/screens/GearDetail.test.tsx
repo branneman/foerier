@@ -1,14 +1,10 @@
 import {
-  createHlcClock,
   gearRecorded,
   gearRetired,
   gearTagApplied,
   normalizeTag,
   personRecorded,
   placeRecorded,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
   type OpSpec,
   type TagString,
 } from '@foerier/shared'
@@ -24,10 +20,10 @@ import {
   createDepotStore,
   DepotProvider,
   type DepotStoreState,
-  type EngineFactory,
 } from '../depot/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
+import { anAuthor, anId, noopEngine } from '../testUtils'
 import { GearDetail } from './GearDetail'
 
 /** The only way a `TagString` is made (`shared/src/tags.ts`). */
@@ -43,40 +39,6 @@ function aTag(raw: string): TagString {
  * `Depot.test.tsx` and `AddGear.test.tsx` do. Never a hand-shaped
  * `DepotState`.
  */
-
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => 1_700_000_000_000 }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 async function seededStore(
   specs: readonly OpSpec[] = [],

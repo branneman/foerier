@@ -1,25 +1,13 @@
-import {
-  createHlcClock,
-  gearRecorded,
-  type Clock,
-  type IdSource,
-  type OpAuthor,
-  type OpSpec,
-} from '@foerier/shared'
+import { gearRecorded } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
-import { inMemoryOpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type DepotStoreState,
-  type EngineFactory,
-} from '../depot/store'
+import { DepotProvider, type DepotStoreState } from '../depot/store'
 import { setViewport } from '../testSetup'
+import { anId, seededStore } from '../testUtils'
 import { DepotView } from './DepotView'
 import { DESKTOP, SPLIT } from './useMediaQuery'
 
@@ -29,53 +17,6 @@ import { DESKTOP, SPLIT } from './useMediaQuery'
  * Chartered to S0 and never built; §12.1 did not record the gap. S3 absorbs
  * it because the board draws S3's own tag chips inside the missing pane.
  */
-
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => 1_700_000_000_000 }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
-
-async function seededStore(
-  specs: readonly OpSpec[] = [],
-): Promise<StoreApi<DepotStoreState>> {
-  const store = createDepotStore({
-    log: inMemoryOpLog(),
-    engine: noopEngine,
-    author: anAuthor(),
-  })
-  for (const spec of specs) store.getState().emit(spec)
-  await store.getState().drained()
-  return store
-}
 
 function renderView(store: StoreApi<DepotStoreState>, path: string) {
   const location = memoryLocation({ path, record: true })

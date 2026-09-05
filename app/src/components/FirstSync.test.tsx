@@ -33,6 +33,7 @@ import {
 } from '../depot/transport'
 import { createSessionDepot, type DepotFactory } from '../depot/wiring'
 import { Join } from '../screens/Join'
+import { renderWithStore } from '../testUtils'
 import { FirstSync } from './FirstSync'
 
 /**
@@ -213,11 +214,7 @@ function harness(
 }
 
 function renderFirstSync(store: StoreApi<DepotStoreState>): void {
-  render(
-    <DepotProvider value={store}>
-      <FirstSync />
-    </DepotProvider>,
-  )
+  renderWithStore(<FirstSync />, store)
 }
 
 /** The join screen's success frame, which composes the same card. */

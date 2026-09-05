@@ -20,11 +20,8 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { inMemoryOpLog, type OpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type EngineFactory,
-} from '../depot/store'
+import { createDepotStore, DepotProvider } from '../depot/store'
+import { DEVICE, HOUSEHOLD, noopEngine, SEEDED_AT } from '../testUtils'
 import { PackingRow } from './PackingRow'
 
 /**
@@ -37,10 +34,6 @@ import { PackingRow } from './PackingRow'
  * lands with the next task; the row is pinned here so that task inherits a
  * tested control rather than an untested prop.
  */
-
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
-const SEEDED_AT = 1_700_000_000_000
 
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
 const CRATE = 'gggggggg-0000-7000-8000-00000000000f'
@@ -64,15 +57,6 @@ function anAuthor(): OpAuthor {
     hlc: createHlcClock(clock),
   }
 }
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 /** Els's headlamp Piece, staged, riding in Crate B with the rest of the set. */
 function seed(): readonly OpSpec[] {

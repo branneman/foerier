@@ -1,15 +1,12 @@
 import {
-  createHlcClock,
   gearRecorded,
   personRecorded,
   tripCreated,
   tripEntryAdded,
   tripParticipantAdded,
   tripPieceRemoved,
-  type Clock,
   type EntryState,
   type IdSource,
-  type OpAuthor,
   type OpSpec,
   type TripState,
 } from '@foerier/shared'
@@ -23,8 +20,8 @@ import {
   createDepotStore,
   DepotProvider,
   type DepotStoreState,
-  type EngineFactory,
 } from '../depot/store'
+import { anAuthor, noopEngine } from '../testUtils'
 import { PiecePicker } from './PiecePicker'
 
 /**
@@ -34,12 +31,9 @@ import { PiecePicker } from './PiecePicker'
  * does not exist.
  */
 
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000007'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000007'
 const TRIP = 'tttttttt-0000-7000-8000-000000000007'
 const ENTRY = 'eeeeeeee-0000-7000-8000-000000000007'
 const GEAR = 'gggggggg-0000-7000-8000-000000000007'
-const SEEDED_AT = 1_700_000_000_000
 
 let nextId = 0
 
@@ -49,28 +43,6 @@ function anId(): string {
 }
 
 const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => SEEDED_AT }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 interface Seeded {
   store: StoreApi<DepotStoreState>
@@ -89,7 +61,7 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
   const store = createDepotStore({
     log,
     engine: noopEngine,
-    author: anAuthor(),
+    author: anAuthor({ ids }),
   })
   const specs: readonly OpSpec[] = [
     personRecorded('mark', 'Mark'),

@@ -1,5 +1,4 @@
 import {
-  createHlcClock,
   gearOwnershipSet,
   gearRecorded,
   overClaimsFor,
@@ -14,10 +13,7 @@ import {
   tripPhaseMoved,
   tripPieceMoved,
   tripPieceStatusSet,
-  type Clock,
   type DepotState,
-  type IdSource,
-  type OpAuthor,
   type OpSpec,
   type PhaseValue,
   type StageValue,
@@ -31,13 +27,10 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
 import { inMemoryOpLog, type OpLog } from '../depot/opLog'
-import {
-  createDepotStore,
-  DepotProvider,
-  type EngineFactory,
-} from '../depot/store'
+import { createDepotStore, DepotProvider } from '../depot/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
+import { anAuthor, noopEngine } from '../testUtils'
 import { Packing } from './Packing'
 
 /**
@@ -53,11 +46,6 @@ import { Packing } from './Packing'
  * which is why every hook runs above the `No such trip.` guard rather than a
  * control being rendered against an id no Trip answers to.
  */
-
-const HOUSEHOLD = 'cccccccc-0000-7000-8000-000000000003'
-const DEVICE = 'aaaaaaaa-0000-7000-8000-000000000001'
-
-const SEEDED_AT = 1_700_000_000_000
 
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
 const JURA = 'tttttttt-0000-7000-8000-00000000000b'
@@ -77,37 +65,6 @@ const E_ROPE = 'nnnnnnnn-0000-7000-8000-00000000000e'
 const CRATE = 'gggggggg-0000-7000-8000-00000000000f'
 const E_CRATE = 'nnnnnnnn-0000-7000-8000-00000000000f'
 const J_STOVE = 'nnnnnnnn-0000-7000-8000-000000000010'
-
-let nextId = 0
-
-function anId(): string {
-  const suffix = (nextId++).toString(16).padStart(12, '0')
-  return `eeeeeeee-0000-7000-8000-${suffix}`
-}
-
-const ids: IdSource = { next: anId }
-
-function fixedClock(): Clock {
-  return { now: () => SEEDED_AT }
-}
-
-function anAuthor(): OpAuthor {
-  return {
-    household_id: HOUSEHOLD,
-    device_id: DEVICE,
-    ids,
-    hlc: createHlcClock(fixedClock()),
-  }
-}
-
-const noopEngine: EngineFactory = () => ({
-  start() {},
-  stop() {},
-  flush: () => Promise.resolve(),
-  pull: () => Promise.resolve(),
-  status: () => 'idle',
-  bootstrap: () => null,
-})
 
 type OpPayload = Record<string, unknown>
 
