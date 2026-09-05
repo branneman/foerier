@@ -794,6 +794,105 @@ const tripPieceStatusSet: Handler = (state, op, stamp) => {
 }
 
 /**
+ * `trip.outcome_set` (`sync-protocol.md` §4.4): the unpack outcome, on the
+ * Entry or — when `person_id` is present — on one Piece.
+ *
+ * **The first op whose entity path a payload field chooses.** `person_id`
+ * present → {@link writePiece}; absent → {@link writeEntry}. A `person_id`
+ * that is present but unreadable reads `absent` through `readString`, so the
+ * outcome lands on the **Entry** — the conservative direction: the tolerant
+ * reader's own answer is that a field it cannot read was not there (§1.3),
+ * and it puts the outcome on the line the Quartermaster was looking at
+ * rather than dropping it.
+ *
+ * `writeNullableIfPresent`, not `writeIfPresent`: the register's declared
+ * type includes `null`, so an explicit `null` **clears it back to open** and
+ * an absent field leaves it alone (§1.3, not §5.3 obligation 5).
+ *
+ * `readOpen(op.payload, 'outcome')` returns `Read<string>`; the Entry's and
+ * the Piece's `outcome` registers are both `Register<OutcomeValue | null>`.
+ * Two calls, one per branch, rather than one shared helper carrying an
+ * explicit `<OutcomeValue>` — `writeNullableIfPresent`'s own type parameter
+ * infers to the common supertype at each call site, exactly as
+ * `tripEntryOpenEnum`'s `writeRegister` call does one register over. No `as`,
+ * no `any`, no `!`.
+ *
+ * The two-step identity guard (`next === current`, then `next === undefined`)
+ * is `setPlaceName`'s and `gearRenamed`'s, copied rather than the naive
+ * one-line ternary a nullable write cannot use: `writeNullableIfPresent` can
+ * return `undefined` (when the register was never written and the field is
+ * absent), and spreading `{ …entry, outcome: next }` with a possibly-`undefined`
+ * `next` makes `outcome` a **required** property typed `T | undefined` — a
+ * different shape from the optional `outcome?: T` the interface declares, and
+ * `exactOptionalPropertyTypes` rejects the two as different types. The first
+ * check is the real one; the second exists only because control flow cannot
+ * see that `next !== current` already rules out `next` being `undefined`
+ * here (`current` losing to itself is the only way this branch produces
+ * `undefined`).
+ */
+const tripOutcomeSet: Handler = (state, op, stamp) => {
+  const entryId = readString(op.payload, 'entry_id')
+  if (entryId.kind !== 'value') return state
+  const outcome = readOpen(op.payload, 'outcome')
+  if (outcome.kind === 'absent') return state
+  const personId = readString(op.payload, 'person_id')
+
+  if (personId.kind === 'value') {
+    return writePiece(
+      state,
+      op.aggregate_id,
+      entryId.value,
+      personId.value,
+      stamp,
+      (piece, st) => {
+        const next = writeNullableIfPresent(piece.outcome, outcome, st)
+        if (next === piece.outcome) return piece
+        return next === undefined ? piece : { ...piece, outcome: next }
+      },
+    )
+  }
+  return writeEntry(
+    state,
+    op.aggregate_id,
+    entryId.value,
+    stamp,
+    (entry, st) => {
+      const next = writeNullableIfPresent(entry.outcome, outcome, st)
+      if (next === entry.outcome) return entry
+      return next === undefined ? entry : { ...entry, outcome: next }
+    },
+  )
+}
+
+/**
+ * `trip.consumed_count_set` (§4.4): sets `consumedCount` absolutely.
+ *
+ * The catalogue's *"on a counted Entry resolved as `consumed`"* is an
+ * **authoring** rule on both halves — the Kind lives on the Gear aggregate
+ * and the outcome is a second register on the same Entry — so this folds on
+ * any Entry unconditionally, and `consumedCountOf` gates on the way out,
+ * exactly as `bringCountOf` does one register over (§1.4).
+ */
+const tripConsumedCountSet: Handler = (state, op, stamp) => {
+  const entryId = readString(op.payload, 'entry_id')
+  if (entryId.kind !== 'value') return state
+  const count = readCount(op.payload, 'count')
+  if (count.kind !== 'value') return state
+  return writeEntry(
+    state,
+    op.aggregate_id,
+    entryId.value,
+    stamp,
+    (entry, st) => {
+      const next = writeRegister(entry.consumedCount, count.value, st)
+      return next === entry.consumedCount
+        ? entry
+        : { ...entry, consumedCount: next }
+    },
+  )
+}
+
+/**
  * `trip.entry_moved` (§4.4): the Entry's **trip** residence.
  *
  * Never its home (invariant 13) and never its status (invariant 12) — two
@@ -913,6 +1012,10 @@ const handlers: Record<string, Handler> = {
   'trip.piece_status_set': tripPieceStatusSet,
   'trip.entry_moved': tripEntryMoved,
   'trip.piece_moved': tripPieceMoved,
+  // S10 (§4.4): `outcome` (Entry and Piece) and `consumedCount` (Entry) —
+  // the last two registers `sync-protocol.md` §3.7 names for either path.
+  'trip.outcome_set': tripOutcomeSet,
+  'trip.consumed_count_set': tripConsumedCountSet,
 }
 
 /**

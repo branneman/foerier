@@ -59,6 +59,16 @@ export type StatusValue = 'not_packed' | 'staged' | 'packed' | (string & {})
 export type StageValue = 'home' | 'staging' | 'car' | 'packed' | (string & {})
 
 /**
+ * Open past its three known members, for {@link StatusValue}'s reason: an
+ * unknown enum value is stored verbatim and never coerced (`sync-protocol.md`
+ * §5.3, obligation 4). It is also the first **nullable** open enum — see
+ * `outcome` on {@link PieceState} and {@link EntryState}, and
+ * `writeNullableIfPresent` in `reduce.ts` for what an explicit `null` on one
+ * of these registers means.
+ */
+export type OutcomeValue = 'back' | 'consumed' | 'lost' | (string & {})
+
+/**
  * Where a thing rides **on this Trip** (`sync-protocol.md` §3.7).
  *
  * **Not {@link Residence}**, and deliberately a second type rather than a
@@ -142,10 +152,10 @@ export type PhaseValue =
  * One Participant's copy of a per-person Entry
  * (`sync-protocol.md` §3.7).
  *
- * S9a declares three of §3.7's four registers. `outcome` is S10's, and
- * nobody else's. A register nobody writes is a field every reader must have
- * an opinion about, so each arrives with the slice that writes it —
- * `EntryState`'s own rule, one level deeper.
+ * S9a declared `status` and `residence`, two of §3.7's four registers for
+ * this entity path. S10 adds `outcome`, the third — a register nobody writes
+ * is a field every reader must have an opinion about, so each arrives with
+ * the slice that writes it, `EntryState`'s own rule one level deeper.
  *
  * `status` and `residence` are declared with **identical types** to the
  * Entry's. A Piece is a thing that travels exactly as an Entry is; nothing
@@ -169,13 +179,18 @@ export interface PieceState {
    * the Entry.
    */
   readonly residence?: Register<TripResidence>
+  /**
+   * S10. Absent *and* `null` both read open — `pieceOutcomeOf`
+   * (`selectors/unpack.ts`).
+   */
+  readonly outcome?: Register<OutcomeValue | null>
 }
 
 /**
  * One line on a Trip's gear list.
  *
- * S9a declares six of the eight registers [sync §3.7] names. `outcome` and
- * `consumedCount` are S10's, and nobody else's. A register nobody writes is a
+ * S9a declared six of the eight registers [sync §3.7] names. S10 adds the
+ * last two, `outcome` and `consumedCount` — a register nobody writes is a
  * field every reader must have an opinion about, so each arrives with the
  * slice that writes it.
  */
@@ -225,6 +240,14 @@ export interface EntryState {
    * deliberately untouched (invariant 12).
    */
   readonly stage?: Register<StageValue>
+  /** S10. Absent *and* `null` both read open — `outcomeOf` (`selectors/unpack.ts`). */
+  readonly outcome?: Register<OutcomeValue | null>
+  /**
+   * S10. Folded on **any** Entry; meaningful on a Counted depot Entry
+   * resolved `consumed` — `consumedCountOf` is the gate, `bringCount`'s
+   * reason restated a register over.
+   */
+  readonly consumedCount?: Register<number>
 }
 
 /**

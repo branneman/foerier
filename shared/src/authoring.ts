@@ -5,6 +5,7 @@ import type {
   EntrySource,
   KindValue,
   Owner,
+  OutcomeValue,
   PhaseValue,
   Residence,
   StageValue,
@@ -600,5 +601,51 @@ export function tripContainerStageSet(
     aggregate_id: tripId,
     type: 'trip.container_stage_set',
     payload: { entry_id: entryId, stage },
+  }
+}
+
+/**
+ * S10 (§4.4): the unpack outcome, on the Entry or — when `personId` is
+ * given — on one Piece. `outcome: null` clears it back to open
+ * (`reduce.ts`'s `writeNullableIfPresent`).
+ *
+ * `personId` is last and optional, and the key is omitted entirely when it
+ * is absent — never `person_id: undefined`, which `exactOptionalPropertyTypes`
+ * will not let this file write in the first place, but which JSON would also
+ * silently drop, making the two builder calls indistinguishable on the wire.
+ */
+export function tripOutcomeSet(
+  tripId: string,
+  entryId: string,
+  outcome: OutcomeValue | null,
+  personId?: string,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.outcome_set',
+    payload: {
+      entry_id: entryId,
+      outcome,
+      ...(personId === undefined ? {} : { person_id: personId }),
+    },
+  }
+}
+
+/**
+ * S10 (§4.4): sets `consumedCount` on the Entry, absolutely. Folds on any
+ * Entry — the reducer does not gate on Kind, `consumedCountOf` does
+ * (§1.4).
+ */
+export function tripConsumedCountSet(
+  tripId: string,
+  entryId: string,
+  count: number,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.consumed_count_set',
+    payload: { entry_id: entryId, count },
   }
 }
