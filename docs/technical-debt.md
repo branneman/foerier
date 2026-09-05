@@ -49,19 +49,23 @@ entry.
 Something is incorrect right now — what a screen states, what a control
 offers, or what the tiers claim to cover. Nothing here is blocked on anything.
 
-- **"an absent owned-count reads 1" is stated at five sites across two
-  workspaces, and "an absent kind" has no stated reading at all.**
-  `shared/src/selectors/whereabouts.ts` and `claim.ts` spell the owned-count
-  default, `app/`'s `Depot.tsx` and `Find.tsx` gate the same question again,
-  and the Counted gate itself is spelled at a dozen sites. The one-function
-  form is an `ownedCountOf(gear)` and a `kindOf(gear)` beside `ownerOf` and
-  `phaseOf`; the extraction reaches two workspaces, which is why S7 named it
-  rather than took it. The drift symptom is already visible: gear detail
-  draws `×0 OWNED` in its header, `×1` in the COUNT chips beneath and no
-  segment in the meta line, for one Counted Gear with no register — and its
-  edit sheet seeds `kind` and `owned_count` raw, so an untouched Save on such
-  a Gear authors both. [`patterns.md`](patterns.md) §1.2, anchor:
-  `one-function form is a`
+- **"an absent kind" has no stated reading at all.** `kind` is read raw at
+  `Depot.tsx`, `DepotPicker.tsx`, `GearDetail.tsx`, `slice.ts` and
+  `whereabouts.ts`, with absence treated differently at each, and the Counted
+  gate itself is spelled at a dozen sites. The one-function form is a
+  `kindOf(gear)` beside `ownerOf`, `phaseOf` and — since S9b — `ownedCountOf`;
+  the extraction reaches two workspaces. The drift symptom is a Counted Gear
+  reading `×1` on one surface, `×0` on a second and nothing on a third, and
+  gear detail's edit sheet still seeds `kind` raw, so an untouched Save on a
+  Gear with no register authors one. [`patterns.md`](patterns.md) §1.2,
+  anchor: `one-function form is a`
+- **Three callers now want a memoised `containmentView`.** `whereabouts`, the
+  `CONTAINER` dimension and every list screen that hoists one by hand each
+  build their own; `slice.ts` memoises the *ancestor index* instead, because
+  `containment.ts` states its own non-caching as a property and the slice that
+  owns that file is the one that should make the claim false. Argued in the
+  memo's own JSDoc, `shared/src/selectors/slice.ts`, anchor:
+  `The rejected alternative was memoising`
 - **`N INSIDE` counts the container tree, not what rides along.** `Packing`'s
   `insideCount` reads `subtreeOf` on the trip containment view, which builds
   from every Entry's raw residence register — per-person ones included, the
@@ -130,13 +134,6 @@ Correct today, and silently wrong the moment a named future slice lands.
 Each entry names its trigger. Paying one after its trigger costs a debugging
 session rather than an edit, because the symptom shows up somewhere else.
 
-- **`WhereaboutsCard` collides on a second `'trip'` slice.** `HOME_LABEL` is
-  hardcoded inside the map and `key={slice.kind}` repeats the moment two active
-  Trips both claim one piece of Gear. The type forces the edit when that slice
-  kind lands and nothing catches it before, so it is a trap laid for S9–S10
-  rather than a bug today. Argued in the component's own JSDoc,
-  `app/src/components/WhereaboutsCard.tsx`, anchor:
-  `` collides once two `'trip'` slices exist at once ``
 - **The trip's containment view restates the home one's traversal, and the two
   must not drift.** `shared/src/selectors/tripContainment.ts` reimplements
   `containment.ts`'s walk, its sorted-id determinism and

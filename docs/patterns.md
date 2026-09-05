@@ -63,6 +63,7 @@ is stated in exactly one selector, which every reader calls:
 | Piece `residence` | loose, **never its Entry's** | `packing.ts` (see [§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey)) |
 | Entry `bring_count` on Counted | `1` | `bringCountOf` — `entry.ts` |
 | Gear `residence` (home) | loose | `residenceOf` — `containment.ts` |
+| Gear `owned_count` on Counted | `1` | `ownedCountOf` — `depot.ts` |
 
 The fold conflates nothing — absent and explicit stay different facts about the
 log — but every *reader* treats them alike, and a call site that re-derives the
@@ -73,18 +74,20 @@ draft is **seeded through the selector**, so an untouched Save on a pre-default
 row authors nothing (`GearDetail`'s `openEdit` seeds `owner` through
 `ownerOf`).
 
-Two registers deliberately get **no** default: an Entry with no `source` is
+One register deliberately gets **no** default: an Entry with no `source` is
 not a line anybody can draw a default for, so `entriesOf` (`entry.ts`) folds
-it, retains it, and excludes it from every list, count and claim; and an
-absent Gear `kind` and `owned_count` have no selector, which is a known gap
-(*Departures*).
+it, retains it, and excludes it from every list, count and claim. An absent
+Gear `kind` still has no selector, which is a known gap (*Departures*).
 
-*Departures:* `kind` and `owned_count` are read raw at several sites with
-absence treated differently at each (`Depot.tsx`, `DepotPicker.tsx`,
-`GearDetail.tsx`, `slice.ts`, `whereabouts.ts`, `claim.ts`); the
-one-function form is a `kindOf` / `ownedCountOf` beside `ownerOf`, and the
-symptom is a Counted Gear reading `×1` on one surface, `×0` on a second and
-nothing on a third.
+*Departures:* `kind` is read raw at several sites with absence treated
+differently at each (`Depot.tsx`, `DepotPicker.tsx`, `GearDetail.tsx`,
+`slice.ts`, `whereabouts.ts`); the one-function form is a `kindOf` beside
+`ownerOf`, and the symptom is a Counted Gear reading `×1` on one surface,
+`×0` on a second and nothing on a third. `owned_count` was the other half of
+this departure until S9b took it: `ownedCountOf` is a row of the table above,
+and the three `app/` sites that test `ownedCount !== undefined` are **not**
+callers of it — they ask *did anybody record a count*, which fix round F6
+requires to stay a separate question.
 *Argued in:* `owner.ts` (the original), [§12.10](architecture-design.md#1210-consequences-of-s4-people-and-ownership),
 [§12.11](architecture-design.md#1211-consequences-of-s6-trips-and-phases),
 [§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
@@ -98,7 +101,9 @@ op had arrived. The instances: `TagString` is normalised at the picker and read
 tolerantly; a Bring-count folds on any Entry and `bringCountOf` gates on the
 Gear's Kind; `stage` and `status` both fold on a container Entry and `statusOf`
 / `stageOf` each return `null` for the other's kind; `trip.entry_moved` on a
-per-person Entry is **fold-but-ignore** and `entryResidenceOf` is the gate.
+per-person Entry is **fold-but-ignore** and `entryResidenceOf` is the gate; and
+an owned-count folds on any Gear while `ownedCountOf` (`depot.ts`) gates on the
+Gear's own Kind, which is invariant 6 read out rather than enforced.
 
 *Drift symptom:* a reducer branch reading `state.gear[…]` to decide whether to
 write a Trip register.
@@ -151,10 +156,22 @@ a confirm naming a conflict between two other Trips entirely.
 `sliceDepot`'s Trip-membership dimension cannot be answered from a Gear's own
 registers, so `slice.ts` carries a module-level `WeakMap<DepotState, …>` keyed
 on the fold — the same identity guarantee §1.1 leans on — rather than a change
-to the dimension table's signature. The next cross-aggregate dimension should
-expect the same memo, not a new mechanism.
+to the dimension table's signature. The prediction that the next such reader
+would want the same memo and not a new mechanism held at S9b, twice:
+`CONTAINER_ANCESTORS` in the same file, and `TRIP_SLICES` in `whereabouts.ts`,
+which is not a dimension at all but is called once per Depot row and once per
+Find match. Two rules come out of the pair. The dimension's `valuesOf` and the
+grouping's `keyOf` read **one** memo, so the filter and the group can never
+disagree about what contains what; and anything else the build already scans
+per fold is folded into the same pass — `TRIP_SLICES` reads `overClaims(state)`
+once, because reading it per row would double the cost the memo exists to
+remove.
 
-*Argued in:* `slice.ts`; [§12.13](architecture-design.md#1213-consequences-of-s7-the-gear-list).
+*Departures:* three callers now want a memoised `containmentView` itself, and
+`slice.ts` memoises the ancestor index instead —
+[`technical-debt.md`](technical-debt.md).
+*Argued in:* `slice.ts`; [§12.13](architecture-design.md#1213-consequences-of-s7-the-gear-list),
+[§12.16](architecture-design.md#1216-consequences-of-s9b-whereabouts-reaches-the-depot).
 
 ### 1.8 App-side display selectors compose `shared/` answers
 
