@@ -480,6 +480,34 @@ describe('Gear detail', () => {
     ).toBe(false)
   })
 
+  it('opens the count well empty on uncounted gear, and records a typed 1', async () => {
+    // The other half of the untouched-Save rule. Seeding the well with
+    // `ownedCountOf`'s defaulted `1` would make Save discard a typed `1` as
+    // unchanged — `owned_count = 1` would be the one value this sheet could
+    // never record, while the well displayed it. The well opens **empty**
+    // instead, which is `design/README.md` §3b's rule for Add gear's own.
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+      }),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    const countField = screen.getByRole('textbox', { name: 'Owned count' })
+    expect(countField).toHaveValue('')
+
+    await user.type(countField, '1')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await store.getState().drained()
+
+    expect(store.getState().state.gear[gearId]?.ownedCount?.value).toBe(1)
+  })
+
   it('leaves the Kind unchosen for a Gear carrying no kind register', async () => {
     // `kindOf` reads an absent register as *no Kind*, never Single, so the
     // segmented control has nothing to check. Drawing `Single` selected would

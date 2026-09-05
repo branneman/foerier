@@ -840,9 +840,13 @@ function rowFact(
   // `OWNED ×1` either way would state a number nobody recorded for the
   // absent case, the exact failure the per-person branch above exists to
   // avoid. Reading the register directly, rather than trusting `supply`
-  // alone, is what tells the two apart; unreachable from this app's own
-  // authoring (Add gear always writes `ownedCount` for a Counted Kind), but
-  // reachable from a peer on a different build.
+  // alone, is what tells the two apart — and it is **reachable from this
+  // app's own authoring**: gear detail's EDIT sheet converts a Gear to
+  // Counted without writing a count when the well is left empty, which is
+  // §3b's "a silent ×1 is a wrong ledger line" applied to a conversion. (Add
+  // gear does always write one for a Counted Kind, which is what this note
+  // used to say was the whole story.) A peer on a different build reaches it
+  // too.
   if (state.gear[overClaim.gearId]?.ownedCount !== undefined) {
     parts.push(`OWNED ×${overClaim.supply}`)
   }

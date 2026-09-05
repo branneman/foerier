@@ -1,6 +1,5 @@
 import {
   containmentView,
-  countedOwnedCount,
   dimensionValues,
   gearKindSet,
   gearOwnedCountSet,
@@ -238,14 +237,19 @@ export function GearDetail() {
 
   function openEdit(current: GearState) {
     setNameDraft(current.name?.value ?? '')
-    // Both through their selector, exactly as `ownerDraft` is below and for
-    // the identical reason. `kindOf` refuses to default, so an absent
-    // register seeds `undefined` rather than a `Single` the Save would then
-    // author; `countedOwnedCount` states the `?? 1` once, in `shared/`, and
-    // is the Kind-free half of `ownedCountOf` because the well is seeded
-    // against the Kind the sheet may be about to write.
+    // The Kind through `kindOf`, exactly as `ownerDraft` goes through
+    // `ownerOf` below and for the identical reason: `kindOf` refuses to
+    // default, so an absent register seeds `undefined` rather than a `Single`
+    // the Save would then author.
+    //
+    // The count seeds from the **raw register** and `null` when there is
+    // none, which is `Stepper`'s report that the well is blank — the well
+    // **opens empty** on gear nobody has counted, exactly as Add gear's does
+    // (`design/README.md` §3b). Seeding it with `ownedCountOf`'s defaulted
+    // `1` would draw a number Save then discarded as unchanged, making
+    // `owned_count = 1` the one value this sheet could never record.
     setKindDraft(kindOf(current))
-    setCountDraft(countedOwnedCount(current))
+    setCountDraft(current.ownedCount?.value ?? null)
     // Through `ownerOf`, not `current.owner?.value`: an absent register has
     // to seed the draft as `{type:'shared'}` so that an untouched Save
     // compares equal and writes nothing. Reading the raw register here would
@@ -271,7 +275,7 @@ export function GearDetail() {
     if (
       kindDraft === 'counted' &&
       countDraft !== null &&
-      countDraft !== countedOwnedCount(current)
+      countDraft !== current.ownedCount?.value
     ) {
       emit(gearOwnedCountSet(id, countDraft))
     }

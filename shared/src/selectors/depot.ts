@@ -100,30 +100,6 @@ export function looseGear(
  */
 export function ownedCountOf(gear: GearState): number | null {
   if (!isCounted(gear)) return null
-  return countedOwnedCount(gear)
-}
-
-/**
- * The half of {@link ownedCountOf} that is about the **register** rather than
- * the Kind: what this Gear's owned-count reads *if* it is Counted, absent or
- * not.
- *
- * One caller, and it is not a display: gear detail's edit sheet, which seeds
- * and compares its owned-count draft against the Kind the sheet is **about to
- * write**, not the one the register still holds. {@link ownedCountOf} cannot
- * answer that — flip a Single gear to Counted in the sheet and it still reads
- * `null` — and the sheet spelling `?? 1` for itself would put a second copy
- * of this rule in `app/`, where the drift would show up as an untouched Save
- * authoring a `gear.owned_count_set` that changes no number on any screen.
- * A needless write is not cosmetic: it moves the stamp LWW compares, so it
- * can beat and silently discard a genuine concurrent write from a Device
- * that was offline.
- *
- * **Not a display selector.** Anything drawing `×N` wants
- * {@link ownedCountOf}, which is gated on the Kind; this one is not, and
- * would happily state a count for a Single.
- */
-export function countedOwnedCount(gear: GearState): number {
   return gear.ownedCount?.value ?? 1
 }
 
