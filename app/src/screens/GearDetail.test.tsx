@@ -432,6 +432,76 @@ describe('Gear detail', () => {
     expect(store.getState().state.gear[gearId]?.ownedCount?.value).toBe(5)
   })
 
+  it('writes nothing when Save is untouched on a Gear with no registers', async () => {
+    // The needless-write rule, at the two registers whose drafts used to be
+    // seeded raw. A `gear.recorded` with no `kind` field seeded the segmented
+    // control to `Single` and Saved a `gear.kind_set`; a Counted Gear with no
+    // `owned_count` seeded the well to `1` and Saved a `gear.owned_count_set`
+    // that changed no number any surface draws. A needless write is never
+    // cosmetic here — it moves the stamp LWW compares, so it can beat and
+    // silently discard a genuine concurrent write from a Device that was
+    // offline. Same discipline S4 gave the owner draft through `ownerOf`.
+    const bareId = anId()
+    const countedId = anId()
+    const log = inMemoryOpLog()
+    const store = await seededStore(
+      [
+        {
+          aggregate: 'gear',
+          aggregate_id: bareId,
+          type: 'gear.recorded',
+          payload: { name: 'Mystery', container: false },
+        },
+        gearRecorded(countedId, {
+          name: 'Gas canister',
+          container: false,
+          kind: 'counted',
+        }),
+      ],
+      log,
+    )
+    const before = (await log.all()).length
+    const user = userEvent.setup()
+
+    for (const id of [bareId, countedId]) {
+      renderGearDetail(store, id)
+      await user.click(screen.getByRole('button', { name: 'EDIT' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await store.getState().drained()
+      cleanup()
+    }
+
+    expect((await log.all()).length).toBe(before)
+    expect(Object.hasOwn(store.getState().state.gear[bareId]!, 'kind')).toBe(
+      false,
+    )
+    expect(
+      Object.hasOwn(store.getState().state.gear[countedId]!, 'ownedCount'),
+    ).toBe(false)
+  })
+
+  it('leaves the Kind unchosen for a Gear carrying no kind register', async () => {
+    // `kindOf` reads an absent register as *no Kind*, never Single, so the
+    // segmented control has nothing to check. Drawing `Single` selected would
+    // be the sheet asserting a Kind nobody stated — and then Saving it.
+    const gearId = anId()
+    const store = await seededStore([
+      {
+        aggregate: 'gear',
+        aggregate_id: gearId,
+        type: 'gear.recorded',
+        payload: { name: 'Mystery', container: false },
+      },
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'EDIT' }))
+    for (const label of ['Single', 'Per-person', 'Counted']) {
+      expect(screen.getByRole('radio', { name: label })).not.toBeChecked()
+    }
+  })
+
   it('writes no owned_count when the well is emptied before Save', async () => {
     // The exact scenario `Stepper`'s `null`-on-blank exists for: gear with no
     // owned_count register at all, switched to Counted mid-edit (which seeds

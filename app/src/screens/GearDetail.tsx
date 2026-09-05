@@ -1,5 +1,6 @@
 import {
   containmentView,
+  countedOwnedCount,
   dimensionValues,
   gearKindSet,
   gearOwnedCountSet,
@@ -11,6 +12,7 @@ import {
   gearTagRemoved,
   isCounted,
   isPerPerson,
+  kindOf,
   LOOSE_TEXT,
   normalizeTag,
   ownedCountOf,
@@ -215,7 +217,11 @@ export function GearDetail() {
   const [moveOpen, setMoveOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
-  const [kindDraft, setKindDraft] = useState<KindValue>('single')
+  // `KindValue | undefined`, because `kindOf` reads an absent register as
+  // *no Kind* and the sheet is not allowed to invent one. The segmented
+  // control simply draws nothing checked, and Save writes nothing until a
+  // Quartermaster picks.
+  const [kindDraft, setKindDraft] = useState<KindValue | undefined>(undefined)
   const [countDraft, setCountDraft] = useState<number | null>(1)
   const [ownerDraft, setOwnerDraft] = useState<Owner>({ type: 'shared' })
   const [ownerPickerOpen, setOwnerPickerOpen] = useState(false)
@@ -232,8 +238,14 @@ export function GearDetail() {
 
   function openEdit(current: GearState) {
     setNameDraft(current.name?.value ?? '')
-    setKindDraft(current.kind?.value ?? 'single')
-    setCountDraft(current.ownedCount?.value ?? 1)
+    // Both through their selector, exactly as `ownerDraft` is below and for
+    // the identical reason. `kindOf` refuses to default, so an absent
+    // register seeds `undefined` rather than a `Single` the Save would then
+    // author; `countedOwnedCount` states the `?? 1` once, in `shared/`, and
+    // is the Kind-free half of `ownedCountOf` because the well is seeded
+    // against the Kind the sheet may be about to write.
+    setKindDraft(kindOf(current))
+    setCountDraft(countedOwnedCount(current))
     // Through `ownerOf`, not `current.owner?.value`: an absent register has
     // to seed the draft as `{type:'shared'}` so that an untouched Save
     // compares equal and writes nothing. Reading the raw register here would
@@ -248,7 +260,7 @@ export function GearDetail() {
       emit(gearRenamed(id, trimmedName))
     }
 
-    if (kindDraft !== current.kind?.value) {
+    if (kindDraft !== undefined && kindDraft !== kindOf(current)) {
       emit(gearKindSet(id, kindDraft))
     }
 
@@ -259,7 +271,7 @@ export function GearDetail() {
     if (
       kindDraft === 'counted' &&
       countDraft !== null &&
-      countDraft !== current.ownedCount?.value
+      countDraft !== countedOwnedCount(current)
     ) {
       emit(gearOwnedCountSet(id, countDraft))
     }
