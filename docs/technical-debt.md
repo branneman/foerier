@@ -284,12 +284,6 @@ every one of them gets more expensive per slice.
   derives from `DIMENSIONS` with a named exclusion list, so a later slice's
   dimension reaches both bars — this is duplication, not divergence.
   [`frontend-design.md`](frontend-design.md) §5, anchor: `withFilters`
-- **`Depot.tsx`'s `metaFor` computes `×N` inline rather than calling the
-  `qtyFor` beside it.** S7 exported `qtyFor` so `DepotPicker` could draw the same
-  suffix; `metaFor`, four lines above it in the same file, still spells the
-  Counted gate and the count out again. Two computations of one drawn value, in
-  one file. [`frontend-design.md`](frontend-design.md) §5, anchor:
-  `` `metaFor` ``
 - **`ReopenConfirm` reads the store; `ActivationConfirm`, its twin, takes
   `groups`.** Two facts-only confirms with one anatomy and two data-flow
   shapes; the lift is `groups` as a prop from `PhaseSheet` and `Trips`, which

@@ -72,12 +72,19 @@ labelled `SHARED` vanishing under `OWNERSHIP: SHARED`; a Trip listed in one
 section drawn with another section's chip. It also shapes the edit sheets: a
 draft is **seeded through the selector**, so an untouched Save on a pre-default
 row authors nothing — `GearDetail`'s `openEdit` seeds `owner` through
-`ownerOf`, `kind` through `kindOf` and the owned-count through
-`countedOwnedCount`, the Kind-free half of `ownedCountOf` a sheet needs
-because it seeds against the Kind it is about to write rather than the one the
-register holds. A needless write is not cosmetic here: it moves the stamp LWW
-compares, so it can beat and silently discard a genuine concurrent write from
-a Device that was offline.
+`ownerOf` and `kind` through `kindOf`. A needless write is not cosmetic here:
+it moves the stamp LWW compares, so it can beat and silently discard a genuine
+concurrent write from a Device that was offline.
+
+**A register with no default is the one place a draft must *not* be seeded
+through the selector.** Gear detail's owned-count well seeds from the raw
+register and `null` when there is none, so it **opens empty** exactly as Add
+gear's does (`design/README.md` §3b). Seeding it with `ownedCountOf`'s
+defaulted `1` would display a number Save then discarded as unchanged, making
+`owned_count = 1` the one value the sheet could never record — the seed rule
+inverted into a product hole. The test for which applies: seed through the
+selector when the default is what the app *reads*, and from the register when
+the draft is what the app will *write*.
 
 **Two registers deliberately get no default, and they still have one
 function each.** An Entry with no `source` is not a line anybody can draw a
