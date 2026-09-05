@@ -5,6 +5,7 @@ import {
   gearKindSet,
   tripEntryAdded,
   tripEntryBringCountSet,
+  tripOutcomeSet,
   tripPieceRemoved,
   type OpSpec,
 } from '../authoring.ts'
@@ -429,6 +430,105 @@ describe('per-person claims read Pieces', () => {
     const state = twoTripFold(
       tripPieceRemoved(ALPS, ALPS_ENTRY, MARK),
       tripPieceRemoved(ALPS, ALPS_ENTRY, ELS),
+    )
+
+    expect(overClaims(state)).toEqual([])
+  })
+
+  it("releases exactly Mark's claim when his Piece on one Trip is resolved", () => {
+    // Els is only on Alps and Kim only on Vosges (each held once, and
+    // legitimate on their own); Mark is the entire conflict. Resolving his
+    // Piece on either Trip removes the only claim in contention, so the
+    // whole over-claim disappears — Els's and Kim's claims were never part
+    // of it and stay untouched, on both Trips.
+    const state = twoTripFold(tripOutcomeSet(ALPS, ALPS_ENTRY, 'back', MARK))
+
+    expect(overClaims(state)).toEqual([])
+  })
+})
+
+describe('an unpack outcome releases the claim (S10, spec §3.3)', () => {
+  function twoActiveTripsOnSingleGear(
+    ...extra: readonly OpSpec[]
+  ): HouseholdState {
+    return depot(
+      aGear({ id: 'g1', kind: 'single' }),
+      aTrip({ id: 't1', phase: 'pack_out' }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
+      aTrip({ id: 't2', phase: 'on_trip' }),
+      [tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g1' }), ...extra],
+    )
+  }
+
+  it.each(['back', 'consumed', 'lost'] as const)(
+    'resolving either Entry with outcome %s makes the over-claim disappear',
+    (outcome) => {
+      // Sanity: the pair genuinely over-claims before either is resolved —
+      // otherwise the assertion below would pass for the wrong reason.
+      expect(overClaims(twoActiveTripsOnSingleGear())).toHaveLength(1)
+
+      const resolved = twoActiveTripsOnSingleGear(
+        tripOutcomeSet('t2', 'e2', outcome),
+      )
+
+      expect(overClaims(resolved)).toEqual([])
+    },
+  )
+
+  it("an unrecognised outcome releases the claim too — a peer on a later build must not hold this build's supply hostage", () => {
+    expect(overClaims(twoActiveTripsOnSingleGear())).toHaveLength(1)
+
+    const resolved = twoActiveTripsOnSingleGear(
+      tripOutcomeSet('t2', 'e2', 'donated'),
+    )
+
+    expect(overClaims(resolved)).toEqual([])
+  })
+
+  it('a resolved Entry contributes nothing to claimed, even alone', () => {
+    // Counted gear owned ×2, one Trip bringing ×4: unresolved this
+    // over-claims on its own; resolved, it contributes nothing.
+    const unresolved = depot(
+      aGear({ id: 'g1', kind: 'counted', ownedCount: 2 }),
+      aTrip({ id: 't1', phase: 'pack_out' }),
+      [
+        tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' }),
+        tripEntryBringCountSet('t1', 'e1', 4),
+      ],
+    )
+    expect(overClaims(unresolved)).toHaveLength(1)
+
+    const resolved = depot(
+      aGear({ id: 'g1', kind: 'counted', ownedCount: 2 }),
+      aTrip({ id: 't1', phase: 'pack_out' }),
+      [
+        tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' }),
+        tripEntryBringCountSet('t1', 'e1', 4),
+        tripOutcomeSet('t1', 'e1', 'back'),
+      ],
+    )
+    expect(overClaims(resolved)).toEqual([])
+  })
+
+  it('an outcome of null clears back to open and re-creates the claim', () => {
+    const state = twoActiveTripsOnSingleGear(
+      tripOutcomeSet('t2', 'e2', 'back'),
+      tripOutcomeSet('t2', 'e2', null),
+    )
+
+    expect(overClaims(state)).toHaveLength(1)
+  })
+
+  it('resolving an Entry on a Draft Trip changes nothing — it held no claim to release', () => {
+    const state = depot(
+      aGear({ id: 'g1', kind: 'single' }),
+      aTrip({ id: 't1', phase: 'pack_out' }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
+      aTrip({ id: 't2', phase: 'draft' }),
+      [
+        tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g1' }),
+        tripOutcomeSet('t2', 'e2', 'back'),
+      ],
     )
 
     expect(overClaims(state)).toEqual([])

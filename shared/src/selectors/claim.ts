@@ -8,15 +8,20 @@ import { ownedCountOf } from './depot.ts'
 import { bringCountOf, entriesOf, entryKind } from './entry.ts'
 import { piecesOf } from './piece.ts'
 import { isActive, visibleTrips } from './trip.ts'
+import { outcomeOf, pieceOutcomeOf } from './unpack.ts'
 
 /**
  * **The over-claim** — domain §5.2's supply rule, read once per kind
  * (spec §3.2). Beside `entry.ts` and `trip.ts`, and the same shape of
  * problem: a fact several surfaces must agree on, computed once here.
  *
- * A claim is held by an **unresolved** Entry — one with no unpack outcome.
- * Outcomes are S10's, so at S7 every non-removed Entry on an active Trip is
- * unresolved and this file reads them all.
+ * A claim is held by an **unresolved** Entry — one whose {@link outcomeOf}
+ * reads `null` — and, for a Per-person Entry, by its unresolved Pieces alone:
+ * {@link claimsByGear} skips a resolved Entry outright, and {@link claimFor}'s
+ * per-person branch drops any Piece whose {@link pieceOutcomeOf} is no longer
+ * `null`. Recording an outcome therefore releases the claim **immediately,
+ * mid-pass** — the same read that computes `overClaims` sees it gone, before
+ * the Trip ever closes (spec §3.3, story 11).
  *
  * **S10's gate goes here**, inside this file and nowhere else. A speculative
  * `isResolved` returning `false` today would be a function no caller could
@@ -36,9 +41,11 @@ import { isActive, visibleTrips } from './trip.ts'
  * purpose** — see {@link claimFor}'s own note.
  *
  * `personIds` is present only for a Per-person claim, and is the Entry's
- * **included Pieces** — the claiming Trip's Participants minus whoever's
- * Piece {@link piecesOf} reads as tombstoned, so removing one Person's Piece
- * releases exactly that Person's claim.
+ * **included and unresolved Pieces** — the claiming Trip's Participants minus
+ * whoever's Piece {@link piecesOf} reads as tombstoned, minus whoever's Piece
+ * already carries an unpack outcome ({@link pieceOutcomeOf}, S10) — so
+ * removing a Piece and recording its outcome are two independent ways to
+ * release exactly that Person's claim.
  */
 export interface Claim {
   readonly tripId: string
@@ -114,9 +121,12 @@ function compareIds(a: string, b: string): number {
  * of the Gear (see {@link supplyAndClaimed}'s note on invariant 6). Counted
  * reads {@link bringCountOf}, which already defaults an absent register to
  * `1`. Per-person reads {@link piecesOf} of the Entry against the *claiming*
- * Trip — Pieces, not Participants: removing a Piece releases that Person's
- * claim, which is what makes domain §5.2's per-person rule settleable at the
- * granularity it is stated in (spec §3.3, §4.4).
+ * Trip, then drops whoever's Piece already carries an unpack outcome
+ * ({@link pieceOutcomeOf}, S10) — Pieces, not Participants, and *unresolved*
+ * Pieces, not merely included ones: removing a Piece or recording its outcome
+ * each release that Person's claim, which is what makes domain §5.2's
+ * per-person rule settleable at the granularity it is stated in (spec §3.3,
+ * §4.4).
  *
  * **This function never checks `isContainerEntry`, on purpose.** A Single
  * container Entry contributes `count: 1` here even though {@link pieceCountOf}
@@ -139,10 +149,13 @@ function claimFor(
       count: bringCountOf(entry, state) ?? 1,
     }
   }
-  // Pieces, not Participants: removing a Piece releases that Person's claim,
-  // which is what makes domain §5.2's per-person rule settleable at the
-  // granularity it is stated in.
-  const personIds = piecesOf(entry, trip)
+  // Pieces, not Participants, and unresolved Pieces, not merely included
+  // ones: removing a Piece or recording its outcome each release that
+  // Person's claim, which is what makes domain §5.2's per-person rule
+  // settleable at the granularity it is stated in.
+  const personIds = piecesOf(entry, trip).filter(
+    (personId) => pieceOutcomeOf(entry.pieces?.[personId]) === null,
+  )
   return {
     tripId: trip.id,
     entryId: entry.id,
@@ -174,6 +187,20 @@ function claimingTrips(
  * nothing (`entryKind` reads it `'trip_only'`, which is not a
  * {@link ClaimableKind} and is skipped below alongside every other
  * non-claiming case).
+ *
+ * **A resolved Entry is skipped first, before `entryKind` is even read.**
+ * {@link outcomeOf} reads `null` for open and for absent alike, so an Entry
+ * this loop has never addressed falls straight through to the ordinary
+ * checks below; the moment some outcome — `back`, `consumed`, `lost`, or one
+ * this build has never heard of — is on record, the Entry contributes no
+ * claim at all (spec §3.3, story 11). An *unrecognised* outcome releases the
+ * claim exactly like a known one: a Trip a peer on a later build has
+ * resolved must not hold this build's supply hostage. This is the whole of
+ * "marking an Entry resolved hands its Gear straight back" — the claim is
+ * released by the same read that computes it, mid-pass, before the Trip
+ * closes. A Per-person Entry's own per-Piece release lives in
+ * {@link claimFor} instead, since a Person's claim must be releasable without
+ * releasing the whole Entry's.
  *
  * **An Entry whose Gear is not (yet) in the fold holds no claim.**
  * `entryKind` reads `undefined` for a depot Entry whose `gear.recorded` has
@@ -210,6 +237,10 @@ function claimsByGear(
   const byGear = new Map<string, { kind: ClaimableKind; claims: Claim[] }>()
   for (const trip of trips) {
     for (const entry of entriesOf(trip, state)) {
+      // S10: a resolved Entry holds no claim — see this function's own note
+      // above. Checked before `entryKind`, so it applies to every Kind
+      // uniformly rather than being threaded into the checks below.
+      if (outcomeOf(entry) !== null) continue
       const kind = entryKind(entry, state)
       if (!isClaimableKind(kind)) continue
       // `isClaimableKind` already rules out `'trip_only'` and `undefined`,
