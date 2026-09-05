@@ -31,6 +31,7 @@ import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
 import { anAuthor, anId, noopEngine } from '../testUtils'
 import { GearDetail } from './GearDetail'
+import styles from './GearDetail.module.css'
 
 /** The only way a `TagString` is made (`shared/src/tags.ts`). */
 function aTag(raw: string): TagString {
@@ -864,6 +865,58 @@ describe('Gear detail — whereabouts reaches the screen', () => {
     expect(chip).toHaveTextContent('M ▲ 2 TRIPS')
     expect(within(chip).queryByRole('link')).toBeNull()
     expect(within(chip).queryByRole('button')).toBeNull()
+  })
+
+  // Blocker 2 from the final whole-branch review: the contested chip was
+  // drawing in ordinary ink while Find's equivalent row already drew this
+  // fact in the app-wide attention class — two surfaces, one fact, two
+  // tones. Two-sided: the contested chip carries the modifier and the
+  // circle's `attention` tone, and an uncontested Participant's chip in the
+  // very same PIECES group carries neither.
+  it('draws a contested PIECES chip in the attention class, and an uncontested one in neither', async () => {
+    const alpsId = anId()
+    const vosgesId = anId()
+    const gearId = anId()
+    const markId = anId()
+    const elsId = anId()
+    const store = await seededStore([
+      personRecorded(markId, 'Mark'),
+      personRecorded(elsId, 'Els'),
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripParticipantAdded(alpsId, markId),
+      tripParticipantAdded(alpsId, elsId),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'pack_out'),
+      tripParticipantAdded(vosgesId, markId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(alpsId, 'e-alps', { from: 'depot', gearId }),
+      tripEntryAdded(vosgesId, 'e-vosges', { from: 'depot', gearId }),
+    ])
+    renderGearDetail(store, gearId)
+
+    // People-screen order: Els before Mark.
+    const chips = screen.getAllByTestId('piece-chip')
+    expect(chips).toHaveLength(2)
+    const [elsChip, markChip] = chips as [HTMLElement, HTMLElement]
+
+    expect(elsChip).toHaveTextContent('E ▸ Alps 2026')
+    expect(elsChip).not.toHaveClass(styles['attention']!)
+    expect(within(elsChip).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'control',
+    )
+
+    expect(markChip).toHaveTextContent('M ▲ 2 TRIPS')
+    expect(markChip).toHaveClass(styles['attention']!)
+    expect(within(markChip).getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'attention',
+    )
   })
 
   it('turns the footer ▲ for over-claimed Counted gear, with the two Counted-only numbers (D8, §6.1)', async () => {

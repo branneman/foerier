@@ -31,6 +31,13 @@ import styles from './PersonCircle.module.css'
  * file's. `ui/` stays free of packing vocabulary the same way it stays free
  * of login vocabulary.
  *
+ * **`attention` is the sixth, S9b's own** — a Piece two Trips both claim
+ * (`docs/design/README.md`'s Status Grammar: `▲` is an attention class
+ * app-wide). `Find.tsx`'s `PersonPieceRow` and `GearDetail.tsx`'s `PIECES`
+ * chip both draw a contested Participant's circle with it, the same
+ * `--color-status-attention` token every other attention surface in `app/`
+ * already reads — no colour literal of its own.
+ *
  * **Named `label`, not `initial`.** An initial is the caller's own
  * `label.charAt(0).toUpperCase()`, computed before it ever reaches this
  * component — this renders whatever string it is given, verbatim. That is
@@ -78,9 +85,11 @@ export interface PersonCircleProps {
    * Defaults to `control`, the display-only border every non-login caller
    * draws. See the tone-not-state note above for what each value means —
    * this component does not know. `filled` (solid) and `half` (half-filled)
-   * are S9's, for a Piece's own packing status.
+   * are S9's, for a Piece's own packing status; `attention` is S9b's, for a
+   * Piece two Trips both claim.
    */
-  tone?: 'control' | 'accent' | 'dashed' | 'none' | 'filled' | 'half'
+  tone?:
+    'control' | 'accent' | 'dashed' | 'none' | 'filled' | 'half' | 'attention'
 }
 
 export function PersonCircle({

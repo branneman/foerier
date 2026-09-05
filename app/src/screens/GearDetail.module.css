@@ -150,6 +150,17 @@
     color: var(--color-ink-muted);
   }
 
+  /* A Piece two Trips both claim (D7's `▲ N TRIPS`) draws in the app-wide
+     attention class (`docs/design/README.md`'s Status Grammar), not ordinary
+     ink — the review's blocker 2. `Find.module.css`'s identical `.attention`
+     modifier is the same fix already shipped on the other surface reading
+     this fact. The circle's own border carries the same token through its
+     `attention` tone, set by the caller. */
+  .attention {
+    border-color: var(--color-status-attention);
+    color: var(--color-status-attention);
+  }
+
   .piecesHint {
     font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);

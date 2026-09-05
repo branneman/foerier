@@ -419,13 +419,20 @@ export function GearDetail() {
             {piecePeople.map((person) => {
               const answer = pieceAnswers.get(person.id)
               if (answer === undefined) return null
+              const contested = answer.contestedTripIds.length >= 2
               return (
                 <span
                   key={person.id}
-                  className={styles['pieceChip']}
+                  className={`${styles['pieceChip']} ${
+                    contested ? styles['attention'] : ''
+                  }`}
                   data-testid="piece-chip"
                 >
-                  <PersonCircle label={personInitial(person.label)} size={22} />{' '}
+                  <PersonCircle
+                    label={personInitial(person.label)}
+                    size={22}
+                    tone={contested ? 'attention' : 'control'}
+                  />{' '}
                   <span>{pieceChipText(answer)}</span>
                 </span>
               )

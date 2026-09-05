@@ -46,6 +46,16 @@ describe('PersonCircle', () => {
     )
   })
 
+  // S9b's own: a Piece two Trips both claim (Find's `PersonPieceRow`,
+  // `GearDetail`'s `PIECES` chip).
+  it('renders the attention tone as data-tone', () => {
+    render(<PersonCircle label="M" size={22} tone="attention" />)
+    expect(screen.getByTestId('person-circle')).toHaveAttribute(
+      'data-tone',
+      'attention',
+    )
+  })
+
   // S9's two, added for the Piece status sheet's packing fills.
   it.each(['filled', 'half'] as const)(
     'renders the %s tone as data-tone',
