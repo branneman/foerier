@@ -365,9 +365,15 @@ describe('SliceBar — expanded', () => {
  * and the arrange row's hint is the one component that fact reaches
  * (`docs/design/README.md` §5f D5, spec §4.4). Every other `GROUP BY` value
  * leaves the hint exactly as S3 shipped it.
+ *
+ * **The full stop is the second clause's, not the first's** (§5g E11). One
+ * clause is a label and keeps the unterminated S3 form; a second clause makes
+ * a sentence boundary, and then both take a stop — `WhereaboutsCard`'s
+ * two-clause footer is the precedent. S9b shipped the first clause terminated
+ * unconditionally, which put a full stop on every `GROUP BY` in the app.
  */
 describe('SliceBar — the arrange-row hint (S9b, D5)', () => {
-  it('states only the standing rule while grouped by anything but CONTAINER', () => {
+  it('states only the standing rule, unterminated, while grouped by anything but CONTAINER', () => {
     render(
       <SliceBar
         spec={{ ...EMPTY_SLICE, group: 'owner' }}
@@ -381,7 +387,12 @@ describe('SliceBar — the arrange-row hint (S9b, D5)', () => {
 
     expect(
       screen.getByText(/SEARCH \+ FILTERS COMBINE WITH AND/),
-    ).toHaveTextContent('SEARCH + FILTERS COMBINE WITH AND.')
+    ).toHaveTextContent('SEARCH + FILTERS COMBINE WITH AND')
+    // A one-clause hint is a label, not a sentence — the S3 form, and the
+    // half of E11 the code had got wrong.
+    expect(
+      screen.getByText(/SEARCH \+ FILTERS COMBINE WITH AND/).textContent,
+    ).not.toMatch(/\.$/)
     expect(screen.queryByText(/GROUPS FILE EACH GEAR/)).toBeNull()
   })
 
@@ -398,7 +409,7 @@ describe('SliceBar — the arrange-row hint (S9b, D5)', () => {
     )
 
     expect(screen.getByText(/GROUPS FILE EACH GEAR/)).toHaveTextContent(
-      'GROUPS FILE EACH GEAR UNDER THE CONTAINER IT IS IN.',
+      'SEARCH + FILTERS COMBINE WITH AND. GROUPS FILE EACH GEAR UNDER THE CONTAINER IT IS IN.',
     )
   })
 })

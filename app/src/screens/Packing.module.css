@@ -15,12 +15,17 @@
    *
    * **The gutter is the shell's own `--gutter` token, not a bespoke 20/24.**
    * `ui/styles/layout.css` already reaches 24 at Roomy and holds it through
-   * Split and Desktop, so "24 from Split" is simply that token, unchanged —
-   * and "20 at Roomy" is the identical departure already recorded for
-   * Depot/Trips' title-row button (`docs/design/README.md` §1's Widths
-   * bullet vs. the shared token): the boards draw 20, the shared gutter
-   * step is 24, and a screen this narrow does not invent a second gutter
-   * value 4px off the one every other surface reads.
+   * Split and Desktop, so "24 from Split" is simply that token, unchanged.
+   *
+   * **Ruling E5 states the general rule and moves where the difference is
+   * recorded**: *where a board's number differs from a shared token, the
+   * token wins and the difference is recorded at the token, for a round that
+   * can change it everywhere.* So the boards' *20 at Roomy* (§1, §3a, Trips)
+   * is marked **drawn but not built** in `docs/design/README.md`'s Spacing &
+   * grid table — not in §1's Widths bullet, which no longer carries a gutter
+   * number of its own — and a screen this narrow does not invent a second
+   * gutter value 4px off the one every other surface reads. Above the 560
+   * cap a flat 20 is not even reachable.
    */
   .screen {
     display: flex;
@@ -40,8 +45,11 @@
   /* The band — `Trip.module.css`'s rule verbatim, since it is the same band
      answering the same hook. The difference is entirely in `Packing.tsx`:
      `atDesktopSidebarCarriesDestination: false` keeps the link at Desktop. */
-  /* DISPLAY, 28/34 — and 34 at Desktop is the token's business, not this
-     file's: every screen title in the app reads the same one. */
+  /* DISPLAY, 28/34 at every width. The type table's *34 on desktop* is
+     **drawn but not built** (ruling E5): no screen implements the step and no
+     frame draws it, so a round that wants it changes the token and every
+     title moves together — F4 alone taking it would be the odd-one-out the
+     code refused. Same rule as the gutter above. */
   .title {
     font: var(--text-display) var(--font-display);
     font-weight: 700;

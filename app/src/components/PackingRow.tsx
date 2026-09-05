@@ -127,6 +127,25 @@ import {
  * and ALL mode pass nothing, and neither does CONTAINER for a Kind that has
  * no Pieces.
  *
+ * ## A per-person Entry with no Pieces is a fact, not a control
+ *
+ * Ruling E9. No Participant yet — the ordinary shape of a Draft — or every
+ * Piece tombstoned, and the Entry yields no item at all. The line still
+ * draws, under `Loose` and in ALL mode (the position round 2 settled and E9
+ * blessed), but **neither of the row's two targets has anything to do**: the
+ * cluster is one control and zero circles are not a control (§5d B), and the
+ * body's act on a per-person row is the Piece status sheet, which would open
+ * on no rows over a `SET EVERYONE` that sets nobody. Both are withheld, and
+ * the meta says why in the two words that are true whichever way the state
+ * arrived: `PER-PERSON · NO PIECES` — never `NO PARTICIPANTS`, false once the
+ * set has been emptied a tombstone at a time, and never the `0/0` the empty
+ * state refuses one screen up.
+ *
+ * The row therefore renders no `<button>` at all. It is the only row on this
+ * screen that does not, and the reason generalises: **an inert row draws no
+ * target rather than a disabled one**, because a disabled control still
+ * announces an act this row does not have.
+ *
  * The ownership segment is {@link ownerLabel}'s `PERSONAL E`, not the
  * board's `PERSONAL · E`: `docs/design/README.md` §2 resolved that spelling
  * to the Depot's when S4 shipped the function, and §1's own note says S9
@@ -297,6 +316,14 @@ export function PackingRow({
 
   const isPiece = personId !== undefined
   const isPerPerson = !isPiece && kind === 'per_person'
+  /**
+   * Ruling E9 — see the docstring. Read from `pieces` rather than from
+   * `scoped`, because `scopedPersonIds` narrowing a row to nothing is not
+   * this state: CONTAINER mode never draws such a row (a group is built from
+   * the Pieces in it), and if it ever did, the Entry would still have Pieces
+   * to open a sheet onto.
+   */
+  const inert = isPerPerson && pieces.length === 0
 
   const status = isPiece
     ? pieceStatusOf(entry.pieces?.[personId], entry, state)
@@ -326,7 +353,12 @@ export function PackingRow({
     : isPiece
       ? ''
       : isPerPerson
-        ? `PER-PERSON · ${packedHere}/${scoped.length}`
+        ? // The count's half is dropped rather than written `0/0` when there
+          // is nothing to count (ruling E9); `NO PIECES` follows as its own
+          // element, for `N ELSEWHERE`'s reason.
+          inert
+          ? 'PER-PERSON'
+          : `PER-PERSON · ${packedHere}/${scoped.length}`
         : // `SHARED` for a depot Entry whose Gear has not reached this
           // replica — `personPartition`'s rule 3 for the identical state.
           `${gear === undefined ? 'SHARED' : ownerLabel(state, gear)} · ×${pieceCountOf(entry, trip, state)}`
@@ -404,19 +436,20 @@ export function PackingRow({
       ? `Packing status — ${label}, ${packedHere} of ${scoped.length} packed here, ${elsewhere} elsewhere`
       : `Packing status — ${label}, ${packedHere} of ${scoped.length} packed`
 
-  return (
-    <div className={styles['row']} data-testid="packing-row">
-      <button
-        type="button"
-        className={styles['body']}
-        data-testid="packing-row-body"
-        onClick={isPerPerson ? onOpenPieceSheet : onOpenPicker}
-      >
-        <span className={styles['nameLine']}>
-          <span className={styles['name']} data-testid="packing-row-name">
-            {label}
-          </span>
-          {/* Recorded case here, drawn in caps by `.piece`'s own
+  /**
+   * Everything the row's left-hand half draws — the name line and the meta
+   * line. Lifted out of the JSX because ruling E9 changes only *what wraps
+   * it*: a `<button>` on every row that has a *where* to open, and a plain
+   * span on the one row that does not. Two copies of this tree would be two
+   * places for the meta line's separators to drift.
+   */
+  const bodyContent = (
+    <>
+      <span className={styles['nameLine']}>
+        <span className={styles['name']} data-testid="packing-row-name">
+          {label}
+        </span>
+        {/* Recorded case here, drawn in caps by `.piece`'s own
               `text-transform` — `PieceStatusSheet`'s `.residence`
               convention, and the house rule that CAPS is a CSS transform
               rather than a string.
@@ -428,52 +461,81 @@ export function PackingRow({
               word, with the dash glued to the gear. The space is the only
               thing that makes the drawn `Headlamp — ELS'S PIECE` and the
               announced name the same sentence. */}
-          {isPiece && (
-            <>
-              {' '}
-              <span className={styles['piece']}>
-                {`— ${personNameOrUnnamed(state, personId)}'s piece`}
-              </span>
-            </>
-          )}
-          {/* `{' '}` for the same reason the Piece suffix above carries
+        {isPiece && (
+          <>
+            {' '}
+            <span className={styles['piece']}>
+              {`— ${personNameOrUnnamed(state, personId)}'s piece`}
+            </span>
+          </>
+        )}
+        {/* `{' '}` for the same reason the Piece suffix above carries
               one: `.nameLine`'s flex `gap` is not a character, so without it
               the body button announces `PassportsTRIP-ONLY`. */}
-          {tripOnly && (
-            <>
-              {' '}
-              <span className={styles['badge']}>TRIP-ONLY</span>
-            </>
-          )}
-        </span>
-        {(meta !== '' || residence !== '') && (
-          <span className={styles['meta']} data-testid="packing-row-meta">
-            {meta}
-            {/* Ruling C2's remainder, muted rather than amber and drawn only
+        {tripOnly && (
+          <>
+            {' '}
+            <span className={styles['badge']}>TRIP-ONLY</span>
+          </>
+        )}
+      </span>
+      {(meta !== '' || residence !== '') && (
+        <span className={styles['meta']} data-testid="packing-row-meta">
+          {meta}
+          {/* Ruling C2's remainder, muted rather than amber and drawn only
                 above zero. Its own element for the trip card's ▲ reason: a
                 single text node would force the muted class onto the whole
                 meta line or onto none of it, and the scoped count beside it
                 is the ledger. */}
-            {elsewhere > 0 && (
-              <>
-                {' · '}
-                <span className={styles['elsewhere']}>
-                  {elsewhere} ELSEWHERE
-                </span>
-              </>
-            )}
-            {/* The separator belongs to neither half — it appears only where
+          {elsewhere > 0 && (
+            <>
+              {' · '}
+              <span className={styles['elsewhere']}>{elsewhere} ELSEWHERE</span>
+            </>
+          )}
+          {/* Ruling E9's two words, in `N ELSEWHERE`'s own faint tone and
+                its own element for the same reason: a single text node would
+                force one class onto the whole meta line or onto none of it,
+                and `PER-PERSON` beside it is the ordinary muted meta. */}
+          {inert && (
+            <>
+              {' · '}
+              <span className={styles['noPieces']}>NO PIECES</span>
+            </>
+          )}
+          {/* The separator belongs to neither half — it appears only where
                 both are drawn, which is why it is not baked into either
                 string. */}
-            {meta !== '' && residence !== '' && ' · '}
-            {residence !== '' && (
-              <span className={styles['residence']}>{residence}</span>
-            )}
-          </span>
-        )}
-      </button>
+          {meta !== '' && residence !== '' && ' · '}
+          {residence !== '' && (
+            <span className={styles['residence']}>{residence}</span>
+          )}
+        </span>
+      )}
+    </>
+  )
 
-      {isPerPerson ? (
+  return (
+    <div className={styles['row']} data-testid="packing-row">
+      {/* Ruling E9: no *where* to open, so no target — a plain span rather
+          than a disabled button, which would still announce an act this row
+          does not have. Every other row keeps both halves of ruling A2. */}
+      {inert ? (
+        <span className={styles['inertBody']}>{bodyContent}</span>
+      ) : (
+        <button
+          type="button"
+          className={styles['body']}
+          data-testid="packing-row-body"
+          onClick={isPerPerson ? onOpenPieceSheet : onOpenPicker}
+        >
+          {bodyContent}
+        </button>
+      )}
+
+      {/* Ruling E9's other half: zero circles are not a control, so the
+          per-person arm draws nothing at all rather than an empty cluster. */}
+      {inert ? null : isPerPerson ? (
         <button
           type="button"
           className={styles['cluster']}

@@ -1580,14 +1580,22 @@ describe('a per-person Entry in CONTAINER mode', () => {
   })
 
   /**
-   * **No ruling reaches this state, so S9a's read is kept.** A per-person
-   * Entry with no Pieces at all — no Participant yet, the ordinary shape of a
-   * Draft — yields no item, so C1's *a group holding at least one of its
-   * Pieces* names none. It is still a line on the gear list, and a line
-   * drawing in no group would vanish from the mode the screen rests in while
-   * ALL mode still lists it. `Loose` is where a thing in no container goes.
+   * **Ruling E9.** A per-person Entry with no Pieces at all — no Participant
+   * yet, the ordinary shape of a Draft, or every Piece tombstoned — yields no
+   * item, so C1's *a group holding at least one of its Pieces* names none.
+   *
+   * **The position is blessed**: it is still a line on the gear list, and a
+   * line drawing in no group would vanish from the mode the screen rests in
+   * while ALL mode still lists it. `Loose` is where a thing in no container
+   * goes, and `NOT IN A CONTAINER` is true of it.
+   *
+   * **The meta is redrawn.** S9a read the scoped count literally and wrote
+   * `PER-PERSON · 0/0` — the arithmetic the empty state already refuses one
+   * screen up. `NO PIECES` is the fact, and it is the fact in *both* the ways
+   * this state happens: `NO PARTICIPANTS` would be false where the set was
+   * emptied one tombstone at a time.
    */
-  it('draws a per-person Entry with no Pieces under Loose', async () => {
+  it('draws a per-person Entry with no Pieces under Loose, and says why', async () => {
     await renderPacking(
       `/trips/${ALPS}/packing`,
       tripCreated(ALPS, 'Alps 2026'),
@@ -1601,8 +1609,78 @@ describe('a per-person Entry in CONTAINER mode', () => {
     )
 
     expect(groupNames()).toEqual(['Loose'])
-    expect(metaIn('Loose')).toHaveTextContent('PER-PERSON · 0/0')
+    expect(metaIn('Loose')).toHaveTextContent('PER-PERSON · NO PIECES')
+    expect(metaIn('Loose')).not.toHaveTextContent('0/0')
     expect(metaIn('Loose')).not.toHaveTextContent('ELSEWHERE')
+  })
+
+  /**
+   * **Ruling E9's second half: the row is inert.** A cluster is one control
+   * and zero circles are not a control (§5d B); the body's act on a
+   * per-person row is the Piece status sheet, which would open on no rows and
+   * a `SET EVERYONE` that sets nobody — the dead affordance the empty state
+   * refuses. The row is a fact until a Piece exists.
+   */
+  it('gives a per-person Entry with no Pieces no cluster and no target', async () => {
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'pack_out'),
+      gearRecorded(HEADLAMP, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(ALPS, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
+    )
+
+    const row = onlyRowIn('Loose')
+    expect(within(row).queryByTestId('packing-row-cluster')).toBeNull()
+    expect(within(row).queryByTestId('packing-row-body')).toBeNull()
+    // A container's absent pill must not come back as a per-person row's
+    // either: neither track has anything to set.
+    expect(within(row).queryByRole('button')).toBeNull()
+    expect(within(row).getByTestId('packing-row-name')).toHaveTextContent(
+      'Headlamp',
+    )
+  })
+
+  /**
+   * ALL mode draws the same row by the same rule, with the residence segment
+   * every ALL row carries — `▸ LOOSE`, which is where a set with no Pieces
+   * anywhere rides.
+   */
+  it('draws the same no-Pieces row in ALL mode, with its residence', async () => {
+    const user = userEvent.setup()
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'pack_out'),
+      gearRecorded(HEADLAMP, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripEntryAdded(ALPS, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
+    )
+    await chooseMode(user, 'ALL')
+
+    const meta = screen.getByTestId('packing-row-meta')
+    expect(meta).toHaveTextContent('PER-PERSON · NO PIECES · ▸ LOOSE')
+    expect(screen.queryByTestId('packing-row-cluster')).toBeNull()
+  })
+
+  /**
+   * `NO PIECES` takes the remainder's own faint tone (E9) — what the row does
+   * *not* have, one step back from the `PER-PERSON` stating what it is — and
+   * never the residence amber, which is a place. `css: false`, so the
+   * stylesheet text is the only thing that sees this.
+   */
+  it('draws NO PIECES in the remainder’s tone, never in the residence amber', () => {
+    const file = '../components/PackingRow.module.css'
+
+    expect(ruleBody(file, '.noPieces')).toMatch(/--color-ink-faint/)
+    expect(ruleBody(file, '.noPieces')).not.toMatch(/amber/)
   })
 })
 
@@ -1913,6 +1991,11 @@ describe('PERSON mode', () => {
    * aggregate would invent one — which is also why the board's own frame,
    * drawing a partial group half-amber in one row and bordered in another,
    * could not be followed as drawn.
+   *
+   * **Ruling E1 blessed exactly this and corrected the frame**: the header
+   * circle is a summary, not a Piece, so a half fill would claim `staged` for
+   * a person — a status no person has — and the count beside it already
+   * states the partial. The half fill stays the 34px cluster's word.
    */
   it('fills an all-done header circle and leaves every other one bordered', async () => {
     const user = userEvent.setup()
@@ -1936,9 +2019,15 @@ describe('PERSON mode', () => {
     ).toHaveLength(0)
   })
 
-  /** No header states *where* in this mode either, so every row's meta ends
-   * in its own trip residence. */
-  it("ends a row's meta line in its trip residence", async () => {
+  /**
+   * No header states *where* in this mode either, so every row's meta ends in
+   * its own trip residence — and it keeps its `×N` while doing so (ruling
+   * E3): the meta line is one line in three modes and only its last segment
+   * is mode-dependent, so the frame that dropped `×1` from `Rain jacket, E`
+   * while drawing it on `Water filter · SHARED · ×1` two rows down was the
+   * stale half.
+   */
+  it("ends a row's meta line in its trip residence, ×N and all", async () => {
     const user = userEvent.setup()
     await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
     await chooseMode(user, 'PERSON')
@@ -1946,6 +2035,29 @@ describe('PERSON mode', () => {
     const els = within(groupFor('Els')).getAllByTestId('packing-row')
     expect(els[0]).toHaveTextContent('▸ Duffel 90 L')
     expect(els[1]).toHaveTextContent('PERSONAL E · ×1 · ▸ LOOSE')
+  })
+
+  /**
+   * **Ruling E2: the segment is amber here too**, which is the one encoding
+   * `PackingRow` has for it — `▸` + amber is the app-wide trip-world mark,
+   * and PERSON's headers name people, not places, so ALL's own reason holds
+   * unchanged. The frame drew it muted, which would have made one colour mean
+   * two things by mode; it is corrected on the board.
+   *
+   * Asserted as the *class* rather than as a colour, because that class's own
+   * body is pinned to amber one describe up: the fault this guards is PERSON
+   * mode reaching for a second, muted class of its own.
+   */
+  it('paints the residence segment in the same amber class ALL mode uses', async () => {
+    const user = userEvent.setup()
+    await renderPacking(`/trips/${ALPS}/packing`, ...personFrame())
+
+    await chooseMode(user, 'ALL')
+    const inAll = screen.getAllByText('▸ LOOSE')[0]?.className
+    expect(inAll).toBeDefined()
+
+    await chooseMode(user, 'PERSON')
+    expect(within(groupFor('Els')).getByText('▸ LOOSE').className).toBe(inAll)
   })
 })
 
@@ -2138,63 +2250,23 @@ describe('the ○ LEFT filter', () => {
   })
 
   /**
-   * A container holding nothing but nested containers keeps its header: the
-   * rail is that container's own journey, not its contents'.
+   * **Ruling E8, and the frame the round drew for it** (§5g, frame 03): a
+   * group header is drawn while any row **at any depth** beneath it survives
+   * the filter. The duffel's own rows are all packed and the dry bag inside
+   * it holds work, so the duffel stays — over the sack's header directly,
+   * with no rows of its own between them, which is the true picture: the work
+   * left in the duffel is all in the sack.
    *
-   * **The `Stove` and Els's Headlamp Piece both have to leave the duffel for
-   * this fixture to say anything.** A container produces no item of its own,
-   * so a rows-less container is one nothing *sits in* — and while the duffel
-   * still held the unpacked stove it survived `○ LEFT` on that row rather
-   * than on the rule under test. Els's Piece is the round-2 half of the same
-   * point: under ruling C1 it draws a Headlamp row **in the duffel**, so the
-   * duffel is rows-less only once the Piece is loose too. The guard reads
-   * `group.rows.length > 0 && rows.length === 0` precisely so that emptiness
-   * has to be **caused** by the filter; drop that first conjunct and this
-   * goes red.
+   * Round 2 hid that header while its own `9/12` and its ▲ line both counted
+   * the sack's three, and left the sack indented under nothing. **That state
+   * is what the retired orphan test pinned**, and the predicate it depended
+   * on — `group.rows.length > 0 && rows.length === 0` — retires with it.
+   *
+   * Els's Headlamp Piece rides in the duffel in `personFrame`, and under
+   * ruling C1 that draws a second, unpacked Headlamp row there — which would
+   * keep the duffel alive on a row this test is not about.
    */
-  it('keeps a container group whose only rows are nested groups', async () => {
-    const user = userEvent.setup()
-    await renderPacking(
-      `/trips/${ALPS}/packing`,
-      ...personFrame(),
-      tripEntryMoved(ALPS, E_DRYBAG, { in: 'container', entryId: E_DUFFEL }),
-      // Now the duffel's own rows are none: the dry bag is its only child.
-      tripEntryMoved(ALPS, E_STOVE, { in: 'loose' }),
-      tripPieceMoved(ALPS, E_HEADLAMP, 'els', { in: 'loose' }),
-    )
-    await pressLeftOnly(user)
-
-    const duffel = screen.getByRole('region', { name: 'Duffel 90 L' })
-    expect(duffel).toBeVisible()
-    expect(within(duffel).getByTestId('journey-rail')).toBeVisible()
-    // Its one nested group *is* filtered out — the rope inside is packed —
-    // which is what makes the duffel's survival the rule and not an
-    // accident of something unpacked still sitting in it.
-    expect(screen.queryByRole('region', { name: 'Dry bag' })).toBeNull()
-    expect(within(duffel).queryAllByTestId('packing-row')).toHaveLength(0)
-  })
-
-  /**
-   * **The orphaned indent, pinned as it behaves rather than as anyone drew
-   * it.** *A group whose items all filter out draws nothing* is **the
-   * slice's own sentence, not a ruling's** — ruling A3 settles `Loose`-last
-   * and nothing else, and §1's "empty, it draws nothing" is about an empty
-   * `Loose` group rather than about the filter. Taken literally it has one
-   * shape with a visible cost: a parent container whose own rows are all
-   * packed disappears while a nested container inside it survives, so the
-   * child's group keeps its 16px indent with nothing above it to be indented
-   * from.
-   *
-   * The alternative would be a keep-the-ancestry condition, and **no board
-   * draws one** — inventing it here would be designing rather than building,
-   * which is what §5e's own "a slice number on a board is a claim, not a
-   * licence" warns against from the other direction.
-   *
-   * So this asserts what currently happens, deliberately. **It is a candidate
-   * for the next design round, not settled intent**, and it is pinned so that
-   * a later change to it is a visible decision rather than a silent one.
-   */
-  it('orphans a nested group whose parent filtered out — taken literally, and a candidate for the next round', async () => {
+  it('keeps a group header while anything at any depth beneath it is left', async () => {
     const user = userEvent.setup()
     await renderPacking(
       `/trips/${ALPS}/packing`,
@@ -2204,22 +2276,53 @@ describe('the ○ LEFT filter', () => {
       tripEntryMoved(ALPS, E_DRYBAG, { in: 'container', entryId: E_DUFFEL }),
       tripEntryStatusSet(ALPS, E_STOVE, 'packed'),
       tripEntryStatusSet(ALPS, E_ROPE, 'not_packed'),
-      // Els's Headlamp Piece rides in the duffel in `personFrame`, and under
-      // ruling C1 that draws a second, unpacked Headlamp row there — which
-      // would keep the duffel alive on a row this test is not about.
       tripPieceMoved(ALPS, E_HEADLAMP, 'els', { in: 'loose' }),
     )
     await pressLeftOnly(user)
 
-    expect(screen.queryByRole('region', { name: 'Duffel 90 L' })).toBeNull()
+    const duffel = screen.getByRole('region', { name: 'Duffel 90 L' })
+    expect(duffel).toBeVisible()
+    // The rail and the count the header was hidden while contradicting.
+    expect(within(duffel).getByTestId('journey-rail')).toBeVisible()
+    expect(within(duffel).queryAllByTestId('packing-row')).toHaveLength(0)
 
     const nested = screen.getByRole('region', { name: 'Dry bag' })
-    expect(nested).toBeVisible()
-    // The indent survives its parent: one level in, with no header above it
-    // stating what it is one level inside of.
     expect(nested).toHaveAttribute('data-indent', '1')
     expect(within(nested).getByTestId('packing-row-name')).toHaveTextContent(
       'Rope',
     )
+    // **The orphan is unreachable, not merely undrawn here.** The indent is
+    // one level in and its ancestor is the group immediately above it.
+    expect(groupNames()).toEqual(['Duffel 90 L', 'Dry bag', 'Loose'])
+  })
+
+  /**
+   * The other half of the same predicate, and the reason it is not simply
+   * *keep every header*: `○ LEFT` keeps meaning *what is left*. A container
+   * holding nothing but a nested container whose contents are all packed has
+   * nothing at any depth, so it leaves with the group inside it.
+   *
+   * **The `Stove` and Els's Headlamp Piece both have to leave the duffel for
+   * this fixture to say anything.** A container produces no item of its own,
+   * so a rows-less container is one nothing *sits in* — and while the duffel
+   * still held the unpacked stove it survived on that row rather than on the
+   * rule under test.
+   */
+  it('drops a group header whose whole subtree is packed, nested rows included', async () => {
+    const user = userEvent.setup()
+    await renderPacking(
+      `/trips/${ALPS}/packing`,
+      ...personFrame(),
+      tripEntryMoved(ALPS, E_DRYBAG, { in: 'container', entryId: E_DUFFEL }),
+      // Now the duffel's own rows are none: the dry bag is its only child,
+      // and the rope inside it is packed in `personFrame`.
+      tripEntryMoved(ALPS, E_STOVE, { in: 'loose' }),
+      tripPieceMoved(ALPS, E_HEADLAMP, 'els', { in: 'loose' }),
+    )
+    await pressLeftOnly(user)
+
+    expect(screen.queryByRole('region', { name: 'Dry bag' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Duffel 90 L' })).toBeNull()
+    expect(groupNames()).toEqual(['Loose'])
   })
 })

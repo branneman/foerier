@@ -776,6 +776,58 @@ swapping the glyph and nothing else — so a Counted gear owned `×2` with one T
 bringing `×4` reads `▲ ALPS 2026 · CAR`. The comment is corrected rather than
 left to read as a lie.
 
+**S9 round 4 has since ruled the eleven decisions S9a and round 2 took in code
+and recorded only in their own dated specs** — eight blessed, three redrawn, and
+only four moved a line. No op types, no endpoints, no migration; `reduce.ts` and
+`state.ts` are untouched. See [its spec](docs/specs/2026-09-05-the-leftovers-the-code-took.md)
+and `docs/design/README.md` **§5g** (E1–E11), the shipped authority.
+
+**The reason the round existed is the thing to carry forward: a dated spec is
+invisible to the next design round.** `docs/specs/` is the shelf for designs
+that retire once they land, and a round re-seeds from `design/README.md` — so
+eleven readings recorded only in `2026-09-01-packing-and-the-journey.md` §11 and
+`2026-09-04-per-person-rows-in-container-mode.md` §10 would have been silently
+redecided, or silently regenerated away, at the next one. **A code decision no
+board reaches belongs in `design/README.md`, not only in the slice's spec.**
+
+**Three things about the round are worth knowing before touching F4:**
+
+- **A group header reads the subtree its count reads, and that is one
+  predicate** (E8). `○ LEFT` used to ask the group's **own** rows, so a duffel
+  whose eight direct rows were packed vanished while the stuff sack inside it
+  held three that were not — the header gone, its own `9/12` and its ▲ line
+  gone with it, and the sack left indented under nothing. `containerHasLeft`
+  sits beside `containerTotals` and asks `isInside` over `subtreeOf` exactly as
+  it does, so survival and the printed number cannot come apart. It is
+  **deliberately not `containerTotals(…).left > 0`**: `PackingCount` sums
+  *units*, and a peer's `×0` Bring-count is an unpacked item the filter keeps
+  and the arithmetic cannot see. Two shapes fall out with no clause of their
+  own — the orphaned indent becomes **unreachable**, and a container whose whole
+  subtree is packed now leaves, which the old first conjunct got wrong.
+- **An inert row draws no target, never a disabled one** (E9). A per-person
+  Entry with no Pieces — a Draft with no Participants, or every Piece
+  tombstoned — keeps its line under `Loose` and in ALL, and renders **no
+  `<button>` at all**: zero circles are not a control, and the sheet the body
+  opens would open on nobody. Its meta says why, `PER-PERSON · NO PIECES` —
+  not `NO PARTICIPANTS`, false once the set was emptied a tombstone at a time,
+  and not the `0/0` the empty state refuses. The refusal was already practised
+  at four other sizes and had no entry, so it is now
+  [`patterns.md`](docs/patterns.md) **§3.7**.
+- **The token beats a board's number, and the difference is recorded at the
+  token** (E5). Stated once instead of as two more code-authored lines: the
+  DISPLAY row's *34 on desktop* and the Spacing row's *20 at Roomy* are both
+  marked **drawn but not built**, and §1's Widths bullet stops carrying a
+  gutter of its own. Both questions **stay open at the token** — adding the
+  step and deleting the parenthesis are equally legal, and neither is one
+  screen's call. A per-screen override is the drift the token exists to
+  prevent.
+
+One smaller correction with a wide blast radius: **the arrange-row hint's full
+stop belongs to the second clause** (E11). S9b terminated the first
+unconditionally, so every `GROUP BY` in the app grew a stop no board draws. One
+clause is a label and keeps its unterminated S3 form; two clauses are two
+sentences and both take one.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**

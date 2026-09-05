@@ -366,6 +366,26 @@ login ring) the encoding is **withdrawn**, not drawn in a third colour.
 
 *Argued in:* [§12.12](architecture-design.md#1212-consequences-of-s5-in-app-invites-and-the-logins-list); `docs/design/README.md` §13.
 
+### 3.7 Nothing to do is drawn as nothing, never as a disabled control
+
+A control whose act is unavailable is **withheld**, not greyed: a disabled
+button still announces an act the surface does not have, and an empty region's
+own rule already forbids a door to a room that can only say `0 ENTRIES.` back.
+The same refusal at five sizes — a screen (`Trip` draws no `PACKING ›` band on
+a Trip with no Entries), a control row (F4's empty state withholds the
+segmented control and the hint as well as the count line), a header (F4's
+PERSON group is a `<button>` only where it has something to expand; `Loose`'s
+is text), a row (a per-person Entry with no Pieces draws neither cluster nor
+body button, and says `PER-PERSON · NO PIECES` instead), and an encoding
+(§3.6's withdrawn login ring).
+
+Its mirror is that the fact still gets stated. The row stays on the list, the
+empty state still draws its one line — what goes is the target, not the
+information.
+
+*Argued in:* `docs/design/README.md` §1 and §5g E9; `app/src/components/PackingRow.tsx`'s
+"A per-person Entry with no Pieces is a fact, not a control".
+
 ---
 
 ## 4. Overlays

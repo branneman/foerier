@@ -636,6 +636,51 @@ export function containerTotals(
 }
 
 /**
+ * Does this container hold anything the `○ LEFT` filter keeps, **at any
+ * depth**? Ruling E8's one predicate.
+ *
+ * F4's filter is `!`{@link isPacked} and nothing else, applied to items, and
+ * a group header survives while any row beneath it does. Round 2 asked that
+ * question of the group's **own** rows, so a duffel whose eight direct rows
+ * were packed vanished while the stuff sack inside it — three things still
+ * unpacked — kept its 16px indent with nothing above it. The header's `9/12`
+ * and its ▲ line both already read the whole subtree, so a header hidden
+ * while its own count says three are left is the header lying about its
+ * contents.
+ *
+ * **It asks {@link isInside} over {@link subtreeOf}, exactly as
+ * {@link containerTotals} does** — same subtree, same membership rule, so the
+ * survival of a header and the number printed on it cannot come apart. That
+ * is the drift this file's own header exists to refuse, and it is why this is
+ * a function here rather than a predicate in the screen.
+ *
+ * **Not `containerTotals(…).left > 0`**, which is the tempting one-liner:
+ * {@link PackingCount} counts *units*, so a Counted Entry whose Bring-count a
+ * peer wrote as `0` is an unpacked item the filter keeps and the arithmetic
+ * cannot see. A header would then hide over a row that is drawn under it. The
+ * filter's own predicate is asked, once, of the same list.
+ *
+ * `Loose` is not a container and has no subtree, so the screen asks this of
+ * its own items directly.
+ *
+ * Pass `view` **and `items`** when you already have them, for
+ * {@link containerTotals}' reason: this is the third O(entries) pass a
+ * CONTAINER-mode group makes.
+ */
+export function containerHasLeft(
+  trip: TripState,
+  state: HouseholdState,
+  entryId: string,
+  view: TripContainmentView = tripContainmentView(trip, state),
+  items: readonly PackingItem[] = packingItems(trip, state, view),
+): boolean {
+  const subtree = subtreeOf(view, entryId)
+  return items.some(
+    (item) => isInside(item, entryId, subtree) && !isPacked(item.status),
+  )
+}
+
+/**
  * `N INSIDE RIDE ALONG` — how many things travel with this container when a
  * `trip.entry_moved` moves it. The container-move confirm's number, and the
  * Pack picker's context line.

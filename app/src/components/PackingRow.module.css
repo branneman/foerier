@@ -75,6 +75,25 @@
     inset: -0.75rem 0;
   }
 
+  /*
+   * The same left-hand half on the one row that is not a target: a
+   * per-person Entry with no Pieces (ruling E9). It takes `.body`'s layout
+   * and **none of its interaction** — no `min-height` floor and no `::after`,
+   * because ruling O's 48px is a floor on a *hit area*, and a row with
+   * nothing to open has none to floor. Not a `.body` variant: sharing the
+   * class would make the extension something a modifier has to undo, and an
+   * extension that is present-but-cancelled is the shape `drawnSizes.test.ts`
+   * reads as a hit area that exists.
+   */
+  .inertBody {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
   .body:focus-visible {
     box-shadow: var(--focus-ring);
   }
@@ -146,6 +165,17 @@
    * carries the whole fact and no encoding leans on the difference.
    */
   .elsewhere {
+    color: var(--color-ink-faint);
+  }
+
+  /*
+   * `NO PIECES` — ruling E9's closing half of a per-person Entry that has
+   * none. The remainder's own tone, and for the same reason: it is what the
+   * row does *not* have, one step back from the `PER-PERSON` stating what it
+   * is. It carries the whole fact in words, so the parchment theme folding
+   * faint into muted costs nothing here either.
+   */
+  .noPieces {
     color: var(--color-ink-faint);
   }
 

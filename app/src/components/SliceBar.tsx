@@ -201,14 +201,20 @@ export function SliceBar({
            * nothing else on the bar tells a household that GROUP BY
            * CONTAINER files by immediate holder while the CONTAINER chip
            * itself still filters to any depth. The next dimension that
-           * groups as well as filters inherits the same question. The second
-           * clause is punctuated as a second sentence, following
-           * `WhereaboutsCard`'s footer; D5 quotes it without a terminator,
-           * so that half is reversible (`design/README.md` §2). */}
+           * groups as well as filters inherits the same question.
+           *
+           * **The full stop belongs to the second clause, not to the first**
+           * (§5g E11, which blessed the two-sentence shape and amended §5f D5
+           * in place). `WhereaboutsCard`'s two-clause footer is the precedent,
+           * and the bar's own middle dot is the separator between segments of
+           * *one* fact — which these two are not. A single clause is a label
+           * rather than a sentence and keeps its unterminated S3 form; S9b
+           * terminated it unconditionally, so every `GROUP BY` in the app grew
+           * a full stop no board draws. */}
           <span className={styles['hint']}>
-            SEARCH + FILTERS COMBINE WITH AND.
+            SEARCH + FILTERS COMBINE WITH AND
             {spec.group === 'container' &&
-              ' GROUPS FILE EACH GEAR UNDER THE CONTAINER IT IS IN.'}
+              '. GROUPS FILE EACH GEAR UNDER THE CONTAINER IT IS IN.'}
           </span>
         </div>
       )}

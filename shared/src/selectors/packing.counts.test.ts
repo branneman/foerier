@@ -25,6 +25,7 @@ import {
   pieceCountOf,
 } from './entry.ts'
 import {
+  containerHasLeft,
   containerTotals,
   countOf,
   countsAsDisagreement,
@@ -665,6 +666,104 @@ describe('a container group counts its subtree at any depth', () => {
         items.filter((item) => item.entryId !== STOVE),
       ),
     ).toEqual({ packed: 1, total: 3, left: 2 })
+  })
+})
+
+/**
+ * Ruling E8's predicate: does anything at any depth survive `○ LEFT`?
+ *
+ * The duffel is the ruled shape and the fixture already draws it — its own
+ * one row (the jacket) is packed, and the map three levels of nothing away
+ * inside the stuff sack is not. Round 2 hid that header; E8 keeps it.
+ */
+describe('containerHasLeft is the ○ LEFT filter over a subtree (E8)', () => {
+  function hasLeft(entryId: string, state: HouseholdState = BASE): boolean {
+    return containerHasLeft(tripOf(state), state, entryId)
+  }
+
+  it('keeps a container whose own rows are all packed and whose nested one is not', () => {
+    // The duffel's own row is the packed jacket; the unpacked map is in the
+    // stuff sack inside it. Header hidden, `9/12` on it saying otherwise, was
+    // round 2's fault.
+    expect(hasLeft(DUFFEL)).toBe(true)
+    expect(hasLeft(SACK)).toBe(true)
+  })
+
+  it('drops a container whose whole subtree is packed, and an empty one', () => {
+    // The box holds the packed mug and nothing else — `○ LEFT` keeps meaning
+    // what is left.
+    expect(hasLeft(BOX)).toBe(false)
+
+    const emptied = withLater(tripEntryMoved(TRIP, MUG, { in: 'loose' }))
+    expect(hasLeft(BOX, emptied)).toBe(false)
+  })
+
+  it('reads staged as left, exactly as isPacked does', () => {
+    // The crate holds the staged tarp among others; `isPacked` is the only
+    // definition of packed-ness and it says staged is not it.
+    expect(hasLeft(CRATE)).toBe(true)
+
+    const onlyStaged = withLater(
+      tripEntryMoved(TRIP, STOVE, { in: 'loose' }),
+      tripEntryMoved(TRIP, ROPE, { in: 'loose' }),
+    )
+    // Tarp (staged) + Pan (packed) left in the crate.
+    expect(containerTotals(tripOf(onlyStaged), onlyStaged, CRATE)).toEqual({
+      packed: 1,
+      total: 2,
+      left: 1,
+    })
+    expect(hasLeft(CRATE, onlyStaged)).toBe(true)
+  })
+
+  it('agrees with the header count wherever the count can see the item', () => {
+    for (const entryId of [BIN, BOX, CRATE, DUFFEL, SACK]) {
+      expect(hasLeft(entryId)).toBe(
+        containerTotals(TRIP_STATE, BASE, entryId).left > 0,
+      )
+    }
+  })
+
+  /**
+   * The one place the count **cannot** see it, and why this is not
+   * `containerTotals(…).left > 0`. {@link countOf} sums units, and a peer's
+   * `trip.entry_bring_count_set` of `0` is an unpacked item worth no units:
+   * the row is drawn under the header, and the header would hide over it.
+   */
+  it('keeps a container holding only an unpacked ×0 Counted Entry', () => {
+    const bare = withLater(
+      tripEntryBringCountSet(TRIP, STOVE, 0),
+      tripEntryMoved(TRIP, ROPE, { in: 'loose' }),
+      tripEntryMoved(TRIP, TARP, { in: 'loose' }),
+      tripEntryMoved(TRIP, PAN, { in: 'loose' }),
+    )
+
+    // The crate now holds the ×0 stove alone: no units to count, one
+    // unpacked row to draw.
+    expect(containerTotals(tripOf(bare), bare, CRATE)).toEqual({
+      packed: 0,
+      total: 0,
+      left: 0,
+    })
+    expect(hasLeft(CRATE, bare)).toBe(true)
+  })
+
+  it('reads a passed-in view and items rather than rebuilding them', () => {
+    const view = tripContainmentView(TRIP_STATE, BASE)
+    const items = itemsIn(BASE)
+
+    expect(containerHasLeft(TRIP_STATE, BASE, DUFFEL, view, items)).toBe(true)
+    // The parameter is honoured, not ignored: drop the map and the duffel's
+    // subtree is packed through.
+    expect(
+      containerHasLeft(
+        TRIP_STATE,
+        BASE,
+        DUFFEL,
+        view,
+        items.filter((item) => item.entryId !== MAP),
+      ),
+    ).toBe(false)
   })
 })
 

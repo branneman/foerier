@@ -1,4 +1,5 @@
 import {
+  containerHasLeft,
   containerTotals,
   countOf,
   disagreements,
@@ -138,6 +139,18 @@ interface PackingGroup {
   readonly stage: StageValue | null
   /** `9/12` — a container's contents **at any depth**, `Loose`'s own rows. */
   readonly count: PackingCount
+  /**
+   * Whether anything the header **counts** survives `○ LEFT` — ruling E8's
+   * predicate, and deliberately the same population {@link count} reads: a
+   * container's subtree at any depth, `Loose`'s own items.
+   *
+   * It is not {@link PackingGroupRow.hasLeft} over {@link rows}. A nested
+   * container's rows belong to *its* group, so asking the rows would hide a
+   * duffel whose own eight are packed while the stuff sack inside it holds
+   * three that are not — the header gone, its own `9/12` and its ▲ line gone
+   * with it, and the sack left indented under nothing.
+   */
+  readonly hasLeft: boolean
   /** This group's own rows, in `entriesOf` order. Nested containers are not
    * rows: they are the groups that follow immediately (ruling A4). */
   readonly rows: readonly PackingGroupRow[]
@@ -381,6 +394,10 @@ function containerView(
             : '',
         stage,
         count: containerTotals(trip, state, entry.id, view, items),
+        // Ruling E8, and through the selector rather than over `rows` below:
+        // the header's survival and the number printed on it read the same
+        // subtree by construction. See `PackingGroup.hasLeft`.
+        hasLeft: containerHasLeft(trip, state, entry.id, view, items),
         // From the items, never from `childrenOf` — see the docstring. A
         // nested container produces no item at all (`packingItems` skips
         // containers), so the `!isContainerEntry` filter the id list used to
@@ -411,6 +428,13 @@ function containerView(
   const looseRows = rowsIn(LOOSE_KEY)
 
   if (looseRows.length > 0) {
+    // Its own items and no subtree: everything inside a container is counted
+    // by that container's own header. **The filter is the item's own
+    // residence** (ruling C5), the same membership `rowsIn` files by and
+    // `containerTotals` counts by — filing by the Entry's holder instead
+    // would count a Piece here that is drawn in a bag.
+    const looseItems = items.filter((item) => item.residence.in === 'loose')
+
     groups.push({
       key: LOOSE_KEY,
       entryId: null,
@@ -419,12 +443,12 @@ function containerView(
       depth: 0,
       ancestry: '',
       stage: null,
-      // Its own items and no subtree: everything inside a container is
-      // counted by that container's own header. **The filter is the item's
-      // own residence** (ruling C5), the same membership `rowsIn` files by
-      // and `containerTotals` counts by — filing by the Entry's holder
-      // instead would count a Piece here that is drawn in a bag.
-      count: countOf(items.filter((item) => item.residence.in === 'loose')),
+      count: countOf(looseItems),
+      // `Loose` has no subtree, so ruling E8's *at any depth* is its own
+      // items — asked here rather than through `containerHasLeft`, which
+      // takes a container's `entryId` and `Loose` is a holder, not an Entry.
+      // Same predicate, same population as the count beside it.
+      hasLeft: looseItems.some((item) => !isPacked(item.status)),
       rows: looseRows,
       insideCount: 0,
     })
@@ -614,10 +638,17 @@ interface PendingMove {
  *
  * ## The `○ LEFT` filter is `!isPacked` and nothing else
  *
- * It applies in all three modes, and **a group whose items all filter out
- * draws nothing**. It filters the *view* and never the arithmetic: the count
- * line and every group count state the pack-out's own numbers, which do not
- * move when a control that narrows a list is tapped.
+ * It applies in all three modes, and **a group is drawn while anything it
+ * counts survives it** — ruling E8, which is *at any depth* for a container,
+ * because its header's `9/12` and its ▲ line are at any depth too. A header
+ * hidden while its own count says three are left is a header lying about its
+ * contents, and it left the nested group beneath it indented under nothing.
+ * A group with nothing left anywhere beneath it still goes: `○ LEFT` keeps
+ * meaning *what is left*.
+ *
+ * It filters the *view* and never the arithmetic: the count line and every
+ * group count state the pack-out's own numbers, which do not move when a
+ * control that narrows a list is tapped.
  *
  * Story 13's own worked example — *all of our kid's gear that is still
  * unpacked* — is this pill plus PERSON mode, which is the whole of ruling
@@ -1040,20 +1071,23 @@ export function Packing() {
             <div className={styles['groups']} data-testid="packing-groups">
               {view.container.groups.map((group) => {
                 const rows = visibleGroupRows(group.rows)
-                // **A group whose items all filter out draws nothing** — and
-                // the emptiness has to be *caused* by the filter, which is
-                // why `group.rows.length > 0` is a separate conjunct and
-                // not a tidier `rows.length === 0` alone.
+                // **Ruling E8: a group header is drawn while any row at any
+                // depth beneath it survives the filter.** Not its own rows —
+                // `group.hasLeft` reads the whole subtree, the same
+                // population its `9/12` counts and its ▲ line reads, so a
+                // header can never be hidden while the number on it says
+                // three are left.
                 //
-                // A container produces no item of its own, so **a container
-                // whose only children are nested containers arrives here
-                // with no rows at all**. Nothing filtered out of it;
-                // dropping it would take its journey rail and its ▲ line off
-                // the screen the moment `○ LEFT` was pressed, and orphan
-                // every nested group beneath it. The rail is that
-                // container's own journey, not its contents'.
-                if (leftOnly && group.rows.length > 0 && rows.length === 0)
-                  return null
+                // Two shapes fall out of it and neither needs a clause.
+                // **The orphan is unreachable**: a nested group survives only
+                // if something beneath it does, and that something is beneath
+                // its ancestor too — so the indent always has a header above
+                // it. And a container whose only children are nested
+                // containers keeps its rail while any of them holds work,
+                // which is what round 2's `group.rows.length > 0` conjunct
+                // was reaching for and got right only by accident, since it
+                // also kept a container whose whole subtree was packed.
+                if (leftOnly && !group.hasLeft) return null
 
                 const headingId = `packing-group-${tripId}-${group.key}`
                 // `null` is `Loose` — a holder, not an Entry. Read once into

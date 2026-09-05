@@ -203,6 +203,7 @@ export type {
   StatusKey,
 } from './selectors/packing.ts'
 export {
+  containerHasLeft,
   containerTotals,
   countOf,
   countsAsDisagreement,
