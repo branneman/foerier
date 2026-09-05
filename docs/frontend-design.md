@@ -548,12 +548,26 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
 
   The rest of
   this list is unbuilt, and `Popover` is the one with waiting callers — **four
-  of them** that a board draws as a popover: §4a's desktop tag picker and the
+  of them** that a board *names* as a popover: §4a's desktop tag picker and the
   slice bar's `ValueMenu` are approximated by `Sheet`'s `desktopCard` until it
   lands, and so are S8's Piece picker and S9a's Piece status sheet, both
   popovers from Split up on the boards. Four more sheets pass `desktopCard`
   with no board behind them (`patterns.md` §4.5 records which), which is the
   count to look at when `Popover` does land.
+
+  **"Names" is doing real work in that sentence, and it was checked.** No
+  board *draws* a popover: the bundle holds no popover artboard, the only
+  popover token in `Foundations` is the `bg/raised` background it shares with
+  a hovered row, and the whole specification is one repeated sentence —
+  *sheet below Split, popover anchored to the cluster from Split up* (§5d C,
+  §4a), with `S9 Round` adding only *`ui/Popover` is not built, so this lands
+  with the primitive*. Side, alignment, offset, width, collision behaviour
+  and whether it carries an arrow are all unstated. Building it is therefore
+  a design sitting rather than an afternoon, and there is a second half to
+  rule with it: Radix's popover wants its trigger and its content as siblings
+  under one root, which cuts against the mounted-is-open convention every
+  overlay in the app follows (`patterns.md` §4.1), so the trigger anatomy is
+  part of the same question.
 - **Composites (`ui/`)** — `GearRow`, `TripCard`, `JourneyRail`,
   `WhereaboutsCard`, `LedgerList`. Presentational; take domain data as **props**.
 

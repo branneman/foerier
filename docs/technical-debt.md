@@ -83,8 +83,7 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   Split rail's links and the inline Save/Cancel pair copied into four
   pickers. Each wants ruling O's `::after` with a clamp chosen against its own
   row, and the chip's trip-screen twin already has it.
-  [`patterns.md`](patterns.md) §6.5, anchor:
-  `carry no extension`
+  [`patterns.md`](patterns.md) §6.5, anchor: `touch-surface controls`
 - **One control answers to two accessible names.** Add gear's hand-rolled
   Owned-count stepper says `Fewer` / `More`; `ui/Stepper` says
   `Decrease {label}` / `Increase {label}`. A screen-reader user meets two names
@@ -155,12 +154,6 @@ second pane.
   and why its CTA fact line has only one alignment to say.
   [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `two-pane Add gear has never been built`
-- **`ui/`'s `Popover` is unbuilt and has three waiting callers.** §4a's desktop
-  tag picker, S8's Piece picker and S9a's Piece status sheet are all popovers
-  from Split up on the boards, and all three are approximated by `Sheet`'s
-  `desktopCard` until the primitive lands.
-  [`frontend-design.md`](frontend-design.md) §5, anchor:
-  `is the one with waiting callers`
 - **`AddGear`'s CTA is not pinned to the thumb zone**, where `NewTrip`'s and
   `Trip`'s are. Three fields do not fill a phone, so the primary and the fact
   line beneath it sit mid-screen on exactly the device the thumb zone exists for.
@@ -183,7 +176,7 @@ second pane.
 - **The primary font is not preloaded.** §7 says `<link rel="preload">` the
   Spline Sans woff2; `app/index.html` carries no such link.
   [`frontend-design.md`](frontend-design.md) §7, anchor:
-  `not yet written`
+  `carries no preload link`
 - **Split's two panes share one scroller — now in two places.** `DepotView`
   draws the Depot list and the gear detail as two panes of one view that
   never unmounts, so `/` and `/gear/:id` are two routes over that one
@@ -238,14 +231,31 @@ them looking for work is the thing this section exists to stop.
   learns nothing. Blocked on a board: no frame draws a refused write.
   [`patterns.md`](patterns.md) §2.5, anchor:
   `read by no screen`
+- **`ui/`'s `Popover` is unbuilt, has four waiting callers, and no board
+  draws one.** §4a's desktop tag picker, the slice bar's `ValueMenu`, S8's
+  Piece picker and S9a's Piece status sheet are each described in board prose
+  as *sheet below Split, popover from Split up*, and all four are approximated
+  by `Sheet`'s `desktopCard` meanwhile. **That prose is the whole of the
+  specification.** The bundle contains no popover artboard: nothing states a
+  side, an alignment, an offset, a width, collision behaviour or whether it
+  carries an arrow, and the only popover token in `Foundations` is the
+  `bg/raised` background it shares with a hovered row. Building it therefore
+  means taking six visual decisions across four surfaces with nothing to build
+  against, which is why this sits here and not under *Specified and not
+  built*. It also needs each caller restructured so the trigger and the
+  content are siblings under one Radix root, against the app's settled
+  mounted-is-open convention ([`patterns.md`](patterns.md) §4.1) — so a
+  ruling should cover the trigger anatomy too. Wants the same sitting as the
+  entry below. [`frontend-design.md`](frontend-design.md) §5, anchor:
+  `is the one with waiting callers`
+
 - **`desktopCard` is a per-slice choice masquerading as a rule.** Five sheets
   pass it with no board drawing them as a popover, while their nearest
   siblings do not, so at Desktop the Owner picker is a centred card and the
   Home picker a bottom sheet on the same edit sheet. Wants a design ruling,
   not a code change — and so does the card confirms' Cancel-first versus
   Action-first order, which the S3-era and S9 boards draw differently.
-  [`patterns.md`](patterns.md) §4.5, anchor:
-  `no board draws as a popover`
+  [`patterns.md`](patterns.md) §4.5, anchor: `no board draws as a`
 - **Two 401 body shapes.** `/auth/*` answers a flat `{ "error": "unauthorized" }`
   and `/sync/*` answers [`sync-protocol.md`](sync-protocol.md) §6.3's structured
   object. Neither breaks a contract — [`auth-design.md`](auth-design.md)
