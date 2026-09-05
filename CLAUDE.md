@@ -592,15 +592,15 @@ whose **§11 records what moved while it was being built**, and
 
 **S9 ships as two halves, S9a and S9b** — the second slice in the plan to
 split, on the same write-then-read seam S2 used, and argued the way §8.4 argues
-story 11's: **S9b introduces no new op type at all.** S9b owes
+story 11's: **S9b introduces no new op type at all.** S9b owed
 `whereabouts()`'s `'trip'` slice and the quantity split, and everything
 downstream of them — the Depot's `WHEREABOUTS` column, gear detail's card as a
 stack of one row per slice, Find's per-person answer card, and story 13's
-`CONTAINER` (home) dimension. **The cost meanwhile, stated plainly: between the
-two halves a household can pack a Trip and the Depot will not say so** — Find
-answers `⌂ HAL ▸ LADE 2` for a headlamp that is in the duffel, in the car. Same
-shape of gap S2a left before S2b, and the reason the halves ship close
-together.
+`CONTAINER` (home) dimension. **The cost while the gap stood, stated plainly: a
+household could pack a Trip and the Depot would not say so** — Find answered
+`⌂ HAL ▸ LADE 2` for a headlamp that was in the duffel, in the car. Same shape
+of gap S2a left before S2b, and the reason the halves shipped close together.
+Both have now landed.
 
 **Six things about S9a are worth knowing before touching packing:**
 
@@ -715,6 +715,66 @@ describing an error boundary, a motion module and a chunk-reload handler
 that were never built; the doc now says so, and `technical-debt.md` carries
 each unfixed finding with an anchor into the catalogue. **Read
 `docs/patterns.md` before adding a screen, an overlay or a selector.**
+
+**S9b, whereabouts reaches the Depot, has landed** (advances stories 3 and
+13). **No op type, no endpoint, no migration, and not a line of `reduce.ts` or
+`state.ts`** — the whole slice is `shared/src/selectors/whereabouts.ts` growing
+a second slice kind and the four surfaces that read it: the Depot's
+`WHEREABOUTS` column and its grouped headers, gear detail's card as a stack of
+one row per slice plus its new `PIECES` group, Find's per-person answer card
+(the work S8 held back), and story 13's **sixth** dimension, `CONTAINER`,
+meaning the *home* container. `ownedCountOf` joins the reader gates in
+`depot.ts`. Every design question was ruled before a line of it existed — see
+`docs/design/README.md` **§5f** (D1–D9), [its
+spec](docs/specs/2026-09-04-whereabouts-reaches-the-depot.md), whose **§9
+records what moved while it was being built**, and
+[§12.16](docs/architecture-design.md#1216-consequences-of-s9b-whereabouts-reaches-the-depot).
+
+**Four things about S9b are worth knowing before touching whereabouts:**
+
+- **Whereabouts reads Active Trips only; the `TRIP` dimension reads every
+  non-closed Trip — and the two sit one file apart looking like copies.**
+  Domain §4 consults an active Trip's arrangement and nothing else, so
+  `whereabouts` filters through `isActive`; `tripMembershipOf` deliberately does
+  not, because membership is a property of a **list** and a Draft's gear list
+  speaks for gear as surely as a Pack-out's. A Gear on a Draft therefore reads
+  `TRIP: ALPS 2026` in the slice bar and `⌂ HOME` in the column beside it, and
+  both are right. **One test holds both answers at once**, because the symptom
+  of unifying them is a Depot claiming a Trip nobody has started has taken the
+  tent.
+- **The right-hand read names the unit that splits** (ruling D1). A quantity for
+  Counted, Pieces for per-person, **nothing on either side** for Single — one
+  rule instead of three per-Kind branches, and the draft's `×0 THERE` was
+  overturned for asserting a quantity for a Kind whose own fact line says it has
+  none. It is encoded once, in which of `count` and `pieceCount` is non-null, so
+  `sliceCountLabel` never reads the Kind again and the card derives *does this
+  gear split at all* from the same predicate rather than from a prop. A Single
+  gear's card stopped drawing `×1 THERE`, which it had drawn since S2b.
+- **Two memos, both S7's, exactly as §12.13 predicted the next cross-aggregate
+  reader would need.** `TRIP_SLICES` in `whereabouts.ts` — called once per
+  Depot row and once per Find match, with `overClaims(state)` read **once** into
+  the same pass — and `CONTAINER_ANCESTORS` in `slice.ts`, which the dimension's
+  `valuesOf` and the grouping's `keyOf` **share**, so the filter and the group
+  can never disagree about what contains what. The rejected alternative,
+  memoising `containmentView` itself, now has three callers and is debt:
+  `containment.ts` states its own non-caching as a property, and the slice that
+  owns that file is the one that should make the claim false.
+- **`MIXED` is decided by residence, not by holder id, and that is what keeps
+  the two worlds agreeing.** A loose residence *is* a residence, so one Piece in
+  Crate B beside one loose reads `▸ MIXED` — which is what F4's ALL mode already
+  said, and what gear detail contradicted as first built. `sameTripResidence`
+  moved out of `app/` into `shared/src/selectors/packing.ts` for it. That
+  disagreement is the whole risk of a slice with no ops: every replica computes
+  the identical answer by construction, so the only thing left to get wrong is
+  two **surfaces**.
+
+One smaller thing with a long reach: **`GearRow`'s `attention` tone became
+reachable at S9b, not S10.** S2b drew all three arms and wrote that `attention`
+*"arrives with story 11's `lost` outcome"*; ruling D8 gets there first, because
+an over-claim is a Whereabouts fact and the one-slot surfaces state it by
+swapping the glyph and nothing else — so a Counted gear owned `×2` with one Trip
+bringing `×4` reads `▲ ALPS 2026 · CAR`. The comment is corrected rather than
+left to read as a lie.
 
 Four conventions the code now carries that are easy to trip over:
 
