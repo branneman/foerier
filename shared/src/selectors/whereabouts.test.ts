@@ -93,6 +93,7 @@ describe('whereabouts — the home slice', () => {
     expect(whereabouts(state, 'tent')).toEqual({
       gearId: 'tent',
       overClaimed: false,
+      unaccounted: null,
       slices: [
         {
           kind: 'home',
@@ -155,6 +156,7 @@ describe('whereabouts — the home slice', () => {
     expect(whereabouts(state, 'axe')).toEqual({
       gearId: 'axe',
       overClaimed: false,
+      unaccounted: null,
       slices: [{ kind: 'home', path: [], count: null }],
     })
   })
@@ -171,6 +173,7 @@ describe('whereabouts — the home slice', () => {
     expect(whereabouts(state, 'axe')).toEqual({
       gearId: 'axe',
       overClaimed: false,
+      unaccounted: null,
       slices: [{ kind: 'home', path: [], count: null }],
     })
     // Nothing was cascaded: the residence register still names the removed
@@ -1103,7 +1106,7 @@ describe('whereabouts — a resolved Entry hands the Gear home mid-pass (spec §
   // they are the same fact read twice — this describe block is `claim.ts`'s
   // "an unpack outcome releases the claim" suite, over the second reader of
   // the identical register.
-  it.each(['back', 'consumed', 'lost'] as const)(
+  it.each(['back', 'consumed'] as const)(
     'a Single gear stops reading a trip slice once its Entry is resolved %s, with the Trip still pack_out',
     (outcome) => {
       const state = fold(
@@ -1123,6 +1126,25 @@ describe('whereabouts — a resolved Entry hands the Gear home mid-pass (spec §
       expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
     },
   )
+
+  // `lost` split out from the `it.each` above (S10, spec §3.6): the trip
+  // slice releases exactly as `back`/`consumed` do, but the row no longer
+  // reads bare `⌂ HOME` — it reads the unaccounted standing this slice
+  // adds. Before this slice, `lost` was read identically to the other two;
+  // this is that assumption's intended and correct expiry, not a
+  // regression.
+  it('a Single gear’s resolved-lost Entry releases its trip slice but the row reads the unaccounted standing, not bare HOME', () => {
+    const state = fold(
+      log([...arrangement('pack_out'), tripOutcomeSet(TRIP, 'e-tent', 'lost')]),
+    )
+
+    expect(tripSlices(state, 'g-tent')).toEqual([])
+    expect(rowWhereabouts(whereabouts(state, 'g-tent'))).toEqual({
+      text: '▲ Alps 2026',
+      tone: 'attention',
+    })
+    expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
+  })
 
   it("an unrecognised outcome releases the trip slice too — a peer on a later build must not hold this build's gear hostage", () => {
     const state = fold(
@@ -1313,5 +1335,97 @@ describe('whereabouts — a per-person CONTAINER Entry releases via its own outc
       tone: 'home',
     })
     expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
+  })
+})
+
+describe('whereabouts — the unaccounted standing (spec §3.6)', () => {
+  it('Whereabouts.unaccounted is populated for a Gear whose last outcome was lost', () => {
+    const state = fold(
+      log([...arrangement('closed'), tripOutcomeSet(TRIP, 'e-tent', 'lost')]),
+    )
+
+    expect(whereabouts(state, 'g-tent').unaccounted).toEqual({
+      tripId: TRIP,
+      tripName: 'Alps 2026',
+      units: 1,
+      personIds: [],
+    })
+  })
+
+  it('the home slice’s count subtracts the unaccounted units and floors at zero (owned ×3, one lost → ×2 THERE)', () => {
+    const state = fold(
+      log([
+        ...aGear({ id: 'g-peg', name: 'Peg', kind: 'counted', ownedCount: 3 }),
+        ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+        tripEntryAdded(TRIP, 'e-peg', { from: 'depot', gearId: 'g-peg' }),
+        tripOutcomeSet(TRIP, 'e-peg', 'lost'),
+      ]),
+    )
+
+    expect(homeSlice(state, 'g-peg').count).toBe(2)
+    expect(sliceCountLabel(homeSlice(state, 'g-peg'))).toBe('×2 THERE')
+  })
+
+  it('rowWhereabouts reads ▲ TRIP NAME for a Single gear’s unaccounted standing — no quantity to state (D1)', () => {
+    const state = fold(
+      log([
+        ...aGear({ id: 'g-tent', name: 'Tent' }),
+        ...aTrip({ id: TRIP, name: 'Tessin 2025', phase: 'pack_out' }),
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ]),
+    )
+
+    expect(rowWhereabouts(whereabouts(state, 'g-tent'))).toEqual({
+      text: '▲ Tessin 2025',
+      tone: 'attention',
+    })
+  })
+
+  it('rowWhereabouts reads ▲ ×1 TRIP NAME for a Counted gear’s unaccounted standing — the unit that splits', () => {
+    const state = fold(
+      log([
+        ...aGear({ id: 'g-peg', name: 'Peg', kind: 'counted', ownedCount: 3 }),
+        ...aTrip({ id: TRIP, name: 'Tessin 2025', phase: 'pack_out' }),
+        tripEntryAdded(TRIP, 'e-peg', { from: 'depot', gearId: 'g-peg' }),
+        tripOutcomeSet(TRIP, 'e-peg', 'lost'),
+      ]),
+    )
+
+    expect(rowWhereabouts(whereabouts(state, 'g-peg'))).toEqual({
+      text: '▲ ×1 Tessin 2025',
+      tone: 'attention',
+    })
+  })
+
+  it('over-claimed and unaccounted at once reads the active fact, ▲ 2 TRIPS — checked FIRST (F16(2))', () => {
+    const CLOSED = 't-closed'
+    const state = fold(
+      log([
+        ...aGear({ id: 'g-peg', name: 'Peg', kind: 'counted', ownedCount: 2 }),
+        // History: a CLOSED Trip's own live lost outcome — the standing.
+        ...aTrip({ id: CLOSED, name: 'Tessin 2025', phase: 'closed' }),
+        tripEntryAdded(CLOSED, 'e-lost', {
+          from: 'depot',
+          gearId: 'g-peg',
+        }),
+        tripOutcomeSet(CLOSED, 'e-lost', 'lost'),
+        // Now: two ACTIVE Trips over-claiming the identical supply.
+        ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+        ...aTrip({ id: OTHER, name: 'Vosges', phase: 'on_trip' }),
+        tripEntryAdded(TRIP, 'e-a', { from: 'depot', gearId: 'g-peg' }),
+        tripEntryBringCountSet(TRIP, 'e-a', 2),
+        tripEntryAdded(OTHER, 'e-b', { from: 'depot', gearId: 'g-peg' }),
+        tripEntryBringCountSet(OTHER, 'e-b', 2),
+      ]),
+    )
+
+    const answer = whereabouts(state, 'g-peg')
+    expect(answer.overClaimed).toBe(true)
+    expect(answer.unaccounted).not.toBeNull()
+    expect(rowWhereabouts(answer)).toEqual({
+      text: '▲ 2 TRIPS',
+      tone: 'attention',
+    })
   })
 })

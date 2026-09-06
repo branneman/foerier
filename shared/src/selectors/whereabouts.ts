@@ -11,6 +11,7 @@ import {
   type ContainmentView,
   type PathSegment,
 } from './containment.ts'
+import { stampOf } from '../registers.ts'
 import { overClaims } from './claim.ts'
 import { ownedCountOf } from './depot.ts'
 import {
@@ -19,6 +20,7 @@ import {
   entryKind,
   entryLabel,
   isContainerEntry,
+  pieceCountOf,
 } from './entry.ts'
 import { byNameThenId } from './order.ts'
 import {
@@ -36,7 +38,15 @@ import {
   tripPath,
   type TripContainmentView,
 } from './tripContainment.ts'
-import { outcomeOf, pieceOutcomeOf } from './unpack.ts'
+import {
+  accumulateUnaccounted,
+  finalizeUnaccounted,
+  outcomeOf,
+  outcomeStands,
+  pieceOutcomeOf,
+  type Unaccounted,
+  type UnaccountedAccumulator,
+} from './unpack.ts'
 
 /**
  * **Where a piece of gear is, right now** — story 3, domain §4. Derived on
@@ -111,6 +121,11 @@ export interface Whereabouts {
   /** D8 — claims exceed supply, so *where* has no single answer. Computed in
    *  the same pass as the slices, never by a caller. */
   overClaimed: boolean
+  /** S10 (spec §3.6(2)) — a **standing**, not a slice: the absence of a
+   *  place, not a claim on one. `null` unless the Gear's last live `lost`
+   *  outcome ({@link unaccountedOf}, `unpack.ts`) still stands. Computed in
+   *  the same pass as the slices and `overClaimed`, never by a caller. */
+  unaccounted: Unaccounted | null
 }
 
 /**
@@ -245,12 +260,22 @@ interface TripSliceFacts extends SegmentRead {
  * **`overClaims` is folded into the same pass**, and read exactly once.
  * It is itself a scan of every active Trip's Entries, so calling it per row
  * would double the cost this memo exists to remove.
+ *
+ * **S10 (spec §3.5, patterns.md §1.7): the unaccounted standing is folded
+ * into this identical pass, not a second `unaccountedOf(state)` walk of
+ * every visible Trip.** That is also why the loop below widens from every
+ * *active* Trip to every *visible* one — a closed Trip's outcomes are
+ * exactly the history the standing reads — with `isActive` moving inside the
+ * loop as the gate on contributing a **slice**; `whereabouts`' own *active
+ * Trips only* rule for a live slice stays unchanged and stated in exactly
+ * one place, one line lower.
  */
 const TRIP_SLICES = new WeakMap<
   HouseholdState,
   {
     byGear: Map<string, readonly TripSliceFacts[]>
     overClaimed: ReadonlySet<string>
+    unaccounted: ReadonlyMap<string, Unaccounted>
   }
 >()
 
@@ -554,11 +579,13 @@ function compareTripFacts(a: TripSliceFacts, b: TripSliceFacts): number {
 function tripSlicesOf(state: HouseholdState): {
   byGear: Map<string, readonly TripSliceFacts[]>
   overClaimed: ReadonlySet<string>
+  unaccounted: ReadonlyMap<string, Unaccounted>
 } {
   const cached = TRIP_SLICES.get(state)
   if (cached !== undefined) return cached
 
   const byGear = new Map<string, TripSliceFacts[]>()
+  const unaccountedAcc = new Map<string, UnaccountedAccumulator>()
 
   // Domain §4: *"Only an active trip's packing arrangement has effect. A
   // draft trip's arrangement is not yet real and a closed trip's is no longer
@@ -571,10 +598,16 @@ function tripSlicesOf(state: HouseholdState): {
   // Draft gear list has not moved anything. A Gear on a Draft reads
   // `TRIP: ALPS 2026` in the slice bar and `⌂ HOME` in the column beside it,
   // and both are right. Never unify the two.
-  for (const trip of visibleTrips(state).filter(isActive)) {
-    const view = tripContainmentView(trip, state)
+  //
+  // **S10 widens the outer loop to every visible Trip** — the unaccounted
+  // standing below reads a closed Trip's outcomes too — with `isActive`
+  // moved inside as the gate on contributing a *slice* rather than dropped:
+  // the rule above is unchanged and still the one place it is stated.
+  for (const trip of visibleTrips(state)) {
+    const active = isActive(trip)
+    const view = active ? tripContainmentView(trip, state) : undefined
     const tripName = tripLabel(trip)
-    const participants = participantIds(trip)
+    const participants = active ? participantIds(trip) : []
 
     // Gathered per Gear, because a Trip may list one Gear twice — nothing in
     // the catalogue forbids it, and `claimsByGear` already accumulates rather
@@ -602,8 +635,52 @@ function tripSlicesOf(state: HouseholdState): {
       // per-person branch below. `isContainerEntry` is what draws the line,
       // exactly as it does for `claimsByGear`.
       const kind = entryKind(entry, state)
-      const perPersonLoose =
-        kind === 'per_person' && !isContainerEntry(entry, state)
+      const container = isContainerEntry(entry, state)
+      const perPersonLoose = kind === 'per_person' && !container
+
+      // S10 (spec §3.5): the unaccounted standing, folded into this
+      // identical walk (patterns.md §1.7) rather than a second pass over
+      // every visible Trip — read for **every** Trip, active or not, since
+      // a closed Trip's `lost` outcome is exactly the history this reads.
+      // `outcomeStands` (`unpack.ts`) is the one comparison; the units rule
+      // is the container-overridden `pieceCountOf` {@link unpackItems}
+      // already applies, restated here rather than called, for the same
+      // "one walk, not a nested second one" reason `unaccountedOf` states.
+      const gear = state.gear[source.gearId]
+      if (perPersonLoose) {
+        for (const personId of piecesOf(entry, trip)) {
+          const register = entry.pieces?.[personId]?.outcome
+          if (register?.value === 'lost' && outcomeStands(register, gear)) {
+            accumulateUnaccounted(
+              unaccountedAcc,
+              source.gearId,
+              trip.id,
+              tripName,
+              stampOf(register),
+              1,
+              personId,
+            )
+          }
+        }
+      } else {
+        const register = entry.outcome
+        if (register?.value === 'lost' && outcomeStands(register, gear)) {
+          const units = container ? 1 : pieceCountOf(entry, trip, state)
+          accumulateUnaccounted(
+            unaccountedAcc,
+            source.gearId,
+            trip.id,
+            tripName,
+            stampOf(register),
+            units,
+            undefined,
+          )
+        }
+      }
+
+      // Everything below builds a **slice**, which only an active Trip
+      // contributes — the rule stated above, one line up from here.
+      if (!active || view === undefined) continue
       if (!perPersonLoose && outcomeOf(entry) !== null) continue
 
       const contribution = contributionOf(trip, state, view, entry)
@@ -675,8 +752,9 @@ function tripSlicesOf(state: HouseholdState): {
   const overClaimed = new Set(
     overClaims(state).map((overClaim) => overClaim.gearId),
   )
+  const unaccounted = finalizeUnaccounted(unaccountedAcc)
 
-  const built = { byGear, overClaimed }
+  const built = { byGear, overClaimed, unaccounted }
   TRIP_SLICES.set(state, built)
   return built
 }
@@ -704,12 +782,15 @@ function sliceOf(facts: TripSliceFacts): WhereaboutsSlice {
  * because dropping it would delete the path you need to put the thing back,
  * exactly while it is away.
  *
- * The home **count** is `ownedCountOf(gear)` minus every Bring-count out,
- * floored at zero (D8: *a negative count of things on a shelf is not a fact
- * about the shelf; it is a fact about the claims*). `ownedCountOf` already
- * answers `null` for anything that is not Counted, so per-person's *no
- * owned-count* (invariant 6) and Single's *no quantity at all* (D1) fall out
- * of that one gate rather than a second Kind test here.
+ * The home **count** is `ownedCountOf(gear)` minus every Bring-count out and
+ * minus the unaccounted standing's `units` (S10, spec §3.6(3)), floored at
+ * zero (D8: *a negative count of things on a shelf is not a fact about the
+ * shelf; it is a fact about the claims*) — the identical floor now shared by
+ * both subtractions, since neither an over-claim nor a lost outcome may push
+ * the shelf count below the one honest floor. `ownedCountOf` already answers
+ * `null` for anything that is not Counted, so per-person's *no owned-count*
+ * (invariant 6) and Single's *no quantity at all* (D1) fall out of that one
+ * gate rather than a second Kind test here.
  *
  * `view` is the **home** containment view; pass one when you already have it,
  * because building it is O(depot log depot) and a list screen wants one, not
@@ -721,12 +802,14 @@ export function whereabouts(
   view: ContainmentView = containmentView(state),
 ): Whereabouts {
   const gear = state.gear[gearId]
-  const { byGear, overClaimed } = tripSlicesOf(state)
+  const { byGear, overClaimed, unaccounted } = tripSlicesOf(state)
   const facts = byGear.get(gearId) ?? []
+  const standing = unaccounted.get(gearId) ?? null
 
   const owned = gear === undefined ? null : ownedCountOf(gear)
   const out = facts.reduce((sum, fact) => sum + (fact.count ?? 0), 0)
-  const count = owned === null ? null : Math.max(0, owned - out)
+  const count =
+    owned === null ? null : Math.max(0, owned - out - (standing?.units ?? 0))
 
   return {
     gearId,
@@ -735,6 +818,7 @@ export function whereabouts(
       ...facts.map(sliceOf),
     ],
     overClaimed: overClaimed.has(gearId),
+    unaccounted: standing,
   }
 }
 
@@ -789,24 +873,42 @@ export function whereaboutsText(
  * B2's single-slot read, for a list row: the text **and** `GearRow`'s tone.
  *
  * ```
- * 0 trip slices → ⌂ HOME                              tone home
- * 1 trip slice  → whereaboutsText(slice, 'column')    tone trip
- * 2 or more     → ▸ N TRIPS  (stage dropped)          tone trip
- * overClaimed   → the same word, glyph ▲              tone attention
+ * overClaimed     → ▲ (the trip read below), swapped   tone attention
+ * 0 trip slices,
+ *   unaccounted    → ▲ TESSIN 2025 / ▲ ×1 TESSIN 2025   tone attention
+ * 0 trip slices    → ⌂ HOME                             tone home
+ * 1 trip slice     → whereaboutsText(slice, 'column')   tone trip
+ * 2 or more        → ▸ N TRIPS  (stage dropped)         tone trip
  * ```
  *
  * One function rather than a formatter over one slice, because the rule reads
  * the **whole** answer and no single slice can answer it. It returns the tone
  * as well, so no caller decides for itself which world it is looking at.
  *
+ * **`overClaimed` is checked FIRST (S10, spec §3.6): the active fact wins.**
+ * Domain §4's own order is *an unresolved Entry on an active Trip, then the
+ * unaccounted standing, then home* — an over-claim is exactly the first of
+ * those, so a Gear that is both currently over-claimed **and** carries an
+ * old unaccounted standing reads `▲ 2 TRIPS`, never the standing's Trip name.
+ * The unaccounted standing is checked only once there is no live trip slice
+ * at all, for the identical reason: a live claim is *now*, the standing is
+ * *last September*, and *now* always wins.
+ *
  * **D8's swap is a glyph swap and nothing else** (§6.1): the glyph names the
  * world and the word is B2's read unchanged, so a Counted Gear owned `×2`
  * with one Trip bringing `×4` reads `▲ ALPS 2026 · CAR` — an over-claim with
  * a single claim, which D8's own `▲ 2 TRIPS` example does not cover.
  *
+ * **The unaccounted word reuses D1's rule** — `×N` only when the Gear's own
+ * home slice states a quantity at all ({@link WhereaboutsSlice}'s `count`
+ * non-null, i.e. Counted; `ownedCountOf`'s own gate, read here rather than
+ * re-derived), `N PIECE(S)` for a per-person standing, and bare for Single —
+ * `▲ TESSIN 2025`, never `▲ ×1 TESSIN 2025`, because Single has no quantity
+ * to state (D1).
+ *
  * `GearRow.tone` has carried `'home' | 'trip' | 'attention'` since S2b, which
  * wrote that the third arm *"arrives with story 11's `lost` outcome"*. D8
- * gets there one slice earlier.
+ * got there one slice earlier, and S10 is the `lost` outcome itself.
  */
 export function rowWhereabouts(w: Whereabouts): {
   text: string
@@ -822,13 +924,42 @@ export function rowWhereabouts(w: Whereabouts): {
         ? whereaboutsText(first, 'column')
         : `${TRIP_GLYPH} ${trips.length} TRIPS`
 
-  if (!w.overClaimed) {
-    return { text, tone: first === undefined ? 'home' : 'trip' }
+  if (w.overClaimed) {
+    return { text: `${ATTENTION_GLYPH}${text.slice(1)}`, tone: 'attention' }
   }
-  return {
-    text: `${ATTENTION_GLYPH}${text.slice(1)}`,
-    tone: 'attention',
+  if (first !== undefined) {
+    return { text, tone: 'trip' }
   }
+  if (w.unaccounted !== null) {
+    return {
+      text: `${ATTENTION_GLYPH} ${unaccountedPrefix(w)}${w.unaccounted.tripName}`,
+      tone: 'attention',
+    }
+  }
+  return { text, tone: 'home' }
+}
+
+/**
+ * The unaccounted row's quantity prefix, or `''` for Single — D1's rule
+ * ("the right-hand read names the unit that splits") applied to
+ * {@link Unaccounted} rather than to a trip slice, since a standing carries
+ * no `count`/`pieceCount` pair of its own to read. The Gear's own home slice
+ * (`w.slices[0]`, always present) already answers *is this Counted* through
+ * {@link ownedCountOf}'s gate — non-null exactly when it is — so this reads
+ * that rather than re-deriving Kind.
+ */
+function unaccountedPrefix(w: Whereabouts): string {
+  const unaccounted = w.unaccounted
+  if (unaccounted === null) return ''
+  if (unaccounted.personIds.length > 0) {
+    const n = unaccounted.personIds.length
+    return `${n} ${n === 1 ? 'PIECE' : 'PIECES'} `
+  }
+  const home = w.slices[0]
+  if (home !== undefined && home.kind === 'home' && home.count !== null) {
+    return `×${unaccounted.units} `
+  }
+  return ''
 }
 
 /**

@@ -239,20 +239,26 @@ export type { PieceInclusion } from './selectors/piece.ts'
 export { pieceInclusion, piecesOf } from './selectors/piece.ts'
 
 export type {
+  Unaccounted,
+  UnaccountedAccumulator,
   UnpackCount,
   UnpackItem,
   UnpackOutcome,
 } from './selectors/unpack.ts'
 export {
+  accumulateUnaccounted,
   consumedCountOf,
   countOfUnpack,
+  finalizeUnaccounted,
   isKnownOutcome,
   outcomeGlyph,
   outcomeLabel,
   outcomeOf,
+  outcomeStands,
   OUTCOMES,
   pieceOutcomeOf,
   returnPathOf,
+  unaccountedOf,
   unpackDestinationOf,
   unpackItems,
   unpackTotals,

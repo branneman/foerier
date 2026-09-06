@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { aGear, aPerson, aPlace, aTrip, depot } from '../../testUtils/index.ts'
+import {
+  aGear,
+  aPerson,
+  aPlace,
+  aTrip,
+  depot,
+  stamp,
+} from '../../testUtils/index.ts'
 import {
   gearRehomed,
   placeRemoved,
@@ -12,6 +19,7 @@ import {
   tripParticipantAdded,
   tripPieceRemoved,
 } from '../authoring.ts'
+import { emptyState, fold } from '../reduce.ts'
 import type { EntryState, HouseholdState, TripState } from '../state.ts'
 import { packingItems, packingTotals } from './packing.ts'
 import {
@@ -24,6 +32,8 @@ import {
   outcomeOf,
   pieceOutcomeOf,
   returnPathOf,
+  type Unaccounted,
+  unaccountedOf,
   type UnpackItem,
   unpackDestinationOf,
   unpackItems,
@@ -696,4 +706,253 @@ describe('returnPathOf: the full home path for a row’s meta, depot Entries onl
   it('answers [] for a trip-only Entry — it names no Gear and is never asked', () => {
     expect(returnPathOf(entryFrom(trip, TRIPONLY), state)).toEqual([])
   })
+})
+
+describe('unaccountedOf — the standing (spec §3.5)', () => {
+  const TRIP = 't-alps'
+  const OTHER = 't-vosges'
+  const MARK = 'p-mark'
+  const KIM = 'p-kim'
+
+  it('a lost outcome on a CLOSED Trip still produces a standing — closed Trips are exactly the history this reads (spec §3.5)', () => {
+    const state = depot(
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({ id: TRIP, name: 'Vosges 2024', phase: 'closed' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ],
+    )
+
+    const standing: Unaccounted | undefined = unaccountedOf(state).get('g-tent')
+    expect(standing).toEqual({
+      tripId: TRIP,
+      tripName: 'Vosges 2024',
+      units: 1,
+      personIds: [],
+    })
+  })
+
+  it('a Gear with no residence register at all keeps a live standing — nothing to compare against reads earlier than everything', () => {
+    const state = depot(
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ],
+    )
+
+    expect(state.gear['g-tent']?.residence).toBeUndefined()
+    expect(unaccountedOf(state).get('g-tent')).toBeDefined()
+  })
+
+  it('a gear.rehomed stamped AFTER the lost outcome clears the standing', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent' }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const lost = stamp([tripOutcomeSet(TRIP, 'e-tent', 'lost')], { start: 10 })
+    const rehomeAfter = stamp([gearRehomed('g-tent', { in: 'loose' })], {
+      start: 20,
+    })
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...lost, ...rehomeAfter],
+      emptyState(),
+    )
+
+    expect(unaccountedOf(state).get('g-tent')).toBeUndefined()
+  })
+
+  it('a gear.rehomed stamped BEFORE the lost outcome does not clear it', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent' }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const rehomeBefore = stamp([gearRehomed('g-tent', { in: 'loose' })], {
+      start: 10,
+    })
+    const lost = stamp([tripOutcomeSet(TRIP, 'e-tent', 'lost')], { start: 20 })
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...rehomeBefore, ...lost],
+      emptyState(),
+    )
+
+    expect(unaccountedOf(state).get('g-tent')).toEqual({
+      tripId: TRIP,
+      tripName: 'Alps 2026',
+      units: 1,
+      personIds: [],
+    })
+  })
+
+  it('a re-home to the SAME residence still clears the standing — the settle route’s whole mechanism, not a redundant write (F16)', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent', residence: { in: 'loose' } }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const lost = stamp([tripOutcomeSet(TRIP, 'e-tent', 'lost')], { start: 10 })
+    const rehomeSame = stamp([gearRehomed('g-tent', { in: 'loose' })], {
+      start: 20,
+    })
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...lost, ...rehomeSame],
+      emptyState(),
+    )
+
+    expect(unaccountedOf(state).get('g-tent')).toBeUndefined()
+  })
+
+  it('units: Single reads 1', () => {
+    const state = depot(
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ],
+    )
+
+    expect(unaccountedOf(state).get('g-tent')?.units).toBe(1)
+  })
+
+  it('units: Counted sums two Trips’ Bring-counts when both hold a live lost outcome', () => {
+    const state = depot(
+      aGear({ id: 'g-peg', name: 'Peg', kind: 'counted' }),
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      aTrip({ id: OTHER, name: 'Vosges', phase: 'on_trip' }),
+      [
+        tripEntryAdded(TRIP, 'e-a', { from: 'depot', gearId: 'g-peg' }),
+        tripEntryBringCountSet(TRIP, 'e-a', 2),
+        tripOutcomeSet(TRIP, 'e-a', 'lost'),
+        tripEntryAdded(OTHER, 'e-b', { from: 'depot', gearId: 'g-peg' }),
+        tripEntryBringCountSet(OTHER, 'e-b', 3),
+        tripOutcomeSet(OTHER, 'e-b', 'lost'),
+      ],
+    )
+
+    const standing = unaccountedOf(state).get('g-peg')
+    expect(standing?.units).toBe(5)
+    // The latest of the two — OTHER's `lost` is stamped after TRIP's.
+    expect(standing?.tripId).toBe(OTHER)
+  })
+
+  it('units: per-person names the lost Pieces only', () => {
+    const state = depot(
+      aPerson({ id: MARK, name: 'Mark' }),
+      aPerson({ id: KIM, name: 'Kim' }),
+      aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+      aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'pack_out',
+        participants: [MARK, KIM],
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+        tripOutcomeSet(TRIP, 'e-lamp', 'lost', MARK),
+      ],
+    )
+
+    expect(unaccountedOf(state).get('g-lamp')).toEqual({
+      tripId: TRIP,
+      tripName: 'Alps 2026',
+      units: 1,
+      personIds: [MARK],
+    })
+  })
+
+  it('a lost per-person CONTAINER Entry produces a whole-Entry standing, never per-Person ones (ruling R10/R11)', () => {
+    const state = depot(
+      aPerson({ id: MARK, name: 'Mark' }),
+      aPerson({ id: KIM, name: 'Kim' }),
+      aGear({
+        id: 'g-sack',
+        name: 'Stuff sack',
+        container: true,
+        kind: 'per_person',
+      }),
+      aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'pack_out',
+        participants: [MARK, KIM],
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-sack', { from: 'depot', gearId: 'g-sack' }),
+        // Entry-level — no personId — the container's own outcome.
+        tripOutcomeSet(TRIP, 'e-sack', 'lost'),
+      ],
+    )
+
+    expect(unaccountedOf(state).get('g-sack')).toEqual({
+      tripId: TRIP,
+      tripName: 'Alps 2026',
+      units: 1,
+      personIds: [],
+    })
+  })
+
+  it('names the Trip of the latest live lost outcome, not the first found and not the alphabetically first', () => {
+    const state = depot(
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({ id: 'a-trip', name: 'Alps', phase: 'pack_out' }),
+      aTrip({ id: 'z-trip', name: 'Zermatt', phase: 'pack_out' }),
+      [
+        // `visibleTrips` iterates Alps before Zermatt (A→Z) and Alps is
+        // stamped first — a "first found" or "alphabetically first" bug
+        // would both name Alps. The rule is the stamp, and Zermatt's is
+        // later.
+        tripEntryAdded('a-trip', 'e-a', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet('a-trip', 'e-a', 'lost'),
+        tripEntryAdded('z-trip', 'e-z', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet('z-trip', 'e-z', 'lost'),
+      ],
+    )
+
+    const standing = unaccountedOf(state).get('g-tent')
+    expect(standing?.tripId).toBe('z-trip')
+    expect(standing?.tripName).toBe('Zermatt')
+  })
+
+  it('a later BACK on a different Entry settles nothing — different units (spec §3.5)', () => {
+    const state = depot(
+      aGear({ id: 'g-peg', name: 'Peg', kind: 'counted' }),
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      [
+        tripEntryAdded(TRIP, 'e-lost', { from: 'depot', gearId: 'g-peg' }),
+        tripEntryBringCountSet(TRIP, 'e-lost', 2),
+        tripOutcomeSet(TRIP, 'e-lost', 'lost'),
+        tripEntryAdded(TRIP, 'e-back', { from: 'depot', gearId: 'g-peg' }),
+        tripEntryBringCountSet(TRIP, 'e-back', 1),
+        tripOutcomeSet(TRIP, 'e-back', 'back'),
+      ],
+    )
+
+    expect(unaccountedOf(state).get('g-peg')).toEqual({
+      tripId: TRIP,
+      tripName: 'Alps 2026',
+      units: 2,
+      personIds: [],
+    })
+  })
+
+  it.each(['back', 'consumed'] as const)(
+    '%s produces no standing at all',
+    (outcome) => {
+      const state = depot(
+        aGear({ id: 'g-tent', name: 'Tent' }),
+        aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+        [
+          tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+          tripOutcomeSet(TRIP, 'e-tent', outcome),
+        ],
+      )
+
+      expect(unaccountedOf(state).get('g-tent')).toBeUndefined()
+    },
+  )
 })

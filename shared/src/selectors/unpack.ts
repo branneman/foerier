@@ -1,5 +1,8 @@
+import { compareStamps, type Stamp } from '../hlc.ts'
+import { stampOf, type Register } from '../registers.ts'
 import type {
   EntryState,
+  GearState,
   HouseholdState,
   OutcomeValue,
   PieceState,
@@ -19,6 +22,7 @@ import {
   pieceCountOf,
 } from './entry.ts'
 import { piecesOf } from './piece.ts'
+import { tripLabel, visibleTrips } from './trip.ts'
 
 /**
  * **Unpack's read side** — beside `packing.ts` and `trip.ts`, and the same
@@ -427,4 +431,196 @@ export function returnPathOf(
   const source = entry.source?.value
   if (source === undefined || source.from !== 'depot') return []
   return homePath(state, source.gearId, view)
+}
+
+/**
+ * Spec §3.5's one comparison, stated **once**, here — the codebase's first
+ * cross-aggregate stamp comparison. Legitimate for the reason every derived
+ * answer here is: every replica holds identical registers with identical
+ * stamps, so every replica computes the identical standing.
+ *
+ * A Gear with no `residence` register at all compares as **earlier than
+ * everything**, handled as its own branch rather than a sentinel stamp, so
+ * "nothing to compare against" reads as a stated fact rather than an
+ * implementation trick — a `lost` outcome stands until somebody re-homes.
+ *
+ * `whereabouts.ts`'s own walk imports this rather than re-deriving the
+ * direction of the comparison; do not write a second copy.
+ */
+export function outcomeStands(
+  outcome: Register<OutcomeValue | null>,
+  gear: GearState | undefined,
+): boolean {
+  const residence = gear?.residence
+  if (residence === undefined) return true
+  return compareStamps(stampOf(outcome), stampOf(residence)) > 0
+}
+
+/** The unaccounted standing for one Gear — {@link unaccountedOf}'s answer. */
+export interface Unaccounted {
+  /** The Trip of the **latest** live `lost` outcome. */
+  readonly tripId: string
+  readonly tripName: string
+  /** Single → 1; Counted → Σ Bring-counts; per-person → `personIds.length`. */
+  readonly units: number
+  /** Per-person only; empty otherwise. */
+  readonly personIds: readonly string[]
+}
+
+/**
+ * The per-Gear accumulator {@link accumulateUnaccounted} folds into and
+ * {@link finalizeUnaccounted} reads back out — **exported** because
+ * `whereabouts.ts`'s own walk builds the identical standing in the same pass
+ * as its `TRIP_SLICES` memo (patterns.md §1.7) rather than calling
+ * {@link unaccountedOf} a second time over every visible Trip, and it must
+ * accumulate the *identical* way rather than a second, drifting copy.
+ */
+export interface UnaccountedAccumulator {
+  tripId: string
+  tripName: string
+  latest: Stamp
+  units: number
+  personIds: Set<string>
+}
+
+/**
+ * Folds one live `lost` outcome into the per-Gear accumulator — the
+ * accumulation glue {@link unaccountedOf} and `whereabouts.ts`'s own walk
+ * both call, so the arithmetic ("the units sum, the latest stamp names the
+ * Trip") is stated once.
+ */
+export function accumulateUnaccounted(
+  byGear: Map<string, UnaccountedAccumulator>,
+  gearId: string,
+  tripId: string,
+  tripName: string,
+  stamp: Stamp,
+  units: number,
+  personId: string | undefined,
+): void {
+  const existing = byGear.get(gearId)
+  if (existing === undefined) {
+    byGear.set(gearId, {
+      tripId,
+      tripName,
+      latest: stamp,
+      units,
+      personIds: personId === undefined ? new Set() : new Set([personId]),
+    })
+    return
+  }
+  existing.units += units
+  if (personId !== undefined) existing.personIds.add(personId)
+  if (compareStamps(stamp, existing.latest) > 0) {
+    existing.tripId = tripId
+    existing.tripName = tripName
+    existing.latest = stamp
+  }
+}
+
+/** {@link UnaccountedAccumulator} → {@link Unaccounted}, the public shape. */
+export function finalizeUnaccounted(
+  byGear: ReadonlyMap<string, UnaccountedAccumulator>,
+): ReadonlyMap<string, Unaccounted> {
+  const result = new Map<string, Unaccounted>()
+  for (const [gearId, acc] of byGear) {
+    result.set(gearId, {
+      tripId: acc.tripId,
+      tripName: acc.tripName,
+      units: acc.personIds.size > 0 ? acc.personIds.size : acc.units,
+      personIds: [...acc.personIds],
+    })
+  }
+  return result
+}
+
+/**
+ * **The unaccounted standing** — story 3, spec §3.5. Gear whose last unpack
+ * outcome was `lost` reads as unaccounted for, naming the Trip it was last
+ * seen on, until a later fact settles it. Story 11: a `lost` outcome writes
+ * **nothing** to the Depot — this is entirely derived, never stored.
+ *
+ * Walks **every** {@link visibleTrips}, closed included — a closed Trip's
+ * outcomes are exactly the history this standing reads, unlike
+ * `whereabouts.ts`'s *active Trips only* rule for a live slice, which stays
+ * unchanged and stated in exactly one place (spec §3.5).
+ *
+ * **Three consequences, spec §3.5, stated here because a call site would
+ * otherwise re-derive them:**
+ *
+ * - **A re-home settles the whole standing for that Gear, not one unit of
+ *   it.** There is no way to say *one of the two turned up*, because there
+ *   is no per-unit identity to say it about — domain §6 refuses to give
+ *   counted units one, deliberately.
+ * - **Two Trips can both hold a live lost outcome for one Gear.** The units
+ *   sum, and the **latest** such outcome names the Trip.
+ * - **A later `back` on another Entry does not settle an earlier `lost`.**
+ *   They are different units. What settles a lost outcome is a
+ *   `gear.rehomed` with a later stamp, or that Entry's own outcome changing.
+ *
+ * **Ruling R10/R11's family, restated for this standing.** A non-container
+ * Per-person Entry's Pieces are the unit — its own Entry-level `outcome` is
+ * fold-but-ignore, and a lost Piece produces a per-Person standing. A
+ * per-person **container** Entry's Entry is the unit — its Pieces' outcomes
+ * (if any exist off-label) are fold-but-ignore, and its own lost outcome
+ * produces a **whole-Entry** standing, `personIds` empty, exactly as
+ * {@link unpackItems} puts that Entry's outcome on the Entry itself only
+ * when it is a container (container checked before the per-person fan-out,
+ * here too). Everything else's units read {@link pieceCountOf}, container
+ * overridden to `1` — {@link unpackItems}'s own rule, restated rather than
+ * called, so this stays a single walk over {@link entriesOf} instead of a
+ * second one nested inside a call to it.
+ */
+export function unaccountedOf(
+  state: HouseholdState,
+): ReadonlyMap<string, Unaccounted> {
+  const byGear = new Map<string, UnaccountedAccumulator>()
+
+  for (const trip of visibleTrips(state)) {
+    const tripName = tripLabel(trip)
+    for (const entry of entriesOf(trip, state)) {
+      const source = entry.source?.value
+      // Invariant 18: a trip-only Entry names no Gear and takes no outcome.
+      if (source === undefined || source.from !== 'depot') continue
+
+      const gearId = source.gearId
+      const gear = state.gear[gearId]
+      const kind = entryKind(entry, state)
+      const container = isContainerEntry(entry, state)
+
+      if (kind === 'per_person' && !container) {
+        for (const personId of piecesOf(entry, trip)) {
+          const register = entry.pieces?.[personId]?.outcome
+          if (register?.value !== 'lost') continue
+          if (!outcomeStands(register, gear)) continue
+          accumulateUnaccounted(
+            byGear,
+            gearId,
+            trip.id,
+            tripName,
+            stampOf(register),
+            1,
+            personId,
+          )
+        }
+        continue
+      }
+
+      const register = entry.outcome
+      if (register?.value !== 'lost') continue
+      if (!outcomeStands(register, gear)) continue
+      const units = container ? 1 : pieceCountOf(entry, trip, state)
+      accumulateUnaccounted(
+        byGear,
+        gearId,
+        trip.id,
+        tripName,
+        stampOf(register),
+        units,
+        undefined,
+      )
+    }
+  }
+
+  return finalizeUnaccounted(byGear)
 }
