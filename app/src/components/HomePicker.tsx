@@ -55,17 +55,22 @@ import styles from './HomePicker.module.css'
  * confirms**. Picking a home for gear that does not exist yet (Add Gear) does
  * not, because there is no prior state to lose.
  *
- * **S10's re-home caller confirms nothing, and `moving.confirm` is what
- * says so.** F8 (`docs/design/README.md` §5h, spec §4.6): the row visibly
- * jumps to its new room, and a second re-home is the reversal, so that
- * caller passes `moving: { …, confirm: false }` for a container it is
- * re-homing — the exclusion, the `● NOW` mark and the ride-along line all
- * stay, only the confirm drops. `confirm` lives **inside** `moving` rather
- * than beside it (`patterns.md` §4.4's grouped-optional precedent,
- * `SettleRoutes`) precisely so `confirm` without `moving` is
- * unrepresentable — a caller cannot silently opt out of a confirm it never
- * asked to have. `GearDetail`'s own MOVE never sets it, so it defaults
- * `true` and stays confirmed exactly as before.
+ * **`moving.confirm` names which confirm the caller's act owes**, and §5i
+ * G15 finishes §1's rule for the two S10 routes. F8 stays blessed for a
+ * **plain** row — it jumps to its new room and a second re-home is the
+ * reversal — and F5 passes no `moving` at all there, so nothing is raised.
+ * A **container** row passes `confirm: 're-home'`: the row jumps, but every
+ * home path beneath it is rewritten too, and those rows are elsewhere on
+ * the screen and may be filtered out. `false` remains for a caller that
+ * wants `moving`'s exclusion, `● NOW` mark and ride-along line with no
+ * dialog — gear detail's `RESOLVE`, whose settle route F16(3) draws
+ * undialogued.
+ *
+ * `confirm` lives **inside** `moving` rather than beside it (`patterns.md`
+ * §4.4's grouped-optional precedent, `SettleRoutes`) precisely so `confirm`
+ * without `moving` is unrepresentable — a caller cannot silently opt out of
+ * a confirm it never asked to have. `GearDetail`'s own MOVE never sets it,
+ * so it defaults to `'move'` and stays confirmed exactly as before.
  *
  * ## `context`
  *
@@ -130,12 +135,23 @@ export interface HomePickerProps {
      */
     ridesAlong: number
     /**
-     * Whether picking confirms — default `true`, MOVE's own standing rule
-     * (this module's own header). `false` is S10's re-home caller (F8):
-     * the row visibly jumps to its new room, so a second confirm restates
-     * nothing a Quartermaster cannot already see.
+     * **Which confirm this caller's act owes**, §1's one rule: *the confirm
+     * is owed where the act cannot be seen on the screen that made it.*
+     *
+     * - `'move'` (the default) — gear detail's MOVE, which shows no jump.
+     * - `'re-home'` — F5's **container** row (§5i G15). The row itself
+     *   jumps, but a container's re-home also rewrites every home path
+     *   beneath it, and those rows are elsewhere on F5 and may be filtered
+     *   out under `○ OPEN`. F4's container move confirms for exactly this.
+     * - `false` — F5's **plain** row (F8, blessed at G15): one op, and the
+     *   row visibly jumps to its new room.
+     *
+     * The picker owns both copy blocks rather than taking them as props,
+     * because each needs the destination and the ride-along count, which
+     * are this component's to know — the caller names its act and nothing
+     * more, exactly as {@link HomePickerProps.context} works.
      */
-    confirm?: boolean
+    confirm?: 'move' | 're-home' | false
   }
   /**
    * The line above the list, in §5i G5's own grammar: **act · what moves ·
@@ -341,9 +357,16 @@ export function HomePicker({
           .filter((gear) => gear?.retired?.value !== true).length
 
   /**
+   * Which confirm the pending pick raises — `moving.confirm`'s own value,
+   * read once so the gate below and the dialog's own copy can never
+   * disagree about which act is being confirmed.
+   */
+  const reHomeConfirm = moving?.confirm === 're-home'
+
+  /**
    * Selection — reports every pick, the current one included
    * (`patterns.md` §4.3: a picker holds no business rule, and the `● NOW`
-   * mark is a mark, not a gate), gated only on MOVE's own confirmation.
+   * mark is a mark, not a gate), gated only on the caller's own confirm.
    */
   function choose(residence: Residence, label: string) {
     // Edit suspends selection: rows stop closing the sheet.
@@ -667,16 +690,36 @@ export function HomePicker({
         />
       )}
 
-      {/* MOVE's confirmation. Not on the board — see this module's header
-            for why story 36 makes it necessary. The primary stays accent:
-            nothing is being destroyed. */}
+      {/* The move confirmations — MOVE's, not on any board (see this
+            module's header for why story 36 makes it necessary), and the
+            re-home's, which §5i G15 draws. The primary stays accent in
+            both: nothing is being destroyed. */}
       {pending !== null && moving !== undefined && (
         <Confirm
-          title={`Move ${moving.name} to ${pending.label}?`}
+          title={
+            reHomeConfirm
+              ? `Re-home ${moving.name} to ${pending.label}?`
+              : `Move ${moving.name} to ${pending.label}?`
+          }
           description={
-            moving.ridesAlong === 1
-              ? '1 piece of gear inside it moves too.'
-              : `${moving.ridesAlong} pieces of gear inside it move too.`
+            reHomeConfirm ? (
+              <>
+                <span className={styles['confirmBody']}>
+                  {moving.name} and everything inside it move at home. It is
+                  marked back; its contents keep their own outcomes.
+                </span>
+                {/* Both writes as numbers — what moves, and the outcome the
+                    pick implies (F8). `ContainerMoveConfirm`'s own shape one
+                    screen over, whose mono line states the trip-world pair. */}
+                <span className={styles['confirmFact']}>
+                  {moving.ridesAlong} RIDE ALONG · OUTCOME → BACK
+                </span>
+              </>
+            ) : moving.ridesAlong === 1 ? (
+              '1 piece of gear inside it moves too.'
+            ) : (
+              `${moving.ridesAlong} pieces of gear inside it move too.`
+            )
           }
           onClose={() => setPending(null)}
           actions={
@@ -695,7 +738,7 @@ export function HomePicker({
                     setPending(null)
                   }}
                 >
-                  Move gear
+                  {reHomeConfirm ? 'Re-home' : 'Move gear'}
                 </button>
               </Confirm.Action>
             </>

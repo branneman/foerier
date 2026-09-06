@@ -862,6 +862,72 @@ describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
     expect(screen.queryByRole('dialog', { name: 'Home' })).toBeNull()
   })
 
+  /**
+   * **§5i G15.** §1's one rule — *the confirm is owed where the act cannot
+   * be seen on the screen that made it* — reaches this route: a container's
+   * re-home also rewrites every home path beneath it, and those rows are
+   * elsewhere on F5 and may be filtered out under `○ OPEN`. The plain row
+   * above still raises nothing; the row jumps, and F8 stays blessed.
+   */
+  it('confirms a container row’s re-home, in the drawn copy', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...reHomeScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_CRATE_R}`)
+    await user.click(within(row).getByTestId('unpack-row-body'))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Home' })).getByRole('button', {
+        name: /Shed/,
+      }),
+    )
+
+    const confirm = screen.getByRole('alertdialog', {
+      name: 'Re-home Crate B to Shed?',
+    })
+    expect(
+      within(confirm).getByText(
+        'Crate B and everything inside it move at home. It is marked back; its contents keep their own outcomes.',
+      ),
+    ).toBeInTheDocument()
+    // Both writes as numbers — what moves, and the outcome the pick implies.
+    expect(
+      within(confirm).getByText('1 RIDE ALONG · OUTCOME → BACK'),
+    ).toBeInTheDocument()
+    expect(
+      within(confirm).getByRole('button', { name: 'Re-home' }),
+    ).toBeInTheDocument()
+  })
+
+  it('writes nothing until the container re-home is confirmed', async () => {
+    const user = userEvent.setup()
+    const { authored } = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...reHomeScenario(),
+    )
+
+    const row = screen.getByTestId(`unpack-row-${E_CRATE_R}`)
+    await user.click(within(row).getByTestId('unpack-row-body'))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Home' })).getByRole('button', {
+        name: /Shed/,
+      }),
+    )
+
+    expect(await authored()).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Re-home' }))
+
+    // This crate is seeded already `back`, so the gesture emits the
+    // re-home alone (E10) — what matters here is that neither op was
+    // authored before the confirm, and both arrive after it.
+    expect(await authored()).toEqual([
+      {
+        type: 'gear.rehomed',
+        payload: { residence: { in: 'place', id: SHED_R } },
+      },
+    ])
+  })
+
   it('carries the N RIDE ALONG count for a container, and excludes its own subtree', async () => {
     const user = userEvent.setup()
     await renderUnpack(`/trips/${ALPS}/unpack`, ...reHomeScenario())

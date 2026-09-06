@@ -1598,15 +1598,20 @@ export function Unpack() {
             current={residenceOf(reHomeGear)}
             context={reHomeContext(entryLabel(reHomeEntry, state))}
             // Only a container needs MOVE's own exclusion, footer and
-            // ride-along line (spec §4.6) — and `confirm: false` is what
-            // F8/A2b withholds even though `moving` is set (this module's
-            // own header on why `confirm` lives inside `moving`).
+            // ride-along line (spec §4.6) — and a container is also the one
+            // shape here that **confirms**: §5i G15 finishes §1's rule (the
+            // confirm is owed where the act cannot be seen on the screen
+            // that made it) for this route. The row itself jumps, which is
+            // why a **plain** row still raises nothing — it passes no
+            // `moving` at all — but a container's re-home rewrites every
+            // home path beneath it, and those rows are elsewhere on F5 and
+            // may be filtered out under `○ OPEN`.
             {...(reHomeIsContainer
               ? {
                   moving: {
                     name: entryLabel(reHomeEntry, state),
                     ridesAlong: reHomeRidesAlong,
-                    confirm: false,
+                    confirm: 're-home' as const,
                   },
                 }
               : {})}
