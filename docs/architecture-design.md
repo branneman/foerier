@@ -2589,8 +2589,11 @@ moved while it was being built.
   `isClosed(trip)`, before computing a single reduction, and F5's close card
   gates its button and hint on the same fact rather than drawing them
   disabled (ruling R27 Layer A; `patterns.md` §3.7, *withheld, not greyed*).
-  Two narrower paths — a crash between the reduction op landing and the phase
-  move, and close → reopen → close — still double-reduce and are recorded
-  rather than patched (`docs/technical-debt.md`; a stamp-comparison fix was
-  considered and rejected as a worse false-negative, ruling R28): S11's
-  reopen inherits the second.
+  Two narrower paths still double-reduce and are recorded rather than patched
+  — a stamp-comparison fix was considered and rejected as a worse
+  false-negative, ruling R28. The crash between the reduction op landing and
+  the phase move is tracked in `docs/technical-debt.md`; close → reopen →
+  close is not — its Depot semantics are S11's to design, per F10's own note
+  that reopen "offers back" the write this gesture makes — and is spelled out
+  in `docs/specs/2026-09-05-unpack-resolve-and-close.md` §8 and
+  `gestures.ts`'s own docblock, both paths.

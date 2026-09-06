@@ -133,8 +133,9 @@ export function reHomeOnTheSpot(
  *
  * **A Trip already `closed` has nothing left to close, and this function
  * says so before computing anything** ({@link isClosed}, never re-derived —
- * ruling R27 Layer B, `docs/design/README.md`). This overturns an earlier
- * ruling (I1) that kept the reduction loop running regardless of the
+ * ruling R27 Layer B,
+ * `docs/specs/2026-09-05-unpack-resolve-and-close.md` §8.1). This overturns
+ * an earlier ruling (I1) that kept the reduction loop running regardless of the
  * Trip's own phase, on the theory that a Device dying between the
  * reduction and the phase move needed a retry to still apply it. Review
  * demonstrated that guard produces exactly the wrong pair on an ordinary,

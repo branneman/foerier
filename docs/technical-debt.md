@@ -264,7 +264,7 @@ them looking for work is the thing this section exists to stop.
   side, an alignment, an offset, a width, collision behaviour or whether it
   carries an arrow, and the only popover token in `Foundations` is the
   `bg/raised` background it shares with a hovered row. Building it therefore
-  means taking six visual decisions across four surfaces with nothing to build
+  means taking six visual decisions across six surfaces with nothing to build
   against, which is why this sits here and not under *Specified and not
   built*. It also needs each caller restructured so the trigger and the
   content are siblings under one Radix root, against the app's settled

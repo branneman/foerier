@@ -69,12 +69,13 @@ is stated in exactly one selector, which every reader calls:
 
 **S10 adds three facts to this table, not two.** The `outcome` row folds two
 selectors into one line, the way the `status` row above it already does for
-Entry and Piece — `outcomeOf` and `pieceOutcomeOf` are `ownerOf`'s rule for a
-sixth and seventh time. `consumedCountOf` is a third, and `unpack.ts`'s own
-header says so in as many words: it reads an absent register as the Entry's
-Bring-count, never `1` and never `null`, "not the two its own constraints
-announced" — a reader who counted only the new row would miss the one hiding
-inside it.
+Entry and Piece — `outcomeOf` and `pieceOutcomeOf` are `ownerOf`'s rule
+again, on both entity paths. `consumedCountOf` is a third, and `unpack.ts`'s
+own header says so in as many words: it reads an absent register as the
+Entry's Bring-count, never `1` and never `null`, "not the two its own
+constraints announced" — a reader who counted only the new row would miss
+the one hiding inside it. (`unpack.ts`'s own header carries the running
+count; it is not restated here.)
 
 The fold conflates nothing — absent and explicit stay different facts about the
 log — but every *reader* treats them alike, and a call site that re-derives the
@@ -470,6 +471,8 @@ holds today.
 
 *Departures:* who closes after a pick is decided per component — `PackPicker`
 and `PhaseSheet` close themselves, the rest are closed by the caller.
+**`HomePicker` holds its own MOVE confirm rather than leaving it to the
+caller** — see above.
 *Argued in:* `PackPicker.tsx`'s header; `HomePicker.tsx`'s header;
 [§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
 
@@ -479,7 +482,10 @@ and `PhaseSheet` close themselves, the rest are closed by the caller.
 settle routes, because a control that emits inside a cancellable confirm makes
 `Cancel` state something false. `OverClaimGroups` takes one optional
 `SettleRoutes` prop — grouped, so the type system enforces all-or-nothing —
-and its absence *is* read-only.
+and its absence *is* read-only. `Unpack.tsx` (S10, F5) is a third facts-only
+renderer, for a different reason: it lists the gear list rather than editing
+it, so it renders `OverClaimGroups` directly, with `settle` omitted, rather
+than the mandatory-`settle` `OverClaimBand`.
 
 *Argued in:* `docs/design/README.md` §5b ruling I; [§12.13](architecture-design.md#1213-consequences-of-s7-the-gear-list).
 

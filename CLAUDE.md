@@ -13,8 +13,8 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-**Code has started.** Seven slices of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
-have landed:
+**Code has started.** Every slice of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+through S10 has landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
   `ui`; `landing` deferred), the Tier 0 toolchain and pre-commit hook, the test
@@ -851,11 +851,11 @@ records what moved while it was being built, and
   as plainly as any other Entry. So `unpackItems` = `packingItems` −
   trip-only Entries (invariant 18: never entered the Depot, take no
   outcome) + containers, `units: 1`. The two boards' twin `61` was a mock
-  coincidence; a real Trip reads `56/62 RESOLVED` here where F4 reads
-  `48/61 PIECES`.
+  coincidence — the Trip reading `48/61 PIECES` on F4 reads `56/62 RESOLVED`
+  here.
 - **Absent and an explicit `null` both read open, on both entity paths, and
-  only `outcomeOf` / `pieceOutcomeOf` say so** — `ownerOf`'s rule for a
-  sixth and seventh time. The fold conflates nothing: an absent register
+  only `outcomeOf` / `pieceOutcomeOf` say so** — `ownerOf`'s rule again, on
+  both entity paths. The fold conflates nothing: an absent register
   means no op ever addressed this outcome, a `null` means one explicitly
   cleared it, and every reader still treats them alike.
   `consumedCountOf` adds a third, different default one register over: an
