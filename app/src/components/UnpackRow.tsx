@@ -6,6 +6,7 @@ import {
   type StatusPillProps,
 } from '@foerier/ui'
 import type { ReactNode } from 'react'
+import { Link } from 'wouter'
 
 import styles from './UnpackRow.module.css'
 
@@ -133,8 +134,24 @@ export interface UnpackRowProps {
   /** The pill's target — opens the outcome sheet (Task 12) — and the
    * cluster's, for the identical Entry (Task 13). */
   onOutcome: () => void
-  /** The row body's target — opens the Home picker (Task 14). */
+  /** The row body's target — opens the Home picker (Task 14). Unread in
+   *  {@link UnpackRowProps.record} mode, where the body is a link. */
   onReHome: () => void
+  /**
+   * **The record mode a closed Trip draws** (§5i G6). Invariant 19 sends a
+   * change to a closed Trip's outcomes through reopen, and a live pill on a
+   * closed row is that change without the ceremony — so the row keeps its
+   * anatomy and drops its writes.
+   *
+   * The pill and the cluster lose their border and become the outcome as
+   * text: a border is a control (§5b O), and `CLEARS AT CLOSE` is the
+   * treatment already drawn for a slot that is not one. The body routes to
+   * gear detail instead of opening the picker, because the acts left on
+   * closed gear are Depot acts and that is the Depot's screen — `href`
+   * carries where, and its absence withholds the target entirely (an
+   * unsynced Gear names no screen to go to).
+   */
+  record?: { href: string | undefined }
   /**
    * Task 13's 34px cluster, replacing the pill in the right slot for a
    * per-person, non-container Entry. `resolved`/`total` are
@@ -202,6 +219,7 @@ export function UnpackRow({
   tripOnly = false,
   rehomed = false,
   canReHome = true,
+  record,
 }: UnpackRowProps) {
   const bodyContent = (
     <>
@@ -245,8 +263,23 @@ export function UnpackRow({
       {/* No *where* to open for a trip-only Entry — a plain span rather than
           a disabled button, which would still announce an act this row does
           not have (`PackingRow`'s ruling E9). */}
-      {tripOnly || !canReHome ? (
+      {tripOnly || (record === undefined && !canReHome) ? (
         <span className={styles['inertBody']}>{bodyContent}</span>
+      ) : record !== undefined ? (
+        // A record's body goes to the Depot's own screen. No `href` means
+        // no Gear to go to — an unsynced one — and an inert body rather
+        // than a link that leads nowhere.
+        record.href === undefined ? (
+          <span className={styles['inertBody']}>{bodyContent}</span>
+        ) : (
+          <Link
+            href={record.href}
+            className={styles['body']}
+            data-testid="unpack-row-body"
+          >
+            {bodyContent}
+          </Link>
+        )
       ) : (
         <button
           type="button"
@@ -261,6 +294,16 @@ export function UnpackRow({
       {tripOnly ? (
         <span className={styles['clears']} data-testid="unpack-row-clears">
           CLEARS AT CLOSE
+        </span>
+      ) : record !== undefined ? (
+        // §5i G6: the outcome as text, in the treatment a trip-only row's
+        // slot already uses. A cluster becomes its own count for the same
+        // reason — zero controls on a record, and `N/M` is what the cluster
+        // was saying.
+        <span className={styles['clears']} data-testid="unpack-row-record">
+          {cluster === undefined
+            ? `${outcomeGlyph(outcome)} ${outcomeLabel(outcome)}`
+            : `${cluster.resolved}/${cluster.total}`}
         </span>
       ) : cluster !== undefined ? (
         <button

@@ -104,6 +104,10 @@ interface UnpackRowData {
   /** M3 — {@link canReHomeFor}'s answer; `undefined` reads `true`
    * (`UnpackRow`'s own default), so a trip-only row need not set it. */
   readonly canReHome?: boolean
+  /** The depot Gear this row names — §5i G6's record body routes there.
+   * `undefined` for a trip-only row and for one whose Gear this replica has
+   * not folded, both of which name no screen to go to. */
+  readonly gearId?: string
 }
 
 /** One of F3's groups — a room, `Loose`, or the closing `Trip-only` group;
@@ -152,6 +156,10 @@ const MODES: readonly SegmentedOption<UnpackMode>[] = [
  * instruction, read once above the groups rather than at their foot. */
 const HINT = 'TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOME'
 
+/** The hint a **closed** Trip draws instead (§5i G6) — one gesture is left,
+ * and it leads to the screen the Depot acts live on. */
+const HINT_CLOSED = 'CLOSED · TAP ROW = GEAR DETAIL'
+
 /** `Shared`'s own meta in PERSON mode — `Packing.tsx`'s `NOT_ATTRIBUTED`
  * verbatim: the identical fact (A7's rule 3, drawn last) on a sibling
  * screen, not a fresh string. */
@@ -168,6 +176,54 @@ const CLOSE_HINT_GATED =
   'BACK WRITES HOME AT THE TAP. CLOSE WHEN OPEN = 0 — LOST IS ALWAYS AN ANSWER.'
 const CLOSE_HINT_READY =
   'CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.'
+
+/** And the closed form (§5i G6). The button is withheld beside it, so this
+ * is the card's whole instruction: what the screen now is, and the one
+ * route to changing any of it. **No `Reopen` control here** — the ledger
+ * row and SET PHASE already hold that door, and F13's rule against a third
+ * door for one register applies to leaving `closed` as it did to entering
+ * it. */
+const CLOSE_HINT_CLOSED = 'CLOSED · OUTCOMES ARE HISTORY. REOPEN TO CHANGE ONE.'
+
+/**
+ * The depot Gear id a row's body routes to in §5i G6's record mode.
+ * `undefined` for a trip-only Entry (it names no Gear) and for one whose
+ * Gear has not reached this replica — the same two cases {@link depotGearOf}
+ * already answers `undefined` for, asked one step earlier because a route
+ * needs the id and not the entity.
+ */
+function depotGearIdOf(entry: EntryState): string | undefined {
+  const source = entry.source?.value
+  if (source === undefined || source.from !== 'depot') return undefined
+  return source.gearId
+}
+
+/** {@link depotGearIdOf} as a spreadable prop — `exactOptionalPropertyTypes`
+ *  forbids writing `gearId: undefined` on an optional field, and every row
+ *  builder wants the same one line. */
+function gearIdProp(entry: EntryState): { gearId?: string } {
+  const gearId = depotGearIdOf(entry)
+  return gearId === undefined ? {} : { gearId }
+}
+
+/**
+ * §5i G6's `record` prop, spread onto every `UnpackRow` — present exactly
+ * while the Trip is closed, and carrying the Depot screen this row's body
+ * goes to. Composed once here so the two render sites cannot draw a closed
+ * Trip differently from each other, which is the whole failure mode a
+ * two-site screen has.
+ */
+function recordProp(
+  closed: boolean,
+  row: UnpackRowData,
+): { record?: { href: string | undefined } } {
+  if (!closed) return {}
+  return {
+    record: {
+      href: row.gearId === undefined ? undefined : `/gear/${row.gearId}`,
+    },
+  }
+}
 
 /**
  * The return path meta, in every form DESTINATION mode draws (spec §4.3,
@@ -461,6 +517,7 @@ function destinationGroups(
           outcome: null,
           cluster,
           canReHome: canReHomeFor(entry, state),
+          ...gearIdProp(entry),
         })
         continue
       }
@@ -488,6 +545,7 @@ function destinationGroups(
         outcome: item.outcome,
         rehomed: rehomedFor(entry, state),
         canReHome: canReHomeFor(entry, state),
+        ...gearIdProp(entry),
       })
     }
     return rows
@@ -756,6 +814,7 @@ function personGroups(
         meta: pathText === '' ? '' : `→ ${pathText}`,
         outcome: item.outcome,
         canReHome: canReHomeFor(entry, state),
+        ...gearIdProp(entry),
       }
     }
 
@@ -774,6 +833,7 @@ function personGroups(
       ),
       outcome: item.outcome,
       canReHome: canReHomeFor(entry, state),
+      ...gearIdProp(entry),
     }
   }
 
@@ -922,6 +982,7 @@ function allRows(
         outcome: null,
         cluster,
         canReHome: canReHomeFor(entry, state),
+        ...gearIdProp(entry),
       })
       continue
     }
@@ -943,6 +1004,7 @@ function allRows(
       ),
       outcome: item.outcome,
       canReHome: canReHomeFor(entry, state),
+      ...gearIdProp(entry),
     })
   }
   return rows
@@ -987,11 +1049,14 @@ function visibleRows(
 function GroupSection({
   group,
   openOnly,
+  closed,
   onOutcome,
   onReHome,
 }: {
   group: UnpackGroup
   openOnly: boolean
+  /** §5i G6 — a closed Trip draws every row as a record. */
+  closed: boolean
   /** The real Entry id, never a PERSON-mode Piece row's composite key —
    * {@link Unpack}'s `openOutcome` is what tells the two apart. */
   onOutcome: (entryId: string) => void
@@ -1070,6 +1135,7 @@ function GroupSection({
               outcome={row.outcome}
               onOutcome={() => onOutcome(row.entryId)}
               onReHome={() => onReHome(row.entryId)}
+              {...recordProp(closed, row)}
               // `exactOptionalPropertyTypes`: an *omitted* prop and one
               // present-and-`undefined` are different types, exactly
               // `PersonCluster`'s own `tone`-spread note.
@@ -1233,6 +1299,19 @@ export function Unpack() {
     () => (trip === undefined ? EMPTY_COUNT : unpackTotals(trip, state)),
     [trip, state],
   )
+
+  // §5i G6: a closed Trip's F5 is a **record**. Invariant 19 sends a change
+  // to a closed Trip's outcomes through reopen, and a live pill on a closed
+  // row is that change without the ceremony — so the reads all stay (count
+  // line, bar, controls, filter) and the writes all go. Read once here and
+  // handed down, never re-derived per row: the hint, every row's slot, and
+  // the close card have to agree about one fact, and `isClosed` is the only
+  // definition of it in the codebase.
+  //
+  // Invariant 16 is not contradicted, and F4 stays live at every phase: a
+  // phase locks no *packing* status. Invariant 19 is the specific rule for
+  // outcomes, and it is the one that reaches here.
+  const closed = trip !== undefined && isClosed(trip)
 
   // One view of each kind, built once per fold and handed down to every
   // group — never one per group (`containerTotals`'s own rule).
@@ -1455,7 +1534,7 @@ export function Unpack() {
             </button>
           </div>
 
-          <p className={styles['hint']}>{HINT}</p>
+          <p className={styles['hint']}>{closed ? HINT_CLOSED : HINT}</p>
 
           {/* F19: with `○ OPEN` on and nothing left open, the list reads one
               line rather than a wall of collapsed, header-less groups —
@@ -1484,6 +1563,7 @@ export function Unpack() {
                     outcome={row.outcome}
                     onOutcome={() => openOutcome(row.entryId)}
                     onReHome={() => openReHome(row.entryId)}
+                    {...recordProp(closed, row)}
                     {...(row.cluster === undefined
                       ? {}
                       : { cluster: row.cluster })}
@@ -1501,6 +1581,7 @@ export function Unpack() {
                     key={group.key}
                     group={group}
                     openOnly={openOnly}
+                    closed={closed}
                     onOutcome={openOutcome}
                     onReHome={openReHome}
                   />
@@ -1554,7 +1635,13 @@ export function Unpack() {
                 {openLabel(totals)}
               </span>
             </p>
-            {!isClosed(trip) && (
+            {isClosed(trip) ? (
+              // §5i G6: the button is withheld (not greyed) and the hint
+              // states what the screen now is and the one route to
+              // changing it. The summary above stays — every word of it is
+              // still true of a closed Trip.
+              <p className={styles['closeHint']}>{CLOSE_HINT_CLOSED}</p>
+            ) : (
               <>
                 <button
                   type="button"

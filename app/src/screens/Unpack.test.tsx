@@ -1952,6 +1952,99 @@ function alreadyClosedScenario(): readonly OpSpec[] {
   ]
 }
 
+/**
+ * **§5i G6 — F5 on a closed Trip is a record**, and the conflict the round
+ * named: leaving every outcome writable there contradicts invariant 19,
+ * which sends a change to a closed Trip's outcomes through reopen. A live
+ * pill on a closed row is that change without the ceremony.
+ *
+ * Invariant 16 is not contradicted and F4 stays live at every phase — a
+ * phase locks no *packing* status. 19 is the specific rule for outcomes.
+ */
+describe('a closed Trip draws a record (§5i G6)', () => {
+  /** A closed Trip with a resolved Single and a trip-only Entry — the
+   *  pill's slot and the one whose treatment it now borrows. */
+  function closedRecordScenario(): readonly OpSpec[] {
+    return [
+      ...alps(),
+      gearRecorded(STOVE, { name: 'Stove', container: false, kind: 'single' }),
+      tripEntryAdded(ALPS, E_STOVE, { from: 'depot', gearId: STOVE }),
+      tripOutcomeSet(ALPS, E_STOVE, 'back'),
+      tripEntryAdded(ALPS, E_PASSPORTS, {
+        from: 'trip_only',
+        name: 'Passports, all',
+        container: false,
+      }),
+      tripPhaseMoved(ALPS, 'closed'),
+    ]
+  }
+
+  it('draws the reads — count line, bar, controls and filter all stay', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...closedRecordScenario())
+
+    expect(screen.getByTestId('unpack-open-count')).toBeInTheDocument()
+    expect(screen.getByTestId('unpack-bar')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'DESTINATION' })).toBeVisible()
+    expect(screen.getByRole('button', { name: /OPEN/ })).toBeVisible()
+  })
+
+  it('states the one gesture left in the hint', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...closedRecordScenario())
+
+    expect(screen.getByText('CLOSED · TAP ROW = GEAR DETAIL')).toBeVisible()
+    expect(screen.queryByText(/TAP PILL = OUTCOME/)).not.toBeInTheDocument()
+  })
+
+  it('draws the outcome as text, not as a control — a border is a control', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...closedRecordScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_STOVE}`)
+    expect(within(row).getByTestId('unpack-row-record')).toHaveTextContent(
+      '● BACK',
+    )
+    // The pill is gone entirely: no outcome sheet can be opened from here.
+    expect(
+      within(row).queryByRole('button', { name: /BACK/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('routes the row body to gear detail, where a closed Gear’s acts live', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...closedRecordScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_STOVE}`)
+    const body = within(row).getByTestId('unpack-row-body')
+    expect(body).toHaveAttribute('href', `/gear/${STOVE}`)
+  })
+
+  it('keeps the card’s summary, withholds its button, and offers no third door to reopen', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...closedRecordScenario())
+
+    // Every word of the summary is still true of a closed Trip.
+    expect(screen.getByTestId('unpack-close-summary')).toBeInTheDocument()
+    expect(
+      screen.getByText('CLOSED · OUTCOMES ARE HISTORY. REOPEN TO CHANGE ONE.'),
+    ).toBeVisible()
+
+    // Withheld, not greyed (patterns.md §3.7) — and no `Reopen` here: the
+    // ledger row and SET PHASE already hold that door (F13's rule).
+    expect(
+      screen.queryByRole('button', { name: /Close trip/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Reopen/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('leaves a trip-only row exactly as it was — the treatment the others borrowed', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...closedRecordScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_PASSPORTS}`)
+    expect(within(row).getByText('CLEARS AT CLOSE')).toBeInTheDocument()
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(row).queryByRole('link')).not.toBeInTheDocument()
+  })
+})
+
 describe('the close card (F11, spec §4.7)', () => {
   /**
    * **F11 — the list's last card at every width.** `previousElementSibling`

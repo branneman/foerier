@@ -470,8 +470,16 @@ export function OutcomeSheet({
   // reopen and re-close and the app looks correct while the owned count is
   // corrupted. The Entry's own split stays legible on the F5 row's meta
   // (`×N CONSUMED · ×M BACK`), so nothing true is lost by withholding it.
-  // The sheet's other writes stay live at every phase deliberately — a phase
-  // locks nothing, and the boards make F5 reachable throughout.
+  //
+  // **§5i G6 has since made this unreachable from F5, and G7 declines to
+  // give it a route back.** A closed Trip's rows draw the outcome as text,
+  // so no tap opens this sheet there at all — the number is what the
+  // household stated when it closed, and a ledger keeps what was stated.
+  // The gate stays as the belt to that: this component takes `trip` as a
+  // prop and a second caller must not inherit a lying line. The two
+  // corrections that matter have their own routes — the Depot count in gear
+  // detail's EDIT, the history through reopen, invariant 19's route by
+  // name.
   const showStepper =
     !roster &&
     !isClosed(trip) &&
