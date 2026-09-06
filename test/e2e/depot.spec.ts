@@ -4,11 +4,17 @@ import { test } from './quartermaster'
 
 /**
  * The golden path, end to end: join → add gear → find it → build a trip →
- * pack an item, with an **offline leg** in the middle.
+ * pack an item → close the trip, with an **offline leg** in the middle.
  *
  * One test, because Tier 5's charter is one journey (`docs/testing.md`) and
- * a leg is added by the slice that makes its step reachable. `close the trip`
- * is the sixth step and waits on S10.
+ * a leg is added by the slice that makes its step reachable. `close the
+ * trip` is the sixth and last step, S10's own leg (spec
+ * `docs/specs/2026-09-05-unpack-resolve-and-close.md` §5.5): move the Trip to
+ * Unpack through the phase control, reach F5 through a real door — a phase
+ * sheet row, a trip-card CTA, and a band link all exist now, so nothing here
+ * stands in for a control the Quartermaster could not otherwise reach —
+ * resolve every Entry `BACK` through its pill's outcome sheet, watch the
+ * count reach `0 OPEN`, and tap the now-live `Close trip`.
  *
  * Offline-first is the product, not a resilience feature bolted to the side,
  * so the smoke test has to prove it rather than assume it: gear recorded with
@@ -93,7 +99,36 @@ function packingRow(page: Page, name: string) {
   return page.getByTestId('packing-row').filter({ hasText: name })
 }
 
-test('gear recorded offline reaches the depot, survives a reload, and syncs @production', async ({
+/**
+ * The unpack row drawing `name`. Unlike `packingRow` above, `UnpackRow`
+ * carries no fixed test id of its own — its outer element is
+ * `unpack-row-${entryId}`, one per Entry, because two Pieces of one
+ * per-person Entry each need a distinct id in PERSON mode
+ * (`app/src/screens/Unpack.tsx`). The tag-scoped attribute selector matches
+ * only that outer `<div>`; every sibling test id `UnpackRow` draws for its
+ * own name/meta/body/badge/cluster/rehomed segments is a `<span>` or a
+ * `<button>`, so a bare `[data-testid^="unpack-row-"]` would also catch
+ * those and pick the wrong element to filter by text.
+ */
+function unpackRow(page: Page, name: string) {
+  return page
+    .locator('div[data-testid^="unpack-row-"]')
+    .filter({ hasText: name })
+}
+
+/**
+ * Resolves one Entry `BACK` through its pill's outcome sheet (F6, spec
+ * §4.4) — the sheet stays open after a tap, so this closes it explicitly
+ * rather than leaving it standing over the next row's own tap.
+ */
+async function resolveBack(page: Page, name: string) {
+  await unpackRow(page, name).getByTestId('status-pill').click()
+  const sheet = page.getByRole('dialog', { name })
+  await sheet.getByRole('button', { name: /BACK/ }).click()
+  await sheet.getByRole('button', { name: 'Close' }).click()
+}
+
+test('the golden path: offline gear, find, a trip, packing and the close @production', async ({
   quartermaster,
 }) => {
   // Signed in and standing on the Depot — by joining locally, or from
@@ -232,4 +267,69 @@ test('gear recorded offline reaches the depot, survives a reload, and syncs @pro
   await expect.poll(() => unsyncedCount(page)).toBe(0)
   await page.reload()
   await expect(page.getByText('● 1/2 PIECES')).toBeVisible()
+
+  // ---- close the trip (S10) ------------------------------------------------
+
+  // Back to the Trip, exactly the door `pack an item` above already used.
+  await page.getByRole('link', { name: `‹ ${TRIP}` }).click()
+  await expect(page.getByRole('heading', { name: TRIP })).toBeVisible()
+
+  // The phase chip → SET PHASE → UNPACK. Every row is tappable, backwards
+  // included (`PhaseSheet`'s own footnote), so a Draft moves straight to
+  // Unpack in one tap — no `goto` stands in for this, because the chip is
+  // the one control that has ever moved a Trip's phase.
+  await page.getByTestId('phase-chip').click()
+  const phaseSheet = page.getByRole('dialog', { name: 'SET PHASE' })
+  await expect(phaseSheet).toBeVisible()
+  await phaseSheet.getByRole('button', { name: /UNPACK/ }).click()
+  await expect(page.getByTestId('phase-chip')).toHaveText(/UNPACK/)
+
+  // From the Trip screen it is already standing on, the `GEAR LIST` band's
+  // own `UNPACK ›` door — F5's one real entry point here (a trip-card CTA
+  // and a phase-sheet row are the other two, neither reachable from where
+  // this journey already stands without a redundant hop back to `/trips`).
+  await page.getByRole('link', { name: `Open unpack for ${TRIP}` }).click()
+  await expect(page.getByRole('heading', { name: 'Unpack' })).toBeVisible()
+
+  // Both Entries take an outcome (`unpackItems` counts every depot Entry
+  // regardless of packing status, not only the one piece marked `packed`
+  // above), so both have to resolve before `0 OPEN` is true and `Close
+  // trip` goes live.
+  await resolveBack(page, 'Zeltbahn')
+  await resolveBack(page, 'Feldflasche')
+
+  await expect(page.getByTestId('unpack-open-count')).toHaveText('0 OPEN')
+  const closeButton = page.getByRole('button', { name: 'Close trip' })
+  await expect(closeButton).toBeEnabled()
+  await closeButton.click()
+
+  // The close batch — the summed reduction, the floor at zero, and
+  // `trip.phase_moved` last — is real ops, so it leaves the outbox exactly
+  // as every other write in this journey does.
+  await expect.poll(() => unsyncedCount(page)).toBe(0)
+
+  // ---- assert the close -----------------------------------------------------
+
+  // The Trips list draws it as a closed ledger row, never an active card —
+  // `REOPEN` is `ClosedRow`'s own control, drawn nowhere else.
+  await page.getByRole('link', { name: 'Trips', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'CLOSED' })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: `Reopen ${TRIP}` }),
+  ).toBeVisible()
+
+  // And the gear's Whereabouts reads home again — Find, which the journey
+  // already knows how to drive.
+  await page.getByRole('link', { name: 'Find' }).click()
+  await expect(page.getByRole('heading', { name: 'Find' })).toBeVisible()
+
+  await page.getByRole('searchbox', { name: 'Search gear' }).fill('Zeltbahn')
+  const zeltbahn = page.getByRole('link', { name: 'Zeltbahn' })
+  await expect(zeltbahn).toBeVisible()
+  await expect(zeltbahn.getByText('⌂ HOME')).toBeVisible()
+
+  await page.getByRole('searchbox', { name: 'Search gear' }).fill('Feldflasche')
+  const feldflasche = page.getByRole('link', { name: 'Feldflasche' })
+  await expect(feldflasche).toBeVisible()
+  await expect(feldflasche.getByText('⌂ HOME')).toBeVisible()
 })
