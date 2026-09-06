@@ -2541,17 +2541,24 @@ moved while it was being built.
 - **The codebase's first cross-aggregate stamp comparison, and three
   consequences a call site would otherwise re-derive.** `outcomeStands`
   (`unpack.ts`) asks whether a `lost` outcome's own register stamp is later
-  than the Gear's `residence` register's — legitimate for the reason every
-  derived answer here is, that every replica holds identical registers with
-  identical stamps and so computes the identical standing. A Gear with no
-  `residence` register at all compares as earlier than everything, so a
-  `lost` outcome stands until somebody re-homes. The three consequences: **a
-  re-home settles the whole standing for that Gear**, never one unit of it,
-  because domain §6 refuses counted units a per-unit identity to say "one of
-  the two turned up" about; **two Trips can both hold a live lost outcome for
-  one Gear**, the units sum and the *latest* one names the Trip; and **a
-  later `back` on another Entry does not settle an earlier `lost`** — only a
-  later `gear.rehomed`, or that Entry's own outcome changing (S11), does.
+  than **both** the Gear's `residence` register's and the latest
+  **non-`lost`** outcome stamp recorded for that Gear anywhere — legitimate
+  for the reason every derived answer here is, that every replica holds
+  identical registers with identical stamps and so computes the identical
+  standing. Nothing to compare against on either side reads as *earlier than
+  everything*. The two settle routes are stories 3 and 11's and the domain
+  model's own sentence, *"a re-home, or a later trip bringing it `back`"*;
+  the spec shipped with only the first, and **ruling R35 widened it** (spec
+  §8.7) — otherwise the route F5's own hint names, the pill → `● BACK`,
+  settled nothing forever while the row body one tap away did, and the home
+  count stayed permanently short. The consequences: **either route settles
+  the whole standing for that Gear**, never one unit of it, because domain §6
+  refuses counted units a per-unit identity to say "one of the two turned up"
+  about; **two Trips can both hold a live lost outcome for one Gear**, the
+  units sum and the *latest* one names the Trip; and **the settle is per Gear,
+  by one predicate** — `consumed` and an outcome this build cannot name both
+  settle, a register cleared to an explicit `null` does not, and a `back` on
+  Mark's Piece ends Kim's.
 - **F17 overturned the `OUTCOME` dimension before a line of S10 existed, and
   story 13 actually finished at S9b** — see §8.5's own correction. The
   capability F17 declines to build, *list every unaccounted gear*, is the

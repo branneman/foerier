@@ -870,15 +870,22 @@ records what moved while it was being built, and
   go away.
 - **The codebase's first cross-aggregate stamp comparison, and three
   consequences that outlive the slice.** `outcomeStands` (`unpack.ts`) asks
-  whether a `lost` outcome's stamp is later than the Gear's own `residence`
-  stamp — legitimate because every replica holds identical registers with
-  identical stamps and so computes the identical standing. A re-home
-  settles the *whole* standing for a Gear, never one unit of it, because
-  domain §6 refuses counted units a per-unit identity; two Trips can both
-  hold a live lost outcome for one Gear, units summed and the **latest**
-  naming the Trip; and a later `back` on another Entry never settles an
-  earlier `lost` — only a later `gear.rehomed`, or that Entry's own outcome
-  changing (S11), does.
+  whether a `lost` outcome's stamp is later than **both** the Gear's own
+  `residence` stamp and the latest **non-`lost`** outcome stamp recorded for
+  that Gear anywhere — legitimate because every replica holds identical
+  registers with identical stamps and so computes the identical standing.
+  Both settle routes are the stories' and the domain model's own sentence,
+  *"a re-home, **or a later trip bringing it `back`**"*; the spec shipped
+  with only the first and **ruling R35 widened it** (spec §8.7), because
+  otherwise the route F5's own hint names — the pill → `● BACK` — settled
+  nothing, forever, while the row body one tap away did. Either way the
+  standing settles **whole**, never one unit of it, because domain §6 refuses
+  counted units a per-unit identity; and two Trips can both hold a live lost
+  outcome for one Gear, units summed and the **latest** naming the Trip. The
+  settle is per **Gear** — Mark's `back` ends Kim's Piece's standing — and the
+  rule is one predicate, "non-`lost`", so `consumed` and an outcome this build
+  cannot name both settle while a register cleared to an explicit `null` (which
+  reads *open*) does not.
 - **F17 overturned the `OUTCOME` dimension before a line of S10 existed, and
   story 13 actually completed at S9b, not here** —
   [§8.5](docs/architecture-design.md#85-where-story-13-attaches) is

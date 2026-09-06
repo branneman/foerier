@@ -1083,3 +1083,164 @@ tests exactly as they behave today.
   ride-along fact — which changes what the sheet is actually offering —
   should lead instead of trail is undecided; `HomePicker.tsx`'s own header
   states the composition rule but not this question.
+
+### 8.7 Ruling R35: a later Trip bringing it back settles the standing too — §3.5 is overturned
+
+§3.5 wrote the standing's comparison against **one** later fact, a re-home,
+and listed as its third consequence: *"A later `back` on another Entry does
+not settle an earlier `lost`. They are different units."* Three governing
+documents say otherwise, and none of them was amended when the spec was
+written:
+
+- `docs/user-stories.md` story 3: *"…until a later fact settles it — I Re-home
+  it, **or a later Trip brings it back**."*
+- `docs/user-stories.md` story 11: *"It is settled by the next thing I learn —
+  I Re-home it when it turns up, **or a later Trip brings it back**."*
+- `docs/domain-model.md`: *"The standing ends on the next fact about that
+  gear: a re-home, **or a later trip bringing it `back`**."* The glossary
+  carries the same clause.
+
+**The stories and the model are the authority; the spec yields.** The failure
+is the exact drift this slice exists to stop: a Counted gas canister owned ×3
+with ×1 `lost` on a closed Trip reads a home count of `×2`. A later Trip
+brings one home and the Quartermaster resolves it through the route F5's own
+hint names — the pill → `● BACK` — which emits `trip.outcome_set{back}` and
+nothing else. The standing persisted **forever**, the home count stayed
+permanently short, and gear detail read `▲ ×1 LAST SEEN: …` indefinitely.
+Meanwhile the row body one tap away (a re-home) *did* settle it, so two
+controls disagreed and only the un-hinted one was right.
+
+`outcomeStands` (`selectors/unpack.ts`) now takes a third argument: a `lost`
+outcome stands only while its stamp is later than **both** the Gear's
+`residence` stamp and the latest **non-`lost`** outcome stamp recorded for
+that same Gear, across every visible Trip, closed included — the same walk
+`unaccountedOf` already makes, now in two passes over one iteration because a
+settling outcome can sit anywhere in it relative to the report it settles.
+
+It is **symmetric with the rule already there**, not a new mechanism: a
+re-home settles the *whole* standing rather than one unit, because the domain
+deliberately refuses counted units a per-unit identity (domain §6), and a
+later `back` settling the whole standing is the same honest answer. It stays
+a **pure read** — no op type, no register, not a line of `reduce.ts`.
+
+Four details are stated in `outcomeStands`' and `unaccountedOf`'s own
+docstrings rather than left to a call site:
+
+- The settle is **per Gear**, not per Person and not per Trip.
+- **`consumed` settles too, and so does an outcome this build cannot name** —
+  the rule is one predicate, "non-`lost`", which is `countOfUnpack`'s own
+  reading of an unrecognised outcome as *resolved*, one register over.
+  Whether `consumed` *ought* to settle a standing is left as an **open
+  question for a design round**: no board reaches it, and the ruling's own
+  wording is "non-`lost`".
+- A register cleared to an explicit `null` settles nothing — it reads *open*,
+  and open is the absence of a resolution.
+- `rehomedSinceOutcome` passes `null` for the new argument on purpose, and
+  the argument is **required rather than defaulted** so a third caller cannot
+  inherit the narrow rule silently — which is how the narrow rule survived
+  review the first time.
+
+The test that pinned the old behaviour is **inverted with its reason
+attached**, not deleted, and joined by three: the stamp-direction case (an
+*earlier* `back` settles nothing), the headline two-Trip case above asserted
+through `whereabouts`' own home count, and the per-person case. Mutation
+verified both ways — reverting the widening fails three of them; making the
+settle unconditional on the stamp fails the fourth.
+
+### 8.8 Ruling R36: `closeTrip` gates on open outcomes
+
+`closeTrip` returned `[]` when the Trip `isClosed` and nothing else, so the
+domain's *"there is no override"* on closing lived entirely in two React
+components. Both gate correctly today, so nothing a Quartermaster can reach
+changes; what changes is what a **third** caller inherits — without the gate
+it picks up the anti-double-reduce guard for free and silently *not* the
+invariant. Two caveats are named in the docblock because they are what make
+gating there safe: a Trip a peer on an older build already moved to `closed`
+with outcomes open hits the `isClosed` check first and never reaches the new
+gate; and an **unrecognised** outcome counts as *resolved*, so a Trip a later
+build finished with an outcome this build cannot draw is not held hostage.
+Both are tested.
+
+### 8.9 Ruling R37: the home containment-cycle rate is floored; the trip side is debt
+
+`convergence.test.ts`'s charter-floor test now counts a fourth rate in the
+same 1000-run pass — a run is a hit when any one replica's
+`containmentView(…).brokenEdges` is non-empty — and floors it at 15. Measured
+across seven seeds: 35, 46, 36, 27, 40, 41, 34 per 1000. `arbTripRootSpec`'s
+own docstring used to end by noting that *no test floors this rate … nothing
+but this sentence would ever say so again*, which is precisely the shape the
+charter-floor test exists to stop.
+
+The **trip** side is deliberately not floored: 0–1 per 1000 across the same
+seven seeds, so a floor at 0 asserts nothing and a floor at 1 fails on four of
+them. The generator effectively never produces a trip-side containment cycle,
+and the convergence property never compares `tripContainmentView` across
+replicas at all — its only cross-replica containment assertion is over the
+home view, and its only trip-side cycle coverage is one hand-built scenario.
+That is the half of the duplicated traversal whose divergence would be
+**silent**. Recorded in `docs/technical-debt.md`; the measured table and the
+argument live in the test file's own docstring.
+
+### 8.10 Four smaller corrections, and one recorded rather than fixed
+
+- **`ReopenConfirm` gains a sentence when the Trip owes the Depot a
+  reduction** (finding I2). *"Closing cleared nothing"* is true of the Trip
+  and was misleading about the Depot. `consumedReductions`
+  (`selectors/unpack.ts`) is new: `closeTrip` sums it and this confirm asks
+  only whether it is empty, so the two cannot derive the question separately
+  and drift over `consumedCountOf`'s four exclusions. The
+  `close → reopen → close` double-reduction it warns about is now indexed in
+  `docs/technical-debt.md` beside its crash-window sibling — it is four taps
+  on one Device, not a crash window.
+- **The consumed stepper is withheld on a closed Trip** (finding I3). F5 is
+  reachable at every phase deliberately, and the block was live and lying
+  there in three ways at once: `OWNED ×4 → ×2 AT CLOSE.` reads the count the
+  close *already* reduced, `AT CLOSE` names an event that has happened, and
+  every raise emits an op that changes the Depot by nothing (`closeTrip`
+  returns `[]` once closed). Worse, the line is a *prediction of the
+  double-reduction*. Withheld, not greyed; the Entry's split stays legible on
+  the row's own meta. Every other write on the screen stays live — a phase
+  locks nothing.
+- **The container row's meta reads `N PACKED INSIDE`** (finding M1). One
+  container drew two different `INSIDE` numbers one tap apart: this one is
+  the **trip** subtree, transitive (what came home in the crate); the re-home
+  picker's `N INSIDE RIDE ALONG` is the **home** tree's direct children (what
+  moves when it is re-homed). Copy only — neither number changed. It is a
+  departure from the board's bare `12 INSIDE`.
+- **Gear detail builds one containment view for the whole screen** (finding
+  M4). Its `whereabouts` calls omitted `view` while a comment beside them
+  claimed the second call was free; `tripSlicesOf`'s memo covers the *trip*
+  slices only, so each call built a fresh O(depot) home view, as did both
+  `moving.insideCount` reads. One `useMemo` keyed on `state`, passed to all
+  four.
+- **`rehomedSinceOutcome` is left ungated on the outcome being `back`, and
+  the reason is written into its docstring** (finding M3). Settling a
+  standing from gear detail's `RESOLVE` while the Trip is still in `unpack`
+  makes the row read `▲ LOST` in the pill and `RE-HOMED` in the meta. That
+  pair is **two true facts rather than a contradiction**: `RESOLVE` emits
+  `gear.rehomed` alone (R30), so the Entry's outcome genuinely still says
+  `lost` — which is exactly what ruling F18's *"the number is history, the
+  colour is the standing"* requires — while the row genuinely did change
+  destination group, which is the segment's whole job (board §7: *"so the row
+  says why it sits under a room it did not leave from"*). Gating on `back`
+  would withhold the explanation precisely where the row moved rooms.
+
+### 8.11 An open question for the next design round: an over-claimed *and* unaccounted gear has no settle door
+
+`rowWhereabouts` states the **active** fact when a Gear is both over-claimed
+and unaccounted (`▲ 2 TRIPS`, F16(2)) — one glyph, one word, the fact about
+*now* beating the fact about last September. Gear detail follows: the
+over-claim footer is what draws, so the `RESOLVE` route that settles the
+standing is not reachable until the over-claim is resolved first.
+
+The standing itself is not hidden — the home row keeps its `▲` glyph, which
+`WhereaboutsCard` draws from the `unaccounted` prop alone, *independent* of
+which footer has the floor. What is withheld is the footer's own line
+(`▲ ×1 LAST SEEN: …`) and, with it, the `RESOLVE` button.
+
+It is **recoverable** — resolving the over-claim (removing an Entry, or
+lowering a Bring-count) brings the settle route back — and no board covers the
+pairing, so nothing is being fixed here. But the ordering is code-authored
+rather than drawn. A round should rule whether the two footers stack, whether
+the standing keeps its settle route beneath the over-claim's band, or whether
+today's precedence is right as it stands.

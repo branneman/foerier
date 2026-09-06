@@ -112,6 +112,41 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   A per-Trip-per-Gear "already reduced" register would close it cleanly and
   is outside S10's op catalogue. `shared/src/gestures.ts`'s own docblock on
   `closeTrip`, anchor: `A known, recorded residual risk`
+- **`close → reopen → close` double-applies the Consumed reduction, in four
+  taps on one Device.** `gear.owned_count_set` is absolute, not a delta, so
+  the second close recomputes `already-reduced − consumed` and subtracts it
+  again: owned 6 → 4 at the first close, → 2 at the second. Not a crash
+  window — `ReopenConfirm` is a shipped, ordinary route out of `closed`, and
+  the reopen does not offer the reduction back. `ReopenConfirm` now states
+  the first half in words before the tap; the write itself is unfixed, and
+  closing it needs the same per-Trip-per-Gear "already reduced" register its
+  crash-window sibling above waits on (a stamp comparison reads as a false
+  negative — ruling R28). `shared/src/gestures.ts`'s own docblock on
+  `closeTrip`, anchor: `Close → reopen → close.`
+- **The property tier never meets a trip-side containment cycle, and never
+  compares the trip tree across replicas at all.** `arbOpSets`'s generator
+  produces a `tripContainmentView(…).brokenEdges` hit in **0–1 runs per
+  1000** across seven seeds (against 27–46 for the home tree, now floored at
+  15 — ruling R37), so a floor at 0 asserts nothing and a floor at 1 fails on
+  four of them. Worse, the convergence property's only cross-replica
+  containment assertion is over the **home** view; the trip tree's cycle
+  break — `sync-protocol.md` §3.6's deterministic tie-break, and the half of
+  that duplicated traversal whose divergence would be **silent**, two Devices
+  simply drawing different trees — is covered by one hand-built scenario and
+  nothing else. Closing it means changing what `arbTripResidence` draws, or
+  how often, which moves every other measured rate in that file.
+  `shared/src/convergence.test.ts`'s own docblock on `HOME_CYCLE_FLOOR`,
+  anchor: `The trip side is deliberately NOT floored`
+- **`moving.insideCount` counts direct home children while a re-home
+  relocates the whole subtree.** A crate holding a stuff-sack holding two
+  items discloses `1 INSIDE RIDE ALONG` and moves three, so the number
+  understates the write at exactly the moment the line exists to disclose it.
+  Three call sites — gear detail's MOVE, gear detail's `RESOLVE`, and F5's
+  re-home — the first pre-existing, the other two replicated by S10. The fix
+  is a subtree size (`containment.ts` already walks one), and it changes a
+  drawn number, which is why it is recorded rather than taken at the end of a
+  slice. `app/src/components/HomePicker.tsx`'s own doc on `moving.insideCount`,
+  anchor: `Known to undercount, recorded rather than fixed`
 - **The closed ledger's `1 LOST` colour can read muted while a unit is still
   genuinely unaccounted for.** `tripHasUnaccounted`
   (`app/src/household/trips.ts`) asks `unaccountedOf`'s finished map by trip
