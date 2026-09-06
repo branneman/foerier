@@ -828,6 +828,76 @@ unconditionally, so every `GROUP BY` in the app grew a stop no board draws. One
 clause is a label and keeps its unterminated S3 form; two clauses are two
 sentences and both take one.
 
+**S10, unpack: resolve and close, has landed** (story 11a; advances story 32,
+the close gate, and story 3, the *unaccounted for* standing). Two op types —
+`trip.outcome_set`, `trip.consumed_count_set` — two cross-aggregate gestures
+(`shared/src/gestures.ts`: re-home on the spot, and the consumed reduction
+once at the close), one new screen (F5, `/trips/:id/unpack`), and **no
+endpoint, no migration and no change to the slicing engine**. This is the
+slice the whole tool exists for: until now a Trip could be built, packed and
+driven to the Alps, and when the household came home the Depot had no way to
+learn what came back. See
+[its spec](docs/specs/2026-09-05-unpack-resolve-and-close.md), whose §8
+records what moved while it was being built, and
+[§12.17](docs/architecture-design.md#1217-consequences-of-s10-unpack-resolve-and-close).
+
+**Six things about S10 are worth knowing before touching outcomes:**
+
+- **F5 gets its own spine, `unpackItems`, and ruling A5's container exclusion
+  does not extend to it.** A5 excluded a container from `packing.ts`'s
+  arithmetic because a journey stands in for a status there and a
+  denominator holding one could never be reached — that argument is about
+  `status`, not about `outcome`, and a container has an `outcome` register
+  as plainly as any other Entry. So `unpackItems` = `packingItems` −
+  trip-only Entries (invariant 18: never entered the Depot, take no
+  outcome) + containers, `units: 1`. The two boards' twin `61` was a mock
+  coincidence; a real Trip reads `56/62 RESOLVED` here where F4 reads
+  `48/61 PIECES`.
+- **Absent and an explicit `null` both read open, on both entity paths, and
+  only `outcomeOf` / `pieceOutcomeOf` say so** — `ownerOf`'s rule for a
+  sixth and seventh time. The fold conflates nothing: an absent register
+  means no op ever addressed this outcome, a `null` means one explicitly
+  cleared it, and every reader still treats them alike.
+  `consumedCountOf` adds a third, different default one register over: an
+  absent Consumed-count reads the Entry's own **Bring-count**, never `1` and
+  never `null`, because the stepper opens there and every surface has to
+  read the identical number the tap that resolved `CONSUMED` just produced.
+- **The claim gate has exactly one home, `claim.ts`, stated there since S7
+  before outcomes existed.** Recording an outcome releases the claim
+  mid-pass, the moment the same read that computes `overClaims` sees it —
+  before the Trip ever closes. No op resolves an over-claim at S10 that did
+  not already at S7; an outcome is simply a second thing that can make one
+  go away.
+- **The codebase's first cross-aggregate stamp comparison, and three
+  consequences that outlive the slice.** `outcomeStands` (`unpack.ts`) asks
+  whether a `lost` outcome's stamp is later than the Gear's own `residence`
+  stamp — legitimate because every replica holds identical registers with
+  identical stamps and so computes the identical standing. A re-home
+  settles the *whole* standing for a Gear, never one unit of it, because
+  domain §6 refuses counted units a per-unit identity; two Trips can both
+  hold a live lost outcome for one Gear, units summed and the **latest**
+  naming the Trip; and a later `back` on another Entry never settles an
+  earlier `lost` — only a later `gear.rehomed`, or that Entry's own outcome
+  changing (S11), does.
+- **F17 overturned the `OUTCOME` dimension before a line of S10 existed, and
+  story 13 actually completed at S9b, not here** —
+  [§8.5](docs/architecture-design.md#85-where-story-13-attaches) is
+  corrected. `open` is undefined for every Gear on no active Trip and
+  restates TRIP membership where TRIP already defines it, and `lost` alone
+  is a one-value dimension over a glyph the `WHEREABOUTS` column already
+  draws — the case for a column, not a chip. The capability declined: *list
+  every unaccounted gear* is that column's own sort at Desktop and Find per
+  Gear, and nothing on the phone.
+- **`patterns.md` §2.3 gains its one stated exception, and it lives in
+  `GearDetail`'s settle handler, not in the shared gesture.** F5's own
+  unconditional `gear.rehomed` (`reHomeOnTheSpot`) is the rule's
+  *complement*, not its exception — that write is always paired with a
+  genuine outcome change. `GearDetail`'s `RESOLVE` route is the real one: it
+  writes `gear.rehomed` even when the picked home equals the current one,
+  deliberately unguarded by `sameResidence`, because writing the *same*
+  home on a later clock is precisely the fact that ends the unaccounted
+  standing.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**

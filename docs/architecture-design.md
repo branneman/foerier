@@ -424,7 +424,8 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 ### 8.3 The slices
 
-**Landed so far: S0, S1, S2a, S2b, S3, S3.5, S4, S6, S5, S7, S8 and S9a**, plus
+**Landed so far: S0, S1, S2a, S2b, S3, S3.5, S4, S6, S5, S7, S8, S9a, S9b and
+S10**, plus
 two pieces of work carrying no slice number (the Radix conversion, §12.9; Tier 4
 and 5 against production, §12.8). S2 was the first slice to need the op log,
 the reducer, and `/sync`, and it landed in **two halves rather than one** —
@@ -730,8 +731,9 @@ Whereabouts, the quantity split), 13 (`CONTAINER`).* See
   the two halves shipped close together. With S10 still to come, S9 is the last
   slice where the Depot can drift.
 
-**S10 — Unpack: resolve and close.** *Delivers 11a. Advances 32 (close gate), 3
-(unaccounted for).*
+**S10 — Unpack: resolve and close. Landed.** *Delivers 11a. Advances 32
+(close gate), 3 (unaccounted for).* See
+[its spec](specs/2026-09-05-unpack-resolve-and-close.md) and §12.17.
 
 See §8.4 for why story 11 is two slices and why the seam falls here.
 
@@ -883,7 +885,6 @@ follow-up:
 | Person; Ownership (Personal / Shared) | S4 |
 | Trip membership ("Gear not in any Trip") | S7 |
 | Container (home) | S9b |
-| Outcome (`open`, `lost`) | S10 |
 
 **Trip membership landed with S7**, the fifth dimension the table carries —
 see §12.13 for what a cross-aggregate dimension cost the engine that S3 built
@@ -895,8 +896,21 @@ filter is a scope and reaches every container ancestor at any depth, the
 grouping is a partition and files by the immediate holder (`design/README.md`
 §5f D5). `SliceBar`, `ValueMenu` and `SortGroupSheet` needed no edit for the row
 itself — S3's altitude claim, tested by the sixth dimension and held — and the
-one line the asymmetry did cost is in §12.16. **Only `Outcome` is left**, so
-story 13 completes at S10 as planned.
+one line the asymmetry did cost is in §12.16.
+
+**`Outcome` never joined the table — S10's own design round overturned it
+before a line of the slice existed.** Ruling F17
+(`design/README.md` §5h) retires it on the same two-part argument ruling B4
+used one slice earlier to retire `Packing status`: story 13's own criterion
+list never names it; `open` is undefined for every Gear on no active Trip and
+restates TRIP membership exactly where TRIP already defines it; and `lost`
+alone is a one-value dimension over a glyph the `WHEREABOUTS` column already
+draws — the case for the column, not for a chip
+([spec §3.7](specs/2026-09-05-unpack-resolve-and-close.md#37-what-s10-does-not-touch)).
+The capability it declines to build is named rather than hidden: *list every
+unaccounted gear* is the `WHEREABOUTS` column's own sort at Desktop and Find
+per Gear, and nothing on the phone. So the table finished one slice earlier
+than §8's plan expected, at **S9b**.
 
 **S8 added no row.** Its first draft did — `PIECES BY PERSON · S8`, read off
 `Components §04`'s dashed rung the way `TRIP · S7` had been read a slice
@@ -914,8 +928,8 @@ segmented `CONTAINER · PERSON · ALL` and its `○ LEFT` pill. `Container` stay
 and gains its meaning: the **home** container (ruling B4b), and it groups as
 well as filters. Both rulings are in `design/README.md` §5e.
 
-Story 13 is therefore **complete at S10**, having been touched by **five**
-slices — S3, S4, S7, S9, S10 — and owned by one. S9 is the odd one: it is the
+Story 13 is therefore **complete at S9b**, having been touched by **four**
+slices — S3, S4, S7, S9 — and owned by one. S9 is the odd one: it is the
 only slice that contributed a **capability** as well as a dimension, and it
 split them across its two halves — S9a built the screen that answers the
 narrowing on its own controls, and S9b added the `Container` row. Story 4's
@@ -2473,11 +2487,110 @@ all nine of its open decisions **before** a line of it existed.
   Entry's Bring-count and the nested container's `+1` are code-authored and
   want a ruling; recorded in `design/README.md` §1.
 - **Story 13 is one row from complete, and the `WhereaboutsCard` trap that S2b
-  laid for this slice is sprung and closed.** §8.5's table has `Outcome` at S10
-  and nothing else; `HOME_LABEL` is no longer hardcoded inside the card's map
-  and `key={slice.kind}` is a composite that survives two active Trips, which is
-  the debt entry S2b opened *because it saw the trap coming* and could not close
-  from where it stood. What S9b still does not build is story 3's last clause —
-  `lost` reading as *unaccounted for* — which needs an unpack outcome and is
-  S10's. Between the two slices a Piece row can state a Trip and not yet an
-  outcome, which `design/README.md` §6 says in as many words.
+  laid for this slice is sprung and closed.** §8.5's table had `Outcome` at S10
+  and nothing else **at the time this slice landed**; `HOME_LABEL` is no longer
+  hardcoded inside the card's map and `key={slice.kind}` is a composite that
+  survives two active Trips, which is the debt entry S2b opened *because it saw
+  the trap coming* and could not close from where it stood. What S9b still does
+  not build is story 3's last clause — `lost` reading as *unaccounted for* —
+  which needs an unpack outcome and is S10's. Between the two slices a Piece row
+  can state a Trip and not yet an outcome, which `design/README.md` §6 says in
+  as many words. **The `Outcome` row itself never landed** — S10's own design
+  round overturned it before a line of the slice existed (ruling F17, §12.17),
+  so this slice, not S10, turns out to be where story 13's dimension table
+  actually finished (§8.5).
+
+### 12.17 Consequences of S10: unpack, resolve and close
+
+Two op types, no endpoints, no migration, and — F17 having overturned the
+`OUTCOME` dimension §8.5 had once assigned to it — the slicing engine
+untouched (§8.5). See its
+[spec](specs/2026-09-05-unpack-resolve-and-close.md), whose §8 records what
+moved while it was being built.
+
+- **`unpack.ts` is deliberately not `packingItems`'s spine, and the difference
+  is the arithmetic, not a preference.** `unpackItems` = `packingItems` −
+  trip-only Entries (invariant 18: they never entered the Depot and take no
+  outcome) + containers (ruling A5 excluded a container from the *packing*
+  arithmetic because a journey stands in for a status; `outcome` is a third
+  register and a container has it as plainly as any other Entry). The two
+  boards' twin `61` was a mock coincidence — the Trip reading `48/61 PIECES`
+  on F4 reads `56/62 RESOLVED` here.
+- **The numerator is `resolved`, not `back` — A5's own fault caught one slice
+  later.** A bar counting `BACK` alone can never fill on a Trip with one
+  `lost` item, so it would measure a distance the Quartermaster cannot close;
+  the gate is invariant 18's `open = 0`, and `open` is `total − resolved`,
+  never a third sum. A `consumed` Counted Entry splits — its whole `units`
+  count toward `resolved` because the *decision* is whole, while
+  `consumedCountOf`'s answer and the remainder split `consumed` / `back` — and
+  an unrecognised outcome counts as resolved, into none of the three named
+  buckets, so the three can sum to less than `resolved`: never invent, and
+  prefer the visible failure to the silent one, `nextStatus`'s rule one
+  register over.
+- **The claim gate lives inside `claim.ts` and nowhere else — stated there
+  since S7, before outcomes existed.** Recording an outcome releases the claim
+  the moment the same read that computes `overClaims` sees it, mid-pass and
+  before the Trip ever closes: `claimsByGear` skips an Entry whose `outcomeOf`
+  is not `null`, and `claimFor`'s per-person branch drops any Piece whose
+  `pieceOutcomeOf` is no longer `null` — except on a per-person **container**
+  Entry, whose claim stays Entry-level for the identical reason its outcome
+  does (ruling R10/R11: there is no per-Piece residence on a container to
+  make a per-Piece release physically coherent). No op resolves an over-claim
+  at S10 that did not already at S7; an outcome is simply a second thing that
+  can make one go away.
+- **The codebase's first cross-aggregate stamp comparison, and three
+  consequences a call site would otherwise re-derive.** `outcomeStands`
+  (`unpack.ts`) asks whether a `lost` outcome's own register stamp is later
+  than the Gear's `residence` register's — legitimate for the reason every
+  derived answer here is, that every replica holds identical registers with
+  identical stamps and so computes the identical standing. A Gear with no
+  `residence` register at all compares as earlier than everything, so a
+  `lost` outcome stands until somebody re-homes. The three consequences: **a
+  re-home settles the whole standing for that Gear**, never one unit of it,
+  because domain §6 refuses counted units a per-unit identity to say "one of
+  the two turned up" about; **two Trips can both hold a live lost outcome for
+  one Gear**, the units sum and the *latest* one names the Trip; and **a
+  later `back` on another Entry does not settle an earlier `lost`** — only a
+  later `gear.rehomed`, or that Entry's own outcome changing (S11), does.
+- **F17 overturned the `OUTCOME` dimension before a line of S10 existed, and
+  story 13 actually finished at S9b** — see §8.5's own correction. The
+  capability F17 declines to build, *list every unaccounted gear*, is the
+  `WHEREABOUTS` column's own sort at Desktop and Find per Gear, and nothing on
+  the phone.
+- **`patterns.md` §2.3 gains its one stated exception, and it belongs to
+  `GearDetail`'s settle handler, not to `reHomeOnTheSpot`.** F5's own row
+  re-homes unconditionally too — `reHomeOnTheSpot` always emits
+  `gear.rehomed`, whatever the residence — but spec §1.5 calls that the
+  rule's *complement*, not its exception, because that write is always paired
+  with a genuine outcome change. `GearDetail`'s `RESOLVE` route is the real
+  exception: its `onSelect` emits a bare `gear.rehomed`, deliberately **not**
+  guarded by `sameResidence` the way its own MOVE handler is, because writing
+  the *same* home on a later clock is precisely the fact that ends the
+  standing (`outcomeStands`) — the `● NOW — FOUND HERE` row (`nowLabel`) is
+  tappable for exactly that reason.
+- **`RESOLVE` was drawn as a second caller of `reHomeOnTheSpot` and corrected
+  during review (ruling R30) — §1.5 and §4.6 are not rewritten, spec §8.4
+  is.** The standing is a selector reading an outcome, never a stored fact
+  (`unaccountedOf`), so ending it by rewriting the very outcome the selector
+  reads fixes the thermometer, not the temperature; it would also edit a
+  **closed** Trip's history from a Depot screen with no reopen (invariant 19),
+  make ruling F18's *muted-but-still-`N LOST`* state unreachable, and — R31 —
+  there is no reliable way to pick *which* Entry to edit when two Entries
+  share a Gear on the same Trip with different outcomes. `reHomeOnTheSpot`
+  keeps its one caller, F5's own row.
+- **`closeTrip`'s guard overturned its own earlier ruling (I1), and the
+  overturn is a lesson about no-crash paths, not just crash ones.** I1 kept
+  the reduction loop running regardless of the Trip's own phase, reasoning
+  that a Device dying mid-batch needed a retry to still apply it. Review
+  found that guard produces exactly the wrong pair on an ordinary, no-crash
+  double tap: `gear.owned_count_set` is absolute, so a second call reads the
+  **already-reduced** owned count and subtracts the Consumed-count again,
+  silently. `closeTrip` now returns `[]` unconditionally once
+  `isClosed(trip)`, before computing a single reduction, and F5's close card
+  gates its button and hint on the same fact rather than drawing them
+  disabled (ruling R27 Layer A; `patterns.md` §3.7, *withheld, not greyed*).
+  Two narrower paths — a crash between the reduction op landing and the phase
+  move, and close → reopen → close — still double-reduce and are recorded
+  rather than patched (`docs/technical-debt.md`; a stamp-comparison fix was
+  considered and rejected as a worse false-negative, ruling R28): S11's
+  reopen inherits the second.

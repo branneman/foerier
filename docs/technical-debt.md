@@ -254,11 +254,12 @@ them looking for work is the thing this section exists to stop.
   learns nothing. Blocked on a board: no frame draws a refused write.
   [`patterns.md`](patterns.md) §2.5, anchor:
   `read by no screen`
-- **`ui/`'s `Popover` is unbuilt, has four waiting callers, and no board
+- **`ui/`'s `Popover` is unbuilt, has six waiting callers, and no board
   draws one.** §4a's desktop tag picker, the slice bar's `ValueMenu`, S8's
-  Piece picker and S9a's Piece status sheet are each described in board prose
-  as *sheet below Split, popover from Split up*, and all four are approximated
-  by `Sheet`'s `desktopCard` meanwhile. **That prose is the whole of the
+  Piece picker, S9a's Piece status sheet, and — since S10 — the outcome sheet
+  and its roster variant are each described in board prose as *sheet below
+  Split, popover from Split up*, and all six are approximated by `Sheet`'s
+  `desktopCard` meanwhile. **That prose is the whole of the
   specification.** The bundle contains no popover artboard: nothing states a
   side, an alignment, an offset, a width, collision behaviour or whether it
   carries an arrow, and the only popover token in `Foundations` is the
@@ -307,6 +308,28 @@ every one of them gets more expensive per slice.
   already compute them. `TripCard` has the same shape of debt at one read.
   [`patterns.md`](patterns.md) §5.2, anchor:
   `computes its own groups`
+- **`sameResidence` never moved to `shared/` beside its twin
+  `sameTripResidence`.** S9b hoisted `sameTripResidence` out of
+  `PackPicker.tsx` into `shared/src/selectors/packing.ts` so both worlds read
+  one definition; `sameResidence` is the identical comparison over the home
+  world and still lives in `app/src/components/HomePicker.tsx`, called three
+  times inside that file's own render and once more from `GearDetail.tsx`'s
+  MOVE guard. Nothing is wrong today — both worlds still agree, because
+  neither comparison is duplicated a second time anywhere else — but the S9b
+  fix exists precisely because a duplicate drifted once already.
+  `HomePicker.tsx`'s own header, anchor: `` `sameTripResidence` set ``
+- **`HomePicker` holds its own MOVE confirm; every other picker leaves the
+  decision to its caller.** `patterns.md` §4.3's rule — a picker is pure
+  selection, and the caller decides whether a confirm stands between the pick
+  and the write — holds for `PackPicker`'s `ContainerMoveConfirm` but not for
+  `HomePicker`: its `Confirm` is drawn inside the sheet itself, switched on by
+  the caller-supplied `moving.confirm` flag rather than by the caller's own
+  JSX. Lifting it out is more than a cut-and-paste: the confirm's title names
+  the destination the picker just resolved
+  (`` `Move ${moving.name} to ${pending.label}?` ``), a fact only the picker
+  holds today, so a caller-owned confirm needs that label reported back
+  through `onSelect` or a second callback before the sheet can lose its own
+  copy. `HomePicker.tsx`, anchor: `MOVE's confirmation. Not on the board`
 - **The mono-caps label is the most-copied rule in the codebase, and the
   small sizes have no token.** Seventy-six uppercase-label rules across
   twenty-nine modules, nineteen carrying the full three-line recipe verbatim;

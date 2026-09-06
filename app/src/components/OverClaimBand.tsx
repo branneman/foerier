@@ -55,8 +55,12 @@ import styles from './OverClaimBand.module.css'
  * Amendment ruling I: a control that emits inside a cancellable confirm makes
  * `Cancel` state something false — tapping `REMOVE HERE` inside the activation
  * sheet and then cancelling left the Entry gone while the phase never moved.
- * So the two preview sheets render the block facts-only and **the standing
- * band is the only surface that settles**.
+ * So the two preview sheets render the block facts-only — and, since S10, F5
+ * (`Unpack.tsx`) renders it a third way, through `OverClaimGroups` directly
+ * rather than `OverClaimBand`, because F5 lists the gear list and is not its
+ * editor (spec §4.9). **`OverClaimBand` is still the only surface that
+ * settles**; the fact below is about that one component, not about how many
+ * places render the block facts-only, and that count is now three.
  *
  * Grouped into one prop rather than five so the type system enforces
  * all-or-nothing: there is no such thing as a row that can remove but not
@@ -108,7 +112,12 @@ export interface SettleRoutes {
 export interface OverClaimBandProps {
   readonly tripId: string
   readonly overClaims: readonly OverClaim[]
-  /** The band always settles — it is the only surface that does (ruling I). */
+  /**
+   * The band always settles — it is the only surface among the block's
+   * renderers that does (ruling I). A third facts-only renderer, F5's
+   * `Unpack.tsx` (S10), joined the first two — `ActivationConfirm` and
+   * `ReopenConfirm` — without touching this component at all.
+   */
   readonly settle: SettleRoutes
 }
 

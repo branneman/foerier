@@ -64,6 +64,17 @@ is stated in exactly one selector, which every reader calls:
 | Entry `bring_count` on Counted | `1` | `bringCountOf` — `entry.ts` |
 | Gear `residence` (home) | loose | `residenceOf` — `containment.ts` |
 | Gear `owned_count` on Counted | `1` | `ownedCountOf` — `depot.ts` |
+| Entry / Piece `outcome` | open | `outcomeOf`, `pieceOutcomeOf` — `unpack.ts` |
+| Entry `consumed_count` on Counted | the Entry's own Bring-count | `consumedCountOf` — `unpack.ts` |
+
+**S10 adds three facts to this table, not two.** The `outcome` row folds two
+selectors into one line, the way the `status` row above it already does for
+Entry and Piece — `outcomeOf` and `pieceOutcomeOf` are `ownerOf`'s rule for a
+sixth and seventh time. `consumedCountOf` is a third, and `unpack.ts`'s own
+header says so in as many words: it reads an absent register as the Entry's
+Bring-count, never `1` and never `null`, "not the two its own constraints
+announced" — a reader who counted only the new row would miss the one hiding
+inside it.
 
 The fold conflates nothing — absent and explicit stay different facts about the
 log — but every *reader* treats them alike, and a call site that re-derives the
@@ -128,7 +139,10 @@ Gear's Kind; `stage` and `status` both fold on a container Entry and `statusOf`
 / `stageOf` each return `null` for the other's kind; `trip.entry_moved` on a
 per-person Entry is **fold-but-ignore** and `entryResidenceOf` is the gate; and
 an owned-count folds on any Gear while `ownedCountOf` (`depot.ts`) gates on the
-Gear's own Kind, which is invariant 6 read out rather than enforced.
+Gear's own Kind, which is invariant 6 read out rather than enforced; and a
+Consumed-count folds on any Entry while `consumedCountOf` (`unpack.ts`) gates
+on both the Entry's container-ness and the Gear's Kind, `bringCountOf`'s
+identical argument one register over.
 
 *Drift symptom:* a reducer branch reading `state.gear[…]` to decide whether to
 write a Trip register.
@@ -256,6 +270,19 @@ own stamp); everywhere since it is invisible and exactly as wrong. So:
   §1.3](sync-protocol.md)), `People`'s and `HomePicker`'s renames.
 - **A pure picker's caller suppresses a selection equal to the current
   value** — see §4.3.
+
+**One stated exception.** `GearDetail`'s unaccounted-standing settle route
+(`resolveOpen`'s `HomePicker`, `nowLabel="● NOW — FOUND HERE"`) writes
+`gear.rehomed` even when the picked residence equals the Gear's current
+home, deliberately not guarded by `sameResidence` the way the screen's own
+MOVE handler two paragraphs up is. Here the write is not a restatement of a
+value — it is a **new assertion about now**: `outcomeStands` (`unpack.ts`)
+reads the standing off a stamp comparison between the `lost` outcome and the
+Gear's `residence` register, so writing the *same* home on a later clock is
+precisely the fact that ends it. `reHomeOnTheSpot`'s own unconditional
+`gear.rehomed` (F5's row) is not a second exception — spec §1.5 calls it the
+rule's *complement*, because that write is always paired with a genuine
+outcome change, never offered alone against an unchanged residence.
 
 There is no helper for this in `authoring.ts`: every builder is a pure
 payload constructor, and the comparison is spelled at each site. That is the
@@ -422,17 +449,29 @@ between the S3-era cards and the S9 card, which is a board question.
 ### 4.3 A picker is pure selection; the caller suppresses and decides
 
 `PackPicker`, `HomePicker`, `OwnerPicker`, `ParticipantPicker`, `TagPicker`,
-`ValueMenu`, `SortGroupSheet` report every pick, the current one included,
-and hold no business rule. The **caller** compares against the current value
-(`sameTripResidence`, `sameResidence` are exported for exactly that), decides
-whether a confirm stands between the pick and the write (`Packing`'s
-container-move confirm; `GearDetail`'s move confirm), and closes the picker.
-The `● NOW` mark is the picker's only knowledge of the current value, and it
+`ValueMenu`, `SortGroupSheet` report every pick, the current one included.
+The **caller** compares against the current value (`sameTripResidence`,
+`sameResidence` are exported for exactly that) and closes the picker.
+`PackPicker`'s own container-move confirm is the caller's
+(`ContainerMoveConfirm`, rendered by `Packing.tsx`): the sheet reports the
+pick and nothing stands between it and the caller's own decision. The `● NOW`
+mark is otherwise every picker's only knowledge of the current value, and it
 is a mark, not a gate.
+
+**`HomePicker` is the one picker that does not hold to "no business rule."**
+Its own MOVE confirm is drawn **inside** the sheet, gated by the
+caller-supplied `moving.confirm` flag (default `true`) rather than by the
+caller's own JSX — `GearDetail`'s move confirm is this internal one, not a
+sibling component the screen renders itself. Lifting it out to the callers is
+recorded as debt (`technical-debt.md`), and is more than it looks: the
+confirm's title names the destination the picker just resolved
+(`` `Move ${moving.name} to ${pending.label}?` ``), a fact only the picker
+holds today.
 
 *Departures:* who closes after a pick is decided per component — `PackPicker`
 and `PhaseSheet` close themselves, the rest are closed by the caller.
-*Argued in:* `PackPicker.tsx`'s header; [§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
+*Argued in:* `PackPicker.tsx`'s header; `HomePicker.tsx`'s header;
+[§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
 
 ### 4.4 A confirm is facts-only; the standing band is the only surface that settles
 

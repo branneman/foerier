@@ -1011,3 +1011,75 @@ unchanged and still correct there — see the corrected docstring in
 does. §1.5 and §4.6 above are left as written, per this spec's own §8 rule:
 what changed is recorded here, not edited back into the sections it
 corrects.
+
+### 8.5 §5.5 undercounts by one: the leg resolves both depot Entries, not one
+
+§5.5 says the leg "resolves the one packed Entry `BACK`." That undercounts by
+one, and §5.5 is left as written per this spec's own §8 rule.
+
+The golden-path Trip carries two depot Entries, `Zeltbahn` and `Feldflasche`;
+only `Zeltbahn` gets one Piece marked `packed` during the *pack an item* leg
+— `Feldflasche` never sees a pill before Unpack. `unpackItems` (§3.1) counts
+every non-trip-only depot Entry regardless of its packing status, container
+or not, so the count at Unpack reads `2 ENTRIES` open and both must resolve
+`BACK` before `0 OPEN` is true and `Close trip` goes live. `test/e2e/depot.spec.ts`'s
+own leg already does this — `resolveBack(page, 'Zeltbahn')` then
+`resolveBack(page, 'Feldflasche')` — and its own docstring already says
+"resolve every Entry `BACK`", plural, matching the fixture rather than §5.5's
+singular. Nothing in the built leg is wrong; only §5.5's own sentence about
+it undercounted.
+
+### 8.6 Five renderings the code took because no board reached them
+
+Each is a small, honest rendering decision no board reached, already flagged
+as such in the code's own docstrings while it was being built. Each is
+recorded here — and in `docs/design/README.md`'s screen 7 — for the next
+design round to meet rather than to re-derive from the shipped behaviour.
+None blocks anything; none is a defect. All five are pinned by their own
+tests exactly as they behave today.
+
+- **A per-person gear's one-slot surfaces state no quantity when it is
+  partly unaccounted for.** `unaccountedPrefix` (`selectors/whereabouts.ts`)
+  gives Counted gear its own `×N` — F16(2)'s own exception — but a
+  per-person standing draws no count on the Depot's `WHEREABOUTS` column at
+  all, because the Depot's QTY column already reads `—` for per-person and
+  no slot on that row carries a count to state one against. Named in the
+  function's own docstring as "a real gap F16 never reached … a design
+  question, not a coding one."
+- **`×0 BACK` is the default rendering for a consumed Counted Entry whose
+  stepper was never touched, and an empty container row reads `0 INSIDE`.**
+  `consumedCountOf` reads an absent register as the *whole* Bring-count
+  (F9: the stepper opens there because "all of it used up is the ordinary
+  case"), so tapping `CONSUMED` and never touching the stepper reads `×N
+  CONSUMED · ×0 BACK` on the very next render — the ordinary case, not an
+  edge one. Neither string is drawn by any frame; both are pinned by
+  `Unpack.test.tsx` as they behave today (`returnPathMeta`, `Unpack.tsx`).
+- **PERSON mode omits a trip-only Entry entirely, while the sibling packing
+  screen lists it under `Shared`, one tap away on the same Trip.**
+  `unpackItems` excludes trip-only Entries before `personGroups` ever sees
+  them (invariant 18), so the omission is a *spine* fact, not a partition
+  one — ruling R20 keeps today's behaviour rather than inventing a
+  placement and a slot treatment (a pill? `CLEARS AT CLOSE` text, which
+  Task 13's cluster slot is not built for?) no board has drawn.
+  `personGroups`'s own docstring in `Unpack.tsx`.
+- **A Single gear with no home makes the outcome sheet's accessible
+  description collapse to the bare word `OUTCOME`.** No board frame draws
+  this sheet for anything but a Counted Entry, so the fully-Loose case for
+  every other Kind — a Single, an unrecognised Kind, an unsynced Gear, a
+  per-person container's Entry-level outcome — is code-authored: `Sheet`'s
+  own `description` is what a screen reader hears right after the title,
+  and it is exactly the word `OUTCOME` with nothing after it.
+  `OutcomeSheet.tsx`'s own `fact` computation; pinned by
+  `OutcomeSheet.test.tsx`.
+- **The container context line on the re-home and settle pickers is a
+  composite of two independently-drawn board phrases, and no frame draws
+  the combination.** The board draws F8's own re-home sentence (`RE-HOMING
+  {name} · PICKING A HOME MARKS IT BACK`) and, separately, MOVE's ride-along
+  clause (`MOVING {name} · {N} INSIDE RIDE ALONG`, §3c) — never a frame with
+  both a caller sentence *and* a ride-along count together. `HomePicker`
+  appends `moving`'s ride-along clause after whatever `context` string the
+  caller supplies, so today's shipped order trails it: `RE-HOMING DUFFEL ·
+  PICKING A HOME MARKS IT BACK · 2 INSIDE RIDE ALONG`. Whether the
+  ride-along fact — which changes what the sheet is actually offering —
+  should lead instead of trail is undecided; `HomePicker.tsx`'s own header
+  states the composition rule but not this question.

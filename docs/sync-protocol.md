@@ -677,6 +677,26 @@ container's own residence register is the one every reader consults.
 | `trip.outcome_set` | `{entry_id, person_id?, outcome: "back"｜"consumed"｜"lost"｜null}` | Sets the unpack outcome on an Entry, or on one Piece when `person_id` is present. `null` clears it back to **open**. Recording an outcome **releases the claim** immediately, mid-pass (§5.2) | Unpack outcome recorded / changed / cleared | 11 |
 | `trip.consumed_count_set` | `{entry_id, count: int ≥ 0}` | Sets the Consumed-count on a counted Entry resolved as `consumed`. Kept with the trip as history | Consumed-count set | 11 |
 
+**`trip.outcome_set` is the first op in the catalogue whose entity path is
+chosen by an optional payload field.** `person_id` present routes the write to
+the named Piece; absent routes it to the Entry. Both writers already exist and
+neither changes. A malformed `person_id` — present but not a string — reads
+`absent` through the tolerant reader, so the op lands on the Entry: the
+conservative direction, since the outcome then sits on the line the
+Quartermaster was looking at rather than being dropped.
+
+**`consumed_count` is a reader gate, not a reducer gate, for the identical
+reason `bring_count` and `TagString` already state (S10).** The catalogue says
+"on a counted Entry resolved as `consumed`", but both halves of that are facts
+about *other* places — the Kind lives on the Gear aggregate, the outcome is a
+second register on the same Entry — so a reducer that resolved either first
+would make the fold order-dependent on which op had arrived. `consumed_count`
+therefore folds unconditionally for any Entry, and `consumedCountOf`
+(`unpack.ts`) decides on the way out, clamped to `[1, bringCount]` **on the
+read**, never on the write: this is the fifth register in this codebase to
+draw the `TagString` split (§4.3), after `bring_count` (S7), `stage` / `status`
+(S9a) and `trip.entry_moved` on a per-person Entry (S9 round 2).
+
 ### 4.5 Gestures that emit more than one op
 
 Three user actions cross an aggregate boundary or expand into many ops. All of

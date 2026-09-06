@@ -1250,8 +1250,11 @@ describe('Gear detail — the unaccounted standing and its settle route (S10, F1
    * the gear list — one Entry `consumed`, the other `lost`), and nothing
    * about a `tripId` alone says which is which. The naive lookup this test
    * would have caught: `entriesOf` sorts by label then id, so the tie-break
-   * between two same-named Entries is arbitrary, and a settle route that
-   * rewrites "the" Entry's outcome can silently pick the wrong one — here,
+   * between two same-named Entries is **deterministic but meaningless** — the
+   * `id` order is identical on every replica, so it never diverges, but
+   * nothing about it names which physical Entry a human meant — and a settle
+   * route that rewrites "the" Entry's outcome can silently pick the wrong
+   * one — here,
    * destroying the `consumed` record and leaving the actually-lost Entry
    * untouched. R30's fix removes the lookup, and RESOLVE, entirely: it
    * writes `gear.rehomed` alone and never reads or writes any Entry's

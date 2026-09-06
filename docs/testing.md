@@ -358,10 +358,11 @@ not one:** the local stack on every push and pull request, and the deployed
 site after every deploy — the same specs, retargeted by one variable.
 
 **Golden path:** sign in → add gear → find it → build a trip → pack an item →
-close the trip. **Today it runs the first five** — sign in, record gear with the
-network cut, find it, watch it sync, build a Trip, list two pieces of gear on
-it, pack one. *Close the trip* awaits S10. The journey grows a leg per slice;
-the harness around it does not change.
+close the trip. **All six legs run today, S10's `close the trip` last**: sign
+in, record gear with the network cut, find it, watch it sync, build a Trip,
+list two pieces of gear on it, pack one, move the Trip to Unpack, resolve every
+Entry `BACK` through a real door, and close it. The journey grew a leg per
+slice; the harness around it did not change.
 
 **A slice that builds a golden-path step adds its leg in the same slice, or
 writes the debt down.** S6, S7 and S9a each shipped a step without one and none
