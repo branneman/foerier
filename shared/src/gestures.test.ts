@@ -113,16 +113,19 @@ describe('reHomeOnTheSpot', () => {
   })
 
   it("emits gear.rehomed even when residence equals the current home — the rule's ONE stated exception", () => {
-    // This is F16's settling write (spec §4.6): a Gear whose last-known
-    // location was `lost` on some Trip settles the standing when a LATER
-    // `gear.rehomed` stamp lands, even one naming the identical Place —
-    // `outcomeStands` (`selectors/unpack.ts`) compares stamps, not values.
-    // If this write were "optimised" away because `residence` already
-    // equals `residenceOf(gear)`, the `● NOW — FOUND HERE` row a later task
-    // wires to this same gesture would tap and write nothing: a silent
-    // no-op standing in for a settling fact. The Entry starts already
-    // `back` so the outcome write is suppressed by the OTHER rule, isolating
-    // this one: the sole op below must still be the rehome.
+    // `rehomedSinceOutcome` (`selectors/unpack.ts`) draws the `RE-HOMED`
+    // meta segment (spec §4.6) by comparing the Gear's `residence` stamp
+    // against this Entry's `outcome` stamp — *the home moved at or after
+    // this line was resolved*. If this write were "optimised" away because
+    // `residence` already equals `residenceOf(gear)`, the ordinary case of
+    // gear returning to the shelf it already nominally lived on would leave
+    // the residence stamp OLDER than the outcome write this same call just
+    // made, and the segment would silently fail to draw. (F16's settle
+    // route, gear detail's `RESOLVE`, does NOT call this gesture — ruling
+    // R30 corrected an earlier, wrong wiring — so this exception is read
+    // for F5's own row alone now.) The Entry starts already `back` so the
+    // outcome write is suppressed by the OTHER rule, isolating this one:
+    // the sole op below must still be the rehome.
     const ENTRY = 'e-samehome'
     const state = depot(
       aTrip({ id: TRIP, name: 'Ardennes' }),

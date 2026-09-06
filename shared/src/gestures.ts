@@ -33,20 +33,27 @@ import type {
  * file over rather than being inlined at a screen.
  *
  * [Sync §4.5](../../docs/sync-protocol.md) names three gestures that cross an
- * aggregate boundary; two are S10's, and this module is those two. Each has
- * **two callers** — `reHomeOnTheSpot`: F5's row and gear detail's `RESOLVE`;
- * `closeTrip`: F5's close card and `PhaseSheet`'s `CLOSED` row at `open = 0`
- * — which is exactly the two-surfaces-must-not-drift risk this codebase
- * keeps answering the same way (`packing.ts`'s `sameTripResidence`,
- * `claim.ts`'s gate, `phaseOf`'s table): spell the composition once here,
- * call it twice, and a screen can never emit half of it.
+ * aggregate boundary; two are S10's, and this module is those two.
+ * `closeTrip` has **two callers** — F5's close card and `PhaseSheet`'s
+ * `CLOSED` row at `open = 0` — which is exactly the two-surfaces-must-not-
+ * drift risk this codebase keeps answering the same way (`packing.ts`'s
+ * `sameTripResidence`, `claim.ts`'s gate, `phaseOf`'s table): spell the
+ * composition once here, call it twice, and a screen can never emit half of
+ * it. `reHomeOnTheSpot` has **one** — F5's row alone. Gear detail's `RESOLVE`
+ * (F16(3)'s settle route) was drawn as a second caller and then corrected
+ * (ruling R30): the standing it settles is a *selector reading an outcome*
+ * (`unaccountedOf`, `unpack.ts`), never a stored fact, so ending it by
+ * rewriting the very outcome the selector reads is fixing the thermometer,
+ * not the temperature — and doing so from a Depot screen with no reopen
+ * touches a **closed** Trip's history in violation of invariant 19. RESOLVE
+ * emits a bare `gear.rehomed`; `GearDetail.tsx` carries the reasoning.
  */
 
 /**
  * **Re-home on the spot** (spec §1.5, §4.6) — the gesture behind F5's row
- * body and gear detail's `RESOLVE`: picking a home for gear that is back
- * from a Trip marks it back *and* writes where it now lives, in one user
- * action across two aggregates (Trip and Gear) — invariant 8's two writes.
+ * body alone: picking a home for gear that is back from a Trip marks it back
+ * *and* writes where it now lives, in one user action across two aggregates
+ * (Trip and Gear) — invariant 8's two writes.
  *
  * **Two rules, pulling in opposite directions, and both matter:**
  *
@@ -60,16 +67,18 @@ import type {
  * - **The `gear.rehomed` op is emitted regardless of whether `residence`
  *   equals the Gear's current home.** This is `patterns.md` §2.3's **one
  *   stated exception in the entire codebase**, and it is not a miss: it is
- *   what *settles* an unaccounted-for standing. `unaccountedOf`
- *   (`selectors/unpack.ts`) decides whether a `lost` outcome still stands by
- *   comparing its stamp against the Gear's `residence` register's own stamp
- *   (`outcomeStands`) — so writing the *same* home again, on a clock later
- *   than the `lost` outcome, is precisely the new fact that ends the
- *   standing. F16's settle route (`● NOW — FOUND HERE`) depends on this: it
- *   reuses this same picker with the current home made tappable, and
- *   suppressing a same-value write here would make that row silently do
- *   nothing. Do not "optimise" this write away — see this function's test
- *   file for the assertion that would catch exactly that regression.
+ *   what makes {@link rehomedSinceOutcome}'s (`selectors/unpack.ts`) own
+ *   comparison correct on *every* re-home through this row, not only the
+ *   ones that happen to land on a different shelf. That comparison asks
+ *   whether the Gear's `residence` stamp sits at or after this Entry's
+ *   `outcome` stamp — *the home moved when, or after, this line was
+ *   resolved* — to decide whether the `RE-HOMED` meta segment draws
+ *   (spec §4.6). Suppressing a same-value write here would leave the
+ *   residence register's stamp **older** than the outcome write this same
+ *   call just made, and the segment would silently fail to draw for the
+ *   ordinary case of gear returning to the shelf it already nominally lived
+ *   on. Do not "optimise" this write away — see this function's test file
+ *   for the assertion that would catch exactly that regression.
  *
  * **A non-container per-person Entry fans out, one `trip.outcome_set` per
  * unresolved included Piece, rather than one Entry-level write.** Ruling R10

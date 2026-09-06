@@ -1102,6 +1102,18 @@ describe('Gear detail — whereabouts reaches the screen', () => {
  * FOUND HERE` row is tappable because writing the same home again is the
  * fact that settles the standing (`patterns.md` §2.3's one stated
  * exception).
+ *
+ * **Ruling R30 (fix round): `onSelect` emits `gear.rehomed` ALONE.** An
+ * earlier version of this route ran `reHomeOnTheSpot` (`gestures.ts`), which
+ * also rewrites the claiming Entry's own `outcome` register to `back` —
+ * wrong, because that register is exactly what `unaccountedOf` reads to
+ * decide the standing in the first place (editing it is fixing the
+ * thermometer, not the temperature), because it touches a **closed** Trip's
+ * history with no reopen (invariant 19), and because — ruling R31 — there is
+ * no reliable way to name *which* Entry to edit when two Entries share this
+ * Gear (see the two-Entry test below). The standing settles purely through
+ * the stamp comparison `outcomeStands` already reads: lost on the Trip, home
+ * written later.
  */
 describe('Gear detail — the unaccounted standing and its settle route (S10, F16)', () => {
   it('turns the footer ▲ with the Counted arithmetic and opens the picker with the RESOLVING context', async () => {
@@ -1203,28 +1215,85 @@ describe('Gear detail — the unaccounted standing and its settle route (S10, F1
     await user.click(attic)
     await store.getState().drained()
 
-    // The write actually happened — not suppressed as a same-value no-op.
+    // The write actually happened — not suppressed as a same-value no-op —
+    // and there is exactly one of it, not a gesture's pair.
     const rehomes = (await log.all()).filter(
       (record) => record.op.type === 'gear.rehomed',
     )
-    expect(rehomes.length).toBeGreaterThanOrEqual(1)
+    expect(rehomes).toHaveLength(1)
     expect(store.getState().state.gear[gearId]?.residence?.value).toEqual({
       in: 'place',
       id: placeId,
     })
 
-    // The gesture also settles the Entry's own outcome back to `back`
-    // (`reHomeOnTheSpot`, `gestures.ts`) — the two-surfaces-must-not-drift
-    // discipline this codebase keeps: the Trip's own unpack row and the
-    // Depot's standing must never disagree about whether this is resolved.
+    // R30: the Entry's own `outcome` register is left exactly as recorded —
+    // `lost` — because this route settles the standing through the stamp
+    // comparison `outcomeStands` reads, never by editing the outcome the
+    // standing is itself derived from. Rewriting it here would edit a
+    // closed Trip's history from a Depot screen with no reopen (invariant
+    // 19), and there is no reliable way to pick the right Entry to edit
+    // when two Entries share this Gear (see the two-Entry test below).
     expect(
       store.getState().state.trips[tripId]?.entries?.['e-lamp']?.outcome?.value,
-    ).toBe('back')
+    ).toBe('lost')
 
     // The standing itself is gone, and the footer no longer draws.
     expect(whereabouts(store.getState().state, gearId).unaccounted).toBeNull()
     expect(screen.queryByText(/LAST SEEN/)).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Home' })).toBeNull()
+  })
+
+  /**
+   * Ruling R31 (Critical 2) — the failure a "find the Entry whose depot
+   * source names this Gear" lookup could not avoid: two Entries can share
+   * one Gear with different outcomes (a Counted gas canister split across
+   * the gear list — one Entry `consumed`, the other `lost`), and nothing
+   * about a `tripId` alone says which is which. The naive lookup this test
+   * would have caught: `entriesOf` sorts by label then id, so the tie-break
+   * between two same-named Entries is arbitrary, and a settle route that
+   * rewrites "the" Entry's outcome can silently pick the wrong one — here,
+   * destroying the `consumed` record and leaving the actually-lost Entry
+   * untouched. R30's fix removes the lookup, and RESOLVE, entirely: it
+   * writes `gear.rehomed` alone and never reads or writes any Entry's
+   * `outcome` register, so this scenario cannot arise by construction —
+   * this test is what would have failed before that fix.
+   */
+  it('two Entries sharing a Gear — RESOLVE never touches either outcome, the consumed one included (R31)', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 3,
+      }),
+      tripCreated(tripId, 'Alps 2026'),
+      tripEntryAdded(tripId, 'e-a', { from: 'depot', gearId }),
+      tripEntryBringCountSet(tripId, 'e-a', 2),
+      tripOutcomeSet(tripId, 'e-a', 'consumed'),
+      tripEntryAdded(tripId, 'e-b', { from: 'depot', gearId }),
+      tripEntryBringCountSet(tripId, 'e-b', 1),
+      tripOutcomeSet(tripId, 'e-b', 'lost'),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    expect(
+      whereabouts(store.getState().state, gearId).unaccounted,
+    ).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'RESOLVE' }))
+    await user.click(screen.getByRole('button', { name: /Loose/ }))
+    await store.getState().drained()
+
+    const entries = store.getState().state.trips[tripId]?.entries
+    // The consumed Entry survives untouched — the one a guessed lookup
+    // could have overwritten.
+    expect(entries?.['e-a']?.outcome?.value).toBe('consumed')
+    // The actually-lost Entry is also untouched — RESOLVE settles the
+    // standing through the residence stamp alone, not by editing this.
+    expect(entries?.['e-b']?.outcome?.value).toBe('lost')
   })
 })
 

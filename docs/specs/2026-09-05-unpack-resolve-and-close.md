@@ -960,3 +960,54 @@ and the `closed` phase before B's own (would-be) still-live card computes
 case the brief originally asked for, now expressible because the card
 withdraws its own button the instant its tap closes the Trip: there is no
 control left for a second tap to reach.
+
+### 8.4 Gear detail's `RESOLVE` (F16(3)) emits `gear.rehomed` alone — §1.5 and §4.6 are not rewritten
+
+§1.5 and §4.6 (and `gestures.ts`'s own docstring, before this correction)
+described the settle route as a second caller of `reHomeOnTheSpot`,
+re-homing gear that turned up **and** marking the claiming Entry's outcome
+`back` in one action — the identical gesture F5's own row uses. Review
+(ruling R30) found this wrong, on grounds the spec did not weigh:
+
+- **The standing is a selector reading an outcome, never a stored fact**
+  (`unaccountedOf`, `selectors/unpack.ts`; sync §4.5: *"`lost` emits nothing
+  against the depot at all … unaccounted for is a selector reading the
+  outcome"*). Ending it by rewriting the very outcome the selector reads
+  fixes the thermometer, not the temperature.
+- **It would edit a closed Trip's history from a Depot screen.** By the time
+  a Quartermaster resolves a months-old standing, the Trip that produced it
+  is very often already `closed`. Invariant 19 treats reopening — the one
+  route the domain gives for changing a closed Trip's outcomes — as
+  deliberate and disclosed, weighted like deleting a Trip. `RESOLVE` offers
+  no reopen, no confirm, and a context line (`RESOLVING … · LAST SEEN: …`)
+  that says nothing about touching Trip history — unlike F8's own re-home
+  row, whose context line (`PICKING A HOME MARKS IT BACK`) discloses the
+  identical write in words the board wrote for it.
+- **Ruling F18 becomes unsatisfiable.** F18 draws the closed-Trip row's
+  `N LOST` meta as *"attention while any is still unaccounted, muted once
+  all are re-homed — the number is history, the colour is the standing."*
+  That sentence requires a re-home to leave the `lost` outcome itself
+  standing; flipping it to `back` drops the count to zero and the segment
+  disappears outright, which is a different ruling from the same round
+  reading the same fact two ways.
+- **It cannot pick the right Entry (Critical 2/ruling R31).** Nothing about
+  `Unaccounted.tripId` names *which* Entry to edit when two Entries share a
+  Gear on that Trip (one `consumed`, one `lost`) — a lookup keyed on the
+  depot source alone ties an arbitrary tie-break, and can overwrite the
+  wrong Entry's outcome. `unaccountedOf` itself is also not scoped to one
+  Entry: it accumulates across every live `lost` outcome for a Gear and
+  names only the **latest** Trip, so a route that edits "the" Entry's
+  outcome cannot even be correct in principle when two Trips both hold one.
+
+`RESOLVE`'s `onSelect` now emits `gear.rehomed` alone. This is the whole of
+the truthful record: `outcomeStands` (`selectors/unpack.ts`) already compares
+the residence write's stamp against the `lost` outcome's, so the standing
+clears the moment a later `gear.rehomed` lands, naming any home, unchanged
+values included (`patterns.md` §2.3's one stated exception). No Entry's
+`outcome` register is read or written by this route. `reHomeOnTheSpot` keeps
+its one caller, F5's own row, and its unconditional-`gear.rehomed` rule is
+unchanged and still correct there — see the corrected docstring in
+`shared/src/gestures.ts` for why F5 needs it independently of anything F16
+does. §1.5 and §4.6 above are left as written, per this spec's own §8 rule:
+what changed is recorded here, not edited back into the sections it
+corrects.
