@@ -165,14 +165,29 @@ export interface UnpackRowProps {
   canReHome?: boolean
 }
 
-/** `OutcomeValue | null` → `StatusPill`'s tone — the paint `ui/StatusPill`
- * does not itself know the meaning of (`patterns.md` §5.3). */
+/**
+ * `OutcomeValue | null` → `StatusPill`'s tone — the paint `ui/StatusPill`
+ * does not itself know the meaning of (`patterns.md` §5.3).
+ *
+ * **`lost` takes its colour from the standing, not from the register**
+ * (§5i G12), which is F18's own rule — *the word is history, the colour is
+ * the standing* — reaching the pill. `RESOLVE` on gear detail re-homes and
+ * leaves the outcome `lost`, so `▲ LOST` and `RE-HOMED` on one row are two
+ * true facts: what happened, and where it went. Once the gear is home again
+ * on a later clock the glyph and the word stay and the urgency goes — no
+ * thermometer reading a room that is warm again.
+ *
+ * It reads the **same** `rehomed` flag the `RE-HOMED` segment draws from,
+ * deliberately: the tone and the segment state one fact, and computing them
+ * from two predicates is how they come apart.
+ */
 function toneForOutcome(
   outcome: OutcomeValue | null,
+  rehomed: boolean,
 ): Exclude<StatusPillProps['tone'], undefined> {
   if (outcome === 'back') return 'packed'
   if (outcome === 'consumed') return 'dashed'
-  if (outcome === 'lost') return 'attention'
+  if (outcome === 'lost') return rehomed ? 'muted' : 'attention'
   return 'not-packed'
 }
 
@@ -271,7 +286,7 @@ export function UnpackRow({
         <StatusPill
           glyph={outcomeGlyph(outcome)}
           label={outcomeLabel(outcome)}
-          tone={toneForOutcome(outcome)}
+          tone={toneForOutcome(outcome, rehomed)}
           onClick={onOutcome}
         />
       )}

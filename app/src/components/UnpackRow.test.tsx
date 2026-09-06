@@ -135,6 +135,73 @@ describe('UnpackRow — the row body (tap row = re-home)', () => {
  * never lead with a stray `· ` when `meta` is `''` (a re-home to Loose has
  * no path to state at all).
  */
+/**
+ * **§5i G12 — the pill's colour is the standing.** F18's own rule reaching
+ * the pill: the word is history, the colour is the standing. `RESOLVE`
+ * re-homes and leaves the outcome `lost`, so both facts stay on the row and
+ * only the urgency goes.
+ */
+describe('UnpackRow — a lost pill drains once the gear is home again', () => {
+  it('wears attention while the gear is still unaccounted for', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Tarp 3×4"
+        meta="→ Crate A"
+        outcome="lost"
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /LOST/ })).toHaveAttribute(
+      'data-tone',
+      'attention',
+    )
+  })
+
+  it('wears muted once re-homed, keeping the same glyph and word', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Tarp 3×4"
+        meta="→ Crate A"
+        outcome="lost"
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+        rehomed
+      />,
+    )
+
+    const pill = screen.getByRole('button', { name: /LOST/ })
+    expect(pill).toHaveAttribute('data-tone', 'muted')
+    // Same glyph, same word — the row still says what happened.
+    expect(pill).toHaveTextContent('▲ LOST')
+    expect(screen.getByTestId('unpack-row-meta')).toHaveTextContent(
+      '→ Crate A · RE-HOMED',
+    )
+  })
+
+  it('leaves a back pill alone when rehomed — the colour tracks the lost standing only', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Crate B"
+        meta="→ Shelf L-Top"
+        outcome="back"
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+        rehomed
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /BACK/ })).toHaveAttribute(
+      'data-tone',
+      'packed',
+    )
+  })
+})
+
 describe('UnpackRow — the RE-HOMED segment (Task 14, spec §4.6)', () => {
   it('draws RE-HOMED after the meta, separated by its own · ', () => {
     render(

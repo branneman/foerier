@@ -261,6 +261,7 @@ export {
   OUTCOMES,
   pieceOutcomeOf,
   rehomedSinceOutcome,
+  rehomedSincePieceOutcome,
   returnPathOf,
   unaccountedOf,
   unpackDestinationOf,

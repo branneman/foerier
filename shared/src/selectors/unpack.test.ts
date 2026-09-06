@@ -35,6 +35,7 @@ import {
   outcomeOf,
   pieceOutcomeOf,
   rehomedSinceOutcome,
+  rehomedSincePieceOutcome,
   returnPathOf,
   type Unaccounted,
   unaccountedOf,
@@ -1358,5 +1359,65 @@ describe('insideCountOf is the lid-open count, not what moves', () => {
 
   it('counts nothing for an empty container', () => {
     expect(insideCountOf(trip, state, TARP)).toBe(0)
+  })
+})
+
+/**
+ * **§5i G12's own predicate, per Piece.** The Entry-level
+ * {@link rehomedSinceOutcome} answers `false` for every per-person Entry —
+ * that Entry's own outcome register is read by nobody — so a surface asking
+ * about a Piece has to ask about the Piece.
+ */
+describe('rehomedSincePieceOutcome', () => {
+  const TRIP = 't-rehomed-piece'
+  const ENTRY = 'e-lamp'
+  const KIM = 'p-kim'
+  const MARK = 'p-mark'
+
+  it('answers false while the lost Piece stands, true once the Gear is home again', () => {
+    const base = [
+      aTrip({ id: TRIP, name: 'Tessin', participants: [KIM, MARK] }),
+      aPerson({ id: KIM, name: 'Kim' }),
+      aPerson({ id: MARK, name: 'Mark' }),
+      aPlace({ id: 'pl-bak', name: 'Bak 3' }),
+      aGear({ id: 'g-lamp', name: 'Lamp', kind: 'per_person' }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-lamp' }),
+        tripOutcomeSet(TRIP, ENTRY, 'lost', KIM),
+      ],
+    ]
+
+    const before = depot(...base)
+    const entryBefore = entryFrom(tripFrom(before, TRIP), ENTRY)
+    expect(
+      rehomedSincePieceOutcome(entryBefore, KIM, before.gear['g-lamp']),
+    ).toBe(false)
+
+    const after = depot(...base, [
+      gearRehomed('g-lamp', { in: 'place', id: 'pl-bak' }),
+    ])
+    const entryAfter = entryFrom(tripFrom(after, TRIP), ENTRY)
+
+    // The settle is per **Gear**, not per Person — so Mark's Piece, which
+    // was never lost, is not what makes Kim's answer move; the later home
+    // write is.
+    expect(
+      rehomedSincePieceOutcome(entryAfter, KIM, after.gear['g-lamp']),
+    ).toBe(true)
+  })
+
+  it('answers false for a Piece with no outcome register at all', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Tessin', participants: [KIM] }),
+      aPerson({ id: KIM, name: 'Kim' }),
+      aGear({ id: 'g-lamp', name: 'Lamp', kind: 'per_person' }),
+      [tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-lamp' })],
+    )
+    const entry = entryFrom(tripFrom(state, TRIP), ENTRY)
+
+    // Nothing was resolved, so there is no "since" to compare a re-home to.
+    expect(rehomedSincePieceOutcome(entry, KIM, state.gear['g-lamp'])).toBe(
+      false,
+    )
   })
 })

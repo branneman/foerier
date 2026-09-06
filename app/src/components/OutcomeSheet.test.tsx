@@ -1,6 +1,7 @@
 import {
   containmentView,
   gearOwnedCountSet,
+  gearRehomed,
   gearRecorded,
   personRecorded,
   placeRecorded,
@@ -860,6 +861,26 @@ describe('the outcome sheet — the roster variant (F7)', () => {
       'data-tone',
       'attention',
     )
+  })
+
+  /**
+   * **§5i G12** — the roster states the pair in words. `RESOLVE` on gear
+   * detail re-homes the Gear and leaves every Piece's outcome `lost`, so
+   * the row says both: what happened, and that it has since come home. The
+   * status keeps the attention tone the circle beside it paints — the
+   * cluster's three tones are F7's ceiling and the round leaves them.
+   */
+  it('states ▲ LOST · RE-HOMED once the Gear is home again on a later clock', async () => {
+    const seed = await seeded(
+      ...withThreePieces(tripOutcomeSet(TRIP, E_HEADLAMP, 'lost', 'kees')),
+      // The settle: a later `gear.rehomed`, which is the whole of what
+      // `RESOLVE` writes (R30).
+      gearRehomed(HEADLAMP, { in: 'place', id: BAK3 }),
+    )
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const rows = screen.getAllByTestId('roster-row')
+    expect(within(rows[1]!).getByText('▲ LOST · RE-HOMED')).toBeInTheDocument()
   })
 
   /**

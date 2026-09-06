@@ -634,6 +634,33 @@ export function rehomedSinceOutcome(
   return !outcomeStands(outcome, gear, null)
 }
 
+/**
+ * {@link rehomedSinceOutcome} for **one Piece** — the same question against
+ * the register a per-person Entry actually carries its outcomes in.
+ *
+ * The Entry-level function answers `false` for every per-person Entry, and
+ * correctly: that Entry's own `outcome` register is read by nobody
+ * (`claim.ts`, `whereabouts.ts` — an Entry-level outcome on a non-container
+ * per-person Entry is fold-but-ignore). So a surface asking *has this been
+ * re-homed since it was lost* about a Piece has to ask about the Piece, and
+ * this is where that is spelled — §5i G12's roster row is the first caller.
+ *
+ * The Gear is the same Gear for every Piece, and a re-home settles per Gear
+ * rather than per Person (domain §6 refuses units an identity), so two
+ * Pieces of one Entry always answer alike. That is the ruling's own
+ * intent — Mark's `back` ends Kim's Piece's standing — not an approximation
+ * of it.
+ */
+export function rehomedSincePieceOutcome(
+  entry: EntryState,
+  personId: string,
+  gear: GearState | undefined,
+): boolean {
+  const outcome = entry.pieces?.[personId]?.outcome
+  if (outcome === undefined) return false
+  return !outcomeStands(outcome, gear, null)
+}
+
 /** The unaccounted standing for one Gear — {@link unaccountedOf}'s answer. */
 export interface Unaccounted {
   /** The Trip of the **latest** live `lost` outcome. */

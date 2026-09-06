@@ -80,4 +80,12 @@
     border-color: var(--color-ink-faint);
     color: var(--color-ink-faint);
   }
+
+  /* The same faint ink, solid — `attention` drained of its urgency while
+     the word it carries stays. A caller wearing this still states
+     something; it just no longer asks for the eye. */
+  .pill[data-tone='muted'] {
+    border-color: var(--color-ink-faint);
+    color: var(--color-ink-faint);
+  }
 }

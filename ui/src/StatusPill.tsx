@@ -34,6 +34,11 @@ import styles from './StatusPill.module.css'
  * this file still does not learn that a caller means *consumed*, *excluded*,
  * or anything else; it only learns that a border can be solid or dashed.
  *
+ * **`muted` is `attention` drained** (§5i G12): the same faint ink, solid.
+ * Its caller draws the same glyph and the same word and means *this was
+ * true and has since been settled* — but that sentence is the caller's, and
+ * this file learns only that a pill can stop asking for the eye.
+ *
  * `ui/` never imports the store or a router (`frontend-design.md` §5).
  */
 export interface StatusPillProps {
@@ -42,7 +47,14 @@ export interface StatusPillProps {
   /** Drawn as written; the stylesheet does not transform it. */
   label: string
   /** Names the paint. `plain` is the neutral a writing control wears. */
-  tone?: 'plain' | 'not-packed' | 'staged' | 'packed' | 'dashed' | 'attention'
+  tone?:
+    | 'plain'
+    | 'not-packed'
+    | 'staged'
+    | 'packed'
+    | 'dashed'
+    | 'attention'
+    | 'muted'
   /**
    * `row` keeps its intrinsic width at a row's trailing edge; `action` shares
    * its row equally with its siblings. The two callers' one layout

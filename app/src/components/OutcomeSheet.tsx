@@ -13,6 +13,7 @@ import {
   OUTCOMES,
   pieceOutcomeOf,
   piecesOf,
+  rehomedSincePieceOutcome,
   returnPathOf,
   tripConsumedCountSet,
   tripOutcomeSet,
@@ -332,8 +333,13 @@ export function OutcomeSheet({
         personId: person.id,
         label: person.label,
         outcome: byPerson.get(person.id) ?? null,
+        // §5i G12: the settling fact, per Piece, from the one function that
+        // answers it — a per-person Entry carries its outcomes on the
+        // Pieces, so the Entry-level predicate answers `false` here and
+        // would silently withhold the clause.
+        rehomed: rehomedSincePieceOutcome(entry, person.id, gear),
       }))
-  }, [pieceItems, state, trip])
+  }, [pieceItems, state, trip, entry, gear])
 
   // Mount is the reset (`ui/`'s overlay primitives have no `open` prop) —
   // `PiecePicker`'s draft-state precedent — so a lazy initializer reading
@@ -533,6 +539,12 @@ export function OutcomeSheet({
                       data-tone={circleToneForOutcome(row.outcome)}
                     >
                       {outcomeGlyph(row.outcome)} {outcomeLabel(row.outcome)}
+                      {/* §5i G12: the pair in words. The row keeps the
+                          attention tone the circle beside it paints —
+                          `PersonCircle`'s three tones are F7's ceiling and
+                          the round leaves them — and states the settling
+                          fact as a second clause instead. */}
+                      {row.outcome === 'lost' && row.rehomed && ' · RE-HOMED'}
                     </span>
                   </span>
                   <span className={styles['rosterMarker']}>
