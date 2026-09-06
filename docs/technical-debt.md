@@ -137,16 +137,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   how often, which moves every other measured rate in that file.
   `shared/src/convergence.test.ts`'s own docblock on `HOME_CYCLE_FLOOR`,
   anchor: `The trip side is deliberately NOT floored`
-- **`moving.insideCount` counts direct home children while a re-home
-  relocates the whole subtree.** A crate holding a stuff-sack holding two
-  items discloses `1 INSIDE RIDE ALONG` and moves three, so the number
-  understates the write at exactly the moment the line exists to disclose it.
-  Three call sites — gear detail's MOVE, gear detail's `RESOLVE`, and F5's
-  re-home — the first pre-existing, the other two replicated by S10. The fix
-  is a subtree size (`containment.ts` already walks one), and it changes a
-  drawn number, which is why it is recorded rather than taken at the end of a
-  slice. `app/src/components/HomePicker.tsx`'s own doc on `moving.insideCount`,
-  anchor: `Known to undercount, recorded rather than fixed`
 - **The closed ledger's `1 LOST` colour can read muted while a unit is still
   genuinely unaccounted for.** `tripHasUnaccounted`
   (`app/src/household/trips.ts`) asks `unaccountedOf`'s finished map by trip

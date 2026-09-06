@@ -5,6 +5,7 @@ import {
   type PersonClusterEntry,
   type StatusPillProps,
 } from '@foerier/ui'
+import type { ReactNode } from 'react'
 
 import styles from './UnpackRow.module.css'
 
@@ -85,6 +86,37 @@ import styles from './UnpackRow.module.css'
  * reading the real Entry's own Kind once the sheet mounts. This row asks
  * that question of nobody.
  */
+/**
+ * **A meta segment led by `▸` takes the trip world's tone** (§5i G2).
+ *
+ * The glyph *is* the encoding — *"▸ says so — the two-worlds rule,
+ * everywhere"* — so the row reads the mark the caller already wrote rather
+ * than taking a second, parallel channel saying which segment is which. One
+ * rule, stated once, and it generalises to whatever segment the trip world
+ * reaches next.
+ *
+ * The split is on the segment separator, ` · `; the **path**'s own internal
+ * `▸` (`→ SHELF L-TOP ▸ CRATE B`) never leads a segment, which is exactly
+ * why *leads* is the test rather than *contains*.
+ *
+ * An untoned meta comes back as adjacent text nodes inside one span, which
+ * `getByText` still matches whole — only a toned segment introduces a child
+ * element, and those rows assert with `toHaveTextContent`.
+ */
+function metaSegments(meta: string): readonly ReactNode[] {
+  return meta.split(' · ').flatMap((segment, index) => {
+    const separator = index === 0 ? '' : ' · '
+    return segment.startsWith('▸ ')
+      ? [
+          separator,
+          <span key={segment} className={styles['tripSegment']}>
+            {segment}
+          </span>,
+        ]
+      : [`${separator}${segment}`]
+  })
+}
+
 export interface UnpackRowProps {
   entryId: string
   name: string
@@ -179,7 +211,7 @@ export function UnpackRow({
       </span>
       {(meta !== '' || rehomed) && (
         <span className={styles['meta']} data-testid="unpack-row-meta">
-          {meta}
+          {metaSegments(meta)}
           {rehomed && (
             <span
               className={styles['rehomedSegment']}

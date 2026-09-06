@@ -295,11 +295,13 @@ function destinationScenario(): readonly OpSpec[] {
       container: false,
     }),
 
-    // Two Entries riding inside the duffel **on the Trip** — `subtreeOf`'s
-    // own count. `trip.entry_moved` is a trip residence, entirely unrelated
-    // to either Entry's *home* containment, so this changes nothing about
-    // where the Gas canister or the Cook set are grouped or what their own
-    // return path meta reads.
+    // Two Entries riding inside the duffel **on the Trip**, and G2's
+    // `N INSIDE` counts their **units**: the Gas canister's Bring-count of
+    // 4 plus the Cook set's 1, so the duffel reads `▸ 5 INSIDE`, not `2`.
+    // `trip.entry_moved` is a trip residence, entirely unrelated to either
+    // Entry's *home* containment, so this changes nothing about where the
+    // Gas canister or the Cook set are grouped or what their own return
+    // path meta reads.
     tripEntryMoved(ALPS, E_GAS, { in: 'container', entryId: E_DUFFEL }),
     tripEntryMoved(ALPS, E_COOK, { in: 'container', entryId: E_DUFFEL }),
   ]
@@ -564,10 +566,20 @@ describe('DESTINATION mode — the row (F6)', () => {
     expect(screen.getByText('→ Shelf L-Top ▸ Crate B · ×2')).toBeInTheDocument()
   })
 
-  it("draws a container's return path form, N INSIDE, and no rail", async () => {
+  /**
+   * **§5i G2.** The count is the **lid-open** one — direct children, units
+   * by their count — over the **trip** tree, and it carries the trip
+   * world's `▸` because the return path beside it is home. `toHaveTextContent`
+   * rather than `getByText`: the toned segment is its own element, exactly
+   * as `RE-HOMED` already is.
+   */
+  it("draws a container's return path form, the trip-marked N INSIDE, and no rail", async () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
 
-    expect(screen.getByText('→ Shelf L-Top · 2 INSIDE')).toBeInTheDocument()
+    const duffel = screen.getByTestId(`unpack-row-${E_DUFFEL}`)
+    expect(within(duffel).getByTestId('unpack-row-meta')).toHaveTextContent(
+      '→ Shelf L-Top · ▸ 5 INSIDE',
+    )
 
     const row = screen.getByTestId(`unpack-row-${E_DUFFEL}`)
     expect(within(row).queryByTestId('journey-rail')).not.toBeInTheDocument()
@@ -850,7 +862,7 @@ describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
     expect(screen.queryByRole('dialog', { name: 'Home' })).toBeNull()
   })
 
-  it('carries the N INSIDE RIDE ALONG count for a container, and excludes its own subtree', async () => {
+  it('carries the N RIDE ALONG count for a container, and excludes its own subtree', async () => {
     const user = userEvent.setup()
     await renderUnpack(`/trips/${ALPS}/unpack`, ...reHomeScenario())
 
@@ -859,7 +871,7 @@ describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Home' })
     expect(within(dialog).getByTestId('moving-context')).toHaveTextContent(
-      'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK · 1 INSIDE RIDE ALONG',
+      'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK · 1 RIDE ALONG',
     )
     // Invariant 3 — Crate B's own subtree (Pouch) is absent at any depth.
     expect(within(dialog).queryByRole('button', { name: 'Pouch' })).toBeNull()
@@ -1631,8 +1643,10 @@ describe('PERSON mode — the container and consumed-split arms (ruling I1)', ()
     await chooseMode(user, 'PERSON')
 
     expect(
-      within(groupNamed('Kees')).getByText('PERSONAL K · 1 INSIDE · → Room'),
-    ).toBeInTheDocument()
+      within(screen.getByTestId(`unpack-row-${E_CRATE_K}`)).getByTestId(
+        'unpack-row-meta',
+      ),
+    ).toHaveTextContent('PERSONAL K · ▸ 1 INSIDE · → Room')
   })
 
   /**
@@ -1736,9 +1750,14 @@ describe('ALL mode (spec §3.4)', () => {
     expect(
       screen.getByText('×2 · → Attic ▸ Shelf L-Top ▸ Crate B'),
     ).toBeInTheDocument()
+    // The container's lid-open count keeps its trip mark in this grammar
+    // too — it is a fact about the segment, not about where the segment
+    // sits (§5i G2) — so it is its own element and asserts by content.
     expect(
-      screen.getByText('2 INSIDE · → Attic ▸ Shelf L-Top'),
-    ).toBeInTheDocument()
+      within(screen.getByTestId(`unpack-row-${E_DUFFEL}`)).getByTestId(
+        'unpack-row-meta',
+      ),
+    ).toHaveTextContent('▸ 5 INSIDE · → Attic ▸ Shelf L-Top')
     expect(
       screen.getByText('×2 CONSUMED · ×2 BACK · → Kelder ▸ Bak 3'),
     ).toBeInTheDocument()

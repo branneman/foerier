@@ -73,7 +73,8 @@ import styles from './HomePicker.module.css'
  * whenever it or `moving` is given (a caller may want the line with no move
  * at all). It carries **only the caller's own sentence**: when `moving` is
  * also given, `HomePicker` itself appends `moving`'s own ride-along clause
- * (`{N} INSIDE RIDE ALONG`) after it, exactly as it already does for the
+ * (`{N} RIDE ALONG` — §5i G2 retired the `INSIDE` in it, since the two
+ * words answer two questions) after it, exactly as it already does for the
  * auto-computed `MOVING {name}` line — one place computes that fact, not
  * two spellings of it.
  *
@@ -114,16 +115,19 @@ export interface HomePickerProps {
   moving?: {
     name: string
     /**
-     * **Known to undercount, recorded rather than fixed**
-     * (`docs/technical-debt.md`). Every caller passes `childrenOf(...).length`
-     * — the **direct** home children — while a re-home relocates the whole
-     * subtree, so a crate holding a stuff-sack holding two items discloses
-     * `1 INSIDE RIDE ALONG` and moves three. The number understates the write
-     * at exactly the moment this line exists to disclose it. The fix is a
-     * subtree size (`containment.ts` already walks one) and it changes a drawn
-     * number, which is why it was not taken at the end of S10.
+     * **What moves** — {@link homeRidesAlongCount}, the whole home subtree
+     * at any depth. Never `childrenOf(...).length`.
+     *
+     * It undercounted until §5i G2, because every caller passed the
+     * **direct** children while a re-home relocates the subtree: a crate
+     * holding a stuff sack holding two items disclosed `1 INSIDE RIDE
+     * ALONG` and moved three, understating the write at exactly the moment
+     * this line exists to disclose it. G2 fixes it **by the word's own
+     * definition** rather than as a separate patch — `RIDE ALONG` is what
+     * moves and `INSIDE` is the lid-open count, and the two had been
+     * sharing one phrase and one number.
      */
-    insideCount: number
+    ridesAlong: number
     /**
      * Whether picking confirms — default `true`, MOVE's own standing rule
      * (this module's own header). `false` is S10's re-home caller (F8):
@@ -137,7 +141,7 @@ export interface HomePickerProps {
    * Shown whenever this or `moving` is given. Carries **only the caller's
    * own sentence**: when `moving` is also given, `HomePicker` appends its
    * own ride-along clause after it (this module's own header) — never the
-   * caller's job to restate `moving.insideCount`.
+   * caller's job to restate `moving.ridesAlong`.
    */
   context?: string
   /**
@@ -387,7 +391,7 @@ export function HomePicker({
    * `context`'s own text when given (`MOVING {name}` otherwise), with
    * `moving`'s own ride-along clause appended whenever `moving` is given —
    * one place computes that fact, never the caller's job to restate
-   * `moving.insideCount` (this module's own header). `undefined` when
+   * `moving.ridesAlong` (this module's own header). `undefined` when
    * neither `context` nor `moving` is given: the paragraph below renders
    * nothing at all in plain pick mode with no `context` (today's
    * behaviour).
@@ -395,7 +399,7 @@ export function HomePicker({
   const contextText =
     moving === undefined
       ? context
-      : `${context ?? `MOVING ${moving.name}`} · ${moving.insideCount} INSIDE RIDE ALONG`
+      : `${context ?? `MOVING ${moving.name}`} · ${moving.ridesAlong} RIDE ALONG`
 
   return (
     <Sheet
@@ -652,9 +656,9 @@ export function HomePicker({
         <Confirm
           title={`Move ${moving.name} to ${pending.label}?`}
           description={
-            moving.insideCount === 1
+            moving.ridesAlong === 1
               ? '1 piece of gear inside it moves too.'
-              : `${moving.insideCount} pieces of gear inside it move too.`
+              : `${moving.ridesAlong} pieces of gear inside it move too.`
           }
           onClose={() => setPending(null)}
           actions={

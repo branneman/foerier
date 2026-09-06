@@ -560,12 +560,12 @@ describe('the Home picker — MOVE', () => {
     const { store, crateId } = await aCrateInAnAttic()
     renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1 },
+      moving: { name: 'Crate B', ridesAlong: 1 },
     })
 
     // CAPS is a `text-transform` on the line, per this codebase's convention.
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'MOVING Crate B · 1 INSIDE RIDE ALONG',
+      'MOVING Crate B · 1 RIDE ALONG',
     )
   })
 
@@ -578,7 +578,7 @@ describe('the Home picker — MOVE', () => {
     const { store, crateId } = await aCrateInAnAttic()
     renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1 },
+      moving: { name: 'Crate B', ridesAlong: 1 },
     })
 
     expect(screen.queryByRole('button', { name: /Crate B/ })).toBeNull()
@@ -599,7 +599,7 @@ describe('the Home picker — MOVE', () => {
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1 },
+      moving: { name: 'Crate B', ridesAlong: 1 },
     })
 
     await user.click(screen.getByRole('button', { name: /Shed/ }))
@@ -617,7 +617,7 @@ describe('the Home picker — MOVE', () => {
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1 },
+      moving: { name: 'Crate B', ridesAlong: 1 },
     })
 
     await user.click(screen.getByRole('button', { name: /Shed/ }))
@@ -704,14 +704,14 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
     const { store, crateId } = await aCrateInAnAttic()
     renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1, confirm: false },
+      moving: { name: 'Crate B', ridesAlong: 1, confirm: false },
       context: 'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK',
     })
 
     // The caller's sentence carries no ride-along clause of its own —
     // `HomePicker` is the one place that appends it.
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK · 1 INSIDE RIDE ALONG',
+      'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK · 1 RIDE ALONG',
     )
     expect(screen.queryByText(/^MOVING Crate B/)).toBeNull()
   })
@@ -732,7 +732,7 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1, confirm: false },
+      moving: { name: 'Crate B', ridesAlong: 1, confirm: false },
       context: 'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK',
     })
 
@@ -747,7 +747,7 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1 },
+      moving: { name: 'Crate B', ridesAlong: 1 },
     })
 
     await user.click(screen.getByRole('button', { name: /Shed/ }))

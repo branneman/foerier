@@ -43,7 +43,7 @@ describe('the container move confirm', () => {
       ),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('5 INSIDE RIDE ALONG · STATUS UNCHANGED'),
+      screen.getByText('5 RIDE ALONG · STATUS UNCHANGED'),
     ).toBeInTheDocument()
   })
 
@@ -129,7 +129,7 @@ describe('the container move confirm', () => {
     renderConfirm({ insideCount: 1 })
 
     expect(
-      screen.getByText('1 INSIDE RIDE ALONG · STATUS UNCHANGED'),
+      screen.getByText('1 RIDE ALONG · STATUS UNCHANGED'),
     ).toBeInTheDocument()
   })
 

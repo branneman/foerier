@@ -86,7 +86,7 @@ export function ContainerMoveConfirm({
               a Quartermaster mid-pack-out most wants: the ride-along keeps
               every status it already had. */}
           <span className={styles['fact']}>
-            {insideCount} INSIDE RIDE ALONG · STATUS UNCHANGED
+            {insideCount} RIDE ALONG · STATUS UNCHANGED
           </span>
         </>
       }

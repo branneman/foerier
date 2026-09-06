@@ -6,6 +6,8 @@ import {
   entriesOf,
   entryKind,
   entryLabel,
+  homeRidesAlongCount,
+  insideCountOf,
   isClosed,
   isContainerEntry,
   overClaimsFor,
@@ -16,7 +18,6 @@ import {
   rehomedSinceOutcome,
   residenceOf,
   returnPathOf,
-  subtreeOf,
   tripContainmentView,
   tripLabel,
   unpackDestinationOf,
@@ -219,17 +220,26 @@ const CLOSE_HINT_READY =
  * about, and the reason this returns a list rather than a string.
  */
 function sharedMetaSuffix(
+  trip: TripState,
+  state: HouseholdState,
   entry: EntryState,
   tripView: TripContainmentView,
   container: boolean,
   item: Extract<UnpackItem, { kind: 'entry' }>,
 ): readonly string[] | null {
   if (container) {
+    // **G2: `INSIDE` is the lid-open count** — {@link insideCountOf}'s
+    // direct children over the **trip** tree, a nested container counting
+    // one — and it carries the trip world's `▸` because the return path
+    // beside it is home and the two must not read as one world. `RIDE
+    // ALONG`, one tap away in the picker, is the other question: what moves,
+    // at any depth.
+    //
     // **G3: an empty container reads its return path alone** — a zero count
     // segment is absent, not written, and an empty crate takes its outcome
     // like a tarp.
-    const inside = subtreeOf(tripView, entry.id).size
-    return inside > 0 ? [`${inside} INSIDE`] : []
+    const inside = insideCountOf(trip, state, entry.id, tripView)
+    return inside > 0 ? [`▸ ${inside} INSIDE`] : []
   }
 
   if (item.outcome === 'consumed' && item.consumed !== null) {
@@ -249,6 +259,7 @@ function sharedMetaSuffix(
 }
 
 function returnPathMeta(
+  trip: TripState,
   entry: EntryState,
   state: HouseholdState,
   view: ContainmentView,
@@ -261,7 +272,7 @@ function returnPathMeta(
   const visible = destination === null ? path : path.slice(1)
   const pathText = visible.map((segment) => segment.name).join(' ▸ ')
 
-  const shared = sharedMetaSuffix(entry, tripView, container, item)
+  const shared = sharedMetaSuffix(trip, state, entry, tripView, container, item)
   const suffix =
     shared ?? (bringCountOf(entry, state) !== null ? [`×${item.units}`] : [])
 
@@ -465,6 +476,7 @@ function destinationGroups(
         entryId,
         name: entryLabel(entry, state),
         meta: returnPathMeta(
+          trip,
           entry,
           state,
           view,
@@ -602,6 +614,7 @@ function canReHomeFor(entry: EntryState, state: HouseholdState): boolean {
  * this codebase already refuses elsewhere.
  */
 function headerlessMeta(
+  trip: TripState,
   entry: EntryState,
   state: HouseholdState,
   view: ContainmentView,
@@ -610,9 +623,14 @@ function headerlessMeta(
   item: Extract<UnpackItem, { kind: 'entry' }>,
   prefix: string | null,
 ): string {
-  const suffix = sharedMetaSuffix(entry, tripView, container, item) ?? [
-    `×${item.units}`,
-  ]
+  const suffix = sharedMetaSuffix(
+    trip,
+    state,
+    entry,
+    tripView,
+    container,
+    item,
+  ) ?? [`×${item.units}`]
 
   const path = returnPathOf(entry, state, view)
   const pathText = path.map((segment) => segment.name).join(' ▸ ')
@@ -634,6 +652,7 @@ function headerlessMeta(
  * is already stated by the group it sits in, never restated in its meta.
  */
 function personEntryMeta(
+  trip: TripState,
   entry: EntryState,
   state: HouseholdState,
   view: ContainmentView,
@@ -644,6 +663,7 @@ function personEntryMeta(
   const gear = depotGearOf(entry, state)
   const ownerText = gear === undefined ? 'SHARED' : ownerLabel(state, gear)
   return headerlessMeta(
+    trip,
     entry,
     state,
     view,
@@ -735,7 +755,15 @@ function personGroups(
     return {
       entryId: item.entryId,
       name: entryLabel(entry, state),
-      meta: personEntryMeta(entry, state, view, tripView, container, item),
+      meta: personEntryMeta(
+        trip,
+        entry,
+        state,
+        view,
+        tripView,
+        container,
+        item,
+      ),
       outcome: item.outcome,
       canReHome: canReHomeFor(entry, state),
     }
@@ -882,7 +910,16 @@ function allRows(
     rows.push({
       entryId: entry.id,
       name: entryLabel(entry, state),
-      meta: headerlessMeta(entry, state, view, tripView, container, item, null),
+      meta: headerlessMeta(
+        trip,
+        entry,
+        state,
+        view,
+        tripView,
+        container,
+        item,
+        null,
+      ),
       outcome: item.outcome,
       canReHome: canReHomeFor(entry, state),
     })
@@ -1269,10 +1306,14 @@ export function Unpack() {
   // is what carries this fact at all (spec §4.6 — a plain gear has no
   // subtree to exclude or count, and the board's own non-container example
   // shows no ride-along line), so `moving` is only ever passed for one.
-  const reHomeInsideCount =
+  //
+  // **G2: what moves, at any depth** — `homeRidesAlongCount`, never
+  // `childrenOf(…).length`, which counted the lid-open row and named it
+  // after the move.
+  const reHomeRidesAlong =
     reHomeGearId === undefined
       ? 0
-      : view.childrenOf({ kind: 'gear', id: reHomeGearId }).length
+      : homeRidesAlongCount(reHomeGearId, state, view)
   const reHomeIsContainer =
     reHomeEntry !== undefined && isContainerEntry(reHomeEntry, state)
 
@@ -1561,7 +1602,7 @@ export function Unpack() {
               ? {
                   moving: {
                     name: entryLabel(reHomeEntry, state),
-                    insideCount: reHomeInsideCount,
+                    ridesAlong: reHomeRidesAlong,
                     confirm: false,
                   },
                 }

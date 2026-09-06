@@ -319,7 +319,7 @@ export function PackPicker({
     >
       {moving !== undefined && (
         <p className={styles['context']} data-testid="moving-context">
-          MOVING {moving.name} · {moving.insideCount} INSIDE RIDE ALONG
+          MOVING {moving.name} · {moving.insideCount} RIDE ALONG
         </p>
       )}
 

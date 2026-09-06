@@ -9,29 +9,30 @@ import {
   gearRetired,
   gearTagApplied,
   gearTagRemoved,
+  homeRidesAlongCount,
   isCounted,
   isPerPerson,
   kindOf,
   LOOSE_TEXT,
   normalizeTag,
-  ownedCountOf,
   overClaims,
+  ownedCountOf,
   ownerLabel,
   ownerOf,
   personLabel,
   residenceOf,
   tagsOf,
-  whereabouts,
-  whereaboutsByPerson,
-  whereaboutsText,
-  type HouseholdState,
   type GearState,
+  type HouseholdState,
   type KindValue,
   type Owner,
   type PathSegment,
   type PersonWhereabouts,
   type Unaccounted,
   type WhereaboutsSlice,
+  whereabouts,
+  whereaboutsByPerson,
+  whereaboutsText,
 } from '@foerier/shared'
 import {
   Chip,
@@ -276,7 +277,7 @@ export function GearDetail() {
     gearId === undefined ? undefined : state.gear[gearId]
 
   // **One containment view for the whole screen** (finding M4). `whereabouts`
-  // and `HomePicker`'s `moving.insideCount` both need one, and every call
+  // and `HomePicker`'s `moving.ridesAlong` both need one, and every call
   // that omits it builds a fresh O(depot) view — `containment.ts` states its
   // own non-caching as a property, and `tripSlicesOf`'s memo covers the
   // *trip* slices only, never this. Keyed on `state`, whose identity changes
@@ -605,7 +606,8 @@ export function GearDetail() {
           // that necessary).
           moving={{
             name,
-            insideCount: view.childrenOf({ kind: 'gear', id: gearId }).length,
+            // §5i G2: what moves, at any depth — never the lid-open count.
+            ridesAlong: homeRidesAlongCount(gearId, state, view),
           }}
         />
       )}
@@ -667,8 +669,8 @@ export function GearDetail() {
             ? {
                 moving: {
                   name,
-                  insideCount: view.childrenOf({ kind: 'gear', id: gearId })
-                    .length,
+                  // §5i G2: what moves, at any depth.
+                  ridesAlong: homeRidesAlongCount(gearId, state, view),
                   confirm: false,
                 },
               }

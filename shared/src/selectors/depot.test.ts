@@ -15,6 +15,7 @@ import { fold } from '../reduce.ts'
 import { normalizeTag, type TagString } from '../tags.ts'
 import {
   depotCounts,
+  homeRidesAlongCount,
   looseGear,
   ownedCountOf,
   retiredGear,
@@ -188,5 +189,87 @@ describe('ownedCountOf', () => {
     ]
     const state = fold(ops)
     expect(ownedCountOf(state.gear['g1']!)).toBeNull()
+  })
+})
+
+/**
+ * **`N RIDE ALONG` — what moves** (§5i G2). The Home picker's context line
+ * and F5's container re-home confirm, and the one number a re-home discloses
+ * before it rewrites a subtree of home paths.
+ */
+describe('homeRidesAlongCount', () => {
+  it('counts the whole subtree, at any depth', () => {
+    // The bug this ruling closed by definition: a crate holding a stuff
+    // sack holding two items disclosed `1` and moved three.
+    const ops = [
+      ...at(aPlace({ id: 'p-shed', name: 'Shed' }), 1),
+      ...at(
+        aGear({
+          id: 'g-crate',
+          name: 'Crate B',
+          container: true,
+          residence: { in: 'place', id: 'p-shed' },
+        }),
+        2,
+      ),
+      ...at(
+        aGear({
+          id: 'g-sack',
+          name: 'Stuff sack',
+          container: true,
+          residence: { in: 'gear', id: 'g-crate' },
+        }),
+        3,
+      ),
+      ...at(
+        aGear({
+          id: 'g-tarp',
+          name: 'Tarp',
+          residence: { in: 'gear', id: 'g-sack' },
+        }),
+        4,
+      ),
+      ...at(
+        aGear({
+          id: 'g-mat',
+          name: 'Mat',
+          residence: { in: 'gear', id: 'g-sack' },
+        }),
+        5,
+      ),
+    ]
+
+    // The sack counts one as a thing beside what it holds, and both items
+    // inside it ride along too: 1 + 2.
+    expect(homeRidesAlongCount('g-crate', fold(ops))).toBe(3)
+  })
+
+  it('counts a Counted gear by its units, not by its row', () => {
+    const ops = [
+      ...at(aGear({ id: 'g-crate', name: 'Crate B', container: true }), 1),
+      ...at(
+        aGear({
+          id: 'g-poles',
+          name: 'Trekking poles',
+          kind: 'counted',
+          ownedCount: 2,
+          residence: { in: 'gear', id: 'g-crate' },
+        }),
+        2,
+      ),
+    ]
+
+    // Two poles ride along, not one row — `ridesAlongCount`'s own rule in
+    // the trip world, transposed.
+    expect(homeRidesAlongCount('g-crate', fold(ops))).toBe(2)
+  })
+
+  it('counts nothing for an empty container', () => {
+    const ops = at(
+      aGear({ id: 'g-crate', name: 'Crate B', container: true }),
+      1,
+    )
+
+    expect(homeRidesAlongCount('g-crate', fold(ops))).toBe(0)
   })
 })

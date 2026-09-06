@@ -14,6 +14,7 @@ import {
   tripConsumedCountSet,
   tripEntryAdded,
   tripEntryBringCountSet,
+  tripEntryMoved,
   tripEntryRemoved,
   tripOutcomeSet,
   tripParticipantAdded,
@@ -22,10 +23,11 @@ import {
 } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
 import type { EntryState, HouseholdState, TripState } from '../state.ts'
-import { packingItems, packingTotals } from './packing.ts'
+import { packingItems, packingTotals, ridesAlongCount } from './packing.ts'
 import {
   consumedCountOf,
   countOfUnpack,
+  insideCountOf,
   isKnownOutcome,
   OUTCOMES,
   outcomeGlyph,
@@ -1306,5 +1308,55 @@ describe('rehomedSinceOutcome — the RE-HOMED segment’s one comparison (spec 
     const entry = entryFrom(tripFrom(state, TRIP), 'e-tent')
 
     expect(rehomedSinceOutcome(entry, state.gear['g-tent'])).toBe(true)
+  })
+})
+
+/**
+ * **`N INSIDE` — the lid-open count** (§5i G2). F5's own container row, and
+ * the half of the old one-word-two-questions pair that stayed on the row.
+ */
+describe('insideCountOf is the lid-open count, not what moves', () => {
+  const TRIP = 't-inside'
+  const CRATE = 'e-crate'
+  const SACK = 'e-sack'
+  const POLES = 'e-poles'
+  const TARP = 'e-tarp'
+
+  const state = depot(
+    aTrip({ id: TRIP, name: 'Inside' }),
+    aGear({ id: 'g-crate', name: 'Crate', container: true }),
+    aGear({ id: 'g-sack', name: 'Sack', container: true }),
+    aGear({ id: 'g-poles', name: 'Poles', kind: 'counted' }),
+    aGear({ id: 'g-tarp', name: 'Tarp' }),
+    [
+      tripEntryAdded(TRIP, CRATE, { from: 'depot', gearId: 'g-crate' }),
+      tripEntryAdded(TRIP, SACK, { from: 'depot', gearId: 'g-sack' }),
+      tripEntryAdded(TRIP, POLES, { from: 'depot', gearId: 'g-poles' }),
+      tripEntryBringCountSet(TRIP, POLES, 2),
+      tripEntryAdded(TRIP, TARP, { from: 'depot', gearId: 'g-tarp' }),
+      // Sack and poles directly in the crate; the tarp one level deeper.
+      tripEntryMoved(TRIP, SACK, { in: 'container', entryId: CRATE }),
+      tripEntryMoved(TRIP, POLES, { in: 'container', entryId: CRATE }),
+      tripEntryMoved(TRIP, TARP, { in: 'container', entryId: SACK }),
+    ],
+  )
+
+  const trip = tripFrom(state, TRIP)
+
+  it('counts direct children only, a nested container as one, units by their count', () => {
+    // The sack counts 1 whatever is in it, the poles count their
+    // Bring-count of 2, and the tarp two levels down counts nowhere here.
+    expect(insideCountOf(trip, state, CRATE)).toBe(3)
+  })
+
+  it('counts what the RIDE ALONG number does not, and the two differ on purpose', () => {
+    // `ridesAlongCount` over the same crate reaches the tarp; this does
+    // not. One word each, because they answer different questions.
+    expect(insideCountOf(trip, state, SACK)).toBe(1)
+    expect(ridesAlongCount(trip, state, CRATE)).toBe(4)
+  })
+
+  it('counts nothing for an empty container', () => {
+    expect(insideCountOf(trip, state, TARP)).toBe(0)
   })
 })

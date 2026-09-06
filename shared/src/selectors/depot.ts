@@ -156,3 +156,57 @@ export function depotCounts(state: HouseholdState): {
 } {
   return { gear: visibleGear(state).length }
 }
+
+/**
+ * **`N RIDE ALONG` — what moves** (§5i G2), over the **home** tree: how many
+ * things get a new home path when this container is re-homed. The Home
+ * picker's context line and F5's container re-home confirm.
+ *
+ * `INSIDE` and `RIDE ALONG` are two words for two questions.
+ * {@link insideCountOf} is the lid-open one — direct children — and this is
+ * the other: **the whole subtree, at any depth**, because a re-home rewrites
+ * every descendant's home path and a stuff sack two levels down moves as
+ * surely as a tarp lying loose in the crate. Until the round these shared
+ * one phrase (`N INSIDE RIDE ALONG`) and one number — the *direct* count —
+ * so the picker said `1 INSIDE RIDE ALONG` and moved three. **G2 fixes that
+ * by the word's own definition** rather than as a separate defect: the
+ * number is whatever will have a new home path when the sheet closes.
+ *
+ * `ridesAlongCount`'s arithmetic (`packing.ts`), transposed to the world
+ * that has no Entries: a nested container counts as **one** thing beside the
+ * units it holds — a crate holding one empty stuff sack is not empty — and
+ * everything else counts its own units, which here is {@link ownedCountOf},
+ * the home world's twin of a Bring-count. Two trekking poles ride along, not
+ * one row.
+ *
+ * The one place the two worlds genuinely differ: a trip Entry can be
+ * per-person and fan into Pieces, and home gear cannot — a per-person Gear
+ * at home is one thing in one place, so it counts one.
+ */
+export function homeRidesAlongCount(
+  gearId: string,
+  state: HouseholdState,
+  view: ContainmentView = containmentView(state),
+): number {
+  let total = 0
+  const seen = new Set<string>()
+  const stack: string[] = [gearId]
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (current === undefined) continue
+    for (const childId of view.childrenOf({ kind: 'gear', id: current })) {
+      if (seen.has(childId)) continue
+      seen.add(childId)
+      stack.push(childId)
+      const child = state.gear[childId]
+      if (child === undefined) {
+        // An unsynced child still rides along — it has a home path to
+        // rewrite — and answers no Kind, so it counts as one thing.
+        total += 1
+        continue
+      }
+      total += child.container?.value === true ? 1 : (ownedCountOf(child) ?? 1)
+    }
+  }
+  return total
+}

@@ -119,6 +119,15 @@
     color: var(--color-ink-faint);
   }
 
+  /* The trip world's own tone, for a meta segment led by `▸` — F5's
+     container row's `▸ 12 INSIDE`, which counts the trip tree while the
+     return path beside it is home (§5i G2). The glyph and the tone say the
+     same thing twice on purpose: the two-worlds rule is drawn in both
+     channels everywhere else too. */
+  .tripSegment {
+    color: var(--color-brand-amber);
+  }
+
   /* `CLEARS AT CLOSE` — faint mono text, no border: F6's rule that a pill
      shape is a control on every other row, and a trip-only Entry takes no
      outcome. Not a button (`UnpackRow.tsx`'s docstring). */

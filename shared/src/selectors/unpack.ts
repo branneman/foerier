@@ -21,6 +21,10 @@ import {
   isContainerEntry,
   pieceCountOf,
 } from './entry.ts'
+import {
+  tripContainmentView,
+  type TripContainmentView,
+} from './tripContainment.ts'
 import { piecesOf } from './piece.ts'
 import { tripLabel, visibleTrips } from './trip.ts'
 
@@ -214,6 +218,46 @@ export type UnpackItem =
       outcome: OutcomeValue | null
       consumed: null
     }
+
+/**
+ * **`N INSIDE` — the lid-open count** (§5i G2), over the **trip** tree: what
+ * came home in this crate, drawn on F5's own container row as
+ * `→ SHELF L-TOP · ▸ 12 INSIDE`.
+ *
+ * `INSIDE` and `RIDE ALONG` are two words for two questions, and until the
+ * round they shared one. This is the lid-open one: **direct children only**,
+ * a nested container counting **one** whatever is in it, everything else
+ * counting its own units. {@link ridesAlongCount} is the other — *what
+ * moves*, the whole subtree at any depth — and is the one a picker or a
+ * confirm asks, because a move reaches every depth and a lid does not.
+ *
+ * The units are {@link unpackItems}' own, spelled the same way here
+ * (`container ? 1 : pieceCountOf`) rather than filtered out of a computed
+ * item list: this is called once per container row, the items are keyed by
+ * Entry and not by holder, and a number on F5 that counted units F5's own
+ * totals exclude would be a new disagreement of exactly the kind this file
+ * exists to prevent.
+ *
+ * A **trip-only** child still counts. It came home in the crate, which is
+ * the question this number answers; that it takes no outcome (invariant 18)
+ * is a fact about the *denominator*, one register over.
+ */
+export function insideCountOf(
+  trip: TripState,
+  state: HouseholdState,
+  entryId: string,
+  view: TripContainmentView = tripContainmentView(trip, state),
+): number {
+  let inside = 0
+  for (const childId of view.childrenOf({ kind: 'container', entryId })) {
+    const child = trip.entries?.[childId]
+    if (child === undefined) continue
+    inside += isContainerEntry(child, state)
+      ? 1
+      : pieceCountOf(child, trip, state)
+  }
+  return inside
+}
 
 /**
  * Every item on the Trip that takes an outcome, in {@link entriesOf} order

@@ -124,6 +124,7 @@ export { tripContainmentView, tripPath } from './selectors/tripContainment.ts'
 
 export {
   depotCounts,
+  homeRidesAlongCount,
   looseGear,
   ownedCountOf,
   retiredGear,
@@ -252,6 +253,7 @@ export {
   consumedCountOf,
   consumedReductions,
   countOfUnpack,
+  insideCountOf,
   isKnownOutcome,
   outcomeGlyph,
   outcomeLabel,

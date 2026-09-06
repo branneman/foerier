@@ -336,7 +336,7 @@ describe('the Pack picker', () => {
     renderPicker(store, { moving: { name: 'Headlamp', insideCount: 0 } })
 
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'MOVING Headlamp · 0 INSIDE RIDE ALONG',
+      'MOVING Headlamp · 0 RIDE ALONG',
     )
     expect(screen.queryByTestId('moving-footer')).toBeNull()
     // Nothing was withheld, and the list says so.
@@ -370,7 +370,7 @@ describe('the Pack picker', () => {
     })
 
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'MOVING Crate B · 5 INSIDE RIDE ALONG',
+      'MOVING Crate B · 5 RIDE ALONG',
     )
   })
 

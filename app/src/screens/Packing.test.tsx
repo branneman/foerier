@@ -1089,7 +1089,7 @@ describe('moving what a group holds', () => {
     // two and the stuff sack is a thing that rides along while contributing
     // no packable piece (ruling A5). `ridesAlongCount` is the argument.
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'MOVING Crate B · 6 INSIDE RIDE ALONG',
+      'MOVING Crate B · 6 RIDE ALONG',
     )
     expect(screen.getByTestId('moving-footer')).toHaveTextContent(
       'Crate B AND EVERYTHING INSIDE IT ARE NOT OFFERED.',
@@ -1396,7 +1396,7 @@ describe('a per-person Entry in CONTAINER mode', () => {
     )
 
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'MOVING Crate B · 0 INSIDE RIDE ALONG',
+      'MOVING Crate B · 0 RIDE ALONG',
     )
   })
 
