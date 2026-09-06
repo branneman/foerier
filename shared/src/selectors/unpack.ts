@@ -468,14 +468,14 @@ export interface Unaccounted {
 }
 
 /**
- * The per-Gear accumulator {@link accumulateUnaccounted} folds into and
- * {@link finalizeUnaccounted} reads back out — **exported** because
- * `whereabouts.ts`'s own walk builds the identical standing in the same pass
- * as its `TRIP_SLICES` memo (patterns.md §1.7) rather than calling
- * {@link unaccountedOf} a second time over every visible Trip, and it must
- * accumulate the *identical* way rather than a second, drifting copy.
+ * The per-Gear working accumulator {@link unaccountedOf} folds into, before
+ * it is reduced to the public {@link Unaccounted} shape — **private**: this
+ * function is the *only* walk that ever builds one. `whereabouts.ts` reads
+ * the finished `Unaccounted` map by calling {@link unaccountedOf} itself,
+ * once per fold, exactly as it already calls `overClaims` — never a second,
+ * parallel walk over the same registers with its own copy of this shape.
  */
-export interface UnaccountedAccumulator {
+interface UnaccountedAccumulator {
   tripId: string
   tripName: string
   latest: Stamp
@@ -484,12 +484,13 @@ export interface UnaccountedAccumulator {
 }
 
 /**
- * Folds one live `lost` outcome into the per-Gear accumulator — the
- * accumulation glue {@link unaccountedOf} and `whereabouts.ts`'s own walk
- * both call, so the arithmetic ("the units sum, the latest stamp names the
- * Trip") is stated once.
+ * Folds one live `lost` outcome into the per-Gear accumulator. `units` is
+ * ignored the moment `personId` is given: a per-person contribution's unit
+ * is *this Person*, not a number, so the same Person's Piece lost on two
+ * Trips must still count once, not twice — {@link unaccountedOf}'s own test
+ * pins it. The **latest** stamp names the Trip, and `units` otherwise sums.
  */
-export function accumulateUnaccounted(
+function accumulateUnaccounted(
   byGear: Map<string, UnaccountedAccumulator>,
   gearId: string,
   tripId: string,
@@ -518,22 +519,6 @@ export function accumulateUnaccounted(
   }
 }
 
-/** {@link UnaccountedAccumulator} → {@link Unaccounted}, the public shape. */
-export function finalizeUnaccounted(
-  byGear: ReadonlyMap<string, UnaccountedAccumulator>,
-): ReadonlyMap<string, Unaccounted> {
-  const result = new Map<string, Unaccounted>()
-  for (const [gearId, acc] of byGear) {
-    result.set(gearId, {
-      tripId: acc.tripId,
-      tripName: acc.tripName,
-      units: acc.personIds.size > 0 ? acc.personIds.size : acc.units,
-      personIds: [...acc.personIds],
-    })
-  }
-  return result
-}
-
 /**
  * **The unaccounted standing** — story 3, spec §3.5. Gear whose last unpack
  * outcome was `lost` reads as unaccounted for, naming the Trip it was last
@@ -543,7 +528,30 @@ export function finalizeUnaccounted(
  * Walks **every** {@link visibleTrips}, closed included — a closed Trip's
  * outcomes are exactly the history this standing reads, unlike
  * `whereabouts.ts`'s *active Trips only* rule for a live slice, which stays
- * unchanged and stated in exactly one place (spec §3.5).
+ * unchanged and stated in exactly one place (spec §3.5). **This is the one
+ * and only walk**: `whereabouts.ts`'s `TRIP_SLICES` memo calls this function
+ * once per fold, beside `overClaims(state)` — the identical discipline that
+ * function already follows — rather than folding a second, hand-rolled copy
+ * of this walk into its own loop. A second copy is exactly the drift risk
+ * this file's own header warns every reader against.
+ *
+ * **A `lost` outcome on a Trip that is still `draft` produces a standing
+ * too.** `visibleTrips` includes drafts and this walk does not filter by
+ * phase — literal-correct per spec §3.5's "every visible Trip" — but it is
+ * worth stating because it means a Trip that was drafted, given one `lost`
+ * outcome by mistake or in a test fixture, and never activated can still
+ * make a Gear read `▲` in the Depot naming a Trip that never happened.
+ *
+ * **A removed Entry is a third settle route, beside the two spec §3.5
+ * names.** {@link entriesOf} filters `removed`, so `trip.entry_removed`
+ * drops that Entry's contribution from this walk entirely — the standing
+ * clears the moment the Entry is gone, with no `gear.rehomed` and no change
+ * to the Entry's own outcome required.
+ *
+ * **A tombstoned Piece's `lost` outcome is dropped, never counted.**
+ * {@link piecesOf} already filters a removed Piece out of the set this walk
+ * iterates, consistent with ruling R10/R11's family: a Piece that does not
+ * exist carries no standing, exactly as it carries no claim.
  *
  * **Three consequences, spec §3.5, stated here because a call site would
  * otherwise re-derive them:**
@@ -622,5 +630,14 @@ export function unaccountedOf(
     }
   }
 
-  return finalizeUnaccounted(byGear)
+  const result = new Map<string, Unaccounted>()
+  for (const [id, acc] of byGear) {
+    result.set(id, {
+      tripId: acc.tripId,
+      tripName: acc.tripName,
+      units: acc.personIds.size > 0 ? acc.personIds.size : acc.units,
+      personIds: [...acc.personIds],
+    })
+  }
+  return result
 }

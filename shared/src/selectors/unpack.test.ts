@@ -747,6 +747,53 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
     expect(unaccountedOf(state).get('g-tent')).toBeDefined()
   })
 
+  it('a lost outcome on a DRAFT Trip produces a standing too — literal-correct per "every visible Trip" (spec §3.5)', () => {
+    const state = depot(
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'draft' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ],
+    )
+
+    expect(unaccountedOf(state).get('g-tent')).toBeDefined()
+  })
+
+  it('removing the Entry settles the standing — a third route beside re-home and outcome-change (entriesOf filters removed)', () => {
+    const state = depot(
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+        tripEntryRemoved(TRIP, 'e-tent'),
+      ],
+    )
+
+    expect(unaccountedOf(state).get('g-tent')).toBeUndefined()
+  })
+
+  it('a tombstoned Piece’s lost outcome is dropped, never counted (piecesOf filters, ruling R10/R11’s family)', () => {
+    const state = depot(
+      aPerson({ id: MARK, name: 'Mark' }),
+      aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+      aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'pack_out',
+        participants: [MARK],
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+        tripOutcomeSet(TRIP, 'e-lamp', 'lost', MARK),
+        tripPieceRemoved(TRIP, 'e-lamp', MARK),
+      ],
+    )
+
+    expect(unaccountedOf(state).get('g-lamp')).toBeUndefined()
+  })
+
   it('a gear.rehomed stamped AFTER the lost outcome clears the standing', () => {
     const base = [
       ...aGear({ id: 'g-tent', name: 'Tent' }),
@@ -863,6 +910,37 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
       units: 1,
       personIds: [MARK],
     })
+  })
+
+  it('the same Person’s Piece lost on two Trips counts once, not twice', () => {
+    const state = depot(
+      aPerson({ id: MARK, name: 'Mark' }),
+      aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+      aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'pack_out',
+        participants: [MARK],
+      }),
+      aTrip({
+        id: OTHER,
+        name: 'Vosges',
+        phase: 'on_trip',
+        participants: [MARK],
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-a', { from: 'depot', gearId: 'g-lamp' }),
+        tripOutcomeSet(TRIP, 'e-a', 'lost', MARK),
+        tripEntryAdded(OTHER, 'e-b', { from: 'depot', gearId: 'g-lamp' }),
+        tripOutcomeSet(OTHER, 'e-b', 'lost', MARK),
+      ],
+    )
+
+    const standing = unaccountedOf(state).get('g-lamp')
+    expect(standing?.units).toBe(1)
+    expect(standing?.personIds).toEqual([MARK])
+    // The latest of the two — OTHER's `lost` is stamped after TRIP's.
+    expect(standing?.tripId).toBe(OTHER)
   })
 
   it('a lost per-person CONTAINER Entry produces a whole-Entry standing, never per-Person ones (ruling R10/R11)', () => {

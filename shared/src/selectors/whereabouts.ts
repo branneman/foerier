@@ -11,7 +11,6 @@ import {
   type ContainmentView,
   type PathSegment,
 } from './containment.ts'
-import { stampOf } from '../registers.ts'
 import { overClaims } from './claim.ts'
 import { ownedCountOf } from './depot.ts'
 import {
@@ -20,7 +19,6 @@ import {
   entryKind,
   entryLabel,
   isContainerEntry,
-  pieceCountOf,
 } from './entry.ts'
 import { byNameThenId } from './order.ts'
 import {
@@ -39,13 +37,10 @@ import {
   type TripContainmentView,
 } from './tripContainment.ts'
 import {
-  accumulateUnaccounted,
-  finalizeUnaccounted,
   outcomeOf,
-  outcomeStands,
   pieceOutcomeOf,
   type Unaccounted,
-  type UnaccountedAccumulator,
+  unaccountedOf,
 } from './unpack.ts'
 
 /**
@@ -261,14 +256,14 @@ interface TripSliceFacts extends SegmentRead {
  * It is itself a scan of every active Trip's Entries, so calling it per row
  * would double the cost this memo exists to remove.
  *
- * **S10 (spec §3.5, patterns.md §1.7): the unaccounted standing is folded
- * into this identical pass, not a second `unaccountedOf(state)` walk of
- * every visible Trip.** That is also why the loop below widens from every
- * *active* Trip to every *visible* one — a closed Trip's outcomes are
- * exactly the history the standing reads — with `isActive` moving inside the
- * loop as the gate on contributing a **slice**; `whereabouts`' own *active
- * Trips only* rule for a live slice stays unchanged and stated in exactly
- * one place, one line lower.
+ * **S10 (spec §3.5): `unaccountedOf(state)` is read here too, exactly once,
+ * beside `overClaims`.** It is `unpack.ts`'s own full scan of every
+ * *visible* Trip (closed included — a closed Trip's outcomes are exactly the
+ * history the standing reads), stated and tested in exactly one place there;
+ * this memo calls it once per fold rather than re-deriving its walk inline,
+ * the identical discipline `overClaims` above already follows. The loop
+ * below stays scoped to *active* Trips only — the rule a live **slice**
+ * has always used — because the standing is not gathered here.
  */
 const TRIP_SLICES = new WeakMap<
   HouseholdState,
@@ -585,7 +580,6 @@ function tripSlicesOf(state: HouseholdState): {
   if (cached !== undefined) return cached
 
   const byGear = new Map<string, TripSliceFacts[]>()
-  const unaccountedAcc = new Map<string, UnaccountedAccumulator>()
 
   // Domain §4: *"Only an active trip's packing arrangement has effect. A
   // draft trip's arrangement is not yet real and a closed trip's is no longer
@@ -599,15 +593,17 @@ function tripSlicesOf(state: HouseholdState): {
   // `TRIP: ALPS 2026` in the slice bar and `⌂ HOME` in the column beside it,
   // and both are right. Never unify the two.
   //
-  // **S10 widens the outer loop to every visible Trip** — the unaccounted
-  // standing below reads a closed Trip's outcomes too — with `isActive`
-  // moved inside as the gate on contributing a *slice* rather than dropped:
-  // the rule above is unchanged and still the one place it is stated.
-  for (const trip of visibleTrips(state)) {
-    const active = isActive(trip)
-    const view = active ? tripContainmentView(trip, state) : undefined
+  // **S10 (spec §3.5) does NOT widen this loop.** The unaccounted standing
+  // reads every visible Trip, closed included, but it is computed by
+  // {@link unaccountedOf} — called once below, beside `overClaims(state)`,
+  // exactly as that function is — rather than by folding a second walk into
+  // this one. Widening this loop to gather a fact this loop's own slices
+  // never need would only cost an extra `entriesOf` sweep per inactive Trip
+  // for nothing this function returns.
+  for (const trip of visibleTrips(state).filter(isActive)) {
+    const view = tripContainmentView(trip, state)
     const tripName = tripLabel(trip)
-    const participants = active ? participantIds(trip) : []
+    const participants = participantIds(trip)
 
     // Gathered per Gear, because a Trip may list one Gear twice — nothing in
     // the catalogue forbids it, and `claimsByGear` already accumulates rather
@@ -635,52 +631,8 @@ function tripSlicesOf(state: HouseholdState): {
       // per-person branch below. `isContainerEntry` is what draws the line,
       // exactly as it does for `claimsByGear`.
       const kind = entryKind(entry, state)
-      const container = isContainerEntry(entry, state)
-      const perPersonLoose = kind === 'per_person' && !container
-
-      // S10 (spec §3.5): the unaccounted standing, folded into this
-      // identical walk (patterns.md §1.7) rather than a second pass over
-      // every visible Trip — read for **every** Trip, active or not, since
-      // a closed Trip's `lost` outcome is exactly the history this reads.
-      // `outcomeStands` (`unpack.ts`) is the one comparison; the units rule
-      // is the container-overridden `pieceCountOf` {@link unpackItems}
-      // already applies, restated here rather than called, for the same
-      // "one walk, not a nested second one" reason `unaccountedOf` states.
-      const gear = state.gear[source.gearId]
-      if (perPersonLoose) {
-        for (const personId of piecesOf(entry, trip)) {
-          const register = entry.pieces?.[personId]?.outcome
-          if (register?.value === 'lost' && outcomeStands(register, gear)) {
-            accumulateUnaccounted(
-              unaccountedAcc,
-              source.gearId,
-              trip.id,
-              tripName,
-              stampOf(register),
-              1,
-              personId,
-            )
-          }
-        }
-      } else {
-        const register = entry.outcome
-        if (register?.value === 'lost' && outcomeStands(register, gear)) {
-          const units = container ? 1 : pieceCountOf(entry, trip, state)
-          accumulateUnaccounted(
-            unaccountedAcc,
-            source.gearId,
-            trip.id,
-            tripName,
-            stampOf(register),
-            units,
-            undefined,
-          )
-        }
-      }
-
-      // Everything below builds a **slice**, which only an active Trip
-      // contributes — the rule stated above, one line up from here.
-      if (!active || view === undefined) continue
+      const perPersonLoose =
+        kind === 'per_person' && !isContainerEntry(entry, state)
       if (!perPersonLoose && outcomeOf(entry) !== null) continue
 
       const contribution = contributionOf(trip, state, view, entry)
@@ -752,7 +704,13 @@ function tripSlicesOf(state: HouseholdState): {
   const overClaimed = new Set(
     overClaims(state).map((overClaim) => overClaim.gearId),
   )
-  const unaccounted = finalizeUnaccounted(unaccountedAcc)
+  // S10 (spec §3.5): called once here, exactly as `overClaims` is on the
+  // line above — `unaccountedOf` is itself a full scan of every visible
+  // Trip's Entries, so calling it per row (or per Gear) would double the
+  // cost this memo exists to remove. `patterns.md` §1.7's "same pass" means
+  // once per fold, not one shared loop body — the `overClaims` precedent
+  // this file already follows.
+  const unaccounted = unaccountedOf(state)
 
   const built = { byGear, overClaimed, unaccounted }
   TRIP_SLICES.set(state, built)
@@ -899,12 +857,10 @@ export function whereaboutsText(
  * with one Trip bringing `×4` reads `▲ ALPS 2026 · CAR` — an over-claim with
  * a single claim, which D8's own `▲ 2 TRIPS` example does not cover.
  *
- * **The unaccounted word reuses D1's rule** — `×N` only when the Gear's own
- * home slice states a quantity at all ({@link WhereaboutsSlice}'s `count`
- * non-null, i.e. Counted; `ownedCountOf`'s own gate, read here rather than
- * re-derived), `N PIECE(S)` for a per-person standing, and bare for Single —
- * `▲ TESSIN 2025`, never `▲ ×1 TESSIN 2025`, because Single has no quantity
- * to state (D1).
+ * **`×N` is F16(2)'s own exception, granted to Counted alone — not a general
+ * reuse of D1's rule.** `▲ TESSIN 2025` for Single and for per-person, `▲ ×1
+ * TESSIN 2025` for Counted — see {@link unaccountedPrefix}'s own docstring
+ * for why a per-person standing draws no count here at all.
  *
  * `GearRow.tone` has carried `'home' | 'trip' | 'attention'` since S2b, which
  * wrote that the third arm *"arrives with story 11's `lost` outcome"*. D8
@@ -940,21 +896,24 @@ export function rowWhereabouts(w: Whereabouts): {
 }
 
 /**
- * The unaccounted row's quantity prefix, or `''` for Single — D1's rule
- * ("the right-hand read names the unit that splits") applied to
- * {@link Unaccounted} rather than to a trip slice, since a standing carries
- * no `count`/`pieceCount` pair of its own to read. The Gear's own home slice
- * (`w.slices[0]`, always present) already answers *is this Counted* through
- * {@link ownedCountOf}'s gate — non-null exactly when it is — so this reads
- * that rather than re-deriving Kind.
+ * The unaccounted row's quantity prefix, `×N ` for Counted and `''`
+ * otherwise — F16(2)'s exception, granted to Counted **alone**: `×1` is the
+ * standing's own concession to D1's "the right-hand read names the unit that
+ * splits", not a general reuse of it. A per-person standing states no
+ * quantity here, on purpose — `N PIECES` is `sliceCountLabel`'s grammar, for
+ * the row's own right-hand slot, a different read from B2's word; F16(2)
+ * gives no such exception to per-person, and inventing one here is a design
+ * question, not a coding one — a per-person gear partly lost then states no
+ * count on this row at all (the Depot's own QTY column also reads `—` for
+ * per-person), which is a real gap F16 never reached and is not this
+ * function's to close. The Gear's own home slice (`w.slices[0]`, always
+ * present) already answers *is this Counted* through {@link ownedCountOf}'s
+ * gate — non-null exactly when it is — so this reads that rather than
+ * re-deriving Kind.
  */
 function unaccountedPrefix(w: Whereabouts): string {
   const unaccounted = w.unaccounted
   if (unaccounted === null) return ''
-  if (unaccounted.personIds.length > 0) {
-    const n = unaccounted.personIds.length
-    return `${n} ${n === 1 ? 'PIECE' : 'PIECES'} `
-  }
   const home = w.slices[0]
   if (home !== undefined && home.kind === 'home' && home.count !== null) {
     return `×${unaccounted.units} `
