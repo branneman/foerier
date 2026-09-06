@@ -2,57 +2,37 @@
   /*
    * F5's own column — `Packing.module.css`'s `.screen` verbatim, since F5 is
    * F4's sibling and A10 applies unchanged (`docs/design/README.md` §7,
-   * ruling F11), with one departure from Packing's own copy: the 560 cap is
-   * read here as a **container** decision, not a media one (`patterns.md`
-   * §6.4). Whether the capped column *exists* is never in question — F5
-   * draws exactly one column at every width, no pane ever unlocks a second —
-   * so nothing here decides *existence*; the only question left is *how
-   * wide the column may grow*, which is squarely "how it lays out". A size
-   * container cannot query its own inline-size to set a property that would
-   * change that same inline-size, so `.screen` only establishes the
-   * container (`container-type: inline-size`) and carries no width rule of
-   * its own; `.column`, a plain descendant sized by whatever `.screen` was
-   * actually given, is what the `@container` rule below caps. Reading the
-   * given space rather than the viewport also means the cap keeps working
-   * unchanged if a future round ever widens or narrows the shell's own
-   * `--gutter` — no second number to keep in sync with `layout.css`'s.
+   * ruling F11): one capped 560px column, centred, from Roomy up, no pane.
+   * `min-height: 100%` so the empty region below has something to fill.
+   *
+   * **R29 — this was briefly a `container-type: inline-size` element with
+   * the cap on a nested `.column`, and the round reverted it.** The cap is a
+   * media query on `.screen` itself, matching `Packing.module.css`,
+   * `AddGear.module.css` and `NewTrip.module.css` exactly — `patterns.md`
+   * §6.4 already covers this shape verbatim ("a module's media query
+   * mirrors that existence decision *or caps the shell measure*"), and that
+   * same section says `container-type` belongs on a pane or list item,
+   * never on the component itself, which `.screen` is. The container-query
+   * version also shifted the trigger point (`.shell__main`'s own gutter and
+   * `scrollbar-gutter` net out of what a container reads, a media query's
+   * viewport does not) and, worse, silently broke F19's empty region: making
+   * `.screen` a container meant it carried no `display: flex` of its own,
+   * so `.empty`'s `flex: 1` had nothing to grow into. `jsdom` computes no
+   * layout, so nothing in this file's own test suite could have caught it.
    */
   .screen {
-    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
     min-height: 100%;
   }
 
-  /*
-   * The 40em threshold matches the shell's own Roomy breakpoint number
-   * (`layout.css`), but it is not the identical trigger point: this reads
-   * `.screen`'s own content-box width, which is already net of the shell's
-   * gutter, so the cap engages a little past the raw viewport's 40em rather
-   * than exactly at it. Accepted rather than compensated for — the two
-   * decisions (a card gains its border; the column gains its cap) answer
-   * different questions and do not have to land on the same physical pixel,
-   * and computing a bespoke gutter-corrected number here would be inventing
-   * a value no board states for a few pixels of daylight nothing depends on.
-   */
-  @container (min-width: 40em) {
-    .column {
+  @media (min-width: 40em) {
+    .screen {
       max-width: 35rem;
       margin-inline: auto;
       width: 100%;
     }
-  }
-
-  /*
-   * The column itself — `Packing.module.css`'s `.screen` shape, unchanged,
-   * just moved one level down from `.screen` above. `flex: 1` is what makes
-   * it fill `.screen`'s full (`min-height: 100%`-floored) height in turn, so
-   * `.empty`'s own `flex: 1` below still has a real height to fill.
-   */
-  .column {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: var(--space-16);
-    min-width: 0;
   }
 
   /* DISPLAY, 28/34 at every width — `Packing.module.css`'s `.title` rule,

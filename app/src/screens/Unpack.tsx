@@ -1198,8 +1198,12 @@ export function Unpack() {
   // own read, never the unscoped `overClaimsIfActive`: F5 asks about *this*
   // Trip's own claims, not a hypothetical. The gate is `overClaimGroups`'
   // own filtered result, never the raw `overClaims.length` (`patterns.md`
-  // §1.6) — the unfiltered selector can in principle report nothing that
-  // actually names `tripId`, and gating on it would render an empty shell.
+  // §1.6) — not because the unfiltered array could name a Trip other than
+  // `tripId` here (`overClaimsFor` already scopes to it, unlike its
+  // `IfActive` sibling), but because `overClaimGroups` is the exact value
+  // this render needs regardless, and gating on it keeps this call site in
+  // step with `OverClaimBand`'s own internal shape rather than a second,
+  // parallel check over the raw array with no rendering purpose of its own.
   const overClaims = overClaimsFor(state, tripId)
   const claimGroups = overClaimGroups(overClaims, tripId, state)
 
@@ -1249,134 +1253,121 @@ export function Unpack() {
 
   return (
     <div className={styles['screen']}>
-      {/*
-       * F11's own column (spec §4.10) — `.screen` above establishes the
-       * container (`container-type: inline-size`, `Unpack.module.css`), and
-       * the 560 cap lands on this child rather than on `.screen` itself: a
-       * size container cannot query its own inline-size to set a property
-       * that would change that same inline-size, so the element that reads
-       * the space it was given has to be a plain descendant of the one that
-       * measures it. See `Unpack.module.css`'s own comment for which of
-       * F11's rules is the media query's and which is this container's.
-       */}
-      <div className={styles['column']}>
-        <ScreenBand
-          header={header}
-          back={{ href: `/trips/${tripId}`, label: tripLabel(trip) }}
-          sync={sync}
-          syncTestId="unpack-sync"
-        />
+      <ScreenBand
+        header={header}
+        back={{ href: `/trips/${tripId}`, label: tripLabel(trip) }}
+        sync={sync}
+        syncTestId="unpack-sync"
+      />
 
-        <h1 className={styles['title']}>Unpack</h1>
+      <h1 className={styles['title']}>Unpack</h1>
 
-        {empty ? (
-          // F19, `Packing.tsx`'s empty region word for word: a domain fact, not
-          // a promise. The count line and the bar are absent, not zeroed — a
-          // later task's controls, hint and close card go with them, for the
-          // identical dead-affordance reason F4 already argues.
-          <section className={styles['empty']}>
-            <p className={styles['emptyCount']}>0 ENTRIES.</p>
-            <p className={styles['emptySource']}>
-              The gear list is built from the depot.
-            </p>
-          </section>
-        ) : (
-          <>
-            <div className={styles['counts']}>
-              {/* Composed by `resolvedLabel`/`openLabel` (`household/trips.ts`)
+      {empty ? (
+        // F19, `Packing.tsx`'s empty region word for word: a domain fact, not
+        // a promise. The count line and the bar are absent, not zeroed — a
+        // later task's controls, hint and close card go with them, for the
+        // identical dead-affordance reason F4 already argues.
+        <section className={styles['empty']}>
+          <p className={styles['emptyCount']}>0 ENTRIES.</p>
+          <p className={styles['emptySource']}>
+            The gear list is built from the depot.
+          </p>
+        </section>
+      ) : (
+        <>
+          <div className={styles['counts']}>
+            {/* Composed by `resolvedLabel`/`openLabel` (`household/trips.ts`)
                 rather than here, for `packedLabel`'s own reason: a later task
                 reuses these two, and two spellings of `● 56/62 RESOLVED`
                 is exactly the drift this codebase refuses. */}
-              <span className={styles['resolved']}>
-                {resolvedLabel(totals)}
-              </span>
-              {/* A distinct test id, not just its accessible text: the close
+            <span className={styles['resolved']}>{resolvedLabel(totals)}</span>
+            {/* A distinct test id, not just its accessible text: the close
                 card's own summary line (this task) also ends in `N OPEN`, on
                 a Trip where the two numbers coincide — the `○ OPEN` filter
                 pill's own reason above, restated for this second collision. */}
-              <span className={styles['open']} data-testid="unpack-open-count">
-                {openLabel(totals)}
-              </span>
-            </div>
+            <span className={styles['open']} data-testid="unpack-open-count">
+              {openLabel(totals)}
+            </span>
+          </div>
 
-            {/* `aria-hidden`, because the line immediately above states the
+          {/* `aria-hidden`, because the line immediately above states the
               identical fact in words and in the ledger's own vocabulary —
               `Packing.tsx`'s own reason for withholding a `progressbar`
               role here. */}
+          <div
+            className={styles['bar']}
+            data-testid="unpack-bar"
+            aria-hidden="true"
+          >
             <div
-              className={styles['bar']}
-              data-testid="unpack-bar"
-              aria-hidden="true"
+              className={styles['fill']}
+              style={{ inlineSize: `${resolvedPercent(totals)}%` }}
+            />
+          </div>
+
+          {/*
+           * F15 — the over-claim band, between the count block and the
+           * controls (spec §4.9, `docs/design/README.md` §7/§5h): a
+           * property of the gear list, and F5 is a third view of it. Never
+           * dismissible — rendering nothing is the only way it goes away,
+           * which is why this reads `claimGroups.length` rather than a
+           * `useState` a Quartermaster could close. `OverClaimGroups` gets
+           * no `settle` at all: `REMOVE HERE` and `BRING ×N HERE` edit the
+           * list, and F5 is not the list editor (§5b I, `patterns.md` §4.4)
+           * — its absence is the read-only mode, not a degraded one, and the
+           * row's own fact line says so (`SINGLE · STILL OPEN HERE`,
+           * `OverClaimGroupsProps.resolvableHere`'s own word-swap).
+           */}
+          {claimGroups.length > 0 && (
+            <section
+              className={bandStyles['band']}
+              data-testid="over-claim-band"
             >
-              <div
-                className={styles['fill']}
-                style={{ inlineSize: `${resolvedPercent(totals)}%` }}
+              <OverClaimGroups
+                tripId={tripId}
+                groups={claimGroups}
+                // The row's own pill is right below, in the very same
+                // list — see `OverClaimGroupsProps.resolvableHere`.
+                resolvableHere
               />
-            </div>
+            </section>
+          )}
 
-            {/*
-             * F15 — the over-claim band, between the count block and the
-             * controls (spec §4.9, `docs/design/README.md` §7/§5h): a
-             * property of the gear list, and F5 is a third view of it. Never
-             * dismissible — rendering nothing is the only way it goes away,
-             * which is why this reads `claimGroups.length` rather than a
-             * `useState` a Quartermaster could close. `OverClaimGroups` gets
-             * no `settle` at all: `REMOVE HERE` and `BRING ×N HERE` edit the
-             * list, and F5 is not the list editor (§5b I, `patterns.md` §4.4)
-             * — its absence is the read-only mode, not a degraded one, and the
-             * row's own fact line says so (`SINGLE · STILL OPEN HERE`,
-             * `OverClaimGroupsProps.resolvableHere`'s own word-swap).
-             */}
-            {claimGroups.length > 0 && (
-              <section
-                className={bandStyles['band']}
-                data-testid="over-claim-band"
-              >
-                <OverClaimGroups
-                  tripId={tripId}
-                  groups={claimGroups}
-                  // The row's own pill is right below, in the very same
-                  // list — see `OverClaimGroupsProps.resolvableHere`.
-                  resolvableHere
-                />
-              </section>
-            )}
-
-            <div className={styles['controls']} data-testid="unpack-controls">
-              <fieldset className={styles['segmentedField']}>
-                {/* No visible label on the board — `Packing.tsx`'s own
+          <div className={styles['controls']} data-testid="unpack-controls">
+            <fieldset className={styles['segmentedField']}>
+              {/* No visible label on the board — `Packing.tsx`'s own
                   recipe: named for assistive technology alone. */}
-                <legend className="visually-hidden">Group by</legend>
-                <SegmentedControl
-                  name="unpack-mode"
-                  options={MODES}
-                  value={mode}
-                  onChange={setMode}
-                  size="dense"
-                />
-              </fieldset>
+              <legend className="visually-hidden">Group by</legend>
+              <SegmentedControl
+                name="unpack-mode"
+                options={MODES}
+                value={mode}
+                onChange={setMode}
+                size="dense"
+              />
+            </fieldset>
 
-              {/* `○ OPEN`, never `OPEN ONLY` — F4 dropped *only*, a filter
+            {/* `○ OPEN`, never `OPEN ONLY` — F4 dropped *only*, a filter
                 pill already being one. `Packing.tsx`'s `○ LEFT` grammar,
                 one word changed. */}
-              <button
-                type="button"
-                className={styles['filter']}
-                // A distinct test id, not just its accessible name: this
-                // screen's own outcome pill also reads `○ OPEN` (F6's own word
-                // for the unresolved state), so a name-based query would match
-                // both.
-                data-testid="unpack-open-filter"
-                aria-pressed={openOnly}
-                onClick={() => setOpenOnly(!openOnly)}
-              >
-                ○ OPEN{openOnly && <span aria-hidden="true"> ✕</span>}
-              </button>
-            </div>
+            <button
+              type="button"
+              className={styles['filter']}
+              // A distinct test id, not just its accessible name: this
+              // screen's own outcome pill also reads `○ OPEN` (F6's own word
+              // for the unresolved state), so a name-based query would match
+              // both.
+              data-testid="unpack-open-filter"
+              aria-pressed={openOnly}
+              onClick={() => setOpenOnly(!openOnly)}
+            >
+              ○ OPEN{openOnly && <span aria-hidden="true"> ✕</span>}
+            </button>
+          </div>
 
-            <p className={styles['hint']}>{HINT}</p>
+          <p className={styles['hint']}>{HINT}</p>
 
-            {/* F19: with `○ OPEN` on and nothing left open, the list reads one
+          {/* F19: with `○ OPEN` on and nothing left open, the list reads one
               line rather than a wall of collapsed, header-less groups —
               gated on `totals.open`, `unpackTotals`' own count over
               `unpackItems` directly, rather than a per-mode recount of
@@ -1385,117 +1376,116 @@ export function Unpack() {
               fully resolved over its Pieces" (`visibleRows`' own rule), the
               identical fact `totals.open` sums, so this gate never disagrees
               with what the three modes draw beneath it. */}
-            {openOnly && totals.open === 0 ? (
-              <p
-                className={styles['nothingOpen']}
-                data-testid="unpack-nothing-open"
-              >
-                NOTHING OPEN.
-              </p>
-            ) : mode === 'all' ? (
-              <ul className={styles['rows']} data-testid="unpack-groups">
-                {visibleRows(allEntryRows, openOnly).map((row) => (
-                  <li key={row.entryId}>
-                    <UnpackRow
-                      entryId={row.entryId}
-                      name={row.name}
-                      meta={row.meta}
-                      outcome={row.outcome}
-                      onOutcome={() => openOutcome(row.entryId)}
-                      onReHome={() => openReHome(row.entryId)}
-                      {...(row.cluster === undefined
-                        ? {}
-                        : { cluster: row.cluster })}
-                      tripOnly={row.tripOnly ?? false}
-                      canReHome={row.canReHome ?? true}
-                    />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className={styles['groups']} data-testid="unpack-groups">
-                {(mode === 'person' ? personRows : destinationRows).map(
-                  (group) => (
-                    <GroupSection
-                      key={group.key}
-                      group={group}
-                      openOnly={openOnly}
-                      onOutcome={openOutcome}
-                      onReHome={openReHome}
-                    />
-                  ),
-                )}
-              </div>
-            )}
-
-            {/*
-             * The close card (F11, spec §4.7) — the list's last card at every
-             * width, a sibling of the groups region above rather than a docked
-             * footer: `.screen`'s own flex column carries the gap, exactly as
-             * it does between every other element on this screen. A docked
-             * footer would spend the thumb zone on a control disabled for most
-             * of the pass, and a right-hand column needs a pane F5 lacks.
-             *
-             * **The gate is a real `disabled` attribute** (this task's own
-             * requirement) — `aria-disabled` alone would still let a keyboard
-             * user fire the click handler past invariant 18's gate, which has
-             * no override (F10 — no confirm stands between the tap and the
-             * write).
-             *
-             * The tap emits `closeTrip`'s own ops, in the order it returns
-             * them — never re-derived here: the reduction-then-phase-move
-             * order, the per-Gear summing and the floor at zero are every one
-             * of them `gestures.ts`'s own rule, not this screen's.
-             *
-             * **A Trip already `isClosed` withholds the button and its hint,
-             * never a `Close trip` shown live** (ruling R27 Layer A) — the
-             * one thing `open = 0` alone cannot tell apart from "just
-             * finished" is "already closed", and offering a live button there
-             * is a second, redundant door onto a gesture that has nothing
-             * left to do (`gestures.ts`'s own guard, R27 Layer B). No drawn
-             * frame shows F5 on a closed Trip, so the design round still owes
-             * this a picture; meanwhile `patterns.md` §3.7's *withheld, not
-             * greyed* is the standing rule — the summary line is a fact about
-             * a closed Trip regardless (`53 BACK · … · 0 OPEN` stays true),
-             * so only the control and its instructional hint go, never the
-             * ledger line above them.
-             */}
-            <section
-              className={styles['closeCard']}
-              data-testid="unpack-close-card"
+          {openOnly && totals.open === 0 ? (
+            <p
+              className={styles['nothingOpen']}
+              data-testid="unpack-nothing-open"
             >
-              <p
-                className={styles['closeSummary']}
-                data-testid="unpack-close-summary"
-              >
-                {`${totals.back} BACK · ${totals.consumed} CONSUMED · ${totals.lost} LOST · `}
-                <span className={styles['closeSummaryOpen']}>
-                  {openLabel(totals)}
-                </span>
-              </p>
-              {!isClosed(trip) && (
-                <>
-                  <button
-                    type="button"
-                    className={styles['closeButton']}
-                    disabled={totals.open > 0}
-                    onClick={() => {
-                      for (const spec of closeTrip(trip, state)) emit(spec)
-                    }}
-                  >
-                    {totals.open > 0
-                      ? `Close trip — ${totals.open} open`
-                      : 'Close trip'}
-                  </button>
-                  <p className={styles['closeHint']}>
-                    {totals.open > 0 ? CLOSE_HINT_GATED : CLOSE_HINT_READY}
-                  </p>
-                </>
+              NOTHING OPEN.
+            </p>
+          ) : mode === 'all' ? (
+            <ul className={styles['rows']} data-testid="unpack-groups">
+              {visibleRows(allEntryRows, openOnly).map((row) => (
+                <li key={row.entryId}>
+                  <UnpackRow
+                    entryId={row.entryId}
+                    name={row.name}
+                    meta={row.meta}
+                    outcome={row.outcome}
+                    onOutcome={() => openOutcome(row.entryId)}
+                    onReHome={() => openReHome(row.entryId)}
+                    {...(row.cluster === undefined
+                      ? {}
+                      : { cluster: row.cluster })}
+                    tripOnly={row.tripOnly ?? false}
+                    canReHome={row.canReHome ?? true}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className={styles['groups']} data-testid="unpack-groups">
+              {(mode === 'person' ? personRows : destinationRows).map(
+                (group) => (
+                  <GroupSection
+                    key={group.key}
+                    group={group}
+                    openOnly={openOnly}
+                    onOutcome={openOutcome}
+                    onReHome={openReHome}
+                  />
+                ),
               )}
-            </section>
-          </>
-        )}
-      </div>
+            </div>
+          )}
+
+          {/*
+           * The close card (F11, spec §4.7) — the list's last card at every
+           * width, a sibling of the groups region above rather than a docked
+           * footer: `.screen`'s own flex column carries the gap, exactly as
+           * it does between every other element on this screen. A docked
+           * footer would spend the thumb zone on a control disabled for most
+           * of the pass, and a right-hand column needs a pane F5 lacks.
+           *
+           * **The gate is a real `disabled` attribute** (this task's own
+           * requirement) — `aria-disabled` alone would still let a keyboard
+           * user fire the click handler past invariant 18's gate, which has
+           * no override (F10 — no confirm stands between the tap and the
+           * write).
+           *
+           * The tap emits `closeTrip`'s own ops, in the order it returns
+           * them — never re-derived here: the reduction-then-phase-move
+           * order, the per-Gear summing and the floor at zero are every one
+           * of them `gestures.ts`'s own rule, not this screen's.
+           *
+           * **A Trip already `isClosed` withholds the button and its hint,
+           * never a `Close trip` shown live** (ruling R27 Layer A) — the
+           * one thing `open = 0` alone cannot tell apart from "just
+           * finished" is "already closed", and offering a live button there
+           * is a second, redundant door onto a gesture that has nothing
+           * left to do (`gestures.ts`'s own guard, R27 Layer B). No drawn
+           * frame shows F5 on a closed Trip, so the design round still owes
+           * this a picture; meanwhile `patterns.md` §3.7's *withheld, not
+           * greyed* is the standing rule — the summary line is a fact about
+           * a closed Trip regardless (`53 BACK · … · 0 OPEN` stays true),
+           * so only the control and its instructional hint go, never the
+           * ledger line above them.
+           */}
+          <section
+            className={styles['closeCard']}
+            data-testid="unpack-close-card"
+          >
+            <p
+              className={styles['closeSummary']}
+              data-testid="unpack-close-summary"
+            >
+              {`${totals.back} BACK · ${totals.consumed} CONSUMED · ${totals.lost} LOST · `}
+              <span className={styles['closeSummaryOpen']}>
+                {openLabel(totals)}
+              </span>
+            </p>
+            {!isClosed(trip) && (
+              <>
+                <button
+                  type="button"
+                  className={styles['closeButton']}
+                  disabled={totals.open > 0}
+                  onClick={() => {
+                    for (const spec of closeTrip(trip, state)) emit(spec)
+                  }}
+                >
+                  {totals.open > 0
+                    ? `Close trip — ${totals.open} open`
+                    : 'Close trip'}
+                </button>
+                <p className={styles['closeHint']}>
+                  {totals.open > 0 ? CLOSE_HINT_GATED : CLOSE_HINT_READY}
+                </p>
+              </>
+            )}
+          </section>
+        </>
+      )}
 
       {outcomeEntry !== undefined && (
         <OutcomeSheet
