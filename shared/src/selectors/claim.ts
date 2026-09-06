@@ -25,9 +25,15 @@ import { outcomeOf, pieceOutcomeOf } from './unpack.ts'
  * unresolved Pieces alone: {@link claimsByGear} skips a resolved Single or
  * Counted Entry (and a resolved per-person *container* Entry) outright, and
  * {@link claimFor}'s per-person branch drops any Piece whose
- * {@link pieceOutcomeOf} is no longer `null`. A non-container Per-person
- * Entry's own {@link outcomeOf} register is read by nobody for claim
- * purposes — see {@link claimsByGear}'s own note on why, the
+ * {@link pieceOutcomeOf} is no longer `null` — but **only** for a
+ * non-container Entry (ruling R11). A per-person **container** Entry's
+ * claim reads every included Piece regardless of any per-Piece outcome
+ * register: there is no per-Piece residence on a container to make a
+ * per-Piece release physically coherent, and {@link unpackItems} never fans
+ * a container's outcome out to Pieces in the first place — `whereabouts.ts`
+ * treats the identical register the identical way. A non-container
+ * Per-person Entry's own {@link outcomeOf} register is read by nobody for
+ * claim purposes — see {@link claimsByGear}'s own note on why, the
  * {@link entryResidenceOf} / `trip.entry_moved` shape applied to a second
  * register. Recording an outcome therefore releases the claim
  * **immediately, mid-pass** — the same read that computes `overClaims` sees
@@ -132,23 +138,50 @@ function compareIds(a: string, b: string): number {
  * of the Gear (see {@link supplyAndClaimed}'s note on invariant 6). Counted
  * reads {@link bringCountOf}, which already defaults an absent register to
  * `1`. Per-person reads {@link piecesOf} of the Entry against the *claiming*
- * Trip, then drops whoever's Piece already carries an unpack outcome
- * ({@link pieceOutcomeOf}, S10) — Pieces, not Participants, and *unresolved*
- * Pieces, not merely included ones: removing a Piece or recording its outcome
- * each release that Person's claim, which is what makes domain §5.2's
- * per-person rule settleable at the granularity it is stated in (spec §3.3,
+ * Trip, then — for a **non-container** Entry only — drops whoever's Piece
+ * already carries an unpack outcome ({@link pieceOutcomeOf}, S10): Pieces,
+ * not Participants, and *unresolved* Pieces, not merely included ones, so
+ * removing a Piece or recording its outcome each release that Person's claim
+ * at the granularity domain §5.2's per-person rule is stated in (spec §3.3,
  * §4.4).
  *
- * **This function never checks `isContainerEntry`, on purpose.** A Single
- * container Entry contributes `count: 1` here even though {@link pieceCountOf}
- * reads the same Entry as `0` pieces (ruling A5) — see {@link claimsByGear}'s
- * fuller note on why the two rules are meant to disagree.
+ * `perPersonLoose` is `claimsByGear`'s own {@link isContainerEntry} read for
+ * this Entry, passed down rather than recomputed — one entry-kind-and-
+ * container-ness fact, decided once, the same discipline every other
+ * selector in this codebase applies to a fact several call sites would
+ * otherwise re-derive. It is meaningless for `'single'` and `'counted'` and
+ * ignored by both those branches.
+ *
+ * **A per-person *container* Entry ignores every Piece's own outcome
+ * (ruling R11).** `whereabouts.ts`'s container branch hands every included
+ * Piece the *container's own* segment — there is no per-Piece residence on a
+ * container to make a per-Piece release physically coherent, since releasing
+ * one Person's Piece alone would have the claim (and the whereabouts answer
+ * beside it) say their headlamp is home while the sack it rides in is still
+ * in the car. {@link unpackItems} agrees: container-ness is checked *before*
+ * the per-person fan-out there, so a container Entry's outcome is always
+ * Entry-level and never fanned out to Pieces at all. A container Entry's
+ * claim is therefore released only by its own Entry-level outcome — this
+ * function's `perPersonLoose === false` branch counts every included Piece
+ * regardless of any (off-label) per-Piece outcome register that might exist
+ * on it.
+ *
+ * **This is a different question from whether a container Entry's *count*
+ * is gated on its container-ness, which stays permanently ungated** — see
+ * {@link claimsByGear}'s closing note. `perPersonLoose` here only ever
+ * decides which register a per-person Entry's claim is allowed to shrink by;
+ * it does not decide whether the Entry holds a claim, and a Single or
+ * Counted container Entry still contributes `count: 1` or the whole
+ * Bring-count exactly as if it carried no container trait at all, even
+ * though {@link pieceCountOf} reads the identical Entry as `0` pieces
+ * (ruling A5).
  */
 function claimFor(
   kind: ClaimableKind,
   trip: TripState,
   entry: EntryState,
   state: HouseholdState,
+  perPersonLoose: boolean,
 ): Claim {
   if (kind === 'single') {
     return { tripId: trip.id, entryId: entry.id, count: 1 }
@@ -160,13 +193,18 @@ function claimFor(
       count: bringCountOf(entry, state) ?? 1,
     }
   }
-  // Pieces, not Participants, and unresolved Pieces, not merely included
-  // ones: removing a Piece or recording its outcome each release that
-  // Person's claim, which is what makes domain §5.2's per-person rule
-  // settleable at the granularity it is stated in.
-  const personIds = piecesOf(entry, trip).filter(
-    (personId) => pieceOutcomeOf(entry.pieces?.[personId]) === null,
-  )
+  // Pieces, not Participants. A non-container Entry additionally drops
+  // whoever's Piece already carries its own outcome (S10) — removing a
+  // Piece or recording its outcome each release that Person's claim, at the
+  // granularity domain §5.2's per-person rule is stated in. A **container**
+  // Entry (ruling R11) reads every included Piece regardless: there is no
+  // per-Piece outcome `unpackItems` ever produces for one, and no per-Piece
+  // residence to make a per-Piece release physically coherent.
+  const personIds = perPersonLoose
+    ? piecesOf(entry, trip).filter(
+        (personId) => pieceOutcomeOf(entry.pieces?.[personId]) === null,
+      )
+    : piecesOf(entry, trip)
   return {
     tripId: trip.id,
     entryId: entry.id,
@@ -246,10 +284,28 @@ function claimingTrips(
  * journey instead of a status and a packing arithmetic cannot count what can
  * never be marked packed. A supply rule asks a different question: whether
  * two active Trips can both take the one duffel, and they cannot, whatever
- * the duffel's Kind. So `claimFor` gates on `entryKind` alone and never calls
- * `isContainerEntry` — a Single container Entry still contributes `count: 1`
- * here. Do not "fix" this by importing `pieceCountOf` or adding a container
- * check to `claimFor`: that would let two Trips both claim the one duffel.
+ * the duffel's Kind. So a Single or Counted container Entry still
+ * contributes exactly as though it carried no container trait at all —
+ * `count: 1`, or the whole Bring-count — and *that* must never be gated on
+ * `isContainerEntry`: importing `pieceCountOf`, or making either of those
+ * two branches consult container-ness, would let two Trips both claim the
+ * one duffel.
+ *
+ * **Ruling R11 adds a container check to `claimFor` below, for a
+ * different purpose than the paragraph above warns against.**
+ * `perPersonLoose` — this function's own {@link isContainerEntry} read,
+ * computed once here and passed down rather than recomputed — decides only
+ * which *register* a **per-person** Entry's claim is allowed to shrink by
+ * (its own Entry-level outcome, or a per-Piece one); it never decides
+ * *whether* an Entry holds a claim, and it touches no branch of `claimFor`
+ * other than the per-person one. The paragraph above is about a container's
+ * *count*; this one is about which outcome register a non-container
+ * per-person Entry's count may be narrowed by. Conflating the two would
+ * reintroduce exactly the bug the paragraph above exists to prevent — a
+ * Single or Counted container Entry silently losing its claim because some
+ * future edit let container-ness gate whether the Entry counts at all,
+ * rather than only which outcome a per-person Entry's Pieces are filtered
+ * by.
  */
 function claimsByGear(
   state: HouseholdState,
@@ -276,7 +332,7 @@ function claimsByGear(
         kind === 'per_person' && !isContainerEntry(entry, state)
       if (!perPersonLoose && outcomeOf(entry) !== null) continue
 
-      const claim = claimFor(kind, trip, entry, state)
+      const claim = claimFor(kind, trip, entry, state, perPersonLoose)
       // A claim naming nobody is not a claim. Reachable when every Piece of a
       // per-person Entry has been removed: it raises no false conflict either
       // way (it adds 0 to `claimed`), but left in `claims` it would give a

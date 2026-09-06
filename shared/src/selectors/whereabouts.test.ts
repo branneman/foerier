@@ -1196,6 +1196,12 @@ describe('whereabouts — a non-container Per-person Entry’s own outcome is fo
     expect(byPerson.get(KIM)?.slice.kind).toBe('home')
     expect(byPerson.get(MARK)?.slice.kind).toBe('trip')
     expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
+    // The Entry's own aggregate must not still count Kim's now-resolved
+    // Piece — `pieceCount` is derived from the same filtered set as
+    // `pieces`/`whereaboutsByPerson` above, never from the Entry's raw
+    // included count, or the trip slice and the per-Person answer would
+    // disagree about how many Pieces are actually still out.
+    expect(tripSlices(state, 'g-lamp')[0]?.pieceCount).toBe(1)
   })
 
   it("the Entry-level outcome is fold-but-ignore — recording it on the Entry itself (no personId) keeps both Pieces' trip slices", () => {
@@ -1207,6 +1213,69 @@ describe('whereabouts — a non-container Per-person Entry’s own outcome is fo
     expect(byPerson.get(MARK)?.slice.kind).toBe('trip')
     expect(byPerson.get(KIM)?.slice.kind).toBe('trip')
     expect(tripSlices(state, 'g-lamp')).toHaveLength(1)
+  })
+})
+
+describe('whereabouts — a per-person Entry naming nobody drops its whole slice (fix round)', () => {
+  // `claimsByGear`'s own guard, over the identical gap: a per-person Entry
+  // whose every included Piece is gone — by outcome (S10) or, pre-dating
+  // S10, by tombstone — must contribute nothing to `gathered`, or the
+  // memo seeds a `TripSliceFacts` row with an empty residence list and
+  // `whereabouts()` draws a `▸ TRIP NAME` slice reading `0 PIECES OUT` for
+  // gear that is, in fact, entirely home. This is the **mandatory** path:
+  // every Trip's close is gated on `open = 0`, so a Quartermaster tapping
+  // BACK on every included Piece of a per-person Entry is not a corner
+  // case, it is how every such Entry is ever finished.
+  const MARK = 'p-mark'
+  const KIM = 'p-kim'
+
+  function bothIncluded(): OpSpec[] {
+    return [
+      ...aPerson({ id: MARK, name: 'Mark' }),
+      ...aPerson({ id: KIM, name: 'Kim' }),
+      ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+      ...aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'pack_out',
+        participants: [MARK, KIM],
+      }),
+      tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+    ]
+  }
+
+  it('drops the whole trip slice once every included Piece is resolved — the mandatory close-out path', () => {
+    const state = fold(
+      log([
+        ...bothIncluded(),
+        tripOutcomeSet(TRIP, 'e-lamp', 'back', MARK),
+        tripOutcomeSet(TRIP, 'e-lamp', 'back', KIM),
+      ]),
+    )
+
+    expect(tripSlices(state, 'g-lamp')).toEqual([])
+    expect(rowWhereabouts(whereabouts(state, 'g-lamp'))).toEqual({
+      text: '⌂ HOME',
+      tone: 'home',
+    })
+    // Mid-pass, same as every other S10 release: the Trip has not closed.
+    expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
+  })
+
+  it('drops the whole trip slice once every included Piece is tombstoned, pre-dating S10', () => {
+    const state = fold(
+      log([
+        ...bothIncluded(),
+        tripPieceRemoved(TRIP, 'e-lamp', MARK),
+        tripPieceRemoved(TRIP, 'e-lamp', KIM),
+      ]),
+    )
+
+    expect(tripSlices(state, 'g-lamp')).toEqual([])
+    expect(rowWhereabouts(whereabouts(state, 'g-lamp'))).toEqual({
+      text: '⌂ HOME',
+      tone: 'home',
+    })
   })
 })
 

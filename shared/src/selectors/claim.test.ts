@@ -672,3 +672,41 @@ describe('a per-person container Entry releases via its own outcome (ruling R10)
     expect(overClaims(resolved)).toEqual([])
   })
 })
+
+describe("ruling R11: a per-person CONTAINER Entry's claim ignores per-Piece outcomes", () => {
+  // The companion fix to the R10 describe block above, from the opposite
+  // direction: R10 established that only the container's own Entry-level
+  // outcome releases its claim. R11 closes the other half — a per-Piece
+  // outcome (off-label: no screen in this codebase ever authors one against
+  // a container Entry, since `unpackItems` checks container-ness before the
+  // per-person fan-out and never produces a per-piece unpack item for one)
+  // must not be read either, or `claimFor`'s old unconditional filter would
+  // silently narrow, and even empty, a container's claim by a register
+  // nothing else in the app treats as meaningful for it.
+  it('keeps the whole claim when every included Piece carries its own outcome — only the Entry-level outcome may release a container', () => {
+    const state = depot(
+      aGear({ id: 'g-crate', kind: 'per_person', container: true }),
+      aTrip({ id: 't1', phase: 'pack_out', participants: ['p1', 'p2'] }),
+      [
+        tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g-crate' }),
+        // Per-Piece — not Entry-level — outcomes on the container itself.
+        tripOutcomeSet('t1', 'e1', 'back', 'p1'),
+        tripOutcomeSet('t1', 'e1', 'back', 'p2'),
+      ],
+      aTrip({ id: 't2', phase: 'on_trip', participants: ['p1', 'p3'] }),
+      [tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g-crate' })],
+    )
+
+    // Before R11: `claimFor` filtered both p1 and p2 out of t1's claim by
+    // their own (off-label) outcome, leaving `personIds: []` — which
+    // `claimsByGear`'s "a claim naming nobody is not a claim" guard then
+    // drops entirely, and the genuine over-claim on p1 (t1 and t2 both
+    // claim him) would vanish along with it.
+    const result = overClaims(state)
+    expect(result).toHaveLength(1)
+    expect(result[0]!.contestedPersonIds).toEqual(['p1'])
+    expect(result[0]!.claims.find((c) => c.tripId === 't1')?.personIds).toEqual(
+      ['p1', 'p2'],
+    )
+  })
+})

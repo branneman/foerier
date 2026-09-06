@@ -455,6 +455,12 @@ function contributionOf(
       count,
       // Resolved Pieces are excluded above, so `pieces.size` — not
       // `included.length` — is what is actually still out on this Trip.
+      // This is load-bearing, not cosmetic: the gather loop's "a
+      // contribution naming nobody is not a contribution" guard tests
+      // `contribution.pieceCount === 0` alongside an empty `residences`,
+      // and `included.length` would still read the pre-outcome count when
+      // every included Piece has just been resolved — the guard would
+      // never fire and the whole-Entry slice would survive.
       pieceCount: pieces.size,
       pieces,
       pieceStatus,
@@ -600,6 +606,23 @@ function tripSlicesOf(state: HouseholdState): {
       if (!perPersonLoose && outcomeOf(entry) !== null) continue
 
       const contribution = contributionOf(trip, state, view, entry)
+      // S10 (ruling R11's companion fix): a contribution naming nobody is
+      // not a contribution — `claimsByGear`'s own guard
+      // ("a claim naming nobody is not a claim"), over the identical shape
+      // of gap. A per-person Entry whose every included Piece has just been
+      // resolved produces `residences: []` and `pieceCount: 0`; left to
+      // reach `gathered` unconditionally, it would still seed a
+      // `TripSliceFacts` row with nothing in it — a `▸ TRIP NAME` slice
+      // reading `0 PIECES OUT` for gear that `claim.ts` already reads as
+      // entirely released. Only the per-person branch can ever produce
+      // both zeroes at once: every other Kind's `contributionOf` branch
+      // always pushes exactly one residence.
+      if (
+        contribution.pieceCount === 0 &&
+        contribution.residences.length === 0
+      ) {
+        continue
+      }
       const bucket = gathered.get(source.gearId) ?? {
         residences: [],
         count: null,
