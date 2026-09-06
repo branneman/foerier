@@ -123,4 +123,41 @@
     letter-spacing: 0.05em;
     color: var(--color-ink-faint);
   }
+
+  /*
+   * Task 13's 34px cluster — `PackingRow.module.css`'s `.cluster` verbatim,
+   * one screen over: ruling B's arithmetic (a 44px target on a 39px pitch
+   * puts a tap meant for one Person on their neighbour) does not change
+   * because the register moved from `status` to `outcome`. The cluster is
+   * the target and no circle is; the clamp is vertical only, since the row
+   * body sits immediately beside it and a horizontal extension would take
+   * taps meant for *where it goes*.
+   */
+  .cluster {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  /* 34 painted + 7 above and below = 48, clamped inside a ≥64px row. */
+  .cluster::after {
+    content: '';
+    position: absolute;
+    inset: -0.4375rem 0;
+  }
+
+  .cluster:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* `display: contents` so the wrapper adds no line box of its own —
+     `PersonCircle`'s own layout-shift note, `PackingRow`'s pattern. */
+  .clusterWrap {
+    display: contents;
+  }
 }

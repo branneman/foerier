@@ -206,21 +206,88 @@ describe('UnpackRow — a trip-only row (no button at all)', () => {
   })
 })
 
-describe('UnpackRow — the right slot is shaped to take Task 13’s cluster', () => {
-  it('draws the given cluster instead of the pill', () => {
+/**
+ * **Task 13's 34px cluster** (`docs/design/README.md` §7, ruling F7) — one
+ * control replacing the pill for a per-person, non-container Entry. The
+ * cluster and its resolved-over-Pieces count are **one control with one
+ * accessible name** (`patterns.md` §5.4), never a per-circle target.
+ */
+describe('UnpackRow — the cluster (F7)', () => {
+  const CLUSTER = {
+    people: [
+      { key: 'mark', label: 'M', tone: 'filled' as const },
+      { key: 'els', label: 'E', tone: 'filled' as const },
+      { key: 'kees', label: 'K', tone: 'attention' as const },
+    ],
+    resolved: 2,
+    total: 3,
+  }
+
+  it('draws the cluster instead of the pill, with the resolved-over-Pieces count in its one accessible name', () => {
     render(
       <UnpackRow
         entryId={ENTRY}
         name="Headlamp"
-        meta="→ LADE 2"
+        meta="→ LADE 2 · PER-PERSON · 2/3"
         outcome={null}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
-        cluster={<span data-testid="stand-in-cluster">cluster</span>}
+        cluster={CLUSTER}
       />,
     )
 
-    expect(screen.getByTestId('stand-in-cluster')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Outcome — Headlamp, 2 of 3 resolved',
+      }),
+    ).toBeInTheDocument()
     expect(screen.queryByTestId('status-pill')).not.toBeInTheDocument()
+    // Circles are never individual targets — one button, not three.
+    expect(screen.queryAllByRole('button')).toHaveLength(2) // body + cluster
+  })
+
+  it('opens the sheet on a cluster tap, the pill’s own target', async () => {
+    const user = userEvent.setup()
+    const onOutcome = vi.fn()
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Headlamp"
+        meta="→ LADE 2 · PER-PERSON · 2/3"
+        outcome={null}
+        onOutcome={onOutcome}
+        onReHome={vi.fn()}
+        cluster={CLUSTER}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Outcome — Headlamp, 2 of 3 resolved',
+      }),
+    )
+
+    expect(onOutcome).toHaveBeenCalledOnce()
+  })
+
+  it('paints each circle the tone it was handed, filled and attention alike', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Headlamp"
+        meta="→ LADE 2 · PER-PERSON · 2/3"
+        outcome={null}
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+        cluster={CLUSTER}
+      />,
+    )
+
+    const circles = screen.getAllByTestId('person-circle')
+    expect(circles.map((circle) => circle.getAttribute('data-tone'))).toEqual([
+      'filled',
+      'filled',
+      'attention',
+    ])
   })
 })

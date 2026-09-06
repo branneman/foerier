@@ -13,6 +13,135 @@
     text-transform: uppercase;
   }
 
+  /* F7's roster — "APPLY TO · EVERYONE", the reset action above the rows. */
+  .applyRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: var(--space-16);
+  }
+
+  .applyLabel {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--color-ink-faint);
+  }
+
+  /* Drawn at 32 (the board's own height), clamped to the 44px minimum
+     through a non-painting `::after` — `patterns.md` §6.5's rule, not an
+     exception to it: a drawn size is the painted size, but every control
+     still floors its hit area. (44 - 32) / 2 = 6px = 0.375rem each side,
+     vertical-only — `.applyRow`'s `space-between` puts nothing to the right
+     of this chip for a sideways clamp to overlap. */
+  .everyoneChip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 2rem;
+    padding-inline: var(--space-12);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+
+  .everyoneChip::after {
+    content: '';
+    position: absolute;
+    inset: -0.375rem 0;
+  }
+
+  .everyoneChip:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* The roster — `PieceStatusSheet.module.css`'s `.rows`/`.rowButton`
+     grammar, transplanted onto a selection rather than a status advance. */
+  .rosterList {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin-top: var(--space-8);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .rosterList > li + li {
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /* Drawn at 48 explicitly (ruling O's "stating it was the fix") — the
+     `PieceStatusSheet`'s own `.rowButton` precedent, one sheet over. */
+  .rosterRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    padding-inline: 0;
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  /* `flex`, not the `<span>`'s default inline — `PiecePicker`'s own note: an
+     unstyled wrapper around a single inline-flex child blockifies into a
+     line box a few px taller than the circle, off-centring it. */
+  .rosterCircleWrap {
+    display: flex;
+    flex: none;
+  }
+
+  .rosterNameStack {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    gap: 0.125rem;
+  }
+
+  .rosterName {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rosterStatus {
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--color-ink-muted);
+  }
+
+  /* `ParticipantPicker`'s `.marker` grammar — the sighted half of
+     `aria-pressed`, never colour alone. The unselected glyph is the same
+     word this app already uses for "open" everywhere else (`○`). */
+  .rosterMarker {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--color-ink-faint);
+  }
+
+  .rosterRow[aria-pressed='true'] .rosterMarker {
+    color: var(--color-accent);
+  }
+
   .chips {
     display: flex;
     gap: var(--space-4);

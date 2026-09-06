@@ -500,4 +500,69 @@ describe("ruling O's drawn sizes", () => {
     expect(chip).toMatch(/min-height:\s*max\(2\.75rem,\s*44px\)/)
     expect(ruleBody(css, '.chip::after')).toBeUndefined()
   })
+
+  /**
+   * **S10 task 13.** `UnpackRow`'s cluster — `PackingRow`'s identical 34px
+   * shape, one screen along (ruling B's arithmetic unchanged by the register
+   * moving from `status` to `outcome`).
+   */
+  it("paints the unpack row's cluster at 34px and clamps the control at 48", () => {
+    const circleCss = moduleCss(
+      '..',
+      '..',
+      '..',
+      'ui',
+      'src',
+      'PersonCircle.module.css',
+    )
+    const size34 = ruleBody(circleCss, '.size34')
+
+    expect(size34).toBeDefined()
+    expect(size34).not.toMatch(FLOOR)
+    expect(size34).toMatch(/width:\s*2\.125rem/)
+    expect(size34).toMatch(/height:\s*2\.125rem/)
+
+    const css = moduleCss('..', 'components', 'UnpackRow.module.css')
+    const cluster = ruleBody(css, '.cluster')
+
+    expect(cluster).toBeDefined()
+    expect(cluster).not.toMatch(FLOOR)
+    expect(cluster).toMatch(/position:\s*relative/)
+    // 34 painted + 7 above and below = 48, vertical-only for the row body's
+    // sake.
+    expect(ruleBody(css, '.cluster::after')).toMatch(/inset:\s*-0\.4375rem 0/)
+  })
+
+  /**
+   * **S10 task 13.** The roster sheet's own row — `PieceStatusSheet`'s
+   * `.rowButton` shape, stated explicitly rather than shrunk off the
+   * retired global floor (the same category `OverClaimBand`'s test above
+   * pins).
+   */
+  it("leaves the roster sheet's row explicit", () => {
+    const css = moduleCss('..', 'components', 'OutcomeSheet.module.css')
+
+    expect(ruleBody(css, '.rosterRow')).toMatch(FLOOR)
+  })
+
+  /**
+   * **S10 task 13.** `EVERYONE` is drawn at the board's own 32px, clamped to
+   * the 44px minimum — the third shape ruling O's own three categories
+   * cover (explicit 48, drawn-small-and-clamped, or drawn-small-standalone
+   * where nothing board-drawn justifies smaller): this one is drawn smaller
+   * on purpose, so it takes the clamp rather than the standalone floor.
+   */
+  it('paints EVERYONE at 32px and clamps it to the 44px minimum', () => {
+    const css = moduleCss('..', 'components', 'OutcomeSheet.module.css')
+    const chip = ruleBody(css, '.everyoneChip')
+
+    expect(chip).toBeDefined()
+    expect(chip).not.toMatch(FLOOR)
+    expect(chip).toMatch(/height:\s*2rem/)
+    expect(chip).toMatch(/position:\s*relative/)
+    // (44 - 32) / 2 = 6px = 0.375rem each side, vertical-only.
+    expect(ruleBody(css, '.everyoneChip::after')).toMatch(
+      /inset:\s*-0\.375rem 0/,
+    )
+  })
 })

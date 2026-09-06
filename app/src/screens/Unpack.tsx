@@ -30,12 +30,13 @@ import {
 import {
   PersonCircle,
   SegmentedControl,
+  type PersonClusterEntry,
   type SegmentedOption,
 } from '@foerier/ui'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'wouter'
 
-import { OutcomeSheet } from '../components/OutcomeSheet'
+import { circleToneForOutcome, OutcomeSheet } from '../components/OutcomeSheet'
 import { UnpackRow } from '../components/UnpackRow'
 import { personInitial } from '../household/people'
 import { useHousehold } from '../household/store'
@@ -44,6 +45,7 @@ import {
   peopleOn,
   resolvedLabel,
   resolvedPercent,
+  tripParticipants,
 } from '../household/trips'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
@@ -70,14 +72,25 @@ function noop(): void {
   // Wired by Task 14 (`onReHome`).
 }
 
-/** One row this task draws — `UnpackRow`'s props, minus the callbacks and
- * the cluster slot `Unpack.tsx` does not fill yet. */
+/** One row this task draws — `UnpackRow`'s props, minus the callbacks. */
 interface UnpackRowData {
   readonly entryId: string
   readonly name: string
   readonly meta: string
+  /** `null` for a cluster row — unread there (`UnpackRow`'s own docstring):
+   * a per-person Entry's outcome is per-Piece, and `cluster`'s own tones and
+   * `resolved`/`total` are what state it, `visibleRows`' own open filter
+   * included. */
   readonly outcome: OutcomeValue | null
   readonly tripOnly?: boolean
+  /** Task 13's 34px cluster, for a per-person, non-container Entry —
+   * DESTINATION and ALL mode's own right-slot (F7); PERSON mode never sets
+   * this, since its own Piece rows carry their own pill. */
+  readonly cluster?: {
+    readonly people: readonly PersonClusterEntry[]
+    readonly resolved: number
+    readonly total: number
+  }
 }
 
 /** One of F3's groups — a room, `Loose`, or the closing `Trip-only` group;
@@ -194,6 +207,76 @@ function returnPathMeta(
 }
 
 /**
+ * Task 13's own row — a per-person, non-container Entry's 34px cluster
+ * (F7). `pieceItems` is {@link unpackItems}' own piece fan-out for this one
+ * Entry, never re-walked from `piecesOf` here: `countOfUnpack`'s
+ * `resolved`/`total` and each circle's tone both read the identical items,
+ * so the cluster's own accessible name and `PER-PERSON · N/M`'s digits can
+ * never disagree about the same Entry.
+ *
+ * Display order is `tripParticipants`' — `PieceStatusSheet`'s and
+ * `PackingRow`'s own rule, restated: a roster is read by name, and
+ * `piecesOf`'s id order is only for the fold to agree on.
+ */
+function personPieceCluster(
+  pieceItems: readonly Extract<UnpackItem, { kind: 'piece' }>[],
+  trip: TripState,
+  state: HouseholdState,
+): NonNullable<UnpackRowData['cluster']> {
+  const { resolved, total } = countOfUnpack(pieceItems)
+  const byPerson = new Map(
+    pieceItems.map((item) => [item.personId, item.outcome]),
+  )
+  const people: PersonClusterEntry[] = tripParticipants(state, trip)
+    .filter((person) => byPerson.has(person.id))
+    .map((person) => ({
+      key: person.id,
+      label: personInitial(person.label),
+      tone: circleToneForOutcome(byPerson.get(person.id) ?? null),
+    }))
+  return { people, resolved, total }
+}
+
+/**
+ * DESTINATION's own suffix for a per-person row — `returnPathMeta`'s
+ * path-first grammar, restated: the room header already states the path's
+ * root, so only what sits inside it is drawn, and `PER-PERSON · N/M` closes
+ * the line exactly where `returnPathMeta`'s own suffixes do (board §01:
+ * `→ LADE 2 · PER-PERSON · 3/3`).
+ */
+function personPieceMeta(
+  entry: EntryState,
+  state: HouseholdState,
+  view: ContainmentView,
+  destination: string | null,
+  resolved: number,
+  total: number,
+): string {
+  const path = returnPathOf(entry, state, view)
+  const visible = destination === null ? path : path.slice(1)
+  const pathText = visible.map((segment) => segment.name).join(' ▸ ')
+  const suffix = `PER-PERSON · ${resolved}/${total}`
+  if (pathText === '') return suffix
+  return [`→ ${pathText}`, suffix].join(' · ')
+}
+
+/** ALL mode's header-less twin (ruling I1) — suffix first, path last, since
+ * no group header states *where* for ALL's own flat list. */
+function personPieceHeaderlessMeta(
+  entry: EntryState,
+  state: HouseholdState,
+  view: ContainmentView,
+  resolved: number,
+  total: number,
+): string {
+  const path = returnPathOf(entry, state, view)
+  const pathText = path.map((segment) => segment.name).join(' ▸ ')
+  const suffix = `PER-PERSON · ${resolved}/${total}`
+  if (pathText === '') return suffix
+  return [suffix, `→ ${pathText}`].join(' · ')
+}
+
+/**
  * DESTINATION mode's groups (F3, spec §4.3) — one `containmentView` and one
  * `tripContainmentView`, each built exactly once and handed down to every
  * group, never rebuilt per group (`containerTotals`'s own rule, restated for
@@ -202,12 +285,15 @@ function returnPathMeta(
  * filtered to the ones this Trip's gear actually returns to; `Loose` and
  * `Trip-only` close the list (F3).
  *
- * **A per-person, non-container Entry is skipped here** — Task 13's row,
- * the 34px cluster this component's `cluster` slot is shaped to take. Its
- * units still count toward the group's own `resolved/total` header, read
- * from {@link unpackItems} directly rather than from the rows this function
- * renders, so the header states the Trip's true arithmetic even before
- * Task 13 draws every row it apportions.
+ * **A per-person, non-container Entry draws Task 13's own row** — the 34px
+ * cluster, in `rowsFor`'s own branch below. Its units count toward the
+ * group's own `resolved/total` header exactly as every other row's do,
+ * read from {@link unpackItems} directly rather than from the rows this
+ * function renders — `countLabelFor`'s own rule, unchanged by this branch's
+ * arrival. An Entry with zero included Pieces (no Participants, or every
+ * Piece tombstoned) draws no row at all: there is no roster to open a
+ * cluster onto, the identical shape a `kind === 'entry'` row with no item
+ * takes two lines below.
  */
 function destinationGroups(
   trip: TripState,
@@ -264,8 +350,34 @@ function destinationGroups(
       if (entry === undefined) continue
       const kind = entryKind(entry, state)
       const container = isContainerEntry(entry, state)
-      // Task 13's row — the 34px cluster, not yet drawn.
-      if (kind === 'per_person' && !container) continue
+
+      if (kind === 'per_person' && !container) {
+        const entryItems = itemsByEntry.get(entryId) ?? []
+        const pieceItems = entryItems.filter(
+          (candidate): candidate is Extract<UnpackItem, { kind: 'piece' }> =>
+            candidate.kind === 'piece',
+        )
+        // No included Piece — no roster to open a cluster onto.
+        if (pieceItems.length === 0) continue
+        const cluster = personPieceCluster(pieceItems, trip, state)
+        rows.push({
+          entryId,
+          name: entryLabel(entry, state),
+          meta: personPieceMeta(
+            entry,
+            state,
+            view,
+            destination,
+            cluster.resolved,
+            cluster.total,
+          ),
+          // Unread by `UnpackRow` once `cluster` is given — see its own
+          // docstring — but the field is not optional on `UnpackRowData`.
+          outcome: null,
+          cluster,
+        })
+        continue
+      }
 
       const entryItems = itemsByEntry.get(entryId) ?? []
       const item = entryItems.find(
@@ -514,10 +626,14 @@ function personGroups(
         // one per-person Entry draw two rows here, and each needs both a
         // unique React key and a unique `UnpackRow` test id — `PackingRow`'s
         // own `${entryId}:${personId}` key, carried into the DOM id too.
-        // `onReHome` still reads neither (Task 14); `onOutcome` reads it now
-        // as `openOutcome`'s own guard — a composite key never resolves in
-        // `trip.entries`, so this row's pill is a live button that does
-        // nothing until Task 13's roster sheet wires it.
+        // `onReHome` still reads neither (Task 14). `onOutcome` is wired
+        // (Task 13): `Unpack`'s own `openOutcome` takes the part of this key
+        // before its first `:`, opens the real Entry it names, and mounts
+        // `OutcomeSheet` in its roster variant — spec §4.5's "a Piece row in
+        // this mode carries its own pill" is a display fact about *this*
+        // row, not a narrower target for the tap, so every Piece's pill on
+        // one Entry opens the identical roster, `EVERYONE` selected exactly
+        // as the cluster's own tap would leave it.
         entryId: `${item.entryId}:${item.personId}`,
         name: `${entryLabel(entry, state)} — ${personNameOrUnnamed(
           state,
@@ -608,11 +724,12 @@ function personGroups(
  * `prefix: null`, the same header-less grammar PERSON's entry rows use
  * (ruling I1) — suffix before path, unit count unconditional.
  *
- * A per-person, non-container Entry is skipped — Task 13's row, the 34px
- * cluster not yet drawn, `destinationGroups`' own rule restated. A trip-only
- * Entry draws its ordinary `NOT IN DEPOT` / `CLEARS AT CLOSE` row, exactly
- * as DESTINATION's closing group draws it, but interleaved in name order
- * rather than set apart: ALL has no groups to set it apart *in*.
+ * A per-person, non-container Entry draws Task 13's own row — the 34px
+ * cluster, `destinationGroups`' identical branch over the header-less
+ * grammar (suffix first, path last). A trip-only Entry draws its ordinary
+ * `NOT IN DEPOT` / `CLEARS AT CLOSE` row, exactly as DESTINATION's closing
+ * group draws it, but interleaved in name order rather than set apart: ALL
+ * has no groups to set it apart *in*.
  */
 function allRows(
   trip: TripState,
@@ -621,8 +738,18 @@ function allRows(
   tripView: TripContainmentView,
 ): readonly UnpackRowData[] {
   const itemByEntry = new Map<string, Extract<UnpackItem, { kind: 'entry' }>>()
+  const pieceItemsByEntry = new Map<
+    string,
+    Extract<UnpackItem, { kind: 'piece' }>[]
+  >()
   for (const item of unpackItems(trip, state)) {
-    if (item.kind === 'entry') itemByEntry.set(item.entryId, item)
+    if (item.kind === 'entry') {
+      itemByEntry.set(item.entryId, item)
+      continue
+    }
+    const list = pieceItemsByEntry.get(item.entryId)
+    if (list === undefined) pieceItemsByEntry.set(item.entryId, [item])
+    else list.push(item)
   }
 
   const rows: UnpackRowData[] = []
@@ -640,8 +767,26 @@ function allRows(
     }
 
     const container = isContainerEntry(entry, state)
-    // Task 13's row — the 34px cluster, not yet drawn.
-    if (kind === 'per_person' && !container) continue
+
+    if (kind === 'per_person' && !container) {
+      const pieceItems = pieceItemsByEntry.get(entry.id) ?? []
+      if (pieceItems.length === 0) continue
+      const cluster = personPieceCluster(pieceItems, trip, state)
+      rows.push({
+        entryId: entry.id,
+        name: entryLabel(entry, state),
+        meta: personPieceHeaderlessMeta(
+          entry,
+          state,
+          view,
+          cluster.resolved,
+          cluster.total,
+        ),
+        outcome: null,
+        cluster,
+      })
+      continue
+    }
 
     const item = itemByEntry.get(entry.id)
     if (item === undefined) continue
@@ -662,13 +807,25 @@ function allRows(
  * *open* in the sense the filter states. Applied identically in DESTINATION
  * and PERSON mode, the two modes with groups; ALL mode's own flat list uses
  * it too, over a bare row array rather than a group's.
+ *
+ * **A cluster row is open when it is not fully resolved over its Pieces**,
+ * never `row.outcome === null` — that field is unread for a cluster row (see
+ * `UnpackRowData.outcome`'s own docstring), and Task 13 is what closes the
+ * gap the screen's own hint used to name: DESTINATION and ALL now agree
+ * with PERSON that a per-person Entry's own open work keeps it visible.
  */
 function visibleRows(
   rows: readonly UnpackRowData[],
   openOnly: boolean,
 ): readonly UnpackRowData[] {
   return openOnly
-    ? rows.filter((row) => row.tripOnly !== true && row.outcome === null)
+    ? rows.filter((row) => {
+        if (row.tripOnly === true) return false
+        if (row.cluster !== undefined) {
+          return row.cluster.resolved < row.cluster.total
+        }
+        return row.outcome === null
+      })
     : rows
 }
 
@@ -691,10 +848,10 @@ function GroupSection({
   onOutcome: (entryId: string) => void
 }) {
   const rows = visibleRows(group.rows, openOnly)
-  // A group with **no rows to begin with** (a per-person-only room, Task
-  // 13's cluster not yet drawn) still renders its header — Task 10's own
-  // `Hal 0/1` case, pinned by its own test. Only a group the filter itself
-  // emptied is withheld.
+  // A group with **no rows to begin with** (every per-person Entry in it has
+  // zero included Pieces — no roster to open a cluster onto) still renders
+  // its header — Task 10's own `Hal 0/1` case, pinned by its own test. Only
+  // a group the filter itself emptied is withheld.
   if (group.rows.length > 0 && rows.length === 0) return null
 
   const headingId = `unpack-group-${group.key}`
@@ -761,6 +918,10 @@ function GroupSection({
               outcome={row.outcome}
               onOutcome={() => onOutcome(row.entryId)}
               onReHome={noop}
+              // `exactOptionalPropertyTypes`: an *omitted* prop and one
+              // present-and-`undefined` are different types, exactly
+              // `PersonCluster`'s own `tone`-spread note.
+              {...(row.cluster === undefined ? {} : { cluster: row.cluster })}
               tripOnly={row.tripOnly ?? false}
             />
           </li>
@@ -821,15 +982,31 @@ export function Unpack() {
   // The outcome sheet's own open state (Task 12) — `ui/`'s primitives have
   // no `open` prop, so `null` is closed and a real Entry id is open, and
   // mount is what resets the sheet exactly as `PhaseSheet`'s own `reopenTo`/
-  // `activating` do. Holds the **real** Entry id only: a PERSON-mode Piece
-  // row's composite `${entryId}:${personId}` key never resolves to a real
-  // Entry below (`openOutcome`'s own guard), which is what leaves a Piece
-  // row's pill inert until Task 13's roster sheet exists.
+  // `activating` do. Holds the **real** Entry id only.
   const [outcomeEntryId, setOutcomeEntryId] = useState<string | null>(null)
 
   const trip = tripId === undefined ? undefined : state.trips[tripId]
 
-  function openOutcome(entryId: string): void {
+  /**
+   * **Task 13's own closer.** A DESTINATION/ALL row hands its own real
+   * Entry id, unchanged. A PERSON-mode Piece row hands its composite
+   * `${entryId}:${personId}` key instead — {@link personGroups}' own `rowFor`
+   * mints it because two Pieces of one per-person Entry need two distinct
+   * React keys and `UnpackRow` test ids in that mode — and this function is
+   * the one place that key is ever read: it takes the part before the first
+   * `:` (a UUID never contains one) and opens the identical Entry the
+   * cluster would, in its roster variant, regardless of which Piece's own
+   * pill was tapped. Spec §4.5's own sentence is why that is right rather
+   * than a narrower "just this Piece" sheet: *"In PERSON mode a Piece row
+   * carries its own pill … so the cluster is DESTINATION and ALL mode's"* —
+   * a display fact about the row, not a different target for the tap. The
+   * `personId` half of the key is intentionally discarded here: the roster
+   * always opens with `EVERYONE` selected, never narrowed to the Piece whose
+   * pill happened to be tapped.
+   */
+  function openOutcome(rowKey: string): void {
+    const separator = rowKey.indexOf(':')
+    const entryId = separator === -1 ? rowKey : rowKey.slice(0, separator)
     if (trip?.entries?.[entryId] === undefined) return
     setOutcomeEntryId(entryId)
   }
@@ -891,6 +1068,15 @@ export function Unpack() {
   // `PhaseSheet`'s "close after every write" is not this sheet's model).
   const outcomeEntry =
     outcomeEntryId === null ? undefined : trip.entries?.[outcomeEntryId]
+
+  // The caller's own fact (`OutcomeSheet`'s own docstring on `roster`): a
+  // per-person, non-container Entry always opens the roster variant,
+  // whichever of the cluster (DESTINATION/ALL) or PERSON mode's own pill
+  // opened it — `openOutcome` resolves both to this one real Entry id.
+  const outcomeIsRoster =
+    outcomeEntry !== undefined &&
+    entryKind(outcomeEntry, state) === 'per_person' &&
+    !isContainerEntry(outcomeEntry, state)
 
   return (
     <div className={styles['screen']}>
@@ -978,15 +1164,11 @@ export function Unpack() {
               line rather than a wall of collapsed, header-less groups —
               gated on `totals.open`, `unpackTotals`' own count over
               `unpackItems` directly, rather than a per-mode recount of
-              whatever rows that mode happens to draw. **Not yet exactly
-              "every mode agrees"**: ALL and DESTINATION still skip a
-              per-person, non-container Entry (Task 13's row), so a Trip
-              whose only open work is such an Entry reads `totals.open > 0`
-              while those two modes draw nothing open to show for it. PERSON
-              mode has no such gap — Pieces are its own rows — and Task 13
-              closes it for the other two; this gate is written against the
-              ledger's own count on purpose, so that day needs no change
-              here. */}
+              whatever rows that mode happens to draw. Every mode now agrees:
+              DESTINATION and ALL's own cluster rows read `open` as "not
+              fully resolved over its Pieces" (`visibleRows`' own rule), the
+              identical fact `totals.open` sums, so this gate never disagrees
+              with what the three modes draw beneath it. */}
           {openOnly && totals.open === 0 ? (
             <p
               className={styles['nothingOpen']}
@@ -1005,6 +1187,9 @@ export function Unpack() {
                     outcome={row.outcome}
                     onOutcome={() => openOutcome(row.entryId)}
                     onReHome={noop}
+                    {...(row.cluster === undefined
+                      ? {}
+                      : { cluster: row.cluster })}
                     tripOnly={row.tripOnly ?? false}
                   />
                 </li>
@@ -1033,6 +1218,7 @@ export function Unpack() {
           entry={outcomeEntry}
           view={view}
           onClose={() => setOutcomeEntryId(null)}
+          roster={outcomeIsRoster}
         />
       )}
     </div>

@@ -1,6 +1,10 @@
 import { outcomeGlyph, outcomeLabel, type OutcomeValue } from '@foerier/shared'
-import { StatusPill, type StatusPillProps } from '@foerier/ui'
-import type { ReactNode } from 'react'
+import {
+  PersonCluster,
+  StatusPill,
+  type PersonClusterEntry,
+  type StatusPillProps,
+} from '@foerier/ui'
 
 import styles from './UnpackRow.module.css'
 
@@ -46,6 +50,23 @@ import styles from './UnpackRow.module.css'
  * CONTAINER mode, where a container is a group header with `JourneyRail`
  * beneath it, F5 has no journey to draw. This component never imports
  * `JourneyRail`.
+ *
+ * ## The cluster is this row's anatomy, not the sheet's (Task 13, F7)
+ *
+ * `PackingRow`'s identical shape one screen over: a 34px `PersonCluster`
+ * and its own `×N`-carrying accessible name are **one control**
+ * (`patterns.md` §5.4) — 44px hit areas on 32px centres let a tap meant for
+ * one Person land on their neighbour, so no circle is ever a `<button>` of
+ * its own. This component builds that control from the `cluster` prop's
+ * plain data rather than accepting a pre-built node, because the accessible
+ * name and the tap target are this row's own to build and clamp, exactly as
+ * the pill is — `Unpack.tsx` hands down *who*, not *how it is wrapped*.
+ *
+ * Tapping the cluster calls the identical {@link UnpackRowProps.onOutcome}
+ * the pill would — the caller (`Unpack.tsx`'s `openOutcome`) is what decides
+ * this opens the sheet's roster variant rather than its plain one, by
+ * reading the real Entry's own Kind once the sheet mounts. This row asks
+ * that question of nobody.
  */
 export interface UnpackRowProps {
   entryId: string
@@ -56,19 +77,28 @@ export interface UnpackRowProps {
    * trip-only Entry. `''` draws no meta line at all — the Loose bucket's
    * fully-loose case, which has nothing to say. */
   meta: string
-  /** `null` is open. Ignored when {@link tripOnly} is set. */
+  /** `null` is open. Ignored when {@link tripOnly} is set, and unread when
+   * {@link cluster} is given — a per-person Entry's outcome is per-Piece,
+   * and the cluster's own tones are what state it. */
   outcome: OutcomeValue | null
-  /** The pill's target — opens the outcome sheet (Task 12). */
+  /** The pill's target — opens the outcome sheet (Task 12) — and the
+   * cluster's, for the identical Entry (Task 13). */
   onOutcome: () => void
   /** The row body's target — opens the Home picker (Task 14). */
   onReHome: () => void
   /**
-   * Task 13's 34px `PersonCluster`, replacing the pill in the right slot for
-   * a per-person Entry. Absent in DESTINATION mode today — Task 13's row —
-   * but the slot is shaped to take it now rather than being redrawn around
-   * it later (`docs/design/README.md` §5h ruling R3).
+   * Task 13's 34px cluster, replacing the pill in the right slot for a
+   * per-person, non-container Entry. `resolved`/`total` are
+   * `countOfUnpack`'s own arithmetic over this Entry's Pieces, handed down
+   * rather than re-derived from `people`'s tones here — one implementation
+   * of "resolved over Pieces" (F7), read by both this row's accessible name
+   * and the room header above it.
    */
-  cluster?: ReactNode
+  cluster?: {
+    readonly people: readonly PersonClusterEntry[]
+    readonly resolved: number
+    readonly total: number
+  }
   /** A trip-only Entry — see the docstring's "no button at all". */
   tripOnly?: boolean
 }
@@ -146,7 +176,25 @@ export function UnpackRow({
           CLEARS AT CLOSE
         </span>
       ) : cluster !== undefined ? (
-        cluster
+        <button
+          type="button"
+          className={styles['cluster']}
+          aria-label={`Outcome — ${name}, ${cluster.resolved} of ${cluster.total} resolved`}
+          data-testid="unpack-row-cluster"
+          onClick={onOutcome}
+        >
+          {/* `aria-hidden` + the button's own label above: this control
+              already carries the whole fact as its accessible name, so
+              `PersonCluster`'s own `role="img"` would announce the roster a
+              second time (`PackingRow`'s identical pattern). */}
+          <span aria-hidden="true" className={styles['clusterWrap']}>
+            <PersonCluster
+              people={cluster.people}
+              size={34}
+              label={`Outcome — ${name}, ${cluster.resolved} of ${cluster.total} resolved`}
+            />
+          </span>
+        </button>
       ) : (
         <StatusPill
           glyph={outcomeGlyph(outcome)}

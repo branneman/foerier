@@ -149,8 +149,7 @@ const E_HAL_HEADLAMP = 'nnnnnnnn-0000-7000-8000-000000000018'
 
 /**
  * F3/F6's own scenario — `docs/design/README.md` §7's board (§01), minus the
- * two forms Task 10 does not build: the per-person cluster row (Task 13) and
- * a re-homed row's meta (Task 14).
+ * one form no task before Task 14 builds: a re-homed row's meta.
  *
  * `Attic`: `Sleeping bag, winter` two levels deep (`Shelf L-Top ▸ Crate B`),
  * a Counted Entry, `back` — the plain-quantity form. `Duffel 90 L`, a
@@ -162,9 +161,9 @@ const E_HAL_HEADLAMP = 'nnnnnnnn-0000-7000-8000-000000000018'
  * — the plain no-suffix form.
  *
  * `Hal`: `Headlamp`, a per-person Entry with one Participant (Els), open —
- * the board's own `Hal 3/3` case, one row skipped for Task 13's cluster.
- * Kept in the fixture precisely so a Task 13 that misses this room shows up
- * here, not only once the cluster is wired.
+ * the board's own `Hal 3/3` case, one Participant short: Task 13's own
+ * cluster row, `0/1`. Kept simple deliberately — the roster sheet's own
+ * three-Participant shape is `OutcomeSheet.test.tsx`'s fixture to carry.
  *
  * `Loose`: `Trekking poles`, a Counted Entry (`bring 2`) with no residence
  * at all, `open` — the quantity-with-no-path form.
@@ -424,12 +423,22 @@ describe('DESTINATION mode — groups (F3)', () => {
    * ever misses this room**, this is the test that would catch it: without
    * a per-person Entry in the fixture at all, nothing would notice.
    */
-  it('reads a per-person-only room header with an empty row list beneath it', async () => {
+  it('reads a per-person-only room header and its one cluster row', async () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
 
     const hal = groupNamed('Hal')
     expect(within(hal).getByText('0/1')).toBeInTheDocument()
-    expect(within(hal).queryAllByTestId('unpack-row-name')).toHaveLength(0)
+    // Task 13's own row — Els's one Piece, still open, so the cluster reads
+    // 0 of 1 resolved and the meta closes with `PER-PERSON · 0/1`.
+    const names = within(hal).getAllByTestId('unpack-row-name')
+    expect(names).toHaveLength(1)
+    expect(names[0]).toHaveTextContent('Headlamp')
+    expect(
+      within(hal).getByRole('button', {
+        name: 'Outcome — Headlamp, 0 of 1 resolved',
+      }),
+    ).toBeInTheDocument()
+    expect(within(hal).getByText('PER-PERSON · 0/1')).toBeInTheDocument()
   })
 
   it('reads a room header as resolved/units', async () => {
@@ -565,6 +574,48 @@ describe('DESTINATION mode — the row (F6)', () => {
     expect(
       within(row).getByRole('button', { name: '● BACK', hidden: true }),
     ).toBeInTheDocument()
+  })
+
+  /**
+   * **Task 13's own wiring test** — the cluster used to draw nothing at all
+   * (a per-person Entry was skipped from every row list); this is what
+   * proves it now opens `OutcomeSheet` in its roster variant, over the
+   * identical Entry the room header's `0/1` already counts.
+   */
+  it('opens the roster sheet from the cluster, EVERYONE selected, and applies a chip to it', async () => {
+    const user = userEvent.setup()
+    const { authored } = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...destinationScenario(),
+    )
+
+    const hal = groupNamed('Hal')
+    await user.click(
+      within(hal).getByRole('button', {
+        name: 'Outcome — Headlamp, 0 of 1 resolved',
+      }),
+    )
+
+    const sheet = screen.getByRole('dialog', { name: 'Headlamp' })
+    // The roster, not the plain entry-level controls.
+    expect(within(sheet).getByTestId('roster-everyone')).toBeInTheDocument()
+    const rows = within(sheet).getAllByTestId('roster-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('Els')
+    expect(rows[0]).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(within(sheet).getByRole('button', { name: '● BACK' }))
+
+    expect(await authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: {
+          entry_id: E_HAL_HEADLAMP,
+          outcome: 'back',
+          person_id: 'els',
+        },
+      },
+    ])
   })
 })
 
@@ -871,16 +922,46 @@ describe('the ○ OPEN filter (F4)', () => {
     expect(screen.getByText('Kelder')).toBeInTheDocument()
   })
 
-  /** Task 10's own `Hal 0/1` case: a group with no rows to begin with (a
-   * per-person-only room, Task 13's cluster) is not a group the filter
-   * emptied, and keeps its header regardless of `○ OPEN`. */
-  it('keeps a group that never had a row to filter, whatever the filter reads', async () => {
+  /**
+   * Task 13's own case — `Hal`'s cluster row is Els's one open Piece, so
+   * `visibleRows`' cluster branch (`resolved < total`) keeps it exactly as
+   * the pill branch would, and the group survives with its row still under
+   * it, not merely with an empty header.
+   */
+  it('keeps an open cluster row and its group under the filter', async () => {
     const user = userEvent.setup()
     await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
 
     await pressOpenOnly(user)
 
-    expect(screen.getByText('Hal')).toBeInTheDocument()
+    const hal = groupNamed('Hal')
+    expect(
+      within(hal).getByRole('button', {
+        name: 'Outcome — Headlamp, 0 of 1 resolved',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * The other half — a per-person Entry whose every Piece is resolved reads
+   * exactly as closed as an ordinary resolved row, through the identical
+   * cluster branch (`resolved < total` is now false).
+   */
+  it('hides a fully-resolved cluster row', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...destinationScenario(),
+      tripOutcomeSet(ALPS, E_HAL_HEADLAMP, 'back', 'els'),
+    )
+
+    await pressOpenOnly(user)
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'Outcome — Headlamp, 1 of 1 resolved',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('reads NOTHING OPEN. once every row is resolved and the filter is still on', async () => {
@@ -1009,6 +1090,36 @@ describe('PERSON mode (F4, ruling A7)', () => {
     expect(
       within(els).getByRole('button', { name: '○ OPEN' }),
     ).toBeInTheDocument()
+  })
+
+  /**
+   * **Task 13's own closer** — the composite-key wiring the module docblock
+   * describes. Els's own pill carries her composite key
+   * (`${entryId}:els`), which never resolves in `trip.entries`; this proves
+   * `openOutcome` still finds the real Entry behind it and opens the
+   * identical roster the DESTINATION cluster would, `EVERYONE` selected
+   * regardless of which Piece's pill was tapped.
+   */
+  it("opens the roster sheet from PERSON mode's own Piece pill, EVERYONE selected", async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...personScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    const els = groupNamed('Els')
+    await user.click(within(els).getByRole('button', { name: '○ OPEN' }))
+
+    const sheet = screen.getByRole('dialog', { name: 'Headlamp' })
+    expect(within(sheet).getByTestId('roster-everyone')).toBeInTheDocument()
+    const rows = within(sheet).getAllByTestId('roster-row')
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Els'),
+      expect.stringContaining('Kees'),
+    ])
+    // EVERYONE selected on open — narrowed to neither Piece the tap named.
+    for (const row of rows) {
+      expect(row).toHaveAttribute('aria-pressed', 'true')
+    }
   })
 
   it("draws a Piece row's meta as the full return path alone, no ownership segment", async () => {
@@ -1144,7 +1255,7 @@ describe('PERSON mode — the container and consumed-split arms (ruling I1)', ()
 })
 
 describe('ALL mode (spec §3.4)', () => {
-  it('draws every non-per-person Entry flat, A→Z, with no group headers', async () => {
+  it('draws every Entry flat, A→Z, with no group headers — a per-person one included', async () => {
     const user = userEvent.setup()
     await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
 
@@ -1159,10 +1270,30 @@ describe('ALL mode (spec §3.4)', () => {
       'Cook set',
       'Duffel 90 L',
       'Gas canister 450',
+      'Headlamp',
       'Passports, all',
       'Sleeping bag, winter',
       'Trekking poles',
     ])
+  })
+
+  /**
+   * Task 13's own row, ALL mode's header-less grammar (ruling I1) — suffix
+   * first, path last, the opposite of DESTINATION's `PER-PERSON · 0/1 · →
+   * Hal` order the room-header test above pins.
+   */
+  it("draws the per-person row's cluster and suffix-first meta", async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    await chooseMode(user, 'ALL')
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Outcome — Headlamp, 0 of 1 resolved',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('PER-PERSON · 0/1 · → Hal')).toBeInTheDocument()
   })
 
   /**

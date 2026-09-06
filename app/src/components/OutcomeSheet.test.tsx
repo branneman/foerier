@@ -127,6 +127,7 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
       name: 'Headlamp',
       container: false,
       kind: 'per_person',
+      residence: { in: 'place', id: BAK3 },
     }),
     tripEntryAdded(TRIP, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
 
@@ -153,9 +154,11 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
 function Harness({
   entryId,
   onClose = () => {},
+  roster = false,
 }: {
   entryId: string
   onClose?: () => void
+  roster?: boolean
 }) {
   const state = useHousehold((depot) => depot.state)
   const trip = state.trips[TRIP]
@@ -167,6 +170,7 @@ function Harness({
       entry={entry}
       view={containmentView(state)}
       onClose={onClose}
+      roster={roster}
     />
   )
 }
@@ -175,10 +179,11 @@ function renderSheet(
   seed: Seeded,
   entryId: string,
   onClose: () => void = () => {},
+  roster = false,
 ): void {
   render(
     <HouseholdProvider value={seed.store}>
-      <Harness entryId={entryId} onClose={onClose} />
+      <Harness entryId={entryId} onClose={onClose} roster={roster} />
     </HouseholdProvider>,
   )
 }
@@ -506,5 +511,201 @@ describe('two code-authored renderings, unpinned by any ruling', () => {
     const sheet = screen.getByRole('dialog', { name: 'Tent, 3p' })
     const fact = screen.getByText('OUTCOME')
     expect(sheet).toHaveAttribute('aria-describedby', fact.id)
+  })
+})
+
+/**
+ * **F7's roster variant** (`docs/design/README.md` §7, §5h; board §02
+ * "Per-Piece outcome sheet — Headlamp") — the outcome sheet with a roster
+ * above the verbs, opened for a per-person Entry. `Headlamp` gains two more
+ * Participants here (Els, Kees) beside `seeded()`'s own Mark, with Mark and
+ * Els already `back` and Kees left open — the board's own "2 of 3 resolved"
+ * shape, one Piece short of full.
+ */
+describe('the outcome sheet — the roster variant (F7)', () => {
+  function withThreePieces(...extra: readonly OpSpec[]): readonly OpSpec[] {
+    return [
+      personRecorded('els', 'Els'),
+      tripParticipantAdded(TRIP, 'els'),
+      personRecorded('kees', 'Kees'),
+      tripParticipantAdded(TRIP, 'kees'),
+      tripOutcomeSet(TRIP, E_HEADLAMP, 'back', 'mark'),
+      tripOutcomeSet(TRIP, E_HEADLAMP, 'back', 'els'),
+      // Kees's own Piece left open.
+      ...extra,
+    ]
+  }
+
+  it('names the sheet by the gear and describes it with 2 OF 3 RESOLVED and the return path', async () => {
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const sheet = screen.getByRole('dialog', { name: 'Headlamp' })
+    const fact = screen.getByText('OUTCOME · 2 OF 3 RESOLVED · → Bak 3')
+    expect(sheet).toHaveAttribute('aria-describedby', fact.id)
+  })
+
+  it('draws one row per Piece, EVERYONE selected on open', async () => {
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const rows = screen.getAllByTestId('roster-row')
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Els'),
+      expect.stringContaining('Kees'),
+      expect.stringContaining('Mark'),
+    ])
+    // Every row is part of the selection on open — the `SELECTED ✓` grammar
+    // pinned on all three rather than none, since `EVERYONE` is the default.
+    for (const row of rows) {
+      expect(row).toHaveAttribute('aria-pressed', 'true')
+    }
+  })
+
+  it('draws a consumed Piece filled, the identical tone a back Piece takes', async () => {
+    const seed = await seeded(
+      ...withThreePieces(tripOutcomeSet(TRIP, E_HEADLAMP, 'consumed', 'kees')),
+    )
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const circles = screen.getAllByTestId('person-circle')
+    // Els, Kees, Mark — `tripParticipants`' own alphabetical order.
+    expect(circles.map((circle) => circle.getAttribute('data-tone'))).toEqual([
+      'filled',
+      'filled',
+      'filled',
+    ])
+    // The sheet is what states the difference the tone cannot — Kees's own
+    // row still reads CONSUMED, not BACK.
+    const kees = screen.getAllByTestId('roster-row')[1]
+    expect(kees).toHaveTextContent('CONSUMED')
+  })
+
+  it('draws a lost Piece with the attention tone, apart from the other two', async () => {
+    const seed = await seeded(
+      ...withThreePieces(tripOutcomeSet(TRIP, E_HEADLAMP, 'lost', 'kees')),
+    )
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const circles = screen.getAllByTestId('person-circle')
+    expect(circles.map((circle) => circle.getAttribute('data-tone'))).toEqual([
+      'filled',
+      'attention',
+      'filled',
+    ])
+  })
+
+  it('toggles a row into and out of the selection with SELECTED ✓', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const kees = screen.getAllByTestId('roster-row')[1]
+    if (kees === undefined) throw new Error('no Kees row')
+    expect(kees).toHaveTextContent('SELECTED ✓')
+
+    await user.click(kees)
+
+    expect(kees).not.toHaveTextContent('SELECTED ✓')
+    expect(kees).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(kees)
+
+    expect(kees).toHaveTextContent('SELECTED ✓')
+  })
+
+  it('restores the full selection on an EVERYONE tap', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const kees = screen.getAllByTestId('roster-row')[1]
+    if (kees === undefined) throw new Error('no Kees row')
+    await user.click(kees)
+    expect(kees).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(screen.getByTestId('roster-everyone'))
+
+    for (const row of screen.getAllByTestId('roster-row')) {
+      expect(row).toHaveAttribute('aria-pressed', 'true')
+    }
+  })
+
+  /**
+   * **§5g E10** — with two of three already `back`, tapping `BACK` under
+   * `EVERYONE` writes **one** op, for Kees alone: the redundant-write guard
+   * applied to a whole selection at once.
+   */
+  it('writes one op per Piece that changes, skipping the ones already there', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    await user.click(chipNamed('● BACK'))
+
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_HEADLAMP, outcome: 'back', person_id: 'kees' },
+      },
+    ])
+  })
+
+  it('applies only to a narrowed selection, leaving the rest alone', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const rows = screen.getAllByTestId('roster-row')
+    const els = rows[0]
+    const mark = rows[2]
+    if (els === undefined || mark === undefined) throw new Error('no rows')
+    // Narrow to Mark alone.
+    await user.click(els)
+    const kees = rows[1]
+    if (kees === undefined) throw new Error('no Kees row')
+    await user.click(kees)
+
+    await user.click(chipNamed('▲ LOST'))
+
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_HEADLAMP, outcome: 'lost', person_id: 'mark' },
+      },
+    ])
+  })
+
+  it('raises no chip as current — a selection can hold mixed outcomes', async () => {
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    for (const chip of screen.getAllByTestId('outcome-chip')) {
+      expect(chip).not.toHaveAttribute('data-current')
+    }
+  })
+
+  it('grows no stepper in this variant', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    await user.click(chipNamed('CONSUMED'))
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('states the roster footer, not the plain one', async () => {
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    expect(
+      screen.getByText(
+        'EVERYONE IS SELECTED ON OPEN. TAP A ROW TO NARROW. ONE OP PER PIECE THAT CHANGES.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(/LOST KEEPS THE HOME SLOT/),
+    ).not.toBeInTheDocument()
   })
 })

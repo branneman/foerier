@@ -1,6 +1,7 @@
 import {
   bringCountOf,
   consumedCountOf,
+  countOfUnpack,
   entryLabel,
   isContainerEntry,
   outcomeGlyph,
@@ -8,19 +9,25 @@ import {
   outcomeOf,
   ownedCountOf,
   OUTCOMES,
+  pieceOutcomeOf,
+  piecesOf,
   returnPathOf,
   tripConsumedCountSet,
   tripOutcomeSet,
+  unpackItems,
+  UNNAMED_PERSON_GLYPH,
   type ContainmentView,
   type EntryState,
   type HouseholdState,
   type OutcomeValue,
   type TripState,
+  type UnpackItem,
 } from '@foerier/shared'
-import { Sheet, Stepper } from '@foerier/ui'
-import { useMemo } from 'react'
+import { PersonCircle, Sheet, Stepper } from '@foerier/ui'
+import { useMemo, useState } from 'react'
 
 import { useHousehold } from '../household/store'
+import { tripParticipants } from '../household/trips'
 import styles from './OutcomeSheet.module.css'
 
 /**
@@ -105,6 +112,31 @@ import styles from './OutcomeSheet.module.css'
  * No board frame draws this sheet for anything but a Counted Entry, so the
  * bare-`OUTCOME` collapse below is this file's own reading, not a drawn
  * string — see {@link fact}'s own comment.
+ *
+ * ## The roster variant (Task 13, F7) — one component, not a second sheet
+ *
+ * `roster: true` is the cluster's own target (DESTINATION and ALL mode) and
+ * PERSON mode's own per-Piece pill's — both route into the identical sheet,
+ * `Unpack.tsx`'s own `openOutcome` resolving a PERSON-mode Piece row's
+ * composite key down to the real Entry before mounting this component. F7's
+ * own argument: *the chips are the verbs, the roster is who*, so `SET
+ * EVERYONE` needs no second control and a single Piece needs no second
+ * sheet — the four chips below are the identical `CHIP_IDS`, applied to a
+ * **selection** instead of to the Entry's own register.
+ *
+ * The selection is local `useState`, seeded to every included Piece
+ * (`piecesOf`) at mount — `ui/`'s overlay primitives have no `open` prop, so
+ * mount is the reset, exactly as `PiecePicker`'s draft state resets on
+ * every open. `EVERYONE` restores it; a row toggles its own membership,
+ * the Participants picker's `✓` grammar transplanted onto a Piece roster.
+ * The chips **apply to the selection**, one op per Piece whose own outcome
+ * differs from the tap — `PieceStatusSheet`'s `SET EVERYONE` rule (§5g E10),
+ * an N-register write where a redundant one matters more than anywhere
+ * else in the app, because a single tap can author it N times at once.
+ *
+ * No stepper ever grows here, at any Kind: per-person gear has no count
+ * (invariant 6), and `showStepper`'s own gate below is entry-level and
+ * never consulted in this branch.
  */
 export interface OutcomeSheetProps {
   trip: TripState
@@ -113,7 +145,45 @@ export interface OutcomeSheetProps {
    * (`Unpack.tsx`'s own `view`) — never rebuilt here. */
   view: ContainmentView
   onClose: () => void
+  /**
+   * Draws the roster above the verbs (F7) instead of the plain entry-level
+   * controls. The caller's own fact to decide — `entryKind(entry, state)
+   * === 'per_person' && !isContainerEntry(entry, state)` — never re-derived
+   * here: this component trusts the flag rather than asking `state` a
+   * question its caller already answered to build the props it is holding.
+   */
+  roster?: boolean
 }
+
+/**
+ * `PersonCircle`'s tone for a Piece's own unpack outcome (F7) — presentational,
+ * not domain, exactly as `PieceStatusSheet.toneForStatus` is for a packing
+ * status. **Three values, not four**: `consumed` is not drawable as a fourth
+ * tone at 30/34px and paints identically to `back` — the sheet's own row
+ * states the word, which is what lets the circle collapse the two without
+ * losing the fact. Exported so the cluster that opens this sheet
+ * (`UnpackRow.tsx`, via `Unpack.tsx`'s own cluster-building) paints the
+ * identical three fills for the identical three outcomes — a second,
+ * hand-rolled copy is exactly the `ownerOf`/`phaseOf` drift this codebase
+ * keeps warning against, and the symptom would be a circle drawn bordered on
+ * the row and filled inside the sheet it opens, for the same Piece.
+ */
+export function circleToneForOutcome(
+  outcome: OutcomeValue | null,
+): 'control' | 'filled' | 'attention' {
+  if (outcome === null) return 'control'
+  if (outcome === 'lost') return 'attention'
+  // `back`, `consumed`, or an unrecognised value — this file's own header:
+  // an unrecognised outcome counts as resolved, into none of the three named
+  // buckets, the identical rule `countOfUnpack` states for the arithmetic.
+  return 'filled'
+}
+
+const FOOTER = 'ONE OP PER TAP. LOST KEEPS THE HOME SLOT AND STAYS SEARCHABLE.'
+
+/** F7's own footer — the roster variant's, verbatim off the board. */
+const ROSTER_FOOTER =
+  'EVERYONE IS SELECTED ON OPEN. TAP A ROW TO NARROW. ONE OP PER PIECE THAT CHANGES.'
 
 /**
  * BACK · OPEN · CONSUMED · LOST — the board's own drawn order
@@ -185,6 +255,7 @@ export function OutcomeSheet({
   entry,
   view,
   onClose,
+  roster = false,
 }: OutcomeSheetProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
@@ -196,9 +267,76 @@ export function OutcomeSheet({
   const title = entryLabel(entry, state)
   const gear = depotGearOf(entry, state)
 
+  // The roster's own items — `unpackItems`' own piece fan-out, filtered to
+  // this Entry, never a second hand-rolled walk over `piecesOf`. Computed
+  // unconditionally (a `useMemo` dependency array must not change shape
+  // across renders) but cheap to ignore when `roster` is false: `unpackItems`
+  // is O(this Trip's entries), not O(depot), and this sheet mounts once per
+  // open rather than once per row.
+  const pieceItems = useMemo(
+    () =>
+      roster
+        ? unpackItems(trip, state).filter(
+            (item): item is Extract<UnpackItem, { kind: 'piece' }> =>
+              item.kind === 'piece' && item.entryId === entry.id,
+          )
+        : [],
+    [roster, trip, state, entry],
+  )
+  const rosterCount = countOfUnpack(pieceItems)
+
+  // Display order is `tripParticipants`' — `PieceStatusSheet`'s own rule,
+  // restated: a roster is a thing a Quartermaster scans by name, and
+  // `piecesOf`'s id order is only for the fold to agree on, never to read.
+  const rosterRows = useMemo(() => {
+    const byPerson = new Map(
+      pieceItems.map((item) => [item.personId, item.outcome]),
+    )
+    return tripParticipants(state, trip)
+      .filter((person) => byPerson.has(person.id))
+      .map((person) => ({
+        personId: person.id,
+        label: person.label,
+        outcome: byPerson.get(person.id) ?? null,
+      }))
+  }, [pieceItems, state, trip])
+
+  // Mount is the reset (`ui/`'s overlay primitives have no `open` prop) —
+  // `PiecePicker`'s draft-state precedent — so a lazy initializer reading
+  // `piecesOf` directly is safe: this runs once, at mount, and never again
+  // for the life of this component instance.
+  const [selection, setSelection] = useState<Set<string>>(
+    () => new Set(piecesOf(entry, trip)),
+  )
+
+  function toggleRow(personId: string): void {
+    setSelection((prev) => {
+      const next = new Set(prev)
+      if (next.has(personId)) next.delete(personId)
+      else next.add(personId)
+      return next
+    })
+  }
+
+  function restoreEveryone(): void {
+    setSelection(new Set(piecesOf(entry, trip)))
+  }
+
   const fact = useMemo(() => {
     const path = returnPathOf(entry, state, view)
     const pathText = path.map((segment) => segment.name).join(' ▸ ')
+
+    if (roster) {
+      // F7's own drawn fact, `OUTCOME · 2 OF 3 RESOLVED · → LADE 2` — the
+      // whole Entry's own arithmetic, unconditionally, regardless of
+      // whatever selection happens to be narrowed at the moment.
+      const parts = [
+        'OUTCOME',
+        `${rosterCount.resolved} OF ${rosterCount.total} RESOLVED`,
+      ]
+      if (pathText !== '') parts.push(`→ ${pathText}`)
+      return parts.join(' · ')
+    }
 
     // A container states no quantity at all — F1's own reading, settled over
     // board §02's annotation card: the inside-count is the **row**'s meta,
@@ -224,7 +362,7 @@ export function OutcomeSheet({
       text = `${text} · ITS CONTENTS KEEP THEIR OWN OUTCOMES.`
     }
     return text
-  }, [entry, state, view, container, bringCount])
+  }, [roster, rosterCount, entry, state, view, container, bringCount])
 
   function choose(next: OutcomeValue | null) {
     // A redundant write moves the stamp LWW compares — see this file's own
@@ -232,6 +370,18 @@ export function OutcomeSheet({
     // nothing.
     if (next === outcome) return
     emit(tripOutcomeSet(trip.id, entry.id, next))
+  }
+
+  function applyToSelection(next: OutcomeValue | null): void {
+    // §5g E10: one op per Piece **that changes** — a Piece already at the
+    // tapped outcome is skipped, the redundant-write guard applied to N
+    // registers at once. `SET EVERYONE`'s own rule, restated for this
+    // sheet's identical shape.
+    for (const personId of selection) {
+      const current = pieceOutcomeOf(entry.pieces?.[personId])
+      if (current === next) continue
+      emit(tripOutcomeSet(trip.id, entry.id, next, personId))
+    }
   }
 
   function handleConsumedChange(next: number | null) {
@@ -245,9 +395,13 @@ export function OutcomeSheet({
 
   // consumedCountOf already answers `null` for a container (checked first)
   // and for anything that is not a Counted depot Entry — never re-derived
-  // as `kind === 'counted' && !container` here.
+  // as `kind === 'counted' && !container` here. `!roster` besides: per-person
+  // gear has no count at all (invariant 6), and this gate is entry-level.
   const showStepper =
-    outcome === 'consumed' && consumedCount !== null && bringCount !== null
+    !roster &&
+    outcome === 'consumed' &&
+    consumedCount !== null &&
+    bringCount !== null
 
   return (
     <Sheet
@@ -256,13 +410,74 @@ export function OutcomeSheet({
       desktopCard
       description={<p className={styles['fact']}>{fact}</p>}
     >
+      {roster && (
+        <div className={styles['applyRow']}>
+          <span className={styles['applyLabel']}>APPLY TO</span>
+          <button
+            type="button"
+            className={styles['everyoneChip']}
+            data-testid="roster-everyone"
+            onClick={restoreEveryone}
+          >
+            EVERYONE
+          </button>
+        </div>
+      )}
+
+      {roster && (
+        <ul className={styles['rosterList']}>
+          {rosterRows.map((row) => {
+            const selected = selection.has(row.personId)
+            return (
+              <li key={row.personId}>
+                <button
+                  type="button"
+                  className={styles['rosterRow']}
+                  data-testid="roster-row"
+                  aria-pressed={selected}
+                  onClick={() => toggleRow(row.personId)}
+                >
+                  <span
+                    className={styles['rosterCircleWrap']}
+                    aria-hidden="true"
+                  >
+                    <PersonCircle
+                      label={
+                        row.label === UNNAMED_PERSON_GLYPH
+                          ? undefined
+                          : row.label.charAt(0).toUpperCase()
+                      }
+                      size={30}
+                      tone={circleToneForOutcome(row.outcome)}
+                    />
+                  </span>
+                  <span className={styles['rosterNameStack']}>
+                    <span className={styles['rosterName']}>{row.label}</span>
+                    <span className={styles['rosterStatus']}>
+                      {outcomeGlyph(row.outcome)} {outcomeLabel(row.outcome)}
+                    </span>
+                  </span>
+                  <span className={styles['rosterMarker']}>
+                    {selected ? 'SELECTED ✓' : '○'}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
       <div
         className={styles['chips']}
         role="group"
         aria-label={`Outcome — ${title}`}
       >
         {CHIP_IDS.map((id) => {
-          const current = id === outcome
+          // Roster mode has no single "current" outcome to raise — a
+          // selection can hold Pieces at different outcomes at once, and the
+          // Entry's own register (what `outcomeOf` reads) is never written
+          // by a per-Piece op in the first place.
+          const current = !roster && id === outcome
           return (
             <button
               key={id ?? 'open'}
@@ -271,7 +486,7 @@ export function OutcomeSheet({
               data-current={current ? 'true' : undefined}
               aria-pressed={current}
               data-testid="outcome-chip"
-              onClick={() => choose(id)}
+              onClick={() => (roster ? applyToSelection(id) : choose(id))}
             >
               {outcomeGlyph(id)} {outcomeLabel(id)}
             </button>
@@ -291,9 +506,7 @@ export function OutcomeSheet({
         />
       )}
 
-      <p className={styles['footer']}>
-        ONE OP PER TAP. LOST KEEPS THE HOME SLOT AND STAYS SEARCHABLE.
-      </p>
+      <p className={styles['footer']}>{roster ? ROSTER_FOOTER : FOOTER}</p>
 
       <Sheet.Close>
         <button type="button" className={styles['close']}>
