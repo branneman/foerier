@@ -13,6 +13,7 @@ import {
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen, within } from '@testing-library/react'
+import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -624,5 +625,355 @@ describe('DESTINATION mode — a trip-only row (F6)', () => {
 
     const badge = screen.getByTestId('unpack-row-badge')
     expect(badge.parentElement).toHaveTextContent('Passports, all TRIP-ONLY')
+  })
+})
+
+/** Switch the segmented control — `Packing.test.tsx`'s `chooseMode` twin. */
+async function chooseMode(user: UserEvent, label: string): Promise<void> {
+  await user.click(screen.getByRole('radio', { name: label }))
+}
+
+async function pressOpenOnly(user: UserEvent): Promise<void> {
+  await user.click(screen.getByTestId('unpack-open-filter'))
+}
+
+describe('the controls (F4)', () => {
+  it('draws DESTINATION · PERSON · ALL as one segmented control, DESTINATION first', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...twoWithOneResolved())
+
+    expect(screen.getByRole('group', { name: 'Group by' })).toBeInTheDocument()
+
+    const modes = screen.getAllByRole('radio')
+    expect(modes.map((mode) => mode.getAttribute('value'))).toEqual([
+      'destination',
+      'person',
+      'all',
+    ])
+    expect(screen.getByRole('radio', { name: 'DESTINATION' })).toBeChecked()
+  })
+
+  it('draws the ○ OPEN filter unselected, never OPEN ONLY', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...twoWithOneResolved())
+
+    const pill = screen.getByTestId('unpack-open-filter')
+    expect(pill).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByText(/ONLY/)).not.toBeInTheDocument()
+  })
+
+  it('gains a ✕ once the filter is tapped', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...twoWithOneResolved())
+
+    const pill = screen.getByTestId('unpack-open-filter')
+    expect(pill.textContent).not.toContain('✕')
+
+    await pressOpenOnly(user)
+
+    expect(pill).toHaveAttribute('aria-pressed', 'true')
+    expect(pill.textContent).toContain('✕')
+  })
+
+  it('draws the one hint, under the controls row', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...twoWithOneResolved())
+
+    const hint = screen.getByText(
+      'TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOME',
+    )
+    const controls = screen.getByTestId('unpack-controls')
+
+    expect(hint).toBeInTheDocument()
+    expect(
+      controls.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+})
+
+const ZOLDER = 'pppppppp-0000-7000-8000-000000000030'
+const LAMP = 'gggggggg-0000-7000-8000-000000000030'
+const E_LAMP = 'nnnnnnnn-0000-7000-8000-000000000030'
+const PAN = 'gggggggg-0000-7000-8000-000000000031'
+const E_PAN = 'nnnnnnnn-0000-7000-8000-000000000031'
+
+/** One resolved Entry in its own room (`Zolder`), one still open in another
+ * (`Kelder`) — the fixture the filter tests narrow and widen. */
+function twoRoomsOneEachScenario(): readonly OpSpec[] {
+  return [
+    ...alps(),
+    placeRecorded(ZOLDER, 'Zolder'),
+    placeRecorded(KELDER, 'Kelder'),
+
+    gearRecorded(LAMP, {
+      name: 'Lamp',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: ZOLDER },
+    }),
+    tripEntryAdded(ALPS, E_LAMP, { from: 'depot', gearId: LAMP }),
+    tripOutcomeSet(ALPS, E_LAMP, 'back'),
+
+    gearRecorded(PAN, {
+      name: 'Pan',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: KELDER },
+    }),
+    tripEntryAdded(ALPS, E_PAN, { from: 'depot', gearId: PAN }),
+    // Left open.
+  ]
+}
+
+describe('the ○ OPEN filter (F4)', () => {
+  it('hides a resolved row and keeps an open one, in the same group', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...twoWithOneResolved())
+
+    expect(screen.getByRole('button', { name: '● BACK' })).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: '○ OPEN' }).length,
+    ).toBeGreaterThan(0)
+
+    await pressOpenOnly(user)
+
+    expect(
+      screen.queryByRole('button', { name: '● BACK' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: '○ OPEN' }).length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('withholds a group whose every row the filter drops, and keeps one that still has work', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...twoRoomsOneEachScenario())
+
+    expect(screen.getByText('Zolder')).toBeInTheDocument()
+    expect(screen.getByText('Kelder')).toBeInTheDocument()
+
+    await pressOpenOnly(user)
+
+    expect(screen.queryByText('Zolder')).not.toBeInTheDocument()
+    expect(screen.getByText('Kelder')).toBeInTheDocument()
+  })
+
+  /** Task 10's own `Hal 0/1` case: a group with no rows to begin with (a
+   * per-person-only room, Task 13's cluster) is not a group the filter
+   * emptied, and keeps its header regardless of `○ OPEN`. */
+  it('keeps a group that never had a row to filter, whatever the filter reads', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    await pressOpenOnly(user)
+
+    expect(screen.getByText('Hal')).toBeInTheDocument()
+  })
+
+  it('reads NOTHING OPEN. once every row is resolved and the filter is still on', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...twoRoomsOneEachScenario(),
+      tripOutcomeSet(ALPS, E_PAN, 'back'),
+    )
+
+    await pressOpenOnly(user)
+
+    expect(screen.getByText('NOTHING OPEN.')).toBeInTheDocument()
+    expect(screen.queryByText('Zolder')).not.toBeInTheDocument()
+    expect(screen.queryByText('Kelder')).not.toBeInTheDocument()
+  })
+})
+
+const KEES = 'kees'
+const ELS = 'els'
+const ROOM = 'pppppppp-0000-7000-8000-000000000040'
+const RAINCOAT = 'gggggggg-0000-7000-8000-000000000040'
+const E_RAINCOAT = 'nnnnnnnn-0000-7000-8000-000000000040'
+const P_HEADLAMP = 'gggggggg-0000-7000-8000-000000000041'
+const E_P_HEADLAMP = 'nnnnnnnn-0000-7000-8000-000000000041'
+const STOVE_SHARED = 'gggggggg-0000-7000-8000-000000000042'
+const E_STOVE_SHARED = 'nnnnnnnn-0000-7000-8000-000000000042'
+
+/**
+ * A7's own partition, exercised: `Kees` gets a Personal-owned Single still
+ * open (`Rain jacket, K`) and his own resolved Piece of a per-person Entry
+ * (`Headlamp`); `Els` gets only her own open Piece of that same Entry;
+ * `Shared` gets a resolved Single nobody owns (`Stove`).
+ *
+ * `Kees`: 1/2 · 1 OPEN. `Els`: 0/1 · 1 OPEN. `Shared`: 1/1 · 0 OPEN.
+ */
+function personScenario(): readonly OpSpec[] {
+  return [
+    personRecorded(KEES, 'Kees'),
+    personRecorded(ELS, 'Els'),
+    tripCreated(ALPS, 'Alps 2026'),
+    tripParticipantAdded(ALPS, KEES),
+    tripParticipantAdded(ALPS, ELS),
+
+    placeRecorded(ROOM, 'Room'),
+
+    gearRecorded(RAINCOAT, {
+      name: 'Rain jacket, K',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: ROOM },
+      owner: { type: 'person', personId: KEES },
+    }),
+    tripEntryAdded(ALPS, E_RAINCOAT, { from: 'depot', gearId: RAINCOAT }),
+    // Left open.
+
+    gearRecorded(P_HEADLAMP, {
+      name: 'Headlamp',
+      container: false,
+      kind: 'per_person',
+      residence: { in: 'place', id: ROOM },
+    }),
+    tripEntryAdded(ALPS, E_P_HEADLAMP, { from: 'depot', gearId: P_HEADLAMP }),
+    tripOutcomeSet(ALPS, E_P_HEADLAMP, 'back', KEES),
+    // Els's own Piece left open.
+
+    gearRecorded(STOVE_SHARED, {
+      name: 'Stove',
+      container: false,
+      kind: 'single',
+    }),
+    tripEntryAdded(ALPS, E_STOVE_SHARED, {
+      from: 'depot',
+      gearId: STOVE_SHARED,
+    }),
+    tripOutcomeSet(ALPS, E_STOVE_SHARED, 'back'),
+  ]
+}
+
+describe('PERSON mode (F4, ruling A7)', () => {
+  it('orders Els, Kees, then Shared last', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...personScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    const names = screen
+      .getAllByTestId('unpack-group-name')
+      .map((el) => el.textContent)
+    expect(names).toEqual(['Els', 'Kees', 'Shared'])
+  })
+
+  it('reads a PERSON header as resolved/units · N OPEN', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...personScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    expect(
+      within(groupNamed('Kees')).getByText('1/2 · 1 OPEN'),
+    ).toBeInTheDocument()
+    expect(
+      within(groupNamed('Els')).getByText('0/1 · 1 OPEN'),
+    ).toBeInTheDocument()
+    expect(
+      within(groupNamed('Shared')).getByText('1/1 · 0 OPEN'),
+    ).toBeInTheDocument()
+  })
+
+  it("draws a Piece row with the board's own name suffix and its own pill, not a cluster", async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...personScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    const kees = groupNamed('Kees')
+    expect(
+      within(kees).getByText("Headlamp — KEES'S PIECE"),
+    ).toBeInTheDocument()
+    expect(
+      within(kees).getByRole('button', { name: '● BACK' }),
+    ).toBeInTheDocument()
+
+    const els = groupNamed('Els')
+    expect(within(els).getByText("Headlamp — ELS'S PIECE")).toBeInTheDocument()
+    expect(
+      within(els).getByRole('button', { name: '○ OPEN' }),
+    ).toBeInTheDocument()
+  })
+
+  it("draws a Piece row's meta as the full return path alone, no ownership segment", async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...personScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    const rows = screen.getAllByTestId('unpack-row-meta')
+    expect(rows.some((row) => row.textContent === '→ Room')).toBe(true)
+  })
+
+  it('draws a Personal entry row with its ownership segment, unit count and full path', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...personScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    expect(
+      within(groupNamed('Kees')).getByText('PERSONAL K · ×1 · → Room'),
+    ).toBeInTheDocument()
+  })
+
+  it('draws a Shared entry row with SHARED and no path when the gear is Loose', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...personScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    expect(
+      within(groupNamed('Shared')).getByText('SHARED · ×1'),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('ALL mode (spec §3.4)', () => {
+  it('draws every non-per-person Entry flat, A→Z, with no group headers', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    await chooseMode(user, 'ALL')
+
+    expect(screen.queryAllByTestId('unpack-group-name')).toHaveLength(0)
+
+    const names = screen
+      .getAllByTestId('unpack-row-name')
+      .map((el) => el.textContent)
+    expect(names).toEqual([
+      'Cook set',
+      'Duffel 90 L',
+      'Gas canister 450',
+      'Passports, all',
+      'Sleeping bag, winter',
+      'Trekking poles',
+    ])
+  })
+
+  it('draws the full return path as the meta, room included', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    await chooseMode(user, 'ALL')
+
+    expect(
+      screen.getByText('→ Attic ▸ Shelf L-Top ▸ Crate B · ×2'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('→ Attic ▸ Shelf L-Top · 2 INSIDE'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('→ Kelder ▸ Bak 3')).toBeInTheDocument()
+    expect(screen.getByText('×2')).toBeInTheDocument()
+  })
+
+  it('draws a trip-only row inline, no button, NOT IN DEPOT', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    await chooseMode(user, 'ALL')
+
+    const row = screen.getByTestId(`unpack-row-${E_PASSPORTS}`)
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(row).getByText('NOT IN DEPOT')).toBeInTheDocument()
   })
 })

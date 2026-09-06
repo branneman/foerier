@@ -66,6 +66,95 @@
     background: var(--color-status-packed);
   }
 
+  /* The segmented control and the `○ OPEN` filter pill on one row, both 40px
+     — `Packing.module.css`'s `.controls`/`.segmentedField` verbatim, since
+     F4/F5 share the one recipe. */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+  }
+
+  .segmentedField {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* `○ OPEN` — the slice bar's own selected-chip grammar at 40px: bordered
+     while off, `accent-fill` with a `✕` while on. `Packing.module.css`'s
+     `.filter` verbatim, one word changed (F4 dropped *only*). */
+  .filter {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-height: max(2.5rem, 40px);
+    padding-inline: var(--space-12);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  /* The same 40 → 48 extension as the segmented control's own segment,
+     clamped the same way and inset 0 horizontally — `Packing.module.css`'s
+     `.filter::after`. */
+  .filter::after {
+    content: '';
+    position: absolute;
+    inset: -0.25rem 0;
+  }
+
+  .filter[aria-pressed='true'] {
+    border-color: var(--color-accent);
+    background: var(--color-accent-fill);
+    color: var(--color-ink-primary);
+  }
+
+  /* The screen's one hint, directly beneath the controls — mono 9, faint;
+     instruction, not ledger. `Packing.module.css`'s `.hint` verbatim. */
+  .hint {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-faint);
+  }
+
+  /* `NOTHING OPEN.` — F19's filter-empty state, replacing the groups region
+     entirely rather than sitting beside an empty one. */
+  .nothingOpen {
+    padding: var(--space-20) var(--space-16);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-muted);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /* PERSON mode's header: a 28px circle beside the name — `Packing.module.css`'s
+     `.personLine`/`.circle` verbatim. `Shared` keeps the wrapper and draws no
+     circle inside it. */
+  .personLine {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  /* `display: contents` so the wrapper adds no line box of its own —
+     `PersonCircle`'s own layout-shift note. */
+  .circle {
+    display: contents;
+  }
+
   /* The empty-list region — `Packing.module.css`'s `.empty` verbatim, because
      it draws the same two lines for the same reason. The region *is* the
      rest of the screen (`flex: 1`, not a padded block). */
