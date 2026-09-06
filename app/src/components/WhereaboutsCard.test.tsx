@@ -417,7 +417,14 @@ describe('WhereaboutsCard', () => {
       expect(screen.queryByText(/^▲ ×/)).not.toBeInTheDocument()
     })
 
-    it('prefers the over-claim footer when both are present — the active fact wins', async () => {
+    /**
+     * **§5i G11.** The footer is a stack, not a slot. It chained until the
+     * round, and the cost was D7's own rule broken — *never a ▲ with no
+     * door*: the home row kept its `▲` (that glyph reads the standing
+     * alone) while the route that settles it was unreachable until the
+     * over-claim was resolved first.
+     */
+    it('stacks both footers when both hold, over-claim first — each with its own door', async () => {
       const gearId = anId()
       const store = await seededStore([
         gearRecorded(gearId, {
@@ -445,10 +452,22 @@ describe('WhereaboutsCard', () => {
         },
       )
 
-      expect(screen.getByText('▲ CLAIMED ×4 · OWNED ×2')).toBeInTheDocument()
-      expect(screen.queryByText(/LAST SEEN/)).not.toBeInTheDocument()
-      // The home row's own glyph still reflects the standing independently
-      // of which footer has the floor.
+      // The fact about now leads.
+      const lines = screen.getAllByText(/^▲ (CLAIMED|×1 LAST SEEN)/)
+      expect(lines[0]).toHaveTextContent('▲ CLAIMED ×4 · OWNED ×2')
+      expect(lines[1]).toHaveTextContent(
+        '▲ ×1 LAST SEEN: Tessin 2025 · OWNED ×2',
+      )
+
+      // Two ▲s, two doors, two settlers: D7's routes to the band, F16's
+      // opens the picker on this screen.
+      expect(
+        screen.getByRole('link', { name: 'Resolve on Alps 2026' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'RESOLVE' }),
+      ).toBeInTheDocument()
+
       expect(screen.getByText('▲ HOME SLOT')).toBeInTheDocument()
     })
   })

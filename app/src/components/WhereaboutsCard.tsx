@@ -132,11 +132,11 @@ export interface WhereaboutsCardProps {
   overClaim?: WhereaboutsCardOverClaim
   /** Present exactly while the unaccounted standing holds (S10, F16(3)).
    *  Domain §4's precedence (an unresolved Entry on an Active Trip · the
-   *  unaccounted standing · home) is why `overClaim` is checked first below
-   *  when choosing which footer draws — but the home row's own `▲` glyph
-   *  reflects this prop alone, independent of `overClaim`: whether the
-   *  shelf count is short is a fact about the standing, not about which
-   *  footer currently has the floor. */
+   *  unaccounted standing · home) decides the **order** of the two footer
+   *  lines below, not which one draws: §5i G11 stacks them, because this
+   *  card is not one slot. The home row's own `▲` glyph reflects this prop
+   *  alone either way — whether the shelf count is short is a fact about
+   *  the standing, and never about what else is also true. */
   unaccounted?: WhereaboutsCardUnaccounted
 }
 
@@ -203,7 +203,23 @@ export function WhereaboutsCard({
         </div>
       ))}
 
-      {overClaim !== undefined ? (
+      {/* **The footer is a stack, one line per standing** (§5i G11) — this
+          card is not one slot. Over-claim leads, because the fact about
+          *now* leads; the standing sits beneath it. Each line carries its
+          own `RESOLVE`, and they settle different things: D7's routes to
+          the over-claim band, F16's opens the Home picker here.
+
+          It used to be a chain, and the cost was D7's own rule broken —
+          *never a ▲ with no door*. A Gear both over-claimed and unaccounted
+          drew the over-claim alone, so the home row kept its `▲` (that
+          glyph reads `unaccounted` and nothing else) while the route that
+          settles it was unreachable until the over-claim was resolved
+          first. Recoverable is not the same as reachable.
+
+          One ▲ per row stays a row rule, and the one-slot surfaces — the
+          Depot column, the 2-line row, Find — keep their precedence
+          unchanged (`rowWhereabouts`). A footer is not a row. */}
+      {overClaim !== undefined && (
         <p className={`${styles['hint']} ${styles['attention']}`}>
           <span>▲ {overClaim.text}</span>
           <Link
@@ -214,7 +230,8 @@ export function WhereaboutsCard({
             RESOLVE
           </Link>
         </p>
-      ) : unaccounted !== undefined ? (
+      )}
+      {unaccounted !== undefined && (
         <p className={`${styles['hint']} ${styles['attention']}`}>
           <span>▲ {unaccountedText(unaccounted)}</span>
           <button
@@ -225,7 +242,8 @@ export function WhereaboutsCard({
             RESOLVE
           </button>
         </p>
-      ) : (
+      )}
+      {overClaim === undefined && unaccounted === undefined && (
         <p className={styles['hint']}>
           {splits
             ? 'SPLIT COUNT — BOTH TRUE AT ONCE. HOME SLOT IS KEPT WHILE OUT.'
