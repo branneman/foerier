@@ -109,12 +109,17 @@ export interface WhereaboutsCardOverClaim {
 export interface WhereaboutsCardUnaccounted {
   /** The Trip of the latest live `lost` outcome (`Unaccounted.tripName`). */
   tripName: string
-  /** `null` for anything that states no quantity here (Single, per-person);
-   *  the standing's own unit count for Counted. */
-  units: number | null
+  /** The standing's own unit count — `×1` for Counted, `2` for per-person's
+   *  `2 OF 3`, and unread for Single, which states no quantity at all. */
+  units: number
   /** `ownedCountOf`'s raw answer — `null` for anything that is not Counted,
-   *  which is also this prop's own gate for whether `units` draws at all. */
+   *  and this prop's own gate for the Counted form. */
   ownedCount: number | null
+  /** `Unaccounted.pieceIds.length` — non-zero exactly for per-person, and
+   *  the gate for §5i G10's `N OF M PIECES` form. The two gates are
+   *  mutually exclusive by construction; a Single leaves `ownedCount`
+   *  `null` and this `0`. */
+  pieceTotal: number
   /** Opens the Home picker's settle route — never a `Link` like
    *  `overClaim`'s, because RESOLVE opens a sheet on this same screen
    *  rather than routing away from it. */
@@ -135,17 +140,26 @@ export interface WhereaboutsCardProps {
   unaccounted?: WhereaboutsCardUnaccounted
 }
 
-/** `▲ ×1 LAST SEEN: TESSIN 2025 · OWNED ×3`, or `LAST SEEN: TESSIN 2025`
- *  with no counts at all when `ownedCount` is `null` — the identical gate
- *  `unaccountedPrefix` (`whereabouts.ts`) reads for the Depot column,
+/** One form per Kind, each naming that Kind's own unit — the same rule
+ *  `unaccountedPrefix` (`whereabouts.ts`) applies to the Depot column,
  *  restated here because this component takes the pairing as props rather
- *  than the Gear itself. The leading `▲` is added by the caller of this
- *  function, matching how `overClaim.text` is drawn. */
+ *  than the Gear itself:
+ *
+ *  - Counted → `×1 LAST SEEN: TESSIN 2025 · OWNED ×3`
+ *  - per-person → `2 OF 3 PIECES · LAST SEEN: TESSIN 2025` (§5i G10), and
+ *    never `OWNED` — per-person gear has no owned-count (invariant 6)
+ *  - Single → `LAST SEEN: TESSIN 2025`, no counts at all (D1)
+ *
+ *  The leading `▲` is added by the caller of this function, matching how
+ *  `overClaim.text` is drawn. */
 function unaccountedText(unaccounted: WhereaboutsCardUnaccounted): string {
-  if (unaccounted.ownedCount === null) {
-    return `LAST SEEN: ${unaccounted.tripName}`
+  if (unaccounted.ownedCount !== null) {
+    return `×${unaccounted.units} LAST SEEN: ${unaccounted.tripName} · OWNED ×${unaccounted.ownedCount}`
   }
-  return `×${unaccounted.units} LAST SEEN: ${unaccounted.tripName} · OWNED ×${unaccounted.ownedCount}`
+  if (unaccounted.pieceTotal > 0) {
+    return `${unaccounted.units} OF ${unaccounted.pieceTotal} PIECES · LAST SEEN: ${unaccounted.tripName}`
+  }
+  return `LAST SEEN: ${unaccounted.tripName}`
 }
 
 export function WhereaboutsCard({

@@ -155,6 +155,18 @@ export interface PersonWhereabouts {
    *  Trip (domain §5.2), so this is only reachable once an over-claim has
    *  arrived through sync. */
   contestedTripIds: readonly string[]
+  /**
+   * §5i G10 — the Trip that last saw this Person's Piece, when their own
+   * Piece carries a live `lost` outcome; `null` otherwise, which is every
+   * ordinary case.
+   *
+   * It is set **only** where `slice` is the home answer, which is domain
+   * §4's precedence rather than a second rule: an active Trip claiming this
+   * Person's Piece is a fact about *now* and outranks a standing from last
+   * September, exactly as {@link rowWhereabouts} already decides for the
+   * one-slot surfaces.
+   */
+  unaccountedTripName: string | null
 }
 
 /** The `▸` of the trip world and the `⌂` of the home world (Components §11). */
@@ -909,7 +921,7 @@ export function rowWhereabouts(w: Whereabouts): {
  *
  * The Kind is read from the standing and the home slice rather than
  * re-derived: `w.slices[0]`'s `count` is non-null exactly for Counted
- * ({@link ownedCountOf}'s gate), and `pieceTotal` is non-null exactly for
+ * ({@link ownedCountOf}'s gate), and `pieceIds` is non-empty exactly for
  * per-person ({@link unaccountedOf}'s). Counted is checked first because
  * only one of the two can ever be non-null and stating the order makes that
  * a fact a reader can see rather than one they must trust.
@@ -921,8 +933,8 @@ function unaccountedPrefix(w: Whereabouts): string {
   if (home !== undefined && home.kind === 'home' && home.count !== null) {
     return `×${unaccounted.units} `
   }
-  if (unaccounted.pieceTotal !== null) {
-    return `${unaccounted.units} OF ${unaccounted.pieceTotal} `
+  if (unaccounted.pieceIds.length > 0) {
+    return `${unaccounted.units} OF ${unaccounted.pieceIds.length} `
   }
   return ''
 }
@@ -1019,8 +1031,44 @@ export function whereaboutsByPerson(
         status: included ? (first.pieceStatus.get(personId) ?? null) : null,
         contestedTripIds:
           claiming.length >= 2 ? claiming.map((trip) => trip.tripId) : [],
+        // Filled in below, once the standing is consulted — the active
+        // answer is decided here and outranks it.
+        unaccountedTripName: null,
       })
     }
   }
+
+  // §5i G10: the Pieces that are unaccounted for. Their Trip is very often
+  // **closed**, so `tripSlicesOf` — which reads active Trips alone — never
+  // saw them and the loop above cannot have added them. A Person already
+  // holding a live trip answer keeps it (domain §4: *now* outranks last
+  // September); everyone else gets the home slice and the standing's name.
+  const standing = answer.unaccounted
+  if (standing !== null) {
+    const lost = new Set(standing.personIds)
+    // Every Piece the standing **spans**, not only the lost ones: the group
+    // exists to show that the answers differ, and the Person whose Piece
+    // came back is half of that difference. They read home, which is where
+    // it is.
+    for (const personId of standing.pieceIds) {
+      const existing = byPerson.get(personId)
+      const unaccountedTripName = lost.has(personId) ? standing.tripName : null
+      if (existing !== undefined) {
+        // Domain §4: an active Trip claiming this Piece is a fact about
+        // *now* and outranks a standing from last September.
+        if (existing.slice.kind === 'trip') continue
+        byPerson.set(personId, { ...existing, unaccountedTripName })
+        continue
+      }
+      byPerson.set(personId, {
+        personId,
+        slice: home ?? { kind: 'home', path: [], count: null },
+        status: null,
+        contestedTripIds: [],
+        unaccountedTripName,
+      })
+    }
+  }
+
   return byPerson
 }

@@ -157,11 +157,21 @@ function chipLabel(slice: WhereaboutsSlice): string | null {
 /** A Participant's own `PIECES` chip text (`docs/design/README.md` §4):
  * `whereaboutsText` at chip density — `M ▸ ALPS 2026`, `K ⌂ HAL ▸ LADE 2` —
  * unless two Trips both claim their Piece, in which case D7's Piece-row
- * string replaces it: `M ▲ 2 TRIPS`. **No route** — D7: *a chip is not a
- * door and never has been*, which is why this returns text and not a link. */
+ * string replaces it: `M ▲ 2 TRIPS`, or unless their own Piece is
+ * unaccounted for, which reads `K ▲ TESSIN 2025` (§5i G10). **No route** —
+ * D7: *a chip is not a door and never has been*, which is why this returns
+ * text and not a link.
+ *
+ * The two `▲` cases cannot both hold: `unaccountedTripName` is set only
+ * where the slice is the home answer, and a contested Piece is on two
+ * active Trips. Contested is checked first anyway, so the precedence is
+ * stated rather than left to that fact. */
 function pieceChipText(person: PersonWhereabouts): string {
   if (person.contestedTripIds.length >= 2) {
     return `▲ ${person.contestedTripIds.length} TRIPS`
+  }
+  if (person.unaccountedTripName !== null) {
+    return `▲ ${person.unaccountedTripName}`
   }
   return whereaboutsText(person.slice, 'chip')
 }
@@ -228,8 +238,17 @@ function unaccountedFooter(
 ): WhereaboutsCardUnaccounted {
   return {
     tripName: unaccounted.tripName,
-    units: owned === null ? null : unaccounted.units,
+    // Both Counted and per-person state a count now, so this travels
+    // unconditionally and the card's own two gates pick the form. A Single
+    // states no quantity at all and never reads it.
+    units: unaccounted.units,
     ownedCount: owned,
+    // §5i G10: per-person's own form, `▲ 2 OF 3 PIECES · LAST SEEN: …`,
+    // and **never** `OWNED` — per-person gear has no owned-count at all
+    // (invariant 6), so the count it does have is the one that travels.
+    // Non-empty exactly for per-person, `unaccountedOf`'s own gate, which
+    // is the same one the Depot column reads.
+    pieceTotal: unaccounted.pieceIds.length,
     onResolve,
   }
 }
@@ -410,8 +429,14 @@ export function GearDetail() {
   const piecePeople = sortedPeople(state).filter((person) =>
     pieceAnswers.has(person.id),
   )
+  // §5i G10 widens the gate: the group's own rule is *the answers can
+  // differ*, and an unaccounted Piece differs from a Piece on the shelf as
+  // plainly as one in a duffel does. Its Trip is usually closed, so it is
+  // never a trip slice — which is why this is a second disjunct and not a
+  // wider reading of the first.
   const anyPieceOut = [...pieceAnswers.values()].some(
-    (answer) => answer.slice.kind === 'trip',
+    (answer) =>
+      answer.slice.kind === 'trip' || answer.unaccountedTripName !== null,
   )
 
   return (

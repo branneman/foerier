@@ -671,17 +671,21 @@ export interface Unaccounted {
   /** Per-person only; empty otherwise. */
   readonly personIds: readonly string[]
   /**
-   * The denominator of §5i G10's `N OF M` — how many Pieces the standing
-   * could span — and `null` for every other Kind, which is what the
-   * per-person read gates on.
+   * Every Piece the standing spans — the **union** of the included Pieces
+   * on every Entry that contributed a standing live `lost`, deduped by
+   * Person exactly as `personIds` is. So `personIds ⊆ pieceIds` always
+   * holds, including the two-Trip case where the same Person's Piece is
+   * lost twice: one Person, counted once on both sides.
    *
-   * It is the **union** of the included Pieces on every Entry that
-   * contributed a standing live `lost`, deduped by Person exactly as
-   * `personIds` is. So `units ≤ pieceTotal` always holds, including the
-   * two-Trip case where the same Person's Piece is lost twice: one Person,
-   * counted once on both sides.
+   * **Empty for every Kind but per-person**, which is what the per-person
+   * reads gate on — a standing needs at least one lost Piece, so a
+   * per-person one can never be empty.
+   *
+   * Its length is §5i G10's `M`; its membership is who the `PIECES` group
+   * draws. One field rather than a count beside a roster, because the two
+   * are the same fact and two fields is how they drift.
    */
-  readonly pieceTotal: number | null
+  readonly pieceIds: readonly string[]
 }
 
 /**
@@ -946,7 +950,7 @@ export function unaccountedOf(
       tripName: acc.tripName,
       units: acc.personIds.size > 0 ? acc.personIds.size : acc.units,
       personIds: [...acc.personIds],
-      pieceTotal: acc.pieceIds.size > 0 ? acc.pieceIds.size : null,
+      pieceIds: [...acc.pieceIds],
     })
   }
   return result

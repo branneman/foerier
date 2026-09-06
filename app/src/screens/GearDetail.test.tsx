@@ -1213,6 +1213,59 @@ describe('Gear detail — the unaccounted standing and its settle route (S10, F1
   })
 
   /**
+   * **§5i G10 on gear detail.** The footer counts and the `PIECES` group
+   * names. Per-person gear has no owned-count at all (invariant 6), so the
+   * form drops `OWNED` and carries the Piece total instead — and the group
+   * renders because its own gate is *the answers can differ*, which an
+   * unaccounted Piece satisfies as plainly as one in a duffel.
+   */
+  it('a per-person standing reads N OF M PIECES, never OWNED, and names which two', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const mark = anId()
+    const kim = anId()
+    const ana = anId()
+    const store = await seededStore([
+      personRecorded(mark, 'Mark'),
+      personRecorded(kim, 'Kim'),
+      personRecorded(ana, 'Ana'),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      tripCreated(tripId, 'Tessin 2025'),
+      tripParticipantAdded(tripId, mark),
+      tripParticipantAdded(tripId, kim),
+      tripParticipantAdded(tripId, ana),
+      tripEntryAdded(tripId, 'e-lamp', { from: 'depot', gearId }),
+      // Ana's came back first, on an earlier clock, so it settles neither
+      // of the two given up after it (R35's comparison is a stamp).
+      tripOutcomeSet(tripId, 'e-lamp', 'back', ana),
+      tripOutcomeSet(tripId, 'e-lamp', 'lost', mark),
+      tripOutcomeSet(tripId, 'e-lamp', 'lost', kim),
+      tripPhaseMoved(tripId, 'closed'),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(
+      screen.getByText('▲ 2 OF 3 PIECES · LAST SEEN: Tessin 2025'),
+    ).toBeInTheDocument()
+    // `OWNED ×N` specifically: the PIECES group's own note legitimately
+    // says the word, to state that per-person gear has no owned-count.
+    expect(screen.queryByText(/OWNED ×/)).not.toBeInTheDocument()
+
+    // The group renders, and the two unaccounted Pieces say which Trip.
+    const group = screen.getByTestId('pieces-group')
+    // Three chips, because the group's own rule is *the answers can
+    // differ*: Ana's Piece came back and reads home, which is half of the
+    // difference the group exists to show.
+    expect(within(group).getAllByTestId('piece-chip')).toHaveLength(3)
+    expect(within(group).getAllByText('▲ Tessin 2025')).toHaveLength(2)
+    expect(within(group).getByText('⌂ LOOSE')).toBeInTheDocument()
+  })
+
+  /**
    * The route's whole point: tapping the row marked `● NOW — FOUND HERE`
    * emits `gear.rehomed` **even though** the residence is unchanged, and
    * that write is what clears the standing. `GearDetail`'s MOVE `onSelect`

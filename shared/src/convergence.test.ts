@@ -2816,8 +2816,8 @@ describe('convergence', () => {
           tripName: 'Alps',
           units: 1,
           personIds: [],
-          // Not per-person, so there is no Piece denominator to state.
-          pieceTotal: null,
+          // Not per-person, so the standing spans no Pieces.
+          pieceIds: [],
         })
         expect(whereabouts(r.state(), gear).unaccounted).toEqual(standing)
       }

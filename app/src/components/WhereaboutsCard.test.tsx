@@ -365,6 +365,7 @@ describe('WhereaboutsCard', () => {
         tripName: unaccounted!.tripName,
         units: unaccounted!.units,
         ownedCount: 3,
+        pieceTotal: 0,
         onResolve,
       })
 
@@ -405,8 +406,9 @@ describe('WhereaboutsCard', () => {
 
       renderCard(slices, undefined, {
         tripName: unaccounted!.tripName,
-        units: null,
+        units: 1,
         ownedCount: null,
+        pieceTotal: 0,
         onResolve: vi.fn(),
       })
 
@@ -438,6 +440,7 @@ describe('WhereaboutsCard', () => {
           tripName: 'Tessin 2025',
           units: 1,
           ownedCount: 2,
+          pieceTotal: 0,
           onResolve: vi.fn(),
         },
       )

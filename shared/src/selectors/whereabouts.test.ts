@@ -1349,8 +1349,8 @@ describe('whereabouts — the unaccounted standing (spec §3.6)', () => {
       tripName: 'Alps 2026',
       units: 1,
       personIds: [],
-      // Not per-person, so there is no Piece denominator to state.
-      pieceTotal: null,
+      // Not per-person, so the standing spans no Pieces.
+      pieceIds: [],
     })
   })
 
