@@ -17,6 +17,7 @@ import {
   tripEntryRemoved,
   tripOutcomeSet,
   tripParticipantAdded,
+  tripPhaseMoved,
   tripPieceRemoved,
 } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
@@ -40,6 +41,22 @@ import {
   unpackItems,
   unpackTotals,
 } from './unpack.ts'
+import { whereabouts } from './whereabouts.ts'
+
+/**
+ * The Depot's own shelf count for one Gear — the home slice's `count`, which
+ * is where the unaccounted standing is actually *felt* by a Quartermaster
+ * (spec §3.6(3): the home count subtracts the standing's units). Read
+ * through `whereabouts` rather than restated here, so R35's headline test
+ * asserts the number the screen draws.
+ */
+function homeCountOf(state: HouseholdState, gearId: string): number | null {
+  const home = whereabouts(state, gearId).slices[0]
+  if (home === undefined || home.kind !== 'home') {
+    throw new Error(`whereabouts(${gearId}) drew no home slice`)
+  }
+  return home.count
+}
 
 function tripFrom(state: HouseholdState, id: string): TripState {
   const trip = state.trips[id]
@@ -997,7 +1014,17 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
     expect(standing?.tripName).toBe('Zermatt')
   })
 
-  it('a later BACK on a different Entry settles nothing — different units (spec §3.5)', () => {
+  /**
+   * **Inverted by ruling R35, deliberately kept rather than deleted.** This
+   * test used to assert that a later `back` on another Entry settles nothing
+   * — spec §3.5's own sentence, *"they are different units"*. Story 3, story
+   * 11 and `domain-model.md` all say the opposite in as many words (*"a
+   * re-home, **or a later Trip brings it back**"*), none of them was ever
+   * amended, and the spec is the document that yields. The assertion is
+   * flipped here, with the reason, so a reader who greps for the old
+   * behaviour finds the overturn rather than silence.
+   */
+  it('a later BACK on a different Entry settles the whole standing (R35 inverts spec §3.5)', () => {
     const state = depot(
       aGear({ id: 'g-peg', name: 'Peg', kind: 'counted' }),
       aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
@@ -1011,12 +1038,127 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
       ],
     )
 
+    expect(unaccountedOf(state).get('g-peg')).toBeUndefined()
+  })
+
+  it('an EARLIER back on a different Entry settles nothing — the comparison is a stamp, not a presence (R35)', () => {
+    const base = [
+      ...aGear({ id: 'g-peg', name: 'Peg', kind: 'counted', ownedCount: 3 }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+      tripEntryAdded(TRIP, 'e-back', { from: 'depot', gearId: 'g-peg' }),
+      tripEntryBringCountSet(TRIP, 'e-back', 1),
+      tripEntryAdded(TRIP, 'e-lost', { from: 'depot', gearId: 'g-peg' }),
+      tripEntryBringCountSet(TRIP, 'e-lost', 2),
+    ]
+    const back = stamp([tripOutcomeSet(TRIP, 'e-back', 'back')], { start: 10 })
+    const lost = stamp([tripOutcomeSet(TRIP, 'e-lost', 'lost')], { start: 20 })
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...back, ...lost],
+      emptyState(),
+    )
+
     expect(unaccountedOf(state).get('g-peg')).toEqual({
       tripId: TRIP,
       tripName: 'Alps 2026',
       units: 2,
       personIds: [],
     })
+  })
+
+  /**
+   * **R35's headline case** — the drift the widened rule exists to stop, end
+   * to end and across two Trips, one of them `closed`. The Quartermaster
+   * resolves the standing through the route F5's own hint names (the pill →
+   * `● BACK`), which emits `trip.outcome_set{back}` and nothing else; before
+   * R35 only a re-home could ever end a standing, so this cleared nothing,
+   * the home count stayed permanently short, and gear detail read
+   * `▲ ×1 LAST SEEN: …` forever.
+   */
+  it('a later BACK on a DIFFERENT Trip clears a closed Trip’s standing and returns the home count (R35)', () => {
+    const base = [
+      ...aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 3,
+      }),
+      ...aTrip({ id: 'a-tessin', name: 'Tessin 2025', phase: 'unpack' }),
+      tripEntryAdded('a-tessin', 'e-gas', { from: 'depot', gearId: 'g-gas' }),
+      tripEntryBringCountSet('a-tessin', 'e-gas', 1),
+    ]
+    const lost = stamp([tripOutcomeSet('a-tessin', 'e-gas', 'lost')], {
+      start: 10,
+    })
+    const closed = stamp([tripPhaseMoved('a-tessin', 'closed')], { start: 20 })
+    // A later Trip brings one home. Nothing here touches the Depot: `back`
+    // writes no `gear.rehomed` and no owned count.
+    const later = stamp(
+      [
+        ...aTrip({ id: 'z-alps', name: 'Alps 2026', phase: 'unpack' }),
+        tripEntryAdded('z-alps', 'e-gas-2', {
+          from: 'depot',
+          gearId: 'g-gas',
+        }),
+        tripEntryBringCountSet('z-alps', 'e-gas-2', 1),
+        tripOutcomeSet('z-alps', 'e-gas-2', 'back'),
+      ],
+      { start: 30 },
+    )
+
+    const before = fold(
+      [...stamp(base, { start: 1 }), ...lost, ...closed],
+      emptyState(),
+    )
+    expect(before.trips['a-tessin']?.phase?.value).toBe('closed')
+    expect(unaccountedOf(before).get('g-gas')?.units).toBe(1)
+    // The short shelf count is what a Quartermaster actually sees.
+    expect(homeCountOf(before, 'g-gas')).toBe(2)
+
+    const after = fold(later, before)
+
+    expect(unaccountedOf(after).get('g-gas')).toBeUndefined()
+    expect(homeCountOf(after, 'g-gas')).toBe(3)
+  })
+
+  it('a Piece marked BACK on another Trip settles a Piece marked LOST — the settle is per Gear, not per Person (R35)', () => {
+    const base = [
+      ...aPerson({ id: MARK, name: 'Mark' }),
+      ...aPerson({ id: KIM, name: 'Kim' }),
+      ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+      ...aTrip({
+        id: 'a-tessin',
+        name: 'Tessin 2025',
+        phase: 'unpack',
+        participants: [MARK],
+      }),
+      tripEntryAdded('a-tessin', 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+    ]
+    const lost = stamp([tripOutcomeSet('a-tessin', 'e-lamp', 'lost', MARK)], {
+      start: 10,
+    })
+    const later = stamp(
+      [
+        ...aTrip({
+          id: 'z-alps',
+          name: 'Alps 2026',
+          phase: 'unpack',
+          participants: [KIM],
+        }),
+        tripEntryAdded('z-alps', 'e-lamp-2', {
+          from: 'depot',
+          gearId: 'g-lamp',
+        }),
+        // Kim's Piece, not Mark's — the rule is per Gear, exactly as the
+        // re-home rule already is.
+        tripOutcomeSet('z-alps', 'e-lamp-2', 'back', KIM),
+      ],
+      { start: 30 },
+    )
+
+    const before = fold([...stamp(base, { start: 1 }), ...lost], emptyState())
+    expect(unaccountedOf(before).get('g-lamp')?.personIds).toEqual([MARK])
+
+    expect(unaccountedOf(fold(later, before)).get('g-lamp')).toBeUndefined()
   })
 
   it.each(['back', 'consumed'] as const)(

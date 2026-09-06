@@ -6,13 +6,14 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import { ownedCountOf } from './selectors/depot.ts'
-import { entriesOf, entryKind, isContainerEntry } from './selectors/entry.ts'
+import { entryKind, isContainerEntry } from './selectors/entry.ts'
 import { piecesOf } from './selectors/piece.ts'
 import { isClosed } from './selectors/trip.ts'
 import {
-  consumedCountOf,
+  consumedReductions,
   outcomeOf,
   pieceOutcomeOf,
+  unpackTotals,
 } from './selectors/unpack.ts'
 import type {
   EntryState,
@@ -149,6 +150,30 @@ export function reHomeOnTheSpot(
  * reduction left to compute from this fold alone (see the residual risk
  * below for the two narrower paths this guard cannot see).
  *
+ * **A Trip with an open outcome is not closeable, and this function is where
+ * that is said** (invariant 18; ruling R36). Both shipped callers already
+ * gate on `open === 0` — F5's close card withholds its button, `PhaseSheet`
+ * withholds its `CLOSED` row — and both are correct today, so this changes
+ * nothing a Quartermaster can reach. What it changes is what a **third**
+ * caller inherits: without it, a new surface picks up the anti-double-reduce
+ * guard above for free and silently *not* the domain's *"there is no
+ * override"* on closing. `unpackTotals` (`selectors/unpack.ts`) is the one
+ * arithmetic, never re-derived here.
+ *
+ * Two caveats, because they are what make gating here safe rather than
+ * merely strict:
+ *
+ * - **A Trip a peer on an older build already moved to `closed` with
+ *   outcomes still open never reaches this gate.** {@link isClosed} is
+ *   checked first and returns `[]` regardless, so this gate can never hold a
+ *   Trip hostage in a state it cannot leave — the `[]` it would return is
+ *   the same `[]` the phase check already returns.
+ * - **An unrecognised outcome counts as *resolved*, not open** —
+ *   `countOfUnpack`'s own rule (spec §3.2, §5.3 obligation 4). So a Trip a
+ *   *later* build finished with an outcome this build cannot draw is closed
+ *   by this build without complaint, rather than being held hostage by a
+ *   pill it has no row for.
+ *
  * **The count is absolute, never a delta** — `gear.owned_count_set`'s own
  * contract ([sync §4.3](../../docs/sync-protocol.md)) — which is what makes
  * two Devices closing the same Trip **from the same, still-open fold**
@@ -160,11 +185,16 @@ export function reHomeOnTheSpot(
  * for the **sequential** case beside it, where the fold moves between the
  * two calls: that is exactly the case the guard above exists for.
  *
- * **Summed per Gear.** A Trip may list one Gear on two Entries (spec §1.5),
- * so this accumulates every `consumed` Counted Entry's
- * {@link consumedCountOf} into a `Map<gearId, consumedUnits>` over
- * {@link entriesOf} before reading a single base count — one
- * `gear.owned_count_set` per Gear, not one per Entry.
+ * **Summed per Gear, by `consumedReductions` (`selectors/unpack.ts`) rather
+ * than by a loop here.** A Trip may list one Gear on two Entries (spec §1.5),
+ * so that selector accumulates every `consumed` Counted Entry's
+ * `consumedCountOf` into a `Map<gearId, consumedUnits>` before this function
+ * reads a single base count — one `gear.owned_count_set` per Gear, not one
+ * per Entry. It lives in `unpack.ts` because `ReopenConfirm` needs the same
+ * question (*does closing this Trip owe the Depot anything*) to decide
+ * whether reopening needs its extra sentence, and two hand-copied gates over
+ * `consumedCountOf`'s four exclusions is exactly the drift this module's own
+ * header argues against.
  *
  * **Floored at `0`.** `Math.max(0, owned - consumed)` — a Trip cannot reduce
  * a Gear's owned count below nothing.
@@ -227,25 +257,13 @@ export function closeTrip(
   // than a guard on the phase move alone.
   if (isClosed(trip)) return []
 
-  const consumedByGear = new Map<string, number>()
-  for (const entry of entriesOf(trip, state)) {
-    if (outcomeOf(entry) !== 'consumed') continue
-    const consumed = consumedCountOf(entry, state)
-    if (consumed === null) continue
-    const source = entry.source?.value
-    // consumedCountOf already gates this to a Counted **depot** Entry (its
-    // container/Kind checks both read state.gear[source.gearId]), so a
-    // non-null answer means `source` is a depot pointer — this narrows the
-    // type rather than adding a second gate.
-    if (source === undefined || source.from !== 'depot') continue
-    consumedByGear.set(
-      source.gearId,
-      (consumedByGear.get(source.gearId) ?? 0) + consumed,
-    )
-  }
+  // Ruling R36: the domain's "there is no override" on closing, stated here
+  // rather than only in the two React components that draw the control.
+  // See this function's docblock for the two caveats that make it safe.
+  if (unpackTotals(trip, state).open > 0) return []
 
   const ops: OpSpec[] = []
-  for (const [gearId, consumed] of consumedByGear) {
+  for (const [gearId, consumed] of consumedReductions(trip, state)) {
     const gear = state.gear[gearId]
     const owned = gear === undefined ? 0 : (ownedCountOf(gear) ?? 0)
     ops.push(gearOwnedCountSet(gearId, Math.max(0, owned - consumed)))

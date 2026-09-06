@@ -275,14 +275,24 @@ export function GearDetail() {
   const gear: GearState | undefined =
     gearId === undefined ? undefined : state.gear[gearId]
 
+  // **One containment view for the whole screen** (finding M4). `whereabouts`
+  // and `HomePicker`'s `moving.insideCount` both need one, and every call
+  // that omits it builds a fresh O(depot) view — `containment.ts` states its
+  // own non-caching as a property, and `tripSlicesOf`'s memo covers the
+  // *trip* slices only, never this. Keyed on `state`, whose identity changes
+  // on exactly the folds that could change the answer (`slice.ts`'s own
+  // `WeakMap` argument, one hook over).
+  const view = useMemo(() => containmentView(state), [state])
+
   // F16(3)'s standing, read here — ahead of the `gear === undefined` return
   // below — only so the `useEffect` beside it can be called unconditionally
   // (the rules of hooks refuse one placed after a conditional return).
   // `whereabouts` is called again, after the return, for `slices` and
   // `overClaimed`; its own `tripSlicesOf` memo (keyed on this `state`) makes
-  // the second call free rather than a second walk.
+  // the trip half of that second call free, and `view` above is what keeps
+  // the home half from being a second walk.
   const unaccounted =
-    gearId === undefined ? null : whereabouts(state, gearId).unaccounted
+    gearId === undefined ? null : whereabouts(state, gearId, view).unaccounted
 
   // S10 minor: a peer's `gear.rehomed` settling the standing through sync
   // clears `unaccounted` and unmounts the RESOLVE picker below (its own JSX
@@ -374,7 +384,7 @@ export function GearDetail() {
   // "how many does the household own".
   const owned = ownedCountOf(gear)
   const perPerson = isPerPerson(gear)
-  const { slices, overClaimed } = whereabouts(state, gearId)
+  const { slices, overClaimed } = whereabouts(state, gearId, view)
   const overClaim = overClaimed
     ? overClaimFooter(state, gear, gearId, slices)
     : undefined
@@ -595,10 +605,7 @@ export function GearDetail() {
           // that necessary).
           moving={{
             name,
-            insideCount: containmentView(state).childrenOf({
-              kind: 'gear',
-              id: gearId,
-            }).length,
+            insideCount: view.childrenOf({ kind: 'gear', id: gearId }).length,
           }}
         />
       )}
@@ -660,10 +667,8 @@ export function GearDetail() {
             ? {
                 moving: {
                   name,
-                  insideCount: containmentView(state).childrenOf({
-                    kind: 'gear',
-                    id: gearId,
-                  }).length,
+                  insideCount: view.childrenOf({ kind: 'gear', id: gearId })
+                    .length,
                   confirm: false,
                 },
               }

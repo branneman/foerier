@@ -1,7 +1,11 @@
 import {
+  gearOwnedCountSet,
   gearRecorded,
+  tripConsumedCountSet,
   tripCreated,
   tripEntryAdded,
+  tripEntryBringCountSet,
+  tripOutcomeSet,
   tripPhaseMoved,
   type PhaseKey,
   type TripState,
@@ -86,6 +90,39 @@ async function aClosedTripClash(): Promise<Seeded> {
     .emit(
       tripEntryAdded(OTHER_TRIP, 'e-other', { from: 'depot', gearId: GEAR }),
     )
+  await store.getState().drained()
+  return { store, trip: () => store.getState().state.trips[TRIP]! }
+}
+
+/**
+ * `TRIP` closed holding one Counted Entry resolved `consumed` — the shape
+ * whose close authored a `gear.owned_count_set` (finding I2). The phase move
+ * to `closed` is emitted last, so the fold under test is what a real close
+ * produced.
+ */
+async function aClosedTripWithConsumed(): Promise<Seeded> {
+  const store = createHouseholdStore({
+    log: inMemoryOpLog(),
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(
+    gearRecorded(GEAR, {
+      name: 'Gas canister',
+      container: false,
+      kind: 'counted',
+    }),
+  )
+  store.getState().emit(gearOwnedCountSet(GEAR, 6))
+  store.getState().emit(tripCreated(TRIP, 'Tessin 2025'))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: GEAR }))
+  store.getState().emit(tripEntryBringCountSet(TRIP, 'e-gas', 4))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-gas', 'consumed'))
+  store.getState().emit(tripConsumedCountSet(TRIP, 'e-gas', 2))
+  store.getState().emit(gearOwnedCountSet(GEAR, 4))
+  store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
   await store.getState().drained()
   return { store, trip: () => store.getState().state.trips[TRIP]! }
 }
@@ -230,6 +267,32 @@ describe('the reopen confirm', () => {
     // `variant="sheet"`, so its presence is what actually pins the variant.
     const confirm = screen.getByRole('alertdialog')
     expect(confirm.querySelector('[aria-hidden="true"]')).not.toBeNull()
+  })
+
+  /**
+   * **Finding I2.** *"Closing cleared nothing"* is true of the Trip and was
+   * misleading about the Depot: closing applied every `consumed` Entry's
+   * owned-count reduction, and reopening does not offer it back. The extra
+   * sentence is conditional on the Trip actually owing one, which is why
+   * both halves are pinned — the every-Trip case would be noise on the many
+   * Trips that owe nothing.
+   */
+  it('says the owned counts stay lowered when the Trip closed with consumed gear (I2)', async () => {
+    const seeded = await aClosedTripWithConsumed()
+    renderConfirm(seeded, { to: 'unpack' })
+
+    expect(screen.getByRole('alertdialog')).toHaveTextContent(
+      'It returns to Unpack exactly as it stood. Closing cleared nothing. The owned counts it lowered for consumed gear stay lowered — reopening does not give them back.',
+    )
+  })
+
+  it('says nothing of the kind on a Trip whose close owed the Depot nothing (I2)', async () => {
+    const seeded = await aClosedTripClash()
+    renderConfirm(seeded, { to: 'unpack' })
+
+    expect(screen.getByRole('alertdialog')).not.toHaveTextContent(
+      /owned counts/,
+    )
   })
 
   it('reopens into draft without drawing an over-claim block', async () => {

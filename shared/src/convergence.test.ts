@@ -447,10 +447,13 @@ const arbTripResidence: fc.Arbitrary<TripResidence> = fc.oneof(
  * the gear share on their own) falls to **4–8 per 200 at weight 16**. A real,
  * measured drop — roughly a third off the top of the range — and still
  * comfortably nonzero, nowhere near the "0 in 200" failure S9a's piece
- * register hit. No test floors this rate the way {@link CONTEST_FLOOR}
- * floors the register levels, so nothing but this sentence would ever say so
- * again; if a later slice pushes the trip weight higher still, re-measure
- * this number rather than assume it stayed put.
+ * register hit. **Ruling R37 gave this rate a floor of its own,
+ * {@link HOME_CYCLE_FLOOR}, counted in the same pass as
+ * {@link CONTEST_FLOOR}** — this paragraph used to end by noting that no
+ * test floored it and nothing but the sentence would ever say so again,
+ * which is precisely why it now does. If a later slice pushes the trip
+ * weight higher still, re-measure rather than assume it stayed put; the
+ * floored counter will say so first.
  */
 const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc.tuple(arbTripId, arbTripName).map(([id, name]) => tripCreated(id, name)),
@@ -824,6 +827,43 @@ const CONTEST_FLOOR = 60
  */
 const CONTEST_SAMPLE = 1000
 
+/**
+ * **Runs in {@link CONTEST_SAMPLE} that must meet a *home* containment
+ * cycle** — ruling R37, and the floor `arbTripRootSpec`'s own docstring said
+ * did not exist ("No test floors this rate the way {@link CONTEST_FLOOR}
+ * floors the register levels, so nothing but this sentence would ever say so
+ * again"). A prose measurement that nothing re-runs is exactly the shape the
+ * charter-floor test above exists to stop.
+ *
+ * A run counts as a hit when **any one replica's**
+ * `containmentView(…).brokenEdges` is non-empty — the same rule
+ * `arbTripRootSpec`'s prose measurement used, folded into the same 1000-run
+ * pass rather than sampled separately. That break is `sync-protocol.md`
+ * §3.6's own deterministic tie-break, and a generator that stops producing
+ * cycles stops exercising it silently.
+ *
+ * Measured across seven seeds at {@link CONTEST_SAMPLE}, home cycles per
+ * 1000: **35, 46, 36, 27, 40, 41, 34** (seeds 20260904, 1, 2, 3, 7, 11, 42).
+ * The floor is 15 — a little over half the thinnest of those, the same
+ * generous-but-meaningful margin {@link CONTEST_FLOOR} takes.
+ *
+ * **The trip side is deliberately NOT floored, and that is a finding, not an
+ * omission.** The same seven seeds produce `tripContainmentView` cycles at
+ * **1, 1, 0, 0, 0, 0, 0** per 1000: a floor at 0 asserts nothing and a floor
+ * at 1 fails on four of the seven. The generator effectively never produces a
+ * trip-side containment cycle, so `tripContainment.ts`'s cycle break — the
+ * half of that duplicated traversal whose divergence would be **silent**, two
+ * Devices simply drawing different trees — is exercised by a single
+ * hand-built scenario and by nothing else. Worse, the convergence property
+ * below never compares `tripContainmentView` across replicas at all; its only
+ * cross-replica containment assertion is over the **home** view. Recorded in
+ * `docs/technical-debt.md` rather than patched here, because closing it means
+ * changing what {@link arbTripResidence} draws (or how often), which is a
+ * generator-tuning decision with its own measured consequences for every
+ * other rate in this file.
+ */
+const HOME_CYCLE_FLOOR = 15
+
 describe('convergence', () => {
   /**
    * **The guard on {@link arbSpec}'s "every op type" claim**, and the reason
@@ -913,19 +953,29 @@ describe('convergence', () => {
    * Seeded for the reason the op-type test is: an assertion about the
    * generator, not about today's luck.
    */
-  it('contests all three levels of the Trip aggregate at the charter floor', () => {
+  it('contests all three levels of the Trip aggregate at the charter floor, and meets a home containment cycle at its own', () => {
     const sets = fc.sample(arbOpSets(), {
       numRuns: CONTEST_SAMPLE,
       seed: 20260904,
     })
 
     const contested = { root: 0, entry: 0, piece: 0 }
+    // Ruling R37, counted here rather than in a sibling test: this loop
+    // already generates and folds 1000 sets, and reporting every rate
+    // together is what lets one failure name which of them a new arm
+    // diluted. See {@link HOME_CYCLE_FLOOR} for the measured table and for
+    // why the trip side is recorded as debt instead of floored.
+    let homeCycles = 0
     for (const opsPerDevice of sets) {
       const replicas = replicasFor(opsPerDevice.length)
       opsPerDevice.forEach((specs, i) =>
         specs.forEach((spec) => replicas[i]!.emit(spec)),
       )
-      const perDevice = replicas.map((r) => tripRegisterPaths(r.state()))
+      const states = replicas.map((r) => r.state())
+      if (states.some((st) => containmentView(st).brokenEdges.size > 0)) {
+        homeCycles += 1
+      }
+      const perDevice = states.map(tripRegisterPaths)
 
       for (const level of ['root', 'entry', 'piece'] as const) {
         const seen = new Set<string>()
@@ -948,12 +998,14 @@ describe('convergence', () => {
       root: contested.root >= CONTEST_FLOOR,
       entry: contested.entry >= CONTEST_FLOOR,
       piece: contested.piece >= CONTEST_FLOOR,
-      counts: contested,
+      homeCycles: homeCycles >= HOME_CYCLE_FLOOR,
+      counts: { ...contested, homeCycles },
     }).toEqual({
       root: true,
       entry: true,
       piece: true,
-      counts: contested,
+      homeCycles: true,
+      counts: { ...contested, homeCycles },
     })
   })
 

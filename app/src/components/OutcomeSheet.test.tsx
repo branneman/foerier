@@ -1,5 +1,6 @@
 import {
   containmentView,
+  gearOwnedCountSet,
   gearRecorded,
   personRecorded,
   placeRecorded,
@@ -10,6 +11,7 @@ import {
   tripEntryMoved,
   tripOutcomeSet,
   tripParticipantAdded,
+  tripPhaseMoved,
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen, within } from '@testing-library/react'
@@ -408,6 +410,45 @@ describe('the outcome sheet', () => {
       {
         type: 'trip.consumed_count_set',
         payload: { entry_id: E_GAS, count: 4 },
+      },
+    ])
+  })
+
+  /**
+   * **Finding I3.** The sheet is reachable on a closed Trip in three taps
+   * (F5 is drawn at every phase deliberately), and this block was live and
+   * lying there: `OWNED ×4 → ×2 AT CLOSE.` reads the count the close already
+   * reduced, names an event that has happened, and every raise emits an op
+   * that changes the Depot by nothing — `closeTrip` returns `[]` once the
+   * Trip is closed (R27 Layer B). Withheld, not greyed. The Entry's split
+   * stays legible on the F5 row's own meta.
+   */
+  it('grows no stepper on a CLOSED Trip, where its consequence line would be false (I3)', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded(
+      tripOutcomeSet(TRIP, E_TENT, 'back'),
+      tripOutcomeSet(TRIP, E_MAP, 'back'),
+      tripOutcomeSet(TRIP, E_CRATE, 'back'),
+      tripOutcomeSet(TRIP, E_INNER, 'back'),
+      tripOutcomeSet(TRIP, E_HEADLAMP, 'back', 'mark'),
+      tripOutcomeSet(TRIP, E_GAS, 'consumed'),
+      tripConsumedCountSet(TRIP, E_GAS, 2),
+      // What the close itself authored, then the phase move.
+      gearOwnedCountSet(GAS, 4),
+      tripPhaseMoved(TRIP, 'closed'),
+    )
+    renderSheet(seed, E_GAS)
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByText(/AT CLOSE/)).toBeNull()
+
+    // The chips themselves stay live — a phase locks nothing, and only the
+    // stepper's own consequence line is the false statement.
+    await user.click(chipNamed('● BACK'))
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_GAS, outcome: 'back' },
       },
     ])
   })

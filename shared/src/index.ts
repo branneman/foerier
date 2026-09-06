@@ -250,6 +250,7 @@ export type {
 } from './selectors/unpack.ts'
 export {
   consumedCountOf,
+  consumedReductions,
   countOfUnpack,
   isKnownOutcome,
   outcomeGlyph,

@@ -1,4 +1,5 @@
 import {
+  consumedReductions,
   isActivePhase,
   overClaimsIfActive,
   phaseName,
@@ -80,6 +81,24 @@ import styles from './ReopenConfirm.module.css'
  * The primary stays **accent** rather than the attention colour a destructive
  * confirm carries: nothing was thrown away. The body says so.
  *
+ * **The body's second sentence is true of the Trip and was misleading about
+ * the Depot, so a Trip that owes one gains a third** (finding I2). *"Closing
+ * cleared nothing"* is exactly right about the gear list — reopening returns
+ * every Entry, every outcome and every Piece as they stood. It is not right
+ * about the **owned counts**: closing applied each `consumed` Entry's
+ * reduction (`closeTrip`, `gestures.ts`), and reopening does not offer that
+ * back. Worse, closing a second time recomputes the reduction from the
+ * already-reduced count and subtracts it again — `close → reopen → close` is
+ * four taps on one Device, and it is tracked in `docs/technical-debt.md`
+ * rather than fixed here, because telling *"the reduction never landed"*
+ * apart from *"it landed and this fold reflects it"* needs a register outside
+ * S10's op catalogue (ruling R28). Until then the honest thing is to say so
+ * before the tap. `consumedReductions` (`selectors/unpack.ts`) is what
+ * `closeTrip` itself sums, asked here for nothing but *is it empty* — never
+ * re-derived from `outcomeOf` and a Kind check, which would state the
+ * sentence on Trips whose close owes the Depot nothing (a container, a
+ * Single, an unsynced Gear).
+ *
  * **`variant="sheet"`, not the card default** — the same mismatch Task 12
  * fixed in `RemoveElsewhereConfirm`, caught here on the same terms: the board
  * (`Screens B:868-892`) draws a bottom sheet with a grabber, and the card
@@ -117,6 +136,10 @@ export function ReopenConfirm({
   const overClaims = isActivePhase(to) ? overClaimsIfActive(state, trip.id) : []
   const groups = overClaimGroups(overClaims, trip.id, state)
 
+  // Finding I2 — see this module's own docblock. Empty on every Trip whose
+  // close owes the Depot nothing, which is most of them.
+  const owesDepot = consumedReductions(trip, state).size > 0
+
   return (
     <Confirm
       variant="sheet"
@@ -127,7 +150,12 @@ export function ReopenConfirm({
       // `trip.created` has not yet arrived reads `Reopen Unnamed trip?`
       // rather than `Reopen —?`.
       title={`Reopen ${tripNameOrUnnamed(trip)}?`}
-      description={`It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.`}
+      description={
+        `It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.` +
+        (owesDepot
+          ? ' The owned counts it lowered for consumed gear stay lowered — reopening does not give them back.'
+          : '')
+      }
       onClose={onCancel}
       actions={
         <>

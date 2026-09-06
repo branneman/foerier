@@ -20,7 +20,13 @@ import {
 } from './authoring.ts'
 import { closeTrip, reHomeOnTheSpot } from './gestures.ts'
 import { fold } from './reduce.ts'
-import type { EntryState, HouseholdState, TripState } from './state.ts'
+import { unpackTotals } from './selectors/unpack.ts'
+import type {
+  EntryState,
+  HouseholdState,
+  OutcomeValue,
+  TripState,
+} from './state.ts'
 
 /**
  * Both gestures are pure functions of a fold: build one with the real
@@ -287,13 +293,18 @@ describe('closeTrip', () => {
       aTrip({ id: TRIP, name: 'Ardennes' }),
       aGear({ id: 'g-back', name: 'Back gear' }),
       aGear({ id: 'g-lost', name: 'Lost gear' }),
-      aGear({ id: 'g-open', name: 'Open gear' }),
+      // Was an OPEN third Entry until ruling R36, which makes a Trip with any
+      // open outcome return `[]` before it computes a reduction. That case
+      // now has its own test at the bottom of this block; this one is about
+      // "no consumed Counted Entries", so it resolves everything.
+      aGear({ id: 'g-single', name: 'Single gear' }),
       [
         tripEntryAdded(TRIP, 'e-back', { from: 'depot', gearId: 'g-back' }),
         tripOutcomeSet(TRIP, 'e-back', 'back'),
         tripEntryAdded(TRIP, 'e-lost', { from: 'depot', gearId: 'g-lost' }),
         tripOutcomeSet(TRIP, 'e-lost', 'lost'),
-        tripEntryAdded(TRIP, 'e-open', { from: 'depot', gearId: 'g-open' }),
+        tripEntryAdded(TRIP, 'e-single', { from: 'depot', gearId: 'g-single' }),
+        tripOutcomeSet(TRIP, 'e-single', 'consumed'),
       ],
     )
     const trip = tripFrom(state, TRIP)
@@ -517,5 +528,58 @@ describe('closeTrip', () => {
     const ops = closeTrip(trip, state)
 
     expect(ops).toEqual([])
+  })
+
+  /**
+   * **Ruling R36 — the gate that both shipped callers already apply, said
+   * here too.** F5's close card and `PhaseSheet`'s `CLOSED` row each withhold
+   * their control while `open > 0`, so nothing a Quartermaster can reach
+   * changes; what changes is what a *third* caller inherits. Without this,
+   * such a caller picks up the anti-double-reduce guard above for free and
+   * silently **not** invariant 18's *"there is no override"*. A documented,
+   * tested silence is not a hidden bug.
+   */
+  it('emits nothing while any outcome is still open — invariant 18 stated in the gesture, not only at two screens (R36)', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 6,
+      }),
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      [
+        tripEntryAdded(TRIP, 'e-consumed', {
+          from: 'depot',
+          gearId: 'g-gas',
+        }),
+        tripEntryBringCountSet(TRIP, 'e-consumed', 4),
+        tripOutcomeSet(TRIP, 'e-consumed', 'consumed'),
+        tripConsumedCountSet(TRIP, 'e-consumed', 2),
+        // Never resolved — the one open outcome that must hold the close.
+        tripEntryAdded(TRIP, 'e-open', { from: 'depot', gearId: 'g-tent' }),
+      ],
+    )
+    const trip = tripFrom(state, TRIP)
+
+    expect(unpackTotals(trip, state).open).toBe(1)
+    expect(closeTrip(trip, state)).toEqual([])
+  })
+
+  it('an outcome this build cannot name counts as resolved, so a Trip a later build finished still closes (R36 caveat 2)', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        // §5.3 obligation 4: a value some later build wrote deliberately.
+        tripOutcomeSet(TRIP, 'e-tent', 'donated' as OutcomeValue),
+      ],
+    )
+    const trip = tripFrom(state, TRIP)
+
+    expect(unpackTotals(trip, state).open).toBe(0)
+    expect(closeTrip(trip, state)).toEqual([tripPhaseMoved(TRIP, 'closed')])
   })
 })

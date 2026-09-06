@@ -3,6 +3,7 @@ import {
   consumedCountOf,
   countOfUnpack,
   entryLabel,
+  isClosed,
   isContainerEntry,
   outcomeGlyph,
   outcomeLabel,
@@ -428,8 +429,23 @@ export function OutcomeSheet({
   // and for anything that is not a Counted depot Entry — never re-derived
   // as `kind === 'counted' && !container` here. `!roster` besides: per-person
   // gear has no count at all (invariant 6), and this gate is entry-level.
+  //
+  // **`!isClosed(trip)` is finding I3, and it withholds rather than greys**
+  // (`patterns.md` §3.7). On a closed Trip this block was live and lying in
+  // three ways at once: its consequence line reads `OWNED ×4 → ×2 AT CLOSE.`
+  // where the `×4` is the count the close *already* reduced, `AT CLOSE`
+  // names an event that has happened and will not happen again, and raising
+  // the stepper emits a `trip.consumed_count_set` that changes the Depot by
+  // nothing, ever — because `closeTrip` returns `[]` on a closed Trip (R27
+  // Layer B). Worse, the line is a *prediction of the double-reduction*:
+  // reopen and re-close and the app looks correct while the owned count is
+  // corrupted. The Entry's own split stays legible on the F5 row's meta
+  // (`×N CONSUMED · ×M BACK`), so nothing true is lost by withholding it.
+  // The sheet's other writes stay live at every phase deliberately — a phase
+  // locks nothing, and the boards make F5 reachable throughout.
   const showStepper =
     !roster &&
+    !isClosed(trip) &&
     outcome === 'consumed' &&
     consumedCount !== null &&
     bringCount !== null

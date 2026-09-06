@@ -113,6 +113,16 @@ export interface HomePickerProps {
    */
   moving?: {
     name: string
+    /**
+     * **Known to undercount, recorded rather than fixed**
+     * (`docs/technical-debt.md`). Every caller passes `childrenOf(...).length`
+     * — the **direct** home children — while a re-home relocates the whole
+     * subtree, so a crate holding a stuff-sack holding two items discloses
+     * `1 INSIDE RIDE ALONG` and moves three. The number understates the write
+     * at exactly the moment this line exists to disclose it. The fix is a
+     * subtree size (`containment.ts` already walks one) and it changes a drawn
+     * number, which is why it was not taken at the end of S10.
+     */
     insideCount: number
     /**
      * Whether picking confirms — default `true`, MOVE's own standing rule

@@ -367,6 +367,48 @@ export function unpackTotals(
 }
 
 /**
+ * **What closing this Trip owes the Depot** — units consumed, summed per Gear
+ * id, empty when it owes nothing.
+ *
+ * `closeTrip` (`gestures.ts`) turns each entry into one
+ * `gear.owned_count_set`; `ReopenConfirm` asks only whether the map is empty,
+ * to decide whether reopening needs its extra sentence about the reduction
+ * closing already applied. **The two must not derive the question
+ * separately** — a confirm that promises "closing cleared nothing" on a Trip
+ * whose close *did* lower an owned count is a false statement, and it becomes
+ * false in exactly the cases a hand-copied gate would get wrong (a container,
+ * a Single, an unsynced Gear, a trip-only Entry). {@link consumedCountOf}
+ * carries every one of those gates; nothing here re-derives them.
+ *
+ * **Summed per Gear** because a Trip may list one Gear on two Entries (spec
+ * §1.5). **`consumed` alone** — a `back` or `lost` outcome owes the Depot
+ * nothing, and `lost` deliberately writes nothing at all (story 11).
+ *
+ * This is a plain read of the fold and says nothing about whether the
+ * reduction has *already* been applied; `closeTrip`'s own docblock carries
+ * the two paths where it can be applied twice.
+ */
+export function consumedReductions(
+  trip: TripState,
+  state: HouseholdState,
+): ReadonlyMap<string, number> {
+  const byGear = new Map<string, number>()
+  for (const entry of entriesOf(trip, state)) {
+    if (outcomeOf(entry) !== 'consumed') continue
+    const consumed = consumedCountOf(entry, state)
+    if (consumed === null) continue
+    const source = entry.source?.value
+    // `consumedCountOf` already gates this to a Counted **depot** Entry (its
+    // container/Kind checks both read `state.gear[source.gearId]`), so a
+    // non-null answer means `source` is a depot pointer — this narrows the
+    // type rather than adding a second gate.
+    if (source === undefined || source.from !== 'depot') continue
+    byGear.set(source.gearId, (byGear.get(source.gearId) ?? 0) + consumed)
+  }
+  return byGear
+}
+
+/**
  * F5's grouping (spec §3.4) — the Place at the **root** of a piece of gear's
  * home path, `null` for the `Loose` bucket.
  *
@@ -434,26 +476,59 @@ export function returnPathOf(
 }
 
 /**
- * Spec §3.5's one comparison, stated **once**, here — the codebase's first
+ * **The standing's one comparison, stated once, here** — the codebase's first
  * cross-aggregate stamp comparison. Legitimate for the reason every derived
  * answer here is: every replica holds identical registers with identical
  * stamps, so every replica computes the identical standing.
  *
- * A Gear with no `residence` register at all compares as **earlier than
- * everything**, handled as its own branch rather than a sentinel stamp, so
- * "nothing to compare against" reads as a stated fact rather than an
- * implementation trick — a `lost` outcome stands until somebody re-homes.
+ * A `lost` outcome stands only while its own stamp is later than **both**:
  *
- * `whereabouts.ts`'s own walk imports this rather than re-deriving the
- * direction of the comparison; do not write a second copy.
+ * 1. the Gear's `residence` stamp — *a re-home*, and
+ * 2. `settledAt`, the latest stamp of a **non-`lost`** outcome recorded for
+ *    that same Gear anywhere the caller looked — *a later Trip bringing it
+ *    back*.
+ *
+ * **Ruling R35 widened this from (1) alone, and the widening is the
+ * governing documents' own sentence rather than a new mechanism.** Story 3
+ * (*"until a later fact settles it — I Re-home it, **or a later Trip brings
+ * it back**"*), story 11 (the same clause) and `domain-model.md` (*"The
+ * standing ends on the next fact about that gear: a re-home, or a later trip
+ * bringing it `back`"*) all name two settle routes; spec §3.5 named one, and
+ * the spec is the document that yields. What it fixes is a Quartermaster
+ * resolving a standing through the route the screen's own hint names — the
+ * pill → `● BACK` — and watching the standing survive forever while the row
+ * body one tap away (a re-home) settles it.
+ *
+ * A Gear with no `residence` register at all compares as **earlier than
+ * everything** for (1), handled as its own branch rather than a sentinel
+ * stamp, so "nothing to compare against" reads as a stated fact rather than
+ * an implementation trick. `settledAt` says the same thing with `null`.
+ *
+ * **Who passes what, and why the parameter is required rather than
+ * defaulted.** {@link unaccountedOf} passes the map it builds on its own
+ * walk; {@link rehomedSinceOutcome} passes `null` on purpose, because it asks
+ * a *different* question over the same two stamps (did the home move at or
+ * after **this** line was resolved) and a settling outcome elsewhere is no
+ * part of it — indeed for a `back` Entry the settling stamp would be that
+ * Entry's own. A defaulted parameter would let a third caller inherit the
+ * narrow rule silently, which is exactly how the narrow rule survived review
+ * the first time.
+ *
+ * `whereabouts.ts`'s own walk reads {@link unaccountedOf}'s finished map
+ * rather than re-deriving the direction of either comparison; do not write a
+ * second copy.
  */
 export function outcomeStands(
   outcome: Register<OutcomeValue | null>,
   gear: GearState | undefined,
+  settledAt: Stamp | null,
 ): boolean {
+  const stamp = stampOf(outcome)
   const residence = gear?.residence
-  if (residence === undefined) return true
-  return compareStamps(stampOf(outcome), stampOf(residence)) > 0
+  if (residence !== undefined && compareStamps(stamp, stampOf(residence)) <= 0)
+    return false
+  if (settledAt !== null && compareStamps(stamp, settledAt) <= 0) return false
+  return true
 }
 
 /**
@@ -464,13 +539,29 @@ export function outcomeStands(
  * authors the rehome into the same batch as the outcome, on a strictly
  * later clock, so a real re-home always satisfies this comparison.
  *
- * **This is {@link outcomeStands} reversed, not re-derived.** That function
- * asks whether a `lost` standing still holds — the outcome is *strictly*
- * later than the residence. This asks the complementary question — the
- * residence is *at or after* the outcome — so once an outcome register is
- * known to exist, `!outcomeStands(outcome, gear)` is the whole of it: a
- * `Register` compares by `(hlc, deviceId)`, never by value, so neither
- * function reads what the outcome or the residence actually says.
+ * **This is {@link outcomeStands}'s residence half reversed, not
+ * re-derived.** That function asks whether a `lost` standing still holds —
+ * the outcome is *strictly* later than the residence, **and** than any
+ * settling outcome elsewhere. This asks only the complementary residence
+ * question — the residence is *at or after* the outcome — so once an outcome
+ * register is known to exist, `!outcomeStands(outcome, gear, null)` is the
+ * whole of it: a `Register` compares by `(hlc, deviceId)`, never by value, so
+ * neither function reads what the outcome or the residence actually says.
+ *
+ * **The `null` is deliberate (ruling R35).** A settling outcome on another
+ * Entry says nothing about whether *this* row's gear was re-homed, and for a
+ * row already marked `back` the settling stamp would be this Entry's own
+ * outcome — which would make every resolved row draw `RE-HOMED`.
+ *
+ * **A row resolved `lost` and then settled from gear detail's `RESOLVE`
+ * draws the segment while still drawing `▲ LOST` in its pill, and that pair
+ * is two true facts rather than a contradiction** (recorded rather than
+ * gated — spec §8.7). `RESOLVE` emits `gear.rehomed` alone (R30), so the
+ * Entry's own `outcome` register genuinely still says `lost` — which is what
+ * ruling F18's *"the number is history, the colour is the standing"* requires
+ * — while the row genuinely did change destination group. Gating this
+ * segment on `outcome === 'back'` would withhold the explanation exactly in
+ * the case where the row moved rooms and needs one.
  *
  * `false` for an Entry with **no outcome register at all** — open, nothing
  * was ever resolved to compare a rehome "since" — checked before
@@ -496,7 +587,7 @@ export function rehomedSinceOutcome(
 ): boolean {
   const outcome = entry.outcome
   if (outcome === undefined) return false
-  return !outcomeStands(outcome, gear)
+  return !outcomeStands(outcome, gear, null)
 }
 
 /** The unaccounted standing for one Gear — {@link unaccountedOf}'s answer. */
@@ -524,6 +615,22 @@ interface UnaccountedAccumulator {
   latest: Stamp
   units: number
   personIds: Set<string>
+}
+
+/**
+ * One live-*looking* `lost` outcome gathered by {@link unaccountedOf}'s walk,
+ * before {@link outcomeStands} has ruled on whether it still stands —
+ * **private**, and needed only because ruling R35's second settle route can
+ * arrive later in the same walk than the report it settles. The `register`
+ * rather than its stamp, because `outcomeStands` takes the register.
+ */
+interface LostReport {
+  gearId: string
+  tripId: string
+  tripName: string
+  register: Register<OutcomeValue | null>
+  units: number
+  personId: string | undefined
 }
 
 /**
@@ -605,9 +712,29 @@ function accumulateUnaccounted(
  *   counted units one, deliberately.
  * - **Two Trips can both hold a live lost outcome for one Gear.** The units
  *   sum, and the **latest** such outcome names the Trip.
- * - **A later `back` on another Entry does not settle an earlier `lost`.**
- *   They are different units. What settles a lost outcome is a
- *   `gear.rehomed` with a later stamp, or that Entry's own outcome changing.
+ * - **A later non-`lost` outcome anywhere settles an earlier `lost`, whole**
+ *   — ruling R35, which **overturned** the "different units, settles
+ *   nothing" rule spec §3.5 wrote and this docstring used to restate. Story
+ *   3, story 11 and `domain-model.md` all name two settle routes, *"a
+ *   re-home, or a later trip bringing it `back`"*, and only one was built;
+ *   the story and the model are the authority and the spec yielded. It is
+ *   the *same* honest answer as the re-home rule above, applied to the same
+ *   missing per-unit identity: a later fact about that Gear settles the
+ *   whole standing, because there is no unit to settle half of it. Three
+ *   details a call site would otherwise re-derive:
+ *   - It is **per Gear, not per Person and not per Trip.** A `back` on
+ *     Mark's Piece settles Kim's `lost` Piece of the same Gear, exactly as a
+ *     re-home does.
+ *   - **`consumed` settles too, and so does an outcome this build cannot
+ *     name.** The rule is "non-`lost`", one predicate rather than a list —
+ *     `countOfUnpack`'s own reading of an unrecognised outcome as *resolved*,
+ *     restated one register over. Whether `consumed` *ought* to settle a
+ *     standing is an open question for a design round, not a fact this file
+ *     claims: no board reaches it, and the ruling's own wording is
+ *     "non-`lost`".
+ *   - **A register cleared to an explicit `null` settles nothing**, because
+ *     it reads *open* ({@link outcomeOf}) and open is the absence of a
+ *     resolution, not a later fact about where the gear is.
  *
  * **Ruling R10/R11's family, restated for this standing.** A non-container
  * Per-person Entry's Pieces are the unit — its own Entry-level `outcome` is
@@ -625,7 +752,26 @@ function accumulateUnaccounted(
 export function unaccountedOf(
   state: HouseholdState,
 ): ReadonlyMap<string, Unaccounted> {
-  const byGear = new Map<string, UnaccountedAccumulator>()
+  // Ruling R35 makes this two passes over **one** walk, not two walks: a
+  // settling outcome can sit anywhere in the iteration order relative to the
+  // `lost` outcome it settles (a later Trip is not a later `visibleTrips`
+  // entry — that order is by id), so the standing cannot be decided while
+  // the walk is still gathering. `reports` holds the candidates; `settledAt`
+  // holds, per Gear, the latest stamp of a non-`lost` resolution seen
+  // anywhere.
+  const reports: LostReport[] = []
+  const settledAt = new Map<string, Stamp>()
+
+  function noteSettled(
+    gearId: string,
+    register: Register<OutcomeValue | null>,
+  ): void {
+    const stamp = stampOf(register)
+    const seen = settledAt.get(gearId)
+    if (seen === undefined || compareStamps(stamp, seen) > 0) {
+      settledAt.set(gearId, stamp)
+    }
+  }
 
   for (const trip of visibleTrips(state)) {
     const tripName = tripLabel(trip)
@@ -635,42 +781,66 @@ export function unaccountedOf(
       if (source === undefined || source.from !== 'depot') continue
 
       const gearId = source.gearId
-      const gear = state.gear[gearId]
       const kind = entryKind(entry, state)
       const container = isContainerEntry(entry, state)
 
       if (kind === 'per_person' && !container) {
         for (const personId of piecesOf(entry, trip)) {
           const register = entry.pieces?.[personId]?.outcome
-          if (register?.value !== 'lost') continue
-          if (!outcomeStands(register, gear)) continue
-          accumulateUnaccounted(
-            byGear,
-            gearId,
-            trip.id,
-            tripName,
-            stampOf(register),
-            1,
-            personId,
-          )
+          if (register === undefined) continue
+          if (register.value === 'lost') {
+            reports.push({
+              gearId,
+              tripId: trip.id,
+              tripName,
+              register,
+              units: 1,
+              personId,
+            })
+          } else if (register.value !== null) {
+            // An explicit `null` reads *open* and settles nothing; every
+            // other value — `back`, `consumed`, or one this build cannot
+            // name — is a resolution and does.
+            noteSettled(gearId, register)
+          }
         }
         continue
       }
 
       const register = entry.outcome
-      if (register?.value !== 'lost') continue
-      if (!outcomeStands(register, gear)) continue
-      const units = container ? 1 : pieceCountOf(entry, trip, state)
-      accumulateUnaccounted(
-        byGear,
-        gearId,
-        trip.id,
-        tripName,
-        stampOf(register),
-        units,
-        undefined,
-      )
+      if (register === undefined) continue
+      if (register.value === 'lost') {
+        reports.push({
+          gearId,
+          tripId: trip.id,
+          tripName,
+          register,
+          units: container ? 1 : pieceCountOf(entry, trip, state),
+          personId: undefined,
+        })
+      } else if (register.value !== null) {
+        noteSettled(gearId, register)
+      }
     }
+  }
+
+  const byGear = new Map<string, UnaccountedAccumulator>()
+  for (const report of reports) {
+    const stands = outcomeStands(
+      report.register,
+      state.gear[report.gearId],
+      settledAt.get(report.gearId) ?? null,
+    )
+    if (!stands) continue
+    accumulateUnaccounted(
+      byGear,
+      report.gearId,
+      report.tripId,
+      report.tripName,
+      stampOf(report.register),
+      report.units,
+      report.personId,
+    )
   }
 
   const result = new Map<string, Unaccounted>()
