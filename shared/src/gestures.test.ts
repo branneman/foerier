@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { aGear, aPerson, aPlace, aTrip, depot } from '../testUtils/index.ts'
+import {
+  aGear,
+  aPerson,
+  aPlace,
+  aTrip,
+  depot,
+  stamp,
+} from '../testUtils/index.ts'
 import {
   gearOwnedCountSet,
   gearRehomed,
@@ -12,6 +19,7 @@ import {
   tripPieceRemoved,
 } from './authoring.ts'
 import { closeTrip, reHomeOnTheSpot } from './gestures.ts'
+import { fold } from './reduce.ts'
 import type { EntryState, HouseholdState, TripState } from './state.ts'
 
 /**
@@ -418,14 +426,64 @@ describe('closeTrip', () => {
     expect(second).toEqual(first)
   })
 
-  it('emits no trip.phase_moved on a Trip already closed — I1, the needless-write rule for this register too', () => {
-    // A Device that reopened this Trip (`ReopenConfirm`, since S6) authored
-    // a later write to the SAME `phase` register than this closed-Trip
-    // stamp. If `closeTrip` re-emitted `trip.phase_moved{closed}`
-    // unconditionally, a stale peer still holding F5's close card could
-    // re-author it and silently win the register back, discarding the
-    // reopen. The reduction must still fire — that is the die-mid-batch
-    // recovery path — only the redundant phase move is skipped.
+  /**
+   * **R27's own regression test — the sequential case, where the fold moves
+   * between the two calls.** The test above pins idempotence *against one
+   * unchanged fold*; this one is the case that broke before R27: apply the
+   * first call's own ops (exactly what `emit` does after a tap), then call
+   * `closeTrip` again against the fold that first close produced. Before
+   * the `isClosed` guard, the second call read the Gear's already-reduced
+   * owned count (3) and recomputed `3 − 2 = 1`, subtracting the
+   * Consumed-count a second time with no crash and no second Device in
+   * sight. After the guard, the second call sees `phase: 'closed'` and
+   * returns `[]`.
+   */
+  it('recomputes nothing once the first close has already landed — the sequential case idempotence alone does not cover', () => {
+    const ENTRY = 'e-consumed'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 5,
+      }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, ENTRY, 4),
+        tripOutcomeSet(TRIP, ENTRY, 'consumed'),
+        tripConsumedCountSet(TRIP, ENTRY, 2),
+      ],
+    )
+    const trip = tripFrom(state, TRIP)
+
+    const first = closeTrip(trip, state)
+    expect(first).toEqual([
+      gearOwnedCountSet('g-gas', 3),
+      tripPhaseMoved(TRIP, 'closed'),
+    ])
+
+    // Fold the first batch forward onto the SAME state, at a later stamp —
+    // exactly what a Device's own `emit` does after the tap that produced
+    // `first`.
+    const closed = fold(stamp(first, { start: 100 }), state)
+    const tripAfterFirstClose = tripFrom(closed, TRIP)
+
+    const second = closeTrip(tripAfterFirstClose, closed)
+
+    expect(second).toEqual([])
+  })
+
+  it('emits nothing on a Trip already closed, even with an unreduced Consumed Entry — R27 Layer B overturns I1', () => {
+    // I1 kept the reduction firing unconditionally on an already-closed
+    // Trip, reasoning that a Device dying between the reduction and the
+    // phase move needed a retry to still apply it (the die-mid-batch
+    // recovery path). Review showed that guard produces exactly the wrong
+    // pair on the far more ordinary no-crash double tap — see the test
+    // above and `gestures.ts`'s own docblock. There is no way, from this
+    // fold alone, to tell "the reduction never landed" apart from "the
+    // reduction landed and this fold already reflects it" — R28 records
+    // that residual gap rather than papering over it with a guess.
     const ENTRY = 'e-consumed'
     const state = depot(
       aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
@@ -446,10 +504,10 @@ describe('closeTrip', () => {
 
     const ops = closeTrip(trip, state)
 
-    expect(ops).toEqual([gearOwnedCountSet('g-gas', 4)])
+    expect(ops).toEqual([])
   })
 
-  it('emits only trip.phase_moved on an already-closed Trip with nothing to reduce', () => {
+  it('emits nothing on an already-closed Trip with nothing to reduce either', () => {
     const state = depot(aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }))
     const trip = tripFrom(state, TRIP)
 

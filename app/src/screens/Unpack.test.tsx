@@ -1707,24 +1707,27 @@ function alreadyClosedScenario(): readonly OpSpec[] {
 
 describe('the close card (F11, spec §4.7)', () => {
   /**
-   * **F11 — the list's last card at every width, a sibling of the groups,
-   * never a docked footer.** Both `unpack-groups` and `unpack-close-card`
-   * are direct children of the same element — `.screen`'s own flex column —
-   * rather than the card sitting outside it in a fixed, docked position.
+   * **F11 — the list's last card at every width.** `previousElementSibling`
+   * pins what F11 actually says — *last* — not merely "a sibling somewhere
+   * in `.screen`'s column", which a docked footer bolted on afterward would
+   * also satisfy if it happened to share a parent.
    */
-  it('is a sibling of the groups region, not a docked footer', async () => {
+  it('is the last card, immediately after the groups region — not a docked footer', async () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...closeCardScenario())
 
     const groups = screen.getByTestId('unpack-groups')
     const card = screen.getByTestId('unpack-close-card')
 
-    expect(card.parentElement).toBe(groups.parentElement)
+    expect(card.previousElementSibling).toBe(groups)
   })
 
-  it('reads the four-segment summary and gates the button while open > 0', async () => {
+  it('reads the four-segment summary exactly and gates the button while open > 0', async () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...closeCardScenario())
 
-    expect(screen.getByTestId('unpack-close-summary')).toHaveTextContent(
+    // Exact, not a substring match — the line is composed here from
+    // `unpackTotals`' own fields, not drawn by a selector that could only
+    // ever produce this shape.
+    expect(screen.getByTestId('unpack-close-summary').textContent).toBe(
       '3 BACK · 2 CONSUMED · 1 LOST · 1 OPEN',
     )
 
@@ -1741,7 +1744,7 @@ describe('the close card (F11, spec §4.7)', () => {
   it('goes live and accent-worded once open = 0, with the finished-screen hint', async () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...finishedCloseCardScenario())
 
-    expect(screen.getByTestId('unpack-close-summary')).toHaveTextContent(
+    expect(screen.getByTestId('unpack-close-summary').textContent).toBe(
       '4 BACK · 2 CONSUMED · 1 LOST · 0 OPEN',
     )
 
@@ -1798,31 +1801,76 @@ describe('the close card (F11, spec §4.7)', () => {
   })
 
   /**
-   * **A second render + tap against a Trip already `closed`, with nothing
-   * left to reduce, is a genuine no-op.** F5 gates its card on `open = 0`
-   * alone, never on phase (`gestures.ts`'s own docstring: F5 is reachable at
-   * every phase), so an already-`closed` Trip still draws a live card — and
-   * tapping it authors nothing: no consumed Counted Entry means the
-   * reduction loop has nothing to sum, and `trip.phase_moved{closed}`'s own
-   * guard (`phaseOf(trip) !== 'closed'`) is exactly what keeps a stale
-   * peer's later tap from silently discarding a reopen. **Deliberately not**
-   * a Trip closed *by* a first tap in this same test — closing a Trip that
-   * still owes a reduction and then closing it again is a different
-   * question this suite does not need to answer, since `closeTrip` itself is
-   * `gestures.ts`'s own file and its own tests, not this screen's.
+   * **Ruling R27 Layer A — the app-level chained case the brief asked for,
+   * now expressible.** Before R27 the card gated only on `open`, so a Trip
+   * this very tap just closed still drew a live `Close trip` button —
+   * exactly the door the reviewer walked through for zero cost. After R27
+   * the card gates on `isClosed(trip)` too: the moment the fold reflects
+   * the tap's own `trip.phase_moved{closed}`, this screen re-renders with
+   * the button and its hint withheld (`patterns.md` §3.7), so there is no
+   * control left for a second tap to reach. This is the strongest available
+   * proof that nothing further can be authored — not a second click that
+   * happens to write nothing, but the control itself gone.
    */
-  it('is a no-op on a Trip already closed, with nothing left to reduce', async () => {
+  it('withdraws the button the instant its own tap closes the Trip — no second tap is possible', async () => {
     const user = userEvent.setup()
     const seeded = await renderUnpack(
       `/trips/${ALPS}/unpack`,
-      ...alreadyClosedScenario(),
+      ...finishedCloseCardScenario(),
     )
 
-    const button = screen.getByRole('button', { name: 'Close trip' })
-    expect(button).not.toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Close trip' }))
+    const firstBatch = await seeded.authored()
+    expect(firstBatch).toEqual([
+      { type: 'gear.owned_count_set', payload: { count: 3 } },
+      { type: 'trip.phase_moved', payload: { phase: 'closed' } },
+    ])
 
-    await user.click(button)
+    expect(
+      screen.queryByRole('button', { name: /Close trip/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.',
+      ),
+    ).not.toBeInTheDocument()
+    // The ledger line is a fact about a closed Trip regardless — it stays.
+    expect(screen.getByTestId('unpack-close-summary').textContent).toBe(
+      '4 BACK · 2 CONSUMED · 1 LOST · 0 OPEN',
+    )
 
-    expect(await seeded.authored()).toEqual([])
+    // Nothing further was authored — there being no button left to tap.
+    expect(await seeded.authored()).toEqual(firstBatch)
+  })
+
+  /**
+   * **Ruling R27 Layer A, the already-closed case** — `patterns.md` §3.7's
+   * *withheld, not greyed*: a Trip that starts out `closed` (a peer closed
+   * it, or a Device reopened and closed it again) draws no button and no
+   * hint at all, live or gated — never a `Close trip` a Quartermaster could
+   * still tap. The summary line is the one thing that survives, because
+   * `4 BACK · … · 0 OPEN` remains a true fact about a closed Trip.
+   */
+  it('draws no button or hint at all on a Trip that is already closed, only the summary', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...alreadyClosedScenario())
+
+    expect(
+      screen.queryByRole('button', { name: /Close trip/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'BACK WRITES HOME AT THE TAP. CLOSE WHEN OPEN = 0 — LOST IS ALWAYS AN ANSWER.',
+      ),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.',
+      ),
+    ).not.toBeInTheDocument()
+
+    expect(screen.getByTestId('unpack-close-card')).toBeInTheDocument()
+    expect(screen.getByTestId('unpack-close-summary').textContent).toBe(
+      '1 BACK · 0 CONSUMED · 0 LOST · 0 OPEN',
+    )
   })
 })

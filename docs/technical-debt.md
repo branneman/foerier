@@ -100,6 +100,19 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   rules, so a long Depot prints whatever was on screen.
   [`frontend-design.md`](frontend-design.md) §6, anchor:
   `prints one viewport`
+- **A Device that dies mid-close, then retries, can double-apply the
+  Consumed reduction.** `closeTrip` reads the Gear's *current* owned count,
+  which is absolute rather than a delta; if the reduction op has already
+  landed durably but the phase move has not, a retry recomputes the target
+  from the already-reduced count and subtracts the Consumed-count a second
+  time. Considered and rejected: a cross-aggregate stamp comparison (the
+  shape `unaccountedOf` already uses) would close this, but reads as a false
+  negative — silently skipping a reduction — exactly when a Quartermaster
+  corrects the owned count between declaring the consumption and closing.
+  A per-Trip-per-Gear "already reduced" register would close it cleanly and
+  is outside S10's op catalogue. `shared/src/gestures.ts`'s own docblock on
+  `closeTrip`, anchor: `A known, recorded residual risk`
+
 ### Traps
 
 Correct today, and silently wrong the moment a named future slice lands.

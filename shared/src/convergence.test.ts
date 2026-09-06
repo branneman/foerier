@@ -2654,6 +2654,65 @@ describe('convergence', () => {
   })
 
   /**
+   * **R27's own two-replica case — the one the gesture-level `fold()`
+   * splice cannot express, because it needs a real sync round-trip.** A
+   * closes and exchanges, so B's own fold now already reflects the reduced
+   * owned count and the `closed` phase. B's own close card was mounted
+   * *before* that exchange landed and, absent the `isClosed` guard, would
+   * still be showing a live `Close trip` button when the sync callback
+   * re-renders it — a Quartermaster on B could tap it in that window. This
+   * asserts the gesture itself refuses that tap: calling `closeTrip` again
+   * on B, against the fold B now actually holds (A's close already folded
+   * in), must not re-subtract the Consumed-count a second time.
+   */
+  it('a Device closing after exchange has already folded a peer’s close authors nothing further', () => {
+    const { a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 6,
+      }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+    a.emit(tripEntryBringCountSet(trip, entry, 4))
+    a.emit(tripOutcomeSet(trip, entry, 'consumed'))
+    a.emit(tripConsumedCountSet(trip, entry, 2))
+    exchange(a, b)
+
+    // A closes alone and exchanges — B's fold now already holds the
+    // reduced count (4) and `phase: 'closed'`, exactly as if B's own screen
+    // had just received that sync push.
+    for (const spec of closeTrip(a.state().trips[trip]!, a.state())) {
+      a.emit(spec)
+    }
+    exchange(a, b)
+    expect(b.state().gear[gear]?.ownedCount?.value).toBe(4)
+    expect(b.state().trips[trip]?.phase?.value).toBe('closed')
+
+    // B's own still-live close card taps `closeTrip` again, against the
+    // fold B actually holds right now (A's close already folded in) — not
+    // against some earlier, pre-exchange snapshot.
+    const bOps = closeTrip(b.state().trips[trip]!, b.state())
+    expect(bOps).toEqual([])
+
+    for (const spec of bOps) b.emit(spec)
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      expect(r.state().gear[gear]?.ownedCount?.value).toBe(4)
+      expect(r.state().trips[trip]?.phase?.value).toBe('closed')
+    }
+  })
+
+  /**
    * **S10's cross-aggregate stamp comparison** (`selectors/unpack.ts`'s
    * {@link unaccountedOf}, spec §3.5) put to the one test every derived
    * cross-aggregate answer needs: every replica holds identical registers

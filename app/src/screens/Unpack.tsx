@@ -6,6 +6,7 @@ import {
   entriesOf,
   entryKind,
   entryLabel,
+  isClosed,
   isContainerEntry,
   ownerLabel,
   personBuckets,
@@ -1383,9 +1384,21 @@ export function Unpack() {
            *
            * The tap emits `closeTrip`'s own ops, in the order it returns
            * them — never re-derived here: the reduction-then-phase-move
-           * order, the per-Gear summing, the floor at zero and the
-           * already-closed guard are every one of them `gestures.ts`'s own
-           * rule, not this screen's.
+           * order, the per-Gear summing and the floor at zero are every one
+           * of them `gestures.ts`'s own rule, not this screen's.
+           *
+           * **A Trip already `isClosed` withholds the button and its hint,
+           * never a `Close trip` shown live** (ruling R27 Layer A) — the
+           * one thing `open = 0` alone cannot tell apart from "just
+           * finished" is "already closed", and offering a live button there
+           * is a second, redundant door onto a gesture that has nothing
+           * left to do (`gestures.ts`'s own guard, R27 Layer B). No drawn
+           * frame shows F5 on a closed Trip, so the design round still owes
+           * this a picture; meanwhile `patterns.md` §3.7's *withheld, not
+           * greyed* is the standing rule — the summary line is a fact about
+           * a closed Trip regardless (`53 BACK · … · 0 OPEN` stays true),
+           * so only the control and its instructional hint go, never the
+           * ledger line above them.
            */}
           <section
             className={styles['closeCard']}
@@ -1396,25 +1409,29 @@ export function Unpack() {
               data-testid="unpack-close-summary"
             >
               {`${totals.back} BACK · ${totals.consumed} CONSUMED · ${totals.lost} LOST · `}
-              <span
-                className={styles['closeSummaryOpen']}
-              >{`${totals.open} OPEN`}</span>
+              <span className={styles['closeSummaryOpen']}>
+                {openLabel(totals)}
+              </span>
             </p>
-            <button
-              type="button"
-              className={styles['closeButton']}
-              disabled={totals.open > 0}
-              onClick={() => {
-                for (const spec of closeTrip(trip, state)) emit(spec)
-              }}
-            >
-              {totals.open > 0
-                ? `Close trip — ${totals.open} open`
-                : 'Close trip'}
-            </button>
-            <p className={styles['closeHint']}>
-              {totals.open > 0 ? CLOSE_HINT_GATED : CLOSE_HINT_READY}
-            </p>
+            {!isClosed(trip) && (
+              <>
+                <button
+                  type="button"
+                  className={styles['closeButton']}
+                  disabled={totals.open > 0}
+                  onClick={() => {
+                    for (const spec of closeTrip(trip, state)) emit(spec)
+                  }}
+                >
+                  {totals.open > 0
+                    ? `Close trip — ${totals.open} open`
+                    : 'Close trip'}
+                </button>
+                <p className={styles['closeHint']}>
+                  {totals.open > 0 ? CLOSE_HINT_GATED : CLOSE_HINT_READY}
+                </p>
+              </>
+            )}
           </section>
         </>
       )}

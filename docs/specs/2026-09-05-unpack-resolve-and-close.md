@@ -879,3 +879,84 @@ Invite, proves joining, or signs the run's Device out, so the leg is
   standing rather than one unit of it (§3.5). Domain §6 refuses it deliberately.
 - **A retirement path for lost gear.** `lost` is never a retirement; the Gear
   is still ours and still expected.
+
+---
+
+## 8. What changed during implementation
+
+Written after the close card and the close batch shipped and were reviewed.
+**Nothing above this line has been edited** — `the-gear-list.md` §11 and
+`packing-and-the-journey.md` §11 set the precedent this repo follows: a dated
+spec is a record of what was believed when it was written, and a sentence that
+turned out wrong is listed here rather than quietly fixed where a reader would
+never learn it had moved.
+
+### 8.1 `closeTrip` on an already-closed Trip returns `[]`, not just the reduction
+
+§4.7's own reasoning — "the reductions always emit regardless of the current
+phase … that is precisely the die-mid-batch recovery path" — is **overturned**.
+Review found the ordinary, no-crash case that guard gets backwards: on an
+already-closed Trip, `gear.owned_count_set` is absolute, and the reduction loop
+reads the Gear's **current** owned count, which after a first close has already
+landed is the **reduced** count. A second call — a second tap on a still-live
+card, or a stale peer's card gated on `open` alone — recomputes
+`reduced − consumed` and subtracts the Consumed-count a second time, silently,
+with no crash and no second Device required.
+
+`closeTrip` now returns `[]` unconditionally once `isClosed(trip)` — before it
+computes a single reduction. F5's close card gates its button and hint on the
+same fact (ruling R27 Layer A: `isClosed(trip)`, never re-derived), withholding
+both rather than drawing them disabled (`patterns.md` §3.7, *withheld, not
+greyed*) — the summary line stays, since it remains a true fact about a closed
+Trip. No board draws F5 on a closed Trip; withholding is the ruling meanwhile,
+and the picture is logged as an open question for the next design round.
+
+### 8.2 Two paths still double-reduce, and are recorded rather than patched
+
+Closing the two doors above (the same-device double tap, and the
+already-synced stale peer) does not close every path, because two narrower
+ones cannot be told apart from "a reduction is still pending" using the fold
+alone:
+
+- **Crash mid-batch, then retried.** A Device dies after the reduction op is
+  durably written but before the phase move lands — the fold still reads
+  `unpack`, exactly as a Trip that was never closed — and a retry recomputes
+  the reduction from the now-already-reduced count.
+- **Close → reopen → close.** `ReopenConfirm` (shipped since S6) is an
+  ordinary way to move a `closed` Trip back to `unpack`, so a second close is
+  not a misuse; it recomputes from a fold the first close already reduced.
+
+Both would need a fact the fold as specified here cannot state: whether *this
+Gear's own reduction, for this Trip*, has already been applied. The one
+precedented mechanism for a cross-aggregate "has this already happened"
+question — a stamp comparison, `unaccountedOf`'s own shape
+(`selectors/unpack.ts`) — was considered and rejected (ruling R28): it would
+read as a false negative exactly when a Quartermaster corrects the owned count
+*between* declaring the consumption and closing, silently skipping a reduction
+that was never applied. A wrong "already reduced" belief is worse than the
+narrow, rare corruption it would replace. A per-Trip-per-Gear "already
+reduced" register would close this cleanly and is outside S10's op catalogue —
+not built here, and not to be patched with a third, narrower mechanism later
+without first weighing it against this same false-negative cost.
+
+The crash-mid-batch window is tracked in `docs/technical-debt.md`. Close →
+reopen → close's Depot semantics are S11's to design — §7 above already parks
+reopen's Depot semantics with S11, and this is the same parking, named for the
+specific failure it now covers rather than left implicit.
+
+### 8.3 Tests added for both
+
+`shared/src/gestures.test.ts` gained a **sequential** case beside the existing
+"calling it twice against the same fold" one — apply the first call's own ops
+to the fold, then call `closeTrip` again against the fold that produced —
+which is the case that would have caught this before it shipped, since the
+existing idempotence test only ever called `closeTrip` twice against one
+*unchanged* fold. The two already-closed unit tests were corrected to expect
+`[]` rather than a partial reduction. `shared/src/convergence.test.ts` gained
+the genuinely two-replica case the gesture-level test cannot express: Device A
+closes and exchanges, so Device B's own fold already reflects the reduction
+and the `closed` phase before B's own (would-be) still-live card computes
+`closeTrip` again. `app/src/screens/Unpack.test.tsx` gained the app-level
+case the brief originally asked for, now expressible because the card
+withdraws its own button the instant its tap closes the Trip: there is no
+control left for a second tap to reach.

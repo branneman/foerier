@@ -290,6 +290,12 @@
    * are a card holding a summary line and its own controls. `.screen`'s own
    * flex-column gap is what separates it from the groups region above it —
    * this task's own case of F11's "sibling, not a docked footer".
+   *
+   * Rounded, not measured off the board: the board draws this card's own
+   * padding at 14px and its two internal gaps at 10px/8px, none of which
+   * land on this file's spacing scale, so `--space-12`/`--space-16` (the
+   * padding) and `--space-8` (both gaps) are the nearest existing tokens
+   * rather than a new one minted for a 2px difference.
    */
   .closeCard {
     display: flex;
