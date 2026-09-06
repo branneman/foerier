@@ -117,12 +117,17 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   the second close recomputes `already-reduced − consumed` and subtracts it
   again: owned 6 → 4 at the first close, → 2 at the second. Not a crash
   window — `ReopenConfirm` is a shipped, ordinary route out of `closed`, and
-  the reopen does not offer the reduction back. `ReopenConfirm` now states
-  the first half in words before the tap; the write itself is unfixed, and
-  closing it needs the same per-Trip-per-Gear "already reduced" register its
-  crash-window sibling above waits on (a stamp comparison reads as a false
-  negative — ruling R28). `shared/src/gestures.ts`'s own docblock on
-  `closeTrip`, anchor: `Close → reopen → close.`
+  the reopen does not offer the reduction back. **§5i G1 declines to
+  disclose the double-subtraction on screen** — the ledger states what it
+  did, never what it might do wrong — so `ReopenConfirm` states the
+  reduction as a fact and says nothing about re-closing. The round hands
+  this to S11 by name: *reopen may not become the drawn corrections route
+  until a re-close subtracts nothing twice*, which is also what G7 declines
+  a closed-Trip corrections affordance on. Closing it needs the same
+  per-Trip-per-Gear "already reduced" register its crash-window sibling
+  above waits on (a stamp comparison reads as a false negative — ruling
+  R28). `shared/src/gestures.ts`'s own docblock on `closeTrip`, anchor:
+  `Close → reopen → close.`
 - **The property tier never meets a trip-side containment cycle, and never
   compares the trip tree across replicas at all.** `arbOpSets`'s generator
   produces a `tripContainmentView(…).brokenEdges` hit in **0–1 runs per

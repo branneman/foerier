@@ -1,5 +1,6 @@
 import {
   consumedReductions,
+  ownedCountOf,
   isActivePhase,
   overClaimsIfActive,
   phaseName,
@@ -138,7 +139,36 @@ export function ReopenConfirm({
 
   // Finding I2 — see this module's own docblock. Empty on every Trip whose
   // close owes the Depot nothing, which is most of them.
-  const owesDepot = consumedReductions(trip, state).size > 0
+  //
+  // **§5i G1 moved this from prose into a fact.** The disclosure stays; its
+  // register changes. `ReopenConfirm` already has a place for facts that
+  // hold on *this* Trip alone — the conditional mono blocks under the body
+  // — and a sentence true of some Trips belongs there rather than in body
+  // prose that reads as though it were always so.
+  //
+  // **The `×6` is a reconstruction, not a record.** The close wrote
+  // `gear.owned_count_set` absolutely, so the fold holds the reduced count
+  // and nothing else; the pre-close number is `owned + consumed`, read now.
+  // A Quartermaster who corrected the count by hand *since* the close makes
+  // that arithmetic state a number that was never on the shelf. There is no
+  // register that would answer better — the pre-close value exists only in
+  // the log — and the reduction it describes is what the sheet is there to
+  // disclose, so it is stated and this comment is the caveat.
+  const reductions = consumedReductions(trip, state)
+
+  // One entry per Gear the close reduced, in the Depot's own name order so
+  // two Trips' sheets read alike. `owned` is the count **now**, already
+  // reduced; the arrow's left-hand side is that plus what was consumed.
+  const reductionLines = [...reductions]
+    .flatMap(([gearId, consumed]) => {
+      const gear = state.gear[gearId]
+      if (gear === undefined) return []
+      const owned = ownedCountOf(gear)
+      if (owned === null) return []
+      const name = gear.name?.value ?? ''
+      return [`${name.toUpperCase()} ×${owned + consumed} → ×${owned}`]
+    })
+    .sort()
 
   return (
     <Confirm
@@ -150,12 +180,9 @@ export function ReopenConfirm({
       // `trip.created` has not yet arrived reads `Reopen Unnamed trip?`
       // rather than `Reopen —?`.
       title={`Reopen ${tripNameOrUnnamed(trip)}?`}
-      description={
-        `It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.` +
-        (owesDepot
-          ? ' The owned counts it lowered for consumed gear stay lowered — reopening does not give them back.'
-          : '')
-      }
+      // The body is the board's, verbatim, and stays true: the close
+      // *wrote*, it cleared nothing.
+      description={`It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.`}
       onClose={onCancel}
       actions={
         <>
@@ -176,6 +203,12 @@ export function ReopenConfirm({
         </>
       }
     >
+      {reductionLines.length > 0 && (
+        <p className={styles['reduction']} data-testid="reopen-reduction">
+          {`OWNED COUNTS LOWERED AT CLOSE STAY LOWERED — ${reductionLines.join(' · ')}`}
+        </p>
+      )}
+
       {/* Facts only — no `settle` (ruling I). */}
       <OverClaimGroups tripId={trip.id} groups={groups} />
     </Confirm>

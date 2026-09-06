@@ -1,4 +1,17 @@
 @layer components {
+  /* §5i G1 — the reopen sheet's own conditional fact, in the mono register
+     §5a already reserves for facts that hold on this Trip alone (the block
+     `1 ENTRY STILL OPEN — …` uses). Muted rather than attention: nothing
+     here is a warning, it is what the close did. */
+  .reduction {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    line-height: 1.6;
+    color: var(--color-ink-muted);
+  }
+
   /* The reopen confirm's two buttons, moved here whole from
      `PhaseSheet.module.css` when the confirm gained its second caller.
      Accent, not attention: nothing was thrown away, and the board draws the

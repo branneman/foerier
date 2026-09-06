@@ -270,29 +270,39 @@ describe('the reopen confirm', () => {
   })
 
   /**
-   * **Finding I2.** *"Closing cleared nothing"* is true of the Trip and was
-   * misleading about the Depot: closing applied every `consumed` Entry's
-   * owned-count reduction, and reopening does not offer it back. The extra
-   * sentence is conditional on the Trip actually owing one, which is why
-   * both halves are pinned — the every-Trip case would be noise on the many
-   * Trips that owe nothing.
+   * **Finding I2, ruled at §5i G1.** *"Closing cleared nothing"* is true of
+   * the Trip and was misleading about the Depot: closing applied every
+   * `consumed` Entry's owned-count reduction, and reopening does not offer
+   * it back. The disclosure stays and its **register** moves — out of body
+   * prose, which reads as though it were always so, and into the
+   * conditional mono block this sheet already reserves for facts that hold
+   * on this Trip alone. The body is the board's again, verbatim.
    */
-  it('says the owned counts stay lowered when the Trip closed with consumed gear (I2)', async () => {
+  it('states the reduction as a fact line, and leaves the body verbatim (§5i G1)', async () => {
     const seeded = await aClosedTripWithConsumed()
     renderConfirm(seeded, { to: 'unpack' })
 
     expect(screen.getByRole('alertdialog')).toHaveTextContent(
-      'It returns to Unpack exactly as it stood. Closing cleared nothing. The owned counts it lowered for consumed gear stay lowered — reopening does not give them back.',
+      'It returns to Unpack exactly as it stood. Closing cleared nothing.',
+    )
+    expect(screen.getByRole('alertdialog')).not.toHaveTextContent(
+      /reopening does not give them back/,
+    )
+
+    // The arrow's left-hand side is a reconstruction — `owned + consumed`,
+    // since the close wrote the owned count absolutely and the fold keeps
+    // only the reduced one.
+    expect(screen.getByTestId('reopen-reduction')).toHaveTextContent(
+      'OWNED COUNTS LOWERED AT CLOSE STAY LOWERED — GAS CANISTER ×6 → ×4',
     )
   })
 
-  it('says nothing of the kind on a Trip whose close owed the Depot nothing (I2)', async () => {
+  it('draws no fact line at all on a Trip whose close owed the Depot nothing (I2)', async () => {
     const seeded = await aClosedTripClash()
     renderConfirm(seeded, { to: 'unpack' })
 
-    expect(screen.getByRole('alertdialog')).not.toHaveTextContent(
-      /owned counts/,
-    )
+    // Which is most Trips — an unconditional line would be noise on them.
+    expect(screen.queryByTestId('reopen-reduction')).not.toBeInTheDocument()
   })
 
   it('reopens into draft without drawing an over-claim block', async () => {
