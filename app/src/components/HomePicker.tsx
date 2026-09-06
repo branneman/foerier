@@ -72,11 +72,12 @@ import styles from './HomePicker.module.css'
  * A generic line above the list, not shaped to any one caller — shown
  * whenever it or `moving` is given (a caller may want the line with no move
  * at all). It carries **only the caller's own sentence**: when `moving` is
- * also given, `HomePicker` itself appends `moving`'s own ride-along clause
+ * also given, `HomePicker` itself places `moving`'s own ride-along clause
  * (`{N} RIDE ALONG` — §5i G2 retired the `INSIDE` in it, since the two
- * words answer two questions) after it, exactly as it already does for the
- * auto-computed `MOVING {name}` line — one place computes that fact, not
- * two spellings of it.
+ * words answer two questions) **between** the caller's act and its
+ * consequence, §5i G5's grammar: *act · what moves · consequence*. One
+ * place computes that fact and one place orders it, not two spellings of
+ * either.
  *
  * ## `nowLabel`
  *
@@ -137,13 +138,22 @@ export interface HomePickerProps {
     confirm?: boolean
   }
   /**
-   * The line above the list — a generic fact, not shaped to any one caller.
-   * Shown whenever this or `moving` is given. Carries **only the caller's
-   * own sentence**: when `moving` is also given, `HomePicker` appends its
-   * own ride-along clause after it (this module's own header) — never the
-   * caller's job to restate `moving.ridesAlong`.
+   * The line above the list, in §5i G5's own grammar: **act · what moves ·
+   * consequence**. Shown whenever this or `moving` is given.
+   *
+   * A pair rather than one string, because the ride-along clause goes
+   * **between** the two halves — the ride-along is part of the act's
+   * *subject* (the crate and what is in it) and the outcome clause is its
+   * side effect. A single string could only be appended to, which is what
+   * shipped first and put the ride-along last, after the consequence. The
+   * pair puts the order in the type, where a caller cannot lose it.
+   *
+   * `act` alone is legitimate; `MOVING {name}` is the default when the
+   * caller supplies nothing. The ride-along clause is never the caller's to
+   * restate — {@link HomePickerProps.moving} carries the number and this
+   * component composes it, one place computing the fact.
    */
-  context?: string
+  context?: { act: string; consequence?: string }
   /**
    * Overrides `● NOW`'s own text — default unset, drawing the plain mark
    * every caller but one has always drawn. **S10's settle route (F16(3),
@@ -388,18 +398,26 @@ export function HomePicker({
   const nowMark = <span className={styles['now']}>{nowLabel ?? '● NOW'}</span>
 
   /**
-   * `context`'s own text when given (`MOVING {name}` otherwise), with
-   * `moving`'s own ride-along clause appended whenever `moving` is given —
-   * one place computes that fact, never the caller's job to restate
-   * `moving.ridesAlong` (this module's own header). `undefined` when
-   * neither `context` nor `moving` is given: the paragraph below renders
-   * nothing at all in plain pick mode with no `context` (today's
-   * behaviour).
+   * §5i G5's grammar, composed once: **act · what moves · consequence**.
+   * The act is `context.act` or `MOVING {name}`; the middle is `moving`'s
+   * own ride-along clause and draws only when there is a move; the
+   * consequence is the caller's own closing clause, and trails whatever
+   * sits before it.
+   *
+   * `undefined` when neither `context` nor `moving` is given — the
+   * paragraph below then renders nothing at all, plain pick mode's own
+   * behaviour.
    */
   const contextText =
-    moving === undefined
-      ? context
-      : `${context ?? `MOVING ${moving.name}`} · ${moving.ridesAlong} RIDE ALONG`
+    context === undefined && moving === undefined
+      ? undefined
+      : [
+          context?.act ?? (moving === undefined ? '' : `MOVING ${moving.name}`),
+          moving === undefined ? '' : `${moving.ridesAlong} RIDE ALONG`,
+          context?.consequence ?? '',
+        ]
+          .filter((part) => part !== '')
+          .join(' · ')
 
   return (
     <Sheet

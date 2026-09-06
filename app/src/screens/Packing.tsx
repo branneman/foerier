@@ -154,7 +154,7 @@ interface PackingGroup {
   /** This group's own rows, in `entriesOf` order. Nested containers are not
    * rows: they are the groups that follow immediately (ruling A4). */
   readonly rows: readonly PackingGroupRow[]
-  /** Entries inside at any depth — the move context's `N INSIDE RIDE ALONG`. */
+  /** Entries inside at any depth — the move context's `N RIDE ALONG`. */
   readonly insideCount: number
 }
 

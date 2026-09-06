@@ -239,8 +239,11 @@ function unaccountedFooter(
  *  `Unpack.tsx`'s own `reHomeContext` leaves `moving.name`: `.context`'s own
  *  `text-transform: uppercase` (`HomePicker.module.css`) is what paints it
  *  in caps. */
-function resolveContext(name: string, tripName: string): string {
-  return `RESOLVING ${name} · LAST SEEN: ${tripName}`
+function resolveContext(
+  name: string,
+  tripName: string,
+): { act: string; consequence: string } {
+  return { act: `RESOLVING ${name}`, consequence: `LAST SEEN: ${tripName}` }
 }
 
 export function GearDetail() {
@@ -634,7 +637,8 @@ export function GearDetail() {
           F16(3) draws — the row visibly settles the standing, no dialog
           stands between the tap and the write — but a **container** being
           resolved still needs `moving`'s exclusion and its
-          `N INSIDE RIDE ALONG` disclosure (R32): re-homing a lost container
+          `N RIDE ALONG` disclosure (R32, blessed at §5i G5(b)): re-homing
+          a lost container
           silently relocates everything inside it otherwise, exactly the
           fact F8's own re-home row and gear detail's own MOVE both state
           before writing. `confirm: false` keeps the write undialogued while

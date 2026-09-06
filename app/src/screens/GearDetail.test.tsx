@@ -1154,6 +1154,45 @@ describe('Gear detail — the unaccounted standing and its settle route (S10, F1
     expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
+  /**
+   * **§5i G5(b).** Every door that moves a subtree states the ride-along
+   * first-hand, and `RESOLVE` on a lost crate is such a door — in G5's own
+   * order, the ride-along between the act and its consequence.
+   */
+  it('states the ride-along on a lost container, between the act and its consequence', async () => {
+    const tripId = anId()
+    const crateId = anId()
+    const insideId = anId()
+    const atticId = anId()
+    const store = await seededStore([
+      placeRecorded(atticId, 'Attic'),
+      gearRecorded(crateId, {
+        name: 'Crate B',
+        container: true,
+        kind: 'single',
+        residence: { in: 'place', id: atticId },
+      }),
+      gearRecorded(insideId, {
+        name: 'Pouch',
+        container: false,
+        kind: 'single',
+        residence: { in: 'gear', id: crateId },
+      }),
+      tripCreated(tripId, 'Tessin 2025'),
+      tripEntryAdded(tripId, 'e-crate', { from: 'depot', gearId: crateId }),
+      tripOutcomeSet(tripId, 'e-crate', 'lost'),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, crateId)
+
+    await user.click(screen.getByRole('button', { name: 'RESOLVE' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Home' })
+    expect(within(dialog).getByTestId('moving-context')).toHaveTextContent(
+      'RESOLVING Crate B · 1 RIDE ALONG · LAST SEEN: Tessin 2025',
+    )
+  })
+
   it('a Single reads the standing with no counts at all (D1)', async () => {
     const tripId = anId()
     const gearId = anId()

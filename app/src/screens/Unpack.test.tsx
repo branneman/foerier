@@ -871,7 +871,8 @@ describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Home' })
     expect(within(dialog).getByTestId('moving-context')).toHaveTextContent(
-      'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK · 1 RIDE ALONG',
+      // §5i G5: act · what moves · consequence.
+      'RE-HOMING Crate B · 1 RIDE ALONG · PICKING A HOME MARKS IT BACK',
     )
     // Invariant 3 — Crate B's own subtree (Pouch) is absent at any depth.
     expect(within(dialog).queryByRole('button', { name: 'Pouch' })).toBeNull()

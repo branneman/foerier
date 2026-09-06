@@ -1109,8 +1109,11 @@ function GroupSection({
  * which appends it once rather than here a second time (this file's own
  * `<HomePicker>` call below decides whether to pass `moving` at all).
  */
-function reHomeContext(name: string): string {
-  return `RE-HOMING ${name} · PICKING A HOME MARKS IT BACK`
+function reHomeContext(name: string): { act: string; consequence: string } {
+  return {
+    act: `RE-HOMING ${name}`,
+    consequence: 'PICKING A HOME MARKS IT BACK',
+  }
 }
 
 /** {@link Unpack}'s own outcome-sheet target — R23's own shape. `personId`

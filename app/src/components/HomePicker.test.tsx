@@ -700,18 +700,23 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
     return { store, atticId, shedId, crateId }
   }
 
-  it('appends moving’s own ride-along clause after the caller’s own sentence', async () => {
+  it('places the ride-along between the act and its consequence (§5i G5)', async () => {
     const { store, crateId } = await aCrateInAnAttic()
     renderPicker(store, {
       excludeGearId: crateId,
       moving: { name: 'Crate B', ridesAlong: 1, confirm: false },
-      context: 'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK',
+      context: {
+        act: 'RE-HOMING Crate B',
+        consequence: 'PICKING A HOME MARKS IT BACK',
+      },
     })
 
-    // The caller's sentence carries no ride-along clause of its own —
-    // `HomePicker` is the one place that appends it.
+    // The ride-along is part of the act's *subject* — the crate and what is
+    // in it — and the outcome clause is its side effect, so subject leads.
+    // The caller's halves carry no ride-along of their own: `HomePicker` is
+    // the one place that composes it, and the one place that orders it.
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK · 1 RIDE ALONG',
+      'RE-HOMING Crate B · 1 RIDE ALONG · PICKING A HOME MARKS IT BACK',
     )
     expect(screen.queryByText(/^MOVING Crate B/)).toBeNull()
   })
@@ -719,7 +724,10 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
   it('renders the context line even with no moving at all — a later flow needs the line without a move', async () => {
     const store = await seededStore([placeRecorded(anId(), 'Attic')])
     renderPicker(store, {
-      context: 'RESOLVING HEADLAMP · LAST SEEN: TESSIN 2025',
+      context: {
+        act: 'RESOLVING HEADLAMP',
+        consequence: 'LAST SEEN: TESSIN 2025',
+      },
     })
 
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
@@ -733,7 +741,10 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
     const { selected } = renderPicker(store, {
       excludeGearId: crateId,
       moving: { name: 'Crate B', ridesAlong: 1, confirm: false },
-      context: 'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK',
+      context: {
+        act: 'RE-HOMING Crate B',
+        consequence: 'PICKING A HOME MARKS IT BACK',
+      },
     })
 
     await user.click(screen.getByRole('button', { name: /Shed/ }))
