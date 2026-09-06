@@ -98,6 +98,8 @@ export {
   tripRenamed,
 } from './authoring.ts'
 
+export { closeTrip, reHomeOnTheSpot } from './gestures.ts'
+
 export { applyOp, emptyState, fold } from './reduce.ts'
 
 export type {
