@@ -26,12 +26,13 @@ import styles from './StatusPill.module.css'
  * tinted buttons in a sheet would compete with the tinted pills on the rows
  * behind it, which is the reason the sheet's chips were drawn neutral.
  *
- * **`consumed` and `attention` are S10's third and fourth callers of the
- * identical grammar** (`docs/design/README.md` §7, ruling F6): F5's outcome
- * pill reuses this component rather than growing a second one, so its own
- * two tones this file did not yet have — `CONSUMED` (dashed, no fill) and
- * `▲ LOST` (the system's attention colour) — join `packed` (`● BACK`) and
- * `not-packed` (`○ OPEN`), which F5 reuses unchanged.
+ * **`dashed` and `attention` are S10's third and fourth callers of the
+ * identical grammar** — F5's outcome pill reuses this component rather than
+ * growing a second one. `attention` joins the status palette's own
+ * `--color-status-attention`. `dashed` is unfilled and named for what it
+ * paints, exactly as `PersonCircle` already names this identical border —
+ * this file still does not learn that a caller means *consumed*, *excluded*,
+ * or anything else; it only learns that a border can be solid or dashed.
  *
  * `ui/` never imports the store or a router (`frontend-design.md` §5).
  */
@@ -41,7 +42,7 @@ export interface StatusPillProps {
   /** Drawn as written; the stylesheet does not transform it. */
   label: string
   /** Names the paint. `plain` is the neutral a writing control wears. */
-  tone?: 'plain' | 'not-packed' | 'staged' | 'packed' | 'consumed' | 'attention'
+  tone?: 'plain' | 'not-packed' | 'staged' | 'packed' | 'dashed' | 'attention'
   /**
    * `row` keeps its intrinsic width at a row's trailing edge; `action` shares
    * its row equally with its siblings. The two callers' one layout

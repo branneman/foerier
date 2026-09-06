@@ -101,13 +101,7 @@
     font: var(--text-body) var(--font-ui);
   }
 
-  /*
-   * The list of F3's groups — `Packing.module.css`'s `.groups` verbatim.
-   * `.screen` is the pane a row's own container query would fold against
-   * (`frontend-design.md` §3.2) — none of F5's rows need one today (A10's
-   * one capped column holds at every width), but the type belongs on the
-   * pane, never on `UnpackRow` itself.
-   */
+  /* The list of F3's groups — `Packing.module.css`'s `.groups` verbatim. */
   .groups {
     display: flex;
     flex-direction: column;

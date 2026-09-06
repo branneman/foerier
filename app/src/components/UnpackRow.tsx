@@ -23,10 +23,12 @@ import styles from './UnpackRow.module.css'
  * ## The pill reuses `ui/StatusPill`, not a second control
  *
  * Four outcomes, `StatusPill`'s tones: `back` → `packed`, `open` (`null`) →
- * `not-packed`, `consumed` → `consumed`, `lost` → `attention`. The glyph and
- * the label come from `outcomeGlyph`/`outcomeLabel` — `OUTCOMES`' own words,
- * never re-typed here. `StatusPill`'s own pill is carved out of ruling O's
- * 48px hit-area floor at **44**, drawn directly with no clamp
+ * `not-packed`, `consumed` → `dashed`, `lost` → `attention` — `dashed` names
+ * the border `StatusPill` paints, not the outcome that asked for it (its own
+ * rule; `PersonCircle` already owns this word for the identical border). The
+ * glyph and the label come from `outcomeGlyph`/`outcomeLabel` — `OUTCOMES`'
+ * own words, never re-typed here. `StatusPill`'s own pill is carved out of
+ * ruling O's 48px hit-area floor at **44**, drawn directly with no clamp
  * (`ui/src/StatusPill.test.tsx`); this row does not repeat that floor.
  *
  * ## A trip-only row draws no button at all
@@ -56,12 +58,6 @@ export interface UnpackRowProps {
   meta: string
   /** `null` is open. Ignored when {@link tripOnly} is set. */
   outcome: OutcomeValue | null
-  /**
-   * Carried for Task 13's per-person cluster fraction (`PER-PERSON · 3/3`) —
-   * this task's `meta` already carries every quantity DESTINATION mode
-   * draws on an ordinary row (F6), so this component does not read it.
-   */
-  units: number
   /** The pill's target — opens the outcome sheet (Task 12). */
   onOutcome: () => void
   /** The row body's target — opens the Home picker (Task 14). */
@@ -83,7 +79,7 @@ function toneForOutcome(
   outcome: OutcomeValue | null,
 ): Exclude<StatusPillProps['tone'], undefined> {
   if (outcome === 'back') return 'packed'
-  if (outcome === 'consumed') return 'consumed'
+  if (outcome === 'consumed') return 'dashed'
   if (outcome === 'lost') return 'attention'
   return 'not-packed'
 }

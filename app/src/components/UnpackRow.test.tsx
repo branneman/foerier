@@ -16,7 +16,7 @@ describe('UnpackRow — the pill (F6: the meta is where it goes, the pill is wha
   it.each([
     ['back', '●', 'BACK', 'packed'],
     [null, '○', 'OPEN', 'not-packed'],
-    ['consumed', '', 'CONSUMED', 'consumed'],
+    ['consumed', '', 'CONSUMED', 'dashed'],
     ['lost', '▲', 'LOST', 'attention'],
   ] as const)('draws %s as %s %s, toned %s', (outcome, glyph, label, tone) => {
     render(
@@ -25,7 +25,6 @@ describe('UnpackRow — the pill (F6: the meta is where it goes, the pill is wha
         name="Sleeping bag, winter"
         meta="→ SHELF L-TOP ▸ CRATE B · ×2"
         outcome={outcome}
-        units={2}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
       />,
@@ -44,7 +43,6 @@ describe('UnpackRow — the pill (F6: the meta is where it goes, the pill is wha
         name="Headlamp"
         meta="→ BAK 3"
         outcome="back"
-        units={1}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
       />,
@@ -62,7 +60,6 @@ describe('UnpackRow — the pill (F6: the meta is where it goes, the pill is wha
         name="Cook set"
         meta="→ BAK 3"
         outcome={null}
-        units={1}
         onOutcome={onOutcome}
         onReHome={vi.fn()}
       />,
@@ -82,7 +79,6 @@ describe('UnpackRow — the row body (tap row = re-home)', () => {
         name="Duffel 90 L"
         meta="→ SHELF L-TOP · 12 INSIDE"
         outcome="back"
-        units={1}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
       />,
@@ -103,7 +99,6 @@ describe('UnpackRow — the row body (tap row = re-home)', () => {
         name="Trekking poles"
         meta=""
         outcome={null}
-        units={2}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
       />,
@@ -121,7 +116,6 @@ describe('UnpackRow — the row body (tap row = re-home)', () => {
         name="Tarp 3×4"
         meta="→ CRATE A"
         outcome="back"
-        units={1}
         onOutcome={vi.fn()}
         onReHome={onReHome}
       />,
@@ -141,7 +135,6 @@ describe('UnpackRow — a trip-only row (no button at all)', () => {
         name="Passports, all"
         meta="NOT IN DEPOT"
         outcome={null}
-        units={0}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
         tripOnly
@@ -159,7 +152,6 @@ describe('UnpackRow — a trip-only row (no button at all)', () => {
         name="Passports, all"
         meta="NOT IN DEPOT"
         outcome={null}
-        units={0}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
         tripOnly
@@ -178,7 +170,6 @@ describe('UnpackRow — a trip-only row (no button at all)', () => {
         name="Passports, all"
         meta="NOT IN DEPOT"
         outcome={null}
-        units={0}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
         tripOnly
@@ -204,7 +195,6 @@ describe('UnpackRow — a trip-only row (no button at all)', () => {
         name="Passports, all"
         meta="NOT IN DEPOT"
         outcome={null}
-        units={0}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
         tripOnly
@@ -224,7 +214,6 @@ describe('UnpackRow — the right slot is shaped to take Task 13’s cluster', (
         name="Headlamp"
         meta="→ LADE 2"
         outcome={null}
-        units={3}
         onOutcome={vi.fn()}
         onReHome={vi.fn()}
         cluster={<span data-testid="stand-in-cluster">cluster</span>}

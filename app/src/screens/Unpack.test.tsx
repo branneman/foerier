@@ -126,6 +126,7 @@ function twoWithOneResolved(): readonly OpSpec[] {
 
 const ATTIC = 'pppppppp-0000-7000-8000-00000000000a'
 const KELDER = 'pppppppp-0000-7000-8000-00000000000b'
+const HAL = 'pppppppp-0000-7000-8000-00000000000c'
 
 const SHELF = 'gggggggg-0000-7000-8000-00000000000c'
 const CRATE_B = 'gggggggg-0000-7000-8000-00000000000d'
@@ -135,6 +136,7 @@ const BAK_3 = 'gggggggg-0000-7000-8000-000000000012'
 const GAS_CANISTER = 'gggggggg-0000-7000-8000-000000000013'
 const COOK_SET = 'gggggggg-0000-7000-8000-000000000014'
 const TREKKING_POLES = 'gggggggg-0000-7000-8000-000000000015'
+const HAL_HEADLAMP = 'gggggggg-0000-7000-8000-000000000016'
 
 const E_BAG = 'nnnnnnnn-0000-7000-8000-000000000010'
 const E_DUFFEL = 'nnnnnnnn-0000-7000-8000-000000000011'
@@ -142,6 +144,7 @@ const E_GAS = 'nnnnnnnn-0000-7000-8000-000000000014'
 const E_COOK = 'nnnnnnnn-0000-7000-8000-000000000015'
 const E_POLES = 'nnnnnnnn-0000-7000-8000-000000000016'
 const E_PASSPORTS = 'nnnnnnnn-0000-7000-8000-000000000017'
+const E_HAL_HEADLAMP = 'nnnnnnnn-0000-7000-8000-000000000018'
 
 /**
  * F3/F6's own scenario — `docs/design/README.md` §7's board (§01), minus the
@@ -157,6 +160,11 @@ const E_PASSPORTS = 'nnnnnnnn-0000-7000-8000-000000000017'
  * `consumedCount 2` — the consumed-split form. `Cook set`, a Single, `open`
  * — the plain no-suffix form.
  *
+ * `Hal`: `Headlamp`, a per-person Entry with one Participant (Els), open —
+ * the board's own `Hal 3/3` case, one row skipped for Task 13's cluster.
+ * Kept in the fixture precisely so a Task 13 that misses this room shows up
+ * here, not only once the cluster is wired.
+ *
  * `Loose`: `Trekking poles`, a Counted Entry (`bring 2`) with no residence
  * at all, `open` — the quantity-with-no-path form.
  *
@@ -168,6 +176,7 @@ function destinationScenario(): readonly OpSpec[] {
 
     placeRecorded(ATTIC, 'Attic'),
     placeRecorded(KELDER, 'Kelder'),
+    placeRecorded(HAL, 'Hal'),
 
     gearRecorded(SHELF, {
       name: 'Shelf L-Top',
@@ -224,6 +233,21 @@ function destinationScenario(): readonly OpSpec[] {
       residence: { in: 'gear', id: BAK_3 },
     }),
     tripEntryAdded(ALPS, E_COOK, { from: 'depot', gearId: COOK_SET }),
+
+    // A per-person Entry, resolved by nobody yet — Task 13's own row (the
+    // 34px cluster), skipped here (`destinationGroups`' own rule) but its
+    // room still has to draw a real `resolved/units` header above the empty
+    // list it leaves behind.
+    gearRecorded(HAL_HEADLAMP, {
+      name: 'Headlamp',
+      container: false,
+      kind: 'per_person',
+      residence: { in: 'place', id: HAL },
+    }),
+    tripEntryAdded(ALPS, E_HAL_HEADLAMP, {
+      from: 'depot',
+      gearId: HAL_HEADLAMP,
+    }),
 
     gearRecorded(TREKKING_POLES, {
       name: 'Trekking poles',
@@ -389,7 +413,22 @@ describe('DESTINATION mode — groups (F3)', () => {
       .getAllByTestId('unpack-group-name')
       .map((el) => el.textContent)
 
-    expect(names).toEqual(['Attic', 'Kelder', 'Loose', 'Trip-only'])
+    expect(names).toEqual(['Attic', 'Hal', 'Kelder', 'Loose', 'Trip-only'])
+  })
+
+  /**
+   * The board's own `Hal 3/3` case, one room early — a per-person Entry is
+   * skipped from the row list here (Task 13's cluster), but its units still
+   * count in the header, read from `unpackItems` directly. **If Task 13
+   * ever misses this room**, this is the test that would catch it: without
+   * a per-person Entry in the fixture at all, nothing would notice.
+   */
+  it('reads a per-person-only room header with an empty row list beneath it', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    const hal = groupNamed('Hal')
+    expect(within(hal).getByText('0/1')).toBeInTheDocument()
+    expect(within(hal).queryAllByTestId('unpack-row-name')).toHaveLength(0)
   })
 
   it('reads a room header as resolved/units', async () => {
@@ -485,6 +524,82 @@ describe('DESTINATION mode — the row (F6)', () => {
     for (const meta of screen.getAllByTestId('unpack-row-meta')) {
       expect(meta.textContent).not.toContain('▲')
     }
+  })
+})
+
+/**
+ * Two renderings `returnPathMeta` produces that no board draws and no
+ * ruling names — pinned as they behave today rather than left to drift, per
+ * this codebase's standing rule that a decision taken in code the boards
+ * never reached gets written down and challenged (a design round, not this
+ * diff, settles whether either should read differently).
+ */
+describe('DESTINATION mode — two code-authored renderings, unpinned by any ruling', () => {
+  const BERGING = 'pppppppp-0000-7000-8000-000000000099'
+  const CANISTER = 'gggggggg-0000-7000-8000-000000000099'
+  const E_CANISTER = 'nnnnnnnn-0000-7000-8000-000000000099'
+
+  /**
+   * `consumedCountOf` reads an absent `consumedCount` register as the
+   * **whole** Bring-count (F9: the stepper opens there, since "all of it
+   * used up is the ordinary case") — so tapping `CONSUMED` and never
+   * touching the stepper is the *default* consumed rendering, not a
+   * crafted edge case, and it reads `×0 BACK`.
+   */
+  it('draws ×0 BACK on a consumed Counted Entry whose Consumed-count was never touched', async () => {
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...alps(),
+      placeRecorded(BERGING, 'Berging'),
+      gearRecorded(CANISTER, {
+        name: 'Fuel canister',
+        container: false,
+        kind: 'counted',
+        residence: { in: 'place', id: BERGING },
+      }),
+      tripEntryAdded(ALPS, E_CANISTER, { from: 'depot', gearId: CANISTER }),
+      tripEntryBringCountSet(ALPS, E_CANISTER, 3),
+      tripOutcomeSet(ALPS, E_CANISTER, 'consumed'),
+      // Deliberately no `trip.consumed_count_set`.
+    )
+
+    // No intermediate container between the Gear and its room, so the
+    // room's own name — already the group header — has nothing further to
+    // add and the meta reads the suffix alone.
+    expect(screen.getByText('×3 CONSUMED · ×0 BACK')).toBeInTheDocument()
+  })
+
+  const SCHUUR = 'pppppppp-0000-7000-8000-00000000009a'
+  const EMPTY_CRATE = 'gggggggg-0000-7000-8000-00000000009a'
+  const E_EMPTY_CRATE = 'nnnnnnnn-0000-7000-8000-00000000009a'
+
+  /**
+   * `subtreeOf` counts trip Entries actually moved inside — an ordinary,
+   * honest `0` for a container nothing has been packed into yet, drawn
+   * exactly as any other count would be.
+   */
+  it('draws 0 INSIDE on a container Entry with nothing moved inside it', async () => {
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...alps(),
+      placeRecorded(SCHUUR, 'Schuur'),
+      gearRecorded(EMPTY_CRATE, {
+        name: 'Empty crate',
+        container: true,
+        kind: 'single',
+        residence: { in: 'place', id: SCHUUR },
+      }),
+      tripEntryAdded(ALPS, E_EMPTY_CRATE, {
+        from: 'depot',
+        gearId: EMPTY_CRATE,
+      }),
+      tripOutcomeSet(ALPS, E_EMPTY_CRATE, 'back'),
+      // Deliberately no `trip.entry_moved` targeting this container.
+    )
+
+    // Same reason as the consumed case above — the crate sits directly in
+    // its room, so the meta reads the suffix alone.
+    expect(screen.getByText('0 INSIDE')).toBeInTheDocument()
   })
 })
 

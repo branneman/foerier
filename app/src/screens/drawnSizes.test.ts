@@ -340,11 +340,12 @@ describe("ruling O's drawn sizes", () => {
     expect(pill).toMatch(/min-height:\s*max\(2\.75rem,\s*44px\)/)
     expect(ruleBody(css, '.pill::after')).toBeUndefined()
 
-    // `UnpackRow.module.css` grows no extension of its own around the pill —
-    // the 48px hit-area rule is `StatusPill`'s to keep, not this row's to
-    // duplicate.
+    // `UnpackRow.module.css` declares no `.pill` rule of its own — the 48px
+    // hit-area rule is `StatusPill`'s to keep, not this row's to duplicate.
+    // `ruleBody` looks for an actual rule block, not a substring, so a
+    // future comment that merely mentions `.pill` cannot fail this.
     const rowCss = moduleCss('..', 'components', 'UnpackRow.module.css')
-    expect(rowCss).not.toMatch(/\.pill/)
+    expect(ruleBody(rowCss, '.pill')).toBeUndefined()
   })
 
   /**

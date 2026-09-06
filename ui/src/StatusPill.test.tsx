@@ -96,11 +96,12 @@ describe('StatusPill', () => {
   })
 
   /**
-   * S10's third and fourth callers of this grammar (`docs/design/README.md`
-   * §7, ruling F6): F5's outcome pill reuses `StatusPill` rather than
-   * growing a second control, so `▲ LOST` gets the system's one attention
-   * tint and `CONSUMED` gets a dashed, unfilled border — no tone this file
-   * had before either shape.
+   * S10's third and fourth callers of this grammar: F5's outcome pill
+   * reuses `StatusPill` rather than growing a second control, so `▲ LOST`
+   * gets the system's one attention tint and a fourth pill gets a dashed,
+   * unfilled border — no tone this file had before either shape. Named
+   * `dashed`, not for what a caller means by it: `PersonCircle` already
+   * owns this word for the identical border.
    */
   it('tints the attention tone with the system’s one attention colour', () => {
     render(
@@ -113,21 +114,16 @@ describe('StatusPill', () => {
     )
   })
 
-  it('dashes the consumed tone rather than filling it', () => {
+  it('dashes the dashed tone rather than filling it', () => {
     render(
-      <StatusPill
-        glyph=""
-        label="CONSUMED"
-        tone="consumed"
-        onClick={vi.fn()}
-      />,
+      <StatusPill glyph="" label="CONSUMED" tone="dashed" onClick={vi.fn()} />,
     )
 
-    expect(screen.getByRole('button')).toHaveAttribute('data-tone', 'consumed')
-    expect(ruleBody(".pill[data-tone='consumed']")).toMatch(
+    expect(screen.getByRole('button')).toHaveAttribute('data-tone', 'dashed')
+    expect(ruleBody(".pill[data-tone='dashed']")).toMatch(
       /border-style:\s*dashed/,
     )
-    expect(ruleBody(".pill[data-tone='consumed']")).not.toMatch(/background:/)
+    expect(ruleBody(".pill[data-tone='dashed']")).not.toMatch(/background:/)
   })
 
   it('draws a focus ring', () => {

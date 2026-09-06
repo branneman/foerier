@@ -60,7 +60,6 @@ interface UnpackRowData {
   readonly name: string
   readonly meta: string
   readonly outcome: OutcomeValue | null
-  readonly units: number
   readonly tripOnly?: boolean
 }
 
@@ -91,10 +90,12 @@ const NO_GROUPS: readonly UnpackGroup[] = []
  * `destination` decides how much of {@link returnPathOf}'s path is worth
  * repeating: a room's own name is already the group header, so only what
  * sits *inside* it is drawn; the `Loose` bucket states nothing above the
- * row, so a gear resting in a loose container draws its whole path. Reading
- * `path[0]` for the drop is deliberately not a second `unpackDestinationOf`
- * call — `path` and `destination` are already required to agree, being the
- * same {@link ContainmentView}'s answer to the same gear.
+ * row, so a gear resting in a loose container draws its whole path. **Passed
+ * in by the caller, not re-derived here** — `destinationGroups` already
+ * calls `unpackDestinationOf` once to decide which bucket this Entry falls
+ * into, and a second call here over the same {@link ContainmentView} would
+ * be exactly the re-derivation this file's own convention forbids, not just
+ * a redundant walk.
  *
  * The suffix is one of three, in F1/F9's own precedence: a container's `N
  * INSIDE` first (a container never carries a plain quantity — F1), then a
@@ -111,21 +112,27 @@ function returnPathMeta(
   tripView: TripContainmentView,
   container: boolean,
   item: Extract<UnpackItem, { kind: 'entry' }>,
+  destination: string | null,
 ): string {
-  const source = entry.source?.value
-  const gearId =
-    source !== undefined && source.from === 'depot' ? source.gearId : undefined
-  if (gearId === undefined) return ''
-
-  const destination = unpackDestinationOf(gearId, state, view)
   const path = returnPathOf(entry, state, view)
   const visible = destination === null ? path : path.slice(1)
   const pathText = visible.map((segment) => segment.name).join(' ▸ ')
 
   const suffix: string[] = []
   if (container) {
+    // **Code-authored, no board draws it, unpinned by a ruling.** An empty
+    // container reads `0 INSIDE` — nothing named this case, and nothing
+    // forbids it either. `Unpack.test.tsx` pins it as it behaves today
+    // rather than inventing a fallback string.
     suffix.push(`${subtreeOf(tripView, entry.id).size} INSIDE`)
   } else if (item.outcome === 'consumed' && item.consumed !== null) {
+    // **Code-authored, no board draws it, unpinned by a ruling.**
+    // `consumedCountOf` reads an absent register as the **whole**
+    // Bring-count (F9: the stepper opens there because "all of it used up
+    // is the ordinary case"), so tapping `CONSUMED` and never touching the
+    // stepper reads `×N CONSUMED · ×0 BACK` — the **default** rendering,
+    // not an edge case. F18 drops a sibling meta's zero segment the other
+    // way; `Unpack.test.tsx` pins this one as it behaves today.
     suffix.push(`×${item.consumed} CONSUMED`)
     suffix.push(`×${item.units - item.consumed} BACK`)
   } else if (bringCountOf(entry, state) !== null) {
@@ -192,7 +199,15 @@ function destinationGroups(
     else list.push(entry.id)
   }
 
-  function rowsFor(entryIds: readonly string[]): UnpackRowData[] {
+  /**
+   * `destination` is one value for the whole call — every Entry a single
+   * `rowsFor` call draws shares the bucket it was sorted into above, so it
+   * is the caller's fact to pass down, not each row's to re-derive.
+   */
+  function rowsFor(
+    entryIds: readonly string[],
+    destination: string | null,
+  ): UnpackRowData[] {
     const rows: UnpackRowData[] = []
     for (const entryId of entryIds) {
       const entry = entryById.get(entryId)
@@ -212,9 +227,16 @@ function destinationGroups(
       rows.push({
         entryId,
         name: entryLabel(entry, state),
-        meta: returnPathMeta(entry, state, view, tripView, container, item),
+        meta: returnPathMeta(
+          entry,
+          state,
+          view,
+          tripView,
+          container,
+          item,
+          destination,
+        ),
         outcome: item.outcome,
-        units: item.units,
       })
     }
     return rows
@@ -235,7 +257,7 @@ function destinationGroups(
       key: place.id,
       name: place.name?.value ?? '',
       countLabel: countLabelFor(entryIds),
-      rows: rowsFor(entryIds),
+      rows: rowsFor(entryIds, place.id),
     })
   }
 
@@ -246,7 +268,7 @@ function destinationGroups(
       subtitle: 'NO HOME SLOT',
       muted: true,
       countLabel: countLabelFor(looseIds),
-      rows: rowsFor(looseIds),
+      rows: rowsFor(looseIds, null),
     })
   }
 
@@ -265,7 +287,6 @@ function destinationGroups(
           name: entry === undefined ? '' : entryLabel(entry, state),
           meta: 'NOT IN DEPOT',
           outcome: null,
-          units: 0,
           tripOnly: true,
         }
       }),
@@ -448,7 +469,6 @@ export function Unpack() {
                           name={row.name}
                           meta={row.meta}
                           outcome={row.outcome}
-                          units={row.units}
                           onOutcome={noop}
                           onReHome={noop}
                           tripOnly={row.tripOnly ?? false}
