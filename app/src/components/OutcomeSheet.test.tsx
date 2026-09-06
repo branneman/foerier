@@ -60,6 +60,12 @@ const E_CRATE = 'eeeeeeee-0000-7000-8000-000000000014'
 const INNER = 'gggggggg-0000-7000-8000-000000000015'
 const E_INNER = 'eeeeeeee-0000-7000-8000-000000000015'
 
+const EXOTIC = 'gggggggg-0000-7000-8000-000000000018'
+const E_EXOTIC = 'eeeeeeee-0000-7000-8000-000000000018'
+
+const UNSYNCED = 'gggggggg-0000-7000-8000-000000000019'
+const E_UNSYNCED = 'eeeeeeee-0000-7000-8000-000000000019'
+
 const HEADLAMP = 'gggggggg-0000-7000-8000-000000000016'
 const E_HEADLAMP = 'nnnnnnnn-0000-7000-8000-000000000016'
 
@@ -501,7 +507,9 @@ describe('the outcome sheet', () => {
     renderSheet(seed, E_CRATE)
 
     expect(
-      screen.getByText('OUTCOME · ITS CONTENTS KEEP THEIR OWN OUTCOMES.'),
+      screen.getByText(
+        'OUTCOME · CONTAINER · ITS CONTENTS KEEP THEIR OWN OUTCOMES.',
+      ),
     ).toBeInTheDocument()
     expect(screen.queryByText(/INSIDE/)).not.toBeInTheDocument()
 
@@ -539,35 +547,71 @@ describe('the outcome sheet', () => {
 })
 
 /**
- * Two renderings this file's own fact composition produces that no board
- * draws and no ruling names — pinned as they behave today rather than left
- * to drift, per this codebase's standing rule that a decision taken in code
- * the boards never reached gets written down and challenged (a design
- * round, not this diff, settles whether either should read differently).
- * `Unpack.tsx`'s own `describe('DESTINATION mode — two code-authored
- * renderings, unpinned by any ruling', …)` is the precedent this mirrors —
- * no board frame here draws this sheet for anything but a Counted Entry.
+ * **G4 — the fact line's ladder**, `register · what · where`, each segment
+ * dropping when it has nothing to say. These were the two code-authored
+ * collapses S10 shipped and pinned; round 2 ruled the whole ladder, so the
+ * pair is joined here by the rungs that were never asserted.
+ *
+ * Every string below is also the sheet's own `description`, which is what a
+ * screen reader hears immediately after the title.
  */
-describe('two code-authored renderings, unpinned by any ruling', () => {
-  it('reads OUTCOME · → path for a Single Entry with a home', async () => {
+describe('G4 — the fact line drops from the right', () => {
+  it('names the Kind on a Single Entry with a home', async () => {
     const seed = await seeded()
     renderSheet(seed, E_MAP)
 
-    expect(screen.getByText('OUTCOME · → Bak 3')).toBeInTheDocument()
+    expect(screen.getByText('OUTCOME · SINGLE · → Bak 3')).toBeInTheDocument()
   })
 
-  it('collapses to the bare word OUTCOME for a Single Entry with no home path', async () => {
+  it('drops the arrow on a Single Entry with no home path', async () => {
     // `Tent, 3p` carries no `residence` register at all — the fully-Loose
-    // case — so `returnPathOf` answers `[]` and the fact has nothing left
-    // to say beyond the label itself. This is the sheet's own
-    // `description`, which is what a screen reader hears right after the
-    // title: the worst case this composition reaches is one word.
+    // case — so `returnPathOf` answers `[]` and the *where* rung drops, as
+    // the Loose row's own meta already does. The Kind rung survives, which
+    // is the whole of what G4 changed here.
     const seed = await seeded()
     renderSheet(seed, E_TENT)
 
     const sheet = screen.getByRole('dialog', { name: 'Tent, 3p' })
-    const fact = screen.getByText('OUTCOME')
+    const fact = screen.getByText('OUTCOME · SINGLE')
     expect(sheet).toHaveAttribute('aria-describedby', fact.id)
+  })
+
+  /**
+   * §4: the sheet may not assert a Kind nobody stated. A Gear folded from a
+   * build that names a Kind this one cannot is the tolerant reader's own
+   * ordinary case, and the honest line states where it goes and nothing
+   * about what it is.
+   */
+  it('drops the middle for a Kind this build cannot name', async () => {
+    const seed = await seeded(
+      gearRecorded(EXOTIC, {
+        name: 'Sled',
+        container: false,
+        // A Kind from a later build. Cast at the seam, exactly as a peer's
+        // op would arrive over the wire.
+        kind: 'towed' as 'single',
+        residence: { in: 'place', id: BAK3 },
+      }),
+      tripEntryAdded(TRIP, E_EXOTIC, { from: 'depot', gearId: EXOTIC }),
+    )
+    renderSheet(seed, E_EXOTIC)
+
+    expect(screen.getByText('OUTCOME · → Bak 3')).toBeInTheDocument()
+  })
+
+  /**
+   * The floor, and the one case that reaches it: an Entry naming a Gear
+   * this replica has not folded has no Kind to name and no residence to
+   * point at, so both rungs drop together.
+   */
+  it('collapses to the bare word for an unsynced Gear', async () => {
+    const seed = await seeded(
+      tripEntryAdded(TRIP, E_UNSYNCED, { from: 'depot', gearId: UNSYNCED }),
+    )
+    renderSheet(seed, E_UNSYNCED)
+
+    const fact = screen.getByText('OUTCOME')
+    expect(fact).toBeInTheDocument()
   })
 })
 

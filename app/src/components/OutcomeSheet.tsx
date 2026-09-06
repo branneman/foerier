@@ -2,6 +2,7 @@ import {
   bringCountOf,
   consumedCountOf,
   countOfUnpack,
+  entryKind,
   entryLabel,
   isClosed,
   isContainerEntry,
@@ -108,11 +109,15 @@ import styles from './OutcomeSheet.module.css'
  * no quantity at all for a container, and adds only the reassurance clause
  * after the path.
  *
- * ## A Single/per-person Entry's fact is code-authored, unpinned by any board
+ * ## The fact line is a ladder that drops from the right (§5i G4)
  *
- * No board frame draws this sheet for anything but a Counted Entry, so the
- * bare-`OUTCOME` collapse below is this file's own reading, not a drawn
- * string — see {@link fact}'s own comment.
+ * `register · what · where`. The middle names the Kind — `CONTAINER`,
+ * `×N BROUGHT`, `SINGLE`, or per-person's `N OF M RESOLVED` from the roster
+ * arm — and drops for a Kind this build cannot name; the arrow drops with no
+ * home; the bare word `OUTCOME` is the floor, which an unsynced Gear alone
+ * reaches. Round 2 ruled the forms after S10 shipped the collapse
+ * code-authored — see {@link fact}'s own comment for which segment answers
+ * to what.
  *
  * ## The roster variant (Task 13, F7) — one component, not a second sheet
  *
@@ -377,22 +382,33 @@ export function OutcomeSheet({
       return parts.join(' · ')
     }
 
-    // A container states no quantity at all — F1's own reading, settled over
-    // board §02's annotation card: the inside-count is the **row**'s meta,
-    // not this sheet's. Everything else — a Single, an unrecognised Kind, an
-    // unsynced Gear, a per-person container's Entry-level outcome — is
-    // **code-authored, unpinned by any board**: no board frame draws this
-    // sheet for anything but a Counted Entry, so a Single with a home path
-    // reads `OUTCOME · → <path>` and one with none (the fully-Loose case)
-    // collapses to the bare word `OUTCOME` — `Sheet`'s own `description`,
-    // which is what a screen reader hears right after the title.
-    // `OutcomeSheet.test.tsx` pins both as they behave today, exactly as
-    // `Unpack.tsx`'s own `returnPathMeta`/`headerlessMeta` pin their own
-    // code-authored renderings, rather than inventing a fallback string no
-    // ruling has settled.
+    // **G4: the line is B1's ladder — `register · what · where` — and an
+    // absent segment drops, because a coarse true line beats a precise
+    // truncated one.** The middle names what this Entry *is*: `CONTAINER`
+    // first (F1's own reading, settled over board §02's annotation card —
+    // the inside-count is the **row**'s meta, never this sheet's), then a
+    // Counted Entry's `×N BROUGHT`, then `SINGLE`. The roster arm above
+    // supplies per-person's own `N OF M RESOLVED`.
+    //
+    // **The middle drops for a Kind this build cannot name** (§4: the sheet
+    // may not assert a Kind nobody stated), and the arrow drops with no
+    // home, as the Loose row's own meta already does. The bare word is the
+    // floor, reached by an unsynced Gear — no Kind to name and no residence
+    // to point at — and the screen reader hears the title first regardless,
+    // since this string is also `Sheet`'s own `description`.
+    //
+    // The Counted arm stays gated on `bringCount`, never on
+    // `entryKind(…) === 'counted'` — `bringCountOf` is the one place that
+    // gate is spelled, and re-deriving it here is what this codebase's
+    // convention forbids. `entryKind` enters only to name the two Kinds
+    // that carry no quantity.
     const parts: string[] = ['OUTCOME']
-    if (!container && bringCount !== null) {
+    if (container) {
+      parts.push('CONTAINER')
+    } else if (bringCount !== null) {
       parts.push(`×${bringCount} BROUGHT`)
+    } else if (entryKind(entry, state) === 'single') {
+      parts.push('SINGLE')
     }
     if (pathText !== '') parts.push(`→ ${pathText}`)
 
