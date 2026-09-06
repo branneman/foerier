@@ -698,17 +698,25 @@ function personEntryMeta(
  * Piece is always exactly one unit, so board §03 states nothing beyond
  * *where*. An entry-kind row's meta is {@link personEntryMeta}'s.
  *
- * **A trip-only Entry appears in no PERSON-mode group at all** —
- * code-authored, awaiting a board. `unpackItems` already excludes it
- * (invariant 18) before this function ever sees it, so nothing here decides
- * to drop it; the omission is a *spine* fact, not a partition one, and
- * `personBuckets` widening under ruling R19 does not touch it either way.
- * F4's own board draws a trip-only Entry under `Shared` in PERSON mode, one
- * tap away on the very same Trip DESTINATION mode already shows it on —
- * ruling R20 keeps today's behaviour rather than inventing the placement and
- * the slot treatment (a pill? `CLEARS AT CLOSE` text? Task 13's cluster
- * slot is for a per-person row, which this is not) no board has drawn, and
- * this file's own test pins it so a later task cannot change it silently.
+ * **A trip-only Entry sits at `Shared`'s tail** (§5i G9, overturning R20).
+ * PERSON partitions by *whose it is*, and a trip-only Entry is attributed to
+ * nobody — which is `Shared`'s own definition, and the answer F4 gives one
+ * tap away on the same Trip. It takes DESTINATION's row anatomy verbatim
+ * (`TRIP-ONLY` tag, meta `NOT IN DEPOT`, faint `CLEARS AT CLOSE` in the
+ * slot), so nothing new holds text: that slot is an Entry row's, never a
+ * cluster's.
+ *
+ * `unpackItems` still excludes it (invariant 18 — it takes no outcome), so
+ * it reaches no bucket and it is appended **after** the bucket's own rows
+ * rather than partitioned into them. `Shared`'s header count therefore
+ * excludes it, as every count on this screen does.
+ *
+ * The ruling's closing sentence — *a trip-only per-person Entry's Pieces go
+ * to their Participants with the same slot* — describes a shape the op
+ * catalogue cannot make: a trip-only source carries a name and a container
+ * flag and no Kind, so `entryKind` answers `trip_only` before any Kind
+ * question is asked, and there is no such Entry to place. Recorded rather
+ * than built as an unreachable branch.
  */
 function personGroups(
   trip: TripState,
@@ -813,7 +821,20 @@ function personGroups(
     })
   }
 
-  if (sharedItems.length > 0) {
+  // §5i G9: the trip-only rows, at `Shared`'s tail, in DESTINATION's own
+  // anatomy. They reach no bucket — `unpackItems` excludes them — so they
+  // are appended after the bucket's rows and counted by nothing.
+  const tripOnlyRows: UnpackRowData[] = entries
+    .filter((entry) => entryKind(entry, state) === 'trip_only')
+    .map((entry) => ({
+      entryId: entry.id,
+      name: entryLabel(entry, state),
+      meta: 'NOT IN DEPOT',
+      outcome: null,
+      tripOnly: true,
+    }))
+
+  if (sharedItems.length > 0 || tripOnlyRows.length > 0) {
     const { resolved, total, open } = countOfUnpack(sharedItems)
     groups.push({
       key: 'shared',
@@ -825,7 +846,7 @@ function personGroups(
       subtitle: NOT_ATTRIBUTED,
       countLabel: `${resolved}/${total} · ${open} OPEN`,
       isPersonGroup: true,
-      rows: rowsFor(sharedItems),
+      rows: [...rowsFor(sharedItems), ...tripOnlyRows],
     })
   }
 

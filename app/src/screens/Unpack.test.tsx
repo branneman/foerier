@@ -1678,24 +1678,59 @@ function personContainerAndConsumedScenario(): readonly OpSpec[] {
   ]
 }
 
-describe('PERSON mode — a trip-only Entry (ruling R20)', () => {
+describe('PERSON mode — a trip-only Entry sits at Shared’s tail (§5i G9)', () => {
   /**
-   * Ruling R20: PERSON mode shows a trip-only Entry **nowhere** — it drops
-   * out at the spine (`unpackItems` excludes it, invariant 18) before
-   * `personGroups` ever sees it. F4's own board draws it under `Shared`,
-   * one tap away on the same Trip DESTINATION mode already shows it on;
-   * ruling R20 keeps today's behaviour rather than inventing a placement
-   * and a slot treatment no board has drawn, and this is the test that pins
-   * it against a later task changing it silently.
+   * **G9 overturns R20.** PERSON partitions by *whose it is*, and a
+   * trip-only Entry is attributed to nobody — `Shared`'s own definition,
+   * and the answer F4 already gives one tap away on the same Trip. R20 had
+   * kept the omission rather than invent a placement and a slot treatment;
+   * the round drew both, and it is DESTINATION's anatomy verbatim.
    */
-  it('draws no trace of a trip-only Entry anywhere in PERSON mode', async () => {
+  it('draws the trip-only row under Shared, in DESTINATION’s own anatomy', async () => {
     const user = userEvent.setup()
     await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
 
     await chooseMode(user, 'PERSON')
 
-    expect(screen.queryByText('Passports, all')).not.toBeInTheDocument()
-    expect(screen.queryByText('TAKES NO OUTCOME')).not.toBeInTheDocument()
+    const shared = groupNamed('Shared')
+    const row = within(shared).getByTestId(`unpack-row-${E_PASSPORTS}`)
+    expect(within(row).getByText('TRIP-ONLY')).toBeInTheDocument()
+    expect(within(row).getByText('NOT IN DEPOT')).toBeInTheDocument()
+    expect(within(row).getByText('CLEARS AT CLOSE')).toBeInTheDocument()
+    // The slot is an Entry row's, not a control: nothing new holds text.
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('sits at the tail, after Shared’s own depot rows', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    const rows = within(groupNamed('Shared'))
+      .getAllByTestId(/^unpack-row-/)
+      .map((row) => row.getAttribute('data-testid'))
+      // `unpack-row-body`/`-name`/`-meta`/`-rehomed`/`-badge` share the
+      // prefix; the row wrappers are the ones ending in an Entry id.
+      .filter((id) => id !== null && id.includes('-0000-7000-8000-'))
+
+    expect(rows[rows.length - 1]).toBe(`unpack-row-${E_PASSPORTS}`)
+  })
+
+  it('excludes it from Shared’s header count, as every count on this screen does', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    // `unpackItems` never yields a trip-only item (invariant 18), so the
+    // count is of the bucket alone and the appended row is counted by
+    // nothing — the denominator stays the 10 units the depot Entries carry,
+    // where counting the passports would make it 11.
+    const header = within(groupNamed('Shared')).getByTestId(
+      'unpack-group-header',
+    )
+    expect(header).toHaveTextContent('7/10 · 3 OPEN')
   })
 })
 
