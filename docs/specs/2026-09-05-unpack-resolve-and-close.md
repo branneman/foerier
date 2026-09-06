@@ -1201,12 +1201,12 @@ argument live in the test file's own docstring.
   double-reduction*. Withheld, not greyed; the Entry's split stays legible on
   the row's own meta. Every other write on the screen stays live — a phase
   locks nothing.
-- **The container row's meta reads `N PACKED INSIDE`** (finding M1). One
-  container drew two different `INSIDE` numbers one tap apart: this one is
-  the **trip** subtree, transitive (what came home in the crate); the re-home
-  picker's `N INSIDE RIDE ALONG` is the **home** tree's direct children (what
-  moves when it is re-homed). Copy only — neither number changed. It is a
-  departure from the board's bare `12 INSIDE`.
+- **Finding M1, the two `INSIDE` numbers one tap apart, is logged for a
+  design round rather than fixed** — see §8.12. A qualifier was drafted in
+  the code and reverted under **ruling R38**: on-screen copy is the boards'
+  to decide, and M1's instruction was *copy fix only*, meaning disambiguate
+  with what the boards already provide rather than mint a term. No number
+  ever moved, and none does now.
 - **Gear detail builds one containment view for the whole screen** (finding
   M4). Its `whereabouts` calls omitted `view` while a comment beside them
   claimed the second call was free; `tripSlicesOf`'s memo covers the *trip*
@@ -1225,7 +1225,7 @@ argument live in the test file's own docstring.
   says why it sits under a room it did not leave from"*). Gating on `back`
   would withhold the explanation precisely where the row moved rooms.
 
-### 8.11 An open question for the next design round: an over-claimed *and* unaccounted gear has no settle door
+### 8.11 An open question for the next design round: an over-claimed *and* unaccounted gear keeps its `▲` but loses its settle door
 
 `rowWhereabouts` states the **active** fact when a Gear is both over-claimed
 and unaccounted (`▲ 2 TRIPS`, F16(2)) — one glyph, one word, the fact about
@@ -1244,3 +1244,39 @@ pairing, so nothing is being fixed here. But the ordering is code-authored
 rather than drawn. A round should rule whether the two footers stack, whether
 the standing keeps its settle route beneath the over-claim's band, or whether
 today's precedence is right as it stands.
+
+### 8.12 A second open question for the next design round: `INSIDE` names three different counts
+
+**Ruling R38.** One word, three counts, two screens, and two of them one tap
+apart on the same screen:
+
+| Where | Drawn as | What it counts |
+|---|---|---|
+| F5's container row meta (`Unpack.tsx`, `returnPathMeta` / `headerlessMeta`) | `→ SHELF L-TOP · 12 INSIDE` | the **trip** containment subtree, **transitively** — what came home in the crate |
+| The re-home picker's ride-along line (`HomePicker.tsx`, `moving.insideCount`) | `3 INSIDE RIDE ALONG` | the **home** tree's **direct** children — what moves when the crate is re-homed |
+| The Depot row's name suffix (`ui/GearRow.tsx`, `insideCount`) | `5 INSIDE` | the **home** tree's **direct** children again, for a third question |
+
+Every one of them is a true answer. They differ in **which tree** (trip vs
+home) and in **depth** (transitive vs direct), so no single word can cover all
+three, and the first two are reachable from the same row: tap the container's
+row body and the picker states a different number than the meta line the tap
+was made from.
+
+**A qualifier was drafted here and reverted.** The first pass at this fix
+changed F5's meta to `N PACKED INSIDE`, which reads well and is accurate. It
+was overturned because on-screen copy is decided by the design boards, never
+by an implementer — the same reason this slice already overturned an invented
+per-person prefix — and because M1's instruction was *copy fix only*, meaning
+disambiguate with what the boards already provide. F1 and the DESTINATION line
+both draw a bare `12 INSIDE`; `§3c` draws `N INSIDE RIDE ALONG`; Components
+§11 draws the Depot suffix. Nothing in that vocabulary distinguishes the three,
+which is precisely the finding.
+
+**What a round should rule**, with all three strings in front of it rather
+than one: whether the trip-world count takes a word of its own, whether the
+two home-world counts stay identical (they answer different questions over the
+same number), and whether the picker's line should count the **subtree** it
+actually moves — which is a separate, already-recorded defect
+(`docs/technical-debt.md`, `moving.insideCount`) that a copy ruling would want
+to know about, since fixing the number and fixing the word are the same
+sitting.

@@ -186,7 +186,7 @@ const E_HAL_HEADLAMP = 'nnnnnnnn-0000-7000-8000-000000000018'
  * `Attic`: `Sleeping bag, winter` two levels deep (`Shelf L-Top ▸ Crate B`),
  * a Counted Entry, `back` — the plain-quantity form. `Duffel 90 L`, a
  * container one level deep (`Shelf L-Top`), `back`, with two Entries moved
- * inside it on the Trip — the container's `N PACKED INSIDE` form.
+ * inside it on the Trip — the container's `N INSIDE` form.
  *
  * `Kelder`: `Gas canister 450`, a Counted Entry (`bring 4`), `consumed` with
  * `consumedCount 2` — the consumed-split form. `Cook set`, a Single, `open`
@@ -564,12 +564,10 @@ describe('DESTINATION mode — the row (F6)', () => {
     expect(screen.getByText('→ Shelf L-Top ▸ Crate B · ×2')).toBeInTheDocument()
   })
 
-  it("draws a container's return path form, N PACKED INSIDE, and no rail", async () => {
+  it("draws a container's return path form, N INSIDE, and no rail", async () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
 
-    expect(
-      screen.getByText('→ Shelf L-Top · 2 PACKED INSIDE'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('→ Shelf L-Top · 2 INSIDE')).toBeInTheDocument()
 
     const row = screen.getByTestId(`unpack-row-${E_DUFFEL}`)
     expect(within(row).queryByTestId('journey-rail')).not.toBeInTheDocument()
@@ -998,7 +996,7 @@ describe('DESTINATION mode — two code-authored renderings, unpinned by any rul
    * honest `0` for a container nothing has been packed into yet, drawn
    * exactly as any other count would be.
    */
-  it('draws 0 PACKED INSIDE on a container Entry with nothing moved inside it', async () => {
+  it('draws 0 INSIDE on a container Entry with nothing moved inside it', async () => {
     await renderUnpack(
       `/trips/${ALPS}/unpack`,
       ...alps(),
@@ -1019,7 +1017,7 @@ describe('DESTINATION mode — two code-authored renderings, unpinned by any rul
 
     // Same reason as the consumed case above — the crate sits directly in
     // its room, so the meta reads the suffix alone.
-    expect(screen.getByText('0 PACKED INSIDE')).toBeInTheDocument()
+    expect(screen.getByText('0 INSIDE')).toBeInTheDocument()
   })
 })
 
@@ -1560,7 +1558,7 @@ function personContainerAndConsumedScenario(): readonly OpSpec[] {
     }),
     tripEntryAdded(ALPS, E_CRATE_K, { from: 'depot', gearId: CRATE_K }),
     tripOutcomeSet(ALPS, E_CRATE_K, 'back'),
-    // Deliberately no `trip.entry_moved` into it — the same `0 PACKED INSIDE`
+    // Deliberately no `trip.entry_moved` into it — the same `0 INSIDE`
     // code-authored default `destinationScenario`'s own DESTINATION-mode
     // test pins.
 
@@ -1600,7 +1598,7 @@ describe('PERSON mode — a trip-only Entry (ruling R20)', () => {
 })
 
 describe('PERSON mode — the container and consumed-split arms (ruling I1)', () => {
-  it('draws a Personal container row with N PACKED INSIDE before the path, not after', async () => {
+  it('draws a Personal container row with N INSIDE before the path, not after', async () => {
     const user = userEvent.setup()
     await renderUnpack(
       `/trips/${ALPS}/unpack`,
@@ -1610,9 +1608,7 @@ describe('PERSON mode — the container and consumed-split arms (ruling I1)', ()
     await chooseMode(user, 'PERSON')
 
     expect(
-      within(groupNamed('Kees')).getByText(
-        'PERSONAL K · 0 PACKED INSIDE · → Room',
-      ),
+      within(groupNamed('Kees')).getByText('PERSONAL K · 0 INSIDE · → Room'),
     ).toBeInTheDocument()
   })
 
@@ -1694,7 +1690,7 @@ describe('ALL mode (spec §3.4)', () => {
       screen.getByText('×2 · → Attic ▸ Shelf L-Top ▸ Crate B'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('2 PACKED INSIDE · → Attic ▸ Shelf L-Top'),
+      screen.getByText('2 INSIDE · → Attic ▸ Shelf L-Top'),
     ).toBeInTheDocument()
     expect(
       screen.getByText('×2 CONSUMED · ×2 BACK · → Kelder ▸ Bak 3'),

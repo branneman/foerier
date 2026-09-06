@@ -185,8 +185,7 @@ const CLOSE_HINT_READY =
  * a redundant walk.
  *
  * The suffix is one of three, in F1/F9's own precedence: a container's `N
- * PACKED INSIDE` first (a container never carries a plain quantity — F1),
- * then a
+ * INSIDE` first (a container never carries a plain quantity — F1), then a
  * consumed Counted's split (`item.consumed` is non-null only there), then a
  * Counted Entry's plain quantity — gated on {@link bringCountOf}, never on
  * `entryKind(entry, state) === 'counted'`, which is exactly the re-derivation
@@ -215,21 +214,23 @@ function returnPathMeta(
 
   const suffix: string[] = []
   if (container) {
-    // **`PACKED` is finding M1's copy fix, and the number is unchanged.**
-    // The board draws a bare `12 INSIDE` here, and one tap away the re-home
-    // picker draws `3 INSIDE RIDE ALONG` for the same container — two true
-    // answers to different questions sharing one word. This count is the
-    // **trip** subtree, transitive: what came home in the crate. The
-    // picker's is the **home** tree's direct children: what moves when the
-    // crate is re-homed. Neither number moves; only this one now says which
-    // world it counts. (The picker's is itself narrower than the move it
-    // discloses — recorded as debt, `moving.insideCount`.)
+    // **This count is the TRIP subtree, transitive** — what came home in
+    // the crate — and one tap away the re-home picker draws `3 INSIDE RIDE
+    // ALONG` for the same container, which is the **home** tree's direct
+    // children: what moves when the crate is re-homed. Two true answers to
+    // different questions sharing one word, and `ui/GearRow`'s Depot row
+    // draws a third bare `N INSIDE` over the home tree again. **Finding M1,
+    // logged as a design-round question rather than patched** (spec §8.12):
+    // a qualifier was drafted here and reverted under ruling R38, because
+    // on-screen copy is the boards' to decide and F1 draws a bare
+    // `12 INSIDE`. A round wanting one vocabulary should see all three
+    // strings together, which is worth more than a fix to one of them.
     //
     // **Code-authored, no board draws it, unpinned by a ruling.** An empty
-    // container reads `0 PACKED INSIDE` — nothing named this case, and
-    // nothing forbids it either. `Unpack.test.tsx` pins it as it behaves
-    // today rather than inventing a fallback string.
-    suffix.push(`${subtreeOf(tripView, entry.id).size} PACKED INSIDE`)
+    // container reads `0 INSIDE` — nothing named this case, and nothing
+    // forbids it either. `Unpack.test.tsx` pins it as it behaves today
+    // rather than inventing a fallback string.
+    suffix.push(`${subtreeOf(tripView, entry.id).size} INSIDE`)
   } else if (item.outcome === 'consumed' && item.consumed !== null) {
     // **Code-authored, no board draws it, unpinned by a ruling.**
     // `consumedCountOf` reads an absent register as the **whole**
@@ -570,7 +571,7 @@ function canReHomeFor(entry: EntryState, state: HouseholdState): boolean {
  * quantity for everything that is not a container or a consumed split,
  * `PackingRow`'s identical `PERSONAL E · ×1` convention for PERSON/ALL mode
  * one screen over. A container or a consumed split is not on any board here
- * — both reuse F1's `N PACKED INSIDE` / F9's split, the one already pinned by
+ * — both reuse F1's `N INSIDE` / F9's split, the one already pinned by
  * `returnPathMeta`'s own tests, restated here in this order rather than
  * called there and re-ordered, since `returnPathMeta` would still put the
  * path first.
@@ -592,7 +593,7 @@ function headerlessMeta(
 ): string {
   const suffix: string[] = []
   if (container) {
-    suffix.push(`${subtreeOf(tripView, entry.id).size} PACKED INSIDE`)
+    suffix.push(`${subtreeOf(tripView, entry.id).size} INSIDE`)
   } else if (item.outcome === 'consumed' && item.consumed !== null) {
     suffix.push(`×${item.consumed} CONSUMED`)
     suffix.push(`×${item.units - item.consumed} BACK`)
