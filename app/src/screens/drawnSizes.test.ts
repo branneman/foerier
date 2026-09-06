@@ -484,4 +484,20 @@ describe("ruling O's drawn sizes", () => {
 
     expect(ruleBody(css, '.rowButton')).toMatch(FLOOR)
   })
+
+  /**
+   * **S10 task 12.** The outcome sheet's four chips are the pill's grammar
+   * hand-rolled (`OutcomeSheet.tsx`'s own docstring explains why not a fifth
+   * `ui/StatusPill` tone), so they carry `StatusPill`'s own 44px-by-paint
+   * recipe rather than a 48 floor or a clamped `::after` of their own.
+   */
+  it("draws the outcome sheet's chips at 44px, StatusPill's own paint with no clamp", () => {
+    const css = moduleCss('..', 'components', 'OutcomeSheet.module.css')
+    const chip = ruleBody(css, '.chip')
+
+    expect(chip).toBeDefined()
+    expect(chip).not.toMatch(FLOOR)
+    expect(chip).toMatch(/min-height:\s*max\(2\.75rem,\s*44px\)/)
+    expect(ruleBody(css, '.chip::after')).toBeUndefined()
+  })
 })

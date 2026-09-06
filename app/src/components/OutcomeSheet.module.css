@@ -1,0 +1,120 @@
+@layer components {
+  /* `PieceStatusSheet.module.css`'s `.fact` line, verbatim: the mono fact
+     that doubles as `Sheet`'s `description`. Dynamic content only —
+     `OUTCOME`/`BROUGHT`/`CONTAINER`/`INSIDE` are already written in caps —
+     but the return path's own recorded case needs the transform, so it is
+     applied to the whole line rather than split across two nodes. */
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+    text-transform: uppercase;
+  }
+
+  .chips {
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-16);
+  }
+
+  /*
+   * The pill's grammar (`ui/StatusPill`'s own constants), hand-rolled rather
+   * than a fifth `StatusPill` tone — see the component's own docstring for
+   * why: this control has to say *which chip is current*, a fact about
+   * selection `StatusPill` has no tone for. Drawn at 44 rather than clamped
+   * to it, `StatusPill`'s own choice for the identical reason: a control
+   * painted at its target needs no extension.
+   */
+  .chip {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    min-height: max(2.75rem, 44px);
+    padding: 11px 8px;
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .chip:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* Raised and focus-ringed (`docs/design/README.md` §7): dashed, filled,
+     bright, and the identical ring `:focus-visible` draws above — stated
+     unconditionally here, because the current chip is raised whether or not
+     it happens to hold keyboard focus. */
+  .chip[data-current='true'] {
+    border-style: dashed;
+    background: var(--color-bg-raised);
+    color: var(--color-ink-primary);
+    box-shadow: var(--focus-ring);
+  }
+
+  .stepperBlock {
+    margin-top: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: 12px;
+    padding: var(--space-12) var(--space-16);
+  }
+
+  .stepperRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+  }
+
+  .stepperLabel {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--color-ink-faint);
+  }
+
+  .back {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--color-status-packed);
+  }
+
+  .consequence {
+    margin-top: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+    color: var(--color-ink-faint);
+  }
+
+  .footer {
+    margin-top: var(--space-16);
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.05em;
+    line-height: 1.7;
+    color: var(--color-ink-faint);
+  }
+
+  .close {
+    margin-top: var(--space-16);
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}

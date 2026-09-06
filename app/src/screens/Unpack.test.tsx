@@ -526,6 +526,46 @@ describe('DESTINATION mode — the row (F6)', () => {
       expect(meta.textContent).not.toContain('▲')
     }
   })
+
+  /**
+   * **Task 12's own wiring test** — the pill used to be a stated no-op
+   * (Task 10's `noop`); this is what proves it now opens `OutcomeSheet` for
+   * the tapped row's own Entry, and that a tap inside it is live behind the
+   * sheet rather than waiting for a close to be seen.
+   */
+  it("opens the outcome sheet from the row's pill and updates that row live", async () => {
+    const user = userEvent.setup()
+    const { authored } = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...destinationScenario(),
+    )
+
+    // Cook set: a Single, still open, in `destinationScenario()`.
+    const row = screen.getByTestId(`unpack-row-${E_COOK}`)
+    await user.click(within(row).getByRole('button', { name: '○ OPEN' }))
+
+    const sheet = screen.getByRole('dialog', { name: 'Cook set' })
+    await user.click(within(sheet).getByRole('button', { name: '● BACK' }))
+
+    expect(await authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_COOK, outcome: 'back' },
+      },
+    ])
+    // A tap writes one op and the sheet stays open (spec §4.4) — a picker's
+    // dismissal, not a decision's.
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    // The row behind the sheet is the identical `state.trips` fold, so it
+    // reads the new outcome without waiting for the sheet to close.
+    // `{ hidden: true }`: Radix's open `Dialog` marks the rest of the page
+    // `aria-hidden` while it is up (correct — it is inert to a screen
+    // reader), which `getByRole` respects by default; this assertion is
+    // about the row's own DOM content, not its place in the a11y tree.
+    expect(
+      within(row).getByRole('button', { name: '● BACK', hidden: true }),
+    ).toBeInTheDocument()
+  })
 })
 
 /**

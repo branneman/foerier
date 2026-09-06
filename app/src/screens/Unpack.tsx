@@ -35,6 +35,7 @@ import {
 import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'wouter'
 
+import { OutcomeSheet } from '../components/OutcomeSheet'
 import { UnpackRow } from '../components/UnpackRow'
 import { personInitial } from '../household/people'
 import { useHousehold } from '../household/store'
@@ -61,11 +62,12 @@ const EMPTY_COUNT: UnpackCount = {
   lost: 0,
 }
 
-/** Task 12 and Task 14 wire the outcome sheet and the Home picker onto these
- * two targets; DESTINATION mode's rows exist before either sheet does, so
- * both callbacks are a stated no-op rather than an invented behaviour. */
+/** Task 14 wires the Home picker onto this target; every mode's rows exist
+ * before that sheet does, so the callback is a stated no-op rather than an
+ * invented behaviour. `onOutcome` is Task 12's own — see {@link Unpack}'s
+ * `openOutcome`. */
 function noop(): void {
-  // Wired by Task 12 (`onOutcome`) and Task 14 (`onReHome`).
+  // Wired by Task 14 (`onReHome`).
 }
 
 /** One row this task draws — `UnpackRow`'s props, minus the callbacks and
@@ -677,9 +679,13 @@ function visibleRows(
 function GroupSection({
   group,
   openOnly,
+  onOutcome,
 }: {
   group: UnpackGroup
   openOnly: boolean
+  /** The real Entry id, never a PERSON-mode Piece row's composite key —
+   * {@link Unpack}'s `openOutcome` is what tells the two apart. */
+  onOutcome: (entryId: string) => void
 }) {
   const rows = visibleRows(group.rows, openOnly)
   // A group with **no rows to begin with** (a per-person-only room, Task
@@ -750,7 +756,7 @@ function GroupSection({
               name={row.name}
               meta={row.meta}
               outcome={row.outcome}
-              onOutcome={noop}
+              onOutcome={() => onOutcome(row.entryId)}
               onReHome={noop}
               tripOnly={row.tripOnly ?? false}
             />
@@ -809,7 +815,21 @@ export function Unpack() {
   const [mode, setMode] = useState<UnpackMode>('destination')
   const [openOnly, setOpenOnly] = useState(false)
 
+  // The outcome sheet's own open state (Task 12) — `ui/`'s primitives have
+  // no `open` prop, so `null` is closed and a real Entry id is open, and
+  // mount is what resets the sheet exactly as `PhaseSheet`'s own `reopenTo`/
+  // `activating` do. Holds the **real** Entry id only: a PERSON-mode Piece
+  // row's composite `${entryId}:${personId}` key never resolves to a real
+  // Entry below (`openOutcome`'s own guard), which is what leaves a Piece
+  // row's pill inert until Task 13's roster sheet exists.
+  const [outcomeEntryId, setOutcomeEntryId] = useState<string | null>(null)
+
   const trip = tripId === undefined ? undefined : state.trips[tripId]
+
+  function openOutcome(entryId: string): void {
+    if (trip?.entries?.[entryId] === undefined) return
+    setOutcomeEntryId(entryId)
+  }
 
   const totals = useMemo<UnpackCount>(
     () => (trip === undefined ? EMPTY_COUNT : unpackTotals(trip, state)),
@@ -861,6 +881,13 @@ export function Unpack() {
   // register, `Packing.tsx`'s own reasoning transplanted: a Trip holding only
   // a trip-only Entry has a real `0/0` in `totals` and is not an empty list.
   const empty = entriesOf(trip, state).length === 0
+
+  // The sheet's own Entry, re-read from `trip` fresh on every render — never
+  // cached across a tap, so a second render after an op lands hands the
+  // sheet the Entry it just wrote (`OutcomeSheet`'s own docstring on why
+  // `PhaseSheet`'s "close after every write" is not this sheet's model).
+  const outcomeEntry =
+    outcomeEntryId === null ? undefined : trip.entries?.[outcomeEntryId]
 
   return (
     <div className={styles['screen']}>
@@ -973,7 +1000,7 @@ export function Unpack() {
                     name={row.name}
                     meta={row.meta}
                     outcome={row.outcome}
-                    onOutcome={noop}
+                    onOutcome={() => openOutcome(row.entryId)}
                     onReHome={noop}
                     tripOnly={row.tripOnly ?? false}
                   />
@@ -988,12 +1015,21 @@ export function Unpack() {
                     key={group.key}
                     group={group}
                     openOnly={openOnly}
+                    onOutcome={openOutcome}
                   />
                 ),
               )}
             </div>
           )}
         </>
+      )}
+
+      {outcomeEntry !== undefined && (
+        <OutcomeSheet
+          trip={trip}
+          entry={outcomeEntry}
+          onClose={() => setOutcomeEntryId(null)}
+        />
       )}
     </div>
   )
