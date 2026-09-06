@@ -1,0 +1,496 @@
+[
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000001",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "person",
+    "aggregate_id": "p-s10-1",
+    "type": "person.recorded",
+    "hlc": "2026-09-05T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Mark"
+    },
+    "seq": 1,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000002",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "person",
+    "aggregate_id": "p-s10-2",
+    "type": "person.recorded",
+    "hlc": "2026-09-05T09:01:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Els"
+    },
+    "seq": 2,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000003",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.created",
+    "hlc": "2026-09-05T09:02:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "S10 Fixture Trip"
+    },
+    "seq": 3,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000004",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.participant_added",
+    "hlc": "2026-09-05T09:03:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "person_id": "p-s10-1"
+    },
+    "seq": 4,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000005",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.participant_added",
+    "hlc": "2026-09-05T09:04:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "person_id": "p-s10-2"
+    },
+    "seq": 5,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000006",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s10-tent",
+    "type": "gear.recorded",
+    "hlc": "2026-09-05T09:05:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Tent",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 6,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000007",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s10-map",
+    "type": "gear.recorded",
+    "hlc": "2026-09-05T09:06:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Map",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 7,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000008",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s10-fuel",
+    "type": "gear.recorded",
+    "hlc": "2026-09-05T09:07:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Fuel canister",
+      "container": false,
+      "kind": "counted",
+      "owned_count": 6
+    },
+    "seq": 8,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000009",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s10-torch",
+    "type": "gear.recorded",
+    "hlc": "2026-09-05T09:08:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Torch",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 9,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000000a",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s10-headlamp",
+    "type": "gear.recorded",
+    "hlc": "2026-09-05T09:09:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Headlamp",
+      "container": false,
+      "kind": "per_person"
+    },
+    "seq": 10,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000000b",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s10-crate",
+    "type": "gear.recorded",
+    "hlc": "2026-09-05T09:10:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Crate",
+      "container": true,
+      "kind": "single"
+    },
+    "seq": 11,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000000c",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s10-boots",
+    "type": "gear.recorded",
+    "hlc": "2026-09-05T09:11:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Boots",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 12,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000000d",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s10-tarp",
+    "type": "gear.recorded",
+    "hlc": "2026-09-05T09:12:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Tarp",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 13,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000000e",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-05T09:13:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-tent",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s10-tent"
+      }
+    },
+    "seq": 14,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000000f",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-05T09:14:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-map",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s10-map"
+      }
+    },
+    "seq": 15,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000010",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-05T09:15:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-fuel",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s10-fuel"
+      }
+    },
+    "seq": 16,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000011",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-05T09:16:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-torch",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s10-torch"
+      }
+    },
+    "seq": 17,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000012",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-05T09:17:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-headlamp",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s10-headlamp"
+      }
+    },
+    "seq": 18,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000013",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-05T09:18:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-crate",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s10-crate"
+      }
+    },
+    "seq": 19,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000014",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-05T09:19:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-boots",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s10-boots"
+      }
+    },
+    "seq": 20,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000015",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-05T09:20:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-tarp",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s10-tarp"
+      }
+    },
+    "seq": 21,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000016",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.outcome_set",
+    "hlc": "2026-09-05T09:21:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-tent",
+      "outcome": "back"
+    },
+    "seq": 22,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000017",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.outcome_set",
+    "hlc": "2026-09-05T09:22:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-map",
+      "outcome": "lost"
+    },
+    "seq": 23,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000018",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.outcome_set",
+    "hlc": "2026-09-05T09:23:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-fuel",
+      "outcome": "consumed"
+    },
+    "seq": 24,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-000000000019",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.consumed_count_set",
+    "hlc": "2026-09-05T09:24:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-fuel",
+      "count": 4
+    },
+    "seq": 25,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000001a",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.outcome_set",
+    "hlc": "2026-09-05T09:25:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-torch",
+      "outcome": "back"
+    },
+    "seq": 26,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000001b",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.outcome_set",
+    "hlc": "2026-09-05T09:26:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-torch",
+      "outcome": null
+    },
+    "seq": 27,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000001c",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.outcome_set",
+    "hlc": "2026-09-05T09:27:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-headlamp",
+      "person_id": "p-s10-1",
+      "outcome": "back"
+    },
+    "seq": 28,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000001d",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.outcome_set",
+    "hlc": "2026-09-05T09:28:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-crate",
+      "outcome": "back"
+    },
+    "seq": 29,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000001e",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.outcome_set",
+    "hlc": "2026-09-05T09:29:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-boots",
+      "outcome": "mislaid"
+    },
+    "seq": 30,
+    "received_at": "2026-09-05T10:00:00Z"
+  },
+  {
+    "id": "eeeeeeee-0000-7000-8000-00000000001f",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s10-1",
+    "type": "trip.consumed_count_set",
+    "hlc": "2026-09-05T09:30:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s10-tarp",
+      "count": 2
+    },
+    "seq": 31,
+    "received_at": "2026-09-05T10:00:00Z"
+  }
+]
