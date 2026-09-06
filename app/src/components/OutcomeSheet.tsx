@@ -250,7 +250,14 @@ function ConsumedStepperBlock({
   owned: number
   onChange: (next: number | null) => void
 }) {
+  // **G3: a zero segment draws nothing, and the fact line swaps one word.**
+  // At the ceiling every unit was consumed, so there is no rest — the
+  // beside-slot is empty rather than reading `×0 BACK`, and the consequence
+  // reads `NONE CAME BACK.` in F9's own sentence shape. Below the ceiling
+  // F9 stands verbatim. The two lines are one shape with one word swapped,
+  // which is why they are composed here rather than spelled twice.
   const back = bringCount - consumedCount
+  const rest = back === 0 ? 'NONE CAME BACK.' : 'THE REST CAME BACK.'
   return (
     <div className={styles['stepperBlock']}>
       <div className={styles['stepperRow']}>
@@ -262,10 +269,10 @@ function ConsumedStepperBlock({
           onChange={onChange}
           label={`Consumed count for ${title}`}
         />
-        <span className={styles['back']}>×{back} BACK</span>
+        {back > 0 && <span className={styles['back']}>×{back} BACK</span>}
       </div>
       <p className={styles['consequence']}>
-        {`THE REST CAME BACK. OWNED ×${owned} → ×${Math.max(owned - consumedCount, 0)} AT CLOSE.`}
+        {`${rest} OWNED ×${owned} → ×${Math.max(owned - consumedCount, 0)} AT CLOSE.`}
       </p>
     </div>
   )

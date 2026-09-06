@@ -226,21 +226,22 @@ function returnPathMeta(
     // `12 INSIDE`. A round wanting one vocabulary should see all three
     // strings together, which is worth more than a fix to one of them.
     //
-    // **Code-authored, no board draws it, unpinned by a ruling.** An empty
-    // container reads `0 INSIDE` — nothing named this case, and nothing
-    // forbids it either. `Unpack.test.tsx` pins it as it behaves today
-    // rather than inventing a fallback string.
-    suffix.push(`${subtreeOf(tripView, entry.id).size} INSIDE`)
+    // **G3: an empty container reads its return path alone** — a zero count
+    // segment is absent, not written, and an empty crate takes its outcome
+    // like a tarp.
+    const inside = subtreeOf(tripView, entry.id).size
+    if (inside > 0) suffix.push(`${inside} INSIDE`)
   } else if (item.outcome === 'consumed' && item.consumed !== null) {
-    // **Code-authored, no board draws it, unpinned by a ruling.**
-    // `consumedCountOf` reads an absent register as the **whole**
-    // Bring-count (F9: the stepper opens there because "all of it used up
-    // is the ordinary case"), so tapping `CONSUMED` and never touching the
-    // stepper reads `×N CONSUMED · ×0 BACK` — the **default** rendering,
-    // not an edge case. F18 drops a sibling meta's zero segment the other
-    // way; `Unpack.test.tsx` pins this one as it behaves today.
+    // **G3: the split segment says *the rest came back*, so with nothing
+    // back there is no rest.** `consumedCountOf` reads an absent register
+    // as the **whole** Bring-count (F9: the stepper opens there because
+    // "all of it used up is the ordinary case"), so tapping `CONSUMED` and
+    // never touching the stepper is the **ordinary** case, not an edge one
+    // — which is exactly why it may not draw a `×0 BACK` nobody asked for.
+    // F18's rule generalised: a zero count segment is absent, not written.
     suffix.push(`×${item.consumed} CONSUMED`)
-    suffix.push(`×${item.units - item.consumed} BACK`)
+    const back = item.units - item.consumed
+    if (back > 0) suffix.push(`×${back} BACK`)
   } else if (bringCountOf(entry, state) !== null) {
     suffix.push(`×${item.units}`)
   }

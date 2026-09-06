@@ -946,13 +946,15 @@ describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
 })
 
 /**
- * Two renderings `returnPathMeta` produces that no board draws and no
- * ruling names — pinned as they behave today rather than left to drift, per
- * this codebase's standing rule that a decision taken in code the boards
- * never reached gets written down and challenged (a design round, not this
- * diff, settles whether either should read differently).
+ * The two renderings `returnPathMeta` used to produce that no board drew,
+ * **ruled at §5i G3 and inverted here with their reasons attached** rather
+ * than deleted: a zero count segment is absent, not written. Both were
+ * pinned as code-authored while the question stood open, which is the whole
+ * point of pinning one — the round met the shipped behaviour rather than
+ * re-deriving it, and these two tests are the same pair now asserting the
+ * answer.
  */
-describe('DESTINATION mode — two code-authored renderings, unpinned by any ruling', () => {
+describe('DESTINATION mode — G3: a zero segment draws nothing', () => {
   const BERGING = 'pppppppp-0000-7000-8000-000000000099'
   const CANISTER = 'gggggggg-0000-7000-8000-000000000099'
   const E_CANISTER = 'nnnnnnnn-0000-7000-8000-000000000099'
@@ -962,9 +964,11 @@ describe('DESTINATION mode — two code-authored renderings, unpinned by any rul
    * **whole** Bring-count (F9: the stepper opens there, since "all of it
    * used up is the ordinary case") — so tapping `CONSUMED` and never
    * touching the stepper is the *default* consumed rendering, not a
-   * crafted edge case, and it reads `×0 BACK`.
+   * crafted edge case. **G3:** the split segment exists to say *the rest
+   * came back*, and with nothing back there is no rest, so the ordinary
+   * row reads `×3 CONSUMED` alone.
    */
-  it('draws ×0 BACK on a consumed Counted Entry whose Consumed-count was never touched', async () => {
+  it('drops the BACK segment on a consumed Counted Entry whose Consumed-count was never touched', async () => {
     await renderUnpack(
       `/trips/${ALPS}/unpack`,
       ...alps(),
@@ -984,7 +988,8 @@ describe('DESTINATION mode — two code-authored renderings, unpinned by any rul
     // No intermediate container between the Gear and its room, so the
     // room's own name — already the group header — has nothing further to
     // add and the meta reads the suffix alone.
-    expect(screen.getByText('×3 CONSUMED · ×0 BACK')).toBeInTheDocument()
+    expect(screen.getByText('×3 CONSUMED')).toBeInTheDocument()
+    expect(screen.queryByText(/×0 BACK/)).not.toBeInTheDocument()
   })
 
   const SCHUUR = 'pppppppp-0000-7000-8000-00000000009a'
@@ -992,11 +997,11 @@ describe('DESTINATION mode — two code-authored renderings, unpinned by any rul
   const E_EMPTY_CRATE = 'nnnnnnnn-0000-7000-8000-00000000009a'
 
   /**
-   * `subtreeOf` counts trip Entries actually moved inside — an ordinary,
-   * honest `0` for a container nothing has been packed into yet, drawn
-   * exactly as any other count would be.
+   * **G3:** an empty crate takes its outcome like a tarp, so it reads its
+   * return path alone. The count is honest either way; what the ruling
+   * decides is that a zero of it is not written.
    */
-  it('draws 0 INSIDE on a container Entry with nothing moved inside it', async () => {
+  it('draws the return path alone on a container Entry with nothing moved inside it', async () => {
     await renderUnpack(
       `/trips/${ALPS}/unpack`,
       ...alps(),
@@ -1015,9 +1020,14 @@ describe('DESTINATION mode — two code-authored renderings, unpinned by any rul
       // Deliberately no `trip.entry_moved` targeting this container.
     )
 
-    // Same reason as the consumed case above — the crate sits directly in
-    // its room, so the meta reads the suffix alone.
-    expect(screen.getByText('0 INSIDE')).toBeInTheDocument()
+    // The crate sits directly in its room, so with the suffix gone the
+    // meta has nothing left to draw at all — which is the ruling: the
+    // return path alone, and here the return path is the group header.
+    expect(screen.queryByText(/INSIDE/)).not.toBeInTheDocument()
+    const row = screen.getByTestId(`unpack-row-${E_EMPTY_CRATE}`)
+    expect(
+      within(row).queryByTestId('unpack-row-meta')?.textContent ?? '',
+    ).toBe('')
   })
 })
 

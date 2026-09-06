@@ -304,7 +304,14 @@ describe('the outcome sheet', () => {
       name: /consumed count/i,
     })
     expect(well).toHaveValue('4')
-    expect(screen.getByText('×0 BACK')).toBeInTheDocument()
+
+    // **G3**: opening at the ceiling means nothing came back, so the
+    // beside-slot is empty rather than reading `×0 BACK`, and the
+    // consequence swaps one word out of F9's sentence.
+    expect(screen.queryByText(/×\d+ BACK/)).not.toBeInTheDocument()
+    expect(
+      screen.getByText('NONE CAME BACK. OWNED ×6 → ×2 AT CLOSE.'),
+    ).toBeInTheDocument()
   })
 
   it('hides the stepper again once a different outcome is tapped', async () => {
