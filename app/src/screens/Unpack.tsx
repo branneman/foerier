@@ -9,6 +9,9 @@ import {
   ownerLabel,
   personBuckets,
   personNameOrUnnamed,
+  reHomeOnTheSpot,
+  rehomedSinceOutcome,
+  residenceOf,
   returnPathOf,
   subtreeOf,
   tripContainmentView,
@@ -36,6 +39,7 @@ import {
 import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'wouter'
 
+import { HomePicker } from '../components/HomePicker'
 import { circleToneForOutcome, OutcomeSheet } from '../components/OutcomeSheet'
 import { UnpackRow } from '../components/UnpackRow'
 import { personInitial } from '../household/people'
@@ -62,14 +66,6 @@ const EMPTY_COUNT: UnpackCount = {
   back: 0,
   consumed: 0,
   lost: 0,
-}
-
-/** Task 14 wires the Home picker onto this target; every mode's rows exist
- * before that sheet does, so the callback is a stated no-op rather than an
- * invented behaviour. `onOutcome` is Task 12's own — see {@link Unpack}'s
- * `openOutcome`. */
-function noop(): void {
-  // Wired by Task 14 (`onReHome`).
 }
 
 /** One row this task draws — `UnpackRow`'s props, minus the callbacks. */
@@ -167,6 +163,12 @@ const NOT_ATTRIBUTED = 'NOT ATTRIBUTED TO A PERSON'
  * `entryKind(entry, state) === 'counted'`, which is exactly the re-derivation
  * this file's own convention forbids. A Single, an unrecognised Kind and an
  * unsynced Gear all answer `null` there and draw no suffix at all.
+ *
+ * **A closing `RE-HOMED` segment** (Task 14, spec §4.6, `docs/design/
+ * README.md` §7: `→ CRATE B · RE-HOMED`) — {@link rehomedSinceOutcome}'s own
+ * one comparison, never re-derived here, over {@link depotGearOf}'s Gear for
+ * this Entry. It can co-occur with any of the three suffixes above: a
+ * re-homed Counted Entry reads `→ CRATE B · ×2 · RE-HOMED`.
  */
 function returnPathMeta(
   entry: EntryState,
@@ -200,6 +202,10 @@ function returnPathMeta(
     suffix.push(`×${item.units - item.consumed} BACK`)
   } else if (bringCountOf(entry, state) !== null) {
     suffix.push(`×${item.units}`)
+  }
+
+  if (rehomedSinceOutcome(entry, depotGearOf(entry, state))) {
+    suffix.push('RE-HOMED')
   }
 
   if (pathText === '') return suffix.join(' · ')
@@ -840,12 +846,16 @@ function GroupSection({
   group,
   openOnly,
   onOutcome,
+  onReHome,
 }: {
   group: UnpackGroup
   openOnly: boolean
   /** The real Entry id, never a PERSON-mode Piece row's composite key —
    * {@link Unpack}'s `openOutcome` is what tells the two apart. */
   onOutcome: (entryId: string) => void
+  /** Task 14's row-body target — {@link Unpack}'s `openReHome`, the identical
+   * key-splitting `onOutcome` already does. */
+  onReHome: (entryId: string) => void
 }) {
   const rows = visibleRows(group.rows, openOnly)
   // A group with **no rows to begin with** (every per-person Entry in it has
@@ -917,7 +927,7 @@ function GroupSection({
               meta={row.meta}
               outcome={row.outcome}
               onOutcome={() => onOutcome(row.entryId)}
-              onReHome={noop}
+              onReHome={() => onReHome(row.entryId)}
               // `exactOptionalPropertyTypes`: an *omitted* prop and one
               // present-and-`undefined` are different types, exactly
               // `PersonCluster`'s own `tone`-spread note.
@@ -961,6 +971,26 @@ function GroupSection({
  * link points at is never already on the page.
  */
 
+/**
+ * F8's own context line (`docs/design/README.md` §7/§5h, spec §4.6, board
+ * `S10 Round - Unpack Resolve and Close.dc.html` §02/§07): `RE-HOMING TENT,
+ * 3P · PICKING A HOME MARKS IT BACK`. It replaces `HomePicker`'s own
+ * auto-computed `MOVING …` line outright (`HomePicker`'s own `context` prop),
+ * which is also what tells the picker not to confirm (F8/A2b) — so the
+ * `N INSIDE RIDE ALONG` fact that line would otherwise have carried has to be
+ * folded into this one instead, for a container being re-homed. **No board
+ * frame draws that composite** — only the plain, non-container example above
+ * is drawn — so this is `§3c`'s own quoted phrase composed into the new,
+ * quoted line rather than invented words; see the task's own report for the
+ * call.
+ */
+function reHomeContext(name: string, insideCount: number): string {
+  const upper = name.toUpperCase()
+  return insideCount > 0
+    ? `RE-HOMING ${upper} · ${insideCount} INSIDE RIDE ALONG · PICKING A HOME MARKS IT BACK`
+    : `RE-HOMING ${upper} · PICKING A HOME MARKS IT BACK`
+}
+
 /** {@link Unpack}'s own outcome-sheet target — R23's own shape. `personId`
  * is absent for the cluster (DESTINATION/ALL) and present for a PERSON-mode
  * Piece row, carrying which Piece's own pill opened the sheet. */
@@ -974,6 +1004,7 @@ export function Unpack() {
   const tripId = params.id
   const state = useHousehold((depot) => depot.state)
   const sync = useHousehold((depot) => depot.sync)
+  const emit = useHousehold((depot) => depot.emit)
   const header = useScreenHeader({
     splitPane: false,
     // See the docstring: the sidebar carries `TRIPS`, never one Trip's name,
@@ -994,6 +1025,13 @@ export function Unpack() {
   // `activating` do. Holds the **real** Entry id, plus — R23's own field —
   // the Piece that opened it, when one did.
   const [outcomeTarget, setOutcomeTarget] = useState<OutcomeTarget | null>(null)
+
+  // Task 14's own target — F8's row body. Holds the **real** Entry id only:
+  // unlike `OutcomeTarget`, there is no `personId` to carry, because
+  // `reHomeOnTheSpot` re-homes the whole Entry's Gear regardless of which
+  // row's body opened the picker (its own fan-out is what marks every
+  // unresolved included Piece back, not only the one the tap named).
+  const [reHomeEntryId, setReHomeEntryId] = useState<string | null>(null)
 
   const trip = tripId === undefined ? undefined : state.trips[tripId]
 
@@ -1030,6 +1068,19 @@ export function Unpack() {
         ? { entryId }
         : { entryId, personId: rowKey.slice(separator + 1) },
     )
+  }
+
+  /**
+   * Task 14's own closer — {@link openOutcome}'s identical key-splitting,
+   * over a target with no `personId`: whichever row's body opened the
+   * picker (the cluster, a plain entry row, or a PERSON-mode Piece row's
+   * composite key), the same real Entry is what gets re-homed.
+   */
+  function openReHome(rowKey: string): void {
+    const separator = rowKey.indexOf(':')
+    const entryId = separator === -1 ? rowKey : rowKey.slice(0, separator)
+    if (trip?.entries?.[entryId] === undefined) return
+    setReHomeEntryId(entryId)
   }
 
   const totals = useMemo<UnpackCount>(
@@ -1098,6 +1149,29 @@ export function Unpack() {
     outcomeEntry !== undefined &&
     entryKind(outcomeEntry, state) === 'per_person' &&
     !isContainerEntry(outcomeEntry, state)
+
+  // Task 14's own picker target — the Entry the tapped row named, re-read
+  // fresh exactly as `outcomeEntry` is, plus the depot Gear it names: a
+  // trip-only Entry (no `source`, or a trip-only one) has no Gear to
+  // re-home, so the picker below never mounts for one — matched by
+  // `UnpackRow`'s own row body, which draws no button at all there.
+  const reHomeEntry =
+    reHomeEntryId === null ? undefined : trip.entries?.[reHomeEntryId]
+  const reHomeGearId = ((): string | undefined => {
+    if (reHomeEntry === undefined) return undefined
+    const source = reHomeEntry.source?.value
+    return source !== undefined && source.from === 'depot'
+      ? source.gearId
+      : undefined
+  })()
+  const reHomeGear =
+    reHomeGearId === undefined ? undefined : state.gear[reHomeGearId]
+  // The depot's own physical subtree — GearDetail's own MOVE computation,
+  // read once and handed to both the context line and `moving`'s footer.
+  const reHomeInsideCount =
+    reHomeGearId === undefined
+      ? 0
+      : view.childrenOf({ kind: 'gear', id: reHomeGearId }).length
 
   return (
     <div className={styles['screen']}>
@@ -1207,7 +1281,7 @@ export function Unpack() {
                     meta={row.meta}
                     outcome={row.outcome}
                     onOutcome={() => openOutcome(row.entryId)}
-                    onReHome={noop}
+                    onReHome={() => openReHome(row.entryId)}
                     {...(row.cluster === undefined
                       ? {}
                       : { cluster: row.cluster })}
@@ -1225,6 +1299,7 @@ export function Unpack() {
                     group={group}
                     openOnly={openOnly}
                     onOutcome={openOutcome}
+                    onReHome={openReHome}
                   />
                 ),
               )}
@@ -1248,6 +1323,41 @@ export function Unpack() {
             : { personId: outcomeTarget.personId })}
         />
       )}
+
+      {reHomeEntry !== undefined &&
+        reHomeGearId !== undefined &&
+        reHomeGear !== undefined && (
+          <HomePicker
+            onClose={() => setReHomeEntryId(null)}
+            onSelect={(residence) => {
+              // The gesture, not re-derived here (`gestures.ts`'s own three
+              // rules — the outcome write suppressed only when already
+              // `back`, the rehome unconditional, a non-container per-person
+              // Entry fanned out per Piece): the screen only maps its
+              // `OpSpec[]` through `emit`, in the order returned.
+              for (const spec of reHomeOnTheSpot(
+                trip,
+                reHomeEntry,
+                reHomeGearId,
+                residence,
+                state,
+              )) {
+                emit(spec)
+              }
+              setReHomeEntryId(null)
+            }}
+            excludeGearId={reHomeGearId}
+            current={residenceOf(reHomeGear)}
+            context={reHomeContext(
+              entryLabel(reHomeEntry, state),
+              reHomeInsideCount,
+            )}
+            moving={{
+              name: entryLabel(reHomeEntry, state),
+              insideCount: reHomeInsideCount,
+            }}
+          />
+        )}
     </div>
   )
 }

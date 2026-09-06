@@ -1,5 +1,6 @@
 import {
   gearRecorded,
+  gearRehomed,
   personRecorded,
   placeRecorded,
   tripConsumedCountSet,
@@ -616,6 +617,218 @@ describe('DESTINATION mode — the row (F6)', () => {
         },
       },
     ])
+  })
+})
+
+const ATTIC_R = 'pppppppp-0000-7000-8000-000000000060'
+const SHED_R = 'pppppppp-0000-7000-8000-000000000061'
+
+const TENT = 'gggggggg-0000-7000-8000-000000000060'
+const CRATE_R = 'gggggggg-0000-7000-8000-000000000061'
+const POUCH_R = 'gggggggg-0000-7000-8000-000000000062'
+const BAG_OPEN = 'gggggggg-0000-7000-8000-000000000063'
+
+const E_TENT = 'nnnnnnnn-0000-7000-8000-000000000060'
+const E_CRATE_R = 'nnnnnnnn-0000-7000-8000-000000000061'
+const E_BAG_OPEN = 'nnnnnnnn-0000-7000-8000-000000000063'
+
+/**
+ * Task 14's own scenario (F8, spec §4.6) — `Tent, 3p`, a plain Single at
+ * Attic, already `back` (the simplest row, and the board's own example
+ * gear); `Crate B`, a container at Attic, already `back`, with `Pouch` — a
+ * second container — physically nested one level inside it at home (the
+ * subtree the picker must exclude, and the count its context line carries);
+ * `Sleeping bag`, a plain Single at Attic, still open (the two-op case).
+ */
+function reHomeScenario(): readonly OpSpec[] {
+  return [
+    ...alps(),
+    placeRecorded(ATTIC_R, 'Attic'),
+    placeRecorded(SHED_R, 'Shed'),
+
+    gearRecorded(TENT, {
+      name: 'Tent, 3p',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: ATTIC_R },
+    }),
+    tripEntryAdded(ALPS, E_TENT, { from: 'depot', gearId: TENT }),
+    tripOutcomeSet(ALPS, E_TENT, 'back'),
+
+    gearRecorded(CRATE_R, {
+      name: 'Crate B',
+      container: true,
+      kind: 'single',
+      residence: { in: 'place', id: ATTIC_R },
+    }),
+    gearRecorded(POUCH_R, {
+      name: 'Pouch',
+      container: true,
+      kind: 'single',
+      residence: { in: 'gear', id: CRATE_R },
+    }),
+    tripEntryAdded(ALPS, E_CRATE_R, { from: 'depot', gearId: CRATE_R }),
+    tripOutcomeSet(ALPS, E_CRATE_R, 'back'),
+
+    gearRecorded(BAG_OPEN, {
+      name: 'Sleeping bag',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: ATTIC_R },
+    }),
+    tripEntryAdded(ALPS, E_BAG_OPEN, { from: 'depot', gearId: BAG_OPEN }),
+  ]
+}
+
+/**
+ * **Task 14 — re-home on the spot (F8, `docs/design/README.md` §7/§5h,
+ * spec §4.6).** The row body opens `HomePicker` in MOVE mode with a context
+ * line stating the one thing this caller adds; picking marks the Entry
+ * back and writes the new home, with no confirm between the pick and the
+ * write (A2b).
+ */
+describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
+  it('opens the Home picker on the row body with F8’s own context line', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...reHomeScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_TENT}`)
+    await user.click(within(row).getByTestId('unpack-row-body'))
+
+    expect(screen.getByRole('dialog', { name: 'Home' })).toBeInTheDocument()
+    expect(screen.getByTestId('moving-context')).toHaveTextContent(
+      'RE-HOMING TENT, 3P · PICKING A HOME MARKS IT BACK',
+    )
+  })
+
+  it('picking a home for an OPEN Entry emits trip.outcome_set{back} then gear.rehomed, in that order', async () => {
+    const user = userEvent.setup()
+    const { authored } = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...reHomeScenario(),
+    )
+
+    const row = screen.getByTestId(`unpack-row-${E_BAG_OPEN}`)
+    await user.click(within(row).getByTestId('unpack-row-body'))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Home' })).getByRole('button', {
+        name: /Shed/,
+      }),
+    )
+
+    expect(await authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_BAG_OPEN, outcome: 'back' },
+      },
+      {
+        type: 'gear.rehomed',
+        payload: { residence: { in: 'place', id: SHED_R } },
+      },
+    ])
+  })
+
+  it('picking a home for an Entry already back emits ONLY gear.rehomed', async () => {
+    const user = userEvent.setup()
+    const { authored } = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...reHomeScenario(),
+    )
+
+    const row = screen.getByTestId(`unpack-row-${E_TENT}`)
+    await user.click(within(row).getByTestId('unpack-row-body'))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Home' })).getByRole('button', {
+        name: /Shed/,
+      }),
+    )
+
+    expect(await authored()).toEqual([
+      {
+        type: 'gear.rehomed',
+        payload: { residence: { in: 'place', id: SHED_R } },
+      },
+    ])
+  })
+
+  it('stands no confirm between the pick and the write (A2b) — the picker closes on its own', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...reHomeScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_TENT}`)
+    await user.click(within(row).getByTestId('unpack-row-body'))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Home' })).getByRole('button', {
+        name: /Shed/,
+      }),
+    )
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Home' })).toBeNull()
+  })
+
+  it('carries the N INSIDE RIDE ALONG count for a container, and excludes its own subtree', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...reHomeScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_CRATE_R}`)
+    await user.click(within(row).getByTestId('unpack-row-body'))
+
+    const dialog = screen.getByRole('dialog', { name: 'Home' })
+    expect(within(dialog).getByTestId('moving-context')).toHaveTextContent(
+      'RE-HOMING CRATE B · 1 INSIDE RIDE ALONG · PICKING A HOME MARKS IT BACK',
+    )
+    // Invariant 3 — Crate B's own subtree (Pouch) is absent at any depth.
+    expect(within(dialog).queryByRole('button', { name: 'Pouch' })).toBeNull()
+    expect(
+      within(dialog).getByText(
+        'Crate B AND EVERYTHING INSIDE IT ARE NOT OFFERED.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('reads a RE-HOMED segment in the row’s meta afterward, derived from the fold (spec §4.6)', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...reHomeScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_TENT}`)
+    // Nothing to say yet — Tent sits directly in its room, no suffix and no
+    // path, so the row draws no meta line at all (`UnpackRow`'s own rule).
+    expect(within(row).queryByTestId('unpack-row-meta')).not.toBeInTheDocument()
+
+    await user.click(within(row).getByTestId('unpack-row-body'))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Home' })).getByRole('button', {
+        name: 'Crate B',
+      }),
+    )
+
+    // Tent now sits inside Crate B, itself in Attic — the same room, so the
+    // group header is unchanged and the meta reads the path plus the segment.
+    expect(within(row).getByTestId('unpack-row-meta')).toHaveTextContent(
+      '→ Crate B · RE-HOMED',
+    )
+  })
+
+  /**
+   * **The over-inclusive case, pinned rather than hidden (spec §4.6).** A
+   * Gear re-homed from *elsewhere* — gear detail's own `MOVE`, never this
+   * screen's re-home flow — after its Entry was marked back also draws the
+   * segment. It reads truthfully ("its home changed since it was resolved")
+   * and it is cosmetic: no count depends on it.
+   */
+  it('also draws RE-HOMED when the Gear was re-homed from elsewhere after being marked back', async () => {
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...reHomeScenario(),
+      // Not this screen's flow at all — a later, unrelated `gear.rehomed`.
+      gearRehomed(TENT, { in: 'place', id: SHED_R }),
+    )
+
+    const row = screen.getByTestId(`unpack-row-${E_TENT}`)
+    expect(within(row).getByTestId('unpack-row-meta')).toHaveTextContent(
+      'RE-HOMED',
+    )
   })
 })
 

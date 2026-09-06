@@ -31,6 +31,7 @@ import {
   outcomeLabel,
   outcomeOf,
   pieceOutcomeOf,
+  rehomedSinceOutcome,
   returnPathOf,
   type Unaccounted,
   unaccountedOf,
@@ -1033,4 +1034,135 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
       expect(unaccountedOf(state).get('g-tent')).toBeUndefined()
     },
   )
+})
+
+describe('rehomedSinceOutcome — the RE-HOMED segment’s one comparison (spec §4.6)', () => {
+  const TRIP = 't-alps'
+  const ATTIC = 'p-attic'
+  const SHED = 'p-shed'
+
+  it('an open Entry (no outcome register at all) never draws it, whatever the residence', () => {
+    const state = depot(
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({ id: TRIP, name: 'Alps 2026' }),
+      [tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' })],
+    )
+    const entry = entryFrom(tripFrom(state, TRIP), 'e-tent')
+
+    expect(entry.outcome).toBeUndefined()
+    expect(rehomedSinceOutcome(entry, state.gear['g-tent'])).toBe(false)
+  })
+
+  it('a resolved Entry whose Gear has no residence register at all never draws it — nothing to compare against', () => {
+    const state = depot(
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({ id: TRIP, name: 'Alps 2026' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'back'),
+      ],
+    )
+    const entry = entryFrom(tripFrom(state, TRIP), 'e-tent')
+
+    expect(state.gear['g-tent']?.residence).toBeUndefined()
+    expect(rehomedSinceOutcome(entry, state.gear['g-tent'])).toBe(false)
+  })
+
+  it('a gear.rehomed stamped AFTER the outcome draws it — reHomeOnTheSpot’s own batch order', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent' }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026' }),
+      ...aPlace({ id: ATTIC, name: 'Attic' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const back = stamp([tripOutcomeSet(TRIP, 'e-tent', 'back')], { start: 10 })
+    const rehomeAfter = stamp(
+      [gearRehomed('g-tent', { in: 'place', id: ATTIC })],
+      { start: 20 },
+    )
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...back, ...rehomeAfter],
+      emptyState(),
+    )
+    const entry = entryFrom(tripFrom(state, TRIP), 'e-tent')
+
+    expect(rehomedSinceOutcome(entry, state.gear['g-tent'])).toBe(true)
+  })
+
+  it('a gear.rehomed stamped BEFORE the outcome does not draw it', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent' }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026' }),
+      ...aPlace({ id: ATTIC, name: 'Attic' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const rehomeBefore = stamp(
+      [gearRehomed('g-tent', { in: 'place', id: ATTIC })],
+      { start: 10 },
+    )
+    const back = stamp([tripOutcomeSet(TRIP, 'e-tent', 'back')], { start: 20 })
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...rehomeBefore, ...back],
+      emptyState(),
+    )
+    const entry = entryFrom(tripFrom(state, TRIP), 'e-tent')
+
+    expect(rehomedSinceOutcome(entry, state.gear['g-tent'])).toBe(false)
+  })
+
+  it('an EQUAL stamp draws it — "at or after" is inclusive, the one difference from outcomeStands’ strict ">"', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent' }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026' }),
+      ...aPlace({ id: ATTIC, name: 'Attic' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const back = stamp([tripOutcomeSet(TRIP, 'e-tent', 'back')], { start: 10 })
+    // Same counter, same default device — an identical stamp, the boundary
+    // `outcomeStands`' strict `>` would call "still stands" and this
+    // function's `>=` calls "re-homed".
+    const rehomeSame = stamp(
+      [gearRehomed('g-tent', { in: 'place', id: ATTIC })],
+      { start: 10 },
+    )
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...back, ...rehomeSame],
+      emptyState(),
+    )
+    const entry = entryFrom(tripFrom(state, TRIP), 'e-tent')
+
+    expect(rehomedSinceOutcome(entry, state.gear['g-tent'])).toBe(true)
+  })
+
+  /**
+   * **The over-inclusive case, pinned rather than hidden (spec §4.6).** This
+   * function cannot tell a `reHomeOnTheSpot` batch from an unrelated later
+   * `gear.rehomed` — e.g. one authored from gear detail's own `MOVE`, well
+   * after the Trip's own pass resolved this Entry `back`. It reads
+   * truthfully ("its home changed since it was resolved") and it is
+   * cosmetic: no count depends on it.
+   */
+  it('a gear.rehomed from an unrelated later MOVE also draws it — the over-inclusive case, pinned', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent' }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026' }),
+      ...aPlace({ id: ATTIC, name: 'Attic' }),
+      ...aPlace({ id: SHED, name: 'Shed' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const back = stamp([tripOutcomeSet(TRIP, 'e-tent', 'back')], { start: 10 })
+    // A wholly unrelated MOVE, much later, naming a different Place — not
+    // part of the same reHomeOnTheSpot batch at all.
+    const laterMove = stamp(
+      [gearRehomed('g-tent', { in: 'place', id: SHED })],
+      { start: 500 },
+    )
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...back, ...laterMove],
+      emptyState(),
+    )
+    const entry = entryFrom(tripFrom(state, TRIP), 'e-tent')
+
+    expect(rehomedSinceOutcome(entry, state.gear['g-tent'])).toBe(true)
+  })
 })

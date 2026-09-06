@@ -456,6 +456,49 @@ export function outcomeStands(
   return compareStamps(stampOf(outcome), stampOf(residence)) > 0
 }
 
+/**
+ * The `RE-HOMED` segment's one comparison (spec §4.6) — whether the Gear's
+ * `residence` stamp is **at or after** this Entry's `outcome` stamp, i.e.
+ * *the home moved when — or after — this line was resolved*.
+ * {@link reHomeOnTheSpot} (`gestures.ts`) is exactly what produces that: it
+ * authors the rehome into the same batch as the outcome, on a strictly
+ * later clock, so a real re-home always satisfies this comparison.
+ *
+ * **This is {@link outcomeStands} reversed, not re-derived.** That function
+ * asks whether a `lost` standing still holds — the outcome is *strictly*
+ * later than the residence. This asks the complementary question — the
+ * residence is *at or after* the outcome — so once an outcome register is
+ * known to exist, `!outcomeStands(outcome, gear)` is the whole of it: a
+ * `Register` compares by `(hlc, deviceId)`, never by value, so neither
+ * function reads what the outcome or the residence actually says.
+ *
+ * `false` for an Entry with **no outcome register at all** — open, nothing
+ * was ever resolved to compare a rehome "since" — checked before
+ * {@link outcomeStands} is ever called, since that function takes a real
+ * `Register` and an absent one is not a stamp to compare. A Gear with no
+ * `residence` register at all also reads `false`: {@link outcomeStands}'s
+ * own "compares as earlier than everything" branch answers `true` for that
+ * case (a `lost` outcome always stands with nothing to compare against),
+ * and this function's negation of it is exactly `false` — nothing to
+ * compare against is not evidence of a re-home.
+ *
+ * **Deliberately not "re-homed during this pass"** (spec §4.6) — there is no
+ * register marking when the pass began, and the `phase` stamp answers a
+ * different question on a Trip whose phase never moved. The consequence is
+ * one over-inclusive case, stated rather than hidden: a Gear re-homed from
+ * gear detail *after* its Entry was marked back also draws the segment —
+ * `unpack.test.ts` pins exactly this case rather than leaving it to be
+ * discovered.
+ */
+export function rehomedSinceOutcome(
+  entry: EntryState,
+  gear: GearState | undefined,
+): boolean {
+  const outcome = entry.outcome
+  if (outcome === undefined) return false
+  return !outcomeStands(outcome, gear)
+}
+
 /** The unaccounted standing for one Gear — {@link unaccountedOf}'s answer. */
 export interface Unaccounted {
   /** The Trip of the **latest** live `lost` outcome. */

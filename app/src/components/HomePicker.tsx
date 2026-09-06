@@ -55,6 +55,31 @@ import styles from './HomePicker.module.css'
  * confirms**. Picking a home for gear that does not exist yet (Add Gear) does
  * not, because there is no prior state to lose.
  *
+ * **S10's re-home caller is the one exception, and `context` is what makes
+ * it one.** F8 (`docs/design/README.md` §5h, spec §4.6): the row visibly
+ * jumps to its new room, and a second re-home is the reversal, so a re-home
+ * caller must not confirm even though it still wants MOVE's exclusion, its
+ * `● NOW` mark and its `N INSIDE RIDE ALONG` footer. Supplying `context`
+ * replaces the auto-computed `MOVING {name} · {N} INSIDE RIDE ALONG` line
+ * with the caller's own — and is exactly the signal that this caller states
+ * its consequence in that line rather than in a confirm, so `choose` skips
+ * `setPending` for it. `GearDetail`'s own MOVE never passes `context`, so its
+ * confirm is untouched.
+ *
+ * ## `context` and `allowCurrent`
+ *
+ * Two generic knobs, not shaped to any one caller — `context?: string` is the
+ * line above the list, shown whenever either it or `moving` is given (a
+ * caller may want the line with no move at all); `allowCurrent?: boolean`
+ * (default `false`, today's behaviour) gates whether the `● NOW` row itself
+ * responds to a tap, **in plain pick mode only** — MOVE's own tap-then-confirm
+ * flow is untouched by it, which is what lets `GearDetail`'s own "tap the
+ * current home, then confirm, then the caller suppresses the write" test
+ * keep passing unchanged. A future settle route (F16, spec §4.6: `● NOW —
+ * FOUND HERE`) is what turns `allowCurrent` on — writing the same home again
+ * is the fact that settles an unaccounted standing there, so that caller
+ * needs the row tappable; this one does not.
+ *
  * ## Mounted is open
  *
  * There is no `open` prop, and losing it was a fix rather than a tidy. This
@@ -77,6 +102,22 @@ export interface HomePickerProps {
   current?: Residence
   /** MOVE's context line, and the reason this picker confirms. */
   moving?: { name: string; insideCount: number }
+  /**
+   * The line above the list. Shown whenever this or `moving` is given —
+   * `moving`'s own auto-computed `MOVING {name} · {N} INSIDE RIDE ALONG`
+   * line otherwise. Supplying it alongside `moving` also skips the MOVE
+   * confirm (see this module's own header): the caller's own line is what
+   * states the consequence instead.
+   */
+  context?: string
+  /**
+   * Whether the `● NOW` row responds to a tap — default `false`, today's
+   * behaviour. Applies in **plain pick mode only**; MOVE's own
+   * tap-then-confirm flow (`moving` set) is unaffected regardless of this
+   * prop. A later flow (F16's settle route) turns it on to make re-picking
+   * the current home itself the settling act.
+   */
+  allowCurrent?: boolean
 }
 
 interface ContainerRow {
@@ -212,6 +253,8 @@ export function HomePicker({
   excludeGearId,
   current,
   moving,
+  context,
+  allowCurrent = false,
 }: HomePickerProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
@@ -254,6 +297,18 @@ export function HomePicker({
     // Edit suspends selection: rows stop closing the sheet.
     if (editing) return
     if (moving === undefined) {
+      // `allowCurrent` only ever gates plain pick mode — MOVE's own
+      // tap-then-confirm flow below is untouched by it (this module's own
+      // header explains why: `GearDetail`'s MOVE test taps the `● NOW` row
+      // and must keep reaching its confirm).
+      if (!allowCurrent && sameResidence(current, residence)) return
+      onSelect(residence)
+      return
+    }
+    // A caller-supplied `context` is the signal that it states its own
+    // consequence in that line instead of a confirm (this module's own
+    // header) — S10's re-home caller, never `GearDetail`'s MOVE.
+    if (context !== undefined) {
       onSelect(residence)
       return
     }
@@ -302,6 +357,28 @@ export function HomePicker({
 
   const nowMark = <span className={styles['now']}>● NOW</span>
 
+  /**
+   * `context`'s own text when given; `moving`'s auto-computed line
+   * otherwise; `undefined` when neither is — the paragraph below renders
+   * nothing at all in plain pick mode with no `context` (today's behaviour).
+   */
+  const contextText =
+    context ??
+    (moving === undefined
+      ? undefined
+      : `MOVING ${moving.name} · ${moving.insideCount} INSIDE RIDE ALONG`)
+
+  /**
+   * Whether tapping the row marked `● NOW` should do nothing — plain pick
+   * mode only (`choose`'s own gate), so MOVE's tap-then-confirm flow is
+   * never disabled by this.
+   */
+  function nowDisabled(residence: Residence): boolean {
+    return (
+      moving === undefined && !allowCurrent && sameResidence(current, residence)
+    )
+  }
+
   return (
     <Sheet
       title="Home"
@@ -319,9 +396,9 @@ export function HomePicker({
         </button>
       }
     >
-      {moving !== undefined && (
+      {contextText !== undefined && (
         <p className={styles['context']} data-testid="moving-context">
-          MOVING {moving.name} · {moving.insideCount} INSIDE RIDE ALONG
+          {contextText}
         </p>
       )}
 
@@ -341,6 +418,7 @@ export function HomePicker({
             type="button"
             className={`${styles['looseRow']} ${editing ? styles['dim'] : ''}`}
             onClick={() => choose({ in: 'loose' }, 'Loose')}
+            disabled={nowDisabled({ in: 'loose' })}
           >
             <span className={styles['rowMain']}>
               <span className={styles['rowName']}>Loose</span>
@@ -396,6 +474,7 @@ export function HomePicker({
                     type="button"
                     className={styles['placeSelect']}
                     onClick={() => choose({ in: 'place', id: place.id }, name)}
+                    disabled={nowDisabled({ in: 'place', id: place.id })}
                   >
                     <span className={styles['rowName']}>
                       {/* The glyph is the *world*, drawn — a screen reader
@@ -447,6 +526,7 @@ export function HomePicker({
                         onClick={() =>
                           choose({ in: 'gear', id: row.id }, row.name)
                         }
+                        disabled={nowDisabled({ in: 'gear', id: row.id })}
                       >
                         <span className={styles['rowMain']}>
                           <span className={styles['rowName']}>{row.name}</span>
