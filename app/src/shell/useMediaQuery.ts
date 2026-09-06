@@ -128,11 +128,11 @@ export interface ScreenHeader {
  * Whether a pushed screen draws its own back link and its own sync line.
  * **Every screen that draws either half asks** — `AddGear`, `GearDetail`,
  * `Trip`, `NewTrip`, `Account`, `People`, `Devices`, `InviteIssued`,
- * `DepotPicker`, `GearListBuilder` and `Packing`, all eleven of them —
- * because a rule spelled eleven times is ten chances to spell it
+ * `DepotPicker`, `GearListBuilder`, `Packing` and `Unpack`, all twelve of
+ * them — because a rule spelled twelve times is eleven chances to spell it
  * differently, and that is exactly how `Account` came to carry `Trip`'s
- * defect from a different slice. Ten draw a sync line; `InviteIssued` draws
- * only the back link, and gates its band on {@link ScreenHeader.backLink}
+ * defect from a different slice. Eleven draw a sync line; `InviteIssued`
+ * draws only the back link, and gates its band on {@link ScreenHeader.backLink}
  * rather than on
  * {@link ScreenHeader.band}, since for a screen with no sync line the link
  * is the only thing the band could hold. (`DepotPicker`'s own `'pane'`

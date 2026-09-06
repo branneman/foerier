@@ -42,8 +42,9 @@ export interface ScreenBandProps {
   readonly back: { readonly href: string; readonly label: string }
   /** The engine's status, or omitted for a screen that draws no sync line. */
   readonly sync?: SyncStatus
-  /** A `data-testid` for the sync line, for the one suite that names it
-   * (`Packing.test.tsx`'s `packing-sync`). */
+  /** A `data-testid` for the sync line, for the suites that name it
+   * (`Packing.test.tsx`'s `packing-sync`, `Unpack.test.tsx`'s
+   * `unpack-sync`). */
   readonly syncTestId?: string
 }
 

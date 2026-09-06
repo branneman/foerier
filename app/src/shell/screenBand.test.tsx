@@ -33,6 +33,7 @@ import { NewTrip } from '../screens/NewTrip'
 import { Packing } from '../screens/Packing'
 import { People } from '../screens/People'
 import { Trip } from '../screens/Trip'
+import { Unpack } from '../screens/Unpack'
 import { setViewport } from '../testSetup'
 import { AppShell } from './AppShell'
 import bandStyles from './ScreenBand.module.css'
@@ -225,6 +226,12 @@ function renderInShell(store: StoreApi<HouseholdStoreState>, path: string) {
             <Route path="/trips/:id/packing">
               <Packing />
             </Route>
+            {/* F5's own route, `/trips/:id/packing`'s twin above: not
+                width-gated and not a pane, reachable at every width for the
+                identical reason. */}
+            <Route path="/trips/:id/unpack">
+              <Unpack />
+            </Route>
             {/* Width-guarded in opposite directions (spec §4.1): the picker
                 exists below Split only, the builder Split and up only — each
                 is stood up here and counted at the widths it actually
@@ -388,6 +395,49 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
     setViewport(SPLIT, DESKTOP)
     const { store, id } = await aTrip()
     renderInShell(store, `/trips/${id}/packing`)
+
+    const lines = syncLines()
+    expect(lines).toHaveLength(1)
+    const [line] = lines
+    expect(line).toBeVisible()
+    expect(screen.getByRole('main')).not.toContainElement(line ?? null)
+  })
+
+  /**
+   * **F5 — the twelfth `useScreenHeader` caller**, `Packing`'s own three
+   * cases restated over `/trips/:id/unpack`: the same route shape, the same
+   * flags, the same reason.
+   */
+  it('states SYNCED once on a phone for Unpack, in the shell header', async () => {
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/unpack`)
+
+    const lines = syncLines()
+    expect(lines).toHaveLength(1)
+    const [line] = lines
+    expect(line).toBeVisible()
+    expect(screen.getByRole('main')).not.toContainElement(line ?? null)
+  })
+
+  it('states SYNCED once at Split for Unpack, in the screen', async () => {
+    setViewport(SPLIT)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/unpack`)
+
+    const lines = syncLines()
+    expect(lines).toHaveLength(1)
+    const [line] = lines
+    expect(line).toBeVisible()
+    expect(screen.getByRole('main')).toContainElement(line ?? null)
+    const nav = screen.getByRole('navigation', { name: 'Sections' })
+    expect(within(nav).queryByText('SYNCED')).toBeNull()
+    expect(within(nav).getByRole('img', { name: 'SYNCED' })).toBeInTheDocument()
+  })
+
+  it('states SYNCED once at Desktop for Unpack, in the sidebar', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/unpack`)
 
     const lines = syncLines()
     expect(lines).toHaveLength(1)
@@ -692,6 +742,16 @@ describe('the back link — withheld only where its destination is already drawn
     expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
   })
 
+  /** F5's twin of the case immediately above: the same flags, the same
+   * sidebar, the same reason. */
+  it('keeps Unpack’s back link at Desktop — the sidebar carries TRIPS, not the Trip', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/unpack`)
+
+    expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
+  })
+
   it('draws it on People at Split, the widest width it is mounted at', async () => {
     setViewport(SPLIT)
     const store = await seededStore()
@@ -835,6 +895,7 @@ describe('the sync dot at Split — amber while the household is unreachable, on
     ],
     ['a Trip', () => offlineTrip(''), null],
     ['Packing', () => offlineTrip('/packing'), null],
+    ['Unpack', () => offlineTrip('/unpack'), null],
     ['the builder', () => offlineTrip('/list'), null],
     [
       'Account',

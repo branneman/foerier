@@ -21,9 +21,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   leftLabel,
+  openLabel,
   packedLabel,
   packedPercent,
   peopleOn,
+  resolvedLabel,
+  resolvedPercent,
   tripChip,
   tripDateRange,
   tripParticipants,
@@ -447,5 +450,50 @@ describe('the packing totals line', () => {
     // a list with something on it and nothing to pack yet.
     expect(packedPercent({ packed: 0, total: 0, left: 0 })).toBe(0)
     expect(packedLabel({ packed: 0, total: 0, left: 0 })).toBe('● 0/0 PIECES')
+  })
+})
+
+/**
+ * F5's totals line — `packedLabel`'s sibling over `UnpackCount`
+ * (`docs/design/README.md` §7, ruling F2). One spelling, so the packing
+ * screen's own head and a later task's trip-card progress line can never
+ * disagree about one Trip's unpack progress.
+ */
+describe('the unpack totals line', () => {
+  const count = {
+    resolved: 56,
+    total: 62,
+    open: 6,
+    back: 53,
+    consumed: 2,
+    lost: 1,
+  }
+
+  it('spells the board line, glyph included', () => {
+    expect(resolvedLabel(count)).toBe('● 56/62 RESOLVED')
+    expect(openLabel(count)).toBe('6 OPEN')
+  })
+
+  it('rounds the bar to a whole percent of the drawn denominator', () => {
+    expect(resolvedPercent(count)).toBe(90)
+    expect(
+      resolvedPercent({ ...count, resolved: 62, total: 62, open: 0 }),
+    ).toBe(100)
+  })
+
+  it('paints an empty bar for a genuine 0/0 rather than dividing by zero', () => {
+    // Reachable and not defensive: a Trip whose only Entries are trip-only
+    // takes no outcome (invariant 18) — nothing to resolve, and no depot
+    // units to resolve it against.
+    const zero = {
+      resolved: 0,
+      total: 0,
+      open: 0,
+      back: 0,
+      consumed: 0,
+      lost: 0,
+    }
+    expect(resolvedPercent(zero)).toBe(0)
+    expect(resolvedLabel(zero)).toBe('● 0/0 RESOLVED')
   })
 })

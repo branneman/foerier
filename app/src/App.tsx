@@ -42,6 +42,7 @@ import { NewTrip } from './screens/NewTrip'
 import { Packing } from './screens/Packing'
 import { Trip } from './screens/Trip'
 import { Trips } from './screens/Trips'
+import { Unpack } from './screens/Unpack'
 import { AppShell } from './shell/AppShell'
 import styles from './shell/AppShell.module.css'
 import { DESKTOP, SPLIT, useMediaQuery } from './shell/useMediaQuery'
@@ -423,6 +424,15 @@ export function App({
                   `/trips/:id`, which cannot match a two-segment tail. */}
               <Route path="/trips/:id/packing">
                 <Packing />
+              </Route>
+              {/* F5's own route, `Packing.tsx`'s sibling above verbatim:
+                  not width-gated and not a pane — a row's two acts are a
+                  pill and a sheet, no detail a wider viewport unlocks — and
+                  reachable at every phase, since a phase locks nothing
+                  (invariant 16) and hiding a route is the soft lock the
+                  phase model forbids (`docs/design/README.md` §7). */}
+              <Route path="/trips/:id/unpack">
+                <Unpack />
               </Route>
               <Route path="/find">
                 <Find />

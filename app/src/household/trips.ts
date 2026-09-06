@@ -11,6 +11,7 @@ import {
   type EntryState,
   type PackingCount,
   type TripState,
+  type UnpackCount,
 } from '@foerier/shared'
 
 import { sortedPeople, type PersonRow } from './people'
@@ -445,4 +446,36 @@ export function leftLabel(count: PackingCount): string {
 export function packedPercent(count: PackingCount): number {
   if (count.total === 0) return 0
   return Math.round((count.packed / count.total) * 100)
+}
+
+/**
+ * F5's own totals line — `● 56/62 RESOLVED` — {@link packedLabel}'s sibling
+ * over `shared/`'s other count table (`docs/design/README.md` §7, ruling F2).
+ *
+ * The glyph is a literal `●` rather than a table lookup: `UnpackCount`'s
+ * `resolved` is a subtraction over three outcomes (`back`, `consumed`,
+ * `lost`) and not itself a row of `OUTCOMES` (`shared/src/selectors/unpack.ts`),
+ * so there is no `outcomeGlyph` call that means *this* — `outcomeGlyph('back')`
+ * would tie the aggregate's mark to one outcome among three and drift the
+ * moment a ruling repaints `back` alone. F2 draws `●` for the line itself, not
+ * for any one outcome inside it.
+ */
+export function resolvedLabel(count: UnpackCount): string {
+  return `● ${count.resolved}/${count.total} RESOLVED`
+}
+
+/** `6 OPEN` — the count line's trailing half. See {@link resolvedLabel}. */
+export function openLabel(count: UnpackCount): string {
+  return `${count.open} OPEN`
+}
+
+/**
+ * The bar's fill, as a percentage of the denominator the count line draws —
+ * {@link packedPercent}'s twin. `total === 0` is reachable exactly as it is
+ * there: a Trip whose only Entries are trip-only has nothing left to resolve
+ * and no depot units to resolve it against.
+ */
+export function resolvedPercent(count: UnpackCount): number {
+  if (count.total === 0) return 0
+  return Math.round((count.resolved / count.total) * 100)
 }
