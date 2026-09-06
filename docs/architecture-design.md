@@ -2604,3 +2604,50 @@ moved while it was being built.
   that reopen "offers back" the write this gesture makes — and is spelled out
   in `docs/specs/2026-09-05-unpack-resolve-and-close.md` §8 and
   `gestures.ts`'s own docblock, both paths.
+
+### 12.18 Consequences of the S10 round-2 closeout
+
+No op type, no endpoint, no migration, and not a line of `reduce.ts` or
+`state.ts`. The round (`docs/design/README.md` **§5i**, G1–G15;
+`S10 Round 2 - The UX the Code Decided.dc.html`) ruled the fifteen UX
+decisions S10's code took because no board reached the case: three blessed,
+one declined, one named as a **conflict with an invariant**, ten redrawn. Its
+own index into the slice's spec is
+[§9 there](specs/2026-09-05-unpack-resolve-and-close.md).
+
+Four consequences outlive the round:
+
+- **A ruling can find a *conflict* rather than a gap, and G6 is the first.**
+  S10 left every outcome writable on a closed Trip, on the honest ground that
+  no board said otherwise — and invariant 19 already did, because a live pill
+  on a closed row is a change to a closed Trip's outcomes without the
+  ceremony. The lesson for a future slice: *no board says to* is a reason to
+  ask, and the thing worth checking first is whether an **invariant** already
+  answers. Invariant 16 does not (a phase locks no packing status, and F4
+  stays live at every phase); 19 is the specific rule for outcomes and it
+  reaches F5. F5 on a closed Trip is now a record — every read stays, every
+  write goes, the row body routes to gear detail.
+- **Two words for two questions, and the arithmetic follows the words.**
+  `N INSIDE` is the lid-open count (direct children, a nested container
+  counting one, units by their count) and `N RIDE ALONG` is what moves (the
+  whole subtree, any depth). That closed `moving.insideCount`'s recorded
+  undercount **by definition** rather than as a separate patch — the picker
+  had disclosed `1 INSIDE RIDE ALONG` and moved three — and it is the shape
+  to reach for the next time one string is answering two questions.
+- **A pinned code-authored rendering is what lets a round meet the shipped
+  behaviour instead of re-deriving it.** Every one of §8.6's five renderings
+  came back with a ruling, and four of the five tests that pinned them were
+  *inverted with their reasons attached* rather than deleted. The habit is now
+  twice-proven: `docs/design/README.md` §1's own instruction to keep
+  code-authored annotations through a regeneration is what carried them into
+  the round, and the tests are what made "as it behaves today" a checkable
+  claim rather than a memory.
+- **A restated rule is not a shared one.** Three defects surfaced while
+  building the round, all the same shape: `headerlessMeta` restated the two
+  shared meta arms in its own body (so G3 moved one copy and left the other
+  drawing `×0 BACK`), `rehomedSinceOutcome` read the register a per-person
+  Entry does not carry its outcomes in, and `whereaboutsByPerson` read active
+  Trips alone so the People carrying a standing were absent from its map.
+  Each had a docstring claiming the property the code did not have. The fix
+  in every case was to make the claim structural — one function, or a named
+  sibling that asks the right register — rather than to correct a second copy.

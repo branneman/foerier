@@ -1280,3 +1280,83 @@ actually moves — which is a separate, already-recorded defect
 (`docs/technical-debt.md`, `moving.insideCount`) that a copy ruling would want
 to know about, since fixing the number and fixing the word are the same
 sitting.
+
+## 9. What the round-2 closeout settled
+
+Written after `docs/design/README.md` **§5i** (G1–G15,
+`S10 Round 2 - The UX the Code Decided.dc.html`) landed and was built.
+**Nothing above this line has been edited** — §8's own rule, applied to §8.
+
+The round met the fifteen UX decisions this slice took because no board
+reached the case. It blessed three as built, declined one, named one as a
+**conflict with an invariant** rather than a gap, and redrew the rest. §5i is
+the shipped authority; this section is the index from here to there.
+
+- **G1** — the reopen disclosure moves out of body prose into the conditional
+  mono register (§8.10's first bullet). The `×6` in
+  `OWNED COUNTS LOWERED AT CLOSE STAY LOWERED — GAS CANISTER ×6 → ×4` is a
+  **reconstruction**, `owned + consumed` read now, because the close wrote the
+  owned count absolutely and only the log holds the pre-close value. The
+  double-subtraction is deliberately **not** disclosed on screen and is S11's,
+  by name.
+- **G2** — §8.12's three `INSIDE` counts get two words. `N INSIDE` is the
+  lid-open count (direct children, a nested container counting one, units by
+  their count); `N RIDE ALONG` is what moves (the whole subtree, any depth).
+  That closes `moving.insideCount`'s recorded undercount **by definition**
+  rather than as a separate patch, and F5's container row takes the trip
+  world's `▸` because the return path beside it is home.
+- **G3** — §8.6's `×0 BACK` and `0 INSIDE` draw nothing; F18's rule
+  generalised, with the count line's `0 OPEN` as the one exception. The
+  stepper at its ceiling reads `NONE CAME BACK.`
+- **G4** — §8.6's bare-`OUTCOME` collapse becomes B1's ladder,
+  *register · what · where*, dropping from the right. An unsynced Gear alone
+  reaches the floor.
+- **G5** — §8.6's composite is ordered *act · what moves · consequence*, and
+  gear detail's `RESOLVE` ride-along (R32) draws.
+- **G6** — the conflict. §8.1's *"every other write on the screen stays
+  live — a phase locks nothing"* contradicts invariant 19. F5 on a closed Trip
+  is a **record**: reads stay, writes go, the body routes to gear detail.
+- **G7** — §8.10's I3 is declined a corrections route: the stepper becomes
+  unreachable rather than withheld, and a closed consumed count is history.
+- **G8** — blessed as built: F5 draws no row for a per-person Entry with zero
+  Pieces, and the divergence from E9 is the two screens' two questions.
+- **G9** — §8.6's PERSON-mode omission (ruling R20) is overturned: `Shared`
+  takes the trip-only rows at its tail, in DESTINATION's anatomy.
+- **G10** — §8.6's per-person silence closes: `▲ 2 OF 3 TESSIN 2025`, and
+  `▲ 2 OF 3 PIECES · LAST SEEN: …` on gear detail, never `OWNED`.
+- **G11** — §8.11 is overturned: gear detail's footers **stack**. Today's
+  precedence had left the home row's `▲` with no door, which is D7 broken.
+- **G12** — the `▲ LOST` + `RE-HOMED` pair of §8.10's last bullet stands, and
+  the pill takes F18's colour: attention while unaccounted, muted once
+  re-homed.
+- **G13** — §8.7's open question is answered: `consumed` settles, one
+  predicate, non-`lost` and non-`null`.
+- **G14** — blessed: the clamp is the feedback.
+- **G15** — F8 is narrowed. A plain row's re-home confirms nothing; a
+  container row's confirms, §1's one rule reaching this route.
+
+**Three things the build turned up that the rulings did not name**, recorded
+here rather than folded silently into the code they moved:
+
+1. **`headerlessMeta` restated the two shared suffix arms in its own body**,
+   so G3 moved them in DESTINATION and left PERSON and ALL drawing `×0 BACK`
+   for a commit. Its own docstring had *claimed* the arms were shared. They
+   are now one function; saying it is not the same as making it so.
+2. **`rehomedSinceOutcome` reads the Entry's outcome register**, which a
+   per-person Entry does not carry its outcomes in — so it answered `false`
+   for every Piece and G12's roster clause would have been silently withheld.
+   `rehomedSincePieceOutcome` is the sibling that asks the Piece.
+3. **`whereaboutsByPerson` reads active Trips alone**, so the People carrying
+   a standing were not in its map at all and G10's chips could not have been
+   drawn. It now folds the standing in afterwards, with domain §4's precedence
+   stated rather than assumed.
+
+**One disagreement between the boards is left open rather than resolved**:
+§5i's own G9 excerpt draws `Shared`'s depot rows in PERSON mode with the path
+**first** and no unit count (`Cook set → BAK 3`), which is DESTINATION's
+grammar rather than the header-less one ruling I1 argues for and this code
+builds (`×1 · → BAK 3`). G9's ruling text is explicitly about where the
+*trip-only* rows sit and what anatomy *they* take, so the excerpt's other rows
+are read as context drawn loosely rather than as a redrawing of I1. If they
+are not, the next round should say so — it is one function, `headerlessMeta`,
+and one rule.

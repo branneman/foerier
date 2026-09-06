@@ -905,6 +905,57 @@ records what moved while it was being built, and
   home on a later clock is precisely the fact that ends the unaccounted
   standing.
 
+**The S10 round-2 closeout has since ruled the fifteen UX decisions S10's
+code took because no board reached them** — three blessed, one declined, one
+named as a **conflict with an invariant**, ten redrawn. No op type, no
+endpoint, no migration, and not a line of `reduce.ts` or `state.ts`. See
+`docs/design/README.md` **§5i** (G1–G15, the shipped authority),
+[the slice spec's §9](docs/specs/2026-09-05-unpack-resolve-and-close.md) and
+[§12.18](docs/architecture-design.md#1218-consequences-of-the-s10-round-2-closeout).
+
+**Four things about it are worth knowing before touching these surfaces:**
+
+- **F5 on a closed Trip is a record, and G6 is the first ruling to find a
+  *conflict* rather than a gap.** S10 left every outcome writable there on the
+  honest ground that no board said otherwise — and invariant 19 already did,
+  because a live pill on a closed row is a change to a closed Trip's outcomes
+  without the ceremony. The screen keeps every read (count line, bar,
+  controls, filter) and drops every write: the pill and cluster lose their
+  border and read as text, the body routes to gear detail, the card withholds
+  its button. Invariant 16 is *not* contradicted — a phase locks no packing
+  status, and F4 stays live at every phase. The general lesson: *no board says
+  to* is a reason to ask, and the first thing to check is whether an
+  **invariant** already answers.
+- **`INSIDE` and `RIDE ALONG` are two words for two questions, and the
+  arithmetic follows the words.** `N INSIDE` is the **lid-open** count —
+  direct children, a nested container counting one, units by their count — in
+  either world; `N RIDE ALONG` is **what moves**, the whole subtree at any
+  depth. `INSIDE RIDE ALONG` is retired everywhere. This closed
+  `moving.insideCount`'s recorded undercount *by definition* rather than as a
+  patch: every caller had passed the direct children, so a crate holding a
+  stuff sack holding two items disclosed `1 INSIDE RIDE ALONG` and moved
+  three. F5's container row carries the trip world's `▸` because the return
+  path beside it is home.
+- **A zero count segment is absent, not written** (G3, F18's rule
+  generalised), with the count line's `0 OPEN` as the one exception, because
+  there the zero is the gate. It reaches `×0 BACK` — the *ordinary* consumed
+  rendering, since the stepper opens at the whole Bring-count — and `0 INSIDE`.
+  Relatedly, **per-person now states its quantity in Pieces**: `▲ 2 OF 3
+  TESSIN 2025` in the one-slot surfaces and `▲ 2 OF 3 PIECES · LAST SEEN: …`
+  on gear detail, never `OWNED`, because per-person gear has no owned-count
+  (invariant 6). `Unaccounted` carries `pieceIds` for it — membership and
+  count are one fact, and two fields is how they drift.
+- **A restated rule is not a shared one, three times in one round.**
+  `headerlessMeta` restated the two shared meta arms in its own body, so G3
+  moved one copy and PERSON and ALL went on drawing `×0 BACK` for a commit;
+  `rehomedSinceOutcome` reads the **Entry's** outcome register, which a
+  per-person Entry does not carry its outcomes in, so it answered `false` for
+  every Piece; and `whereaboutsByPerson` reads **active** Trips alone, so the
+  People carrying a standing were absent from its map entirely. Each had a
+  docstring claiming the property the code did not have. The fix each time was
+  to make the claim structural — one function, or a named sibling that asks
+  the right register.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**

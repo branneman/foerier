@@ -129,6 +129,17 @@ until this pass two of them did not, and a Counted Gear nobody counted drew
 [§12.11](architecture-design.md#1211-consequences-of-s6-trips-and-phases),
 [§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
 
+**A per-Piece register needs its own function, and the Entry-level one will
+answer `false` rather than fail.** A per-person Entry carries its outcomes on
+the Pieces; the Entry's own `outcome` register is fold-but-ignore there
+(sync §4.4). So `rehomedSinceOutcome(entry, gear)` — which reads that
+register — answers `false` for every Piece there is, quietly and forever, and
+the surface asking *has this been re-homed since it was lost* silently draws
+nothing. `rehomedSincePieceOutcome` is the sibling that asks the Piece, named
+after `outcomeOf` / `pieceOutcomeOf`, which had the split from the start.
+Before adding a caller for one of these, check which entity path actually
+holds the register the question is about.
+
 ### 1.3 Reader gates, not reducer gates
 
 Where a rule depends on a fact from a **different aggregate**, the reducer
@@ -413,6 +424,30 @@ information.
 
 *Argued in:* `docs/design/README.md` §1 and §5g E9; `app/src/components/PackingRow.tsx`'s
 "A per-person Entry with no Pieces is a fact, not a control".
+
+### 3.8 A screen that may no longer be written keeps its anatomy and drops its controls
+
+Where an invariant closes a screen's writes — a phase reached, a record
+sealed — the screen does **not** become a different screen. Every read stays:
+the counts, the progress, the mode controls, the filter. What goes is each
+control, in §3.7's own manner (withheld, never greyed), and what replaces a
+control is the fact it was stating, in the treatment already drawn for a slot
+that is not a control. F5 on a closed Trip is the worked example (§5i G6): the
+pill and the cluster lose their border and read as text — a border **is** a
+control (§5b O) — the body routes to the screen where the remaining acts live,
+and the hint names the one gesture left.
+
+Two rules fall out of it. **Decide it once and hand it down**: a screen with
+two render sites (F5's grouped modes and its flat `ALL`) will otherwise draw
+the sealed state two ways, so the prop is composed in one function and spread
+at both. And **name the invariant, not the phase**: `isClosed` is the only
+definition of closed-ness in the codebase, and the reason F4 stays live at
+every phase while F5 does not is that invariant 16 governs packing status and
+19 governs outcomes — two invariants, two answers, and neither is *a phase
+locks things*.
+
+*Argued in:* `docs/design/README.md` §5i G6/G7; `app/src/components/UnpackRow.tsx`'s
+`record` prop; `app/src/screens/Unpack.tsx`'s `recordProp`.
 
 ---
 
