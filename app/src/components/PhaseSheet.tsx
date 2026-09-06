@@ -1,4 +1,5 @@
 import {
+  closeTrip,
   isKnownPhase,
   overClaimsIfActive,
   phaseLabel,
@@ -6,11 +7,13 @@ import {
   phaseOf,
   PHASES,
   tripPhaseMoved,
+  unpackTotals,
   type PhaseKey,
   type TripState,
 } from '@foerier/shared'
 import { Sheet } from '@foerier/ui'
 import { useState } from 'react'
+import { useLocation } from 'wouter'
 
 import { useHousehold } from '../household/store'
 import { ActivationConfirm } from './ActivationConfirm'
@@ -34,12 +37,24 @@ import { ReopenConfirm } from './ReopenConfirm'
  * there is exactly one caller shape — a chip on a Trip that already exists —
  * so nothing is served by handing the move back up.
  *
- * Two special cases, and only two.
+ * Three special cases now, not two.
  *
- * **Entering `closed` is unguarded**, per spec §8.3. That is honest rather
- * than provisional: the close gate counts *open outcomes* (invariant 18) and
- * nothing can be open until S10 builds outcomes at all. S10 adds the gate; a
- * stub here would be a claim about a check the app does not perform.
+ * **Entering `closed` is gated on `open = 0`, invariant 18's own gate — the
+ * discharge of this file's earlier "entering `closed` is unguarded" note**
+ * (spec §8.3 predates S10's outcomes). While
+ * {@link unpackTotals}`(trip, state).open` is greater than zero the row
+ * stays tappable — the sheet's own standing rule, D7, never a disabled row —
+ * and the tap **routes to F5** (`/trips/:id/unpack`) instead of writing
+ * anything: there is nowhere else in this build a Quartermaster can go to
+ * close the gap, so sending them back out to hunt for the band's link would
+ * be the dead-end the rejected board alternative draws (spec §4.8). At
+ * `open = 0` the row is the ordinary setter, except that what it emits is
+ * `closeTrip(trip, state)` (`gestures.ts`) rather than a bare
+ * `trip.phase_moved` — the same gesture F5's own close card calls, so this
+ * sheet can never emit half of the close batch. **The second copy of this
+ * gate lives in `Unpack.tsx`'s close card** (F11); both read
+ * `unpackTotals` fresh rather than trusting a stale prop, and neither
+ * re-derives the other's arithmetic.
  *
  * **Leaving `closed` confirms** — see {@link ReopenConfirm}.
  *
@@ -67,6 +82,7 @@ export interface PhaseSheetProps {
 export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
+  const [, navigate] = useLocation()
 
   // The phase a reopen is waiting on, and `null` when nothing is. Mount is
   // the reset — `ui/`'s primitives have no `open` prop, so a caller writes
@@ -100,6 +116,12 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   // *resolves* the miss. A lookup here would put "what an unrecognised phase
   // means" in two places, and this screen's copy is the one that would drift.
   const known = isKnownPhase(current)
+  // F12's own read — asked once here and again inside `choose` (never
+  // cached between the two): a render and the click it responds to are not
+  // guaranteed to see the same fold if a pull lands between them, and
+  // `choose` is the one that actually gates the write, so it asks fresh
+  // rather than trusting this copy.
+  const open = unpackTotals(trip, state).open
 
   function move(phase: PhaseKey) {
     emit(tripPhaseMoved(trip.id, phase))
@@ -121,6 +143,29 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
     // does not have.
     if (current === 'closed') {
       setReopenTo(phase)
+      return
+    }
+    // F12: entering `closed` is gated on `open = 0`, invariant 18's own
+    // gate — this file's docstring has the full reasoning. `unpackTotals`
+    // is asked fresh here rather than trusted from a stale prop, exactly as
+    // `Unpack.tsx`'s own close card asks it fresh from the fold it renders.
+    if (phase === 'closed') {
+      if (unpackTotals(trip, state).open > 0) {
+        // D7: still tappable, never a dead row — the tap goes where the
+        // gap can actually be closed, and the sheet gets out of the way of
+        // it rather than leaving a claim it cannot back up on screen.
+        navigate(`/trips/${trip.id}/unpack`)
+        onClose()
+        return
+      }
+      // `closeTrip` carries the summed per-Gear reduction, the floor at
+      // zero, `trip.phase_moved` last, and the already-closed guard — never
+      // re-derived here. This discharges the defect this task was written
+      // to close: a bare `tripPhaseMoved` past this gate is exactly the
+      // corruption F5's own close card exists to prevent, arriving through
+      // a second door.
+      for (const spec of closeTrip(trip, state)) emit(spec)
+      onClose()
       return
     }
     // Spec §4.5's second guarded moment, widened by amendment ruling J to
@@ -172,6 +217,17 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
       <ul className={styles['rows']}>
         {PHASES.map((row) => {
           const now = row.id === current
+          // F12: the `CLOSED` row's own right-hand meta — drawn only while
+          // there is still a gap for it to name. Withheld on the row that
+          // is itself `● NOW`: `choose` returns early, without reading
+          // `open` at all, the moment the tapped row is the current phase
+          // (`DAY N`'s own rule, restated), so a meta claiming the tap would
+          // route somewhere would be a promise this sheet does not keep for
+          // that row. Whether a Trip can *actually* be `closed` with
+          // `open > 0` — a peer on an older build, or data from before this
+          // task's own fix — is a fact about the fold this component does
+          // not have to settle to draw correctly either way.
+          const openHere = row.id === 'closed' && !now && open > 0
           return (
             <li key={row.id}>
               <button
@@ -183,6 +239,14 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
               >
                 <span>{row.label}</span>
                 {now && <span className={styles['now']}>● NOW</span>}
+                {openHere && (
+                  <span
+                    className={styles['openMeta']}
+                    data-testid="phase-row-open"
+                  >
+                    {open} OPEN ›
+                  </span>
+                )}
               </button>
             </li>
           )

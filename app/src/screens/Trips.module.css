@@ -219,6 +219,15 @@
     color: var(--color-ink-faint);
   }
 
+  /* F18 — `1 LOST`, attention while any of it is still an active standing.
+     The number is history (`.rowMeta`'s own colour, inherited); this
+     overrides it only while `tripHasUnaccounted` says so. Muted needs no
+     class of its own — it is simply `.rowMeta`'s ambient colour, the same
+     way a re-homed Gear's `1 LOST` reads once every unit is settled. */
+  .lostAttention {
+    color: var(--color-status-attention);
+  }
+
   .reopen {
     display: inline-flex;
     align-items: center;

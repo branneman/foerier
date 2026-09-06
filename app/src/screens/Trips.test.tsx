@@ -1,9 +1,12 @@
 import {
+  gearRecorded,
+  gearRehomed,
   personRecorded,
   tripCreated,
   tripDatesSet,
   tripEntryAdded,
   tripEntryStatusSet,
+  tripOutcomeSet,
   tripParticipantAdded,
   tripPhaseMoved,
   type OpSpec,
@@ -30,6 +33,7 @@ import {
   SEEDED_AT,
 } from '../testUtils'
 import { Trips } from './Trips'
+import styles from './Trips.module.css'
 
 /**
  * A **real** store seeded by emitting real ops, as every screen test in this
@@ -273,6 +277,38 @@ describe('the Trips screen', () => {
   })
 
   /**
+   * F13's own read: `Trips.tsx` picks `unpackTotals` over `packingTotals`
+   * once `phaseOf` says the Trip is at Unpack — proved here by the words
+   * on the card, which `packingTotals`' own `PIECES`/`LEFT` could never
+   * produce.
+   */
+  it('supplies the active card the unpack count at Unpack, not the packing one', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    renderTrips(
+      await seeded(
+        gearRecorded('g-headlamp', {
+          name: 'Headlamp',
+          container: false,
+          kind: 'single',
+        }),
+        tripCreated(ALPS, 'Alps 2026'),
+        tripPhaseMoved(ALPS, 'unpack'),
+        tripEntryAdded(ALPS, 'e-lamp', { from: 'depot', gearId: 'g-headlamp' }),
+      ),
+    )
+
+    const card = screen.getByTestId(`trip-card-${ALPS}`)
+    expect(card).toHaveTextContent('● 0/1 RESOLVED')
+    expect(card).toHaveTextContent('1 OPEN')
+    expect(card).not.toHaveTextContent('PIECES')
+    expect(card).not.toHaveTextContent('LEFT')
+    // F13's own CTA, beside it.
+    expect(
+      screen.getByRole('link', { name: 'Continue unpack for Alps 2026' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/unpack`)
+  })
+
+  /**
    * Ruling A11's other half, proved where the rule is decided: a Draft with a
    * real gear list draws `DRAFT · N ENTRIES` and no progress line at all —
    * `● 0/2 PIECES` would state progress against an arrangement invariant 17
@@ -392,8 +428,10 @@ describe('the Trips screen', () => {
 
     // The board's `JUL 2025 · 54 PIECES · 1 LOST` — S7 supplies the piece
     // count (`listTotals().pieces`, real trip-only Entries here, one piece
-    // each); `1 LOST` still waits on S10's outcomes, so it is absent from
-    // both rows.
+    // each). Neither Trip here has a `lost` outcome (no depot Gear at all,
+    // in fact — both Entries are trip-only), so `unpackTotals(…).lost` reads
+    // `0` and F18's own rule drops the segment: zero lost is absent, exactly
+    // as a missing start date is.
     const tessin = screen.getByTestId(`closed-meta-${TESSIN}`)
     expect(tessin).toHaveTextContent('JUL 2025 · 2 PIECES')
     expect(tessin.textContent).not.toContain('LOST')
@@ -404,6 +442,106 @@ describe('the Trips screen', () => {
     const scotland = screen.getByTestId(`closed-meta-${SCOTLAND}`)
     expect(scotland).toHaveTextContent('0 PIECES')
     expect(scotland.textContent).not.toContain('2025')
+  })
+
+  /**
+   * F18 — `1 LOST`'s own colour question. The **number** is
+   * `unpackTotals(trip, state).lost`, a Trip's own history; the **colour**
+   * is `tripHasUnaccounted`'s live standing (`household/trips.ts`), which
+   * can still change months after the Trip closed. jsdom computes no
+   * cascade, so the class carrying the colour is asserted where it is
+   * written — `TripCard.test.tsx`'s own reversed-range shape, one screen
+   * along — and `toHaveClass`/`not.toHaveClass` is what proves *which*
+   * class the segment actually carries, since the CSS module returns a
+   * usable token in this test environment.
+   */
+  describe('the closed rows own LOST segment (F18)', () => {
+    const GEAR = 'gggggggg-0000-7000-8000-00000000000f'
+
+    it('reads attention while the lost outcome is still an active standing', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+      renderTrips(
+        await seeded(
+          gearRecorded(GEAR, {
+            name: 'Headlamp',
+            container: false,
+            kind: 'single',
+          }),
+          tripCreated(TESSIN, 'Tessin 2025'),
+          tripDatesSet(TESSIN, { start: '2025-07-04' }),
+          tripEntryAdded(TESSIN, 'e-lamp', { from: 'depot', gearId: GEAR }),
+          tripOutcomeSet(TESSIN, 'e-lamp', 'lost'),
+          tripPhaseMoved(TESSIN, 'closed'),
+        ),
+      )
+
+      const meta = screen.getByTestId(`closed-meta-${TESSIN}`)
+      expect(meta).toHaveTextContent('JUL 2025 · 1 PIECE · 1 LOST')
+      const lost = screen.getByText('1 LOST')
+      expect(lost).toHaveClass(styles['lostAttention']!)
+
+      // Where the colour itself lives — never asserted by computed style,
+      // which jsdom does not compute.
+      const css = readFileSync(
+        join(dirname(expect.getState().testPath ?? ''), 'Trips.module.css'),
+        'utf8',
+      )
+      expect(css).toMatch(
+        /\.lostAttention\s*\{[^}]*color:\s*var\(--color-status-attention\)/,
+      )
+    })
+
+    it('mutes once the Gear has been re-homed since — the number stays, the standing does not', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+      renderTrips(
+        await seeded(
+          gearRecorded(GEAR, {
+            name: 'Headlamp',
+            container: false,
+            kind: 'single',
+          }),
+          tripCreated(TESSIN, 'Tessin 2025'),
+          tripDatesSet(TESSIN, { start: '2025-07-04' }),
+          tripEntryAdded(TESSIN, 'e-lamp', { from: 'depot', gearId: GEAR }),
+          tripOutcomeSet(TESSIN, 'e-lamp', 'lost'),
+          // Turns up later — settles the standing without touching the
+          // Trip's own outcome register at all (`unaccountedOf`'s own rule:
+          // a re-home settles the whole standing, not the outcome).
+          gearRehomed(GEAR, { in: 'loose' }),
+          tripPhaseMoved(TESSIN, 'closed'),
+        ),
+      )
+
+      const meta = screen.getByTestId(`closed-meta-${TESSIN}`)
+      // The number is history and does not move: this Trip really did lose
+      // one headlamp, whatever became of it since.
+      expect(meta).toHaveTextContent('1 LOST')
+      const lost = screen.getByText('1 LOST')
+      expect(lost).not.toHaveClass(styles['lostAttention']!)
+    })
+
+    it('never draws N CONSUMED, whatever the close batch reduced', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+      renderTrips(
+        await seeded(
+          gearRecorded(GEAR, {
+            name: 'Gas canister',
+            container: false,
+            kind: 'counted',
+            owned_count: 6,
+          }),
+          tripCreated(TESSIN, 'Tessin 2025'),
+          tripDatesSet(TESSIN, { start: '2025-07-04' }),
+          tripEntryAdded(TESSIN, 'e-gas', { from: 'depot', gearId: GEAR }),
+          tripOutcomeSet(TESSIN, 'e-gas', 'consumed'),
+          tripPhaseMoved(TESSIN, 'closed'),
+        ),
+      )
+
+      const meta = screen.getByTestId(`closed-meta-${TESSIN}`)
+      expect(meta.textContent).not.toContain('CONSUMED')
+      expect(meta.textContent).not.toContain('LOST')
+    })
   })
 
   /**

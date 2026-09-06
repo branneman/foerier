@@ -1,7 +1,10 @@
 import {
   gearRecorded,
+  tripConsumedCountSet,
   tripCreated,
   tripEntryAdded,
+  tripEntryBringCountSet,
+  tripOutcomeSet,
   tripPhaseMoved,
   type PhaseValue,
   type TripState,
@@ -9,6 +12,8 @@ import {
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
+import { Route, Router, Switch } from 'wouter'
+import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { inMemoryOpLog, type OpLog } from '../household/opLog'
@@ -244,17 +249,17 @@ describe('the SET PHASE sheet', () => {
     expect(closes()).toBe(1)
   })
 
-  it('closes a Trip without asking anything', async () => {
+  it('closes a Trip without asking anything, at open = 0', async () => {
     const user = userEvent.setup()
+    // No Entries at all, so `unpackTotals` reads `0/0` — `open = 0`
+    // trivially, and F12's gate lets the tap straight through.
     const seeded = await seededTrip('unpack')
     renderSheet(seeded)
 
     await user.click(screen.getByRole('button', { name: /CLOSED/ }))
     await seeded.store.getState().drained()
 
-    // Unguarded on purpose, and honest rather than provisional: the close
-    // gate counts open outcomes (invariant 18) and nothing can be open until
-    // S10. A stub gate would be a lie about what the app checks.
+    // No confirm at open = 0 (F10) — the gate is the ceremony.
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(await seeded.moves()).toEqual(['closed'])
   })
@@ -271,6 +276,202 @@ describe('the SET PHASE sheet', () => {
     // silently reset a trip on `DAY 12` to `DAY 1`. The sheet just closes.
     expect(await seeded.moves()).toEqual([])
     expect(closes()).toBe(1)
+  })
+
+  /**
+   * **F12 — the live defect this task closes.** Before this task the
+   * `CLOSED` row emitted a bare `trip.phase_moved` with no gate at all: a
+   * Quartermaster could close a Trip with outcomes still open, past a check
+   * the domain gives no override, and the Depot never moved. These tests
+   * are the proof the gate now stands on this door too, not only on F5's
+   * close card.
+   */
+  describe('the CLOSED row while open > 0 (F12)', () => {
+    /** Every op authored since the seed, by type — not filtered to phase
+     * moves, so "emits nothing" and "emits the close batch" are both
+     * statable claims rather than ones that only look at one register. */
+    async function authoredSince(
+      log: OpLog,
+      seededCount: number,
+    ): Promise<readonly { type: string; payload: Record<string, unknown> }[]> {
+      const all = await log.all()
+      return all
+        .slice(seededCount)
+        .map((entry) => ({ type: entry.op.type, payload: entry.op.payload }))
+    }
+
+    /** A Trip in `unpack` holding one depot Entry with no outcome — `open`
+     * reads `1`, so the CLOSED row must route rather than write. */
+    async function seededOpenTrip(): Promise<{
+      store: StoreApi<HouseholdStoreState>
+      trip: () => TripState
+      authored: () => Promise<readonly unknown[]>
+    }> {
+      const log: OpLog = inMemoryOpLog()
+      const store = createHouseholdStore({
+        log,
+        engine: noopEngine,
+        author: anAuthor(),
+      })
+      store.getState().emit(
+        gearRecorded('g-headlamp', {
+          name: 'Headlamp',
+          container: false,
+          kind: 'single',
+        }),
+      )
+      store.getState().emit(tripCreated(TRIP, 'Alps 2026'))
+      store.getState().emit(tripPhaseMoved(TRIP, 'unpack'))
+      store.getState().emit(
+        tripEntryAdded(TRIP, 'e-open', {
+          from: 'depot',
+          gearId: 'g-headlamp',
+        }),
+      )
+      await store.getState().drained()
+
+      const seededCount = (await log.all()).length
+      return {
+        store,
+        trip: () => store.getState().state.trips[TRIP]!,
+        authored: async () => authoredSince(log, seededCount),
+      }
+    }
+
+    /**
+     * A Trip in `unpack` holding one `consumed` Counted Entry, wholly
+     * resolved — `open` reads `0` — so tapping `CLOSED` must go through
+     * `closeTrip`'s reduction rather than a bare phase move. Owned ×6,
+     * bring ×4, consumed ×2 → reduces to ×4, `gestures.test.ts`'s own
+     * fixture read through the app's real store instead of the selector's
+     * hand-built one.
+     */
+    async function seededReadyToClose(): Promise<{
+      store: StoreApi<HouseholdStoreState>
+      trip: () => TripState
+      authored: () => Promise<readonly unknown[]>
+    }> {
+      const log: OpLog = inMemoryOpLog()
+      const store = createHouseholdStore({
+        log,
+        engine: noopEngine,
+        author: anAuthor(),
+      })
+      store.getState().emit(
+        gearRecorded('g-gas', {
+          name: 'Gas canister',
+          container: false,
+          kind: 'counted',
+          owned_count: 6,
+        }),
+      )
+      store.getState().emit(tripCreated(TRIP, 'Alps 2026'))
+      store.getState().emit(tripPhaseMoved(TRIP, 'unpack'))
+      store
+        .getState()
+        .emit(tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }))
+      store.getState().emit(tripEntryBringCountSet(TRIP, 'e-gas', 4))
+      store.getState().emit(tripOutcomeSet(TRIP, 'e-gas', 'consumed'))
+      store.getState().emit(tripConsumedCountSet(TRIP, 'e-gas', 2))
+      await store.getState().drained()
+
+      const seededCount = (await log.all()).length
+      return {
+        store,
+        trip: () => store.getState().state.trips[TRIP]!,
+        authored: async () => authoredSince(log, seededCount),
+      }
+    }
+
+    /** `PhaseSheet` mounted under a real `Router`, with a stand-in
+     * `/trips/:id/unpack` route so "the tap routes there" is a statable
+     * fact rather than an assumption about what `navigate` was called
+     * with. */
+    function renderSheetWithRouter(seeded: {
+      store: StoreApi<HouseholdStoreState>
+      trip: () => TripState
+    }) {
+      const location = memoryLocation({ path: '/trips/start', record: true })
+      let closed = 0
+      render(
+        <Router hook={location.hook}>
+          <Switch>
+            <Route path="/trips/start">
+              <HouseholdProvider value={seeded.store}>
+                <PhaseSheet
+                  trip={seeded.trip()}
+                  onClose={() => {
+                    closed += 1
+                  }}
+                />
+              </HouseholdProvider>
+            </Route>
+            <Route path="/trips/:id/unpack">
+              {(params) => <p>Unpack {params['id']}</p>}
+            </Route>
+          </Switch>
+        </Router>,
+      )
+      return { location, closes: () => closed }
+    }
+
+    it('draws the right-hand N OPEN › and keeps the row tappable — never a disabled row (D7)', async () => {
+      const seeded = await seededOpenTrip()
+      renderSheetWithRouter(seeded)
+
+      const closedRow = screen.getByRole('button', { name: /CLOSED/ })
+      expect(closedRow).toHaveTextContent('1 OPEN ›')
+      expect(closedRow).not.toBeDisabled()
+
+      // The sheet's own standing rule, stated once for every row and
+      // re-asserted here because this is the row a stub gate would have
+      // been tempted to disable.
+      for (const row of screen.getAllByTestId('phase-row')) {
+        expect(row).not.toBeDisabled()
+      }
+    })
+
+    it('routes to the unpack screen instead of writing, and closes the sheet', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededOpenTrip()
+      const { closes } = renderSheetWithRouter(seeded)
+
+      await user.click(screen.getByRole('button', { name: /CLOSED/ }))
+      await seeded.store.getState().drained()
+
+      // Whatever F5 draws for a fresh visit, not a Trip mutated on the way
+      // there.
+      expect(await seeded.authored()).toEqual([])
+      expect(screen.getByText(`Unpack ${seeded.trip().id}`)).toBeVisible()
+      expect(closes()).toBe(1)
+    })
+
+    it('emits the close batch, not a bare phase move, once open = 0', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededReadyToClose()
+      const { closes } = renderSheetWithRouter(seeded)
+
+      // Nothing marks this row `6 OPEN` — the ordinary setter underneath.
+      expect(
+        screen.getByRole('button', { name: /CLOSED/ }),
+      ).not.toHaveTextContent('OPEN')
+
+      await user.click(screen.getByRole('button', { name: /CLOSED/ }))
+      await seeded.store.getState().drained()
+
+      // The exact ops `gestures.test.ts` pins for this fixture
+      // (owned ×6, bring ×4, consumed ×2 → ×4), read back through the real
+      // store rather than the selector's own hand-built state — proof this
+      // sheet calls `closeTrip` and not a bare `trip.phase_moved`.
+      expect(await seeded.authored()).toEqual([
+        { type: 'gear.owned_count_set', payload: { count: 4 } },
+        {
+          type: 'trip.phase_moved',
+          payload: { phase: 'closed' },
+        },
+      ])
+      expect(closes()).toBe(1)
+    })
   })
 
   describe('leaving CLOSED', () => {

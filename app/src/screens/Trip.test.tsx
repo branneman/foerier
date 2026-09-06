@@ -988,6 +988,9 @@ describe('the trip screen — PACKING › (S9a)', () => {
     expect(screen.queryByTestId('gear-list-band')).toBeNull()
     expect(screen.queryByRole('link', { name: /Open packing/ })).toBeNull()
     expect(screen.queryByText('PACKING ›')).toBeNull()
+    // F14's own rule, the same one: no door to F5 either.
+    expect(screen.queryByRole('link', { name: /Open unpack/ })).toBeNull()
+    expect(screen.queryByText('UNPACK ›')).toBeNull()
   })
 
   /**
@@ -1011,6 +1014,159 @@ describe('the trip screen — PACKING › (S9a)', () => {
 
     // Two values, and the second is `0`: the vertical half grows, the
     // horizontal half does not.
+    const inset = /inset:\s*(-?[0-9.]+)rem\s+0\b/.exec(afterRule)?.[1]
+    expect(inset).toBeDefined()
+    const insetPx = Math.abs(Number.parseFloat(inset ?? '0') * 16)
+
+    const bodyLineHeightRem = /--text-body:\s*[0-9.]+rem\/([0-9.]+)rem/.exec(
+      readFileSync(
+        join(
+          dirname(expect.getState().testPath ?? ''),
+          '..',
+          '..',
+          '..',
+          'ui',
+          'styles',
+          'tokens.css',
+        ),
+        'utf8',
+      ),
+    )?.[1]
+    expect(bodyLineHeightRem).toBeDefined()
+    const paddingBoxHeight = Number.parseFloat(bodyLineHeightRem ?? '0') * 16
+
+    expect(paddingBoxHeight + 2 * insetPx).toBeGreaterThanOrEqual(44)
+  })
+})
+
+/**
+ * F14 — `UNPACK ›` beside `PACKING ›`, on the identical terms: same width
+ * rule, same phase rule, and no swap between the two by phase. The one door
+ * this task adds beside `PACKING ›`'s own.
+ */
+describe('the trip screen — UNPACK › (F14)', () => {
+  const headlamp = [
+    gearRecorded('g-single', {
+      name: 'Headlamp',
+      container: false,
+      kind: 'single',
+    }),
+    tripEntryAdded(ALPS, 'e-single', { from: 'depot', gearId: 'g-single' }),
+  ]
+
+  it('draws UNPACK › in the gear list band, below Split, beside PACKING ›', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps(), ...headlamp)
+
+    expect(
+      screen.getByRole('link', { name: 'Open unpack for Alps 2026' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/unpack`)
+    expect(screen.getByTestId('gear-list-band')).toHaveTextContent('UNPACK ›')
+    // Neither swaps the other out — both doors, always.
+    expect(
+      screen.getByRole('link', { name: 'Open packing for Alps 2026' }),
+    ).toBeVisible()
+  })
+
+  it('trails PACKING › in DOM order, order and gap kept', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps(), ...headlamp)
+
+    const packing = screen.getByRole('link', {
+      name: 'Open packing for Alps 2026',
+    })
+    const unpack = screen.getByRole('link', {
+      name: 'Open unpack for Alps 2026',
+    })
+    expect(
+      packing.compareDocumentPosition(unpack) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('draws it from Split up too, trailing EDIT LIST ›', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    setViewport(SPLIT)
+    await renderTrip(`/trips/${ALPS}`, ...alps(), ...headlamp)
+
+    const edit = screen.getByRole('link', { name: 'EDIT LIST ›' })
+    const unpack = screen.getByRole('link', {
+      name: 'Open unpack for Alps 2026',
+    })
+    expect(
+      edit.compareDocumentPosition(unpack) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('draws it at every phase, Draft included — no swap by phase', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      // No `trip.phase_moved` at all: `phaseOf` reads the absent register
+      // as `draft`, and hiding — or swapping — the route there would be a
+      // soft lock the phase model does not have.
+      tripCreated(ALPS, 'Alps 2026'),
+      ...headlamp,
+    )
+
+    expect(screen.getByTestId('phase-chip')).toHaveTextContent('DRAFT')
+    expect(
+      screen.getByRole('link', { name: 'Open unpack for Alps 2026' }),
+    ).toHaveAttribute('href', `/trips/${ALPS}/unpack`)
+    expect(
+      screen.getByRole('link', { name: 'Open packing for Alps 2026' }),
+    ).toBeVisible()
+  })
+
+  it('keeps the › out of the accessible name', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps(), ...headlamp)
+
+    const unpack = screen.getByRole('link', {
+      name: 'Open unpack for Alps 2026',
+    })
+    expect(unpack).toHaveTextContent('UNPACK ›')
+    expect(unpack).toHaveAccessibleName('Open unpack for Alps 2026')
+    expect(screen.queryByRole('link', { name: 'UNPACK ›' })).toBeNull()
+  })
+
+  /**
+   * The wrap itself is organic reflow — `flex-wrap` on `.gearListTrailing`,
+   * not a breakpoint — so jsdom (which computes no layout at all) cannot be
+   * asked to lay the band out narrow and watch it happen. What it *can*
+   * prove is the CSS that would make it happen: the wrap and the grouping
+   * that keeps the pair together rather than splitting between lines.
+   */
+  it('wraps the two routes together on a narrow band — the CSS that makes it possible', () => {
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
+      'utf8',
+    )
+    const trailing = /\.gearListTrailing\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(trailing).toMatch(/flex-wrap:\s*wrap/)
+    expect(trailing).toMatch(/justify-content:\s*flex-end/)
+
+    // The two routes are one flex item, not two, so a wrap moves them
+    // together — `.gearListRoutes` is what makes that true, and its own gap
+    // is the unchanged `--space-12` the pair already carried unwrapped.
+    const routes = /\.gearListRoutes\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(routes).toMatch(/display:\s*inline-flex/)
+    expect(routes).toMatch(/gap:\s*var\(--space-12\)/)
+  })
+
+  it('grows UNPACK › to a ≥44px hit area without reaching its neighbour', () => {
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
+      'utf8',
+    )
+    const rule = /\.unpack\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    const afterRule = /\.unpack::after\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+
+    expect(rule).toMatch(/position:\s*relative/)
+    expect(afterRule).toMatch(/position:\s*absolute/)
+
+    // Vertical growth only, `.packing`'s own shape: the horizontal value is
+    // `0`.
     const inset = /inset:\s*(-?[0-9.]+)rem\s+0\b/.exec(afterRule)?.[1]
     expect(inset).toBeDefined()
     const insetPx = Math.abs(Number.parseFloat(inset ?? '0') * 16)

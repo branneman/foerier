@@ -7,6 +7,7 @@ import {
   phaseOf,
   pieceInclusion,
   statusGlyph,
+  unaccountedOf,
   type HouseholdState,
   type EntryState,
   type PackingCount,
@@ -277,6 +278,51 @@ export function tripStartMonth(trip: TripState): string | null {
   return `${MONTHS[parts.month - 1]} ${String(parts.year).padStart(4, '0')}`
 }
 
+/**
+ * `1 LOST` — the closed ledger row's third meta segment (F18), or `null`
+ * when there were none: zero lost drops the segment exactly as a missing
+ * start date drops {@link tripStartMonth}'s.
+ *
+ * The **number** is history — `unpackTotals(trip, state).lost`, a Trip's own
+ * outcome count, which never changes once the Trip is closed. Whether it is
+ * drawn attention or muted is a *different* question, answered by
+ * {@link tripHasUnaccounted} rather than by this function: the colour is the
+ * standing, and a standing can still change (a re-home months later) long
+ * after the count it is drawn beside cannot.
+ */
+export function lostLabel(lost: number): string | null {
+  return lost === 0 ? null : `${lost} LOST`
+}
+
+/**
+ * Whether any of `trip`'s own `lost` outcomes is still an active
+ * standing — F18's colour question, `unaccountedOf`'s (`unpack.ts`) finished
+ * map read by trip id rather than re-walked.
+ *
+ * **A known imprecision, inherited from `unaccountedOf` itself.** That
+ * function sums a Gear's lost units across every Trip that ever reported
+ * one, but names only the Trip of the **latest** live report
+ * (`unaccountedOf`'s own docstring: "two Trips can both hold a live lost
+ * outcome for one Gear… the latest such outcome names the Trip"). So a Gear
+ * lost on this Trip and *again*, later, on a different one reads its
+ * standing against that later Trip alone — this function would then answer
+ * `false` for the older, still-contributing Trip, and its `N LOST` would
+ * read muted despite one of its own units still being unaccounted for
+ * somewhere. Recorded rather than fixed: `unaccountedOf` names a single
+ * Trip by design, and this ledger row asks the identical question gear
+ * detail and Find already ask through the identical function, rather than
+ * inventing a second, per-Trip accounting `unpack.ts` does not keep.
+ */
+export function tripHasUnaccounted(
+  trip: TripState,
+  state: HouseholdState,
+): boolean {
+  for (const standing of unaccountedOf(state).values()) {
+    if (standing.tripId === trip.id) return true
+  }
+  return false
+}
+
 /** Mono caps, and the boards' own spelling. */
 const MONTHS = [
   'JAN',
@@ -478,4 +524,45 @@ export function openLabel(count: UnpackCount): string {
 export function resolvedPercent(count: UnpackCount): number {
   if (count.total === 0) return 0
   return Math.round((count.resolved / count.total) * 100)
+}
+
+/**
+ * The paint, not the arithmetic — the caller decides which reading applies
+ * (`patterns.md` §5.3). `packingProgress` at Pack-out and On trip,
+ * `unpackProgress` at Unpack (F13).
+ *
+ * `TripCard`'s own active-card progress line used to take a raw
+ * `PackingCount` and call `packedLabel`/`leftLabel`/`packedPercent` on it
+ * itself — three calls the card repeated on every render for a single
+ * number's worth of information. `Trips.tsx` now composes the whole line
+ * once, from whichever of the two count tables `phaseOf` says applies, and
+ * hands the card something to draw rather than something to interpret: the
+ * card asks no `shared/` function of its own and cannot drift from either
+ * one.
+ */
+export interface ProgressLine {
+  /** `● 56/62 RESOLVED` or `● 48/61 PIECES`. */
+  readonly main: string
+  /** `6 OPEN` or `13 LEFT`. */
+  readonly trailing: string
+  /** The bar's fill, 0–100. */
+  readonly percent: number
+}
+
+/** {@link packedLabel}/{@link leftLabel}/{@link packedPercent}, composed. */
+export function packingProgress(count: PackingCount): ProgressLine {
+  return {
+    main: packedLabel(count),
+    trailing: leftLabel(count),
+    percent: packedPercent(count),
+  }
+}
+
+/** {@link resolvedLabel}/{@link openLabel}/{@link resolvedPercent}, composed. */
+export function unpackProgress(count: UnpackCount): ProgressLine {
+  return {
+    main: resolvedLabel(count),
+    trailing: openLabel(count),
+    percent: resolvedPercent(count),
+  }
 }

@@ -1,11 +1,12 @@
 import {
   listTotals,
   packingTotals,
+  phaseOf,
   tripLabel,
   tripNameOrUnnamed,
   tripPhaseMoved,
   tripSections,
-  type PackingCount,
+  unpackTotals,
   type PhaseKey,
   type TripState,
 } from '@foerier/shared'
@@ -17,7 +18,14 @@ import { PhaseSheet } from '../components/PhaseSheet'
 import { ReopenConfirm } from '../components/ReopenConfirm'
 import { TripCard } from '../components/TripCard'
 import { useHousehold } from '../household/store'
-import { tripStartMonth } from '../household/trips'
+import {
+  lostLabel,
+  packingProgress,
+  tripHasUnaccounted,
+  tripStartMonth,
+  unpackProgress,
+  type ProgressLine,
+} from '../household/trips'
 import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trips.module.css'
 
@@ -126,20 +134,26 @@ export function Trips() {
   // on the active card: `TripCard` draws the count for `planned` only, so
   // an active Trip's `listTotals` call priced a sort nobody was going to
   // read.
-  // `progress` is `entryCount`'s mirror: `packingTotals` is read for the
-  // `active` section and nothing goes down with a `planned` card, exactly as
-  // the entry count is read for `planned` and passed as an uncomputed `0` on
-  // the active one. Ruling A11's "on Active cards only" is stated at both
-  // ends — `TripCard` draws it for the `active` variant alone — and neither
-  // end re-derives active-ness: this is `tripSections`' own partition, which
-  // asked `isActive` once, and `isActive` is the codebase's one definition
-  // of it.
+  // `progress` is `entryCount`'s mirror: read for the `active` section and
+  // nothing goes down with a `planned` card, exactly as the entry count is
+  // read for `planned` and passed as an uncomputed `0` on the active one.
+  // Ruling A11's "on Active cards only" is stated at both ends — `TripCard`
+  // draws it for the `active` variant alone — and neither end re-derives
+  // active-ness: this is `tripSections`' own partition, which asked
+  // `isActive` once, and `isActive` is the codebase's one definition of it.
+  //
+  // **F13: which totals table applies is `phaseOf`'s question, asked once
+  // here.** `unpackTotals` at Unpack, `packingTotals` at every other Active
+  // phase (Pack-out, On trip) — `packingProgress`/`unpackProgress`
+  // (`household/trips.ts`) then compose the identical `ProgressLine` shape
+  // from either table, so `TripCard` draws one prop and asks no `shared/`
+  // function of its own.
   const cards: readonly {
     trip: TripState
     variant: 'active' | 'planned'
     entryCount: number
     buildListHref: string
-    progress?: PackingCount
+    progress?: ProgressLine
   }[] = useMemo(
     () => [
       ...sections.active.map((trip) => ({
@@ -149,7 +163,10 @@ export function Trips() {
         buildListHref: isSplit
           ? `/trips/${trip.id}/list?from=trips`
           : `/trips/${trip.id}`,
-        progress: packingTotals(trip, state),
+        progress:
+          phaseOf(trip) === 'unpack'
+            ? unpackProgress(unpackTotals(trip, state))
+            : packingProgress(packingTotals(trip, state)),
       })),
       ...sections.planned.map((trip) => ({
         trip,
@@ -164,15 +181,21 @@ export function Trips() {
   )
   const nothing = cards.length === 0 && sections.closed.length === 0
 
-  // Same fix, for the CLOSED ledger's per-row `listTotals` call: keyed by
-  // id rather than held as a parallel array, since `ClosedRow` looks its
-  // own Trip up by id below.
-  const closedPieces = useMemo(
+  // Same fix, for the CLOSED ledger's per-row reads: keyed by id rather
+  // than held as a parallel array, since `ClosedRow` looks its own Trip up
+  // by id below. F18 adds `lost` (`unpackTotals(trip, state).lost`, a
+  // Trip's own history) and `attention` (`tripHasUnaccounted`, the live
+  // standing) beside the piece count `listTotals` already supplied.
+  const closedMeta = useMemo(
     () =>
       new Map(
         sections.closed.map((trip) => [
           trip.id,
-          listTotals(trip, state).pieces,
+          {
+            pieces: listTotals(trip, state).pieces,
+            lost: unpackTotals(trip, state).lost,
+            attention: tripHasUnaccounted(trip, state),
+          },
         ]),
       ),
     [sections, state],
@@ -231,14 +254,23 @@ export function Trips() {
               <>
                 <h2 className={styles['sectionHead']}>CLOSED</h2>
                 <ul className={styles['rows']}>
-                  {sections.closed.map((trip) => (
-                    <ClosedRow
-                      key={trip.id}
-                      trip={trip}
-                      pieces={closedPieces.get(trip.id) ?? 0}
-                      onReopen={() => setReopenTripId(trip.id)}
-                    />
-                  ))}
+                  {sections.closed.map((trip) => {
+                    const meta = closedMeta.get(trip.id) ?? {
+                      pieces: 0,
+                      lost: 0,
+                      attention: false,
+                    }
+                    return (
+                      <ClosedRow
+                        key={trip.id}
+                        trip={trip}
+                        pieces={meta.pieces}
+                        lost={meta.lost}
+                        lostIsAttention={meta.attention}
+                        onReopen={() => setReopenTripId(trip.id)}
+                      />
+                    )
+                  })}
                 </ul>
               </>
             )}
@@ -290,21 +322,34 @@ export function Trips() {
  * piece count — `listTotals(trip, state).pieces`, read once in `Trips()` and
  * handed down rather than read here, the same reason `TripCard`'s
  * `entryCount` arrives as a prop rather than a second store read in a
- * component with none of its own. `1 LOST` still waits on S10's outcomes.
+ * component with none of its own. S10 (F18) supplies `1 LOST`: the **number**
+ * is `unpackTotals(trip, state).lost`, a Trip's own history and never
+ * re-derived here; the **colour** is `lostIsAttention`
+ * (`tripHasUnaccounted`, `household/trips.ts`) — attention while any of it
+ * is still an active standing, muted once every one has been re-homed. Both
+ * arrive as props for the identical reason the piece count already does:
+ * this component reads no store of its own.
  *
- * Only the **date** segment is ever absent: a Trip closed with no start date
- * drops it rather than fabricating one. The piece count is not in the same
- * position — it is a real fold of whatever Entries the Trip held, zero
- * included — so the meta line no longer disappears entirely the way it did
- * before S7, when a missing date left nothing else to show.
+ * Only the **date** segment and the **lost** segment can be absent — a Trip
+ * closed with no start date drops the date, and zero lost drops the segment
+ * the same way. The piece count is never absent: it is a real fold of
+ * whatever Entries the Trip held, zero included, so the meta line no longer
+ * disappears entirely the way it did before S7, when a missing date left
+ * nothing else to show. `N CONSUMED` never joins any of them (F18) — a
+ * closed ledger states what left the Depot for good and what is still
+ * unaccounted for, not the whole of what came back.
  */
 function ClosedRow({
   trip,
   pieces,
+  lost,
+  lostIsAttention,
   onReopen,
 }: {
   trip: TripState
   pieces: number
+  lost: number
+  lostIsAttention: boolean
   onReopen: () => void
 }) {
   const label = tripLabel(trip)
@@ -319,6 +364,7 @@ function ClosedRow({
   const meta = [month, pieceLabel(pieces)]
     .filter((part): part is string => part !== null)
     .join(' · ')
+  const lostText = lostLabel(lost)
 
   return (
     <li className={styles['row']} data-testid="trip-entry" data-trip={trip.id}>
@@ -333,12 +379,27 @@ function ClosedRow({
         <span className={styles['rowName']}>{label}</span>
         {/* `pieceLabel` always returns a string, so `meta` is never empty —
             unlike the old date-only line, this row always has something to
-            say. */}
+            say. `1 LOST` is its own element rather than joined into the same
+            text node: it is the one segment with a colour question, and a
+            single text node could only colour all of the line or none of
+            it — `TripCard`'s reversed-range `▲` is the same split. */}
         <span
           className={styles['rowMeta']}
           data-testid={`closed-meta-${trip.id}`}
         >
           {meta}
+          {lostText !== null && (
+            <>
+              {' · '}
+              <span
+                className={
+                  lostIsAttention ? styles['lostAttention'] : undefined
+                }
+              >
+                {lostText}
+              </span>
+            </>
+          )}
         </span>
       </Link>
 

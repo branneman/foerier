@@ -4,7 +4,6 @@ import {
   tripLabel,
   tripNameOrUnnamed,
   UNNAMED_PERSON_GLYPH,
-  type PackingCount,
   type TripState,
 } from '@foerier/shared'
 import { PersonCluster } from '@foerier/ui'
@@ -12,12 +11,10 @@ import { Link } from 'wouter'
 
 import { useHousehold } from '../household/store'
 import {
-  leftLabel,
-  packedLabel,
-  packedPercent,
   tripChip,
   tripDateRange,
   tripParticipants,
+  type ProgressLine,
 } from '../household/trips'
 import { entryCountLabel } from './GearListSection'
 import styles from './TripCard.module.css'
@@ -82,29 +79,38 @@ import styles from './TripCard.module.css'
  * component asks no media query of its own, and `@container, never a media
  * query` below stays true with no exception carved out for this link.
  *
- * ## `Continue pack-out`, and only that one
+ * ## `Continue pack-out` and `Continue unpack` — one CTA per active phase
  *
- * S9a builds the second destination, so the card's fifth element lands: a
- * full-width 48px accent CTA on the active card **at Pack-out and nowhere
- * else** (`docs/design/README.md` §5's S9a paragraph, ruling A11).
+ * S9a built the first of these, at Pack-out; S10 (F13) builds the second, at
+ * Unpack (`docs/design/README.md` §5's S9a paragraph, ruling A11, and §7's
+ * F13). Same anatomy, same reason, one phase over: the CTA names the
+ * *current phase's verb*, and the control for that verb is the phase chip
+ * this card already carries — a mismatched CTA naming a screen that does
+ * not exist would be the retired `OPEN ›` failure one worse, an accent
+ * button that lies about where it goes.
  *
  * **At On trip the slot stays empty**, which is a ruling and not an
- * oversight. The CTA names the *current phase's verb*, and the control for
- * that verb is the phase chip this card already carries; `Continue unpack`
- * would name F5, a screen that does not exist, so it would be the retired
- * `OPEN ›` failure one worse — an accent button that lies about where it
- * goes. Unpack's CTA is S10's to draw. Draft keeps `BUILD LIST ›`, and
- * `ClosedRow` (`Trips.tsx`) keeps its own row.
+ * oversight — On trip has no destination of its own to name. Draft keeps
+ * `BUILD LIST ›`, and `ClosedRow` (`Trips.tsx`) keeps its own row.
  *
- * It is gated on **`phaseOf` alone**, with no `variant === 'active'` beside
- * it: `isActive` is the only definition of active-ness in the codebase and
- * `pack_out` is one of the phases it names, so `tripSections` has already
- * filed every Trip this fires on into `active`. A second condition would be
- * a second definition of the same fact — the thing `CLAUDE.md` names as the
- * S6 failure mode — not a safety net.
+ * **`Continue unpack` never becomes `Close trip`, even at `open = 0`**
+ * (F13). The CTA is gated on the phase alone and asks nothing about the
+ * unpack arithmetic — a Trip's own outcomes are F5's business, and a third
+ * door onto `closeTrip` here, beside F5's own close card and `PhaseSheet`'s
+ * `CLOSED` row, is exactly the "two doors onto one register" this codebase
+ * keeps refusing.
  *
- * **`/trips/:id/packing` is built inline and is not a prop**, unlike
- * `buildListHref`. See that prop's own note for why the two differ.
+ * Both are gated on **`phaseOf` alone**, with no `variant === 'active'`
+ * beside either: `isActive` is the only definition of active-ness in the
+ * codebase and `pack_out`/`unpack` are both phases it names, so
+ * `tripSections` has already filed every Trip either one fires on into
+ * `active`. A second condition would be a second definition of the same
+ * fact — the thing `CLAUDE.md` names as the S6 failure mode — not a safety
+ * net.
+ *
+ * **`/trips/:id/packing` and `/trips/:id/unpack` are both built inline and
+ * are not props**, unlike `buildListHref`. See that prop's own note for why
+ * the two differ.
  *
  * ## The progress line sits **below** the NEXT line
  *
@@ -229,8 +235,16 @@ export interface TripCardProps {
    * `undefined` rather than omits — `OverClaimBand`'s `settle` carries the
    * same pair for the same reason, and its absence means something there
    * too.
+   *
+   * **`ProgressLine`, not `PackingCount`** (F13). The card used to take the
+   * raw count and call three `trips.ts` functions on it itself; now
+   * `Trips.tsx` picks which of `packingTotals`/`unpackTotals` applies from
+   * `phaseOf(trip)` and composes the whole line once, so this component
+   * draws `progress.main`/`.trailing`/`.percent` and asks no `shared/`
+   * function of its own — `patterns.md` §5.3's "a `ui/` prop names the
+   * paint" restated for an `app/` component's own prop.
    */
-  progress?: PackingCount | undefined
+  progress?: ProgressLine | undefined
   /**
    * The chip asks; the screen mounts the SET PHASE sheet. `ui/`'s primitives
    * have no `open` prop — mounted is open — so the caller writes
@@ -400,8 +414,8 @@ export function TripCard({
         // handing a Draft a count still gets the drawn card the board draws.
         <div className={styles['progress']} data-testid="trip-progress">
           <div className={styles['counts']}>
-            <span className={styles['packed']}>{packedLabel(progress)}</span>
-            <span className={styles['left']}>{leftLabel(progress)}</span>
+            <span className={styles['packed']}>{progress.main}</span>
+            <span className={styles['left']}>{progress.trailing}</span>
           </div>
           {/* `aria-hidden`, exactly as the packing view's own bar is: the
               line immediately above states the identical fact in words, and a
@@ -409,7 +423,7 @@ export function TripCard({
           <div className={styles['bar']} aria-hidden="true">
             <div
               className={styles['fill']}
-              style={{ inlineSize: `${packedPercent(progress)}%` }}
+              style={{ inlineSize: `${progress.percent}%` }}
             />
           </div>
         </div>
@@ -435,6 +449,24 @@ export function TripCard({
           aria-label={`Continue pack-out for ${spokenName}`}
         >
           Continue pack-out
+        </Link>
+      )}
+
+      {phaseOf(trip) === 'unpack' && (
+        // F13: Unpack's own CTA, the slot A11 deliberately left empty
+        // because F5 did not exist yet. Same control, same reason, one
+        // phase over — and it does **not** become `Close trip` once
+        // `open = 0`: the CTA names the current phase's verb, and a second
+        // door onto the close gesture from here would be a third way to
+        // close one register, beside F5's own card and `PhaseSheet`'s
+        // `CLOSED` row.
+        <Link
+          href={`/trips/${trip.id}/unpack`}
+          className={styles['cta']}
+          data-testid="unpack-cta"
+          aria-label={`Continue unpack for ${spokenName}`}
+        >
+          Continue unpack
         </Link>
       )}
 

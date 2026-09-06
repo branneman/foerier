@@ -5,7 +5,6 @@ import {
   tripParticipantAdded,
   tripPhaseMoved,
   type OpSpec,
-  type PackingCount,
   type TripState,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
@@ -18,6 +17,7 @@ import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
 import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
+import { packingProgress, type ProgressLine } from '../household/trips'
 import { SEEDED_AT, seededStore } from '../testUtils'
 import { TripCard } from './TripCard'
 
@@ -62,9 +62,10 @@ interface RenderCardOptions {
   buildListHref?: string
   // Absent by default, which is what a `planned` card gets from `Trips.tsx`
   // and is therefore the honest default here: the caller reads
-  // `packingTotals` for the active section alone (ruling A11's "Active cards
-  // only"), so a test that wants the progress line hands one down.
-  progress?: PackingCount | undefined
+  // `packingTotals`/`unpackTotals` for the active section alone (ruling
+  // A11's "Active cards only"), so a test that wants the progress line
+  // hands one down — composed, per F13, never a raw count.
+  progress?: ProgressLine | undefined
 }
 
 /**
@@ -124,7 +125,7 @@ describe('the active trip card', () => {
       tripPhaseMoved(TRIP, 'pack_out'),
     )
     renderCard(card, 'active', {
-      progress: { packed: 48, total: 61, left: 13 },
+      progress: packingProgress({ packed: 48, total: 61, left: 13 }),
     })
 
     // `▸` is the trip world, and the boards put it on the active card's name
@@ -369,7 +370,9 @@ describe('the active trip card', () => {
       tripCreated(TRIP, 'Alps 2026'),
       tripPhaseMoved(TRIP, 'on_trip'),
     )
-    renderCard(card, 'active', { progress: { packed: 27, total: 27, left: 0 } })
+    renderCard(card, 'active', {
+      progress: packingProgress({ packed: 27, total: 27, left: 0 }),
+    })
 
     // Ruling A11: the CTA names the *current* phase's verb, and the control
     // for that verb is the chip this card already carries. The slot is empty
@@ -383,7 +386,7 @@ describe('the active trip card', () => {
     )
   })
 
-  it('draws no CTA at Unpack — S10 draws that one', async () => {
+  it('draws Continue unpack at Unpack, routing to F5 (F13)', async () => {
     today(1)
     const card = await seeded(
       tripCreated(TRIP, 'Alps 2026'),
@@ -391,11 +394,29 @@ describe('the active trip card', () => {
     )
     renderCard(card, 'active')
 
-    // `Continue unpack` would name F5, a screen that does not exist — the
-    // retired `OPEN ›` failure one worse, an accent button lying about where
-    // it goes.
+    // The slot A11 left empty because F5 did not exist yet — S10 draws it,
+    // one phase over from `Continue pack-out`.
+    const cta = screen.getByRole('link', { name: /Continue unpack/ })
+    expect(cta).toHaveAttribute('href', `/trips/${TRIP}/unpack`)
+    expect(cta).toHaveAccessibleName('Continue unpack for Alps 2026')
+    expect(cta).toHaveTextContent('Continue unpack')
+    // The two CTAs never share a card.
     expect(screen.queryByTestId('packing-cta')).toBeNull()
-    expect(screen.queryByRole('link', { name: /Continue/ })).toBeNull()
+  })
+
+  it('never becomes Close trip, whatever the unpack arithmetic reads (F13)', async () => {
+    today(1)
+    const card = await seeded(
+      tripCreated(TRIP, 'Alps 2026'),
+      tripPhaseMoved(TRIP, 'unpack'),
+    )
+    renderCard(card, 'active')
+
+    // The CTA is gated on the phase alone and asks nothing about
+    // `open` — a third door onto `closeTrip` here, beside F5's own close
+    // card and `PhaseSheet`'s `CLOSED` row, is exactly what F13 forbids.
+    expect(screen.queryByText('Close trip')).toBeNull()
+    expect(screen.queryByRole('link', { name: /Close trip/ })).toBeNull()
   })
 
   it('puts the progress line BELOW the NEXT line', async () => {
@@ -405,7 +426,7 @@ describe('the active trip card', () => {
       tripPhaseMoved(TRIP, 'pack_out'),
     )
     renderCard(card, 'active', {
-      progress: { packed: 48, total: 61, left: 13 },
+      progress: packingProgress({ packed: 48, total: 61, left: 13 }),
     })
 
     // The order is the board's own sentence — `NEXT LINE SITS ABOVE THE
@@ -430,7 +451,7 @@ describe('the active trip card', () => {
       tripPhaseMoved(TRIP, 'pack_out'),
     )
     renderCard(card, 'active', {
-      progress: { packed: 48, total: 61, left: 13 },
+      progress: packingProgress({ packed: 48, total: 61, left: 13 }),
     })
 
     const progress = screen.getByTestId('trip-progress')
@@ -636,7 +657,7 @@ describe('the planned trip card', () => {
     // this Trip's verb.
     renderCard(card, 'planned', {
       entryCount: 14,
-      progress: { packed: 0, total: 59, left: 59 },
+      progress: packingProgress({ packed: 0, total: 59, left: 59 }),
     })
 
     expect(screen.queryByTestId('trip-progress')).toBeNull()

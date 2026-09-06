@@ -4,10 +4,12 @@ import {
   emptyState,
   fold,
   gearRecorded,
+  gearRehomed,
   personRecorded,
   tripCreated,
   tripDatesSet,
   tripEntryAdded,
+  tripOutcomeSet,
   tripParticipantAdded,
   tripPhaseMoved,
   tripParticipantRemoved,
@@ -21,17 +23,21 @@ import { describe, expect, it } from 'vitest'
 
 import {
   leftLabel,
+  lostLabel,
   openLabel,
   packedLabel,
   packedPercent,
+  packingProgress,
   peopleOn,
   resolvedLabel,
   resolvedPercent,
   tripChip,
   tripDateRange,
+  tripHasUnaccounted,
   tripParticipants,
   tripPieces,
   tripStartMonth,
+  unpackProgress,
 } from './trips'
 
 /**
@@ -495,5 +501,99 @@ describe('the unpack totals line', () => {
     }
     expect(resolvedPercent(zero)).toBe(0)
     expect(resolvedLabel(zero)).toBe('● 0/0 RESOLVED')
+  })
+})
+
+/**
+ * F13's own composition — the `ProgressLine` `TripCard` draws and asks
+ * nothing further about. Each function is the identical three calls the
+ * card used to make itself, moved here so the card cannot drift from
+ * either count table's own words.
+ */
+describe('packingProgress and unpackProgress', () => {
+  it('composes the packing line from packedLabel/leftLabel/packedPercent', () => {
+    const count = { packed: 48, total: 61, left: 13 }
+    expect(packingProgress(count)).toEqual({
+      main: '● 48/61 PIECES',
+      trailing: '13 LEFT',
+      percent: 79,
+    })
+  })
+
+  it('composes the unpack line from resolvedLabel/openLabel/resolvedPercent', () => {
+    const count = {
+      resolved: 56,
+      total: 62,
+      open: 6,
+      back: 53,
+      consumed: 2,
+      lost: 1,
+    }
+    expect(unpackProgress(count)).toEqual({
+      main: '● 56/62 RESOLVED',
+      trailing: '6 OPEN',
+      percent: 90,
+    })
+  })
+})
+
+/**
+ * F18 — the closed ledger row's `1 LOST` segment: `lostLabel` for the
+ * number (history), `tripHasUnaccounted` for the colour (a live standing).
+ */
+describe('lostLabel', () => {
+  it('spells the board segment', () => {
+    expect(lostLabel(1)).toBe('1 LOST')
+    expect(lostLabel(3)).toBe('3 LOST')
+  })
+
+  it("drops entirely at zero — F18's own rule, tripStartMonth's sibling", () => {
+    expect(lostLabel(0)).toBeNull()
+  })
+})
+
+describe('tripHasUnaccounted', () => {
+  const GEAR = 'gggggggg-0000-7000-8000-000000000001'
+
+  it('reads true while a lost outcome on the Trip is still an active standing', () => {
+    const state = depot(
+      gearRecorded(GEAR, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripCreated(TRIP, 'Tessin 2025'),
+      tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: GEAR }),
+      tripOutcomeSet(TRIP, 'e-lamp', 'lost'),
+      tripPhaseMoved(TRIP, 'closed'),
+    )
+
+    expect(tripHasUnaccounted(theTrip(state), state)).toBe(true)
+  })
+
+  it('reads false once the Gear has been re-homed since — the standing settles, the outcome register does not move', () => {
+    const state = depot(
+      gearRecorded(GEAR, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'single',
+      }),
+      tripCreated(TRIP, 'Tessin 2025'),
+      tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: GEAR }),
+      tripOutcomeSet(TRIP, 'e-lamp', 'lost'),
+      gearRehomed(GEAR, { in: 'loose' }),
+      tripPhaseMoved(TRIP, 'closed'),
+    )
+
+    expect(tripHasUnaccounted(theTrip(state), state)).toBe(false)
+  })
+
+  it('reads false for a Trip with no lost outcome at all', () => {
+    const state = depot(
+      tripCreated(TRIP, 'Tessin 2025'),
+      tripPhaseMoved(TRIP, 'closed'),
+    )
+
+    expect(tripHasUnaccounted(theTrip(state), state)).toBe(false)
   })
 })

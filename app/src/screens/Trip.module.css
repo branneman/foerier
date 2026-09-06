@@ -416,13 +416,38 @@
     color: var(--color-ink-muted);
   }
 
-  /* The count and `PACKING ›` (below Split), or those two with `EDIT LIST ›`
-     between them (from Split up) — one flex item however many it holds,
-     which is what `.gearListBand`'s `space-between` needs to keep them glued
-     together on the trailing edge rather than spread apart. The gap is the
-     board's own 14 read as the system's step, the same `--space-12` the
-     settle-routes row it borrows its grammar from already uses. */
+  /* The count and `PACKING ›`/`UNPACK ›` (below Split), or those with
+     `EDIT LIST ›` between them (from Split up) — one flex item however many
+     it holds, which is what `.gearListBand`'s `space-between` needs to keep
+     them glued together on the trailing edge rather than spread apart. The
+     gap is the board's own 14 read as the system's step, the same
+     `--space-12` the settle-routes row it borrows its grammar from already
+     uses.
+
+     `flex-wrap: wrap` + `justify-content: flex-end` (F14): organic reflow,
+     not a breakpoint of its own. This element is a flex child of
+     `.gearListBand`, which is `justify-content: space-between` between
+     exactly two children — so this one's own box shrinks to whatever width
+     is left after `GEAR LIST` rather than growing to its content's full
+     width, and once that shrunk box can no longer hold every child on one
+     line, flex wraps the overflow onto a second one. `.gearListRoutes`
+     below is one flex item, not two, precisely so the two route links wrap
+     as a pair rather than splitting between lines; `justify-content:
+     flex-end` then right-aligns whichever line each item lands on, which is
+     what makes the wrapped line read as the board's own "second,
+     right-aligned line" rather than drifting left under the count. */
   .gearListTrailing {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-12);
+  }
+
+  /* `PACKING ›` and `UNPACK ›`, grouped (F14) — one flex item inside
+     `.gearListTrailing` so the wrap above moves the pair together, order
+     and gap kept, rather than letting flex split between them. */
+  .gearListRoutes {
     display: inline-flex;
     align-items: baseline;
     gap: var(--space-12);
@@ -519,9 +544,11 @@
      selector list would leave both unread.
 
      One difference, and it is the only one: this link has an interactive
-     same-row neighbour from Split up, `.editList` itself. The band's own
-     `gap` (`--space-12`, 12px) against 11px of horizontal extension each
-     side would overlap their hit areas by 10px, so the extension is
+     same-row neighbour **always**, not only from Split up — `.unpack` sits
+     beside it inside `.gearListRoutes` at every width now (F14), and
+     `.editList` joins both from Split up. The band's own `gap`
+     (`--space-12`, 12px) against 11px of horizontal extension each side
+     would overlap their hit areas by 10px, so the extension is
      **vertical only** — `OverClaimBand.module.css`'s `.settleRow` argument,
      and 44px is reached by the vertical growth alone. */
   .packing {
@@ -536,6 +563,31 @@
   }
 
   .packing::after {
+    content: '';
+    position: absolute;
+    inset: -0.6875rem 0;
+  }
+
+  /* `UNPACK ›` — `.packing`'s twin (F14), every word of that rule's
+     reasoning applying unchanged: the baseline row forbids a `min-height`,
+     and the `::after` reaches 44px vertically without moving anything.
+     Its own rule rather than a shared selector, for `.packing`'s own stated
+     reason — the drawn-size guards read a body by name. Its own interactive
+     same-row neighbour is `.packing` now on **both** sides (inside
+     `.gearListRoutes`) rather than `.editList` from Split up alone, so the
+     horizontal extension stays out for the identical mis-tap reason. */
+  .unpack {
+    position: relative;
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .unpack::after {
     content: '';
     position: absolute;
     inset: -0.6875rem 0;

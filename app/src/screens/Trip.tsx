@@ -90,25 +90,40 @@ import styles from './Trip.module.css'
  * (Task 12) rather than doing nothing — the last two documented no-ops this
  * slice's screens carried.
  *
- * ## `PACKING ›` is the band's second door, and it is not width-gated
+ * ## `PACKING ›` and `UNPACK ›` are the band's second and third doors, and
+ * neither is width-gated or phase-gated
  *
  * Ruling A11's second entry point to F4 sits in the `GEAR LIST` band's
  * trailing slot **at every width and at every phase, Draft included** — a
  * phase locks nothing, and hiding a route is a soft lock the phase model
- * does not have. Note the asymmetry with `EDIT LIST ›` beside it, which is
- * *withheld* below Split because this screen is itself the editor there:
- * `/trips/:id/packing` is F4's own route at every width rather than a pane,
- * so nothing about this link turns on the breakpoint.
+ * does not have. `UNPACK ›` (F14, S10) sits beside it on the identical
+ * terms: same width rule, same phase rule, and **no swap between the two**
+ * by phase — a Draft that has never been anywhere still gets both doors,
+ * because whether a route is useful today is not this band's question to
+ * answer on the model's behalf. Note the asymmetry with `EDIT LIST ›`
+ * beside them, which is *withheld* below Split because this screen is
+ * itself the editor there: `/trips/:id/packing` and `/trips/:id/unpack` are
+ * both their own routes at every width rather than panes, so nothing about
+ * either link turns on the breakpoint.
  *
- * **A Trip with an empty gear list therefore has no drawn door to F4**, and
- * that is the answer rather than a gap: the band renders only in the
- * non-empty branch, and the `0 ENTRIES.` region that replaces it would
+ * **A Trip with an empty gear list therefore has no drawn door to F4 or
+ * F5**, and that is the answer rather than a gap: the band renders only in
+ * the non-empty branch, and the `0 ENTRIES.` region that replaces it would
  * otherwise carry a route to a screen that can only say `0 ENTRIES.` back —
- * the dead affordance that region's own rule forbids. F4's empty state still
- * exists, for the reader already standing there when another Device removes
- * the last Entry and for a direct link (`Packing.tsx`). The consequence is
+ * the dead affordance that region's own rule forbids. Both screens' empty
+ * states still exist, for the reader already standing there when another
+ * Device removes the last Entry and for a direct link. The consequence is
  * **recorded and flagged for the next design round**, spec §4.9, in case the
  * boards want a door there anyway; it is not papered over here.
+ *
+ * **At Compact the trailing slot wraps its two routes to a second,
+ * right-aligned line** (F14) — `PACKING ›` and `UNPACK ›` are grouped in
+ * their own wrapper (`.gearListRoutes`) precisely so `flex-wrap` moves them
+ * together rather than splitting the pair mid-band, and the count stays on
+ * the label's own line. This is organic reflow, not a named breakpoint: the
+ * pair wraps whenever the band's own available width will not hold it,
+ * which is the Compact tier for the copy this band actually draws. See
+ * `Trip.module.css`'s `.gearListTrailing`.
  *
  * ## There is no `NEXT` line here
  *
@@ -716,28 +731,41 @@ export function Trip() {
                   EDIT LIST ›
                 </Link>
               )}
-              {/* The second door to F4 (ruling A11), and the trailing-most
-                  thing in the band at every width — which is where the
-                  drawn phone frame puts it, so its position does not move
-                  across the breakpoint that adds `EDIT LIST ›` beside it.
-                  Not gated on `editable`, and not gated on the phase: F4 is
-                  its own route at every width rather than a pane, and a
-                  phase locks nothing, so hiding this would be a soft lock
-                  the phase model does not have. */}
-              <Link
-                href={`/trips/${tripId}/packing`}
-                className={styles['packing']}
-                // Ruling D: the `›` is decoration and stays out of the
-                // name, which `aria-label` does wholesale — read as text
-                // content it would be spoken "greater-than sign".
-                // `Build list for …`'s own pattern (`TripCard.tsx`), down to
-                // the name it interpolates: an accessible name is a sentence,
-                // so it takes `tripNameOrUnnamed`'s prose and not the `—`
-                // this screen's own title draws (§5c's glyph/prose split).
-                aria-label={`Open packing for ${tripNameOrUnnamed(trip)}`}
-              >
-                PACKING ›
-              </Link>
+              {/* `PACKING ›` and `UNPACK ›` (ruling A11, F14), grouped so
+                  `.gearListTrailing`'s wrap moves the pair together rather
+                  than splitting it — the trailing-most thing in the band at
+                  every width, which is where the drawn phone frame puts it,
+                  so its position does not move across the breakpoint that
+                  adds `EDIT LIST ›` beside it. Neither is gated on
+                  `editable`, and neither is gated on the phase, and there is
+                  no swap between them by phase either: both are their own
+                  route at every width rather than a pane, and a phase locks
+                  nothing, so hiding either — or trading one for the other —
+                  would be a soft lock the phase model does not have. */}
+              <span className={styles['gearListRoutes']}>
+                <Link
+                  href={`/trips/${tripId}/packing`}
+                  className={styles['packing']}
+                  // Ruling D: the `›` is decoration and stays out of the
+                  // name, which `aria-label` does wholesale — read as text
+                  // content it would be spoken "greater-than sign".
+                  // `Build list for …`'s own pattern (`TripCard.tsx`), down
+                  // to the name it interpolates: an accessible name is a
+                  // sentence, so it takes `tripNameOrUnnamed`'s prose and
+                  // not the `—` this screen's own title draws (§5c's
+                  // glyph/prose split).
+                  aria-label={`Open packing for ${tripNameOrUnnamed(trip)}`}
+                >
+                  PACKING ›
+                </Link>
+                <Link
+                  href={`/trips/${tripId}/unpack`}
+                  className={styles['unpack']}
+                  aria-label={`Open unpack for ${tripNameOrUnnamed(trip)}`}
+                >
+                  UNPACK ›
+                </Link>
+              </span>
             </span>
           </div>
           <GearListSection
