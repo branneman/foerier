@@ -127,6 +127,123 @@ describe('UnpackRow — the row body (tap row = re-home)', () => {
   })
 })
 
+/**
+ * **Task 14's own `RE-HOMED` segment** (spec §4.6, board §7: *"muted, so
+ * the row says why it sits under a room it did not leave from"*). It draws
+ * inside the same body button as the name and the meta — never a sibling
+ * element — so the row's own accessible name still carries it, and it must
+ * never lead with a stray `· ` when `meta` is `''` (a re-home to Loose has
+ * no path to state at all).
+ */
+describe('UnpackRow — the RE-HOMED segment (Task 14, spec §4.6)', () => {
+  it('draws RE-HOMED after the meta, separated by its own · ', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Crate B"
+        meta="→ Shelf L-Top"
+        outcome="back"
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+        rehomed
+      />,
+    )
+
+    expect(screen.getByTestId('unpack-row-meta')).toHaveTextContent(
+      '→ Shelf L-Top · RE-HOMED',
+    )
+  })
+
+  it('draws a bare RE-HOMED with no leading separator when meta is empty', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Tent, 3p"
+        meta=""
+        outcome="back"
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+        rehomed
+      />,
+    )
+
+    expect(screen.getByTestId('unpack-row-meta').textContent).toBe('RE-HOMED')
+  })
+
+  it('draws nothing at all when rehomed is unset — the default', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Cook set"
+        meta=""
+        outcome="back"
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByTestId('unpack-row-meta')).not.toBeInTheDocument()
+  })
+
+  it('sits inside the body button, so the row’s accessible name carries it', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Crate B"
+        meta=""
+        outcome="back"
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+        rehomed
+      />,
+    )
+
+    const body = screen.getByTestId('unpack-row-body')
+    expect(within(body).getByTestId('unpack-row-rehomed')).toBeInTheDocument()
+    expect(body).toHaveAccessibleName(/RE-HOMED/)
+  })
+})
+
+describe('UnpackRow — canReHome (M3, an un-synced Gear)', () => {
+  it('withholds the body button when canReHome is false, keeping the pill live', async () => {
+    const user = userEvent.setup()
+    const onOutcome = vi.fn()
+    const onReHome = vi.fn()
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Headlamp"
+        meta=""
+        outcome={null}
+        onOutcome={onOutcome}
+        onReHome={onReHome}
+        canReHome={false}
+      />,
+    )
+
+    expect(screen.queryByTestId('unpack-row-body')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '○ OPEN' }))
+    expect(onOutcome).toHaveBeenCalledOnce()
+    expect(onReHome).not.toHaveBeenCalled()
+  })
+
+  it('draws the body button by default (canReHome unset)', () => {
+    render(
+      <UnpackRow
+        entryId={ENTRY}
+        name="Headlamp"
+        meta=""
+        outcome={null}
+        onOutcome={vi.fn()}
+        onReHome={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('unpack-row-body')).toBeInTheDocument()
+  })
+})
+
 describe('UnpackRow — a trip-only row (no button at all)', () => {
   it('draws no button anywhere in the row', () => {
     render(

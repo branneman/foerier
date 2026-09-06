@@ -35,6 +35,18 @@ import styles from './UnpackRow.module.css'
  * ruling O's 48px hit-area floor at **44**, drawn directly with no clamp
  * (`ui/src/StatusPill.test.tsx`); this row does not repeat that floor.
  *
+ * ## The `RE-HOMED` segment is muted, and lives inside the body button
+ *
+ * Task 14 (spec §4.6, board §7: *"muted, so the row says why it sits under
+ * a room it did not leave from"*) — {@link UnpackRowProps.rehomed} draws a
+ * `.rehomedSegment` span after `meta`, in `--color-ink-faint` rather than
+ * `.meta`'s own `--color-ink-muted`. It sits **inside** the same body
+ * button as the name and the meta, not beside them, so the row's own
+ * accessible name still carries it. `meta` may legitimately be `''` while
+ * `rehomed` is `true` (a re-home to Loose has no path to state), so the
+ * segment never assumes a leading separator is wanted — it supplies its own
+ * only when `meta` is non-empty.
+ *
  * ## A trip-only row draws no button at all
  *
  * Not a disabled one — `PackingRow`'s ruling E9 shape, transplanted: a
@@ -43,6 +55,11 @@ import styles from './UnpackRow.module.css'
  * right slot's `CLEARS AT CLOSE` is text, not a pill shape — F6: "a pill
  * shape is a control on every other row" — and the row body is a plain
  * `<span>`, exactly as `PackingRow`'s inert per-person row is.
+ *
+ * **M3 gives the body a second reason to draw no button** —
+ * {@link UnpackRowProps.canReHome}, `false` for a depot Entry whose Gear has
+ * not yet synced. Only the body loses its button; the right slot (pill or
+ * cluster) is untouched, since setting an outcome needs no Gear at all.
  *
  * ## A container row draws no rail
  *
@@ -101,6 +118,19 @@ export interface UnpackRowProps {
   }
   /** A trip-only Entry — see the docstring's "no button at all". */
   tripOnly?: boolean
+  /** DESTINATION mode's own `RE-HOMED` segment (Task 14, spec §4.6) — see
+   * the docstring's own section. Default `false`; PERSON and ALL mode never
+   * set it (no board draws it there). */
+  rehomed?: boolean
+  /**
+   * M3 — whether the body may open the re-home picker at all. Default
+   * `true`. `false` for a depot Entry whose Gear has not yet synced to this
+   * replica: `HomePicker` has nothing to read a residence from, so a body
+   * button there would be a dead tap rather than the withheld act §3.7
+   * asks for. The row still draws — only its body loses its button, the
+   * identical shape a trip-only row's `.inertBody` already takes.
+   */
+  canReHome?: boolean
 }
 
 /** `OutcomeValue | null` → `StatusPill`'s tone — the paint `ui/StatusPill`
@@ -123,6 +153,8 @@ export function UnpackRow({
   onReHome,
   cluster,
   tripOnly = false,
+  rehomed = false,
+  canReHome = true,
 }: UnpackRowProps) {
   const bodyContent = (
     <>
@@ -145,9 +177,17 @@ export function UnpackRow({
           </>
         )}
       </span>
-      {meta !== '' && (
+      {(meta !== '' || rehomed) && (
         <span className={styles['meta']} data-testid="unpack-row-meta">
           {meta}
+          {rehomed && (
+            <span
+              className={styles['rehomedSegment']}
+              data-testid="unpack-row-rehomed"
+            >
+              {meta !== '' ? ' · RE-HOMED' : 'RE-HOMED'}
+            </span>
+          )}
         </span>
       )}
     </>
@@ -158,7 +198,7 @@ export function UnpackRow({
       {/* No *where* to open for a trip-only Entry — a plain span rather than
           a disabled button, which would still announce an act this row does
           not have (`PackingRow`'s ruling E9). */}
-      {tripOnly ? (
+      {tripOnly || !canReHome ? (
         <span className={styles['inertBody']}>{bodyContent}</span>
       ) : (
         <button

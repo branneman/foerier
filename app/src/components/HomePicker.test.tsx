@@ -682,7 +682,7 @@ describe('the Home picker — MOVE', () => {
  * own real caller is `Unpack.tsx`'s re-home row; here they are pinned as
  * `HomePicker`'s own contract, independent of any one caller.
  */
-describe('the Home picker — context and allowCurrent (S10, Task 14)', () => {
+describe('the Home picker — context and moving.confirm (S10, Task 14)', () => {
   async function aCrateInAnAttic() {
     const atticId = anId()
     const shedId = anId()
@@ -700,18 +700,20 @@ describe('the Home picker — context and allowCurrent (S10, Task 14)', () => {
     return { store, atticId, shedId, crateId }
   }
 
-  it('replaces the auto-computed MOVING line with its own text', async () => {
+  it('appends moving’s own ride-along clause after the caller’s own sentence', async () => {
     const { store, crateId } = await aCrateInAnAttic()
     renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1 },
-      context: 'RE-HOMING CRATE B · PICKING A HOME MARKS IT BACK',
+      moving: { name: 'Crate B', insideCount: 1, confirm: false },
+      context: 'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK',
     })
 
+    // The caller's sentence carries no ride-along clause of its own —
+    // `HomePicker` is the one place that appends it.
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'RE-HOMING CRATE B · PICKING A HOME MARKS IT BACK',
+      'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK · 1 INSIDE RIDE ALONG',
     )
-    expect(screen.queryByText(/MOVING CRATE B/)).toBeNull()
+    expect(screen.queryByText(/^MOVING Crate B/)).toBeNull()
   })
 
   it('renders the context line even with no moving at all — a later flow needs the line without a move', async () => {
@@ -725,13 +727,13 @@ describe('the Home picker — context and allowCurrent (S10, Task 14)', () => {
     )
   })
 
-  it('skips the MOVE confirm when context is supplied — selection reports and closes immediately', async () => {
+  it('skips the MOVE confirm when moving.confirm is false — selection reports and closes immediately', async () => {
     const { store, crateId, shedId } = await aCrateInAnAttic()
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', insideCount: 1 },
-      context: 'RE-HOMING CRATE B · PICKING A HOME MARKS IT BACK',
+      moving: { name: 'Crate B', insideCount: 1, confirm: false },
+      context: 'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK',
     })
 
     await user.click(screen.getByRole('button', { name: /Shed/ }))
@@ -740,8 +742,8 @@ describe('the Home picker — context and allowCurrent (S10, Task 14)', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
-  it('still confirms when moving is set and context is not — GearDetail’s own MOVE, untouched', async () => {
-    const { store, crateId } = await aCrateInAnAttic()
+  it('still confirms when moving.confirm is not set — GearDetail’s own MOVE, untouched', async () => {
+    const { store, crateId, shedId } = await aCrateInAnAttic()
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
       excludeGearId: crateId,
@@ -752,28 +754,23 @@ describe('the Home picker — context and allowCurrent (S10, Task 14)', () => {
 
     expect(selected).toEqual([])
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Move gear' }))
+    expect(selected).toEqual([{ in: 'place', id: shedId }])
   })
 
-  it('disables the ● NOW row in plain pick mode by default — no caller before this task ever combined current with plain pick mode', async () => {
+  /**
+   * **R26.** A picker reports every pick, the current one included, and
+   * holds no business rule (`patterns.md` §4.3) — the `● NOW` mark is a
+   * mark, not a gate. Plain pick mode never gated this, and it still does
+   * not: nothing in this codebase disables the row a Quartermaster is
+   * standing on.
+   */
+  it('reports a tap on the current row in plain pick mode — a mark is not a gate', async () => {
     const { store, atticId } = await aCrateInAnAttic()
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
       current: { in: 'place', id: atticId },
-    })
-
-    const attic = screen.getByRole('button', { name: /Attic/ })
-    expect(attic).toBeDisabled()
-    await user.click(attic)
-
-    expect(selected).toEqual([])
-  })
-
-  it('makes the ● NOW row tappable again when allowCurrent is true — the future settle route', async () => {
-    const { store, atticId } = await aCrateInAnAttic()
-    const user = userEvent.setup()
-    const { selected } = renderPicker(store, {
-      current: { in: 'place', id: atticId },
-      allowCurrent: true,
     })
 
     const attic = screen.getByRole('button', { name: /Attic/ })
@@ -781,23 +778,5 @@ describe('the Home picker — context and allowCurrent (S10, Task 14)', () => {
     await user.click(attic)
 
     expect(selected).toEqual([{ in: 'place', id: atticId }])
-  })
-
-  it('never disables the ● NOW row in MOVE mode, regardless of allowCurrent — GearDetail’s own confirm flow depends on it', async () => {
-    const atticId = anId()
-    const store = await seededStore([placeRecorded(atticId, 'Attic')])
-    const user = userEvent.setup()
-    const { selected } = renderPicker(store, {
-      current: { in: 'place', id: atticId },
-      moving: { name: 'Rope', insideCount: 0 },
-    })
-
-    const attic = screen.getByRole('button', { name: /Attic/ })
-    expect(attic).not.toBeDisabled()
-    await user.click(attic)
-    // MOVE still confirms — the tap opened the dialog rather than reporting
-    // directly (`selected` is still empty until the dialog's own action).
-    expect(selected).toEqual([])
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
   })
 })

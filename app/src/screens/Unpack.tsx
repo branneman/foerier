@@ -87,6 +87,12 @@ interface UnpackRowData {
     readonly resolved: number
     readonly total: number
   }
+  /** DESTINATION mode's own `RE-HOMED` segment (Task 14, spec §4.6) —
+   * {@link rehomedFor}'s answer, unset (falsy) everywhere else. */
+  readonly rehomed?: boolean
+  /** M3 — {@link canReHomeFor}'s answer; `undefined` reads `true`
+   * (`UnpackRow`'s own default), so a trip-only row need not set it. */
+  readonly canReHome?: boolean
 }
 
 /** One of F3's groups — a room, `Loose`, or the closing `Trip-only` group;
@@ -164,11 +170,12 @@ const NOT_ATTRIBUTED = 'NOT ATTRIBUTED TO A PERSON'
  * this file's own convention forbids. A Single, an unrecognised Kind and an
  * unsynced Gear all answer `null` there and draw no suffix at all.
  *
- * **A closing `RE-HOMED` segment** (Task 14, spec §4.6, `docs/design/
- * README.md` §7: `→ CRATE B · RE-HOMED`) — {@link rehomedSinceOutcome}'s own
- * one comparison, never re-derived here, over {@link depotGearOf}'s Gear for
- * this Entry. It can co-occur with any of the three suffixes above: a
- * re-homed Counted Entry reads `→ CRATE B · ×2 · RE-HOMED`.
+ * **The `RE-HOMED` segment is not part of this string** (Task 14, spec
+ * §4.6) — it is `UnpackRow`'s own muted segment (board §7: *"muted, so the
+ * row says why it sits under a room it did not leave from"*), which needs
+ * its own tone and must not be swallowed by `UnpackRow`'s plain-text `meta`
+ * prop. {@link rehomedFor} computes the boolean this function's own callers
+ * pass down beside this string, never folded into it.
  */
 function returnPathMeta(
   entry: EntryState,
@@ -204,12 +211,19 @@ function returnPathMeta(
     suffix.push(`×${item.units}`)
   }
 
-  if (rehomedSinceOutcome(entry, depotGearOf(entry, state))) {
-    suffix.push('RE-HOMED')
-  }
-
   if (pathText === '') return suffix.join(' · ')
   return [`→ ${pathText}`, ...suffix].join(' · ')
+}
+
+/**
+ * Whether a row's `RE-HOMED` segment draws (Task 14, spec §4.6) —
+ * {@link rehomedSinceOutcome}'s own one comparison, never re-derived here,
+ * over {@link depotGearOf}'s Gear for this Entry. DESTINATION mode's own
+ * scope: no board draws the segment for PERSON or ALL mode's rows, so
+ * neither computes it (`UnpackRowData.rehomed` defaults to `false` there).
+ */
+function rehomedFor(entry: EntryState, state: HouseholdState): boolean {
+  return rehomedSinceOutcome(entry, depotGearOf(entry, state))
 }
 
 /**
@@ -381,6 +395,7 @@ function destinationGroups(
           // docstring — but the field is not optional on `UnpackRowData`.
           outcome: null,
           cluster,
+          canReHome: canReHomeFor(entry, state),
         })
         continue
       }
@@ -405,6 +420,8 @@ function destinationGroups(
           destination,
         ),
         outcome: item.outcome,
+        rehomed: rehomedFor(entry, state),
+        canReHome: canReHomeFor(entry, state),
       })
     }
     return rows
@@ -479,6 +496,22 @@ function depotGearOf(
   const source = entry.source?.value
   if (source === undefined || source.from !== 'depot') return undefined
   return state.gear[source.gearId]
+}
+
+/**
+ * **M3** — whether this row's body may open the re-home picker at all. A
+ * depot Entry whose Gear has not yet reached this replica has nothing for
+ * `HomePicker` to read a residence from (`trip.entry_added` and
+ * `gear.recorded` are different aggregates with no ordering between them —
+ * a pull can deliver the Entry first), so its body would otherwise be a
+ * dead tap: no sheet, no message, until the Gear arrives. `true` for a
+ * trip-only Entry too — moot there, since `tripOnly` already withholds the
+ * body regardless.
+ */
+function canReHomeFor(entry: EntryState, state: HouseholdState): boolean {
+  const source = entry.source?.value
+  if (source === undefined || source.from !== 'depot') return true
+  return state.gear[source.gearId] !== undefined
 }
 
 /**
@@ -647,6 +680,7 @@ function personGroups(
         ).toUpperCase()}'S PIECE`,
         meta: pathText === '' ? '' : `→ ${pathText}`,
         outcome: item.outcome,
+        canReHome: canReHomeFor(entry, state),
       }
     }
 
@@ -656,6 +690,7 @@ function personGroups(
       name: entryLabel(entry, state),
       meta: personEntryMeta(entry, state, view, tripView, container, item),
       outcome: item.outcome,
+      canReHome: canReHomeFor(entry, state),
     }
   }
 
@@ -790,6 +825,7 @@ function allRows(
         ),
         outcome: null,
         cluster,
+        canReHome: canReHomeFor(entry, state),
       })
       continue
     }
@@ -801,6 +837,7 @@ function allRows(
       name: entryLabel(entry, state),
       meta: headerlessMeta(entry, state, view, tripView, container, item, null),
       outcome: item.outcome,
+      canReHome: canReHomeFor(entry, state),
     })
   }
   return rows
@@ -933,6 +970,8 @@ function GroupSection({
               // `PersonCluster`'s own `tone`-spread note.
               {...(row.cluster === undefined ? {} : { cluster: row.cluster })}
               tripOnly={row.tripOnly ?? false}
+              rehomed={row.rehomed ?? false}
+              canReHome={row.canReHome ?? true}
             />
           </li>
         ))}
@@ -973,22 +1012,19 @@ function GroupSection({
 
 /**
  * F8's own context line (`docs/design/README.md` §7/§5h, spec §4.6, board
- * `S10 Round - Unpack Resolve and Close.dc.html` §02/§07): `RE-HOMING TENT,
- * 3P · PICKING A HOME MARKS IT BACK`. It replaces `HomePicker`'s own
- * auto-computed `MOVING …` line outright (`HomePicker`'s own `context` prop),
- * which is also what tells the picker not to confirm (F8/A2b) — so the
- * `N INSIDE RIDE ALONG` fact that line would otherwise have carried has to be
- * folded into this one instead, for a container being re-homed. **No board
- * frame draws that composite** — only the plain, non-container example above
- * is drawn — so this is `§3c`'s own quoted phrase composed into the new,
- * quoted line rather than invented words; see the task's own report for the
- * call.
+ * `S10 Round - Unpack Resolve and Close.dc.html` §02/§07): `RE-HOMING Tent,
+ * 3p · PICKING A HOME MARKS IT BACK` — the recorded name, kept in its
+ * **recorded case**: `.context`'s own `text-transform: uppercase`
+ * (`HomePicker.module.css`) is what paints it in caps, exactly as the
+ * shipped `MOVING {name} · …` line already leaves `moving.name` untouched
+ * (`HomePicker.test.tsx` pins the identical rule for `PackPicker`). This is
+ * the caller's own sentence and nothing else — no ride-along clause: a
+ * container being re-homed gets that from `HomePicker`'s own `moving` prop,
+ * which appends it once rather than here a second time (this file's own
+ * `<HomePicker>` call below decides whether to pass `moving` at all).
  */
-function reHomeContext(name: string, insideCount: number): string {
-  const upper = name.toUpperCase()
-  return insideCount > 0
-    ? `RE-HOMING ${upper} · ${insideCount} INSIDE RIDE ALONG · PICKING A HOME MARKS IT BACK`
-    : `RE-HOMING ${upper} · PICKING A HOME MARKS IT BACK`
+function reHomeContext(name: string): string {
+  return `RE-HOMING ${name} · PICKING A HOME MARKS IT BACK`
 }
 
 /** {@link Unpack}'s own outcome-sheet target — R23's own shape. `personId`
@@ -1166,12 +1202,17 @@ export function Unpack() {
   })()
   const reHomeGear =
     reHomeGearId === undefined ? undefined : state.gear[reHomeGearId]
-  // The depot's own physical subtree — GearDetail's own MOVE computation,
-  // read once and handed to both the context line and `moving`'s footer.
+  // The depot's own physical subtree — GearDetail's own MOVE computation.
+  // Read once and handed to `moving` alone (never `context`): a container
+  // is what carries this fact at all (spec §4.6 — a plain gear has no
+  // subtree to exclude or count, and the board's own non-container example
+  // shows no ride-along line), so `moving` is only ever passed for one.
   const reHomeInsideCount =
     reHomeGearId === undefined
       ? 0
       : view.childrenOf({ kind: 'gear', id: reHomeGearId }).length
+  const reHomeIsContainer =
+    reHomeEntry !== undefined && isContainerEntry(reHomeEntry, state)
 
   return (
     <div className={styles['screen']}>
@@ -1286,6 +1327,7 @@ export function Unpack() {
                       ? {}
                       : { cluster: row.cluster })}
                     tripOnly={row.tripOnly ?? false}
+                    canReHome={row.canReHome ?? true}
                   />
                 </li>
               ))}
@@ -1348,14 +1390,20 @@ export function Unpack() {
             }}
             excludeGearId={reHomeGearId}
             current={residenceOf(reHomeGear)}
-            context={reHomeContext(
-              entryLabel(reHomeEntry, state),
-              reHomeInsideCount,
-            )}
-            moving={{
-              name: entryLabel(reHomeEntry, state),
-              insideCount: reHomeInsideCount,
-            }}
+            context={reHomeContext(entryLabel(reHomeEntry, state))}
+            // Only a container needs MOVE's own exclusion, footer and
+            // ride-along line (spec §4.6) — and `confirm: false` is what
+            // F8/A2b withholds even though `moving` is set (this module's
+            // own header on why `confirm` lives inside `moving`).
+            {...(reHomeIsContainer
+              ? {
+                  moving: {
+                    name: entryLabel(reHomeEntry, state),
+                    insideCount: reHomeInsideCount,
+                    confirm: false,
+                  },
+                }
+              : {})}
           />
         )}
     </div>

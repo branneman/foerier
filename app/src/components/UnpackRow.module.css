@@ -112,6 +112,13 @@
     text-transform: uppercase;
   }
 
+  /* Task 14's own `RE-HOMED` segment (spec §4.6) — fainter than `.meta`
+     itself, `.clears`'s own token, so the row states the fact rather than
+     asserting it with the same weight as *where it goes*. */
+  .rehomedSegment {
+    color: var(--color-ink-faint);
+  }
+
   /* `CLEARS AT CLOSE` — faint mono text, no border: F6's rule that a pill
      shape is a control on every other row, and a trip-only Entry takes no
      outcome. Not a button (`UnpackRow.tsx`'s docstring). */

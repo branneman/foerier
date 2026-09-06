@@ -697,7 +697,7 @@ describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
 
     expect(screen.getByRole('dialog', { name: 'Home' })).toBeInTheDocument()
     expect(screen.getByTestId('moving-context')).toHaveTextContent(
-      'RE-HOMING TENT, 3P · PICKING A HOME MARKS IT BACK',
+      'RE-HOMING Tent, 3p · PICKING A HOME MARKS IT BACK',
     )
   })
 
@@ -776,7 +776,7 @@ describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Home' })
     expect(within(dialog).getByTestId('moving-context')).toHaveTextContent(
-      'RE-HOMING CRATE B · 1 INSIDE RIDE ALONG · PICKING A HOME MARKS IT BACK',
+      'RE-HOMING Crate B · PICKING A HOME MARKS IT BACK · 1 INSIDE RIDE ALONG',
     )
     // Invariant 3 — Crate B's own subtree (Pouch) is absent at any depth.
     expect(within(dialog).queryByRole('button', { name: 'Pouch' })).toBeNull()
@@ -807,6 +807,36 @@ describe('DESTINATION mode — re-home on the spot (Task 14, F8)', () => {
     // group header is unchanged and the meta reads the path plus the segment.
     expect(within(row).getByTestId('unpack-row-meta')).toHaveTextContent(
       '→ Crate B · RE-HOMED',
+    )
+  })
+
+  /**
+   * **I3's own edge case, pinned rather than assumed.** A re-home to Loose
+   * has no path segment to state at all — `meta` is `''` — so the segment
+   * must not lead with a stray `· `.
+   */
+  it('reads a bare RE-HOMED with no leading separator when the row has no meta of its own', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...reHomeScenario())
+
+    await user.click(
+      within(screen.getByTestId(`unpack-row-${E_TENT}`)).getByTestId(
+        'unpack-row-body',
+      ),
+    )
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Home' })).getByRole('button', {
+        name: /^Loose/,
+      }),
+    )
+
+    // Re-homed to Loose moves the row into a different DESTINATION group
+    // (Attic → Loose), so it is re-queried fresh rather than through a
+    // stale reference to the row's old group.
+    const row = screen.getByTestId(`unpack-row-${E_TENT}`)
+    // Loose states no path — this must render bare, not `· RE-HOMED`.
+    expect(within(row).getByTestId('unpack-row-meta').textContent).toBe(
+      'RE-HOMED',
     )
   })
 
