@@ -289,7 +289,9 @@ function claimingTrips(
  * `count: 1`, or the whole Bring-count — and *that* must never be gated on
  * `isContainerEntry`: importing `pieceCountOf`, or making either of those
  * two branches consult container-ness, would let two Trips both claim the
- * one duffel.
+ * one duffel. (See the paragraph below for the one narrow exception,
+ * ruling R11: it gates which outcome register a per-person claim consults,
+ * and does not weaken this rule.)
  *
  * **Ruling R11 adds a container check to `claimFor` below, for a
  * different purpose than the paragraph above warns against.**
