@@ -5,7 +5,12 @@ import type {
   TripState,
 } from '../state.ts'
 import { ownedCountOf } from './depot.ts'
-import { bringCountOf, entriesOf, entryKind } from './entry.ts'
+import {
+  bringCountOf,
+  entriesOf,
+  entryKind,
+  isContainerEntry,
+} from './entry.ts'
 import { piecesOf } from './piece.ts'
 import { isActive, visibleTrips } from './trip.ts'
 import { outcomeOf, pieceOutcomeOf } from './unpack.ts'
@@ -16,17 +21,23 @@ import { outcomeOf, pieceOutcomeOf } from './unpack.ts'
  * problem: a fact several surfaces must agree on, computed once here.
  *
  * A claim is held by an **unresolved** Entry — one whose {@link outcomeOf}
- * reads `null` — and, for a Per-person Entry, by its unresolved Pieces alone:
- * {@link claimsByGear} skips a resolved Entry outright, and {@link claimFor}'s
- * per-person branch drops any Piece whose {@link pieceOutcomeOf} is no longer
- * `null`. Recording an outcome therefore releases the claim **immediately,
- * mid-pass** — the same read that computes `overClaims` sees it gone, before
- * the Trip ever closes (spec §3.3, story 11).
+ * reads `null` — and, for a **non-container** Per-person Entry, by its
+ * unresolved Pieces alone: {@link claimsByGear} skips a resolved Single or
+ * Counted Entry (and a resolved per-person *container* Entry) outright, and
+ * {@link claimFor}'s per-person branch drops any Piece whose
+ * {@link pieceOutcomeOf} is no longer `null`. A non-container Per-person
+ * Entry's own {@link outcomeOf} register is read by nobody for claim
+ * purposes — see {@link claimsByGear}'s own note on why, the
+ * {@link entryResidenceOf} / `trip.entry_moved` shape applied to a second
+ * register. Recording an outcome therefore releases the claim
+ * **immediately, mid-pass** — the same read that computes `overClaims` sees
+ * it gone, before the Trip ever closes (spec §3.3, story 11).
  *
- * **S10's gate goes here**, inside this file and nowhere else. A speculative
- * `isResolved` returning `false` today would be a function no caller could
- * make true, and a fifth thing about outcomes to keep in agreement before
- * outcomes exist.
+ * **S10's gate goes here**, inside this file and nowhere else. Before this
+ * slice, a speculative `isResolved` returning `false` would have been a
+ * function no caller could make true — and a fifth thing about outcomes for
+ * every caller to keep in agreement, when this file is the one place that
+ * agreement needs to be kept at all.
  */
 
 /**
@@ -188,19 +199,29 @@ function claimingTrips(
  * {@link ClaimableKind} and is skipped below alongside every other
  * non-claiming case).
  *
- * **A resolved Entry is skipped first, before `entryKind` is even read.**
+ * **A resolved Entry holds no claim — except a non-container Per-person
+ * Entry, whose Entry-level `outcome` is read by nobody here (ruling R10).**
  * {@link outcomeOf} reads `null` for open and for absent alike, so an Entry
- * this loop has never addressed falls straight through to the ordinary
- * checks below; the moment some outcome — `back`, `consumed`, `lost`, or one
- * this build has never heard of — is on record, the Entry contributes no
- * claim at all (spec §3.3, story 11). An *unrecognised* outcome releases the
- * claim exactly like a known one: a Trip a peer on a later build has
- * resolved must not hold this build's supply hostage. This is the whole of
- * "marking an Entry resolved hands its Gear straight back" — the claim is
- * released by the same read that computes it, mid-pass, before the Trip
- * closes. A Per-person Entry's own per-Piece release lives in
- * {@link claimFor} instead, since a Person's claim must be releasable without
- * releasing the whole Entry's.
+ * this loop has never addressed falls straight through; the moment a
+ * recognised **or unrecognised** outcome is on record for a Single Entry, a
+ * Counted Entry, or a per-person **container** Entry, it contributes no
+ * claim at all (spec §3.3, story 11) — an unrecognised outcome releases the
+ * claim exactly like a known one, because a Trip a peer on a later build has
+ * resolved must not hold this build's supply hostage. A **non-container**
+ * Per-person Entry is the one exception, and {@link isContainerEntry} is what
+ * decides it: {@link unpackItems} (`unpack.ts`) puts that Entry's outcome
+ * on the Entry itself only when it is a container (container checked before
+ * the per-person fan-out there too), fanning out to Pieces otherwise — so
+ * this file must answer the identical question the identical way. The
+ * Entry-level register is therefore **fold-but-ignore** for a non-container
+ * Per-person Entry, exactly as {@link entryResidenceOf} (`packing.ts`)
+ * already treats `trip.entry_moved` on the same Kind: folded, because a peer
+ * on another build may write one and the tolerant reader is absolute, and
+ * read by nobody for claim purposes either. Such an Entry's claim is
+ * released only by {@link claimFor}'s per-Piece filter, one Person at a
+ * time. This is the whole of "marking an Entry resolved hands its Gear
+ * straight back" — the claim is released by the same read that computes it,
+ * mid-pass, before the Trip closes.
  *
  * **An Entry whose Gear is not (yet) in the fold holds no claim.**
  * `entryKind` reads `undefined` for a depot Entry whose `gear.recorded` has
@@ -237,10 +258,6 @@ function claimsByGear(
   const byGear = new Map<string, { kind: ClaimableKind; claims: Claim[] }>()
   for (const trip of trips) {
     for (const entry of entriesOf(trip, state)) {
-      // S10: a resolved Entry holds no claim — see this function's own note
-      // above. Checked before `entryKind`, so it applies to every Kind
-      // uniformly rather than being threaded into the checks below.
-      if (outcomeOf(entry) !== null) continue
       const kind = entryKind(entry, state)
       if (!isClaimableKind(kind)) continue
       // `isClaimableKind` already rules out `'trip_only'` and `undefined`,
@@ -248,6 +265,17 @@ function claimsByGear(
       // it rather than re-deriving `entryKind`'s own test.
       const source = entry.source?.value
       if (source === undefined || source.from !== 'depot') continue
+
+      // S10 (ruling R10): the Entry-level `outcome` gate applies to
+      // everything except a non-container Per-person Entry — see this
+      // function's own note above for why `isContainerEntry` is what draws
+      // the line. `kind` and container-ness must both be known before this
+      // decision, which is the one genuine ordering dependency in this
+      // function; the checks above it are not.
+      const perPersonLoose =
+        kind === 'per_person' && !isContainerEntry(entry, state)
+      if (!perPersonLoose && outcomeOf(entry) !== null) continue
+
       const claim = claimFor(kind, trip, entry, state)
       // A claim naming nobody is not a claim. Reachable when every Piece of a
       // per-person Entry has been removed: it raises no false conflict either

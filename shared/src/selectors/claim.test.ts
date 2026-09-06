@@ -435,15 +435,97 @@ describe('per-person claims read Pieces', () => {
     expect(overClaims(state)).toEqual([])
   })
 
-  it("releases exactly Mark's claim when his Piece on one Trip is resolved", () => {
-    // Els is only on Alps and Kim only on Vosges (each held once, and
-    // legitimate on their own); Mark is the entire conflict. Resolving his
-    // Piece on either Trip removes the only claim in contention, so the
-    // whole over-claim disappears — Els's and Kim's claims were never part
-    // of it and stay untouched, on both Trips.
-    const state = twoTripFold(tripOutcomeSet(ALPS, ALPS_ENTRY, 'back', MARK))
+  it("drops a fully-resolved per-person Entry's zero-count claim from OverClaim.claims (F2)", () => {
+    // Alps has only Mark as a Participant, and his Piece there is resolved
+    // by outcome (not removed) — so `claimFor`'s per-Piece filter empties
+    // `personIds` and `claimsByGear`'s pre-existing "a claim naming nobody
+    // is not a claim" guard must drop it, exactly as it does for a
+    // tombstoned Piece. Vosges and Chamonix both still claim Mark
+    // unresolved: a genuine over-claim that must name only those two Trips.
+    // If Alps's zero-count claim rode along in `claims`, it would offer a
+    // settle route pointing at an Entry that has already resolved.
+    const CHAMONIX = 't-chamonix'
+    const CHAMONIX_ENTRY = 'e-chamonix'
+    const state = depot(
+      aGear({ id: GEAR, kind: 'per_person' }),
+      aTrip({ id: ALPS, phase: 'pack_out', participants: [MARK] }),
+      [
+        tripEntryAdded(ALPS, ALPS_ENTRY, { from: 'depot', gearId: GEAR }),
+        tripOutcomeSet(ALPS, ALPS_ENTRY, 'back', MARK),
+      ],
+      aTrip({ id: VOSGES, phase: 'on_trip', participants: [MARK] }),
+      [tripEntryAdded(VOSGES, VOSGES_ENTRY, { from: 'depot', gearId: GEAR })],
+      aTrip({ id: CHAMONIX, phase: 'unpack', participants: [MARK] }),
+      [
+        tripEntryAdded(CHAMONIX, CHAMONIX_ENTRY, {
+          from: 'depot',
+          gearId: GEAR,
+        }),
+      ],
+    )
 
-    expect(overClaims(state)).toEqual([])
+    const result = overClaims(state)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]!.contestedPersonIds).toEqual([MARK])
+    expect(result[0]!.claims.map((c) => c.tripId).sort()).toEqual([
+      CHAMONIX,
+      VOSGES,
+    ])
+  })
+
+  it("releases exactly Mark's claim, not Els's or the whole Entry's, when his Piece on one Trip is resolved", () => {
+    // A fixture distinct from `twoTripFold`, deliberately: this one needs
+    // Els on BOTH Trips, untouched, so a whole-Entry release and a per-Piece
+    // release produce *different* answers rather than agreeing by accident.
+    //
+    // Before any resolution: Mark and Els are each on both Trips, so both
+    // are contested. Resolving Mark's Piece on Alps alone must drop him from
+    // Alps's claim without touching Els's Piece there — leaving Els still
+    // named by both Alps and Vosges, still genuinely contested, and Mark
+    // named by Vosges alone.
+    //
+    // A whole-Entry release would instead drop Alps's *entire* claim the
+    // moment any Piece on it is resolved — Els included — leaving her named
+    // by Vosges only and nobody contested at all: `overClaims` would read
+    // `[]`, indistinguishable from "nothing was ever wrong". Asserting
+    // `contestedPersonIds === [ELS]` here is what a whole-Entry release
+    // cannot produce.
+    function threePersonFold(...extra: readonly OpSpec[]): HouseholdState {
+      return depot(
+        aGear({ id: GEAR, kind: 'per_person' }),
+        aTrip({ id: ALPS, phase: 'pack_out', participants: [MARK, ELS] }),
+        [tripEntryAdded(ALPS, ALPS_ENTRY, { from: 'depot', gearId: GEAR })],
+        aTrip({
+          id: VOSGES,
+          phase: 'on_trip',
+          participants: [MARK, ELS, KIM],
+        }),
+        [tripEntryAdded(VOSGES, VOSGES_ENTRY, { from: 'depot', gearId: GEAR })],
+        extra,
+      )
+    }
+
+    // Sanity: both Mark and Els are contested before anything is resolved.
+    const before = overClaims(threePersonFold())
+    expect(before).toHaveLength(1)
+    expect(before[0]!.contestedPersonIds).toEqual([ELS, MARK])
+
+    const state = threePersonFold(
+      tripOutcomeSet(ALPS, ALPS_ENTRY, 'back', MARK),
+    )
+
+    const result = overClaims(state)
+    expect(result).toHaveLength(1)
+    expect(result[0]!.contestedPersonIds).toEqual([ELS])
+    expect(result[0]!.claims.find((c) => c.tripId === ALPS)?.personIds).toEqual(
+      [ELS],
+    )
+    // `piecesOf` orders by id (`participantIds`' total order), not roster
+    // order — 'p-els' < 'p-kim' < 'p-mark'.
+    expect(
+      result[0]!.claims.find((c) => c.tripId === VOSGES)?.personIds,
+    ).toEqual([ELS, KIM, MARK])
   })
 })
 
@@ -511,19 +593,33 @@ describe('an unpack outcome releases the claim (S10, spec §3.3)', () => {
   })
 
   it('an outcome of null clears back to open and re-creates the claim', () => {
-    const state = twoActiveTripsOnSingleGear(
+    // The intermediate state (resolved, no clear yet) must itself be empty —
+    // otherwise the final assertion alone would not show the null clear did
+    // anything, only that a resolved-then-reopened Entry over-claims, which
+    // is true regardless of what "back" did.
+    const resolved = twoActiveTripsOnSingleGear(
+      tripOutcomeSet('t2', 'e2', 'back'),
+    )
+    expect(overClaims(resolved)).toEqual([])
+
+    const reopened = twoActiveTripsOnSingleGear(
       tripOutcomeSet('t2', 'e2', 'back'),
       tripOutcomeSet('t2', 'e2', null),
     )
-
-    expect(overClaims(state)).toHaveLength(1)
+    expect(overClaims(reopened)).toHaveLength(1)
   })
 
   it('resolving an Entry on a Draft Trip changes nothing — it held no claim to release', () => {
+    // A third, genuinely active pair (t1/t3) provides the conflict this test
+    // checks survives untouched — a Draft holding no claim regardless of its
+    // outcome is otherwise indistinguishable from "nothing here ever
+    // conflicted", since t2 alone never claims anything at any phase.
     const state = depot(
       aGear({ id: 'g1', kind: 'single' }),
       aTrip({ id: 't1', phase: 'pack_out' }),
       [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g1' })],
+      aTrip({ id: 't3', phase: 'on_trip' }),
+      [tripEntryAdded('t3', 'e3', { from: 'depot', gearId: 'g1' })],
       aTrip({ id: 't2', phase: 'draft' }),
       [
         tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g1' }),
@@ -531,6 +627,48 @@ describe('an unpack outcome releases the claim (S10, spec §3.3)', () => {
       ],
     )
 
-    expect(overClaims(state)).toEqual([])
+    const result = overClaims(state)
+    expect(result).toHaveLength(1)
+    expect(result[0]!.claims.map((c) => c.tripId).sort()).toEqual(['t1', 't3'])
+  })
+})
+
+describe('a per-person container Entry releases via its own outcome (ruling R10)', () => {
+  // The mirror case to the S10 describe block above: `unpackItems` puts the
+  // outcome on a per-person *container* Entry itself (container checked
+  // before the per-person fan-out there), so this file's Entry-level gate
+  // must stay authoritative for it — unlike a non-container per-person
+  // Entry, whose Entry-level `outcome` register is fold-but-ignore for claim
+  // purposes and released only per-Piece (see `claimsByGear`'s own note).
+  it("releases the whole Entry's claim when a per-person CONTAINER Entry's own outcome is recorded", () => {
+    const state = depot(
+      aGear({ id: 'g-crate', kind: 'per_person', container: true }),
+      aTrip({ id: 't1', phase: 'pack_out', participants: ['p1', 'p2'] }),
+      [tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g-crate' })],
+      aTrip({ id: 't2', phase: 'on_trip', participants: ['p1', 'p3'] }),
+      [tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g-crate' })],
+    )
+
+    // Sanity: p1 is on both Trips, so the pair genuinely over-claims before
+    // either Entry's outcome is recorded.
+    expect(overClaims(state)).toHaveLength(1)
+
+    const resolved = depot(
+      aGear({ id: 'g-crate', kind: 'per_person', container: true }),
+      aTrip({ id: 't1', phase: 'pack_out', participants: ['p1', 'p2'] }),
+      [
+        tripEntryAdded('t1', 'e1', { from: 'depot', gearId: 'g-crate' }),
+        // Entry-level — no `personId` — the container's own outcome, not
+        // one Piece's.
+        tripOutcomeSet('t1', 'e1', 'back'),
+      ],
+      aTrip({ id: 't2', phase: 'on_trip', participants: ['p1', 'p3'] }),
+      [tripEntryAdded('t2', 'e2', { from: 'depot', gearId: 'g-crate' })],
+    )
+
+    // t1's whole claim is gone (both p1 and p2), leaving only t2's — a
+    // build that instead treated every per-person Entry as fold-but-ignore
+    // at the Entry level would leave p1 double-claimed here and fail.
+    expect(overClaims(resolved)).toEqual([])
   })
 })
