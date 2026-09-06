@@ -1351,12 +1351,29 @@ here rather than folded silently into the code they moved:
    drawn. It now folds the standing in afterwards, with domain §4's precedence
    stated rather than assumed.
 
-**One disagreement between the boards is left open rather than resolved**:
-§5i's own G9 excerpt draws `Shared`'s depot rows in PERSON mode with the path
-**first** and no unit count (`Cook set → BAK 3`), which is DESTINATION's
-grammar rather than the header-less one ruling I1 argues for and this code
-builds (`×1 · → BAK 3`). G9's ruling text is explicitly about where the
-*trip-only* rows sit and what anatomy *they* take, so the excerpt's other rows
-are read as context drawn loosely rather than as a redrawing of I1. If they
-are not, the next round should say so — it is one function, `headerlessMeta`,
-and one rule.
+**One apparent disagreement between the boards, resolved against three drawn
+artefacts rather than left open.** §5i's own G9 excerpt draws `Shared`'s depot
+rows in PERSON mode as `Cook set → BAK 3` — path first, no ownership prefix,
+no unit count — where this code builds `SHARED · ×1 · → BAK 3`. That is three
+differences, not one, and every one of them is settled by a board that draws
+or states it directly:
+
+1. **The order.** The S10 round's own PERSON frame says it in prose, not by
+   example: *"The return path is **the meta's last segment**, as the residence
+   is on F4 — and in this mode it carries the full path, since no room header
+   makes one."* Ruling I1 is that sentence, implemented.
+2. **The `SHARED ·` prefix.** F4's PERSON mode draws its `Shared` group's rows
+   as `SHARED · ×1 · ▸ DUFFEL 90 L` — `S9 Round` and again `S9 Round 4`, the
+   same frame both times. G9's own ruling text appeals to that screen by name
+   (*"the same answer F4 gives one tap away"*).
+3. **The unconditional `×1` on a Single.** Drawn in that same F4 row, and
+   again in the S10 round's own `Rain jacket, K` row
+   (`PERSONAL · K · ×1 · → KEES'S ROOM ▸ KAST`).
+
+The excerpt's subject is where the **trip-only** rows sit and what anatomy
+*they* take; its other rows are context, and they are drawn in DESTINATION's
+grammar. Three boards against one incidental row in a fourth, and the one row
+is not what that board was drawing. **Nothing in the code changes**, and the
+conflict is recorded in `docs/design/README.md` §7 rather than resolved
+silently — §1's own instruction — so a regeneration that re-seeds from the
+excerpt meets the evidence instead of quietly adopting it.
