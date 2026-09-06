@@ -145,6 +145,23 @@ export interface OverClaimGroupsProps {
   readonly groups: readonly OverClaimGroup[]
   /** Absent renders the block facts-only — ruling I. */
   readonly settle?: SettleRoutes | undefined
+  /**
+   * **F15's own word, and nothing else** (S10, spec §4.9). `true` only for
+   * F5's own standing band (`Unpack.tsx`), whose own list carries a pill for
+   * every Entry this component can ever name — so a Single row's
+   * cross-Trip fact reads `STILL OPEN HERE` rather than `STILL OUT`,
+   * "naming what F5 can do about it" instead of restating the claim the
+   * attention line above already states.
+   *
+   * **Deliberately its own prop, not derived from `settle`'s absence.**
+   * `ActivationConfirm` and `ReopenConfirm` also render facts-only, but
+   * neither mounts beside a list with an outcome pill on the named Entry —
+   * "here" in their sheets is the Trip about to change phase, not a screen
+   * the reader can act on directly — so their own `STILL OUT` stays exactly
+   * as it read before this prop existed. Defaults to `false` for that
+   * reason: every existing caller is unaffected unless it opts in.
+   */
+  readonly resolvableHere?: boolean
 }
 
 /**
@@ -161,6 +178,7 @@ export function OverClaimGroups({
   tripId,
   groups,
   settle,
+  resolvableHere = false,
 }: OverClaimGroupsProps) {
   return (
     <>
@@ -173,6 +191,7 @@ export function OverClaimGroups({
             tripId={tripId}
             overClaims={group.overClaims}
             settle={settle}
+            resolvableHere={resolvableHere}
           />
         </div>
       ))}
@@ -185,6 +204,8 @@ export interface ConflictRowsProps {
   readonly overClaims: readonly OverClaim[]
   /** Absent renders the block facts-only — ruling I. */
   readonly settle?: SettleRoutes | undefined
+  /** See {@link OverClaimGroupsProps.resolvableHere}. */
+  readonly resolvableHere?: boolean
 }
 
 /** Rows cap at three, then one row. Spec §4.5, verbatim. */
@@ -211,6 +232,7 @@ export function ConflictRows({
   tripId,
   overClaims,
   settle,
+  resolvableHere = false,
 }: ConflictRowsProps) {
   const state = useHousehold((depot) => depot.state)
   const [expanded, setExpanded] = useState(false)
@@ -238,6 +260,7 @@ export function ConflictRows({
           state={state}
           nameRow={nameEachRow}
           settle={settle}
+          resolvableHere={resolvableHere}
         />
       ))}
       {!expanded && hiddenCount > 0 && (
@@ -262,6 +285,8 @@ interface ConflictRowProps {
   readonly nameRow: boolean
   /** Absent renders the block facts-only — ruling I. */
   readonly settle?: SettleRoutes | undefined
+  /** See {@link OverClaimGroupsProps.resolvableHere}. */
+  readonly resolvableHere: boolean
 }
 
 function ConflictRow({
@@ -270,6 +295,7 @@ function ConflictRow({
   state,
   nameRow,
   settle,
+  resolvableHere,
 }: ConflictRowProps) {
   // `entry.ts`'s own rule for a Gear name: an absent register reads empty,
   // never invented.
@@ -299,7 +325,7 @@ function ConflictRow({
       <div className={styles['rowHead']}>
         <span className={styles['gearName']}>{name}</span>
         <span className={styles['fact']} data-testid="over-claim-fact">
-          {rowFact(overClaim, tripId, state, nameRow)}
+          {rowFact(overClaim, tripId, state, nameRow, resolvableHere)}
         </span>
       </div>
       {/*
@@ -787,12 +813,33 @@ function hereOnlyPersonLine(
  * per-person gear no owned-count at all). No board draws a per-person row, so
  * this reads {@link OverClaim.contestedPersonIds} and names the People
  * instead — the one thing the domain actually recorded.
+ *
+ * **`resolvableHere` swaps one word, for one shape, and nothing else.**
+ * S10's F5 (`docs/design/README.md` §7/§5h ruling F15, spec §4.9) is the one
+ * caller that sets it, and its own board draws a Single cross-Trip row as
+ * `SINGLE · STILL OPEN HERE` rather than `SINGLE · STILL OUT` — "naming
+ * what F5 can do about it" instead of restating the claim `claim.ts` already
+ * states in the attention line above. It is sound precisely because it is
+ * redundant: `claim.ts`'s own rule is that a claim releases the moment an
+ * outcome is recorded for the contributing Entry, so **any** row this
+ * component ever draws is a row whose own claim still stands — which means
+ * an Entry it names here has never had an outcome recorded, on every Trip
+ * that names it. "Still open here" is therefore always true wherever this
+ * row renders at all; the flag only decides whether it is worth saying
+ * instead of `STILL OUT`, which is the word every other caller keeps
+ * (`OverClaimGroupsProps.resolvableHere`'s own docstring is why it is not
+ * derived from `settle`'s absence). Scoped to Single's cross-Trip shape
+ * alone (spec §4.9's own example) rather than every branch below, because
+ * that is the one shape a board actually draws for F5 — extending the swap
+ * to `×N LISTED`, a Counted row or the per-person branch would be inventing
+ * copy no board states.
  */
 function rowFact(
   overClaim: OverClaim,
   tripId: string,
   state: HouseholdState,
   nameRow: boolean,
+  resolvableHere: boolean,
 ): string {
   // Ruling F's correction: `nameRow` is the caller's multi-Trip heuristic
   // (`ConflictRows`' `nameEachRow`), right for Single/Counted because their
@@ -823,9 +870,10 @@ function rowFact(
   const otherTotal = overClaim.claimed - hereTotal
 
   if (overClaim.kind === 'single') {
+    const stillOutWord = resolvableHere ? 'STILL OPEN HERE' : 'STILL OUT'
     const parts = [
       'SINGLE',
-      otherTotal > 0 ? 'STILL OUT' : `×${hereTotal} LISTED`,
+      otherTotal > 0 ? stillOutWord : `×${hereTotal} LISTED`,
     ]
     return [...parts, ...suffix].join(' · ')
   }

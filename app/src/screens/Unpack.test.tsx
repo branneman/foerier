@@ -42,12 +42,17 @@ import { Unpack } from './Unpack'
  */
 
 const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
+// A second Active Trip, elsewhere — the over-claim band's own "there".
+const VOSGES = 'tttttttt-0000-7000-8000-00000000000b'
 
 const STOVE = 'gggggggg-0000-7000-8000-00000000000a'
 const HEADLAMP = 'gggggggg-0000-7000-8000-00000000000b'
+const FILTER = 'gggggggg-0000-7000-8000-000000000080'
 
 const E_STOVE = 'nnnnnnnn-0000-7000-8000-00000000000a'
 const E_HEADLAMP = 'nnnnnnnn-0000-7000-8000-00000000000b'
+const E_FILTER_ALPS = 'nnnnnnnn-0000-7000-8000-000000000080'
+const E_FILTER_VOSGES = 'nnnnnnnn-0000-7000-8000-000000000081'
 
 type OpPayload = Record<string, unknown>
 
@@ -102,6 +107,31 @@ function alps(): readonly OpSpec[] {
     personRecorded('els', 'Els'),
     tripCreated(ALPS, 'Alps 2026'),
     tripParticipantAdded(ALPS, 'els'),
+  ]
+}
+
+/**
+ * **F15's own fixture** (spec §4.9) — a Single Gear, `Water filter`, claimed
+ * by two Active Trips: Alps (this screen) and Vosges (elsewhere). `alps()`'s
+ * own phase is `draft`, which is not enough on its own — `claim.ts`'s
+ * `overClaimsFor` counts only an Active Trip (`isActive`), so both Trips are
+ * moved into one here. Neither Entry has an outcome recorded, which is what
+ * makes this a genuine, standing over-claim: an owned-×1 Single claimed
+ * twice.
+ */
+function overClaimedAcrossTrips(): readonly OpSpec[] {
+  return [
+    ...alps(),
+    tripPhaseMoved(ALPS, 'unpack'),
+    tripCreated(VOSGES, 'Vosges 2026'),
+    tripPhaseMoved(VOSGES, 'on_trip'),
+    gearRecorded(FILTER, {
+      name: 'Water filter',
+      container: false,
+      kind: 'single',
+    }),
+    tripEntryAdded(ALPS, E_FILTER_ALPS, { from: 'depot', gearId: FILTER }),
+    tripEntryAdded(VOSGES, E_FILTER_VOSGES, { from: 'depot', gearId: FILTER }),
   ]
 }
 
@@ -352,6 +382,55 @@ describe('the count line and the bar', () => {
     // numbers coincide.
     expect(screen.getByTestId('unpack-open-count')).toHaveTextContent('1 OPEN')
     expect(screen.getByTestId('unpack-bar')).toBeInTheDocument()
+  })
+})
+
+describe('the over-claim band (F15, spec §4.9)', () => {
+  it('renders between the count block and the controls, facts-only', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...overClaimedAcrossTrips())
+
+    const bar = screen.getByTestId('unpack-bar')
+    const band = screen.getByTestId('over-claim-band')
+    const controls = screen.getByTestId('unpack-controls')
+
+    // Sits between the count block and the controls, not merely somewhere
+    // on the page — the same `previousElementSibling`/`nextElementSibling`
+    // discipline the close card's own position test uses.
+    expect(bar.nextElementSibling).toBe(band)
+    expect(band.nextElementSibling).toBe(controls)
+
+    expect(screen.getByTestId('over-claim-attention')).toHaveTextContent(
+      '▲ 1 entry is already claimed by Vosges 2026.',
+    )
+    expect(
+      within(screen.getByTestId(`over-claim-row-${FILTER}`)).getByTestId(
+        'over-claim-fact',
+      ),
+    ).toHaveTextContent('SINGLE · STILL OPEN HERE')
+
+    // Facts-only (§5b I): no `REMOVE HERE`/`BRING ×N HERE` — no route at
+    // all, since the row of routes is what `settle` being absent withholds.
+    expect(within(band).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  /**
+   * Resolving the row is the ordinary way an over-claim ends on this screen
+   * (spec §4.9) — and the test that proves the claim gate this slice built
+   * earlier actually reaches F5: `claim.ts`'s own rule is that a claim
+   * releases the moment an outcome is recorded for the contributing Entry.
+   */
+  it('disappears once its own row is resolved here', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...overClaimedAcrossTrips())
+
+    expect(screen.getByTestId('over-claim-band')).toBeInTheDocument()
+
+    const row = screen.getByTestId(`unpack-row-${E_FILTER_ALPS}`)
+    await user.click(within(row).getByRole('button', { name: '○ OPEN' }))
+    const sheet = screen.getByRole('dialog', { name: 'Water filter' })
+    await user.click(within(sheet).getByRole('button', { name: '● BACK' }))
+
+    expect(screen.queryByTestId('over-claim-band')).not.toBeInTheDocument()
   })
 })
 
