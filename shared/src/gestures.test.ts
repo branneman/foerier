@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { aGear, aPlace, aTrip, depot } from '../testUtils/index.ts'
+import { aGear, aPerson, aPlace, aTrip, depot } from '../testUtils/index.ts'
 import {
   gearOwnedCountSet,
   gearRehomed,
@@ -9,6 +9,7 @@ import {
   tripEntryBringCountSet,
   tripOutcomeSet,
   tripPhaseMoved,
+  tripPieceRemoved,
 } from './authoring.ts'
 import { closeTrip, reHomeOnTheSpot } from './gestures.ts'
 import type { EntryState, HouseholdState, TripState } from './state.ts'
@@ -136,6 +137,134 @@ describe('reHomeOnTheSpot', () => {
     const ops = reHomeOnTheSpot(trip, entry, 'g-samehome', residence, state)
 
     expect(ops).toEqual([gearRehomed('g-samehome', residence)])
+  })
+
+  describe('a non-container per-person Entry fans out per Piece (R10/R17)', () => {
+    const PERSON_KIM = 'kim'
+    const PERSON_MARK = 'mark'
+    const PERSON_ELS = 'els'
+
+    it('an unresolved Entry with 3 included Pieces emits 3 outcome ops plus one gear.rehomed', () => {
+      const ENTRY = 'e-lamp'
+      const state = depot(
+        aTrip({
+          id: TRIP,
+          name: 'Ardennes',
+          participants: [PERSON_KIM, PERSON_MARK, PERSON_ELS],
+        }),
+        aPlace({ id: PLACE_ATTIC, name: 'Attic' }),
+        aPerson({ id: PERSON_KIM, name: 'Kim' }),
+        aPerson({ id: PERSON_MARK, name: 'Mark' }),
+        aPerson({ id: PERSON_ELS, name: 'Els' }),
+        aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+        [tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-lamp' })],
+      )
+      const trip = tripFrom(state, TRIP)
+      const entry = entryFrom(trip, ENTRY)
+      const residence = { in: 'place' as const, id: PLACE_ATTIC }
+
+      const ops = reHomeOnTheSpot(trip, entry, 'g-lamp', residence, state)
+
+      expect(ops).toEqual([
+        tripOutcomeSet(TRIP, ENTRY, 'back', PERSON_ELS),
+        tripOutcomeSet(TRIP, ENTRY, 'back', PERSON_KIM),
+        tripOutcomeSet(TRIP, ENTRY, 'back', PERSON_MARK),
+        gearRehomed('g-lamp', residence),
+      ])
+      // The Entry-level register itself is never touched — R10 makes it
+      // read by nobody, so writing it would be a real op that settles
+      // nothing.
+      expect(Object.hasOwn(entry, 'outcome')).toBe(false)
+    })
+
+    it('a Piece already back is skipped — the same needless-write rule, one level down', () => {
+      const ENTRY = 'e-lamp'
+      const state = depot(
+        aTrip({
+          id: TRIP,
+          name: 'Ardennes',
+          participants: [PERSON_KIM, PERSON_MARK],
+        }),
+        aPlace({ id: PLACE_ATTIC, name: 'Attic' }),
+        aPerson({ id: PERSON_KIM, name: 'Kim' }),
+        aPerson({ id: PERSON_MARK, name: 'Mark' }),
+        aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+        [
+          tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-lamp' }),
+          tripOutcomeSet(TRIP, ENTRY, 'back', PERSON_KIM),
+        ],
+      )
+      const trip = tripFrom(state, TRIP)
+      const entry = entryFrom(trip, ENTRY)
+      const residence = { in: 'place' as const, id: PLACE_ATTIC }
+
+      const ops = reHomeOnTheSpot(trip, entry, 'g-lamp', residence, state)
+
+      expect(ops).toEqual([
+        tripOutcomeSet(TRIP, ENTRY, 'back', PERSON_MARK),
+        gearRehomed('g-lamp', residence),
+      ])
+    })
+
+    it('a tombstoned Piece is not included and gets no op', () => {
+      const ENTRY = 'e-lamp'
+      const state = depot(
+        aTrip({
+          id: TRIP,
+          name: 'Ardennes',
+          participants: [PERSON_KIM, PERSON_MARK],
+        }),
+        aPlace({ id: PLACE_ATTIC, name: 'Attic' }),
+        aPerson({ id: PERSON_KIM, name: 'Kim' }),
+        aPerson({ id: PERSON_MARK, name: 'Mark' }),
+        aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+        [
+          tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-lamp' }),
+          tripPieceRemoved(TRIP, ENTRY, PERSON_MARK),
+        ],
+      )
+      const trip = tripFrom(state, TRIP)
+      const entry = entryFrom(trip, ENTRY)
+      const residence = { in: 'place' as const, id: PLACE_ATTIC }
+
+      const ops = reHomeOnTheSpot(trip, entry, 'g-lamp', residence, state)
+
+      expect(ops).toEqual([
+        tripOutcomeSet(TRIP, ENTRY, 'back', PERSON_KIM),
+        gearRehomed('g-lamp', residence),
+      ])
+    })
+
+    it('a per-person CONTAINER Entry keeps the Entry-level write, not a fan-out', () => {
+      const ENTRY = 'e-crate'
+      const state = depot(
+        aTrip({
+          id: TRIP,
+          name: 'Ardennes',
+          participants: [PERSON_KIM, PERSON_MARK],
+        }),
+        aPlace({ id: PLACE_ATTIC, name: 'Attic' }),
+        aPerson({ id: PERSON_KIM, name: 'Kim' }),
+        aPerson({ id: PERSON_MARK, name: 'Mark' }),
+        aGear({
+          id: 'g-crate',
+          name: 'Crate',
+          kind: 'per_person',
+          container: true,
+        }),
+        [tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-crate' })],
+      )
+      const trip = tripFrom(state, TRIP)
+      const entry = entryFrom(trip, ENTRY)
+      const residence = { in: 'place' as const, id: PLACE_ATTIC }
+
+      const ops = reHomeOnTheSpot(trip, entry, 'g-crate', residence, state)
+
+      expect(ops).toEqual([
+        tripOutcomeSet(TRIP, ENTRY, 'back'),
+        gearRehomed('g-crate', residence),
+      ])
+    })
   })
 })
 
@@ -287,5 +416,45 @@ describe('closeTrip', () => {
     const second = closeTrip(trip, state)
 
     expect(second).toEqual(first)
+  })
+
+  it('emits no trip.phase_moved on a Trip already closed — I1, the needless-write rule for this register too', () => {
+    // A Device that reopened this Trip (`ReopenConfirm`, since S6) authored
+    // a later write to the SAME `phase` register than this closed-Trip
+    // stamp. If `closeTrip` re-emitted `trip.phase_moved{closed}`
+    // unconditionally, a stale peer still holding F5's close card could
+    // re-author it and silently win the register back, discarding the
+    // reopen. The reduction must still fire — that is the die-mid-batch
+    // recovery path — only the redundant phase move is skipped.
+    const ENTRY = 'e-consumed'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 6,
+      }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, ENTRY, 4),
+        tripOutcomeSet(TRIP, ENTRY, 'consumed'),
+        tripConsumedCountSet(TRIP, ENTRY, 2),
+      ],
+    )
+    const trip = tripFrom(state, TRIP)
+
+    const ops = closeTrip(trip, state)
+
+    expect(ops).toEqual([gearOwnedCountSet('g-gas', 4)])
+  })
+
+  it('emits only trip.phase_moved on an already-closed Trip with nothing to reduce', () => {
+    const state = depot(aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }))
+    const trip = tripFrom(state, TRIP)
+
+    const ops = closeTrip(trip, state)
+
+    expect(ops).toEqual([])
   })
 })

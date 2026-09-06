@@ -6,8 +6,14 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import { ownedCountOf } from './selectors/depot.ts'
-import { entriesOf } from './selectors/entry.ts'
-import { consumedCountOf, outcomeOf } from './selectors/unpack.ts'
+import { entriesOf, entryKind, isContainerEntry } from './selectors/entry.ts'
+import { piecesOf } from './selectors/piece.ts'
+import { phaseOf } from './selectors/trip.ts'
+import {
+  consumedCountOf,
+  outcomeOf,
+  pieceOutcomeOf,
+} from './selectors/unpack.ts'
 import type {
   EntryState,
   HouseholdState,
@@ -44,14 +50,13 @@ import type {
  *
  * **Two rules, pulling in opposite directions, and both matter:**
  *
- * - **An Entry already `back` gets no `trip.outcome_set`.** A needless write
- *   moves the stamp last-writer-wins compares, so it could beat — and
+ * - **An outcome already `back` gets no `trip.outcome_set`.** A needless
+ *   write moves the stamp last-writer-wins compares, so it could beat — and
  *   silently discard — a genuine concurrent write from a Device that was
- *   offline (this codebase's standing rule, `patterns.md` §2.3). Re-homing an
- *   Entry that is already `back` (or `consumed` or `lost` — the outcome is
- *   being *found*, not necessarily re-confirmed as `back`; only the literal
- *   `back` case is exempt) still emits the outcome write, because a `lost`
- *   or `consumed` Entry re-homed on the spot is genuinely becoming `back`.
+ *   offline (this codebase's standing rule, `patterns.md` §2.3). Re-homing
+ *   something already resolved `consumed` or `lost` still emits the outcome
+ *   write, because it is genuinely *becoming* `back` — only the literal
+ *   `back` case is exempt.
  * - **The `gear.rehomed` op is emitted regardless of whether `residence`
  *   equals the Gear's current home.** This is `patterns.md` §2.3's **one
  *   stated exception in the entire codebase**, and it is not a miss: it is
@@ -66,15 +71,27 @@ import type {
  *   nothing. Do not "optimise" this write away — see this function's test
  *   file for the assertion that would catch exactly that regression.
  *
- * `entry` is read only for its own `outcome` register
- * ({@link outcomeOf} — no other register on it, and no Piece, is touched);
+ * **A non-container per-person Entry fans out, one `trip.outcome_set` per
+ * unresolved included Piece, rather than one Entry-level write.** Ruling R10
+ * (`claim.ts`'s header, restated at `unpack.ts`'s `unaccountedOf`) makes a
+ * non-container per-person Entry's own Entry-level `outcome` register
+ * **read by nobody** — not `unpackItems`, not `countOfUnpack`, not
+ * `claimsByGear`, not `unaccountedOf`. Writing only that register would be a
+ * real op that settles nothing: the row's cluster count would not move and
+ * the claim would not release. So this branch reads {@link entryKind} and
+ * {@link isContainerEntry} (never re-derived — always called) to detect
+ * exactly the case R10 names, and then applies the identical "already
+ * resolved gets no write" rule **per Piece**, via {@link pieceOutcomeOf}
+ * over {@link piecesOf} (the included set — a tombstoned Piece is skipped,
+ * exactly as it is everywhere else). A per-person **container** Entry keeps
+ * the Entry-level write: R10/R11's family says the container check wins
+ * over the per-person one, the same order {@link unpackItems} and
+ * `unaccountedOf` both check it in.
+ *
  * `gearId` and `residence` are supplied by the caller (the picker's own
  * selection) rather than re-derived from `entry.source`, since a caller may
  * be re-homing a container whose contents ride along without an op of their
- * own (spec §4.6). `state` is accepted for parity with {@link closeTrip}'s
- * signature — both of S10's gestures compose builders with the fold in
- * hand — but this gesture's two rules read `entry` alone; nothing here
- * consults it.
+ * own (spec §4.6).
  */
 export function reHomeOnTheSpot(
   trip: TripState,
@@ -83,9 +100,15 @@ export function reHomeOnTheSpot(
   residence: Residence,
   state: HouseholdState,
 ): readonly OpSpec[] {
-  void state
   const ops: OpSpec[] = []
-  if (outcomeOf(entry) !== 'back') {
+  const container = isContainerEntry(entry, state)
+  if (entryKind(entry, state) === 'per_person' && !container) {
+    for (const personId of piecesOf(entry, trip)) {
+      if (pieceOutcomeOf(entry.pieces?.[personId]) !== 'back') {
+        ops.push(tripOutcomeSet(trip.id, entry.id, 'back', personId))
+      }
+    }
+  } else if (outcomeOf(entry) !== 'back') {
     ops.push(tripOutcomeSet(trip.id, entry.id, 'back'))
   }
   // Deliberately unconditional — see this function's own docblock. Never
@@ -123,11 +146,25 @@ export function reHomeOnTheSpot(
  * and this function skips exactly what that `null` already excludes rather
  * than re-deriving the gate.
  *
- * **`trip.phase_moved` goes last.** Both orders converge — the reduction and
- * the phase move are independent writes on independent aggregates — but this
- * one fails better: a Device dying mid-batch leaves a Trip still in `unpack`
- * with its reduction already applied, rather than a closed Trip whose Depot
- * never moved (spec §1.5, §4.7).
+ * **`trip.phase_moved` goes last, and is skipped on a Trip already
+ * `closed`.** Both orders converge when the phase move does fire — the
+ * reduction and the phase move are independent writes on independent
+ * aggregates — but phase-last fails better: a Device dying mid-batch leaves
+ * a Trip still in `unpack` with its reduction already applied, rather than a
+ * closed Trip whose Depot never moved (spec §1.5, §4.7). **The reductions
+ * always emit regardless of the current phase** — that is precisely the
+ * die-mid-batch recovery path, and gating them too would leave a Trip
+ * re-closed after a crash with its Depot write silently dropped. The phase
+ * move itself is guarded on {@link phaseOf}`(trip) !== 'closed'`, because
+ * this gesture has **two doors** (the close card and `PhaseSheet`'s `CLOSED`
+ * row) and only one of them was ever gated on the Trip's own phase at the
+ * call site (F5 is reachable at every phase and its card gates only on
+ * `open = 0`) — so a `trip.phase_moved{closed}` re-emitted on an
+ * already-closed Trip is a needless write like any other, and a Device that
+ * reopens the Trip (`ReopenConfirm`, since S6) while a stale peer still
+ * holds the F5 screen open would otherwise have that peer's later, needless
+ * `trip.phase_moved{closed}` silently win the register back and discard the
+ * reopen.
  */
 export function closeTrip(
   trip: TripState,
@@ -156,7 +193,10 @@ export function closeTrip(
     const owned = gear === undefined ? 0 : (ownedCountOf(gear) ?? 0)
     ops.push(gearOwnedCountSet(gearId, Math.max(0, owned - consumed)))
   }
-  // Last, always — see this function's own docblock.
-  ops.push(tripPhaseMoved(trip.id, 'closed'))
+  // Last, and only when the Trip is not already closed — see this
+  // function's own docblock.
+  if (phaseOf(trip) !== 'closed') {
+    ops.push(tripPhaseMoved(trip.id, 'closed'))
+  }
   return ops
 }
