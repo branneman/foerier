@@ -13,6 +13,7 @@ import {
   type Match,
   type PathSegment,
   type PersonWhereabouts,
+  type Unaccounted,
   type WhereaboutsSlice,
 } from '@foerier/shared'
 import { GearRow, Logo, PersonCircle } from '@foerier/ui'
@@ -54,8 +55,15 @@ import styles from './Find.module.css'
  * span, this **is** a link (D7), routing to the first claiming Trip by name
  * A→Z.
  *
- * **Still left to S10:** the `▲ LAST SEEN` unaccounted read has no unpack
- * outcome yet to draw from.
+ * **S10 (F16(2)) adds the unaccounted standing's own row read.** A
+ * Participant whose own Piece is named in the Gear's {@link Unaccounted}
+ * standing (`whereabouts.ts`'s `unaccountedOf`) reads `▲ LAST SEEN: <trip>`
+ * with its own `RESOLVE`, routing to **gear detail** rather than the Trip —
+ * a closed Trip settles nothing, and the settle route lives on the card's
+ * footer (F16(1)). It sits between the contested arm and the packing-status
+ * arm: a Piece cannot be both contested and unaccounted (contested means a
+ * live claim; unaccounted means no live claim stands), but a defensive
+ * order still checks contested first.
  */
 
 const RECENT_LIMIT = 5
@@ -201,8 +209,9 @@ function PlainRow({
 /**
  * One Participant's own row inside {@link PerPersonCard} (D6): a 28px
  * circle, that Person's whereabouts at full density, and a trailing slot
- * that is — in order — `RESOLVE` (D7), that Piece's own packing status, or
- * `⌂ HOME`.
+ * that is — in order — `RESOLVE` for a contested Piece (D7), `RESOLVE` for
+ * the unaccounted standing (S10, F16(2)), that Piece's own packing status,
+ * or `⌂ HOME`.
  *
  * **The trailing slot never re-derives anything `whereaboutsByPerson`
  * already resolved.** `status` came off the identical per-Piece walk that
@@ -222,6 +231,19 @@ function PlainRow({
  * it up a second way: `whereaboutsByPerson`'s own contract is that the
  * first claiming Trip by name A→Z is both the slice a contested Participant
  * reads *and* `contestedTripIds[0]` — one fact, not two to keep in sync.
+ *
+ * **S10: the middle arm reads the Gear's own {@link Unaccounted} standing,
+ * never a per-Piece re-derivation of it.** `unaccountedOf` (`unpack.ts`) is
+ * a whole-Gear fold — one Trip name and one accumulated `personIds` set per
+ * Gear, gathered by `whereabouts.ts`'s `TRIP_SLICES` memo alongside
+ * `overClaims` — so this row only asks *"is this Person named in it"*
+ * (`unaccounted.personIds.includes(person.id)`) rather than walking the
+ * Trip's Entries a second time. **`RESOLVE` here routes to gear detail
+ * (`/gear/<id>`), never the Trip** (F16(1)/(2)): the Trip that lost a Piece
+ * is typically closed, where nothing can be settled, while gear detail's
+ * card footer opens the Home picker that actually clears the standing. Two
+ * `▲`s, two doors, two settlers — the identical shape D7's contested arm
+ * already draws, to a different destination for a different reason.
  */
 function contestedInfo(
   answer: PersonWhereabouts,
@@ -239,23 +261,37 @@ function contestedInfo(
 function PersonPieceRow({
   person,
   answer,
+  gearId,
+  unaccounted,
 }: {
   person: PersonRow
   answer: PersonWhereabouts
+  gearId: string
+  unaccounted: Unaccounted | null
 }) {
   const contested = contestedInfo(answer)
+  const lost =
+    contested === null &&
+    unaccounted !== null &&
+    unaccounted.personIds.includes(person.id)
+      ? unaccounted
+      : null
   return (
     <div className={styles['personRow']} data-testid="find-person-row">
       <span className={styles['personMain']}>
         <PersonCircle label={personInitial(person.label)} size={28} />
         <span
           className={`${styles['sliceWhereabouts']} ${
-            contested ? styles['attention'] : styles[sliceTone(answer.slice)]
+            contested || lost
+              ? styles['attention']
+              : styles[sliceTone(answer.slice)]
           }`}
         >
           {contested
             ? `▲ CLAIMED BY ${contested.count} TRIPS`
-            : whereaboutsText(answer.slice, 'full')}
+            : lost
+              ? `▲ LAST SEEN: ${lost.tripName}`
+              : whereaboutsText(answer.slice, 'full')}
         </span>
       </span>
       {contested ? (
@@ -263,6 +299,14 @@ function PersonPieceRow({
           href={`/trips/${contested.tripId}`}
           className={styles['resolve']}
           aria-label={`Resolve on ${contested.tripName}`}
+        >
+          RESOLVE
+        </Link>
+      ) : lost ? (
+        <Link
+          href={`/gear/${gearId}`}
+          className={styles['resolve']}
+          aria-label={`Resolve ${person.label}`}
         >
           RESOLVE
         </Link>
@@ -286,6 +330,13 @@ function PersonPieceRow({
  * an Entry whose every Piece has been removed still populates it, every
  * answer reading home — the identical-circles fault §4/D6/B3 exist to
  * prevent, drawn once more on this surface.
+ *
+ * **S10: `unaccounted` is read here too, once, off {@link whereabouts} —
+ * the same whole-Gear standing `PlainRow` and `CountedCard` already read for
+ * this exact Gear — rather than left for each {@link PersonPieceRow} to look
+ * up on its own.** `whereabouts` and `whereaboutsByPerson` both read
+ * `whereabouts.ts`'s `TRIP_SLICES` memo, so this is a map lookup on an
+ * already-folded pass, never a second scan.
  */
 function piecePeopleFor(
   state: HouseholdState,
@@ -295,13 +346,15 @@ function piecePeopleFor(
   people: readonly PersonRow[]
   answers: ReadonlyMap<string, PersonWhereabouts>
   anyOut: boolean
+  unaccounted: Unaccounted | null
 } {
   const answers = whereaboutsByPerson(state, gearId, view)
   const people = sortedPeople(state).filter((person) => answers.has(person.id))
   const anyOut = [...answers.values()].some(
     (answer) => answer.slice.kind === 'trip',
   )
-  return { people, answers, anyOut }
+  const unaccounted = whereabouts(state, gearId, view).unaccounted
+  return { people, answers, anyOut, unaccounted }
 }
 
 /**
@@ -319,11 +372,13 @@ function PerPersonCard({
   name,
   people,
   answers,
+  unaccounted,
 }: {
   gearId: string
   name: string
   people: readonly PersonRow[]
   answers: ReadonlyMap<string, PersonWhereabouts>
+  unaccounted: Unaccounted | null
 }) {
   return (
     <div className={styles['card']} data-testid="find-per-person-card">
@@ -342,7 +397,13 @@ function PerPersonCard({
           const answer = answers.get(person.id)
           if (answer === undefined) return null
           return (
-            <PersonPieceRow key={person.id} person={person} answer={answer} />
+            <PersonPieceRow
+              key={person.id}
+              person={person}
+              answer={answer}
+              gearId={gearId}
+              unaccounted={unaccounted}
+            />
           )
         })}
       </div>
@@ -428,6 +489,7 @@ export function Find() {
                     name={match.gear.name?.value ?? ''}
                     people={pieces.people}
                     answers={pieces.answers}
+                    unaccounted={pieces.unaccounted}
                   />
                 ) : (
                   <PlainRow state={state} match={match} view={view} />

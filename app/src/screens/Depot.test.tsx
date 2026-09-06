@@ -10,6 +10,7 @@ import {
   tripEntryAdded,
   tripEntryBringCountSet,
   tripEntryMoved,
+  tripOutcomeSet,
   tripPhaseMoved,
   type TagString,
 } from '@foerier/shared'
@@ -872,6 +873,87 @@ describe('the Depot WHEREABOUTS column and the row`s tone (S9b)', () => {
     const whereaboutsCell = within(row).getByTestId('gear-row-whereabouts')
     expect(whereaboutsCell).toHaveTextContent('▸ Alps 2026 · CAR')
     expect(whereaboutsCell.className).toContain(gearRowStyles['trip'])
+  })
+})
+
+/**
+ * S10, F16(2): the unaccounted standing on the Depot's own one-slot surface —
+ * `docs/design/README.md` §06, §5h ruling F16, `S10 Round -
+ * Unpack Resolve and Close.dc.html` §06's "DEPOT COLUMN · 130PX · BLESSED AS
+ * DRAWN" panel. **Neither test below needed a source change to pass**: the
+ * column already called `rowWhereabouts(whereabouts(...))`
+ * (`docs/design/README.md` §5f D9), and Task 6 built the standing's read
+ * into `rowWhereabouts` itself (its own `▲ ×N <trip>` / `▲ 2 TRIPS`
+ * branches) — these tests are what proves that rather than assumes it.
+ */
+describe('the Depot WHEREABOUTS column and the unaccounted standing (S10, F16(2))', () => {
+  it('reads the unaccounted standing as ▲ ×1 <trip> for Counted, with the home path unchanged in the meta (D9)', async () => {
+    const placeId = anId()
+    const gearId = anId()
+    const tripId = anId()
+    const store = await seededStore([
+      placeRecorded(placeId, 'Attic'),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'counted',
+        owned_count: 3,
+        residence: { in: 'place', id: placeId },
+      }),
+      tripCreated(tripId, 'Tessin 2025'),
+      tripEntryAdded(tripId, 'e-lamp', { from: 'depot', gearId }),
+      tripEntryBringCountSet(tripId, 'e-lamp', 1),
+      tripOutcomeSet(tripId, 'e-lamp', 'lost'),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Headlamp' })
+    const whereaboutsCell = within(row).getByTestId('gear-row-whereabouts')
+    expect(whereaboutsCell).toHaveTextContent('▲ ×1 Tessin 2025')
+    expect(whereaboutsCell.className).toContain(gearRowStyles['attention'])
+    // D9: the meta's home path never learns of the standing either — same
+    // rule as the live trip slice case above, restated for the standing.
+    expect(within(row).getByTestId('gear-row-meta')).toHaveTextContent(
+      'SHARED · Attic · ×3',
+    )
+  })
+
+  it('reads ▲ 2 TRIPS from an active over-claim even with an old unaccounted standing on the books — the active fact wins (F16(2))', async () => {
+    const pegId = anId()
+    const tessinId = anId()
+    const alpsId = anId()
+    const vosgesId = anId()
+    const store = await seededStore([
+      gearRecorded(pegId, {
+        name: 'Peg',
+        container: false,
+        kind: 'counted',
+        owned_count: 2,
+      }),
+      // An old, settled loss — a standing on the books before the two live
+      // claims below are ever added.
+      tripCreated(tessinId, 'Tessin 2025'),
+      tripEntryAdded(tessinId, 'e-old', { from: 'depot', gearId: pegId }),
+      tripEntryBringCountSet(tessinId, 'e-old', 1),
+      tripOutcomeSet(tessinId, 'e-old', 'lost'),
+      // Two live claims exceeding supply — D8's own fixture, repeated.
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'on_trip'),
+      tripEntryAdded(alpsId, 'e-a', { from: 'depot', gearId: pegId }),
+      tripEntryBringCountSet(alpsId, 'e-a', 2),
+      tripEntryAdded(vosgesId, 'e-b', { from: 'depot', gearId: pegId }),
+      tripEntryBringCountSet(vosgesId, 'e-b', 2),
+    ])
+
+    renderDepot(store)
+
+    const row = screen.getByRole('link', { name: 'Peg' })
+    const whereaboutsCell = within(row).getByTestId('gear-row-whereabouts')
+    expect(whereaboutsCell).toHaveTextContent('▲ 2 TRIPS')
+    expect(whereaboutsCell.className).toContain(gearRowStyles['attention'])
   })
 })
 

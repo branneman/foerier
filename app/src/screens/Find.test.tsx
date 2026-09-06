@@ -9,6 +9,7 @@ import {
   tripEntryMoved,
   tripParticipantAdded,
   tripPhaseMoved,
+  tripOutcomeSet,
   tripPieceRemoved,
   tripPieceStatusSet,
   type OpSpec,
@@ -537,5 +538,77 @@ describe('Find — whereabouts reaches the screen', () => {
     expect(
       within(rows[2] as HTMLElement).getByTestId('find-person-status'),
     ).toHaveTextContent('PACKED')
+  })
+})
+
+/**
+ * S10, F16(1)/(2): the per-person card's own standing read —
+ * `docs/design/README.md` §06, §5h ruling F16, `S10 Round - Unpack Resolve
+ * and Close.dc.html` §06's "FIND · PER-PERSON CARD ROW" panel. Both doors
+ * asserted in this one test so they are visibly two: a contested Piece's
+ * `RESOLVE` still routes to the claiming Trip (D7), while the unaccounted
+ * standing's own `RESOLVE` routes to gear detail — never the (typically
+ * closed) Trip that lost it, where nothing can be settled.
+ */
+describe('Find — the unaccounted standing on the per-person card (S10, F16)', () => {
+  it("reads ▲ LAST SEEN: <trip> with RESOLVE to gear detail for the standing, and keeps D7's RESOLVE to the Trip for a contested Piece", async () => {
+    const elsId = anId()
+    const kimId = anId()
+    const alpsId = anId()
+    const vosgesId = anId()
+    const gearId = anId()
+    const store = await seededStore([
+      personRecorded(elsId, 'Els'),
+      personRecorded(kimId, 'Kim'),
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripParticipantAdded(alpsId, elsId),
+      tripParticipantAdded(alpsId, kimId),
+      tripCreated(vosgesId, 'Vosges'),
+      tripPhaseMoved(vosgesId, 'pack_out'),
+      tripParticipantAdded(vosgesId, elsId),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      // Els's Piece is claimed by both Trips, unresolved — D7's contested
+      // case, kept exactly as it was.
+      tripEntryAdded(alpsId, 'e-alps', { from: 'depot', gearId }),
+      tripEntryAdded(vosgesId, 'e-vosges', { from: 'depot', gearId }),
+      // Kim's Piece on Alps was resolved lost — the standing this task adds.
+      tripOutcomeSet(alpsId, 'e-alps', 'lost', kimId),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'headlamp')
+
+    const card = screen.getByTestId('find-per-person-card')
+    const rows = within(card).getAllByTestId('find-person-row')
+    // People-screen order: Els, Kim.
+    const elsRow = rows[0] as HTMLElement
+    const kimRow = rows[1] as HTMLElement
+
+    expect(within(elsRow).getByText('▲ CLAIMED BY 2 TRIPS')).toBeInTheDocument()
+    const contestedResolve = within(elsRow).getByRole('link', {
+      name: 'Resolve on Alps 2026',
+    })
+    expect(contestedResolve).toHaveAttribute('href', `/trips/${alpsId}`)
+
+    expect(
+      within(kimRow).getByText('▲ LAST SEEN: Alps 2026'),
+    ).toBeInTheDocument()
+    const standingResolve = within(kimRow).getByRole('link', {
+      name: 'Resolve Kim',
+    })
+    expect(standingResolve).toHaveTextContent('RESOLVE')
+    // The two doors are visibly two: gear detail, never the Trip.
+    expect(standingResolve).toHaveAttribute('href', `/gear/${gearId}`)
+    expect(standingResolve).not.toHaveAttribute('href', `/trips/${alpsId}`)
+
+    // Neither row falls through to a packing-status/home read once the
+    // middle arm applies.
+    expect(within(card).queryByTestId('find-person-status')).toBeNull()
   })
 })
