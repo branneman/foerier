@@ -1544,6 +1544,8 @@ const CRATE_K = 'gggggggg-0000-7000-8000-000000000043'
 const E_CRATE_K = 'nnnnnnnn-0000-7000-8000-000000000043'
 const CANISTER_K = 'gggggggg-0000-7000-8000-000000000044'
 const E_CANISTER_K = 'nnnnnnnn-0000-7000-8000-000000000044'
+const INSIDE_K = 'gggggggg-0000-7000-8000-000000000045'
+const E_INSIDE_K = 'nnnnnnnn-0000-7000-8000-000000000045'
 
 /**
  * Ruling I1's two arms `personScenario` above does not exercise: a
@@ -1568,9 +1570,20 @@ function personContainerAndConsumedScenario(): readonly OpSpec[] {
     }),
     tripEntryAdded(ALPS, E_CRATE_K, { from: 'depot', gearId: CRATE_K }),
     tripOutcomeSet(ALPS, E_CRATE_K, 'back'),
-    // Deliberately no `trip.entry_moved` into it — the same `0 INSIDE`
-    // code-authored default `destinationScenario`'s own DESTINATION-mode
-    // test pins.
+
+    // One Entry packed inside it, so the container arm draws a count at
+    // all: G3 makes an empty container read its return path alone, which
+    // would leave the ordering this scenario exists to prove with nothing
+    // to order.
+    gearRecorded(INSIDE_K, {
+      name: 'Kees tarp',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: ROOM },
+      owner: { type: 'person', personId: KEES },
+    }),
+    tripEntryAdded(ALPS, E_INSIDE_K, { from: 'depot', gearId: INSIDE_K }),
+    tripEntryMoved(ALPS, E_INSIDE_K, { in: 'container', entryId: E_CRATE_K }),
 
     gearRecorded(CANISTER_K, {
       name: 'Kees canister',
@@ -1618,8 +1631,32 @@ describe('PERSON mode — the container and consumed-split arms (ruling I1)', ()
     await chooseMode(user, 'PERSON')
 
     expect(
-      within(groupNamed('Kees')).getByText('PERSONAL K · 0 INSIDE · → Room'),
+      within(groupNamed('Kees')).getByText('PERSONAL K · 1 INSIDE · → Room'),
     ).toBeInTheDocument()
+  })
+
+  /**
+   * **G3 reaches this grammar too.** The two shared arms live in
+   * `sharedMetaSuffix` precisely so a ruling that moves one string cannot
+   * move it in DESTINATION alone — which is what happened for one commit,
+   * with `×0 BACK` and `0 INSIDE` surviving here unasserted.
+   */
+  it('drops the zero segments in the header-less grammar as well', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...personContainerAndConsumedScenario(),
+      // Every unit burned, and a second empty container.
+      tripConsumedCountSet(ALPS, E_CANISTER_K, 4),
+    )
+
+    await chooseMode(user, 'PERSON')
+
+    const kees = groupNamed('Kees')
+    expect(
+      within(kees).getByText('PERSONAL K · ×4 CONSUMED · → Room'),
+    ).toBeInTheDocument()
+    expect(within(kees).queryByText(/×0 BACK/)).not.toBeInTheDocument()
   })
 
   it('draws a Personal consumed-split row with the split before the path, not after', async () => {

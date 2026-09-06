@@ -186,11 +186,13 @@ const CLOSE_HINT_READY =
  *
  * The suffix is one of three, in F1/F9's own precedence: a container's `N
  * INSIDE` first (a container never carries a plain quantity — F1), then a
- * consumed Counted's split (`item.consumed` is non-null only there), then a
- * Counted Entry's plain quantity — gated on {@link bringCountOf}, never on
- * `entryKind(entry, state) === 'counted'`, which is exactly the re-derivation
- * this file's own convention forbids. A Single, an unrecognised Kind and an
- * unsynced Gear all answer `null` there and draw no suffix at all.
+ * consumed Counted's split (`item.consumed` is non-null only there) — both
+ * of them {@link sharedMetaSuffix}'s, spelled once for both grammars — then
+ * a Counted Entry's plain quantity, gated on {@link bringCountOf}, never on
+ * `entryKind(entry, state) === 'counted'`, which is exactly the
+ * re-derivation this file's own convention forbids. A Single, an
+ * unrecognised Kind and an unsynced Gear all answer `null` there and draw
+ * no suffix at all.
  *
  * **The `RE-HOMED` segment is not part of this string** (Task 14, spec
  * §4.6) — it is `UnpackRow`'s own muted segment (board §7: *"muted, so the
@@ -199,6 +201,53 @@ const CLOSE_HINT_READY =
  * prop. {@link rehomedFor} computes the boolean this function's own callers
  * pass down beside this string, never folded into it.
  */
+/**
+ * The two suffix segments {@link returnPathMeta} and {@link headerlessMeta}
+ * are required to spell **identically** — F1's `N INSIDE` and F9's consumed
+ * split — stated once here because the two callers differ only in the
+ * *order* they place them against the return path, never in their content.
+ *
+ * They were restated in both files' own bodies until §5i G3 moved both
+ * strings and only one copy followed: PERSON and ALL mode went on drawing
+ * `×0 BACK` and `0 INSIDE` for a whole commit, invisible because no test
+ * reached the header-less grammar's zero cases. `headerlessMeta`'s own
+ * docstring had *said* the two arms are shared; saying it is not the same
+ * as making it so.
+ *
+ * `null` means neither shared arm applies and the caller decides its own
+ * plain quantity — the one thing the two grammars genuinely disagree
+ * about, and the reason this returns a list rather than a string.
+ */
+function sharedMetaSuffix(
+  entry: EntryState,
+  tripView: TripContainmentView,
+  container: boolean,
+  item: Extract<UnpackItem, { kind: 'entry' }>,
+): readonly string[] | null {
+  if (container) {
+    // **G3: an empty container reads its return path alone** — a zero count
+    // segment is absent, not written, and an empty crate takes its outcome
+    // like a tarp.
+    const inside = subtreeOf(tripView, entry.id).size
+    return inside > 0 ? [`${inside} INSIDE`] : []
+  }
+
+  if (item.outcome === 'consumed' && item.consumed !== null) {
+    // **G3: the split segment says *the rest came back*, so with nothing
+    // back there is no rest.** `consumedCountOf` reads an absent register
+    // as the **whole** Bring-count (F9: the stepper opens there because
+    // "all of it used up is the ordinary case"), so tapping `CONSUMED` and
+    // never touching the stepper is the **ordinary** case, not an edge one
+    // — which is exactly why it may not draw a `×0 BACK` nobody asked for.
+    const back = item.units - item.consumed
+    const parts = [`×${item.consumed} CONSUMED`]
+    if (back > 0) parts.push(`×${back} BACK`)
+    return parts
+  }
+
+  return null
+}
+
 function returnPathMeta(
   entry: EntryState,
   state: HouseholdState,
@@ -212,39 +261,9 @@ function returnPathMeta(
   const visible = destination === null ? path : path.slice(1)
   const pathText = visible.map((segment) => segment.name).join(' ▸ ')
 
-  const suffix: string[] = []
-  if (container) {
-    // **This count is the TRIP subtree, transitive** — what came home in
-    // the crate — and one tap away the re-home picker draws `3 INSIDE RIDE
-    // ALONG` for the same container, which is the **home** tree's direct
-    // children: what moves when the crate is re-homed. Two true answers to
-    // different questions sharing one word, and `ui/GearRow`'s Depot row
-    // draws a third bare `N INSIDE` over the home tree again. **Finding M1,
-    // logged as a design-round question rather than patched** (spec §8.12):
-    // a qualifier was drafted here and reverted under ruling R38, because
-    // on-screen copy is the boards' to decide and F1 draws a bare
-    // `12 INSIDE`. A round wanting one vocabulary should see all three
-    // strings together, which is worth more than a fix to one of them.
-    //
-    // **G3: an empty container reads its return path alone** — a zero count
-    // segment is absent, not written, and an empty crate takes its outcome
-    // like a tarp.
-    const inside = subtreeOf(tripView, entry.id).size
-    if (inside > 0) suffix.push(`${inside} INSIDE`)
-  } else if (item.outcome === 'consumed' && item.consumed !== null) {
-    // **G3: the split segment says *the rest came back*, so with nothing
-    // back there is no rest.** `consumedCountOf` reads an absent register
-    // as the **whole** Bring-count (F9: the stepper opens there because
-    // "all of it used up is the ordinary case"), so tapping `CONSUMED` and
-    // never touching the stepper is the **ordinary** case, not an edge one
-    // — which is exactly why it may not draw a `×0 BACK` nobody asked for.
-    // F18's rule generalised: a zero count segment is absent, not written.
-    suffix.push(`×${item.consumed} CONSUMED`)
-    const back = item.units - item.consumed
-    if (back > 0) suffix.push(`×${back} BACK`)
-  } else if (bringCountOf(entry, state) !== null) {
-    suffix.push(`×${item.units}`)
-  }
+  const shared = sharedMetaSuffix(entry, tripView, container, item)
+  const suffix =
+    shared ?? (bringCountOf(entry, state) !== null ? [`×${item.units}`] : [])
 
   if (pathText === '') return suffix.join(' · ')
   return [`→ ${pathText}`, ...suffix].join(' · ')
@@ -572,10 +591,9 @@ function canReHomeFor(entry: EntryState, state: HouseholdState): boolean {
  * quantity for everything that is not a container or a consumed split,
  * `PackingRow`'s identical `PERSONAL E · ×1` convention for PERSON/ALL mode
  * one screen over. A container or a consumed split is not on any board here
- * — both reuse F1's `N INSIDE` / F9's split, the one already pinned by
- * `returnPathMeta`'s own tests, restated here in this order rather than
- * called there and re-ordered, since `returnPathMeta` would still put the
- * path first.
+ * — both are {@link sharedMetaSuffix}'s, called rather than restated,
+ * because the only thing this grammar changes about them is where they sit
+ * relative to the path.
  *
  * `prefix` is `personEntryMeta`'s own ownership segment for PERSON mode, or
  * `null` for ALL, which states no ownership at all — ALL is a lookup view
@@ -592,15 +610,9 @@ function headerlessMeta(
   item: Extract<UnpackItem, { kind: 'entry' }>,
   prefix: string | null,
 ): string {
-  const suffix: string[] = []
-  if (container) {
-    suffix.push(`${subtreeOf(tripView, entry.id).size} INSIDE`)
-  } else if (item.outcome === 'consumed' && item.consumed !== null) {
-    suffix.push(`×${item.consumed} CONSUMED`)
-    suffix.push(`×${item.units - item.consumed} BACK`)
-  } else {
-    suffix.push(`×${item.units}`)
-  }
+  const suffix = sharedMetaSuffix(entry, tripView, container, item) ?? [
+    `×${item.units}`,
+  ]
 
   const path = returnPathOf(entry, state, view)
   const pathText = path.map((segment) => segment.name).join(' ▸ ')
