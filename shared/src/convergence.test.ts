@@ -46,6 +46,7 @@ import {
   tripRenamed,
   type OpSpec,
 } from './authoring.ts'
+import { closeTrip, reHomeOnTheSpot } from './gestures.ts'
 import type { OpEnvelope } from './ops.ts'
 import { overClaims, overClaimsFor } from './selectors/claim.ts'
 import { containmentView } from './selectors/containment.ts'
@@ -59,6 +60,8 @@ import {
 import { piecesOf } from './selectors/piece.ts'
 import { isActive } from './selectors/trip.ts'
 import { tripContainmentView } from './selectors/tripContainment.ts'
+import { unaccountedOf } from './selectors/unpack.ts'
+import { whereabouts } from './selectors/whereabouts.ts'
 import type {
   HouseholdState,
   EntrySource,
@@ -2533,5 +2536,409 @@ describe('convergence', () => {
       })
     }
     expect(elsPacked.hlc < elsStaged.hlc).toBe(true)
+  })
+
+  /**
+   * **S10's named obligation, part one** — `sync-protocol.md` §1.5/§5.2's
+   * whole reason `gear.owned_count_set` is absolute rather than a delta.
+   * Two Devices closing the same Trip each compute {@link closeTrip} against
+   * their **own** fold — identical here, since both have already exchanged
+   * — and both emit an op for the identical Gear. If the reduction were a
+   * delta, applying both would subtract the Consumed-count twice; because it
+   * is an absolute target, the second write is idempotent and the owned
+   * count converges on the **one** reduced value.
+   */
+  it('two Devices closing the same Trip do not double-apply the Consumed reduction', () => {
+    const { a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 6,
+      }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+    a.emit(tripEntryBringCountSet(trip, entry, 4))
+    a.emit(tripOutcomeSet(trip, entry, 'consumed'))
+    a.emit(tripConsumedCountSet(trip, entry, 2))
+    exchange(a, b)
+
+    // Both replicas hold the identical fold at this point, so both compute
+    // the identical target (6 − 2 = 4) — but each authors its own ops, on
+    // its own device id and clock, exactly as two Quartermasters tapping
+    // "Close trip" on their own phones would.
+    for (const spec of closeTrip(a.state().trips[trip]!, a.state())) {
+      a.emit(spec)
+    }
+    for (const spec of closeTrip(b.state().trips[trip]!, b.state())) {
+      b.emit(spec)
+    }
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      expect(r.state().gear[gear]?.ownedCount?.value).toBe(4)
+      expect(r.state().trips[trip]?.phase?.value).toBe('closed')
+    }
+  })
+
+  /**
+   * **S10's named obligation, part two.** The two replicas' folds
+   * **differ** at the moment each computes {@link closeTrip}: Device A has
+   * a later `trip.consumed_count_set` Device B has not yet seen, so A
+   * targets a different absolute count than B does. Exchanging afterwards
+   * must not sum the two reductions — the register simply takes whichever
+   * `gear.owned_count_set` carries the later stamp, exactly as any other
+   * contested register would, and both replicas converge on it.
+   */
+  it('converges on one target when the two folds differ at close, with no arithmetic applied twice', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 6,
+      }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+    a.emit(tripEntryBringCountSet(trip, entry, 4))
+    a.emit(tripOutcomeSet(trip, entry, 'consumed'))
+    a.emit(tripConsumedCountSet(trip, entry, 2))
+    exchange(a, b)
+
+    // A revises the Consumed-count upward before B ever sees it, and closes
+    // immediately against its own now-current fold (target 6 − 3 = 3).
+    clock.advance(1000)
+    a.emit(tripConsumedCountSet(trip, entry, 3))
+    for (const spec of closeTrip(a.state().trips[trip]!, a.state())) {
+      a.emit(spec)
+    }
+
+    // Wall time moves on, and only THEN does B close — still against its
+    // own stale fold (consumedCount still 2, target 6 − 2 = 4), never having
+    // received A's revision. B's writes are therefore later on the clock.
+    clock.advance(1000)
+    for (const spec of closeTrip(b.state().trips[trip]!, b.state())) {
+      b.emit(spec)
+    }
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      // A's later consumedCount edit survives — it is the only write to
+      // that register after the shared starting point.
+      expect(
+        r.state().trips[trip]?.entries?.[entry]?.consumedCount?.value,
+      ).toBe(3)
+      // B's close happened last in wall time, so its target (4) — computed
+      // from the fold it actually held — is what wins the race on
+      // `gear.owned_count_set`. Whichever replica's write is later, the
+      // result is always exactly ONE of the two computed targets (3 or 4),
+      // never their sum or difference (1, 7, …) — the tell-tale of a delta
+      // silently applied twice.
+      expect(r.state().gear[gear]?.ownedCount?.value).toBe(4)
+      expect(r.state().trips[trip]?.phase?.value).toBe('closed')
+    }
+  })
+
+  /**
+   * **S10's cross-aggregate stamp comparison** (`selectors/unpack.ts`'s
+   * {@link unaccountedOf}, spec §3.5) put to the one test every derived
+   * cross-aggregate answer needs: every replica holds identical registers
+   * with identical stamps, so every replica must compute the identical
+   * standing — regardless of which order the two racing ops arrive in on
+   * each side. Two scenarios, one per direction of "later":
+   *
+   * - the `lost` outcome is authored **after** the Gear was last re-homed
+   *   (offline, on the other Device) → the standing survives on both;
+   * - the re-home is authored **after** the `lost` outcome → the standing
+   *   is settled (absent) on both.
+   */
+  it('an outcome and a gear.rehomed racing: unaccountedOf agrees on both replicas, whichever clock is later', () => {
+    const placeAttic = PLACE_IDS[0]
+    const placeShed = PLACE_IDS[1]
+
+    // Direction one: the lost outcome is the LATER write.
+    {
+      const { clock, a, b } = aWorld()
+      const gear = GEAR_IDS[0]
+      const trip = TRIP_IDS[0]
+      const entry = ENTRY_IDS[0]
+      a.emit(placeRecorded(placeAttic, 'Attic'))
+      a.emit(
+        gearRecorded(gear, {
+          name: 'Tent',
+          container: false,
+          kind: 'single',
+          residence: { in: 'place', id: placeAttic },
+        }),
+      )
+      a.emit(tripCreated(trip, 'Alps'))
+      a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+      exchange(a, b)
+
+      // Offline on both sides: B re-homes (no-op move, still a write) first…
+      clock.advance(1000)
+      b.emit(gearRehomed(gear, { in: 'place', id: placeAttic }))
+      // …and only later does A mark the Entry lost.
+      clock.advance(1000)
+      a.emit(tripOutcomeSet(trip, entry, 'lost'))
+      exchange(a, b)
+
+      expect(a.state()).toEqual(b.state())
+      for (const r of [a, b]) {
+        const standing = unaccountedOf(r.state()).get(gear)
+        expect(standing).toEqual({
+          tripId: trip,
+          tripName: 'Alps',
+          units: 1,
+          personIds: [],
+        })
+        expect(whereabouts(r.state(), gear).unaccounted).toEqual(standing)
+      }
+    }
+
+    // Direction two: the re-home is the LATER write — the mirror case.
+    {
+      const { clock, a, b } = aWorld()
+      const gear = GEAR_IDS[0]
+      const trip = TRIP_IDS[0]
+      const entry = ENTRY_IDS[0]
+      a.emit(placeRecorded(placeShed, 'Shed'))
+      a.emit(
+        gearRecorded(gear, {
+          name: 'Tent',
+          container: false,
+          kind: 'single',
+          residence: { in: 'place', id: placeShed },
+        }),
+      )
+      a.emit(tripCreated(trip, 'Alps'))
+      a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+      exchange(a, b)
+
+      clock.advance(1000)
+      a.emit(tripOutcomeSet(trip, entry, 'lost'))
+      clock.advance(1000)
+      b.emit(gearRehomed(gear, { in: 'place', id: placeShed }))
+      exchange(a, b)
+
+      expect(a.state()).toEqual(b.state())
+      for (const r of [a, b]) {
+        expect(unaccountedOf(r.state()).get(gear)).toBeUndefined()
+        expect(whereabouts(r.state(), gear).unaccounted).toBeNull()
+      }
+    }
+  })
+
+  /**
+   * **Different registers, both survive.** `trip.outcome_set` with no
+   * `person_id` writes `entries.<id>.outcome`; with one, it writes
+   * `entries.<id>.pieces.<personId>.outcome` — two distinct entity paths
+   * ([sync §1.3](../../docs/sync-protocol.md)), so a concurrent write to
+   * each is not a conflict at all, the way `trip.renamed` racing
+   * `trip.dates_set` never contests one register.
+   */
+  it('an Entry-level outcome and a Piece-level outcome race without contesting each other', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+    const kim = PERSON_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripParticipantAdded(trip, kim))
+    a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+    exchange(a, b)
+
+    clock.advance(1000)
+    // Entry-level, no person_id — a container's or an off-label whole-Entry
+    // outcome, fold-but-ignore for this Kind but still a distinct register.
+    a.emit(tripOutcomeSet(trip, entry, 'back'))
+    b.emit(tripOutcomeSet(trip, entry, 'lost', kim))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      expect(r.state().trips[trip]?.entries?.[entry]?.outcome?.value).toBe(
+        'back',
+      )
+      expect(
+        r.state().trips[trip]?.entries?.[entry]?.pieces?.[kim]?.outcome?.value,
+      ).toBe('lost')
+    }
+  })
+
+  /**
+   * A `trip.outcome_set{person_id}` addresses a Piece by id and creates it on
+   * sight (`reduce.ts`'s `writePiece`), with no ordering against
+   * `trip.participant_added` — different aggregate paths, no cross-aggregate
+   * transaction. So a Device may resolve a Person's Piece before it has ever
+   * heard that Person is a Participant, and the merge must still make sense
+   * once both arrive: the Piece is included ({@link piecesOf}) the moment the
+   * Participant register lands, with the outcome it was given all along.
+   */
+  it('a Participant added on one replica while their Piece is resolved on the other', () => {
+    const { a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+    const kim = PERSON_IDS[0]
+
+    a.emit(
+      gearRecorded(gear, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+    exchange(a, b)
+
+    // Neither replica has added Kim as a Participant yet.
+    a.emit(tripParticipantAdded(trip, kim))
+    b.emit(tripOutcomeSet(trip, entry, 'back', kim))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const state = r.state()
+      const tripState = state.trips[trip]!
+      const entryState = tripState.entries![entry]!
+      expect(tripState.participants?.[kim]?.value).toBe(true)
+      expect(entryState.pieces?.[kim]?.outcome?.value).toBe('back')
+      expect(piecesOf(entryState, tripState)).toContain(kim)
+    }
+  })
+
+  /**
+   * **S10's version of S7's own assertion** (*"clears the over-claim on both
+   * replicas when one removes an entry"*, above) — one slice on, the second
+   * way an over-claim can now release. Resolving one side with an outcome,
+   * rather than removing it, must leave **both** Entries recorded, on both
+   * Trips, on both replicas: nothing is discarded to resolve the forbidden
+   * state (story 6's closing sentence, spec §3.3).
+   */
+  it('resolving one side of an over-claim with an outcome leaves both Entries recorded on both replicas', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const tripAlps = TRIP_IDS[0]
+    const tripAvores = TRIP_IDS[1]
+
+    a.emit(
+      gearRecorded(gear, { name: 'Stove', container: false, kind: 'single' }),
+    )
+    a.emit(tripCreated(tripAlps, 'Alps'))
+    a.emit(tripPhaseMoved(tripAlps, 'pack_out'))
+    a.emit(tripCreated(tripAvores, 'Avores'))
+    a.emit(tripPhaseMoved(tripAvores, 'on_trip'))
+    a.emit(tripEntryAdded(tripAlps, 'e1', { from: 'depot', gearId: gear }))
+    a.emit(tripEntryAdded(tripAvores, 'e2', { from: 'depot', gearId: gear }))
+    exchange(a, b)
+    expect(overClaims(a.state())).toHaveLength(1)
+
+    const otherEntryBefore = new Map(
+      [a, b].map((r) => [r, r.state().trips[tripAvores]?.entries?.['e2']]),
+    )
+
+    clock.advance(1000)
+    a.emit(tripOutcomeSet(tripAlps, 'e1', 'back'))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      expect(overClaims(r.state())).toEqual([])
+      // The resolved side's Entry is retained, with its outcome, not
+      // deleted.
+      expect(r.state().trips[tripAlps]?.entries?.['e1']?.outcome?.value).toBe(
+        'back',
+      )
+      expect(r.state().trips[tripAlps]?.entries?.['e1']?.source).toBeDefined()
+      // The other Trip's Entry was never addressed by this op — the
+      // identical object, not merely an equal one.
+      expect(r.state().trips[tripAvores]?.entries?.['e2']).toBe(
+        otherEntryBefore.get(r),
+      )
+    }
+  })
+
+  /**
+   * **`reHomeOnTheSpot`'s own idempotence**, `closeTrip`'s pair one gesture
+   * over: two Devices re-homing the identical Entry on the spot, offline
+   * from each other, both mark it `back` and both write a home — the later
+   * write wins on both replicas, same as any other contested register, and
+   * neither gesture's op is ever discarded outright (both are retained in
+   * the log; only the later one is read).
+   */
+  it('two Devices re-homing the same Entry on the spot converge on the later home', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+    const placeAttic = PLACE_IDS[0]
+    const placeShed = PLACE_IDS[1]
+
+    a.emit(placeRecorded(placeAttic, 'Attic'))
+    a.emit(placeRecorded(placeShed, 'Shed'))
+    a.emit(
+      gearRecorded(gear, { name: 'Tent', container: false, kind: 'single' }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+    exchange(a, b)
+
+    clock.advance(1000)
+    for (const spec of reHomeOnTheSpot(
+      a.state().trips[trip]!,
+      a.state().trips[trip]!.entries![entry]!,
+      gear,
+      { in: 'place', id: placeAttic },
+      a.state(),
+    )) {
+      a.emit(spec)
+    }
+    clock.advance(1000)
+    for (const spec of reHomeOnTheSpot(
+      b.state().trips[trip]!,
+      b.state().trips[trip]!.entries![entry]!,
+      gear,
+      { in: 'place', id: placeShed },
+      b.state(),
+    )) {
+      b.emit(spec)
+    }
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      expect(r.state().trips[trip]?.entries?.[entry]?.outcome?.value).toBe(
+        'back',
+      )
+      // B re-homed later in wall time, so B's Place wins the register.
+      expect(r.state().gear[gear]?.residence?.value).toEqual({
+        in: 'place',
+        id: placeShed,
+      })
+    }
   })
 })
