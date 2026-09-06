@@ -95,6 +95,41 @@ describe('StatusPill', () => {
     )
   })
 
+  /**
+   * S10's third and fourth callers of this grammar (`docs/design/README.md`
+   * §7, ruling F6): F5's outcome pill reuses `StatusPill` rather than
+   * growing a second control, so `▲ LOST` gets the system's one attention
+   * tint and `CONSUMED` gets a dashed, unfilled border — no tone this file
+   * had before either shape.
+   */
+  it('tints the attention tone with the system’s one attention colour', () => {
+    render(
+      <StatusPill glyph="▲" label="LOST" tone="attention" onClick={vi.fn()} />,
+    )
+
+    expect(screen.getByRole('button')).toHaveAttribute('data-tone', 'attention')
+    expect(ruleBody(".pill[data-tone='attention']")).toMatch(
+      /--color-status-attention/,
+    )
+  })
+
+  it('dashes the consumed tone rather than filling it', () => {
+    render(
+      <StatusPill
+        glyph=""
+        label="CONSUMED"
+        tone="consumed"
+        onClick={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button')).toHaveAttribute('data-tone', 'consumed')
+    expect(ruleBody(".pill[data-tone='consumed']")).toMatch(
+      /border-style:\s*dashed/,
+    )
+    expect(ruleBody(".pill[data-tone='consumed']")).not.toMatch(/background:/)
+  })
+
   it('draws a focus ring', () => {
     expect(ruleBody('.pill:focus-visible')).toMatch(
       /box-shadow:\s*var\(--focus-ring\)/,

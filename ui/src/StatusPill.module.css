@@ -59,4 +59,28 @@
     background: color-mix(in srgb, var(--color-status-packed) 8%, transparent);
     color: var(--color-status-packed);
   }
+
+  /* `▲ LOST` — the system's one attention colour, tinted exactly like
+     `packed`: never colour alone, but here the glyph and the word already
+     carry the fault, and the tint says it is not the ordinary case. */
+  .pill[data-tone='attention'] {
+    border-color: var(--color-status-attention);
+    background: color-mix(
+      in srgb,
+      var(--color-status-attention) 8%,
+      transparent
+    );
+    color: var(--color-status-attention);
+  }
+
+  /* `CONSUMED` — dashed and unfilled, the board's own distinction from a
+     `back` or `lost` pill: nothing came home to state a status about, so the
+     border alone marks it, in the faint ink `consumedCountOf`'s callers
+     already draw a used-up quantity in. No glyph — `outcomeGlyph` answers
+     `''` for this row, by ruling F6. */
+  .pill[data-tone='consumed'] {
+    border-style: dashed;
+    border-color: var(--color-ink-faint);
+    color: var(--color-ink-faint);
+  }
 }

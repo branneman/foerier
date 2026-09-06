@@ -301,6 +301,53 @@ describe("ruling O's drawn sizes", () => {
    */
 
   /**
+   * **S10 task 10, `UnpackRow`'s body — `PackingRow`'s `.body` shape, one
+   * screen along.** `.row` is `align-items: center` here too, so a
+   * meta-less row (the fully-loose case, `meta === ''`) would paint only the
+   * 22px name and fall short of 48 without a stated paint of its own.
+   */
+  it("clamps the unpack row's body at the row's own 48, since a flex item is not stretched", () => {
+    const css = moduleCss('..', 'components', 'UnpackRow.module.css')
+    const body = ruleBody(css, '.body')
+
+    expect(body).toBeDefined()
+    expect(body).not.toMatch(FLOOR)
+    expect(body).toMatch(/position:\s*relative/)
+    expect(body).toMatch(/min-height:\s*1\.5rem/)
+    expect(ruleBody(css, '.body::after')).toMatch(/inset:\s*-0\.75rem 0/)
+  })
+
+  /**
+   * **F5's outcome pill is `ui/StatusPill`'s third and fourth tone, not a
+   * new control** (`docs/design/README.md` §7, ruling F6) — the identical
+   * 44px-by-paint, no-clamp shape the comment above already names, restated
+   * here because `UnpackRow.tsx` is a second caller a future reader would
+   * otherwise have to rediscover by reading `ui/StatusPill.test.tsx` cold.
+   */
+  it("draws F5's pill through ui/StatusPill's own 44px paint, with no clamp of its own", () => {
+    const css = moduleCss(
+      '..',
+      '..',
+      '..',
+      'ui',
+      'src',
+      'StatusPill.module.css',
+    )
+    const pill = ruleBody(css, '.pill')
+
+    expect(pill).toBeDefined()
+    expect(pill).not.toMatch(FLOOR)
+    expect(pill).toMatch(/min-height:\s*max\(2\.75rem,\s*44px\)/)
+    expect(ruleBody(css, '.pill::after')).toBeUndefined()
+
+    // `UnpackRow.module.css` grows no extension of its own around the pill —
+    // the 48px hit-area rule is `StatusPill`'s to keep, not this row's to
+    // duplicate.
+    const rowCss = moduleCss('..', 'components', 'UnpackRow.module.css')
+    expect(rowCss).not.toMatch(/\.pill/)
+  })
+
+  /**
    * Ruling B at 34px (ruling A1): the circles paint the packing row's own
    * density and the **cluster** is the target, clamped at the row rather
    * than at the 44 a secondary action would take — this is one of the row's

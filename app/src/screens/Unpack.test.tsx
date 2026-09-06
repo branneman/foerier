@@ -1,14 +1,18 @@
 import {
   gearRecorded,
   personRecorded,
+  placeRecorded,
+  tripConsumedCountSet,
   tripCreated,
   tripEntryAdded,
+  tripEntryBringCountSet,
+  tripEntryMoved,
   tripOutcomeSet,
   tripParticipantAdded,
   type HouseholdState,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -117,6 +121,131 @@ function twoWithOneResolved(): readonly OpSpec[] {
       kind: 'per_person',
     }),
     tripEntryAdded(ALPS, E_HEADLAMP, { from: 'depot', gearId: HEADLAMP }),
+  ]
+}
+
+const ATTIC = 'pppppppp-0000-7000-8000-00000000000a'
+const KELDER = 'pppppppp-0000-7000-8000-00000000000b'
+
+const SHELF = 'gggggggg-0000-7000-8000-00000000000c'
+const CRATE_B = 'gggggggg-0000-7000-8000-00000000000d'
+const SLEEPING_BAG = 'gggggggg-0000-7000-8000-00000000000e'
+const DUFFEL = 'gggggggg-0000-7000-8000-00000000000f'
+const BAK_3 = 'gggggggg-0000-7000-8000-000000000012'
+const GAS_CANISTER = 'gggggggg-0000-7000-8000-000000000013'
+const COOK_SET = 'gggggggg-0000-7000-8000-000000000014'
+const TREKKING_POLES = 'gggggggg-0000-7000-8000-000000000015'
+
+const E_BAG = 'nnnnnnnn-0000-7000-8000-000000000010'
+const E_DUFFEL = 'nnnnnnnn-0000-7000-8000-000000000011'
+const E_GAS = 'nnnnnnnn-0000-7000-8000-000000000014'
+const E_COOK = 'nnnnnnnn-0000-7000-8000-000000000015'
+const E_POLES = 'nnnnnnnn-0000-7000-8000-000000000016'
+const E_PASSPORTS = 'nnnnnnnn-0000-7000-8000-000000000017'
+
+/**
+ * F3/F6's own scenario — `docs/design/README.md` §7's board (§01), minus the
+ * two forms Task 10 does not build: the per-person cluster row (Task 13) and
+ * a re-homed row's meta (Task 14).
+ *
+ * `Attic`: `Sleeping bag, winter` two levels deep (`Shelf L-Top ▸ Crate B`),
+ * a Counted Entry, `back` — the plain-quantity form. `Duffel 90 L`, a
+ * container one level deep (`Shelf L-Top`), `back`, with two Entries moved
+ * inside it on the Trip — the container's `N INSIDE` form.
+ *
+ * `Kelder`: `Gas canister 450`, a Counted Entry (`bring 4`), `consumed` with
+ * `consumedCount 2` — the consumed-split form. `Cook set`, a Single, `open`
+ * — the plain no-suffix form.
+ *
+ * `Loose`: `Trekking poles`, a Counted Entry (`bring 2`) with no residence
+ * at all, `open` — the quantity-with-no-path form.
+ *
+ * `Trip-only`: `Passports, all`, naming no Gear.
+ */
+function destinationScenario(): readonly OpSpec[] {
+  return [
+    ...alps(),
+
+    placeRecorded(ATTIC, 'Attic'),
+    placeRecorded(KELDER, 'Kelder'),
+
+    gearRecorded(SHELF, {
+      name: 'Shelf L-Top',
+      container: true,
+      kind: 'single',
+      residence: { in: 'place', id: ATTIC },
+    }),
+    gearRecorded(CRATE_B, {
+      name: 'Crate B',
+      container: true,
+      kind: 'single',
+      residence: { in: 'gear', id: SHELF },
+    }),
+    gearRecorded(SLEEPING_BAG, {
+      name: 'Sleeping bag, winter',
+      container: false,
+      kind: 'counted',
+      residence: { in: 'gear', id: CRATE_B },
+    }),
+    tripEntryAdded(ALPS, E_BAG, { from: 'depot', gearId: SLEEPING_BAG }),
+    tripEntryBringCountSet(ALPS, E_BAG, 2),
+    tripOutcomeSet(ALPS, E_BAG, 'back'),
+
+    gearRecorded(DUFFEL, {
+      name: 'Duffel 90 L',
+      container: true,
+      kind: 'single',
+      residence: { in: 'gear', id: SHELF },
+    }),
+    tripEntryAdded(ALPS, E_DUFFEL, { from: 'depot', gearId: DUFFEL }),
+    tripOutcomeSet(ALPS, E_DUFFEL, 'back'),
+
+    gearRecorded(BAK_3, {
+      name: 'Bak 3',
+      container: true,
+      kind: 'single',
+      residence: { in: 'place', id: KELDER },
+    }),
+    gearRecorded(GAS_CANISTER, {
+      name: 'Gas canister 450',
+      container: false,
+      kind: 'counted',
+      residence: { in: 'gear', id: BAK_3 },
+    }),
+    tripEntryAdded(ALPS, E_GAS, { from: 'depot', gearId: GAS_CANISTER }),
+    tripEntryBringCountSet(ALPS, E_GAS, 4),
+    tripOutcomeSet(ALPS, E_GAS, 'consumed'),
+    tripConsumedCountSet(ALPS, E_GAS, 2),
+
+    gearRecorded(COOK_SET, {
+      name: 'Cook set',
+      container: false,
+      kind: 'single',
+      residence: { in: 'gear', id: BAK_3 },
+    }),
+    tripEntryAdded(ALPS, E_COOK, { from: 'depot', gearId: COOK_SET }),
+
+    gearRecorded(TREKKING_POLES, {
+      name: 'Trekking poles',
+      container: false,
+      kind: 'counted',
+    }),
+    tripEntryAdded(ALPS, E_POLES, { from: 'depot', gearId: TREKKING_POLES }),
+    tripEntryBringCountSet(ALPS, E_POLES, 2),
+
+    tripEntryAdded(ALPS, E_PASSPORTS, {
+      from: 'trip_only',
+      name: 'Passports, all',
+      container: false,
+    }),
+
+    // Two Entries riding inside the duffel **on the Trip** — `subtreeOf`'s
+    // own count. `trip.entry_moved` is a trip residence, entirely unrelated
+    // to either Entry's *home* containment, so this changes nothing about
+    // where the Gas canister or the Cook set are grouped or what their own
+    // return path meta reads.
+    tripEntryMoved(ALPS, E_GAS, { in: 'container', entryId: E_DUFFEL }),
+    tripEntryMoved(ALPS, E_COOK, { in: 'container', entryId: E_DUFFEL }),
   ]
 }
 
@@ -238,5 +367,147 @@ describe('the empty screen (F19)', () => {
 
     expect(screen.getByRole('heading', { name: 'Unpack' })).toBeVisible()
     expect(screen.getByRole('link', { name: '‹ Alps 2026' })).toBeVisible()
+  })
+})
+
+/** Finds the group `<section>` by its visible header name — `Attic`,
+ * `Kelder`, `Loose`, `Trip-only`. */
+function groupNamed(name: string): HTMLElement {
+  const headings = screen.getAllByTestId('unpack-group-name')
+  const match = headings.find((el) => el.textContent === name)
+  if (match === undefined) throw new Error(`no group named ${name}`)
+  const section = match.closest('section')
+  if (section === null) throw new Error(`group ${name} has no section`)
+  return section
+}
+
+describe('DESTINATION mode — groups (F3)', () => {
+  it('orders rooms A→Z, then Loose, then Trip-only', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    const names = screen
+      .getAllByTestId('unpack-group-name')
+      .map((el) => el.textContent)
+
+    expect(names).toEqual(['Attic', 'Kelder', 'Loose', 'Trip-only'])
+  })
+
+  it('reads a room header as resolved/units', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    // Attic: Sleeping bag ×2 back (resolved) + Duffel ×1 back (resolved) = 3/3.
+    const attic = groupNamed('Attic')
+    expect(within(attic).getByText('3/3')).toBeInTheDocument()
+
+    // Kelder: Gas canister ×4 consumed (resolved) + Cook set ×1 open = 4/5.
+    const kelder = groupNamed('Kelder')
+    expect(within(kelder).getByText('4/5')).toBeInTheDocument()
+  })
+
+  it('reads the Loose header muted, with NO HOME SLOT', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    const loose = groupNamed('Loose')
+    expect(within(loose).getByText('NO HOME SLOT')).toBeInTheDocument()
+    // Trekking poles ×2, open — 0/2.
+    expect(within(loose).getByText('0/2')).toBeInTheDocument()
+  })
+
+  it('reads the Trip-only header as a plain count, with its own meta', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    const tripOnly = groupNamed('Trip-only')
+    expect(
+      within(tripOnly).getByText('TAKES NO OUTCOME · CLEARED AT CLOSE'),
+    ).toBeInTheDocument()
+    expect(within(tripOnly).getByText('1')).toBeInTheDocument()
+  })
+})
+
+describe('DESTINATION mode — the row (F6)', () => {
+  it('draws the plain-quantity return path form', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    expect(screen.getByText('→ Shelf L-Top ▸ Crate B · ×2')).toBeInTheDocument()
+  })
+
+  it("draws a container's return path form, N INSIDE, and no rail", async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    expect(screen.getByText('→ Shelf L-Top · 2 INSIDE')).toBeInTheDocument()
+
+    const row = screen.getByTestId(`unpack-row-${E_DUFFEL}`)
+    expect(within(row).queryByTestId('journey-rail')).not.toBeInTheDocument()
+  })
+
+  it("draws a consumed Counted's return path form", async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    expect(
+      screen.getByText('→ Bak 3 · ×2 CONSUMED · ×2 BACK'),
+    ).toBeInTheDocument()
+  })
+
+  it('draws a plain Single with no suffix', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    expect(screen.getByText('→ Bak 3')).toBeInTheDocument()
+  })
+
+  it('draws a quantity with no path for Loose Counted gear', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    expect(screen.getByText('×2')).toBeInTheDocument()
+  })
+
+  it('draws the four pills', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    expect(
+      screen.getAllByRole('button', { name: '● BACK' }).length,
+    ).toBeGreaterThan(0)
+    expect(
+      screen.getAllByRole('button', { name: '○ OPEN' }).length,
+    ).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'CONSUMED' })).toBeInTheDocument()
+  })
+
+  it('draws ▲ LOST alone, and never in the meta', async () => {
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...destinationScenario(),
+      tripOutcomeSet(ALPS, E_COOK, 'lost'),
+    )
+
+    expect(screen.getByRole('button', { name: '▲ LOST' })).toBeInTheDocument()
+    // The meta is where it goes; the pill is what happened (F6) — no meta
+    // line ever carries the ▲ glyph, whatever the row's outcome.
+    for (const meta of screen.getAllByTestId('unpack-row-meta')) {
+      expect(meta.textContent).not.toContain('▲')
+    }
+  })
+})
+
+describe('DESTINATION mode — a trip-only row (F6)', () => {
+  it('draws no button in the row, and NOT IN DEPOT as its meta', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    const row = screen.getByTestId(`unpack-row-${E_PASSPORTS}`)
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(row).getByText('NOT IN DEPOT')).toBeInTheDocument()
+    expect(within(row).getByText('CLEARS AT CLOSE')).toBeInTheDocument()
+  })
+
+  /**
+   * `patterns.md` §6.6: a flex `gap` is not a character, so `getByText` on
+   * the badge alone cannot see a missing space — this reads the row's own
+   * **parent** text content, which is exactly what a screen reader's
+   * concatenation (and an enclosing accessible name) would glue.
+   */
+  it('keeps a real space between the name and the TRIP-ONLY badge', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    const badge = screen.getByTestId('unpack-row-badge')
+    expect(badge.parentElement).toHaveTextContent('Passports, all TRIP-ONLY')
   })
 })

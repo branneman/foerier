@@ -1,0 +1,126 @@
+@layer components {
+  /*
+   * Rows are ≥64 (`docs/design/README.md`'s list-row anatomy, `PackingRow`'s
+   * own constant), side padding 16, name+meta on the left and the right slot
+   * at the trailing edge.
+   *
+   * **No `overflow` anywhere in this file** — `.body`'s hit extension grows
+   * past its own box, and a clipped ancestor is not hit-testable
+   * (`PackingRow.module.css`'s identical note).
+   */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    min-height: 4rem;
+    padding: var(--space-12) var(--space-16);
+    border-top: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /*
+   * *Where it goes* — the row body, `PackingRow.module.css`'s `.body`
+   * verbatim. `.row` is `align-items: center`, which sizes a flex item to
+   * its **content** on the cross axis rather than stretching it, so the
+   * paint is stated (`min-height: 1.5rem`) and the extension is measured
+   * from it rather than from whatever the content happens to be — a
+   * meta-less row (the fully-loose case, `meta === ''`) would otherwise
+   * paint only the 22px name and fall short of 48.
+   */
+  .body {
+    position: relative;
+    min-height: 1.5rem;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  /* 22 (name) + 2 (gap) + 14 (meta) ≈ 38px painted + 12 above and below =
+     past the 48px target, clamped inside a ≥64px row. */
+  .body::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem 0;
+  }
+
+  .body:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /*
+   * A trip-only row's left half — the same layout as `.body`, none of its
+   * interaction. Not a `.body` variant: sharing the class would make the
+   * extension something a modifier has to undo, and a present-but-cancelled
+   * extension is the shape `drawnSizes.test.ts` would otherwise read as a
+   * hit area that exists (`PackingRow.module.css`'s identical `.inertBody`).
+   */
+  .inertBody {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .nameLine {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  /* HEADING at list density — 16/22, the board's own row title. */
+  .name {
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    line-height: 1.375rem;
+    font-weight: 600;
+    color: var(--color-ink-primary);
+    overflow-wrap: anywhere;
+  }
+
+  /* `EntryRow`'s and `PackingRow`'s badge, same encoding: amber, bordered,
+     radius 3 — a name adjunct rather than trailing-column content. */
+  .badge {
+    padding: 2px 5px;
+    border: var(--stroke-rule) solid
+      color-mix(in srgb, var(--color-brand-amber) 50%, transparent);
+    border-radius: var(--radius-badge);
+    color: var(--color-brand-amber);
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+
+  /* `→ SHELF L-TOP ▸ CRATE B · ×2` — mono 11, muted, tabular so a quantity
+     does not shuffle as it is tapped. */
+  .meta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+  }
+
+  /* `CLEARS AT CLOSE` — faint mono text, no border: F6's rule that a pill
+     shape is a control on every other row, and a trip-only Entry takes no
+     outcome. Not a button (`UnpackRow.tsx`'s docstring). */
+  .clears {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.59375rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--color-ink-faint);
+  }
+}

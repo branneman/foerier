@@ -100,4 +100,101 @@
     color: var(--color-ink-muted);
     font: var(--text-body) var(--font-ui);
   }
+
+  /*
+   * The list of F3's groups — `Packing.module.css`'s `.groups` verbatim.
+   * `.screen` is the pane a row's own container query would fold against
+   * (`frontend-design.md` §3.2) — none of F5's rows need one today (A10's
+   * one capped column holds at every width), but the type belongs on the
+   * pane, never on `UnpackRow` itself.
+   */
+  .groups {
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (min-width: 40em) {
+    .groups {
+      gap: var(--space-12);
+    }
+
+    .group {
+      border: var(--stroke-rule) solid var(--color-rule);
+      border-radius: var(--radius-card);
+    }
+  }
+
+  /* The group header: surface, name + subtitle, the `resolved/units` count
+     at the trailing edge — `Packing.module.css`'s `.groupHeader` shape. */
+  .groupHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    background: var(--color-bg-surface);
+    border-top: var(--stroke-rule) solid var(--color-rule);
+  }
+
+  @media (min-width: 40em) {
+    .groupHeader {
+      border-top: 0;
+      border-start-start-radius: calc(var(--radius-card) - var(--stroke-rule));
+      border-start-end-radius: calc(var(--radius-card) - var(--stroke-rule));
+    }
+  }
+
+  .headerMain {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  /* 16/600 — the board's group name: `Attic`, `Kelder`, natural case. */
+  .groupName {
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-ink-primary);
+    overflow-wrap: anywhere;
+  }
+
+  /* `Loose` and `Trip-only` name the absence of a home slot and of an
+     outcome respectively — muted rather than the ordinary room's bright
+     ink, `Packing.module.css`'s `.looseName` rule one screen over. */
+  .mutedName {
+    color: var(--color-ink-muted);
+  }
+
+  /* `NO HOME SLOT` · `TAKES NO OUTCOME · CLEARED AT CLOSE`. */
+  .groupMeta {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* `4/5` — resolved over units, tabular so the numerator does not shuffle
+     as a pill is tapped. */
+  .groupCount {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* `Trip-only`'s plain count is history, not arithmetic — one step fainter
+     than a room's `resolved/units`, matching its own muted name. */
+  .groupCountFaint {
+    color: var(--color-ink-faint);
+  }
+
+  .rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
 }
