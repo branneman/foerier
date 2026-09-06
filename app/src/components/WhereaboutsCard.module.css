@@ -59,6 +59,17 @@
     color: var(--color-brand-amber);
   }
 
+  /* S10, F16(3): the home row's own glyph swap — `▲` in place of `⌂` — is
+     the whole of the standing's mark on this row; the path and the count
+     beside it stay in their ordinary colours (`docs/design/README.md` §06
+     draws only the label turning amber). A different token from
+     `.labelTrip`'s, because this is `--color-status-attention` (the
+     standing's own token, `HomePicker.module.css`'s and
+     `OverClaimBand.module.css`'s), not the two-worlds amber. */
+  .labelAttention {
+    color: var(--color-status-attention);
+  }
+
   .countTrip {
     color: var(--color-brand-amber);
   }
@@ -84,13 +95,23 @@
 
   /* Ruling O: a real tap target gets the house's 48px hit floor even where
      it is drawn as inline accent text — `Trips.module.css`'s `.reopen` and
-     `TripCard.module.css`'s `.buildList` take the identical shape. */
+     `TripCard.module.css`'s `.buildList` take the identical shape.
+     `border`/`background`/`font`/`padding`/`cursor` are a plain button
+     reset — S10's unaccounted footer draws this class on a `<button>`
+     (RESOLVE opens a sheet on this screen) beside `overClaim`'s own `<a>`
+     (RESOLVE routes away), and an anchor already carries none of these
+     browser defaults, so the reset changes nothing for it. */
   .resolve {
     display: inline-flex;
     align-items: center;
     flex: none;
     min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
     color: var(--color-accent);
     text-decoration: none;
+    cursor: pointer;
   }
 }

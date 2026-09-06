@@ -8,9 +8,11 @@ import {
   tripCreated,
   tripEntryAdded,
   tripEntryBringCountSet,
+  tripOutcomeSet,
   tripParticipantAdded,
   tripPhaseMoved,
   tripPieceRemoved,
+  whereabouts,
   type OpSpec,
   type TagString,
 } from '@foerier/shared'
@@ -1090,6 +1092,139 @@ describe('Gear detail — whereabouts reaches the screen', () => {
     expect(
       screen.getByRole('link', { name: 'Resolve on Alps 2026' }),
     ).toHaveAttribute('href', `/trips/${alpsId}`)
+  })
+})
+
+/**
+ * S10, F16(3): the unaccounted standing's own settle route —
+ * `docs/design/README.md` §06, §5h ruling F16. The footer's `RESOLVE` opens
+ * the Home picker with its own context line, and the picker's `● NOW —
+ * FOUND HERE` row is tappable because writing the same home again is the
+ * fact that settles the standing (`patterns.md` §2.3's one stated
+ * exception).
+ */
+describe('Gear detail — the unaccounted standing and its settle route (S10, F16)', () => {
+  it('turns the footer ▲ with the Counted arithmetic and opens the picker with the RESOLVING context', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const store = await seededStore([
+      placeRecorded(anId(), 'Attic'),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'counted',
+        owned_count: 3,
+      }),
+      tripCreated(tripId, 'Tessin 2025'),
+      tripEntryAdded(tripId, 'e-lamp', { from: 'depot', gearId }),
+      tripEntryBringCountSet(tripId, 'e-lamp', 1),
+      tripOutcomeSet(tripId, 'e-lamp', 'lost'),
+    ])
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    // The home row's own glyph and reduced count — `owned(3) − out(0) −
+    // unaccounted(1)`, `whereabouts`'s own arithmetic, not this screen's.
+    expect(screen.getByText('▲ HOME SLOT')).toBeInTheDocument()
+    expect(screen.getByText('×2 THERE')).toBeInTheDocument()
+    expect(
+      screen.getByText('▲ ×1 LAST SEEN: Tessin 2025 · OWNED ×3'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'RESOLVE' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Home' })
+    expect(within(dialog).getByTestId('moving-context')).toHaveTextContent(
+      'RESOLVING Headlamp · LAST SEEN: Tessin 2025',
+    )
+    // Plain pick mode: no MOVE confirm stands between the tap and the write
+    // (F8/A2b's own reason, restated for this route).
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('a Single reads the standing with no counts at all (D1)', async () => {
+    const tripId = anId()
+    const gearId = anId()
+    const store = await seededStore([
+      gearRecorded(gearId, {
+        name: 'Ice axe',
+        container: false,
+        kind: 'single',
+      }),
+      tripCreated(tripId, 'Tessin 2025'),
+      tripEntryAdded(tripId, 'e-axe', { from: 'depot', gearId }),
+      tripOutcomeSet(tripId, 'e-axe', 'lost'),
+    ])
+    renderGearDetail(store, gearId)
+
+    expect(screen.getByText('▲ LAST SEEN: Tessin 2025')).toBeInTheDocument()
+    expect(screen.queryByText(/OWNED/)).not.toBeInTheDocument()
+  })
+
+  /**
+   * The route's whole point: tapping the row marked `● NOW — FOUND HERE`
+   * emits `gear.rehomed` **even though** the residence is unchanged, and
+   * that write is what clears the standing. `GearDetail`'s MOVE `onSelect`
+   * a few lines above this test carries a `sameResidence` guard for the
+   * opposite reason — this caller must not inherit it, or the row would tap
+   * and write nothing.
+   */
+  it('the ● NOW — FOUND HERE row settles the standing on an unchanged residence — the one stated exception (patterns.md §2.3)', async () => {
+    const tripId = anId()
+    const placeId = anId()
+    const gearId = anId()
+    const log = inMemoryOpLog()
+    const store = await seededStore(
+      [
+        placeRecorded(placeId, 'Attic'),
+        gearRecorded(gearId, {
+          name: 'Headlamp',
+          container: false,
+          kind: 'single',
+          residence: { in: 'place', id: placeId },
+        }),
+        tripCreated(tripId, 'Tessin 2025'),
+        tripEntryAdded(tripId, 'e-lamp', { from: 'depot', gearId }),
+        tripOutcomeSet(tripId, 'e-lamp', 'lost'),
+      ],
+      log,
+    )
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    expect(
+      whereabouts(store.getState().state, gearId).unaccounted,
+    ).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'RESOLVE' }))
+    const attic = screen.getByRole('button', { name: /Attic/ })
+    expect(attic).toHaveTextContent('● NOW — FOUND HERE')
+
+    await user.click(attic)
+    await store.getState().drained()
+
+    // The write actually happened — not suppressed as a same-value no-op.
+    const rehomes = (await log.all()).filter(
+      (record) => record.op.type === 'gear.rehomed',
+    )
+    expect(rehomes.length).toBeGreaterThanOrEqual(1)
+    expect(store.getState().state.gear[gearId]?.residence?.value).toEqual({
+      in: 'place',
+      id: placeId,
+    })
+
+    // The gesture also settles the Entry's own outcome back to `back`
+    // (`reHomeOnTheSpot`, `gestures.ts`) — the two-surfaces-must-not-drift
+    // discipline this codebase keeps: the Trip's own unpack row and the
+    // Depot's standing must never disagree about whether this is resolved.
+    expect(
+      store.getState().state.trips[tripId]?.entries?.['e-lamp']?.outcome?.value,
+    ).toBe('back')
+
+    // The standing itself is gone, and the footer no longer draws.
+    expect(whereabouts(store.getState().state, gearId).unaccounted).toBeNull()
+    expect(screen.queryByText(/LAST SEEN/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Home' })).toBeNull()
   })
 })
 

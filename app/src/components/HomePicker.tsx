@@ -77,6 +77,15 @@ import styles from './HomePicker.module.css'
  * auto-computed `MOVING {name}` line — one place computes that fact, not
  * two spellings of it.
  *
+ * ## `nowLabel`
+ *
+ * `● NOW`'s own text, overridable per caller — unset everywhere but S10's
+ * settle route (F16(3)), which draws `● NOW — FOUND HERE` because picking
+ * the current home there is the settling fact, not a restatement of one.
+ * This is a label change only: the row's own tap behaviour is already
+ * whatever `moving`'s presence (or its own `confirm`) decides, unaffected by
+ * this prop.
+ *
  * ## Mounted is open
  *
  * There is no `open` prop, and losing it was a fix rather than a tidy. This
@@ -121,6 +130,18 @@ export interface HomePickerProps {
    * caller's job to restate `moving.insideCount`.
    */
   context?: string
+  /**
+   * Overrides `● NOW`'s own text — default unset, drawing the plain mark
+   * every caller but one has always drawn. **S10's settle route (F16(3),
+   * `docs/design/README.md` §06) is the one exception**: it draws
+   * `● NOW — FOUND HERE`, because picking the current home there is not a
+   * restatement, it is the settling fact itself, and the row needs its own
+   * word for that. `allowCurrent` was tried and removed for a *different*
+   * reason (R26: it made the row a gate) — this prop changes only the mark's
+   * text, never whether the row responds to a tap, which every caller's
+   * `moving` (or its absence) already decides on its own.
+   */
+  nowLabel?: string
 }
 
 interface ContainerRow {
@@ -257,6 +278,7 @@ export function HomePicker({
   current,
   moving,
   context,
+  nowLabel,
 }: HomePickerProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
@@ -349,7 +371,7 @@ export function HomePicker({
     setRemovingId(null)
   }
 
-  const nowMark = <span className={styles['now']}>● NOW</span>
+  const nowMark = <span className={styles['now']}>{nowLabel ?? '● NOW'}</span>
 
   /**
    * `context`'s own text when given (`MOVING {name}` otherwise), with

@@ -4,13 +4,16 @@ import {
   tripContainerStageSet,
   tripCreated,
   tripEntryAdded,
+  tripEntryBringCountSet,
   tripEntryMoved,
+  tripOutcomeSet,
   tripPhaseMoved,
   whereabouts,
   type OpSpec,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
@@ -18,6 +21,7 @@ import { anId, seededStore } from '../testUtils'
 import {
   WhereaboutsCard,
   type WhereaboutsCardOverClaim,
+  type WhereaboutsCardUnaccounted,
 } from './WhereaboutsCard'
 
 /**
@@ -39,15 +43,22 @@ async function slicesFor(
 }
 
 /** `RESOLVE` renders through wouter's `Link` (decision 1's `href`), so every
- *  render needs a `Router` ancestor — `TripCard.test.tsx`'s own pattern. */
+ *  render needs a `Router` ancestor — `TripCard.test.tsx`'s own pattern.
+ *  `unaccounted`'s own `RESOLVE` is a plain button (S10, F16(3)) and needs
+ *  no such ancestor, but the `Router` is harmless to keep for it too. */
 function renderCard(
   slices: ReturnType<typeof whereabouts>['slices'],
   overClaim?: WhereaboutsCardOverClaim,
+  unaccounted?: WhereaboutsCardUnaccounted,
 ) {
   const location = memoryLocation({ path: '/gear/g1', record: true })
   return render(
     <Router hook={location.hook}>
-      <WhereaboutsCard slices={slices} {...(overClaim ? { overClaim } : {})} />
+      <WhereaboutsCard
+        slices={slices}
+        {...(overClaim ? { overClaim } : {})}
+        {...(unaccounted ? { unaccounted } : {})}
+      />
     </Router>,
   )
 }
@@ -317,5 +328,125 @@ describe('WhereaboutsCard', () => {
     expect(
       screen.queryByText('HOME SLOT IS KEPT WHILE OUT.'),
     ).not.toBeInTheDocument()
+  })
+
+  /**
+   * S10, F16(3): the unaccounted standing — `docs/design/README.md` §06's
+   * "RULED" panel. The home row's own glyph turns `▲` and its count already
+   * reads what is on the shelf (`whereabouts`'s own arithmetic, not this
+   * component's), and the footer states the arithmetic in words plus one
+   * door. Counted states both numbers; the row form beside it (§06's
+   * "LOSING" panel) is retired — this file scaffolds none of it.
+   */
+  describe('the unaccounted standing (S10, F16(3))', () => {
+    it('turns the home row ▲ and states the footer arithmetic for Counted gear', async () => {
+      const tripId = anId()
+      const gearId = anId()
+      const store = await seededStore([
+        gearRecorded(gearId, {
+          name: 'Headlamp',
+          container: false,
+          kind: 'counted',
+          owned_count: 3,
+        }),
+        tripCreated(tripId, 'Tessin 2025'),
+        tripEntryAdded(tripId, 'e-lamp', { from: 'depot', gearId }),
+        tripEntryBringCountSet(tripId, 'e-lamp', 1),
+        tripOutcomeSet(tripId, 'e-lamp', 'lost'),
+      ])
+      const { slices, unaccounted } = whereabouts(
+        store.getState().state,
+        gearId,
+      )
+      const onResolve = vi.fn()
+      expect(unaccounted).not.toBeNull()
+
+      renderCard(slices, undefined, {
+        tripName: unaccounted!.tripName,
+        units: unaccounted!.units,
+        ownedCount: 3,
+        onResolve,
+      })
+
+      expect(screen.getByText('▲ HOME SLOT')).toBeInTheDocument()
+      expect(screen.queryByText('⌂ HOME SLOT')).not.toBeInTheDocument()
+      // The home count already reflects `owned − out − unaccounted`,
+      // floored — `whereabouts`'s own arithmetic (spec §3.6(3)), asserted
+      // here only to prove this component draws what it is handed.
+      expect(screen.getByText('×2 THERE')).toBeInTheDocument()
+
+      expect(
+        screen.getByText('▲ ×1 LAST SEEN: Tessin 2025 · OWNED ×3'),
+      ).toBeInTheDocument()
+
+      const resolve = screen.getByRole('button', { name: 'RESOLVE' })
+      await userEvent.click(resolve)
+      expect(onResolve).toHaveBeenCalledOnce()
+    })
+
+    it('states no counts for a Single — the same gate ownedCount uses everywhere else (D1)', async () => {
+      const tripId = anId()
+      const gearId = anId()
+      const store = await seededStore([
+        gearRecorded(gearId, {
+          name: 'Ice axe',
+          container: false,
+          kind: 'single',
+        }),
+        tripCreated(tripId, 'Tessin 2025'),
+        tripEntryAdded(tripId, 'e-axe', { from: 'depot', gearId }),
+        tripOutcomeSet(tripId, 'e-axe', 'lost'),
+      ])
+      const { slices, unaccounted } = whereabouts(
+        store.getState().state,
+        gearId,
+      )
+      expect(unaccounted).not.toBeNull()
+
+      renderCard(slices, undefined, {
+        tripName: unaccounted!.tripName,
+        units: null,
+        ownedCount: null,
+        onResolve: vi.fn(),
+      })
+
+      expect(screen.getByText('▲ LAST SEEN: Tessin 2025')).toBeInTheDocument()
+      expect(screen.queryByText(/OWNED/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^▲ ×/)).not.toBeInTheDocument()
+    })
+
+    it('prefers the over-claim footer when both are present — the active fact wins', async () => {
+      const gearId = anId()
+      const store = await seededStore([
+        gearRecorded(gearId, {
+          name: 'Gas canister',
+          container: false,
+          kind: 'counted',
+          owned_count: 2,
+        }),
+      ])
+      const { slices } = whereabouts(store.getState().state, gearId)
+
+      renderCard(
+        slices,
+        {
+          text: 'CLAIMED ×4 · OWNED ×2',
+          href: '/trips/alps-id',
+          resolveLabel: 'Resolve on Alps 2026',
+        },
+        {
+          tripName: 'Tessin 2025',
+          units: 1,
+          ownedCount: 2,
+          onResolve: vi.fn(),
+        },
+      )
+
+      expect(screen.getByText('▲ CLAIMED ×4 · OWNED ×2')).toBeInTheDocument()
+      expect(screen.queryByText(/LAST SEEN/)).not.toBeInTheDocument()
+      // The home row's own glyph still reflects the standing independently
+      // of which footer has the floor.
+      expect(screen.getByText('▲ HOME SLOT')).toBeInTheDocument()
+    })
   })
 })

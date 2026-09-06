@@ -779,4 +779,26 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
 
     expect(selected).toEqual([{ in: 'place', id: atticId }])
   })
+
+  /**
+   * `nowLabel` — S10's settle route (F16(3), `docs/design/README.md` §06):
+   * a label change only, never a second gate beside `moving`'s own. The
+   * unmodified default stays `● NOW` for every other caller, pinned by the
+   * "marks the current home" tests above.
+   */
+  it('overrides the ● NOW mark’s own text with nowLabel, still tappable and reporting the pick', async () => {
+    const { store, atticId } = await aCrateInAnAttic()
+    const user = userEvent.setup()
+    const { selected } = renderPicker(store, {
+      current: { in: 'place', id: atticId },
+      nowLabel: '● NOW — FOUND HERE',
+    })
+
+    const attic = screen.getByRole('button', { name: /Attic/ })
+    expect(attic).toHaveTextContent('● NOW — FOUND HERE')
+    expect(attic).not.toHaveTextContent(/● NOW$/)
+    await user.click(attic)
+
+    expect(selected).toEqual([{ in: 'place', id: atticId }])
+  })
 })

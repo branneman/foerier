@@ -1,6 +1,7 @@
 import {
   containmentView,
   dimensionValues,
+  entriesOf,
   gearKindSet,
   gearOwnedCountSet,
   gearOwnershipSet,
@@ -19,17 +20,21 @@ import {
   ownerLabel,
   ownerOf,
   personLabel,
+  reHomeOnTheSpot,
   residenceOf,
   tagsOf,
   whereabouts,
   whereaboutsByPerson,
   whereaboutsText,
+  type EntryState,
   type HouseholdState,
   type GearState,
   type KindValue,
   type Owner,
   type PathSegment,
   type PersonWhereabouts,
+  type TripState,
+  type Unaccounted,
   type WhereaboutsSlice,
 } from '@foerier/shared'
 import {
@@ -46,7 +51,10 @@ import { useParams } from 'wouter'
 import { HomePicker, sameResidence } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
-import { WhereaboutsCard } from '../components/WhereaboutsCard'
+import {
+  WhereaboutsCard,
+  type WhereaboutsCardUnaccounted,
+} from '../components/WhereaboutsCard'
 import { KIND_OPTIONS } from '../household/gear'
 import { personInitial, sortedPeople } from '../household/people'
 import { useHousehold } from '../household/store'
@@ -205,6 +213,63 @@ function overClaimFooter(
   }
 }
 
+/**
+ * S10, F16(3): the unaccounted footer's own composition, the identical shape
+ * `overClaimFooter` already takes — the presentational card must not decide
+ * which unit states a count, so this is the one place that reads
+ * `ownedCountOf`'s answer for the standing. `owned` is the **same** call
+ * `metaLine` and the COUNT group already made (line above `whereabouts` in
+ * this component) — never a second `ownedCountOf` for the identical Gear.
+ * `units` travels with it: `null` for anything that is not Counted, exactly
+ * the gate `whereabouts.ts`'s own private `unaccountedPrefix` reads for the
+ * Depot column.
+ */
+function unaccountedFooter(
+  unaccounted: Unaccounted,
+  owned: number | null,
+  onResolve: () => void,
+): WhereaboutsCardUnaccounted {
+  return {
+    tripName: unaccounted.tripName,
+    units: owned === null ? null : unaccounted.units,
+    ownedCount: owned,
+    onResolve,
+  }
+}
+
+/** `RESOLVING HEADLAMP · LAST SEEN: TESSIN 2025` (`docs/design/README.md`
+ *  §06) — the recorded name kept in its **recorded case**, exactly as
+ *  `Unpack.tsx`'s own `reHomeContext` leaves `moving.name`: `.context`'s own
+ *  `text-transform: uppercase` (`HomePicker.module.css`) is what paints it
+ *  in caps. */
+function resolveContext(name: string, tripName: string): string {
+  return `RESOLVING ${name} · LAST SEEN: ${tripName}`
+}
+
+/**
+ * The Entry within `trip` whose depot source names `gearId` — RESOLVE starts
+ * from the standing's own `tripId` (`Unaccounted.tripId`), the reverse
+ * direction of `Unpack.tsx`'s own re-home row, which already holds an Entry
+ * and reads `gearId` off it. `unaccountedOf`'s own walk (`unpack.ts`)
+ * guarantees a match whenever the standing exists: it is built by
+ * accumulating exactly this Trip's Entry, sourced from exactly this Gear,
+ * carrying a live `lost` outcome.
+ */
+function entryForResolve(
+  trip: TripState,
+  gearId: string,
+  state: HouseholdState,
+): EntryState | undefined {
+  return entriesOf(trip, state).find((entry) => {
+    const source = entry.source?.value
+    return (
+      source !== undefined &&
+      source.from === 'depot' &&
+      source.gearId === gearId
+    )
+  })
+}
+
 export function GearDetail() {
   const params = useParams<{ id: string }>()
   const gearId = params.id
@@ -216,6 +281,7 @@ export function GearDetail() {
   const header = useScreenHeader({ splitPane: true })
 
   const [moveOpen, setMoveOpen] = useState(false)
+  const [resolveOpen, setResolveOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   // `KindValue | undefined`, because `kindOf` reads an absent register as
@@ -317,10 +383,24 @@ export function GearDetail() {
   // "how many does the household own".
   const owned = ownedCountOf(gear)
   const perPerson = isPerPerson(gear)
-  const { slices, overClaimed } = whereabouts(state, gearId)
+  const { slices, overClaimed, unaccounted } = whereabouts(state, gearId)
   const overClaim = overClaimed
     ? overClaimFooter(state, gear, gearId, slices)
     : undefined
+  const unaccountedCard =
+    unaccounted === null
+      ? undefined
+      : unaccountedFooter(unaccounted, owned, () => setResolveOpen(true))
+
+  // RESOLVE's own Trip and Entry, looked up from the standing itself — only
+  // meaningful while `resolveOpen`, but derived unconditionally alongside
+  // every other read on this screen (`Unpack.tsx`'s own `reHomeEntry` shape).
+  const resolveTrip =
+    unaccounted === null ? undefined : state.trips[unaccounted.tripId]
+  const resolveEntry =
+    resolveTrip === undefined
+      ? undefined
+      : entryForResolve(resolveTrip, gearId, state)
 
   // D6: `whereaboutsByPerson`'s keys are the claiming Trip(s)' Participants,
   // whatever this Gear's Kind — the `PIECES` group renders only for
@@ -394,6 +474,9 @@ export function GearDetail() {
       <WhereaboutsCard
         slices={slices}
         {...(overClaim === undefined ? {} : { overClaim })}
+        {...(unaccountedCard === undefined
+          ? {}
+          : { unaccounted: unaccountedCard })}
       />
 
       {owned !== null && (
@@ -538,6 +621,49 @@ export function GearDetail() {
           }}
         />
       )}
+
+      {/* F16's settle route (`docs/design/README.md` §06, §5h): the
+          footer's own `RESOLVE`, gated on `unaccounted` and on the Trip and
+          Entry the standing itself names actually still resolving —
+          `entryForResolve`'s own guarantee holds only while the fold agrees
+          with what `WhereaboutsCard` was handed a moment ago.
+
+          **No `moving` prop, on purpose.** Plain pick mode reports every
+          pick, the current one included (`patterns.md` §4.3, R26) with no
+          confirm — exactly what F16(3) draws (the row visibly settles the
+          standing, no dialog stands between the tap and the write). The
+          gesture is `reHomeOnTheSpot`'s (`gestures.ts`'s own two callers),
+          not re-derived here, and it is deliberately **not** guarded by
+          `sameResidence` the way MOVE's own `onSelect` above is: a
+          same-value `gear.rehomed` is `patterns.md` §2.3's one stated
+          exception, because writing the *same* home on a later clock is
+          precisely the fact that ends the standing
+          (`outcomeStands`, `unpack.ts`). Inheriting MOVE's guard here would
+          draw a settle route that taps and writes nothing. */}
+      {resolveOpen &&
+        unaccounted !== null &&
+        resolveTrip !== undefined &&
+        resolveEntry !== undefined && (
+          <HomePicker
+            onClose={() => setResolveOpen(false)}
+            onSelect={(residence) => {
+              for (const spec of reHomeOnTheSpot(
+                resolveTrip,
+                resolveEntry,
+                gearId,
+                residence,
+                state,
+              )) {
+                emit(spec)
+              }
+              setResolveOpen(false)
+            }}
+            excludeGearId={gearId}
+            current={residenceOf(gear)}
+            context={resolveContext(name, unaccounted.tripName)}
+            nowLabel="● NOW — FOUND HERE"
+          />
+        )}
 
       {tagsOpen && (
         <TagPicker
