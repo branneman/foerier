@@ -693,6 +693,9 @@ const LAMP = 'gggggggg-0000-7000-8000-000000000030'
 const E_LAMP = 'nnnnnnnn-0000-7000-8000-000000000030'
 const PAN = 'gggggggg-0000-7000-8000-000000000031'
 const E_PAN = 'nnnnnnnn-0000-7000-8000-000000000031'
+const TORCH = 'gggggggg-0000-7000-8000-000000000032'
+const E_TORCH = 'nnnnnnnn-0000-7000-8000-000000000032'
+const PASSPORTS2 = 'nnnnnnnn-0000-7000-8000-000000000033'
 
 /** One resolved Entry in its own room (`Zolder`), one still open in another
  * (`Kelder`) — the fixture the filter tests narrow and widen. */
@@ -722,24 +725,97 @@ function twoRoomsOneEachScenario(): readonly OpSpec[] {
   ]
 }
 
+/** One room (`Zolder`) with two rows — `Lamp` resolved, `Torch` still open —
+ * plus a trip-only Entry with no room to belong to (F19's own kind, spec
+ * §3.7's spine): both halves of I2's own exemption in one fixture. */
+function oneRoomTwoRowsWithTripOnlyScenario(): readonly OpSpec[] {
+  return [
+    ...alps(),
+    placeRecorded(ZOLDER, 'Zolder'),
+
+    gearRecorded(LAMP, {
+      name: 'Lamp',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: ZOLDER },
+    }),
+    tripEntryAdded(ALPS, E_LAMP, { from: 'depot', gearId: LAMP }),
+    tripOutcomeSet(ALPS, E_LAMP, 'back'),
+
+    gearRecorded(TORCH, {
+      name: 'Torch',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: ZOLDER },
+    }),
+    tripEntryAdded(ALPS, E_TORCH, { from: 'depot', gearId: TORCH }),
+    // Left open.
+
+    tripEntryAdded(ALPS, PASSPORTS2, {
+      from: 'trip_only',
+      name: 'Passports, all',
+      container: false,
+    }),
+  ]
+}
+
 describe('the ○ OPEN filter (F4)', () => {
+  /**
+   * `within(group)`, not a bare `getByRole` — this screen's own outcome pill
+   * *also* reads `○ OPEN` (F6), so an unscoped query would count the filter
+   * pill itself among the matches and could never actually fail (M2).
+   */
   it('hides a resolved row and keeps an open one, in the same group', async () => {
     const user = userEvent.setup()
-    await renderUnpack(`/trips/${ALPS}/unpack`, ...twoWithOneResolved())
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...oneRoomTwoRowsWithTripOnlyScenario(),
+    )
 
-    expect(screen.getByRole('button', { name: '● BACK' })).toBeInTheDocument()
+    const zolder = groupNamed('Zolder')
     expect(
-      screen.getAllByRole('button', { name: '○ OPEN' }).length,
-    ).toBeGreaterThan(0)
+      within(zolder).getByRole('button', { name: '● BACK' }),
+    ).toBeInTheDocument()
+    expect(
+      within(zolder).getByRole('button', { name: '○ OPEN' }),
+    ).toBeInTheDocument()
 
     await pressOpenOnly(user)
 
+    const zolderAfter = groupNamed('Zolder')
     expect(
-      screen.queryByRole('button', { name: '● BACK' }),
+      within(zolderAfter).queryByRole('button', { name: '● BACK' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getAllByRole('button', { name: '○ OPEN' }).length,
-    ).toBeGreaterThan(0)
+      within(zolderAfter).getByRole('button', { name: '○ OPEN' }),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * I2, adjudicated correct: a trip-only Entry takes no outcome at all
+   * (invariant 18) and is excluded from {@link unpackTotals}, so it cannot
+   * be *open* in the sense the pill states — code-authored, and this is the
+   * test that pins it. **Failure scenario this guards**: a later
+   * simplification of the predicate to the naive `row.outcome === null`
+   * would keep it (a trip-only row's own `outcome` is constructed `null`),
+   * every other test in this file would stay green, and on a real Trip the
+   * whole `Trip-only` group would render inside a view whose entire promise
+   * is *only what is open*.
+   */
+  it('hides a trip-only row too, though its own outcome reads null', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...oneRoomTwoRowsWithTripOnlyScenario(),
+    )
+
+    expect(screen.getByText('Trip-only')).toBeInTheDocument()
+
+    await pressOpenOnly(user)
+
+    expect(screen.queryByText('Trip-only')).not.toBeInTheDocument()
+    // The room with a genuinely open row survives the same press.
+    expect(screen.getByText('Zolder')).toBeInTheDocument()
   })
 
   it('withholds a group whose every row the filter drops, and keeps one that still has work', async () => {
@@ -928,6 +1004,105 @@ describe('PERSON mode (F4, ruling A7)', () => {
   })
 })
 
+const CRATE_K = 'gggggggg-0000-7000-8000-000000000043'
+const E_CRATE_K = 'nnnnnnnn-0000-7000-8000-000000000043'
+const CANISTER_K = 'gggggggg-0000-7000-8000-000000000044'
+const E_CANISTER_K = 'nnnnnnnn-0000-7000-8000-000000000044'
+
+/**
+ * Ruling I1's two arms `personScenario` above does not exercise: a
+ * Personal-owned **container** and a Personal-owned **consumed** Counted
+ * Entry, both routed through `personEntryMeta`'s container/consumed branches
+ * rather than its plain one — the two branches the first draft of I1's fix
+ * still got backwards (delegating to `returnPathMeta`, path-first).
+ */
+function personContainerAndConsumedScenario(): readonly OpSpec[] {
+  return [
+    personRecorded(KEES, 'Kees'),
+    tripCreated(ALPS, 'Alps 2026'),
+    tripParticipantAdded(ALPS, KEES),
+    placeRecorded(ROOM, 'Room'),
+
+    gearRecorded(CRATE_K, {
+      name: 'Kees crate',
+      container: true,
+      kind: 'single',
+      residence: { in: 'place', id: ROOM },
+      owner: { type: 'person', personId: KEES },
+    }),
+    tripEntryAdded(ALPS, E_CRATE_K, { from: 'depot', gearId: CRATE_K }),
+    tripOutcomeSet(ALPS, E_CRATE_K, 'back'),
+    // Deliberately no `trip.entry_moved` into it — the same `0 INSIDE`
+    // code-authored default `destinationScenario`'s own DESTINATION-mode
+    // test pins.
+
+    gearRecorded(CANISTER_K, {
+      name: 'Kees canister',
+      container: false,
+      kind: 'counted',
+      residence: { in: 'place', id: ROOM },
+      owner: { type: 'person', personId: KEES },
+    }),
+    tripEntryAdded(ALPS, E_CANISTER_K, { from: 'depot', gearId: CANISTER_K }),
+    tripEntryBringCountSet(ALPS, E_CANISTER_K, 4),
+    tripOutcomeSet(ALPS, E_CANISTER_K, 'consumed'),
+    tripConsumedCountSet(ALPS, E_CANISTER_K, 2),
+  ]
+}
+
+describe('PERSON mode — a trip-only Entry (ruling R20)', () => {
+  /**
+   * Ruling R20: PERSON mode shows a trip-only Entry **nowhere** — it drops
+   * out at the spine (`unpackItems` excludes it, invariant 18) before
+   * `personGroups` ever sees it. F4's own board draws it under `Shared`,
+   * one tap away on the same Trip DESTINATION mode already shows it on;
+   * ruling R20 keeps today's behaviour rather than inventing a placement
+   * and a slot treatment no board has drawn, and this is the test that pins
+   * it against a later task changing it silently.
+   */
+  it('draws no trace of a trip-only Entry anywhere in PERSON mode', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
+
+    await chooseMode(user, 'PERSON')
+
+    expect(screen.queryByText('Passports, all')).not.toBeInTheDocument()
+    expect(screen.queryByText('TAKES NO OUTCOME')).not.toBeInTheDocument()
+  })
+})
+
+describe('PERSON mode — the container and consumed-split arms (ruling I1)', () => {
+  it('draws a Personal container row with N INSIDE before the path, not after', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...personContainerAndConsumedScenario(),
+    )
+
+    await chooseMode(user, 'PERSON')
+
+    expect(
+      within(groupNamed('Kees')).getByText('PERSONAL K · 0 INSIDE · → Room'),
+    ).toBeInTheDocument()
+  })
+
+  it('draws a Personal consumed-split row with the split before the path, not after', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...personContainerAndConsumedScenario(),
+    )
+
+    await chooseMode(user, 'PERSON')
+
+    expect(
+      within(groupNamed('Kees')).getByText(
+        'PERSONAL K · ×2 CONSUMED · ×2 BACK · → Room',
+      ),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('ALL mode (spec §3.4)', () => {
   it('draws every non-per-person Entry flat, A→Z, with no group headers', async () => {
     const user = userEvent.setup()
@@ -950,19 +1125,32 @@ describe('ALL mode (spec §3.4)', () => {
     ])
   })
 
-  it('draws the full return path as the meta, room included', async () => {
+  /**
+   * The header-less grammar (ruling I1): suffix **before** the return path,
+   * board §03's own order — the opposite of DESTINATION's `returnPathMeta`,
+   * which puts the path first because its room header already trimmed it.
+   * The quantity is unconditional too: `Cook set`, a plain Single, now reads
+   * `×1` where DESTINATION's own meta for the identical Entry
+   * (`destinationScenario`'s own DESTINATION-mode test) reads `→ Bak 3`
+   * alone — the two grammars are not the same function, on purpose.
+   */
+  it('draws the return path last, suffix first, room included', async () => {
     const user = userEvent.setup()
     await renderUnpack(`/trips/${ALPS}/unpack`, ...destinationScenario())
 
     await chooseMode(user, 'ALL')
 
     expect(
-      screen.getByText('→ Attic ▸ Shelf L-Top ▸ Crate B · ×2'),
+      screen.getByText('×2 · → Attic ▸ Shelf L-Top ▸ Crate B'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('→ Attic ▸ Shelf L-Top · 2 INSIDE'),
+      screen.getByText('2 INSIDE · → Attic ▸ Shelf L-Top'),
     ).toBeInTheDocument()
-    expect(screen.getByText('→ Kelder ▸ Bak 3')).toBeInTheDocument()
+    expect(
+      screen.getByText('×2 CONSUMED · ×2 BACK · → Kelder ▸ Bak 3'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('×1 · → Kelder ▸ Bak 3')).toBeInTheDocument()
+    // Loose Counted gear has no path segment to end in at all.
     expect(screen.getByText('×2')).toBeInTheDocument()
   })
 

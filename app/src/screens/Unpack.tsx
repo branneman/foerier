@@ -7,7 +7,7 @@ import {
   entryLabel,
   isContainerEntry,
   ownerLabel,
-  ownerOf,
+  personBuckets,
   personNameOrUnnamed,
   returnPathOf,
   subtreeOf,
@@ -262,7 +262,7 @@ function destinationGroups(
       if (entry === undefined) continue
       const kind = entryKind(entry, state)
       const container = isContainerEntry(entry, state)
-      // Task 13's row — the 34px cluster, not this task's scope.
+      // Task 13's row — the 34px cluster, not yet drawn.
       if (kind === 'per_person' && !container) continue
 
       const entryItems = itemsByEntry.get(entryId) ?? []
@@ -349,8 +349,8 @@ function destinationGroups(
  * Entry, an Entry whose Gear has not reached this replica, or one this
  * function is never asked about (a container's own containing Gear is a
  * different question, `containment.ts`'s). One place rather than the two
- * {@link personGroups} would otherwise repeat — its owner lookup and its
- * meta's ownership segment both need the identical Gear.
+ * {@link personGroups} would otherwise repeat — its own ownership segment
+ * and `headerlessMeta`'s both need the identical Gear.
  */
 function depotGearOf(
   entry: EntryState,
@@ -362,57 +362,76 @@ function depotGearOf(
 }
 
 /**
- * PERSON mode's own bucket for one **entry-kind** item — a Piece needs none,
- * since its own Participant *is* {@link UnpackItem.personId} already on the
- * item (rule 1). `null` is `Shared`.
+ * The meta grammar for a **header-less** row — PERSON mode's entry-kind
+ * rows and every ALL-mode row (spec §3.4, board §03's excerpt) — `[prefix ·]
+ * [suffix] · → PATH`, suffix **before** the path (ruling I1).
  *
- * **This mirrors `packing.ts`'s `personPartition` rule 2/3, rather than
- * calling that function, because `personPartition` folds `packingItems` —
- * which excludes every container (ruling A5, `containerTotals`'s own
- * argument: a container carries a journey and can never be "packed"). F1
- * gives a container an *outcome* here, so `unpackItems` does **not** exclude
- * it, and a personally-owned container routed through `personPartition`'s
- * own buckets would never appear in any of them — silently dropping it from
- * PERSON mode and breaking the "the buckets sum to the Trip's own totals"
- * property `personPartition`'s own docstring states as the reason the rule
- * has to be total. So this calls the one primitive `personPartition` itself
- * calls — {@link ownerOf} — rather than re-deriving what an absent owner
- * register means (`owner.ts`'s own rule, read here and nowhere restated).**
+ * **This is deliberately not `returnPathMeta`, and the two must not be
+ * confused for one another.** DESTINATION's row sits under a room header
+ * that already states the path's root segment, so `returnPathMeta` reads
+ * `→ PATH · suffix` — path first, because the header already trimmed it and
+ * the suffix is the row's own closing fact. Neither PERSON's entry rows nor
+ * ALL's rows sit under a header that states anything about *where*, so
+ * board §03's own drawn row (`PERSONAL · K · ×1 · → KEES'S ROOM ▸ KAST`) puts
+ * the suffix first and the path last — *what happened to the units* before
+ * *where it ends up*. F4/spec §3.4 state the same order for ALL
+ * (*"meta ending in the return path"*), and it is the only row order this
+ * codebase draws outside DESTINATION.
+ *
+ * **The unit count is unconditional** — `×1` on a Single, unlike
+ * `returnPathMeta`'s gate on {@link bringCountOf}. Board §03's own evidenced
+ * row is a plain Single reading `×1`, so the header-less grammar states a
+ * quantity for everything that is not a container or a consumed split,
+ * `PackingRow`'s identical `PERSONAL E · ×1` convention for PERSON/ALL mode
+ * one screen over. A container or a consumed split is not on any board here
+ * — both reuse F1's `N INSIDE` / F9's split, the one already pinned by
+ * `returnPathMeta`'s own tests, restated here in this order rather than
+ * called there and re-ordered, since `returnPathMeta` would still put the
+ * path first.
+ *
+ * `prefix` is `personEntryMeta`'s own ownership segment for PERSON mode, or
+ * `null` for ALL, which states no ownership at all — ALL is a lookup view
+ * over every Entry regardless of whose it is, and drawing an ownership
+ * segment nobody asked for there is exactly the arithmetic-nobody-asked-for
+ * this codebase already refuses elsewhere.
  */
-function personBucketOf(
+function headerlessMeta(
   entry: EntryState,
   state: HouseholdState,
-): string | null {
-  const gear = depotGearOf(entry, state)
-  if (gear === undefined) return null
-  const owner = ownerOf(gear)
-  return owner.type === 'person' ? owner.personId : null
+  view: ContainmentView,
+  tripView: TripContainmentView,
+  container: boolean,
+  item: Extract<UnpackItem, { kind: 'entry' }>,
+  prefix: string | null,
+): string {
+  const suffix: string[] = []
+  if (container) {
+    suffix.push(`${subtreeOf(tripView, entry.id).size} INSIDE`)
+  } else if (item.outcome === 'consumed' && item.consumed !== null) {
+    suffix.push(`×${item.consumed} CONSUMED`)
+    suffix.push(`×${item.units - item.consumed} BACK`)
+  } else {
+    suffix.push(`×${item.units}`)
+  }
+
+  const path = returnPathOf(entry, state, view)
+  const pathText = path.map((segment) => segment.name).join(' ▸ ')
+
+  const parts: string[] = []
+  if (prefix !== null) parts.push(prefix)
+  parts.push(...suffix)
+  if (pathText !== '') parts.push(`→ ${pathText}`)
+  return parts.join(' · ')
 }
 
 /**
- * PERSON mode's own row meta for an **entry-kind** item (spec §3.4, §03's
- * excerpt) — never drawn for a Piece row, whose meta is the plain return
- * path alone (see {@link personGroups}).
- *
- * The board's one evidenced row (`Rain jacket, K`) reads `PERSONAL · K · ×1
- * · → KEES'S ROOM ▸ KAST` — an ownership segment (this codebase's own
- * `PERSONAL K` spelling, `ownerLabel`'s, not the board's `·`; `owner.ts`'s
- * own note says every screen inherits the function rather than re-deciding
- * it) ahead of the item's own unit count and its full return path, because
- * no room header states *where* in this mode and no bucket header states
- * *why this Entry and not some other reason* the way a Participant's own
- * `personId` already states it for a Piece row. **Unlike DESTINATION's
- * {@link returnPathMeta}, the unit count is unconditional** — `×1` on a
- * Single, exactly as `PackingRow`'s identical `PERSONAL E · ×1` reads for
- * the same Kind in PERSON/ALL mode there — because DESTINATION only shows a
- * quantity where {@link bringCountOf} says one exists and PERSON mode's own
- * evidenced row does not follow that gate.
- *
- * A container or a consumed split is not on any board here, so both reuse
- * {@link returnPathMeta}'s own established suffix (F1's `N INSIDE`, F9's
- * split) rather than a second, invented one — the ownership segment simply
- * prefixes it. Code-authored, unpinned by a ruling, pinned by this file's own
- * test instead.
+ * PERSON mode's own ownership segment for an entry-kind row — this
+ * codebase's own `PERSONAL K` spelling (`ownerLabel`'s, not the board's
+ * `PERSONAL · K`; `owner.ts`'s own note says every screen inherits the
+ * function rather than re-deciding it), prefixed onto
+ * {@link headerlessMeta}'s grammar. `null` for a Piece row, which has no
+ * owner register of its own — only its Entry does — and whose *whose it is*
+ * is already stated by the group it sits in, never restated in its meta.
  */
 function personEntryMeta(
   entry: EntryState,
@@ -424,32 +443,52 @@ function personEntryMeta(
 ): string {
   const gear = depotGearOf(entry, state)
   const ownerText = gear === undefined ? 'SHARED' : ownerLabel(state, gear)
-
-  if (container || (item.outcome === 'consumed' && item.consumed !== null)) {
-    return `${ownerText} · ${returnPathMeta(entry, state, view, tripView, container, item, null)}`
-  }
-
-  const path = returnPathOf(entry, state, view)
-  const pathText = path.map((segment) => segment.name).join(' ▸ ')
-  return pathText === ''
-    ? `${ownerText} · ×${item.units}`
-    : `${ownerText} · ×${item.units} · → ${pathText}`
+  return headerlessMeta(
+    entry,
+    state,
+    view,
+    tripView,
+    container,
+    item,
+    ownerText,
+  )
 }
 
 /**
- * PERSON mode's groups (F4, ruling A7 — *whose it is*, spec §3.4). The
- * partition is total over {@link unpackItems}: a Piece to its own
- * Participant (rule 1, read straight off the item), an entry-kind item to
- * {@link personBucketOf} (rules 2/3), `Shared` drawn **last** — `Packing.tsx`'s
- * own `personGroups` order, transplanted (`peopleOn`'s label order, with
- * `Shared` appended rather than sorted among the People).
+ * PERSON mode's groups (F4, ruling A7 — *whose it is*, spec §3.4) —
+ * {@link personBuckets} (`packing.ts`, ruling R19), parameterised over
+ * {@link unpackItems} rather than `packing.ts`'s own `packingItems`. That
+ * split is what makes the rule total here: `packingItems` excludes every
+ * container (ruling A5 — a container can never be "packed"), while F1 gives
+ * a container an *outcome*, so `unpackItems` does not exclude it — a
+ * personally-owned container routed through `personPartition`'s own
+ * `PackingItem` buckets would never appear in any of them. `personBuckets`
+ * itself needed no change to make this true: its rule-2 `owners` map is
+ * built from {@link entriesOf}, not from the item list it is handed, so
+ * every depot Entry — container included — was already in it.
+ *
+ * `Shared` is drawn **last** — `Packing.tsx`'s own `personGroups` order,
+ * transplanted (`peopleOn`'s label order, with `Shared` appended rather than
+ * sorted among the People).
  *
  * A Piece row's name gains the board's `— KEES'S PIECE` suffix
  * (`PackingRow`'s identical convention, `personNameOrUnnamed` never
- * re-derived) and its meta is the **full** return path with no ownership
- * segment — a Piece has no owner register of its own, only its Entry does,
- * and *whose it is* is already stated by the group it sits in. An entry-kind
- * row's meta is {@link personEntryMeta}'s.
+ * re-derived) and its meta is the **full** return path alone, through
+ * {@link headerlessMeta} with no prefix and no suffix computed at all — a
+ * Piece is always exactly one unit, so board §03 states nothing beyond
+ * *where*. An entry-kind row's meta is {@link personEntryMeta}'s.
+ *
+ * **A trip-only Entry appears in no PERSON-mode group at all** —
+ * code-authored, awaiting a board. `unpackItems` already excludes it
+ * (invariant 18) before this function ever sees it, so nothing here decides
+ * to drop it; the omission is a *spine* fact, not a partition one, and
+ * `personBuckets` widening under ruling R19 does not touch it either way.
+ * F4's own board draws a trip-only Entry under `Shared` in PERSON mode, one
+ * tap away on the very same Trip DESTINATION mode already shows it on —
+ * ruling R20 keeps today's behaviour rather than inventing the placement and
+ * the slot treatment (a pill? `CLEARS AT CLOSE` text? Task 13's cluster
+ * slot is for a per-person row, which this is not) no board has drawn, and
+ * this file's own test pins it so a later task cannot change it silently.
  */
 function personGroups(
   trip: TripState,
@@ -460,23 +499,6 @@ function personGroups(
   const items = unpackItems(trip, state)
   const entries = entriesOf(trip, state)
   const entryById = new Map(entries.map((entry) => [entry.id, entry]))
-
-  const byPerson = new Map<string, UnpackItem[]>()
-  const shared: UnpackItem[] = []
-
-  for (const item of items) {
-    const entry = entryById.get(item.entryId)
-    if (entry === undefined) continue
-    const personId =
-      item.kind === 'piece' ? item.personId : personBucketOf(entry, state)
-    if (personId === null) {
-      shared.push(item)
-      continue
-    }
-    const list = byPerson.get(personId)
-    if (list === undefined) byPerson.set(personId, [item])
-    else list.push(item)
-  }
 
   function rowFor(item: UnpackItem): UnpackRowData | undefined {
     const entry = entryById.get(item.entryId)
@@ -519,16 +541,30 @@ function personGroups(
     return rows
   }
 
+  const buckets = personBuckets(trip, state, items)
+  const byPersonId = new Map<string, readonly UnpackItem[]>()
+  let sharedItems: readonly UnpackItem[] = []
+  for (const bucket of buckets) {
+    if (bucket.key.kind === 'shared') sharedItems = bucket.items
+    else byPersonId.set(bucket.key.personId, bucket.items)
+  }
+
   const groups: UnpackGroup[] = []
 
-  for (const person of peopleOn(state, [...byPerson.keys()])) {
-    const bucketItems = byPerson.get(person.id) ?? []
+  for (const person of peopleOn(state, [...byPersonId.keys()])) {
+    const bucketItems = byPersonId.get(person.id) ?? []
     const { resolved, total, open } = countOfUnpack(bucketItems)
     groups.push({
       key: person.id,
       name: person.label,
       countLabel: `${resolved}/${total} · ${open} OPEN`,
       isPersonGroup: true,
+      // `tone` is a constant `control`, **not** `Packing.tsx`'s
+      // `done ? 'filled' : 'control'` — no board here draws a "done" state
+      // for a PERSON group, and copying that encoding without one would be
+      // inventing a fact `§03`'s excerpt never states. Only the `.personLine`
+      // / `.circle` **CSS** is a verbatim port (`Unpack.module.css`); this
+      // JS decision is not, and the gap is worth a board's ruling one day.
       circle: (
         <PersonCircle
           size={28}
@@ -540,15 +576,19 @@ function personGroups(
     })
   }
 
-  if (shared.length > 0) {
-    const { resolved, total, open } = countOfUnpack(shared)
+  if (sharedItems.length > 0) {
+    const { resolved, total, open } = countOfUnpack(sharedItems)
     groups.push({
       key: 'shared',
       name: 'Shared',
+      // Undrawn: no board frame here states `Shared`'s own meta line or its
+      // muted name — carried forward from `Packing.tsx`'s `NOT_ATTRIBUTED`
+      // and `.looseName` for the identical fact (A7 rule 3), and awaiting a
+      // frame of its own.
       subtitle: NOT_ATTRIBUTED,
       countLabel: `${resolved}/${total} · ${open} OPEN`,
       isPersonGroup: true,
-      rows: rowsFor(shared),
+      rows: rowsFor(sharedItems),
     })
   }
 
@@ -557,17 +597,17 @@ function personGroups(
 
 /**
  * ALL mode's rows (spec §3.4: *"flat, A→Z, with the return path as the
- * meta's last segment"*) — {@link entriesOf}'s own order, which **is** A→Z
- * (`order.ts`'s `byNameThenId`), with no grouping and so no owner segment:
- * DESTINATION's plain {@link returnPathMeta} states the whole meta, exactly
- * as it does for that mode's own rows, with `destination` always `null`
- * since no room header states part of the path here either.
+ * meta's last segment"*, ruling F4) — {@link entriesOf}'s own order, which
+ * **is** A→Z (`order.ts`'s `byNameThenId`), with no grouping and so no
+ * ownership segment: {@link headerlessMeta} states the whole meta with
+ * `prefix: null`, the same header-less grammar PERSON's entry rows use
+ * (ruling I1) — suffix before path, unit count unconditional.
  *
- * A per-person, non-container Entry is skipped, `destinationGroups`' own
- * rule restated — Task 13's row. A trip-only Entry draws its ordinary
- * `NOT IN DEPOT` / `CLEARS AT CLOSE` row, exactly as DESTINATION's closing
- * group draws it, but interleaved in name order rather than set apart: ALL
- * has no groups to set it apart *in*.
+ * A per-person, non-container Entry is skipped — Task 13's row, the 34px
+ * cluster not yet drawn, `destinationGroups`' own rule restated. A trip-only
+ * Entry draws its ordinary `NOT IN DEPOT` / `CLEARS AT CLOSE` row, exactly
+ * as DESTINATION's closing group draws it, but interleaved in name order
+ * rather than set apart: ALL has no groups to set it apart *in*.
  */
 function allRows(
   trip: TripState,
@@ -595,14 +635,15 @@ function allRows(
     }
 
     const container = isContainerEntry(entry, state)
-    if (kind === 'per_person' && !container) continue // Task 13's row.
+    // Task 13's row — the 34px cluster, not yet drawn.
+    if (kind === 'per_person' && !container) continue
 
     const item = itemByEntry.get(entry.id)
     if (item === undefined) continue
     rows.push({
       entryId: entry.id,
       name: entryLabel(entry, state),
-      meta: returnPathMeta(entry, state, view, tripView, container, item, null),
+      meta: headerlessMeta(entry, state, view, tripView, container, item, null),
       outcome: item.outcome,
     })
   }
@@ -663,6 +704,10 @@ function GroupSection({
                   {group.circle}
                 </span>
               )}
+              {/* `mutedName` on `Shared` (no circle) — undrawn, carried
+                  forward from `Packing.tsx`'s `.looseName` for the identical
+                  fact and awaiting a frame of its own, exactly as
+                  `NOT_ATTRIBUTED` is above. */}
               <span
                 id={headingId}
                 className={`${styles['groupName']} ${
@@ -901,9 +946,17 @@ export function Unpack() {
 
           {/* F19: with `○ OPEN` on and nothing left open, the list reads one
               line rather than a wall of collapsed, header-less groups —
-              `totals.open` rather than a per-mode recount, since every mode
-              partitions the identical items and so agrees on this number by
-              construction. */}
+              gated on `totals.open`, `unpackTotals`' own count over
+              `unpackItems` directly, rather than a per-mode recount of
+              whatever rows that mode happens to draw. **Not yet exactly
+              "every mode agrees"**: ALL and DESTINATION still skip a
+              per-person, non-container Entry (Task 13's row), so a Trip
+              whose only open work is such an Entry reads `totals.open > 0`
+              while those two modes draw nothing open to show for it. PERSON
+              mode has no such gap — Pieces are its own rows — and Task 13
+              closes it for the other two; this gate is written against the
+              ledger's own count on purpose, so that day needs no change
+              here. */}
           {openOnly && totals.open === 0 ? (
             <p
               className={styles['nothingOpen']}

@@ -747,14 +747,33 @@ export interface PersonBucket {
 }
 
 /**
- * Ruling A7's partition: **PERSON mode means *whose it is***, which ownership
- * answers. *Whose body it goes with* is story 23, Later, and the app holds no
- * such fact — which is precisely what made the drawn frame's complete
- * partition unbuildable.
+ * The minimum shape {@link personBuckets} needs to place an item — a Piece
+ * carries its own Participant, an Entry-kind item does not. **Discriminated
+ * on `kind`, not a loose `personId?`**: the loose form would turn rule 1 into
+ * a `??` coalesce that silently applies to any future entry-arm that grows a
+ * `personId` of its own, where the discriminated form keeps *"a Piece goes to
+ * its own Participant"* a narrowing on the tag — which is what A7 actually
+ * says, and the only reading that cannot drift the moment a shape changes.
+ */
+export type PartitionItem =
+  | { readonly kind: 'entry'; readonly entryId: string }
+  | {
+      readonly kind: 'piece'
+      readonly entryId: string
+      readonly personId: string
+    }
+
+/**
+ * Ruling A7's partition, **generalised over the item type** (ruling R19):
+ * **PERSON mode means *whose it is***, which ownership answers. *Whose body
+ * it goes with* is story 23, Later, and the app holds no such fact — which is
+ * precisely what made the drawn frame's complete partition unbuildable.
  *
  * Every item falls in exactly one bucket, tested in this order:
  *
- * 1. a **Piece** goes to its own Participant's bucket;
+ * 1. a **Piece** goes to its own Participant's bucket — read straight off
+ *    `item.personId`, the discriminated {@link PartitionItem} tag rather than
+ *    a coalesce, so nothing but a `'piece'` item can ever take this branch;
  * 2. otherwise the Entry's {@link ownerOf} — a Person's bucket, **including a
  *    Person who is not a Participant**, because the header answers whose it
  *    is and Els's jacket carried by Mark is honest;
@@ -762,9 +781,13 @@ export interface PersonBucket {
  *    (`owner.ts`'s rule), a trip-only Entry with no Gear to own it, and a
  *    depot Entry whose Gear has not reached this replica.
  *
- * The partition is **total**, so the arithmetic closes on facts the MVP
- * holds: the buckets sum to {@link packingTotals} exactly, and the test that
- * asserts it is the one that would have caught the drawn frame.
+ * **Rule 2's `owners` map is built from {@link entriesOf}, not from `items`**
+ * — every depot Entry, container and trip-only alike, whether or not it
+ * happens to produce an item in the caller's own list. That is what makes
+ * parameterising `items` alone total over a *different* item table:
+ * `unpack.ts`'s `unpackItems` gives a container an item where `packingItems`
+ * (ruling A5) does not, and this function does not have to change, or even
+ * know that, for the containers in *that* list to land in the right bucket.
  *
  * **A bucket with no items is not returned** — deliberately, the Participant
  * whose Piece was removed and who owns nothing included. PERSON mode groups
@@ -782,10 +805,11 @@ export interface PersonBucket {
  * real Trip the biggest one, so first position pushes every person header
  * off-screen). That belongs at the screen, not here.
  */
-export function personPartition(
+export function personBuckets<T extends PartitionItem>(
   trip: TripState,
   state: HouseholdState,
-): readonly PersonBucket[] {
+  items: readonly T[],
+): readonly { key: PersonBucketKey; items: readonly T[] }[] {
   // Rule 2, resolved once per Entry rather than once per item. Only Personal
   // ownership is recorded: every Entry absent from this map is rule 3.
   const owners = new Map<string, string>()
@@ -798,9 +822,9 @@ export function personPartition(
     if (owner.type === 'person') owners.set(entry.id, owner.personId)
   }
 
-  const byPerson = new Map<string, PackingItem[]>()
-  const shared: PackingItem[] = []
-  for (const item of packingItems(trip, state)) {
+  const byPerson = new Map<string, T[]>()
+  const shared: T[] = []
+  for (const item of items) {
     const personId =
       item.kind === 'piece' ? item.personId : owners.get(item.entryId)
     if (personId === undefined) {
@@ -812,23 +836,36 @@ export function personPartition(
     else bucket.push(item)
   }
 
-  const buckets: PersonBucket[] = []
+  const buckets: { key: PersonBucketKey; items: readonly T[] }[] = []
   for (const personId of [...byPerson.keys()].sort()) {
-    const items = byPerson.get(personId) ?? []
     buckets.push({
       key: { kind: 'person', personId },
-      items,
-      count: countOf(items),
+      items: byPerson.get(personId) ?? [],
     })
   }
   if (shared.length > 0) {
-    buckets.push({
-      key: { kind: 'shared' },
-      items: shared,
-      count: countOf(shared),
-    })
+    buckets.push({ key: { kind: 'shared' }, items: shared })
   }
   return buckets
+}
+
+/**
+ * `personBuckets` over {@link packingItems}, with each bucket's
+ * {@link PackingCount} folded in — `Packing.tsx`'s five existing callers all
+ * want the count on the bucket, so this stays the one they call and
+ * `personBuckets` stays the one a different item table calls (`unpack.ts`'s
+ * `unpackItems`, S10 — see ruling R19 for why the item type could not
+ * parameterise the rule any earlier: this function used to build the item
+ * list itself, and `unpackItems` gives a container an item that
+ * `packingItems` (ruling A5) never does).
+ */
+export function personPartition(
+  trip: TripState,
+  state: HouseholdState,
+): readonly PersonBucket[] {
+  return personBuckets(trip, state, packingItems(trip, state)).map(
+    (bucket) => ({ ...bucket, count: countOf(bucket.items) }),
+  )
 }
 
 export interface Disagreement {

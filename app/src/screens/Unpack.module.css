@@ -139,8 +139,11 @@
     border-top: var(--stroke-rule) solid var(--color-rule-row);
   }
 
-  /* PERSON mode's header: a 28px circle beside the name — `Packing.module.css`'s
-     `.personLine`/`.circle` verbatim. `Shared` keeps the wrapper and draws no
+  /* PERSON mode's header: a 28px circle beside the name — these two rules
+     are `Packing.module.css`'s `.personLine`/`.circle` verbatim. The *paint*
+     only: the `tone` a caller passes them is Unpack.tsx's own call, not a
+     port of Packing's `done ? 'filled' : 'control'` — no board here draws a
+     "done" state for a PERSON group. `Shared` keeps the wrapper and draws no
      circle inside it. */
   .personLine {
     display: flex;

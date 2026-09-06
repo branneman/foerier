@@ -451,6 +451,24 @@ describe("ruling O's drawn sizes", () => {
   })
 
   /**
+   * F5's own copy of the identical pill (`○ OPEN`, S10) — a **second**
+   * stylesheet, so nothing here shares a rule with the one above and a
+   * regression in either is invisible to the other's assertion. Same 40 →
+   * 48 clamp, same reason: `Unpack.module.css`'s own header says it was
+   * copied from this file's recipe verbatim.
+   */
+  it('paints the ○ OPEN filter pill at 40px and clamps it at 48', () => {
+    const css = moduleCss('Unpack.module.css')
+    const filter = ruleBody(css, '.filter')
+
+    expect(filter).toBeDefined()
+    expect(filter).not.toMatch(FLOOR)
+    expect(filter).toMatch(/min-height:\s*max\(2\.5rem,\s*40px\)/)
+    expect(filter).toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.filter::after')).toMatch(/inset:\s*-0\.25rem 0/)
+  })
+
+  /**
    * **F1 (review round 2).** The Piece status sheet's own row states its size
    * explicitly rather than having been shrunk off the retired global floor —
    * the identical shape `OverClaimBand`'s `.settle`/`.more` test above pins,
