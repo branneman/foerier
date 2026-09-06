@@ -565,4 +565,17 @@ describe("ruling O's drawn sizes", () => {
       /inset:\s*-0\.375rem 0/,
     )
   })
+
+  /**
+   * **S10 task 15.** The close card's own button is drawn at 48 by both
+   * boards (§01, §05) — ruling O's standalone-48 category, the same one
+   * `OverClaimBand`'s `.settle`/`.more` test above pins, not a shrink and a
+   * clamp.
+   */
+  it("leaves the close card's button explicit", () => {
+    const css = moduleCss('Unpack.module.css')
+
+    expect(ruleBody(css, '.closeButton')).toMatch(FLOOR)
+    expect(ruleBody(css, '.closeButton::after')).toBeUndefined()
+  })
 })

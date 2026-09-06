@@ -10,6 +10,7 @@ import {
   tripEntryMoved,
   tripOutcomeSet,
   tripParticipantAdded,
+  tripPhaseMoved,
   type HouseholdState,
   type OpSpec,
 } from '@foerier/shared'
@@ -346,7 +347,10 @@ describe('the count line and the bar', () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...twoWithOneResolved())
 
     expect(screen.getByText('● 1/2 RESOLVED')).toBeInTheDocument()
-    expect(screen.getByText('1 OPEN')).toBeInTheDocument()
+    // A distinct test id, not the bare text: the close card's own summary
+    // line (this task) also ends in `N OPEN`, and on this Trip the two
+    // numbers coincide.
+    expect(screen.getByTestId('unpack-open-count')).toHaveTextContent('1 OPEN')
     expect(screen.getByTestId('unpack-bar')).toBeInTheDocument()
   })
 })
@@ -1626,5 +1630,199 @@ describe('ALL mode (spec §3.4)', () => {
     const row = screen.getByTestId(`unpack-row-${E_PASSPORTS}`)
     expect(within(row).queryByRole('button')).not.toBeInTheDocument()
     expect(within(row).getByText('NOT IN DEPOT')).toBeInTheDocument()
+  })
+})
+
+const CANISTER = 'gggggggg-0000-7000-8000-000000000070'
+const E_CANISTER = 'nnnnnnnn-0000-7000-8000-000000000070'
+const MAP = 'gggggggg-0000-7000-8000-000000000071'
+const E_MAP = 'nnnnnnnn-0000-7000-8000-000000000071'
+const BOOTS = 'gggggggg-0000-7000-8000-000000000072'
+const E_BOOTS = 'nnnnnnnn-0000-7000-8000-000000000072'
+
+/**
+ * **Task 15's own fixture (spec §4.7)** — one of each of the close card's
+ * summary segments, so the exact `53 BACK · 2 CONSUMED · 1 LOST · 6 OPEN`
+ * shape is exercised with real numbers rather than a scenario that happens
+ * to leave one bucket at zero: `Stove` resolved `back` (1 unit), `Gas
+ * canister` a consumed Counted Entry that splits (bring ×4, consumed ×2 —
+ * `consumedCountOf`'s own clamp, `owned_count: 5` so the reduction target
+ * is a real, non-zero, non-coincidental `5 − 2 = 3`), `Map` resolved `lost`
+ * (1 unit), and `Boots` left open (1 unit) — the one thing the gated tests
+ * need to gate on.
+ *
+ * Gated (`Boots` still open): `3 BACK · 2 CONSUMED · 1 LOST · 1 OPEN`
+ * (`back` = Stove's 1 + Gas canister's own back remainder, 4 − 2 = 2).
+ * Resolving `Boots` too (`finishedCloseCardScenario`) reaches
+ * `4 BACK · 2 CONSUMED · 1 LOST · 0 OPEN`.
+ */
+function closeCardScenario(): readonly OpSpec[] {
+  return [
+    ...alps(),
+
+    gearRecorded(STOVE, { name: 'Stove', container: false, kind: 'single' }),
+    tripEntryAdded(ALPS, E_STOVE, { from: 'depot', gearId: STOVE }),
+    tripOutcomeSet(ALPS, E_STOVE, 'back'),
+
+    gearRecorded(CANISTER, {
+      name: 'Gas canister',
+      container: false,
+      kind: 'counted',
+      owned_count: 5,
+    }),
+    tripEntryAdded(ALPS, E_CANISTER, { from: 'depot', gearId: CANISTER }),
+    tripEntryBringCountSet(ALPS, E_CANISTER, 4),
+    tripOutcomeSet(ALPS, E_CANISTER, 'consumed'),
+    tripConsumedCountSet(ALPS, E_CANISTER, 2),
+
+    gearRecorded(MAP, { name: 'Map', container: false, kind: 'single' }),
+    tripEntryAdded(ALPS, E_MAP, { from: 'depot', gearId: MAP }),
+    tripOutcomeSet(ALPS, E_MAP, 'lost'),
+
+    gearRecorded(BOOTS, { name: 'Boots', container: false, kind: 'single' }),
+    tripEntryAdded(ALPS, E_BOOTS, { from: 'depot', gearId: BOOTS }),
+  ]
+}
+
+/** {@link closeCardScenario} with `Boots` resolved too — `open = 0`. */
+function finishedCloseCardScenario(): readonly OpSpec[] {
+  return [...closeCardScenario(), tripOutcomeSet(ALPS, E_BOOTS, 'back')]
+}
+
+/**
+ * A Trip already `closed`, with a resolved Single and no consumed Counted
+ * Entry at all — the fixture for this suite's own no-op test: nothing for
+ * the reduction loop to sum, and `trip.phase_moved{closed}`'s own guard
+ * suppresses the redundant phase write.
+ */
+function alreadyClosedScenario(): readonly OpSpec[] {
+  return [
+    ...alps(),
+    gearRecorded(STOVE, { name: 'Stove', container: false, kind: 'single' }),
+    tripEntryAdded(ALPS, E_STOVE, { from: 'depot', gearId: STOVE }),
+    tripOutcomeSet(ALPS, E_STOVE, 'back'),
+    tripPhaseMoved(ALPS, 'closed'),
+  ]
+}
+
+describe('the close card (F11, spec §4.7)', () => {
+  /**
+   * **F11 — the list's last card at every width, a sibling of the groups,
+   * never a docked footer.** Both `unpack-groups` and `unpack-close-card`
+   * are direct children of the same element — `.screen`'s own flex column —
+   * rather than the card sitting outside it in a fixed, docked position.
+   */
+  it('is a sibling of the groups region, not a docked footer', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...closeCardScenario())
+
+    const groups = screen.getByTestId('unpack-groups')
+    const card = screen.getByTestId('unpack-close-card')
+
+    expect(card.parentElement).toBe(groups.parentElement)
+  })
+
+  it('reads the four-segment summary and gates the button while open > 0', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...closeCardScenario())
+
+    expect(screen.getByTestId('unpack-close-summary')).toHaveTextContent(
+      '3 BACK · 2 CONSUMED · 1 LOST · 1 OPEN',
+    )
+
+    const button = screen.getByRole('button', { name: 'Close trip — 1 open' })
+    expect(button).toBeDisabled()
+
+    expect(
+      screen.getByText(
+        'BACK WRITES HOME AT THE TAP. CLOSE WHEN OPEN = 0 — LOST IS ALWAYS AN ANSWER.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('goes live and accent-worded once open = 0, with the finished-screen hint', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...finishedCloseCardScenario())
+
+    expect(screen.getByTestId('unpack-close-summary')).toHaveTextContent(
+      '4 BACK · 2 CONSUMED · 1 LOST · 0 OPEN',
+    )
+
+    const button = screen.getByRole('button', { name: 'Close trip' })
+    expect(button).not.toBeDisabled()
+
+    expect(
+      screen.getByText(
+        'CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * **The gate is a real `disabled` attribute, not `aria-disabled` alone**
+   * (this task's own requirement) — a disabled native `<button>` fires no
+   * click event at all, for a mouse or a keyboard user alike, so this is the
+   * strongest assertion available that nothing can be fired past it: even a
+   * direct `user.click` on the gated button authors nothing.
+   */
+  it('cannot be fired past the gate — a real disabled attribute, no click reaches the handler', async () => {
+    const user = userEvent.setup()
+    const seeded = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...closeCardScenario(),
+    )
+
+    const button = screen.getByRole('button', { name: 'Close trip — 1 open' })
+    expect(button).toHaveAttribute('disabled')
+    await user.click(button)
+
+    expect(await seeded.authored()).toEqual([])
+  })
+
+  /**
+   * **F10 — no confirm.** The tap writes immediately; no `alertdialog` (this
+   * codebase's own `Confirm` role, `ReopenConfirm`'s and
+   * `ContainerMoveConfirm`'s) ever mounts.
+   */
+  it('writes on the tap with no confirm standing between it and the write', async () => {
+    const user = userEvent.setup()
+    const seeded = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...finishedCloseCardScenario(),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Close trip' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(await seeded.authored()).toEqual([
+      { type: 'gear.owned_count_set', payload: { count: 3 } },
+      { type: 'trip.phase_moved', payload: { phase: 'closed' } },
+    ])
+  })
+
+  /**
+   * **A second render + tap against a Trip already `closed`, with nothing
+   * left to reduce, is a genuine no-op.** F5 gates its card on `open = 0`
+   * alone, never on phase (`gestures.ts`'s own docstring: F5 is reachable at
+   * every phase), so an already-`closed` Trip still draws a live card — and
+   * tapping it authors nothing: no consumed Counted Entry means the
+   * reduction loop has nothing to sum, and `trip.phase_moved{closed}`'s own
+   * guard (`phaseOf(trip) !== 'closed'`) is exactly what keeps a stale
+   * peer's later tap from silently discarding a reopen. **Deliberately not**
+   * a Trip closed *by* a first tap in this same test — closing a Trip that
+   * still owes a reduction and then closing it again is a different
+   * question this suite does not need to answer, since `closeTrip` itself is
+   * `gestures.ts`'s own file and its own tests, not this screen's.
+   */
+  it('is a no-op on a Trip already closed, with nothing left to reduce', async () => {
+    const user = userEvent.setup()
+    const seeded = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...alreadyClosedScenario(),
+    )
+
+    const button = screen.getByRole('button', { name: 'Close trip' })
+    expect(button).not.toBeDisabled()
+
+    await user.click(button)
+
+    expect(await seeded.authored()).toEqual([])
   })
 })

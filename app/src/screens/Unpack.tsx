@@ -1,5 +1,6 @@
 import {
   bringCountOf,
+  closeTrip,
   containmentView,
   countOfUnpack,
   entriesOf,
@@ -145,6 +146,18 @@ const HINT = 'TAP PILL = OUTCOME · TAP CIRCLES = PER PERSON · TAP ROW = RE-HOM
  * verbatim: the identical fact (A7's rule 3, drawn last) on a sibling
  * screen, not a fresh string. */
 const NOT_ATTRIBUTED = 'NOT ATTRIBUTED TO A PERSON'
+
+/**
+ * The close card's two hints (spec §4.7, `docs/design/README.md` §7/§5h,
+ * board `S10 Round - Unpack Resolve and Close.dc.html` §01/§05, verbatim) —
+ * gated while `open > 0`, and the finished-screen form once `open = 0`. Not
+ * composed from a template: both are drawn strings in full, and the task
+ * brief that owns this card says so — "do not invent copy".
+ */
+const CLOSE_HINT_GATED =
+  'BACK WRITES HOME AT THE TAP. CLOSE WHEN OPEN = 0 — LOST IS ALWAYS AN ANSWER.'
+const CLOSE_HINT_READY =
+  'CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.'
 
 /**
  * The return path meta, in every form DESTINATION mode draws (spec §4.3,
@@ -1244,7 +1257,13 @@ export function Unpack() {
                 reuses these two, and two spellings of `● 56/62 RESOLVED`
                 is exactly the drift this codebase refuses. */}
             <span className={styles['resolved']}>{resolvedLabel(totals)}</span>
-            <span className={styles['open']}>{openLabel(totals)}</span>
+            {/* A distinct test id, not just its accessible text: the close
+                card's own summary line (this task) also ends in `N OPEN`, on
+                a Trip where the two numbers coincide — the `○ OPEN` filter
+                pill's own reason above, restated for this second collision. */}
+            <span className={styles['open']} data-testid="unpack-open-count">
+              {openLabel(totals)}
+            </span>
           </div>
 
           {/* `aria-hidden`, because the line immediately above states the
@@ -1347,6 +1366,56 @@ export function Unpack() {
               )}
             </div>
           )}
+
+          {/*
+           * The close card (F11, spec §4.7) — the list's last card at every
+           * width, a sibling of the groups region above rather than a docked
+           * footer: `.screen`'s own flex column carries the gap, exactly as
+           * it does between every other element on this screen. A docked
+           * footer would spend the thumb zone on a control disabled for most
+           * of the pass, and a right-hand column needs a pane F5 lacks.
+           *
+           * **The gate is a real `disabled` attribute** (this task's own
+           * requirement) — `aria-disabled` alone would still let a keyboard
+           * user fire the click handler past invariant 18's gate, which has
+           * no override (F10 — no confirm stands between the tap and the
+           * write).
+           *
+           * The tap emits `closeTrip`'s own ops, in the order it returns
+           * them — never re-derived here: the reduction-then-phase-move
+           * order, the per-Gear summing, the floor at zero and the
+           * already-closed guard are every one of them `gestures.ts`'s own
+           * rule, not this screen's.
+           */}
+          <section
+            className={styles['closeCard']}
+            data-testid="unpack-close-card"
+          >
+            <p
+              className={styles['closeSummary']}
+              data-testid="unpack-close-summary"
+            >
+              {`${totals.back} BACK · ${totals.consumed} CONSUMED · ${totals.lost} LOST · `}
+              <span
+                className={styles['closeSummaryOpen']}
+              >{`${totals.open} OPEN`}</span>
+            </p>
+            <button
+              type="button"
+              className={styles['closeButton']}
+              disabled={totals.open > 0}
+              onClick={() => {
+                for (const spec of closeTrip(trip, state)) emit(spec)
+              }}
+            >
+              {totals.open > 0
+                ? `Close trip — ${totals.open} open`
+                : 'Close trip'}
+            </button>
+            <p className={styles['closeHint']}>
+              {totals.open > 0 ? CLOSE_HINT_GATED : CLOSE_HINT_READY}
+            </p>
+          </section>
         </>
       )}
 
