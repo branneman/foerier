@@ -17,6 +17,7 @@ import {
   tripEntryBringCountSet,
   tripEntryMoved,
   tripEntryRemoved,
+  tripOutcomeSet,
   tripPhaseMoved,
   tripPieceMoved,
   tripPieceRemoved,
@@ -27,6 +28,7 @@ import type { OpEnvelope } from '../ops.ts'
 import { fold } from '../reduce.ts'
 import type { HouseholdState } from '../state.ts'
 import { dimension } from './slice.ts'
+import { phaseOf } from './trip.ts'
 import {
   rowWhereabouts,
   sliceCountLabel,
@@ -1093,5 +1095,154 @@ describe('whereabouts — the memo is keyed on the fold’s identity', () => {
   it('returns the same answer twice for one state', () => {
     const state = fold(log(NESTED))
     expect(whereabouts(state, 'g-stove')).toEqual(whereabouts(state, 'g-stove'))
+  })
+})
+
+describe('whereabouts — a resolved Entry hands the Gear home mid-pass (spec §3.6(1))', () => {
+  // The claim (`claim.ts`) and the whereabouts release together, because
+  // they are the same fact read twice — this describe block is `claim.ts`'s
+  // "an unpack outcome releases the claim" suite, over the second reader of
+  // the identical register.
+  it.each(['back', 'consumed', 'lost'] as const)(
+    'a Single gear stops reading a trip slice once its Entry is resolved %s, with the Trip still pack_out',
+    (outcome) => {
+      const state = fold(
+        log([
+          ...arrangement('pack_out'),
+          tripOutcomeSet(TRIP, 'e-tent', outcome),
+        ]),
+      )
+
+      expect(tripSlices(state, 'g-tent')).toEqual([])
+      expect(rowWhereabouts(whereabouts(state, 'g-tent'))).toEqual({
+        text: '⌂ HOME',
+        tone: 'home',
+      })
+      // The whole of "mid-pass": the release does not wait for the Trip to
+      // close.
+      expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
+    },
+  )
+
+  it("an unrecognised outcome releases the trip slice too — a peer on a later build must not hold this build's gear hostage", () => {
+    const state = fold(
+      log([
+        ...arrangement('pack_out'),
+        tripOutcomeSet(TRIP, 'e-tent', 'donated'),
+      ]),
+    )
+
+    expect(tripSlices(state, 'g-tent')).toEqual([])
+    expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
+  })
+
+  it('an outcome of null clears back to open and restores the trip slice', () => {
+    const state = fold(
+      log([
+        ...arrangement('pack_out'),
+        tripOutcomeSet(TRIP, 'e-tent', 'back'),
+        tripOutcomeSet(TRIP, 'e-tent', null),
+      ]),
+    )
+
+    expect(tripSlices(state, 'g-tent')).toHaveLength(1)
+  })
+
+  it('a Counted Entry’s resolved outcome removes its ×N OUT and returns those units to the home count', () => {
+    const state = fold(
+      log([
+        ...aGear({ id: 'g-peg', name: 'Peg', kind: 'counted', ownedCount: 6 }),
+        ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'pack_out' }),
+        tripEntryAdded(TRIP, 'e-peg', { from: 'depot', gearId: 'g-peg' }),
+        tripEntryBringCountSet(TRIP, 'e-peg', 4),
+        tripOutcomeSet(TRIP, 'e-peg', 'back'),
+      ]),
+    )
+
+    expect(tripSlices(state, 'g-peg')).toEqual([])
+    expect(homeSlice(state, 'g-peg').count).toBe(6)
+    expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
+  })
+})
+
+describe('whereabouts — a non-container Per-person Entry’s own outcome is fold-but-ignore (ruling R10)', () => {
+  const MARK = 'p-mark'
+  const KIM = 'p-kim'
+
+  function perPersonArrangement(): OpSpec[] {
+    return [
+      ...aPerson({ id: MARK, name: 'Mark' }),
+      ...aPerson({ id: KIM, name: 'Kim' }),
+      ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+      ...aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'pack_out',
+        participants: [MARK, KIM],
+      }),
+      tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+    ]
+  }
+
+  it('resolving one Piece drops that Person from whereaboutsByPerson while the other stays out', () => {
+    const state = fold(
+      log([
+        ...perPersonArrangement(),
+        tripOutcomeSet(TRIP, 'e-lamp', 'back', KIM),
+      ]),
+    )
+
+    const byPerson = whereaboutsByPerson(state, 'g-lamp')
+    expect(byPerson.get(KIM)?.slice.kind).toBe('home')
+    expect(byPerson.get(MARK)?.slice.kind).toBe('trip')
+    expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
+  })
+
+  it("the Entry-level outcome is fold-but-ignore — recording it on the Entry itself (no personId) keeps both Pieces' trip slices", () => {
+    const state = fold(
+      log([...perPersonArrangement(), tripOutcomeSet(TRIP, 'e-lamp', 'back')]),
+    )
+
+    const byPerson = whereaboutsByPerson(state, 'g-lamp')
+    expect(byPerson.get(MARK)?.slice.kind).toBe('trip')
+    expect(byPerson.get(KIM)?.slice.kind).toBe('trip')
+    expect(tripSlices(state, 'g-lamp')).toHaveLength(1)
+  })
+})
+
+describe('whereabouts — a per-person CONTAINER Entry releases via its own outcome (ruling R10)', () => {
+  // The mirror case to the describe block above: `unpackItems` puts the
+  // outcome on a per-person *container* Entry itself (container checked
+  // before the per-person fan-out there too), so the Entry-level gate must
+  // stay authoritative for it.
+  it('a per-person container Entry’s own outcome drops its whole trip slice, for every Participant', () => {
+    const state = fold(
+      log([
+        ...aPerson({ id: 'p-mark', name: 'Mark' }),
+        ...aPerson({ id: 'p-kim', name: 'Kim' }),
+        ...aGear({
+          id: 'g-sack',
+          name: 'Stuff sack',
+          container: true,
+          kind: 'per_person',
+        }),
+        ...aTrip({
+          id: TRIP,
+          name: 'Alps 2026',
+          phase: 'pack_out',
+          participants: ['p-mark', 'p-kim'],
+        }),
+        tripEntryAdded(TRIP, 'e-sack', { from: 'depot', gearId: 'g-sack' }),
+        // Entry-level — no `personId` — the container's own outcome.
+        tripOutcomeSet(TRIP, 'e-sack', 'back'),
+      ]),
+    )
+
+    expect(tripSlices(state, 'g-sack')).toEqual([])
+    expect(rowWhereabouts(whereabouts(state, 'g-sack'))).toEqual({
+      text: '⌂ HOME',
+      tone: 'home',
+    })
+    expect(phaseOf(state.trips[TRIP]!)).toBe('pack_out')
   })
 })

@@ -36,6 +36,7 @@ import {
   tripPath,
   type TripContainmentView,
 } from './tripContainment.ts'
+import { outcomeOf, pieceOutcomeOf } from './unpack.ts'
 
 /**
  * **Where a piece of gear is, right now** — story 3, domain §4. Derived on
@@ -54,7 +55,21 @@ import {
  * why each rule below is stated in exactly one place and read from there —
  * and why nothing in this file re-derives a default another selector owns
  * (`ownedCountOf`, `bringCountOf`, `entryResidenceOf`, `stageOf`,
- * `isActive`, `isContainerEntry`, `entryKind`, `piecesOf`).
+ * `isActive`, `isContainerEntry`, `entryKind`, `piecesOf`, `outcomeOf`,
+ * `pieceOutcomeOf`).
+ *
+ * **S10 (spec §3.6(1)): a resolved Entry or Piece stops contributing a trip
+ * slice, mid-pass, before the Trip ever closes.** This is the identical
+ * register `claim.ts` already gates on, read a second time for a different
+ * question — *where is it* rather than *can another Trip take it* — and the
+ * two releases happen together because they are the same fact: the claim
+ * and the whereabouts answer must never disagree about whether an Entry is
+ * still live. Ruling R10 carries over unchanged: a non-container Per-person
+ * Entry's own `outcome` register is fold-but-ignore (only a Piece's own
+ * outcome releases *that* Piece's slice), while a per-person **container**
+ * Entry's outcome releases the whole slice, because {@link unpackItems}
+ * (`unpack.ts`) puts that Entry's outcome on the Entry itself only when it
+ * is a container — checked before the per-person fan-out there too.
  */
 
 /**
@@ -405,6 +420,11 @@ function contributionOf(
     const pieces = new Map<string, ResidenceRead>()
     const pieceStatus = new Map<string, StatusValue | null>()
     for (const personId of included) {
+      // S10 (ruling R10): a Piece whose own outcome is recorded hands its
+      // slice home immediately — `claim.ts`'s `claimFor` filters the
+      // identical register the identical way, one Person at a time, and
+      // this is the read half of that same fact.
+      if (pieceOutcomeOf(entity.pieces?.[personId]) !== null) continue
       // A Piece with no `residence` of its own reads **loose**, never its
       // Entry's (§5e C0) — for per-person gear *where it is* is only ever a
       // per-Piece fact, and `entryResidenceOf` answers `null` for this Kind
@@ -433,7 +453,9 @@ function contributionOf(
     return {
       residences: [...pieces.values()],
       count,
-      pieceCount,
+      // Resolved Pieces are excluded above, so `pieces.size` — not
+      // `included.length` — is what is actually still out on this Trip.
+      pieceCount: pieces.size,
       pieces,
       pieceStatus,
     }
@@ -565,6 +587,17 @@ function tripSlicesOf(state: HouseholdState): {
       const source = entry.source?.value
       // A trip-only Entry names no Gear and can appear in no depot answer.
       if (source === undefined || source.from !== 'depot') continue
+
+      // S10 (ruling R10, `claim.ts`'s own gate over the identical
+      // register): a resolved Entry hands its Gear straight back, except a
+      // non-container Per-person Entry, whose Entry-level `outcome` is
+      // fold-but-ignore — released only per-Piece, in `contributionOf`'s
+      // per-person branch below. `isContainerEntry` is what draws the line,
+      // exactly as it does for `claimsByGear`.
+      const kind = entryKind(entry, state)
+      const perPersonLoose =
+        kind === 'per_person' && !isContainerEntry(entry, state)
+      if (!perPersonLoose && outcomeOf(entry) !== null) continue
 
       const contribution = contributionOf(trip, state, view, entry)
       const bucket = gathered.get(source.gearId) ?? {
