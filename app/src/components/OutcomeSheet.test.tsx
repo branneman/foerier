@@ -12,7 +12,7 @@ import {
   tripParticipantAdded,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { StoreApi } from 'zustand/vanilla'
@@ -155,10 +155,12 @@ function Harness({
   entryId,
   onClose = () => {},
   roster = false,
+  personId,
 }: {
   entryId: string
   onClose?: () => void
   roster?: boolean
+  personId?: string
 }) {
   const state = useHousehold((depot) => depot.state)
   const trip = state.trips[TRIP]
@@ -171,6 +173,7 @@ function Harness({
       view={containmentView(state)}
       onClose={onClose}
       roster={roster}
+      {...(personId === undefined ? {} : { personId })}
     />
   )
 }
@@ -180,10 +183,16 @@ function renderSheet(
   entryId: string,
   onClose: () => void = () => {},
   roster = false,
+  personId?: string,
 ): void {
   render(
     <HouseholdProvider value={seed.store}>
-      <Harness entryId={entryId} onClose={onClose} roster={roster} />
+      <Harness
+        entryId={entryId}
+        onClose={onClose}
+        roster={roster}
+        {...(personId === undefined ? {} : { personId })}
+      />
     </HouseholdProvider>,
   )
 }
@@ -707,5 +716,71 @@ describe('the outcome sheet — the roster variant (F7)', () => {
     expect(
       screen.queryByText(/LOST KEEPS THE HOME SLOT/),
     ).not.toBeInTheDocument()
+  })
+
+  /**
+   * **Ruling R23.** `personId` seeds the selection to that one Piece alone
+   * — the unit-level twin of `Unpack.test.tsx`'s own end-to-end proof.
+   */
+  it('seeds the selection to personId alone when one is given', async () => {
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true, 'kees')
+
+    const rows = screen.getAllByTestId('roster-row')
+    expect(rows[0]).toHaveAttribute('aria-pressed', 'false') // Els
+    expect(rows[1]).toHaveAttribute('aria-pressed', 'true') // Kees
+    expect(rows[2]).toHaveAttribute('aria-pressed', 'false') // Mark
+  })
+
+  /**
+   * The defensive half: a `personId` naming nobody currently included (a
+   * stale prop, a Piece removed between the tap and this mount) falls back
+   * to `EVERYONE` rather than seeding an empty, useless selection.
+   */
+  it('falls back to EVERYONE when personId names no included Piece', async () => {
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true, 'nobody-on-this-trip')
+
+    for (const row of screen.getAllByTestId('roster-row')) {
+      expect(row).toHaveAttribute('aria-pressed', 'true')
+    }
+  })
+
+  /**
+   * **Ruling R24** — the board's own drawn colours the sheet had not yet
+   * painted: a resolved Piece's status word in the packed green, a lost
+   * one in attention, and a selected row's own background tint.
+   */
+  it("paints a resolved Piece's status word packed-green and a lost one in attention", async () => {
+    const seed = await seeded(
+      ...withThreePieces(tripOutcomeSet(TRIP, E_HEADLAMP, 'lost', 'kees')),
+    )
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    const rows = screen.getAllByTestId('roster-row')
+    // Els: back — resolved, packed-green.
+    expect(within(rows[0]!).getByText('● BACK')).toHaveAttribute(
+      'data-tone',
+      'filled',
+    )
+    // Kees: lost — attention.
+    expect(within(rows[1]!).getByText('▲ LOST')).toHaveAttribute(
+      'data-tone',
+      'attention',
+    )
+  })
+
+  /**
+   * **Minor 5** — roster mode's chips are actions applied to a selection,
+   * not toggles: none of them can ever become "pressed," so the attribute
+   * is withheld entirely rather than stating `false` forever.
+   */
+  it('states no aria-pressed on any chip in roster mode', async () => {
+    const seed = await seeded(...withThreePieces())
+    renderSheet(seed, E_HEADLAMP, () => {}, true)
+
+    for (const chip of screen.getAllByTestId('outcome-chip')) {
+      expect(chip).not.toHaveAttribute('aria-pressed')
+    }
   })
 })

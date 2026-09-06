@@ -118,12 +118,30 @@
     white-space: nowrap;
   }
 
+  /* Muted (open) by default; `[data-tone]` below states the other two —
+     R24, board §02's own drawn colours, restated from `circleToneForOutcome`
+     rather than a second, hand-typed mapping. */
   .rosterStatus {
     font-family: var(--font-mono);
     font-size: 0.59375rem;
     font-weight: 600;
     letter-spacing: 0.05em;
     color: var(--color-ink-muted);
+  }
+
+  /* R24: the board paints a resolved Piece's status word in the packed
+     green (`#7BB389` → `--color-status-packed`, the identical token
+     `.back` above already reads) — `back` and `consumed` alike, since the
+     circle beside it collapses the same two into one `filled` tone. */
+  .rosterStatus[data-tone='filled'] {
+    color: var(--color-status-packed);
+  }
+
+  /* Not drawn on any board frame (no roster example shows a lost Piece),
+     but the identical tone family every other attention surface in this
+     app reads — the circle beside it already carries the ring. */
+  .rosterStatus[data-tone='attention'] {
+    color: var(--color-status-attention);
   }
 
   /* `ParticipantPicker`'s `.marker` grammar — the sighted half of
@@ -140,6 +158,19 @@
 
   .rosterRow[aria-pressed='true'] .rosterMarker {
     color: var(--color-accent);
+  }
+
+  /* R24: the board tints a selected row and bleeds it to the sheet's own
+     edges (`margin:0 -20px; padding:0 20px` — `ui/Sheet.tsx`'s own content
+     padding is `var(--space-20)`, so the negative margin exactly cancels
+     it back out). `color-mix` rather than a literal `rgba(147,188,159,.05)`
+     so the tint tracks `--color-accent` through both theme blocks —
+     `GearRow.module.css`'s `.selected` precedent, the one other place this
+     app paints an accent wash. */
+  .rosterRow[aria-pressed='true'] {
+    background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+    margin-inline: calc(-1 * var(--space-20));
+    padding-inline: var(--space-20);
   }
 
   .chips {

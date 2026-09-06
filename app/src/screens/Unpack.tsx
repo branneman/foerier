@@ -960,6 +960,15 @@ function GroupSection({
  * names the Trips list, not this Trip, so the destination this screen's back
  * link points at is never already on the page.
  */
+
+/** {@link Unpack}'s own outcome-sheet target — R23's own shape. `personId`
+ * is absent for the cluster (DESTINATION/ALL) and present for a PERSON-mode
+ * Piece row, carrying which Piece's own pill opened the sheet. */
+interface OutcomeTarget {
+  readonly entryId: string
+  readonly personId?: string
+}
+
 export function Unpack() {
   const params = useParams<{ id: string }>()
   const tripId = params.id
@@ -980,35 +989,47 @@ export function Unpack() {
   const [openOnly, setOpenOnly] = useState(false)
 
   // The outcome sheet's own open state (Task 12) — `ui/`'s primitives have
-  // no `open` prop, so `null` is closed and a real Entry id is open, and
+  // no `open` prop, so `null` is closed and a real target is open, and
   // mount is what resets the sheet exactly as `PhaseSheet`'s own `reopenTo`/
-  // `activating` do. Holds the **real** Entry id only.
-  const [outcomeEntryId, setOutcomeEntryId] = useState<string | null>(null)
+  // `activating` do. Holds the **real** Entry id, plus — R23's own field —
+  // the Piece that opened it, when one did.
+  const [outcomeTarget, setOutcomeTarget] = useState<OutcomeTarget | null>(null)
 
   const trip = tripId === undefined ? undefined : state.trips[tripId]
 
   /**
-   * **Task 13's own closer.** A DESTINATION/ALL row hands its own real
-   * Entry id, unchanged. A PERSON-mode Piece row hands its composite
-   * `${entryId}:${personId}` key instead — {@link personGroups}' own `rowFor`
-   * mints it because two Pieces of one per-person Entry need two distinct
-   * React keys and `UnpackRow` test ids in that mode — and this function is
-   * the one place that key is ever read: it takes the part before the first
-   * `:` (a UUID never contains one) and opens the identical Entry the
-   * cluster would, in its roster variant, regardless of which Piece's own
-   * pill was tapped. Spec §4.5's own sentence is why that is right rather
-   * than a narrower "just this Piece" sheet: *"In PERSON mode a Piece row
-   * carries its own pill … so the cluster is DESTINATION and ALL mode's"* —
-   * a display fact about the row, not a different target for the tap. The
-   * `personId` half of the key is intentionally discarded here: the roster
-   * always opens with `EVERYONE` selected, never narrowed to the Piece whose
-   * pill happened to be tapped.
+   * **Task 13's own closer, R23's own fix.** A DESTINATION/ALL row hands its
+   * own real Entry id, unchanged — no colon, `personId` stays `undefined`.
+   * A PERSON-mode Piece row hands its composite `${entryId}:${personId}` key
+   * instead — {@link personGroups}' own `rowFor` mints it because two Pieces
+   * of one per-person Entry need two distinct React keys and `UnpackRow`
+   * test ids in that mode — and this function is the one place that key is
+   * ever read: it splits on the first `:` (a UUID never contains one) and
+   * opens the Entry it names, carrying the Piece's own `personId` forward
+   * this time.
+   *
+   * **R23 overturns Task 13's first cut, which discarded `personId` here.**
+   * Spec §4.5 and board §03 both read *"a Piece row carries its own pill —
+   * one Piece, one outcome"* — a fact about the tap's own scope, not only
+   * the row's display slot, and discarding it made every Piece's own pill
+   * on one Entry open the identical roster with every Piece selected. Two
+   * Quartermasters working the same Trip from different rooms would then
+   * have one's `● BACK` on a single Piece silently carry every other
+   * Piece's outcome along with it — including one a peer had set `lost`
+   * from an offline Device, on a strictly later, wrongly-authored stamp.
+   * `OutcomeSheet`'s own `personId` prop is what seeds the selection to
+   * `{personId}` alone instead of `EVERYONE`; the cluster's own real
+   * Entry id carries no `personId` at all, so it is untouched by this fix.
    */
   function openOutcome(rowKey: string): void {
     const separator = rowKey.indexOf(':')
     const entryId = separator === -1 ? rowKey : rowKey.slice(0, separator)
     if (trip?.entries?.[entryId] === undefined) return
-    setOutcomeEntryId(entryId)
+    setOutcomeTarget(
+      separator === -1
+        ? { entryId }
+        : { entryId, personId: rowKey.slice(separator + 1) },
+    )
   }
 
   const totals = useMemo<UnpackCount>(
@@ -1067,7 +1088,7 @@ export function Unpack() {
   // sheet the Entry it just wrote (`OutcomeSheet`'s own docstring on why
   // `PhaseSheet`'s "close after every write" is not this sheet's model).
   const outcomeEntry =
-    outcomeEntryId === null ? undefined : trip.entries?.[outcomeEntryId]
+    outcomeTarget === null ? undefined : trip.entries?.[outcomeTarget.entryId]
 
   // The caller's own fact (`OutcomeSheet`'s own docstring on `roster`): a
   // per-person, non-container Entry always opens the roster variant,
@@ -1217,8 +1238,14 @@ export function Unpack() {
           trip={trip}
           entry={outcomeEntry}
           view={view}
-          onClose={() => setOutcomeEntryId(null)}
+          onClose={() => setOutcomeTarget(null)}
           roster={outcomeIsRoster}
+          // R23: the Piece whose own pill opened this sheet, when one did —
+          // `exactOptionalPropertyTypes`'s omit-vs-`undefined` rule, spread
+          // rather than passed as `personId={outcomeTarget?.personId}`.
+          {...(outcomeTarget?.personId === undefined
+            ? {}
+            : { personId: outcomeTarget.personId })}
         />
       )}
     </div>

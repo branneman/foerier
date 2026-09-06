@@ -125,14 +125,27 @@ import styles from './OutcomeSheet.module.css'
  * **selection** instead of to the Entry's own register.
  *
  * The selection is local `useState`, seeded to every included Piece
- * (`piecesOf`) at mount — `ui/`'s overlay primitives have no `open` prop, so
- * mount is the reset, exactly as `PiecePicker`'s draft state resets on
- * every open. `EVERYONE` restores it; a row toggles its own membership,
+ * (`piecesOf`) at mount **unless {@link OutcomeSheetProps.personId} names
+ * one** — `ui/`'s overlay primitives have no `open` prop, so mount is the
+ * reset, exactly as `PiecePicker`'s draft state resets on every open.
+ * `EVERYONE` restores the full selection; a row toggles its own membership,
  * the Participants picker's `✓` grammar transplanted onto a Piece roster.
  * The chips **apply to the selection**, one op per Piece whose own outcome
  * differs from the tap — `PieceStatusSheet`'s `SET EVERYONE` rule (§5g E10),
  * an N-register write where a redundant one matters more than anywhere
  * else in the app, because a single tap can author it N times at once.
+ *
+ * ## `personId` narrows the seed — ruling R23
+ *
+ * Spec §4.5 and board §03: *"a Piece row carries its own pill — **one
+ * Piece, one outcome**"*. The cluster (DESTINATION/ALL) opens with
+ * `EVERYONE` selected; a PERSON-mode Piece row's own pill opens the
+ * identical sheet but seeds the selection to that one Piece alone — the
+ * caller (`Unpack.tsx`) is what tells the two apart, by handing this prop
+ * only when the tap came from a Piece row. Getting this wrong is not
+ * cosmetic: without it, tapping one Piece's pill and a chip would author an
+ * op for every Piece on the Entry, including one a peer had set from an
+ * offline Device, on a stamp that would silently win.
  *
  * No stepper ever grows here, at any Kind: per-person gear has no count
  * (invariant 6), and `showStepper`'s own gate below is entry-level and
@@ -153,6 +166,13 @@ export interface OutcomeSheetProps {
    * question its caller already answered to build the props it is holding.
    */
   roster?: boolean
+  /**
+   * The Piece whose own pill opened this sheet (R23) — meaningful only
+   * while {@link roster} is true, and read once, at mount, to seed the
+   * selection to `{personId}` instead of every included Piece. Absent for
+   * the cluster's own tap, which opens with `EVERYONE` selected.
+   */
+  personId?: string
 }
 
 /**
@@ -256,6 +276,7 @@ export function OutcomeSheet({
   view,
   onClose,
   roster = false,
+  personId,
 }: OutcomeSheetProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
@@ -305,9 +326,19 @@ export function OutcomeSheet({
   // `PiecePicker`'s draft-state precedent — so a lazy initializer reading
   // `piecesOf` directly is safe: this runs once, at mount, and never again
   // for the life of this component instance.
-  const [selection, setSelection] = useState<Set<string>>(
-    () => new Set(piecesOf(entry, trip)),
-  )
+  //
+  // R23: `personId` narrows the seed to that one Piece, but only when it
+  // actually names one of this Entry's own included Pieces — a defensive
+  // check, not a case any caller is known to hit, guarding against a stale
+  // `personId` (a Piece removed between the tap and this mount) silently
+  // seeding an empty selection instead of falling back to `EVERYONE`.
+  const [selection, setSelection] = useState<Set<string>>(() => {
+    const everyone = piecesOf(entry, trip)
+    if (personId !== undefined && everyone.includes(personId)) {
+      return new Set([personId])
+    }
+    return new Set(everyone)
+  })
 
   function toggleRow(personId: string): void {
     setSelection((prev) => {
@@ -453,7 +484,15 @@ export function OutcomeSheet({
                   </span>
                   <span className={styles['rosterNameStack']}>
                     <span className={styles['rosterName']}>{row.label}</span>
-                    <span className={styles['rosterStatus']}>
+                    {/* R24 — the board's own drawn colour: packed green for
+                        a resolved Piece, attention for a lost one, muted
+                        for open. `data-tone` reuses `circleToneForOutcome`
+                        rather than a second, hand-typed mapping — the same
+                        three values the circle beside it paints. */}
+                    <span
+                      className={styles['rosterStatus']}
+                      data-tone={circleToneForOutcome(row.outcome)}
+                    >
                       {outcomeGlyph(row.outcome)} {outcomeLabel(row.outcome)}
                     </span>
                   </span>
@@ -484,7 +523,13 @@ export function OutcomeSheet({
               type="button"
               className={styles['chip']}
               data-current={current ? 'true' : undefined}
-              aria-pressed={current}
+              // Minor 5: `aria-pressed` is a toggle-button's own state, and
+              // roster mode's chips are actions applied to a selection, not
+              // toggles that merely never become pressed — omitting the
+              // attribute there (rather than stating `false` forever) is
+              // what keeps a screen reader from announcing four toggle
+              // buttons none of which can ever be "on."
+              {...(roster ? {} : { 'aria-pressed': current })}
               data-testid="outcome-chip"
               onClick={() => (roster ? applyToSelection(id) : choose(id))}
             >

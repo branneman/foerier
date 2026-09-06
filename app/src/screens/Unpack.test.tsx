@@ -1100,9 +1100,25 @@ describe('PERSON mode (F4, ruling A7)', () => {
    * identical roster the DESTINATION cluster would, `EVERYONE` selected
    * regardless of which Piece's pill was tapped.
    */
-  it("opens the roster sheet from PERSON mode's own Piece pill, EVERYONE selected", async () => {
+  /**
+   * **Ruling R23** — a Piece row's own pill seeds the selection to that one
+   * Piece alone, not `EVERYONE`. Kees's own Piece is cleared back to open
+   * here (`personScenario()`'s own `back` overwritten by a later stamp), so
+   * both his and Els's Pieces sit open — the fixture that actually tells
+   * "seeded to `{els}`" apart from "seeded to everyone": with both open, a
+   * chip tapped under a wrongly-`EVERYONE` selection authors **two** ops,
+   * not one, since neither Piece would be skipped by the redundant-write
+   * guard. Reverting `Unpack.tsx`'s `openOutcome` to discard `personId`
+   * (Task 13's first cut) makes this test fail on the `authored()`
+   * assertion below, not only on the roster's own `aria-pressed` reads.
+   */
+  it('seeds the roster to the one Piece whose pill opened it, not EVERYONE', async () => {
     const user = userEvent.setup()
-    await renderUnpack(`/trips/${ALPS}/unpack`, ...personScenario())
+    const { authored } = await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...personScenario(),
+      tripOutcomeSet(ALPS, E_P_HEADLAMP, null, KEES),
+    )
 
     await chooseMode(user, 'PERSON')
 
@@ -1116,8 +1132,41 @@ describe('PERSON mode (F4, ruling A7)', () => {
       expect.stringContaining('Els'),
       expect.stringContaining('Kees'),
     ])
-    // EVERYONE selected on open — narrowed to neither Piece the tap named.
-    for (const row of rows) {
+    // Els's own pill opened this sheet — she alone is selected on open.
+    expect(rows[0]).toHaveAttribute('aria-pressed', 'true')
+    expect(rows[1]).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(within(sheet).getByRole('button', { name: '● BACK' }))
+
+    // One op, for Els alone — a wrongly-`EVERYONE` selection would author a
+    // second one for Kees, whose own Piece is open too in this fixture.
+    expect(await authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_P_HEADLAMP, outcome: 'back', person_id: ELS },
+      },
+    ])
+  })
+
+  it('keeps EVERYONE selected when the cluster, not a Piece row, opens the roster', async () => {
+    const user = userEvent.setup()
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...personScenario(),
+      tripOutcomeSet(ALPS, E_P_HEADLAMP, null, KEES),
+    )
+
+    // DESTINATION mode's cluster, not PERSON mode's own pill — the same
+    // Entry, opened from its other door.
+    const room = groupNamed('Room')
+    await user.click(
+      within(room).getByRole('button', {
+        name: 'Outcome — Headlamp, 0 of 2 resolved',
+      }),
+    )
+
+    const sheet = screen.getByRole('dialog', { name: 'Headlamp' })
+    for (const row of within(sheet).getAllByTestId('roster-row')) {
       expect(row).toHaveAttribute('aria-pressed', 'true')
     }
   })
