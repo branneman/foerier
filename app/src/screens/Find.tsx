@@ -61,9 +61,18 @@ import styles from './Find.module.css'
  * with its own `RESOLVE`, routing to **gear detail** rather than the Trip —
  * a closed Trip settles nothing, and the settle route lives on the card's
  * footer (F16(1)). It sits between the contested arm and the packing-status
- * arm: a Piece cannot be both contested and unaccounted (contested means a
- * live claim; unaccounted means no live claim stands), but a defensive
- * order still checks contested first.
+ * arm, and — R33's fix — **yields to a live claim of the Person's own**:
+ * `unaccountedOf` walks every visible Trip, closed included, independently
+ * of the active-Trips-only claim walk `whereaboutsByPerson` reads, so the
+ * same Person can be named by a closed Trip's standing *and* hold an open
+ * Piece on a different, active Trip at the same time — re-adding a Gear
+ * that was once lost is an ordinary workflow, not an edge case. Domain §4's
+ * order is universal (active Entry · unaccounted · home), and `rowWhereabouts`
+ * — imported into this very file — already checks for a live trip slice
+ * before the standing; this arm now checks the identical thing
+ * (`answer.slice.kind !== 'trip'`) before it, rather than only checking
+ * `contested === null`, which answers a *different* question (two
+ * simultaneous claims, not any claim at all).
  */
 
 const RECENT_LIMIT = 5
@@ -236,14 +245,31 @@ function PlainRow({
  * never a per-Piece re-derivation of it.** `unaccountedOf` (`unpack.ts`) is
  * a whole-Gear fold — one Trip name and one accumulated `personIds` set per
  * Gear, gathered by `whereabouts.ts`'s `TRIP_SLICES` memo alongside
- * `overClaims` — so this row only asks *"is this Person named in it"*
- * (`unaccounted.personIds.includes(person.id)`) rather than walking the
- * Trip's Entries a second time. **`RESOLVE` here routes to gear detail
- * (`/gear/<id>`), never the Trip** (F16(1)/(2)): the Trip that lost a Piece
- * is typically closed, where nothing can be settled, while gear detail's
- * card footer opens the Home picker that actually clears the standing. Two
- * `▲`s, two doors, two settlers — the identical shape D7's contested arm
- * already draws, to a different destination for a different reason.
+ * `overClaims` — so this row asks *"is this Person named in it, and do they
+ * hold no live claim of their own"* (`unaccounted.personIds.includes(
+ * person.id)` **and** `answer.slice.kind !== 'trip'`) rather than walking
+ * the Trip's Entries a second time.
+ *
+ * **R33: the second half of that test is load-bearing, not defensive.**
+ * `unaccountedOf` walks every *visible* Trip, closed included; the claim
+ * `whereaboutsByPerson`'s own residence walk reads is *active*-Trips-only —
+ * two independent walks over two different sets of Trips, so a Person can be
+ * named by a closed Trip's standing while holding an open, unresolved Piece
+ * on a *different* active Trip at the same moment (the ordinary workflow of
+ * re-adding a once-lost Gear to a new Trip). Domain §4's precedence is
+ * universal — active Entry · unaccounted · home — and `rowWhereabouts`
+ * (imported into this very file for `PlainRow`) already checks for a live
+ * trip slice before the standing; this arm now does the identical check
+ * (`answer.slice.kind !== 'trip'`) rather than only `contested === null`,
+ * which answers a narrower question (two *simultaneous* claims) and stays
+ * true even while a single live claim is masking the standing.
+ *
+ * **`RESOLVE` here routes to gear detail (`/gear/<id>`), never the Trip**
+ * (F16(1)/(2)): the Trip that lost a Piece is typically closed, where
+ * nothing can be settled, while gear detail's card footer opens the Home
+ * picker that actually clears the standing. Two `▲`s, two doors, two
+ * settlers — the identical shape D7's contested arm already draws, to a
+ * different destination for a different reason.
  */
 function contestedInfo(
   answer: PersonWhereabouts,
@@ -270,8 +296,15 @@ function PersonPieceRow({
   unaccounted: Unaccounted | null
 }) {
   const contested = contestedInfo(answer)
+  // R33: a live claim of the Person's own wins, even when it is on a
+  // *different* Trip than the one the standing names — `unaccountedOf`'s
+  // closed-Trips-included walk and this row's active-Trips-only claim are
+  // independent, so `contested === null` alone (only two claims at once)
+  // is not enough; `answer.slice.kind !== 'trip'` is `rowWhereabouts`'s own
+  // "no live trip slice" check, restated for one Person's row.
   const lost =
     contested === null &&
+    answer.slice.kind !== 'trip' &&
     unaccounted !== null &&
     unaccounted.personIds.includes(person.id)
       ? unaccounted

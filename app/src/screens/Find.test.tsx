@@ -611,4 +611,56 @@ describe('Find — the unaccounted standing on the per-person card (S10, F16)', 
     // middle arm applies.
     expect(within(card).queryByTestId('find-person-status')).toBeNull()
   })
+
+  it("reads a Person's own live claim even while a *different*, closed Trip's standing still names them (R33) — unaccountedOf walks every visible Trip, closed included, independently of the active-claim walk", async () => {
+    const kimId = anId()
+    const tessinId = anId()
+    const alpsId = anId()
+    const gearId = anId()
+    const store = await seededStore([
+      personRecorded(kimId, 'Kim'),
+      gearRecorded(gearId, {
+        name: 'Headlamp',
+        container: false,
+        kind: 'per_person',
+      }),
+      // Kim's Piece was lost on Tessin, since closed — the standing names
+      // her.
+      tripCreated(tessinId, 'Tessin 2025'),
+      tripParticipantAdded(tessinId, kimId),
+      tripEntryAdded(tessinId, 'e-tessin', { from: 'depot', gearId }),
+      tripOutcomeSet(tessinId, 'e-tessin', 'lost', kimId),
+      tripPhaseMoved(tessinId, 'closed'),
+      // The same Gear was later added to a new, active Trip with Kim
+      // participating again — an ordinary re-add, her Piece wide open.
+      tripCreated(alpsId, 'Alps 2026'),
+      tripPhaseMoved(alpsId, 'pack_out'),
+      tripParticipantAdded(alpsId, kimId),
+      tripEntryAdded(alpsId, 'e-alps', { from: 'depot', gearId }),
+    ])
+    const user = userEvent.setup()
+
+    renderFind(store)
+    await user.type(searchField(), 'headlamp')
+
+    const card = screen.getByTestId('find-per-person-card')
+    const rows = within(card).getAllByTestId('find-person-row')
+    expect(rows).toHaveLength(1)
+    const kimRow = rows[0] as HTMLElement
+
+    // Her live, unresolved Piece on Alps wins — not the closed Trip's
+    // standing.
+    expect(within(kimRow).getByText('▸ Alps 2026 · LOOSE')).toBeInTheDocument()
+    expect(within(kimRow).getByTestId('find-person-status')).toHaveTextContent(
+      'NOT PACKED',
+    )
+
+    // The standing's own read and its RESOLVE-to-gear-detail must not
+    // appear while a live claim stands — that would hide the packing task
+    // behind an offer to re-home gear that is, in fact, already assigned.
+    expect(within(kimRow).queryByText(/LAST SEEN/)).toBeNull()
+    expect(
+      within(kimRow).queryByRole('link', { name: 'Resolve Kim' }),
+    ).toBeNull()
+  })
 })
