@@ -857,10 +857,9 @@ export function whereaboutsText(
  * with one Trip bringing `×4` reads `▲ ALPS 2026 · CAR` — an over-claim with
  * a single claim, which D8's own `▲ 2 TRIPS` example does not cover.
  *
- * **`×N` is F16(2)'s own exception, granted to Counted alone — not a general
- * reuse of D1's rule.** `▲ TESSIN 2025` for Single and for per-person, `▲ ×1
- * TESSIN 2025` for Counted — see {@link unaccountedPrefix}'s own docstring
- * for why a per-person standing draws no count here at all.
+ * **One prefix per Kind, each naming that Kind's own unit** (§5i G10):
+ * `▲ ×1 TESSIN 2025` for Counted, `▲ 2 OF 3 TESSIN 2025` for per-person,
+ * `▲ TESSIN 2025` for Single — see {@link unaccountedPrefix}.
  *
  * `GearRow.tone` has carried `'home' | 'trip' | 'attention'` since S2b, which
  * wrote that the third arm *"arrives with story 11's `lost` outcome"*. D8
@@ -896,20 +895,24 @@ export function rowWhereabouts(w: Whereabouts): {
 }
 
 /**
- * The unaccounted row's quantity prefix, `×N ` for Counted and `''`
- * otherwise — F16(2)'s exception, granted to Counted **alone**: `×1` is the
- * standing's own concession to D1's "the right-hand read names the unit that
- * splits", not a general reuse of it. A per-person standing states no
- * quantity here, on purpose — `N PIECES` is `sliceCountLabel`'s grammar, for
- * the row's own right-hand slot, a different read from B2's word; F16(2)
- * gives no such exception to per-person, and inventing one here is a design
- * question, not a coding one — a per-person gear partly lost then states no
- * count on this row at all (the Depot's own QTY column also reads `—` for
- * per-person), which is a real gap F16 never reached and is not this
- * function's to close. The Gear's own home slice (`w.slices[0]`, always
- * present) already answers *is this Counted* through {@link ownedCountOf}'s
- * gate — non-null exactly when it is — so this reads that rather than
- * re-deriving Kind.
+ * The unaccounted row's quantity prefix — **one per Kind, and the Kind's own
+ * unit is what it names** (§5i G10, closing the gap F16(2) left).
+ *
+ * - Counted → `×1 ` — F16(2)'s exception, the standing's concession to D1's
+ *   *"the right-hand read names the unit that splits"*. `×` is Counted's
+ *   mark and stays Counted's.
+ * - per-person → `2 OF 3 ` — the total has to ride with the count here,
+ *   because the Depot's QTY column reads `—` for per-person and no slot on
+ *   the row carries it. `N OF M` is already the per-person sheet's own word
+ *   (`2 OF 3 RESOLVED`), so this borrows a spelling rather than minting one.
+ * - Single → `''` — no quantity anywhere, D1's own answer.
+ *
+ * The Kind is read from the standing and the home slice rather than
+ * re-derived: `w.slices[0]`'s `count` is non-null exactly for Counted
+ * ({@link ownedCountOf}'s gate), and `pieceTotal` is non-null exactly for
+ * per-person ({@link unaccountedOf}'s). Counted is checked first because
+ * only one of the two can ever be non-null and stating the order makes that
+ * a fact a reader can see rather than one they must trust.
  */
 function unaccountedPrefix(w: Whereabouts): string {
   const unaccounted = w.unaccounted
@@ -917,6 +920,9 @@ function unaccountedPrefix(w: Whereabouts): string {
   const home = w.slices[0]
   if (home !== undefined && home.kind === 'home' && home.count !== null) {
     return `×${unaccounted.units} `
+  }
+  if (unaccounted.pieceTotal !== null) {
+    return `${unaccounted.units} OF ${unaccounted.pieceTotal} `
   }
   return ''
 }

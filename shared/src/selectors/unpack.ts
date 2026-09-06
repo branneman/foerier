@@ -670,6 +670,18 @@ export interface Unaccounted {
   readonly units: number
   /** Per-person only; empty otherwise. */
   readonly personIds: readonly string[]
+  /**
+   * The denominator of §5i G10's `N OF M` — how many Pieces the standing
+   * could span — and `null` for every other Kind, which is what the
+   * per-person read gates on.
+   *
+   * It is the **union** of the included Pieces on every Entry that
+   * contributed a standing live `lost`, deduped by Person exactly as
+   * `personIds` is. So `units ≤ pieceTotal` always holds, including the
+   * two-Trip case where the same Person's Piece is lost twice: one Person,
+   * counted once on both sides.
+   */
+  readonly pieceTotal: number | null
 }
 
 /**
@@ -686,6 +698,9 @@ interface UnaccountedAccumulator {
   latest: Stamp
   units: number
   personIds: Set<string>
+  /** §5i G10's denominator — the union of Pieces on the contributing
+   *  Entries, deduped by Person. Empty for every non-per-person Gear. */
+  pieceIds: Set<string>
 }
 
 /**
@@ -702,6 +717,9 @@ interface LostReport {
   register: Register<OutcomeValue | null>
   units: number
   personId: string | undefined
+  /** The Entry's own included Pieces — §5i G10's denominator, carried on
+   *  the report so it is counted only when the report actually stands. */
+  pieces: readonly string[]
 }
 
 /**
@@ -719,6 +737,7 @@ function accumulateUnaccounted(
   stamp: Stamp,
   units: number,
   personId: string | undefined,
+  pieces: readonly string[],
 ): void {
   const existing = byGear.get(gearId)
   if (existing === undefined) {
@@ -728,11 +747,13 @@ function accumulateUnaccounted(
       latest: stamp,
       units,
       personIds: personId === undefined ? new Set() : new Set([personId]),
+      pieceIds: new Set(pieces),
     })
     return
   }
   existing.units += units
   if (personId !== undefined) existing.personIds.add(personId)
+  for (const id of pieces) existing.pieceIds.add(id)
   if (compareStamps(stamp, existing.latest) > 0) {
     existing.tripId = tripId
     existing.tripName = tripName
@@ -856,7 +877,8 @@ export function unaccountedOf(
       const container = isContainerEntry(entry, state)
 
       if (kind === 'per_person' && !container) {
-        for (const personId of piecesOf(entry, trip)) {
+        const pieces = piecesOf(entry, trip)
+        for (const personId of pieces) {
           const register = entry.pieces?.[personId]?.outcome
           if (register === undefined) continue
           if (register.value === 'lost') {
@@ -867,6 +889,7 @@ export function unaccountedOf(
               register,
               units: 1,
               personId,
+              pieces,
             })
           } else if (register.value !== null) {
             // An explicit `null` reads *open* and settles nothing; every
@@ -888,6 +911,7 @@ export function unaccountedOf(
           register,
           units: container ? 1 : pieceCountOf(entry, trip, state),
           personId: undefined,
+          pieces: [],
         })
       } else if (register.value !== null) {
         noteSettled(gearId, register)
@@ -911,6 +935,7 @@ export function unaccountedOf(
       stampOf(report.register),
       report.units,
       report.personId,
+      report.pieces,
     )
   }
 
@@ -921,6 +946,7 @@ export function unaccountedOf(
       tripName: acc.tripName,
       units: acc.personIds.size > 0 ? acc.personIds.size : acc.units,
       personIds: [...acc.personIds],
+      pieceTotal: acc.pieceIds.size > 0 ? acc.pieceIds.size : null,
     })
   }
   return result

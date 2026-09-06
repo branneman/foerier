@@ -1349,6 +1349,8 @@ describe('whereabouts — the unaccounted standing (spec §3.6)', () => {
       tripName: 'Alps 2026',
       units: 1,
       personIds: [],
+      // Not per-person, so there is no Piece denominator to state.
+      pieceTotal: null,
     })
   })
 
@@ -1394,6 +1396,44 @@ describe('whereabouts — the unaccounted standing (spec §3.6)', () => {
 
     expect(rowWhereabouts(whereabouts(state, 'g-peg'))).toEqual({
       text: '▲ ×1 Tessin 2025',
+      tone: 'attention',
+    })
+  })
+
+  /**
+   * **§5i G10.** Counted states `×1` because the QTY column holds the
+   * total; per-person's QTY reads `—`, so the total has to ride with the
+   * count. `N OF M` is already the per-person sheet's own word.
+   */
+  it('rowWhereabouts reads ▲ N OF M TRIP NAME for a per-person gear’s standing', () => {
+    const state = fold(
+      log([
+        ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+        ...aPerson({ id: 'p-mark', name: 'Mark' }),
+        ...aPerson({ id: 'p-kim', name: 'Kim' }),
+        ...aPerson({ id: 'p-ana', name: 'Ana' }),
+        ...aTrip({
+          id: TRIP,
+          name: 'Tessin 2025',
+          phase: 'unpack',
+          participants: ['p-mark', 'p-kim', 'p-ana'],
+        }),
+        tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+        // Unpacked in order, one Person at a time: Ana's came back first,
+        // then Mark's and Kim's were given up. Ana's `back` is stamped
+        // EARLIER than either `lost`, so it settles neither (R35's
+        // comparison is a stamp, not a presence) — which is what leaves a
+        // genuine two-of-three standing.
+        tripOutcomeSet(TRIP, 'e-lamp', 'back', 'p-ana'),
+        tripOutcomeSet(TRIP, 'e-lamp', 'lost', 'p-mark'),
+        tripOutcomeSet(TRIP, 'e-lamp', 'lost', 'p-kim'),
+        // Closed, so no live trip slice outranks the standing.
+        tripPhaseMoved(TRIP, 'closed'),
+      ]),
+    )
+
+    expect(rowWhereabouts(whereabouts(state, 'g-lamp'))).toEqual({
+      text: '▲ 2 OF 3 Tessin 2025',
       tone: 'attention',
     })
   })

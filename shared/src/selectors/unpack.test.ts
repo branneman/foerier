@@ -751,6 +751,8 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
       tripName: 'Vosges 2024',
       units: 1,
       personIds: [],
+      // Not per-person, so there is no Piece denominator to state.
+      pieceTotal: null,
     })
   })
 
@@ -853,6 +855,8 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
       tripName: 'Alps 2026',
       units: 1,
       personIds: [],
+      // Not per-person, so there is no Piece denominator to state.
+      pieceTotal: null,
     })
   })
 
@@ -930,6 +934,8 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
       tripName: 'Alps 2026',
       units: 1,
       personIds: [MARK],
+      // §5i G10's denominator: the union of Pieces the standing spans.
+      pieceTotal: 2,
     })
   })
 
@@ -992,6 +998,8 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
       tripName: 'Alps 2026',
       units: 1,
       personIds: [],
+      // Not per-person, so there is no Piece denominator to state.
+      pieceTotal: null,
     })
   })
 
@@ -1065,6 +1073,8 @@ describe('unaccountedOf — the standing (spec §3.5)', () => {
       tripName: 'Alps 2026',
       units: 2,
       personIds: [],
+      // Not per-person, so there is no Piece denominator to state.
+      pieceTotal: null,
     })
   })
 
