@@ -407,7 +407,19 @@
     border-bottom: var(--stroke-rule) solid var(--color-rule-row);
   }
 
+  /* `flex: none` + `white-space: nowrap` (review I1): `.gearListBand` is a
+     non-wrapping flex row of exactly two children, and with neither
+     declared here a width deficit shrinks **both** items in proportion —
+     this label included — rather than landing entirely on
+     `.gearListTrailing` below, which is where the wrap this band now needs
+     is built to absorb it. Unpinned, a deficit narrow enough to wrap the
+     routes onto a second line first wraps `GEAR LIST` itself into `GEAR` /
+     `LIST`, which no board draws and jsdom cannot see (it computes no
+     layout at all). This is the band-level fix the boards draw — the whole
+     deficit lands on the trailing slot, never on the label. */
   .gearListLabel {
+    flex: none;
+    white-space: nowrap;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: 600;

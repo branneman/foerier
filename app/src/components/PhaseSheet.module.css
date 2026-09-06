@@ -34,17 +34,20 @@
   }
 
   /* F12 — `6 OPEN ›`, the `CLOSED` row's own right-hand meta while there is
-     still a gap to close. Muted rather than accented: this is a fact about
-     the Trip, not a call to action — the row's own `PHASES` label and the
-     tap it already accepts are the affordance, and this states why closing
-     from here would route away instead of writing. */
+     still a gap to close. The round board's SET PHASE excerpt paints this
+     exact slot at the accent tone, weight 600 — the same paint `● NOW`
+     carries two rows up — and the boards outrank a code-authored rationale.
+     Accented rather than muted, then: the `›` and its tone are what
+     distinguish this one row from the four plain setters, and the row
+     needs to *lead*, not recede, since it is the only thing on the sheet
+     saying "this tap goes somewhere else." */
   .openMeta {
     flex: none;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: var(--tracking-label);
-    color: var(--color-ink-faint);
+    color: var(--color-accent);
   }
 
   /* The anatomy the owner picker borrowed from this sheet, back home. */

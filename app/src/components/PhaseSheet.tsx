@@ -16,6 +16,7 @@ import { useState } from 'react'
 import { useLocation } from 'wouter'
 
 import { useHousehold } from '../household/store'
+import { openLabel } from '../household/trips'
 import { ActivationConfirm } from './ActivationConfirm'
 import { overClaimGroups } from './OverClaimBand'
 import styles from './PhaseSheet.module.css'
@@ -52,9 +53,9 @@ import { ReopenConfirm } from './ReopenConfirm'
  * `closeTrip(trip, state)` (`gestures.ts`) rather than a bare
  * `trip.phase_moved` — the same gesture F5's own close card calls, so this
  * sheet can never emit half of the close batch. **The second copy of this
- * gate lives in `Unpack.tsx`'s close card** (F11); both read
- * `unpackTotals` fresh rather than trusting a stale prop, and neither
- * re-derives the other's arithmetic.
+ * gate lives in `Unpack.tsx`'s close card** (F11); both read `unpackTotals`
+ * off the fold their own render already holds — never a raw `PackingCount`
+ * prop, and neither re-derives the other's arithmetic.
  *
  * **Leaving `closed` confirms** — see {@link ReopenConfirm}.
  *
@@ -116,12 +117,14 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   // *resolves* the miss. A lookup here would put "what an unrecognised phase
   // means" in two places, and this screen's copy is the one that would drift.
   const known = isKnownPhase(current)
-  // F12's own read — asked once here and again inside `choose` (never
-  // cached between the two): a render and the click it responds to are not
-  // guaranteed to see the same fold if a pull lands between them, and
-  // `choose` is the one that actually gates the write, so it asks fresh
-  // rather than trusting this copy.
-  const open = unpackTotals(trip, state).open
+  // F12's own read, asked once — `choose` below closes over this same
+  // `trip`/`state` pair, so a second call inside it would read the
+  // identical fold, not a fresher one; the object is kept whole (not just
+  // `.open`) because the row's own meta wants `openLabel`'s exact words,
+  // the same ones `Unpack.tsx`'s count line and `TripCard`'s progress line
+  // draw, never re-spelled here.
+  const unpackCount = unpackTotals(trip, state)
+  const open = unpackCount.open
 
   function move(phase: PhaseKey) {
     emit(tripPhaseMoved(trip.id, phase))
@@ -146,11 +149,12 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
       return
     }
     // F12: entering `closed` is gated on `open = 0`, invariant 18's own
-    // gate — this file's docstring has the full reasoning. `unpackTotals`
-    // is asked fresh here rather than trusted from a stale prop, exactly as
-    // `Unpack.tsx`'s own close card asks it fresh from the fold it renders.
+    // gate — this file's docstring has the full reasoning. `open` is the
+    // same read taken above, off the fold this render already closed over;
+    // there is no fresher one a second call inside a click handler could
+    // reach.
     if (phase === 'closed') {
-      if (unpackTotals(trip, state).open > 0) {
+      if (open > 0) {
         // D7: still tappable, never a dead row — the tap goes where the
         // gap can actually be closed, and the sheet gets out of the way of
         // it rather than leaving a claim it cannot back up on screen.
@@ -240,11 +244,21 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
                 <span>{row.label}</span>
                 {now && <span className={styles['now']}>● NOW</span>}
                 {openHere && (
+                  // `openLabel` — never re-spelled: `Unpack.tsx`'s count
+                  // line, the close card's summary and `TripCard`'s
+                  // progress line all draw the identical words off the
+                  // identical function, and a literal `{open} OPEN` here
+                  // would be a fifth spelling waiting to drift the day any
+                  // of the other four is repainted. Ruling D: the `›` is
+                  // decoration and stays out of the accessible name on
+                  // every row that carries one — this button has no
+                  // `aria-label` to do that wholesale, so the glyph alone
+                  // is `aria-hidden` instead.
                   <span
                     className={styles['openMeta']}
                     data-testid="phase-row-open"
                   >
-                    {open} OPEN ›
+                    {openLabel(unpackCount)} <span aria-hidden="true">›</span>
                   </span>
                 )}
               </button>

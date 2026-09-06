@@ -112,6 +112,16 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   A per-Trip-per-Gear "already reduced" register would close it cleanly and
   is outside S10's op catalogue. `shared/src/gestures.ts`'s own docblock on
   `closeTrip`, anchor: `A known, recorded residual risk`
+- **The closed ledger's `1 LOST` colour can read muted while a unit is still
+  genuinely unaccounted for.** `tripHasUnaccounted`
+  (`app/src/household/trips.ts`) asks `unaccountedOf`'s finished map by trip
+  id, and that function names only the Trip of the **latest** live `lost`
+  report when two Trips both hold one for the same Gear. An older closed
+  Trip whose own unit is still summed into that standing then reads `false`
+  here, and its `N LOST` draws muted despite one of its own units still
+  being out there. One-directional: the row can be falsely muted, never
+  falsely attention. `app/src/household/trips.ts`'s own docblock on
+  `tripHasUnaccounted`, anchor: `A known imprecision, inherited from`
 
 ### Traps
 

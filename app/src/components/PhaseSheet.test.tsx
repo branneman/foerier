@@ -10,6 +10,8 @@ import {
   type TripState,
 } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -429,6 +431,75 @@ describe('the SET PHASE sheet', () => {
       for (const row of screen.getAllByTestId('phase-row')) {
         expect(row).not.toBeDisabled()
       }
+    })
+
+    it('spells the meta with openLabel, not a hand-rolled `${open} OPEN`', async () => {
+      // A fixture whose `openLabel` output is not `1 OPEN` — proof this is
+      // the same function `Unpack.tsx`'s count line and `TripCard`'s
+      // progress line call, not a parallel literal that happens to agree
+      // at `1`.
+      const log: OpLog = inMemoryOpLog()
+      const store = createHouseholdStore({
+        log,
+        engine: noopEngine,
+        author: anAuthor(),
+      })
+      store.getState().emit(
+        gearRecorded('g-a', {
+          name: 'Headlamp',
+          container: false,
+          kind: 'single',
+        }),
+      )
+      store.getState().emit(
+        gearRecorded('g-b', {
+          name: 'Stove',
+          container: false,
+          kind: 'single',
+        }),
+      )
+      store.getState().emit(tripCreated(TRIP, 'Alps 2026'))
+      store.getState().emit(tripPhaseMoved(TRIP, 'unpack'))
+      store
+        .getState()
+        .emit(tripEntryAdded(TRIP, 'e-a', { from: 'depot', gearId: 'g-a' }))
+      store
+        .getState()
+        .emit(tripEntryAdded(TRIP, 'e-b', { from: 'depot', gearId: 'g-b' }))
+      await store.getState().drained()
+
+      renderSheetWithRouter({
+        store,
+        trip: () => store.getState().state.trips[TRIP]!,
+      })
+
+      expect(screen.getByRole('button', { name: /CLOSED/ })).toHaveTextContent(
+        '2 OPEN ›',
+      )
+    })
+
+    it('draws the accent tone the round board paints this slot, not the muted meta ink', () => {
+      const css = readFileSync(
+        join(
+          dirname(expect.getState().testPath ?? ''),
+          'PhaseSheet.module.css',
+        ),
+        'utf8',
+      )
+      const rule = /\.openMeta\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+      expect(rule).toMatch(/color:\s*var\(--color-accent\)/)
+    })
+
+    it('keeps the › out of the accessible name (ruling D)', async () => {
+      const seeded = await seededOpenTrip()
+      renderSheetWithRouter(seeded)
+
+      // The computed name is `CLOSED 1 OPEN` — no glyph, no button-name
+      // spoken as "greater-than sign".
+      expect(
+        screen.getByRole('button', { name: 'CLOSED 1 OPEN' }),
+      ).toBeVisible()
+      expect(screen.queryByRole('button', { name: /›/ })).toBeNull()
     })
 
     it('routes to the unpack screen instead of writing, and closes the sheet', async () => {

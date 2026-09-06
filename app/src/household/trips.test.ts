@@ -14,6 +14,7 @@ import {
   tripPhaseMoved,
   tripParticipantRemoved,
   tripPieceRemoved,
+  unaccountedOf,
   type HouseholdState,
   type OpAuthor,
   type OpSpec,
@@ -568,7 +569,7 @@ describe('tripHasUnaccounted', () => {
       tripPhaseMoved(TRIP, 'closed'),
     )
 
-    expect(tripHasUnaccounted(theTrip(state), state)).toBe(true)
+    expect(tripHasUnaccounted(theTrip(state), unaccountedOf(state))).toBe(true)
   })
 
   it('reads false once the Gear has been re-homed since — the standing settles, the outcome register does not move', () => {
@@ -585,7 +586,7 @@ describe('tripHasUnaccounted', () => {
       tripPhaseMoved(TRIP, 'closed'),
     )
 
-    expect(tripHasUnaccounted(theTrip(state), state)).toBe(false)
+    expect(tripHasUnaccounted(theTrip(state), unaccountedOf(state))).toBe(false)
   })
 
   it('reads false for a Trip with no lost outcome at all', () => {
@@ -594,6 +595,6 @@ describe('tripHasUnaccounted', () => {
       tripPhaseMoved(TRIP, 'closed'),
     )
 
-    expect(tripHasUnaccounted(theTrip(state), state)).toBe(false)
+    expect(tripHasUnaccounted(theTrip(state), unaccountedOf(state))).toBe(false)
   })
 })

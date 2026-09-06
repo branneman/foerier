@@ -6,6 +6,7 @@ import {
   tripNameOrUnnamed,
   tripPhaseMoved,
   tripSections,
+  unaccountedOf,
   unpackTotals,
   type PhaseKey,
   type TripState,
@@ -186,20 +187,29 @@ export function Trips() {
   // by id below. F18 adds `lost` (`unpackTotals(trip, state).lost`, a
   // Trip's own history) and `attention` (`tripHasUnaccounted`, the live
   // standing) beside the piece count `listTotals` already supplied.
-  const closedMeta = useMemo(
-    () =>
-      new Map(
-        sections.closed.map((trip) => [
-          trip.id,
-          {
-            pieces: listTotals(trip, state).pieces,
-            lost: unpackTotals(trip, state).lost,
-            attention: tripHasUnaccounted(trip, state),
-          },
-        ]),
-      ),
-    [sections, state],
-  )
+  //
+  // **`unaccountedOf(state)` is read once**, above the map, and shared
+  // across every closed row rather than let `tripHasUnaccounted` call it
+  // once per row (review I5). That function is a full walk of every
+  // visible Trip's Entries with a per-comparison label sort behind it —
+  // `unaccountedOf`'s own docstring says it is meant to be called once per
+  // fold, `whereabouts.ts`'s own memo the precedent for taking that
+  // literally — and fifteen closed Trips calling it fifteen times inside
+  // this map would be fifteen full-household walks on every render this
+  // memo re-runs.
+  const closedMeta = useMemo(() => {
+    const standings = unaccountedOf(state)
+    return new Map(
+      sections.closed.map((trip) => [
+        trip.id,
+        {
+          pieces: listTotals(trip, state).pieces,
+          lost: unpackTotals(trip, state).lost,
+          attention: tripHasUnaccounted(trip, standings),
+        },
+      ]),
+    )
+  }, [sections, state])
 
   return (
     // A fragment, because the FAB is the screen's **sibling** — see the note

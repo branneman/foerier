@@ -7,11 +7,11 @@ import {
   phaseOf,
   pieceInclusion,
   statusGlyph,
-  unaccountedOf,
   type HouseholdState,
   type EntryState,
   type PackingCount,
   type TripState,
+  type Unaccounted,
   type UnpackCount,
 } from '@foerier/shared'
 
@@ -284,11 +284,17 @@ export function tripStartMonth(trip: TripState): string | null {
  * start date drops {@link tripStartMonth}'s.
  *
  * The **number** is history — `unpackTotals(trip, state).lost`, a Trip's own
- * outcome count, which never changes once the Trip is closed. Whether it is
- * drawn attention or muted is a *different* question, answered by
- * {@link tripHasUnaccounted} rather than by this function: the colour is the
- * standing, and a standing can still change (a re-home months later) long
- * after the count it is drawn beside cannot.
+ * outcome count. **The app authors no write that moves it once the Trip is
+ * closed** (invariant 19, a policy this build upholds rather than a property
+ * of the fold): the count still reaches `pieceCountOf`, which reads the
+ * Gear's own `kind` and the Entry's Bring-count — aggregates with no
+ * ordering against the Trip's — so a late `gear.kind_set` or a peer's
+ * `trip.piece_removed` can in principle move it after the fact; nothing in
+ * the reducer forbids that op from landing. Whether it is drawn attention or
+ * muted is a *different* question, answered by {@link tripHasUnaccounted}
+ * rather than by this function: the colour is the standing, and a standing
+ * can still change (a re-home months later) long after the count beside it
+ * is not supposed to.
  */
 export function lostLabel(lost: number): string | null {
   return lost === 0 ? null : `${lost} LOST`
@@ -296,28 +302,41 @@ export function lostLabel(lost: number): string | null {
 
 /**
  * Whether any of `trip`'s own `lost` outcomes is still an active
- * standing — F18's colour question, `unaccountedOf`'s (`unpack.ts`) finished
- * map read by trip id rather than re-walked.
+ * standing — F18's colour question, over `unaccountedOf`'s (`unpack.ts`)
+ * finished map, read by trip id rather than re-walked.
  *
- * **A known imprecision, inherited from `unaccountedOf` itself.** That
- * function sums a Gear's lost units across every Trip that ever reported
- * one, but names only the Trip of the **latest** live report
- * (`unaccountedOf`'s own docstring: "two Trips can both hold a live lost
- * outcome for one Gear… the latest such outcome names the Trip"). So a Gear
- * lost on this Trip and *again*, later, on a different one reads its
- * standing against that later Trip alone — this function would then answer
- * `false` for the older, still-contributing Trip, and its `N LOST` would
- * read muted despite one of its own units still being unaccounted for
- * somewhere. Recorded rather than fixed: `unaccountedOf` names a single
- * Trip by design, and this ledger row asks the identical question gear
- * detail and Find already ask through the identical function, rather than
- * inventing a second, per-Trip accounting `unpack.ts` does not keep.
+ * **Takes the finished map, not the fold** — `standings` is the caller's own
+ * `unaccountedOf(state)`, called **once** and shared across every closed
+ * Trip's row (`Trips.tsx`'s own `closedMeta`), never once per row. That
+ * function is a full walk of every visible Trip's Entries with a per-
+ * comparison label sort behind it; a household with fifteen closed Trips
+ * calling this once per row inside their own map would be fifteen of those
+ * walks on every fold change, exactly the shape `slice.ts`'s own memo three
+ * lines above this one already exists to avoid, and exactly what
+ * `unaccountedOf`'s own docstring means by "called once per fold."
+ *
+ * **A known imprecision, inherited from `unaccountedOf` itself** — recorded
+ * in `docs/technical-debt.md` under "the closed ledger's LOST colour can
+ * read muted while a unit is still genuinely unaccounted for". That function
+ * sums a Gear's lost units across every Trip that ever reported one, but
+ * names only the Trip of the **latest** live report (`unaccountedOf`'s own
+ * docstring: "two Trips can both hold a live lost outcome for one Gear… the
+ * latest such outcome names the Trip"). So a Gear lost on this Trip and
+ * *again*, later, on a different one reads its standing against that later
+ * Trip alone — this function would then answer `false` for the older,
+ * still-contributing Trip, and its `N LOST` would read muted despite one of
+ * its own units still being unaccounted for somewhere. One-directional: the
+ * row can be falsely *muted*, never falsely *attention*. Recorded rather
+ * than fixed: `unaccountedOf` names a single Trip by design, and this
+ * ledger row asks the identical question gear detail and Find already ask
+ * through the identical function, rather than inventing a second, per-Trip
+ * accounting `unpack.ts` does not keep.
  */
 export function tripHasUnaccounted(
   trip: TripState,
-  state: HouseholdState,
+  standings: ReadonlyMap<string, Unaccounted>,
 ): boolean {
-  for (const standing of unaccountedOf(state).values()) {
+  for (const standing of standings.values()) {
     if (standing.tripId === trip.id) return true
   }
   return false

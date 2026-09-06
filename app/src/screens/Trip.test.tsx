@@ -1154,6 +1154,27 @@ describe('the trip screen — UNPACK › (F14)', () => {
     expect(routes).toMatch(/gap:\s*var\(--space-12\)/)
   })
 
+  /**
+   * Review I1. `.gearListBand` is a non-wrapping flex row of exactly two
+   * children — the label and the trailing slot — and neither
+   * `.gearListTrailing`'s own `flex-wrap` nor its `justify-content` stops a
+   * width deficit from shrinking the *label* too, unless the label refuses
+   * to shrink at all. Without `flex: none` + `white-space: nowrap` here, a
+   * narrow band wraps `GEAR LIST` into `GEAR` / `LIST` before or alongside
+   * the routes wrapping — a visible regression at the phone width jsdom
+   * (which computes no layout) cannot see, so this is pinned in the
+   * stylesheet the same way the wrap above is.
+   */
+  it('pins the GEAR LIST label so a width deficit lands on the trailing slot, never on the label', () => {
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
+      'utf8',
+    )
+    const label = /\.gearListLabel\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(label).toMatch(/flex:\s*none/)
+    expect(label).toMatch(/white-space:\s*nowrap/)
+  })
+
   it('grows UNPACK › to a ≥44px hit area without reaching its neighbour', () => {
     const css = readFileSync(
       join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
