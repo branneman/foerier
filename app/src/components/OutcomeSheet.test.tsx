@@ -1,7 +1,9 @@
 import {
+  containmentView,
   gearRecorded,
   personRecorded,
   placeRecorded,
+  tripConsumedCountSet,
   tripCreated,
   tripEntryAdded,
   tripEntryBringCountSet,
@@ -48,6 +50,9 @@ const E_GAS = 'eeeeeeee-0000-7000-8000-000000000012'
 const TENT = 'gggggggg-0000-7000-8000-000000000013'
 const E_TENT = 'eeeeeeee-0000-7000-8000-000000000013'
 
+const MAP = 'gggggggg-0000-7000-8000-000000000017'
+const E_MAP = 'eeeeeeee-0000-7000-8000-000000000017'
+
 const CRATE = 'gggggggg-0000-7000-8000-000000000014'
 const E_CRATE = 'eeeeeeee-0000-7000-8000-000000000014'
 const INNER = 'gggggggg-0000-7000-8000-000000000015'
@@ -65,9 +70,10 @@ interface Seeded {
 
 /**
  * A Counted Gas canister (Bring-count 4, Owned ×6, home `Bak 3`); a Single
- * Tent; a container Crate B with one Entry (`Inner`) packed inside it on
- * this Trip; and a per-person Headlamp with one Participant — every shape
- * the sheet's own gates read.
+ * Tent with **no** residence at all (the fully-Loose case); a second Single,
+ * Map case, with a home path; a container Crate B with one Entry (`Inner`)
+ * packed inside it on this Trip; and a per-person Headlamp with one
+ * Participant — every shape the sheet's own gates read.
  */
 async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
   const log: OpLog = inMemoryOpLog()
@@ -96,6 +102,14 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
       kind: 'single',
     }),
     tripEntryAdded(TRIP, E_TENT, { from: 'depot', gearId: TENT }),
+
+    gearRecorded(MAP, {
+      name: 'Map case',
+      container: false,
+      kind: 'single',
+      residence: { in: 'place', id: BAK3 },
+    }),
+    tripEntryAdded(TRIP, E_MAP, { from: 'depot', gearId: MAP }),
 
     gearRecorded(CRATE, { name: 'Crate B', container: true, kind: 'single' }),
     tripEntryAdded(TRIP, E_CRATE, { from: 'depot', gearId: CRATE }),
@@ -147,7 +161,14 @@ function Harness({
   const trip = state.trips[TRIP]
   const entry = trip?.entries?.[entryId]
   if (trip === undefined || entry === undefined) return null
-  return <OutcomeSheet trip={trip} entry={entry} onClose={onClose} />
+  return (
+    <OutcomeSheet
+      trip={trip}
+      entry={entry}
+      view={containmentView(state)}
+      onClose={onClose}
+    />
+  )
 }
 
 function renderSheet(
@@ -227,6 +248,29 @@ describe('the outcome sheet', () => {
     await user.click(chipNamed('○ OPEN'))
 
     expect(await seed.authored()).toEqual([])
+  })
+
+  /**
+   * **The only path in the app that clears an outcome.** `choose` emits
+   * `{ outcome: null }` — the payload a well-meaning `if (!next) return`
+   * would treat identically to "nothing chosen" and silently swallow, since
+   * `null` is falsy. Nothing else in this file exercises tapping `OPEN`
+   * while a *resolved* outcome is current, so this is the one test standing
+   * between that regression and a green suite.
+   */
+  it('writes {outcome: null} tapping OPEN to clear a resolved outcome', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded(tripOutcomeSet(TRIP, E_GAS, 'back'))
+    renderSheet(seed, E_GAS)
+
+    await user.click(chipNamed('○ OPEN'))
+
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_GAS, outcome: null },
+      },
+    ])
   })
 
   it('reveals the stepper only while CONSUMED is the outcome, opening at the Bring-count', async () => {
@@ -319,22 +363,37 @@ describe('the outcome sheet', () => {
     ).toBeInTheDocument()
   })
 
-  it('commits a typed value once, on blur, not per keystroke (ui/Stepper K)', async () => {
+  /**
+   * **Multi-digit, and past the ceiling on purpose (review Minor 9, ruling
+   * R21).** A single-digit typed value never exercises `Stepper`'s own
+   * `max` clamp; typing `44` against a Bring-count of 4 is exactly the
+   * regression the review round reproduced — before `max` existed, the well
+   * was left stranded at the literal `44` forever, because a caller-side
+   * clamp compared its own already-clamped `4` to the value already held
+   * and skipped the `onChange` that would otherwise have corrected it.
+   */
+  it('commits a typed value once, on blur, and never strands the well past the ceiling (ui/Stepper K, R21)', async () => {
     const user = userEvent.setup()
-    const seed = await seeded(tripOutcomeSet(TRIP, E_GAS, 'consumed'))
+    const seed = await seeded(
+      tripOutcomeSet(TRIP, E_GAS, 'consumed'),
+      tripConsumedCountSet(TRIP, E_GAS, 2),
+    )
     renderSheet(seed, E_GAS)
 
     const well = screen.getByRole('textbox', { name: /consumed count/i })
     await user.clear(well)
-    await user.type(well, '2')
+    await user.type(well, '44')
     expect(await seed.authored()).toEqual([])
 
     await user.tab()
 
+    // Clamped to the Bring-count (4) by `Stepper`'s own `max` — never the
+    // literal `44` typed, and not left stranded there.
+    expect(well).toHaveValue('4')
     expect(await seed.authored()).toEqual([
       {
         type: 'trip.consumed_count_set',
-        payload: { entry_id: E_GAS, count: 2 },
+        payload: { entry_id: E_GAS, count: 4 },
       },
     ])
   })
@@ -365,16 +424,24 @@ describe('the outcome sheet', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
-  it("adds the container's fact and authors no op on its contents", async () => {
+  /**
+   * **The inside-count is the row's, not the sheet's** — README §7 and
+   * ruling F1, decisive over board §02's own annotation card: "the container
+   * row is ordinary — no rail, meta `→ SHELF L-TOP · 12 INSIDE` — and **its
+   * sheet states** `ITS CONTENTS KEEP THEIR OWN OUTCOMES.`" `Inner` still
+   * rides inside `Crate B` on this Trip (the fixture's own
+   * `tripEntryMoved`), proving the sentence's claim rather than merely
+   * stating it with nothing actually nested.
+   */
+  it("adds the container's one clause, states no inside-count, and authors no op on its contents", async () => {
     const user = userEvent.setup()
     const seed = await seeded()
     renderSheet(seed, E_CRATE)
 
     expect(
-      screen.getByText(
-        'OUTCOME · CONTAINER · 1 INSIDE · ITS CONTENTS KEEP THEIR OWN OUTCOMES.',
-      ),
+      screen.getByText('OUTCOME · ITS CONTENTS KEEP THEIR OWN OUTCOMES.'),
     ).toBeInTheDocument()
+    expect(screen.queryByText(/INSIDE/)).not.toBeInTheDocument()
 
     await user.click(chipNamed('● BACK'))
 
@@ -406,5 +473,38 @@ describe('the outcome sheet', () => {
         'ONE OP PER TAP. LOST KEEPS THE HOME SLOT AND STAYS SEARCHABLE.',
       ),
     ).toBeInTheDocument()
+  })
+})
+
+/**
+ * Two renderings this file's own fact composition produces that no board
+ * draws and no ruling names — pinned as they behave today rather than left
+ * to drift, per this codebase's standing rule that a decision taken in code
+ * the boards never reached gets written down and challenged (a design
+ * round, not this diff, settles whether either should read differently).
+ * `Unpack.tsx`'s own `describe('DESTINATION mode — two code-authored
+ * renderings, unpinned by any ruling', …)` is the precedent this mirrors —
+ * no board frame here draws this sheet for anything but a Counted Entry.
+ */
+describe('two code-authored renderings, unpinned by any ruling', () => {
+  it('reads OUTCOME · → path for a Single Entry with a home', async () => {
+    const seed = await seeded()
+    renderSheet(seed, E_MAP)
+
+    expect(screen.getByText('OUTCOME · → Bak 3')).toBeInTheDocument()
+  })
+
+  it('collapses to the bare word OUTCOME for a Single Entry with no home path', async () => {
+    // `Tent, 3p` carries no `residence` register at all — the fully-Loose
+    // case — so `returnPathOf` answers `[]` and the fact has nothing left
+    // to say beyond the label itself. This is the sheet's own
+    // `description`, which is what a screen reader hears right after the
+    // title: the worst case this composition reaches is one word.
+    const seed = await seeded()
+    renderSheet(seed, E_TENT)
+
+    const sheet = screen.getByRole('dialog', { name: 'Tent, 3p' })
+    const fact = screen.getByText('OUTCOME')
+    expect(sheet).toHaveAttribute('aria-describedby', fact.id)
   })
 })

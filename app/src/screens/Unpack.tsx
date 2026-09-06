@@ -513,8 +513,11 @@ function personGroups(
         // Composite, and deliberately not the bare Entry id: two Pieces of
         // one per-person Entry draw two rows here, and each needs both a
         // unique React key and a unique `UnpackRow` test id — `PackingRow`'s
-        // own `${entryId}:${personId}` key, carried into the DOM id too
-        // since `onOutcome`/`onReHome` are still `noop` and read neither.
+        // own `${entryId}:${personId}` key, carried into the DOM id too.
+        // `onReHome` still reads neither (Task 14); `onOutcome` reads it now
+        // as `openOutcome`'s own guard — a composite key never resolves in
+        // `trip.entries`, so this row's pill is a live button that does
+        // nothing until Task 13's roster sheet wires it.
         entryId: `${item.entryId}:${item.personId}`,
         name: `${entryLabel(entry, state)} — ${personNameOrUnnamed(
           state,
@@ -1028,6 +1031,7 @@ export function Unpack() {
         <OutcomeSheet
           trip={trip}
           entry={outcomeEntry}
+          view={view}
           onClose={() => setOutcomeEntryId(null)}
         />
       )}

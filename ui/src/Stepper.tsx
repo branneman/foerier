@@ -61,6 +61,21 @@ import styles from './Stepper.module.css'
  * lists nothing, and the row stays; `Stepper` must be able to sit at zero
  * without refusing to.
  *
+ * **`max` is optional and undefined by default — most callers have no
+ * ceiling — but the clamp lives here, not at a caller, once one exists**
+ * (S10 task 12 review, ruling R21, this component's own second caller with a
+ * real ceiling). A caller-side clamp — decide whether to call `onChange` by
+ * comparing an already-clamped value to what it holds — leaves `commit()`'s
+ * own `setText(String(next))` uncapped: typing past the ceiling sets the
+ * buffer to the literal digits typed, and if the clamped-and-compared value
+ * the caller *would* emit happens to equal the value it already holds, the
+ * caller's own needless-write guard skips the `onChange` that would
+ * otherwise change `value` and re-fire the `[value]` effect above — so nothing
+ * ever corrects the buffer, and the well is left showing a number nobody
+ * chose for the rest of the mount. Passing `max` in means `commit()` and both
+ * buttons clamp to `[min, max]` and canonicalise the buffer themselves,
+ * before `onChange` is ever called, exactly as they already do for `min`.
+ *
  * `ui/` never imports the store or a router (`frontend-design.md` §5):
  * props in, callbacks out.
  */
@@ -69,6 +84,11 @@ export interface StepperProps {
   value: number | null
   /** Floors both the decrement button and the well. Defaults to `0`. */
   min?: number
+  /** Ceilings both the increment button and the well. Undefined by default —
+   * most callers have no ceiling; a caller with one must pass it here rather
+   * than clamping `onChange`'s own result (see this file's docstring, ruling
+   * R21). */
+  max?: number
   onChange: (next: number | null) => void
   /** `default` is h48; `dense` is h32, for a row. */
   size?: 'default' | 'dense'
@@ -83,11 +103,13 @@ export interface StepperProps {
 export function Stepper({
   value,
   min = 0,
+  max,
   onChange,
   size = 'default',
   label,
 }: StepperProps) {
   const atMin = value !== null && value <= min
+  const atMax = value !== null && max !== undefined && value >= max
   const [text, setText] = useState(() => (value === null ? '' : String(value)))
 
   useEffect(() => {
@@ -135,7 +157,10 @@ export function Stepper({
       return
     }
 
-    const next = Math.max(min, parsed)
+    const next =
+      max === undefined
+        ? Math.max(min, parsed)
+        : Math.min(Math.max(min, parsed), max)
     setText(String(next))
     onChange(next)
   }
@@ -179,7 +204,11 @@ export function Stepper({
         type="button"
         className={styles['button']}
         aria-label={`Increase ${label}`}
-        onClick={() => onChange((value ?? min) + 1)}
+        disabled={atMax}
+        onClick={() => {
+          const next = (value ?? min) + 1
+          onChange(max === undefined ? next : Math.min(next, max))
+        }}
       >
         +
       </button>

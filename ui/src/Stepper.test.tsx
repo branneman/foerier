@@ -229,6 +229,95 @@ describe('Stepper', () => {
     ).toBeEnabled()
   })
 
+  it('disables increment at max', () => {
+    render(
+      <Stepper value={4} max={4} onChange={() => {}} label="Consumed count" />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Increase Consumed count' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Decrease Consumed count' }),
+    ).toBeEnabled()
+  })
+
+  it('re-enables increment once below a non-undefined max', () => {
+    const { rerender } = render(
+      <Stepper value={4} max={4} onChange={() => {}} label="Consumed count" />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Increase Consumed count' }),
+    ).toBeDisabled()
+
+    rerender(
+      <Stepper value={3} max={4} onChange={() => {}} label="Consumed count" />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Increase Consumed count' }),
+    ).toBeEnabled()
+  })
+
+  it('clamps an increment past max to max', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    // `atMax` disables the button once `value` reaches `max`, but the click
+    // handler's own clamp is what protects a value one below it from a
+    // single tap overshooting — the button is still enabled at 3 with a
+    // max of 4.
+    render(
+      <Stepper value={3} max={4} onChange={onChange} label="Consumed count" />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'Increase Consumed count' }),
+    )
+
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenCalledWith(4)
+  })
+
+  /**
+   * **Ruling R21 — the stranded-buffer regression.** A Bring-count of 4, a
+   * Consumed-count sitting at its own default (4, `consumedCountOf`'s own
+   * absent-register answer), the well cleared and `44` typed, then blur:
+   * before `max` existed, `commit()` had no ceiling of its own, so it set
+   * the buffer to the literal `44` and called `onChange(44)` — a caller that
+   * clamped that to `4` and then skipped the emit because `4` was already
+   * the value it held left the well showing `44` forever, since `value`
+   * never changed and the `[value]` effect above never re-fired to correct
+   * it. `max` moves the clamp into `commit()` itself, so the buffer is
+   * rewritten to `4` — the canonical spelling of what was actually
+   * committed — regardless of what the caller does with the (still called,
+   * still `4`) `onChange`.
+   */
+  it('corrects the well to max even when the caller-held value does not move (R21)', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Stepper
+        value={4}
+        min={1}
+        max={4}
+        onChange={onChange}
+        label="Consumed count"
+      />,
+    )
+
+    const well = screen.getByRole('textbox', { name: 'Consumed count' })
+    await user.clear(well)
+    await user.type(well, '44')
+    await user.tab()
+
+    // The buffer never strands past the ceiling — the whole of the defect.
+    expect(well).toHaveValue('4')
+    // `commit()` still calls `onChange` unconditionally with the clamped
+    // value; it is the caller's own needless-write guard that may then skip
+    // emitting an op, which this component neither knows nor needs to know.
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenCalledWith(4)
+  })
+
   it('labels both controls for assistive technology using the label prop', () => {
     render(<Stepper value={1} onChange={() => {}} label="Bring count" />)
 
