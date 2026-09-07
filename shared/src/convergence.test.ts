@@ -60,6 +60,7 @@ import {
   statusOf,
 } from './selectors/packing.ts'
 import { piecesOf } from './selectors/piece.ts'
+import { dimension } from './selectors/slice.ts'
 import { isActive } from './selectors/trip.ts'
 import { tripContainmentView } from './selectors/tripContainment.ts'
 import {
@@ -3162,9 +3163,17 @@ describe('convergence', () => {
     // `consumedReductions` owes: the delta is zero and this tap's own ops
     // are the phase move alone.
     clock.advance(1000)
+    const beforeTap4 = bStream.length
     for (const spec of closeTrip(b.state().trips[trip]!, b.state())) {
       emitB(spec)
     }
+    // Spec §2.2's middle row, pinned directly rather than only through its
+    // owned-count consequence: `delta = 0` means this tap authors NOTHING
+    // beyond the phase move — no second `gear.owned_count_set`, no second
+    // `trip.consumption_posted`.
+    expect(bStream.slice(beforeTap4).map((op) => op.type)).toEqual([
+      'trip.phase_moved',
+    ])
     exchange(a, b)
 
     expect(a.state()).toEqual(b.state())
@@ -3216,8 +3225,27 @@ describe('convergence', () => {
    * replica, so the retained arrangement is proven visible on a Device that
    * itself wrote neither the close nor ever touched an Entry or Piece
    * register on this Trip.
+   *
+   * **Retention alone is not "comes back into effect."** `packingItems`,
+   * `stageOf`, `outcomeOf` and `pieceOutcomeOf` are none of them gated on
+   * `phase` — they would read identically whether or not this Trip was ever
+   * closed at all, so on their own they prove only that `closeTrip` and
+   * `reopenTrip` never touch an Entry or Piece register. Spec §7 and
+   * architecture §8.4 both claim more than that: the arrangement *stops*
+   * being in effect while the Trip is closed and *returns* on reopen,
+   * because active-ness derives from `phase` alone. `dimension('trip')`
+   * (`selectors/slice.ts`, gated on `isClosed`) and `isActive` are two real
+   * consumers of exactly that derivation — the Depot's own TRIP dimension is
+   * one of them — so this test also drops the Trip out of `gearCounted`'s
+   * membership while closed and asserts it returns, byte-identical, on
+   * reopen. `whereabouts()` was considered and rejected for this same job:
+   * `whereabouts.ts`'s per-entry gate skips any Entry whose `outcome` is
+   * non-null regardless of phase, and every Entry here is resolved by
+   * construction (invariant 18's `open = 0` close gate), so it would report
+   * nothing before, during or after the close — it cannot show this
+   * property on any Trip this test is allowed to close.
    */
-  it("a reopened Trip's retained packing arrangement is unchanged by closing or reopening, on both replicas", () => {
+  it("a reopened Trip's retained packing arrangement is unchanged by closing or reopening, and the Depot's TRIP membership drops out and returns with it, on both replicas", () => {
     const { a, b } = aWorld()
     const gearCounted = GEAR_IDS[0]
     const gearItem = GEAR_IDS[1]
@@ -3261,6 +3289,12 @@ describe('convergence', () => {
       }),
     )
     a.emit(tripCreated(trip, 'Alps'))
+    // F5 is only ever reached from `unpack` (`patterns.md`), and `isActive`
+    // needs one of invariant 17's three arranging phases — a fresh Trip
+    // folds to `draft` (S6's own rule) and `draft` is not one of them, so
+    // without this the "before" baseline this test opens with would already
+    // be inactive and the phase-gated assertions below would prove nothing.
+    a.emit(tripPhaseMoved(trip, 'unpack'))
     a.emit(tripParticipantAdded(trip, personA))
     a.emit(tripParticipantAdded(trip, personB))
     a.emit(tripEntryAdded(trip, eBox, { from: 'depot', gearId: gearBox }))
@@ -3318,10 +3352,31 @@ describe('convergence', () => {
     })
     const outcomesBefore = snapshotOutcomes(a.state())
 
+    // The phase-gated baseline, before anything closes: the Trip is Active
+    // and `gearCounted` carries it as a TRIP membership value — the exact
+    // read `dimension('trip')` hands the Depot's slice bar.
+    expect(isActive(a.state().trips[trip]!)).toBe(true)
+    const membershipBefore = dimension('trip').valuesOf(
+      a.state().gear[gearCounted]!,
+      a.state(),
+    )
+    expect(membershipBefore).toEqual([trip])
+
     for (const spec of closeTrip(a.state().trips[trip]!, a.state())) {
       a.emit(spec)
     }
     exchange(a, b)
+
+    // While closed: active-ness derives from `phase` alone, and every
+    // reader downstream of it agrees — on BOTH replicas, not just the one
+    // that authored the close.
+    for (const r of [a, b]) {
+      expect(isActive(r.state().trips[trip]!)).toBe(false)
+      expect(
+        dimension('trip').valuesOf(r.state().gear[gearCounted]!, r.state()),
+      ).not.toContain(trip)
+    }
+
     for (const spec of reopenTrip(
       b.state().trips[trip]!,
       'unpack',
@@ -3346,6 +3401,16 @@ describe('convergence', () => {
         stageBefore,
       )
       expect(snapshotOutcomes(r.state())).toEqual(outcomesBefore)
+
+      // The "returns into effect" claim itself: no op ever re-added
+      // `gearCounted` to this Trip's membership or moved it back into
+      // Active on its own — `phase` alone did both, and the derived
+      // membership comes back byte-identical to what it was before any of
+      // this ran.
+      expect(isActive(r.state().trips[trip]!)).toBe(true)
+      expect(
+        dimension('trip').valuesOf(r.state().gear[gearCounted]!, r.state()),
+      ).toEqual(membershipBefore)
     }
   })
 
