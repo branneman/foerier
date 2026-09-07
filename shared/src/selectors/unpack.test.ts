@@ -1628,4 +1628,116 @@ describe('standingLostOf — what about this Trip is still unaccounted (spec §6
 
     expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([])
   })
+
+  it('units: a Counted Entry carries its whole Bring-count, not a flat 1 — spec §6’s headline number', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      aGear({ id: 'g-peg', name: 'Peg', kind: 'counted' }),
+      [
+        tripEntryAdded(TRIP, 'e-pegs', { from: 'depot', gearId: 'g-peg' }),
+        tripEntryBringCountSet(TRIP, 'e-pegs', 4),
+        tripOutcomeSet(TRIP, 'e-pegs', 'lost'),
+      ],
+    )
+
+    expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([
+      { entryId: 'e-pegs', personId: null, gearName: 'Peg', units: 4 },
+    ])
+  })
+
+  it('a per-person CONTAINER Entry produces a whole-Entry row, personId: null — R10/R11’s family, container checked before the fan-out', () => {
+    const state = depot(
+      aPerson({ id: MARK, name: 'Mark' }),
+      aGear({
+        id: 'g-crate',
+        name: 'Personal crate',
+        kind: 'per_person',
+        container: true,
+      }),
+      aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'unpack',
+        participants: [MARK],
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-crate', { from: 'depot', gearId: 'g-crate' }),
+        tripOutcomeSet(TRIP, 'e-crate', 'lost'),
+      ],
+    )
+
+    expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([
+      {
+        entryId: 'e-crate',
+        personId: null,
+        gearName: 'Personal crate',
+        units: 1,
+      },
+    ])
+  })
+
+  it('a later BACK on a different Person’s Piece of the SAME Entry settles the earlier LOST — per Gear, not per Person, within one Trip (R35)', () => {
+    const base = [
+      ...aPerson({ id: MARK, name: 'Mark' }),
+      ...aPerson({ id: KIM, name: 'Kim' }),
+      ...aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+      ...aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'unpack',
+        participants: [MARK, KIM],
+      }),
+      tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+    ]
+    const lost = stamp([tripOutcomeSet(TRIP, 'e-lamp', 'lost', MARK)], {
+      start: 10,
+    })
+    const laterBack = stamp([tripOutcomeSet(TRIP, 'e-lamp', 'back', KIM)], {
+      start: 20,
+    })
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...lost, ...laterBack],
+      emptyState(),
+    )
+
+    // Mark's Piece is still `lost` in its own register — R35 settles the
+    // Gear's whole standing, not that register — but the block draws
+    // nothing for it, exactly as `unaccountedOf`'s own "settles per Gear,
+    // not per Person" case.
+    expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([])
+  })
+
+  it('CRITICAL: a later BACK recorded on a DIFFERENT, later Trip settles this (closed) Trip’s standing — spec §8.7’s household-wide settle, story 11’s own motivating case', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent' }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const lost = stamp([tripOutcomeSet(TRIP, 'e-tent', 'lost')], { start: 10 })
+    const closed = stamp([tripPhaseMoved(TRIP, 'closed')], { start: 20 })
+    // A later Trip — Tessin — lists the same Gear and brings it back. This
+    // never touches Alps's own Entry or outcome register at all.
+    const laterTripBack = stamp(
+      [
+        ...aTrip({ id: 'a-tessin', name: 'Tessin 2025', phase: 'unpack' }),
+        tripEntryAdded('a-tessin', 'e-tent-2', {
+          from: 'depot',
+          gearId: 'g-tent',
+        }),
+        tripOutcomeSet('a-tessin', 'e-tent-2', 'back'),
+      ],
+      { start: 30 },
+    )
+
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...lost, ...closed, ...laterTripBack],
+      emptyState(),
+    )
+
+    expect(state.trips[TRIP]?.phase?.value).toBe('closed')
+    // Household-wide, `unaccountedOf` already agrees the standing is gone —
+    // this is the same fact `standingLostOf` must not contradict.
+    expect(unaccountedOf(state).get('g-tent')).toBeUndefined()
+    expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([])
+  })
 })

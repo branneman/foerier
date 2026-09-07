@@ -804,6 +804,74 @@ function accumulateUnaccounted(
 }
 
 /**
+ * **The household-wide settle map**, ruling R35 — per Gear, the latest stamp
+ * of a **non-`lost`** outcome recorded anywhere a visible Trip's Entries or
+ * Pieces name that Gear, `undefined` when nothing ever settled it. Shared by
+ * {@link unaccountedOf} and {@link standingLostOf} so there is **one** copy
+ * of "what counts as a settle, and how recent is the latest one" rather than
+ * two that happen to agree today and drift tomorrow — the exact drift this
+ * file's own header warns every reader against.
+ *
+ * Walks **every** {@link visibleTrips}, closed included, for the identical
+ * reason {@link unaccountedOf}'s own docblock gives: a closed Trip's outcomes
+ * are history, not a live slice, so `whereabouts.ts`'s *active-Trips-only*
+ * rule does not apply here.
+ *
+ * `null` reads *open* ({@link outcomeOf}) and settles nothing — the absence
+ * of a resolution is not a later fact about where the Gear is. Every other
+ * value is a resolution and does: `back`, `consumed`, or one this build
+ * cannot name (`countOfUnpack`'s own reading of an unrecognised outcome as
+ * *resolved*, restated one register over).
+ */
+function settledOutcomeStamps(
+  state: HouseholdState,
+): ReadonlyMap<string, Stamp> {
+  const settledAt = new Map<string, Stamp>()
+
+  function noteSettled(
+    gearId: string,
+    register: Register<OutcomeValue | null>,
+  ): void {
+    const stamp = stampOf(register)
+    const seen = settledAt.get(gearId)
+    if (seen === undefined || compareStamps(stamp, seen) > 0) {
+      settledAt.set(gearId, stamp)
+    }
+  }
+
+  for (const trip of visibleTrips(state)) {
+    for (const entry of entriesOf(trip, state)) {
+      const source = entry.source?.value
+      // Invariant 18: a trip-only Entry names no Gear and takes no outcome.
+      if (source === undefined || source.from !== 'depot') continue
+
+      const gearId = source.gearId
+      const kind = entryKind(entry, state)
+      const container = isContainerEntry(entry, state)
+
+      if (kind === 'per_person' && !container) {
+        for (const personId of piecesOf(entry, trip)) {
+          const register = entry.pieces?.[personId]?.outcome
+          if (register === undefined) continue
+          if (register.value !== 'lost' && register.value !== null) {
+            noteSettled(gearId, register)
+          }
+        }
+        continue
+      }
+
+      const register = entry.outcome
+      if (register === undefined) continue
+      if (register.value !== 'lost' && register.value !== null) {
+        noteSettled(gearId, register)
+      }
+    }
+  }
+
+  return settledAt
+}
+
+/**
  * **The unaccounted standing** — story 3, spec §3.5. Gear whose last unpack
  * outcome was `lost` reads as unaccounted for, naming the Trip it was last
  * seen on, until a later fact settles it. Story 11: a `lost` outcome writes
@@ -886,26 +954,16 @@ function accumulateUnaccounted(
 export function unaccountedOf(
   state: HouseholdState,
 ): ReadonlyMap<string, Unaccounted> {
-  // Ruling R35 makes this two passes over **one** walk, not two walks: a
-  // settling outcome can sit anywhere in the iteration order relative to the
-  // `lost` outcome it settles (a later Trip is not a later `visibleTrips`
-  // entry — that order is by id), so the standing cannot be decided while
-  // the walk is still gathering. `reports` holds the candidates; `settledAt`
-  // holds, per Gear, the latest stamp of a non-`lost` resolution seen
-  // anywhere.
+  // R35's settle map is {@link settledOutcomeStamps}'s own walk, shared with
+  // {@link standingLostOf} rather than gathered here a second time. What is
+  // left to gather in this walk is the `lost` candidates alone — a separate
+  // pass over the identical `visibleTrips`/`entriesOf` shape, rather than
+  // the old single interleaved walk, because the two questions ("what is
+  // lost" and "what settles a lost, anywhere") are independent reads over
+  // the same registers and a caller with only the first (standingLostOf)
+  // must not have to run the second's household-wide reach to get it.
+  const settledAt = settledOutcomeStamps(state)
   const reports: LostReport[] = []
-  const settledAt = new Map<string, Stamp>()
-
-  function noteSettled(
-    gearId: string,
-    register: Register<OutcomeValue | null>,
-  ): void {
-    const stamp = stampOf(register)
-    const seen = settledAt.get(gearId)
-    if (seen === undefined || compareStamps(stamp, seen) > 0) {
-      settledAt.set(gearId, stamp)
-    }
-  }
 
   for (const trip of visibleTrips(state)) {
     const tripName = tripLabel(trip)
@@ -922,42 +980,31 @@ export function unaccountedOf(
         const pieces = piecesOf(entry, trip)
         for (const personId of pieces) {
           const register = entry.pieces?.[personId]?.outcome
-          if (register === undefined) continue
-          if (register.value === 'lost') {
-            reports.push({
-              gearId,
-              tripId: trip.id,
-              tripName,
-              register,
-              units: 1,
-              personId,
-              pieces,
-            })
-          } else if (register.value !== null) {
-            // An explicit `null` reads *open* and settles nothing; every
-            // other value — `back`, `consumed`, or one this build cannot
-            // name — is a resolution and does.
-            noteSettled(gearId, register)
-          }
+          if (register === undefined || register.value !== 'lost') continue
+          reports.push({
+            gearId,
+            tripId: trip.id,
+            tripName,
+            register,
+            units: 1,
+            personId,
+            pieces,
+          })
         }
         continue
       }
 
       const register = entry.outcome
-      if (register === undefined) continue
-      if (register.value === 'lost') {
-        reports.push({
-          gearId,
-          tripId: trip.id,
-          tripName,
-          register,
-          units: container ? 1 : pieceCountOf(entry, trip, state),
-          personId: undefined,
-          pieces: [],
-        })
-      } else if (register.value !== null) {
-        noteSettled(gearId, register)
-      }
+      if (register === undefined || register.value !== 'lost') continue
+      reports.push({
+        gearId,
+        tripId: trip.id,
+        tripName,
+        register,
+        units: container ? 1 : pieceCountOf(entry, trip, state),
+        personId: undefined,
+        pieces: [],
+      })
     }
   }
 
@@ -1022,22 +1069,31 @@ export interface StandingLost {
  * Trip entirely as the one still holding the standing, which is a false
  * statement on a screen that is about to say "this Trip". `standingLostOf`
  * answers a narrower question — *what, of what **this Trip** recorded, is
- * still open* — so it walks {@link entriesOf} itself rather than filtering
- * `unaccountedOf`'s map down to this Trip's ids.
+ * still open* — so **candidates** are gathered from {@link entriesOf} over
+ * this Trip alone, rather than filtering `unaccountedOf`'s map down to this
+ * Trip's ids. That is the whole of what "not `unaccountedOf`" means: it is a
+ * statement about *keying and attribution* (which Trip's name a standing is
+ * reported under), not about how far the *settle* reaches.
  *
- * **`outcomeStands`'s `settledAt` is built from this Trip's own Entries and
- * Pieces only, never from another Trip.** A settling outcome recorded on a
- * *different* Trip is exactly the fact `unaccountedOf` exists to fold across
- * the household — reaching for it here would blur the "this Trip's own
- * sheet" boundary the paragraph above draws the whole function to keep. What
- * this scope still has to account for, and does: {@link consumedReductions}'s
- * own reason a Trip may list one Gear on **two Entries**, and — the sharper
- * case — two Participants' Pieces on **one** Entry, where ruling R35's "a
- * later non-`lost` outcome **anywhere** settles an earlier `lost`, whole" is
- * per Gear and not per Person (Mark's `back` ends Kim's Piece's standing).
- * Both are gathered in one pass over this Trip alone before any
- * `outcomeStands` call is made, exactly {@link unaccountedOf}'s two-pass
- * shape, narrowed from *every visible Trip* to *this one*.
+ * **The settle itself is a household fact, not a Trip-local one, and is
+ * read from {@link settledOutcomeStamps} — the identical map {@link
+ * unaccountedOf} builds, so there is one copy rather than two that could
+ * drift.** Spec §8.7 states the comparison in full: `settledAt` is "the
+ * latest non-`lost` outcome stamp recorded for that same Gear … **across
+ * every visible Trip, closed included**." Story 3, story 11 and
+ * `domain-model.md` all name the second settle route as *a later Trip
+ * bringing it back*, with no Trip-scoping in any of the three. Narrowing the
+ * settle to this Trip alone would make the block **lie** in exactly story
+ * 11's own case: the tent lost on Alps (closed), a `● BACK` recorded later
+ * on Tessin. `unaccountedOf` already settles that pair and the Depot draws
+ * no `▲` — a Trip-local settle here would still print `1 STILL
+ * UNACCOUNTED — TENT · ▲ LOST` on Alps's own reopen confirm, asserting a
+ * standing the rest of the app has already closed. It would also be
+ * **asymmetric within one `outcomeStands` call**: that function's residence
+ * half already reads `state.gear[…]` globally, so a Trip-local outcome half
+ * would settle a re-home from anywhere while refusing to settle a `back`
+ * recorded on a different Trip — the precise disagreement R35 exists to
+ * end.
  *
  * **The check order is {@link unpackItems}' and {@link unaccountedOf}'s**:
  * invariant 18 first (a trip-only Entry names no Gear and is skipped before
@@ -1067,18 +1123,6 @@ export function standingLostOf(
   }
 
   const candidates: Candidate[] = []
-  const settledAt = new Map<string, Stamp>()
-
-  function noteSettled(
-    gearId: string,
-    register: Register<OutcomeValue | null>,
-  ): void {
-    const stamp = stampOf(register)
-    const seen = settledAt.get(gearId)
-    if (seen === undefined || compareStamps(stamp, seen) > 0) {
-      settledAt.set(gearId, stamp)
-    }
-  }
 
   for (const entry of entriesOf(trip, state)) {
     const source = entry.source?.value
@@ -1093,39 +1137,35 @@ export function standingLostOf(
     if (kind === 'per_person' && !container) {
       for (const personId of piecesOf(entry, trip)) {
         const register = entry.pieces?.[personId]?.outcome
-        if (register === undefined) continue
-        if (register.value === 'lost') {
-          candidates.push({
-            entryId: entry.id,
-            personId,
-            gearId,
-            gearName,
-            register,
-            units: 1,
-          })
-        } else if (register.value !== null) {
-          noteSettled(gearId, register)
-        }
+        if (register === undefined || register.value !== 'lost') continue
+        candidates.push({
+          entryId: entry.id,
+          personId,
+          gearId,
+          gearName,
+          register,
+          units: 1,
+        })
       }
       continue
     }
 
     const register = entry.outcome
-    if (register === undefined) continue
-    if (register.value === 'lost') {
-      candidates.push({
-        entryId: entry.id,
-        personId: null,
-        gearId,
-        gearName,
-        register,
-        // F1: a container's unit is a flat `1` — see this file's header.
-        units: container ? 1 : pieceCountOf(entry, trip, state),
-      })
-    } else if (register.value !== null) {
-      noteSettled(gearId, register)
-    }
+    if (register === undefined || register.value !== 'lost') continue
+    candidates.push({
+      entryId: entry.id,
+      personId: null,
+      gearId,
+      gearName,
+      register,
+      // F1: a container's unit is a flat `1` — see this file's header.
+      units: container ? 1 : pieceCountOf(entry, trip, state),
+    })
   }
+
+  // Household-wide, and shared with `unaccountedOf` — see this function's
+  // own docblock for why a Trip-local map would be wrong.
+  const settledAt = settledOutcomeStamps(state)
 
   const result: StandingLost[] = []
   for (const candidate of candidates) {
