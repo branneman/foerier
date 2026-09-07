@@ -8,6 +8,7 @@ import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 import type { StoreApi } from 'zustand/vanilla'
 
+import { inMemoryOpLog } from '../household/opLog'
 import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
 import { setViewport } from '../testSetup'
@@ -56,7 +57,7 @@ function soleGear(store: StoreApi<HouseholdStoreState>) {
  * Components' Add-gear atoms).
  *
  * The order is the ledger line being written: NAME · KIND (+ count) · HOME ·
- * RECORDED AS. Three round-1 decisions are retired and their replacements are
+ * OWNER · TAGS · RECORDED AS. Three round-1 decisions are retired and their replacements are
  * what most of these tests are about:
  *
  * - **The screen stays after Add.** Round 1 navigated to the new gear's
@@ -607,5 +608,128 @@ describe('Add gear — the fact line under the CTA', () => {
     expect(traitClasses).toHaveLength(1)
     expect(ctaClasses).toHaveLength(2)
     expect(ctaClasses).toEqual(expect.arrayContaining(traitClasses))
+  })
+})
+
+/**
+ * **The `TAGS` row** (`docs/specs/2026-09-07-tags-on-add-gear.md`).
+ *
+ * The third attribute row, after `OWNER`, over ops that have shipped since
+ * S3. It drives a **draft**, not the log — `TagPicker` is a pure selection
+ * component and the caller owns the write (`patterns.md` §4.3) — and the
+ * submit spends that draft as one `gear.tag_applied` per drafted tag, after
+ * the `gear.recorded`.
+ */
+describe('Add gear — the tags row', () => {
+  /** Draft `tag` through the picker's `+ CREATE` row, then close it. */
+  async function draftTag(
+    user: ReturnType<typeof userEvent.setup>,
+    tag: string,
+  ) {
+    await user.click(screen.getByRole('button', { name: 'Tags' }))
+    await user.type(screen.getByLabelText('Tag'), tag)
+    await user.click(screen.getByTestId('create-tag'))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+  }
+
+  it('reads None when empty and the drafted tags with # when not', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    // The position HOME's `Loose` and OWNER's `Shared` hold.
+    expect(screen.getByRole('button', { name: 'Tags' })).toHaveTextContent(
+      'None',
+    )
+
+    await draftTag(user, 'food')
+    await draftTag(user, 'kitchen')
+
+    expect(screen.getByRole('button', { name: 'Tags' })).toHaveTextContent(
+      '#food #kitchen',
+    )
+  })
+
+  /**
+   * **Not a widened `gear.recorded`.** Its payload carries no `tags`, and
+   * sync §5's tolerant reader ignores unknown fields — so a widened op would
+   * fold untagged on every build in the wild. `gear.tag_applied` has shipped
+   * since S3, so the N+1 ops fold correctly everywhere.
+   */
+  it('emits the gear.recorded first, then one gear.tag_applied per tag', async () => {
+    const log = inMemoryOpLog()
+    const store = await seededStore([], { log })
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Stove')
+    await draftTag(user, 'kitchen')
+    await draftTag(user, 'bushcraft')
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    const { id } = soleGear(store)
+    const logged = await log.all()
+    expect(logged.map((record) => [record.op.type, record.op.payload])).toEqual(
+      [
+        ['gear.recorded', expect.objectContaining({ name: 'Stove' })],
+        ['gear.tag_applied', { tag: 'kitchen' }],
+        ['gear.tag_applied', { tag: 'bushcraft' }],
+      ],
+    )
+    expect(logged.every((record) => record.op.aggregate_id === id)).toBe(true)
+  })
+
+  /**
+   * §4.2: a needless write moves the stamp LWW compares, and can therefore
+   * beat a genuine concurrent write from a Device that was offline
+   * (`patterns.md` §2.3). Asserted on the emitted ops rather than on a screen
+   * read, since that is where the bug would be.
+   */
+  it('emits exactly one op when no tag was drafted', async () => {
+    const log = inMemoryOpLog()
+    const store = await seededStore([], { log })
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Axe')
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    expect((await log.all()).map((record) => record.op.type)).toEqual([
+      'gear.recorded',
+    ])
+  })
+
+  it('carries the tags over to the next record while kind resets', async () => {
+    const log = inMemoryOpLog()
+    const store = await seededStore([], { log })
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await draftTag(user, 'food')
+    await user.click(screen.getByRole('radio', { name: 'Per-person' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'Name' }),
+      'Gas canister{Enter}',
+    )
+    await store.getState().drained()
+
+    // A shelf is usually one sort of thing, so the sort stays; the Kind is
+    // per item and resets, exactly as it does beside HOME and OWNER.
+    expect(screen.getByRole('button', { name: 'Tags' })).toHaveTextContent(
+      '#food',
+    )
+    expect(screen.getByRole('radio', { name: 'Single' })).toBeChecked()
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Mug{Enter}')
+    await store.getState().drained()
+
+    expect((await log.all()).map((record) => record.op.type)).toEqual([
+      'gear.recorded',
+      'gear.tag_applied',
+      'gear.recorded',
+      'gear.tag_applied',
+    ])
   })
 })

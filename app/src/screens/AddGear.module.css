@@ -119,7 +119,9 @@
     text-align: center;
   }
 
-  .homeRow {
+  /* The attribute row: HOME, OWNER and TAGS, drawn identically by the board
+     and so by one pair of classes. */
+  .attrRow {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -134,9 +136,31 @@
     cursor: pointer;
   }
 
-  .homeValue {
+  /*
+   * `min-width: 0` so the value is the half that yields when the row runs
+   * out of width, and the text — not the `›` — is what ellipsis-truncates:
+   * the affordance has to survive a long run of tags, which is the whole
+   * reason the two are separate spans. The Depot's own TAGS column takes the
+   * same treatment at 44px density.
+   *
+   * The `{' '}` between them is whitespace-only and so is dropped as a flex
+   * item; it stays in the DOM because the row's accessible name is its text
+   * content, and a `gap` is not a character (`patterns.md` §6.6).
+   */
+  .attrValue {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25em;
+    min-width: 0;
     font: var(--text-body) var(--font-ui);
     color: var(--color-ink-primary);
+  }
+
+  .attrText {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /*

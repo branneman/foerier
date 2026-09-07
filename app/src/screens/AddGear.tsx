@@ -1,17 +1,22 @@
 import {
+  dimensionValues,
   gearRecorded,
+  gearTagApplied,
+  normalizeTag,
   personLabel,
   systemIdSource,
   type KindValue,
   type Owner,
   type Residence,
+  type TagString,
 } from '@foerier/shared'
 import { SegmentedControl } from '@foerier/ui'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
+import { TagPicker } from '../components/TagPicker'
 import { KIND_OPTIONS, TRAIT_OPTIONS } from '../household/gear'
 import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
@@ -32,8 +37,8 @@ import styles from './AddGear.module.css'
  *
  * ## Order = the ledger line being written
  *
- * NAME · KIND (+ count) · HOME · OWNER · RECORDED AS. Three things about that
- * order are decisions rather than habit:
+ * NAME · KIND (+ count) · HOME · OWNER · TAGS · RECORDED AS. Three things
+ * about that order are decisions rather than habit:
  *
  * - **Owned count inserts *below* Kind**, so nothing at or above the thumb
  *   moves when Counted is picked.
@@ -50,9 +55,10 @@ import styles from './AddGear.module.css'
  * **After Add the screen stays.** Round 1 navigated to the new gear's detail
  * after every record, which made populating a depot a round trip per item.
  * Now the name clears and keeps focus — return records, so the batch loop is
- * type → return → type — Kind, count and trait reset, and **Home and owner
- * carry over**, because a depot is recorded shelf by shelf. A fresh entry
- * starts at Loose and Shared.
+ * type → return → type — Kind, count and trait reset, and **Home, owner and
+ * tags carry over**, because a depot is recorded shelf by shelf, and a shelf
+ * is usually one sort of thing. A fresh entry starts at Loose, Shared and
+ * untagged.
  *
  * ## The one departure from the board
  *
@@ -81,8 +87,41 @@ import styles from './AddGear.module.css'
  * one. Owner is also one of the five shared attributes the domain model lists
  * (home, owner, kind, tags, weight) — and the only one F1 omitted.
  *
- * Still **one** `gear.recorded` carrying every field. Nothing new is emitted,
- * and the screen's "no failure state" property is untouched.
+ * ## The third departure: `TAGS`, and why the submit is N+1 ops
+ *
+ * `TAGS` sits after `OWNER` on the same argument, one story-35 verb over
+ * (`docs/specs/2026-09-07-tags-on-add-gear.md`): the drawn bulk band is
+ * `MOVE · TAG · SET OWNER · RETIRE`, `TAG` among them and `LATER`, and a tag
+ * is the trait a Quartermaster most often knows *while holding the thing* and
+ * least often goes back for. It carries over between records as `HOME` and
+ * `OWNER` do, and after S4 took `OWNER` it is the last of the domain model's
+ * five shared attributes F1 omitted.
+ *
+ * So the submit is no longer one op. It is **one `gear.recorded`, unchanged
+ * in every field, then one `gear.tag_applied` per drafted tag**, in the row's
+ * own order — and a record with no tags emits exactly one op, because a
+ * needless write moves the stamp LWW compares (`patterns.md` §2.3), the same
+ * rule that makes `OWNER` at `Shared` write no ownership register.
+ *
+ * The payload was **not** widened, and the reason is the one that did not
+ * apply when S4 widened it for `owner`: `owner` was widened in the slice that
+ * introduced the register, so no build in the wild could have folded it
+ * anyway, while tags have folded since S3. Sync §5's tolerant reader *ignores
+ * unknown fields*, so a `gear.recorded` carrying `tags` would fold untagged
+ * on every installed build a household actually has — the same Gear reading
+ * tagged on the recording Device and untagged on the phone in the next room,
+ * invisible until somebody filters. Both op types have shipped since S3, so
+ * the N+1 form folds correctly everywhere, and a build older than S3 ignores
+ * the tag ops and folds exactly the Gear it would have folded anyway.
+ *
+ * The screen's **"no failure state" property is untouched**, and it is the
+ * one that mattered: every op is local and durable-first, appended to the
+ * same log in the same submit, so there is no partial-write window, no
+ * request, and nothing to draw a spinner or an error for. The mono fact line
+ * is as true of N ops as it was of one. Ordering across them is not a
+ * correctness question either — they address different registers on one
+ * entity path, and a tag op landing before its `gear.recorded` folds into a
+ * Gear that then gets its name.
  */
 
 /** The current Home selection's display label. Undefined reads as `Loose` —
@@ -119,6 +158,11 @@ export function AddGear() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [owner, setOwner] = useState<Owner>({ type: 'shared' })
   const [ownerPickerOpen, setOwnerPickerOpen] = useState(false)
+  // The drafted tags, in the order they were applied — spent as ops at the
+  // submit, never before. The picker drives this and not the log
+  // (`patterns.md` §4.3): there is no Gear to tag until Add is pressed.
+  const [tags, setTags] = useState<readonly TagString[]>([])
+  const [tagsOpen, setTagsOpen] = useState(false)
   const [recorded, setRecorded] = useState<Recorded | null>(null)
   const [sessionCount, setSessionCount] = useState(0)
 
@@ -128,6 +172,11 @@ export function AddGear() {
   const header = useScreenHeader({ splitPane: false })
 
   const nameField = useRef<HTMLInputElement>(null)
+
+  // The vocabulary the picker's counts and its near-duplicate defence come
+  // from — the whole depot's, exactly as `GearDetail.tsx` computes it, so the
+  // defence works from the first record of a sitting.
+  const vocabulary = useMemo(() => dimensionValues(state, 'tag'), [state])
 
   const trimmedName = name.trim()
   const parsedCount = Number.parseInt(ownedCount, 10)
@@ -162,6 +211,12 @@ export function AddGear() {
       }),
     )
 
+    // Then one op per drafted tag, in the row's own order. Never a widened
+    // `gear.recorded` — see the class docstring — and never anything at all
+    // when the row is empty, which falls out of the loop rather than needing
+    // a clause.
+    for (const tag of tags) emit(gearTagApplied(id, tag))
+
     setRecorded({
       id,
       name: trimmedName,
@@ -169,9 +224,9 @@ export function AddGear() {
     })
     setSessionCount((count) => count + 1)
 
-    // Home and owner persist; everything else returns to its default. A
-    // depot is recorded shelf by shelf, and a shelf in a bedroom is one
-    // person's.
+    // Home, owner and tags persist; everything else returns to its default.
+    // A depot is recorded shelf by shelf, a shelf in a bedroom is one
+    // person's, and a shelf is usually one sort of thing.
     setName('')
     setKind('single')
     setOwnedCount('')
@@ -296,33 +351,60 @@ export function AddGear() {
         </div>
       )}
 
+      {/* HOME, OWNER and TAGS are one control drawn three times — the same
+          48px bordered row, a label, a value and the `›` that says a sheet
+          opens. The classes are shared because the board draws the three
+          identically; the name stopped being HOME's when the third caller
+          arrived. */}
       <button
         type="button"
-        className={styles['homeRow']}
+        className={styles['attrRow']}
         aria-label="Home"
         onClick={() => setPickerOpen(true)}
       >
         <span className={styles['label']}>Home</span>
-        <span className={styles['homeValue']}>
-          {homeLabel(state.places, state.gear, home)}{' '}
+        <span className={styles['attrValue']}>
+          <span className={styles['attrText']}>
+            {homeLabel(state.places, state.gear, home)}
+          </span>{' '}
           <span aria-hidden="true">›</span>
         </span>
       </button>
 
-      {/* The same 48px bordered control HOME uses, and deliberately the same
-          classes: the board draws the two rows identically, and a third
-          caller is when to generalise the name. */}
       <button
         type="button"
-        className={styles['homeRow']}
+        className={styles['attrRow']}
         aria-label="Owner"
         onClick={() => setOwnerPickerOpen(true)}
       >
         <span className={styles['label']}>Owner</span>
-        <span className={styles['homeValue']}>
-          {owner.type === 'shared'
-            ? 'Shared'
-            : personLabel(state, owner.personId)}{' '}
+        <span className={styles['attrValue']}>
+          <span className={styles['attrText']}>
+            {owner.type === 'shared'
+              ? 'Shared'
+              : personLabel(state, owner.personId)}
+          </span>{' '}
+          <span aria-hidden="true">›</span>
+        </span>
+      </button>
+
+      {/* `None` holds HOME's `Loose` and OWNER's `Shared` position. Chips
+          inline are gear detail's shape, where tags are the settled subject;
+          here the row shape is established twice over by the two rows above,
+          and a third shape in the same block would be the drift. */}
+      <button
+        type="button"
+        className={styles['attrRow']}
+        aria-label="Tags"
+        onClick={() => setTagsOpen(true)}
+      >
+        <span className={styles['label']}>Tags</span>
+        <span className={styles['attrValue']}>
+          <span className={styles['attrText']}>
+            {tags.length === 0
+              ? 'None'
+              : tags.map((tag) => `#${tag}`).join(' ')}
+          </span>{' '}
           <span aria-hidden="true">›</span>
         </span>
       </button>
@@ -354,7 +436,9 @@ export function AddGear() {
         Add gear
       </button>
 
-      {/* No failure state: one local `gear.recorded` carrying every field.
+      {/* No failure state: every op is local and durable-first, appended to
+          the same log in the same submit — as true of the N+1 ops a tagged
+          record writes as it was of one.
 
           Centred, because it follows its CTA block, and that block is the
           full-width primary above it (boards' README §5). The two field-level
@@ -371,6 +455,30 @@ export function AddGear() {
             setOwnerPickerOpen(false)
           }}
           onClose={() => setOwnerPickerOpen(false)}
+        />
+      )}
+
+      {tagsOpen && (
+        <TagPicker
+          mode="gear"
+          vocabulary={vocabulary}
+          applied={tags}
+          onApply={(tag) => {
+            // Already normalised by the picker — `normalizeTag` here is what
+            // turns that string back into the `TagString` the draft holds,
+            // and it is the one place that conversion happens.
+            const value = normalizeTag(tag)
+            if (value === null) return
+            setTags((current) =>
+              current.includes(value) ? current : [...current, value],
+            )
+          }}
+          onRemove={(tag) => {
+            const value = normalizeTag(tag)
+            if (value === null) return
+            setTags((current) => current.filter((held) => held !== value))
+          }}
+          onClose={() => setTagsOpen(false)}
         />
       )}
 
