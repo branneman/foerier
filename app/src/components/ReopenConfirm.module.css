@@ -1,8 +1,22 @@
 @layer components {
+  /* S11's last mono block (spec §6) — attention, not muted: `▲` is this
+     codebase's one glyph for "still unaccounted", and every other surface
+     that draws it (F5's pill, F18's rule) colours it the same way. A single
+     text node can only colour the whole line or none of it, so the line
+     takes the attention tone as a whole rather than the glyph alone. */
+  .unaccounted {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    line-height: 1.6;
+    color: var(--color-status-attention);
+  }
+
   /* §5i G1 — the reopen sheet's own conditional fact, in the mono register
      §5a already reserves for facts that hold on this Trip alone (the block
-     `1 ENTRY STILL OPEN — …` uses). Muted rather than attention: nothing
-     here is a warning, it is what the close did. */
+     above uses). Muted rather than attention: nothing here is a warning, it
+     is what the close did. */
   .reduction {
     margin: 0;
     font-family: var(--font-mono);

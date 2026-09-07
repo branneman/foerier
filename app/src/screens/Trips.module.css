@@ -228,15 +228,6 @@
     color: var(--color-status-attention);
   }
 
-  /* The withheld `REOPEN`'s replacement — the fact the vacated control was
-     stating (`patterns.md` §3.7's mirror). Dim, not attention: nothing is
-     wrong with this Trip, and the row's `1 LOST` is the one segment on this
-     line that gets to raise its voice. It sits inside `.rowMeta`, so it
-     inherits the mono face and size and needs only the colour. */
-  .noReopen {
-    color: var(--color-ink-dim);
-  }
-
   .reopen {
     display: inline-flex;
     align-items: center;

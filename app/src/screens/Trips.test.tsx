@@ -90,7 +90,6 @@ const VOSGES = 'tttttttt-0000-7000-8000-00000000000b'
 const TESSIN = 'tttttttt-0000-7000-8000-00000000000c'
 const SCOTLAND = 'tttttttt-0000-7000-8000-00000000000d'
 const GAS = 'gggggggg-0000-7000-8000-00000000000a'
-const TENT = 'gggggggg-0000-7000-8000-00000000000b'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -614,23 +613,19 @@ describe('the Trips screen', () => {
   })
 
   /**
-   * **The reopen gate, at the first of its two doors.** `reopenBlocked`
-   * (`gestures.ts`) is `true` exactly on a closed Trip whose close lowered an
-   * owned count, and this build cannot re-close such a Trip without
-   * subtracting the Consumed-count again — `owned 6 → 4 → reopen → 2`, four
-   * taps and nothing on screen. The control is withheld rather than greyed
-   * (`patterns.md` §3.7) and the meta states the fact in its place (§3.7's
-   * mirror).
-   *
-   * The two tests are a pair on purpose: withholding on every closed row
-   * would be a different, blunter fix, and only the second of them says the
-   * gate is narrow. Each asserts both halves — the control **and** the
-   * segment — because a change that withheld the button without stating why,
-   * or stated it while leaving the button, would pass a one-sided assertion.
+   * **S11 hands the route back (spec §5.1).** S10's `reopenBlocked`
+   * withheld `REOPEN` on a closed Trip whose close lowered an owned
+   * count — `owned 6 → 4 → reopen → 2`, four taps and nothing on screen.
+   * S11 makes the *close* correct instead (it reads what this Trip has
+   * already posted before it ever reduces again), so there is nothing left
+   * for a gate on this row to prevent: `REOPEN` draws on every closed row,
+   * whatever its close did, and `NO REOPEN — COUNTS LOWERED AT CLOSE` never
+   * draws at all.
    */
-  describe('the reopen gate on a closed ledger row', () => {
-    /** `owned ×6`, `consumed ×2` — the close lowered the Depot to ×4. */
-    const consumingClose: readonly OpSpec[] = [
+  it('keeps REOPEN, and draws no NO REOPEN meta, on a Trip whose close lowered an owned count', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const store = await seeded(
+      tripCreated(TESSIN, 'Tessin 2025'),
       gearRecorded(GAS, {
         name: 'Gas canister',
         container: false,
@@ -641,51 +636,15 @@ describe('the Trips screen', () => {
       tripEntryBringCountSet(TESSIN, 'e-gas', 4),
       tripOutcomeSet(TESSIN, 'e-gas', 'consumed'),
       tripConsumedCountSet(TESSIN, 'e-gas', 2),
-    ]
+      tripPhaseMoved(TESSIN, 'closed'),
+    )
+    renderTrips(store)
 
-    it('withholds REOPEN, and says why, on a Trip whose close lowered an owned count', async () => {
-      vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
-      const store = await seeded(
-        tripCreated(TESSIN, 'Tessin 2025'),
-        ...consumingClose,
-        tripPhaseMoved(TESSIN, 'closed'),
-      )
-      renderTrips(store)
-
-      expect(
-        screen.queryByRole('button', { name: 'Reopen Tessin 2025' }),
-      ).toBeNull()
-      expect(screen.getByTestId(`no-reopen-${TESSIN}`)).toHaveTextContent(
-        'NO REOPEN — COUNTS LOWERED AT CLOSE',
-      )
-    })
-
-    /**
-     * The narrow half. `lost` writes nothing against the Depot at all (story
-     * 11), so this Trip's close owed no reduction, re-closing it moves no
-     * count, and story 11's own example — the tent marked `lost` in
-     * September, found in November — keeps the route it names.
-     */
-    it('keeps REOPEN on a closed Trip whose close owed the Depot nothing', async () => {
-      vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
-      const store = await seeded(
-        tripCreated(TESSIN, 'Tessin 2025'),
-        gearRecorded(TENT, {
-          name: 'Tent',
-          container: false,
-          kind: 'single',
-        }),
-        tripEntryAdded(TESSIN, 'e-tent', { from: 'depot', gearId: TENT }),
-        tripOutcomeSet(TESSIN, 'e-tent', 'lost'),
-        tripPhaseMoved(TESSIN, 'closed'),
-      )
-      renderTrips(store)
-
-      expect(
-        screen.getByRole('button', { name: 'Reopen Tessin 2025' }),
-      ).toBeInTheDocument()
-      expect(screen.queryByTestId(`no-reopen-${TESSIN}`)).toBeNull()
-    })
+    expect(
+      screen.getByRole('button', { name: 'Reopen Tessin 2025' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId(`no-reopen-${TESSIN}`)).toBeNull()
+    expect(screen.queryByText(/NO REOPEN/)).toBeNull()
   })
 
   it('writes nothing when the reopen is declined', async () => {

@@ -6,7 +6,6 @@ import {
   isActivePhase,
   phaseOf,
   PHASES,
-  reopenBlocked,
   reopenTrip,
   tripPhaseMoved,
   unpackTotals,
@@ -127,19 +126,6 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   // draw, never re-spelled here.
   const unpackCount = unpackTotals(trip, state)
   const open = unpackCount.open
-  // `reopenBlocked` (`gestures.ts`), never re-derived — the identical read
-  // the closed ledger row makes before withholding its own `REOPEN`, so the
-  // app's two doors out of `closed` cannot disagree about whether there is
-  // one. `false` for every Trip that is not closed, so this says nothing
-  // about any other row.
-  const blocked = reopenBlocked(trip, state)
-  // Withheld, never greyed (`patterns.md` §3.7): on a Trip whose close
-  // lowered an owned count the four rows out of `closed` are the second door
-  // onto a re-close that would subtract the Consumed-count again, so they do
-  // not render at all. What is left is the Trip's own `● NOW`, which is a
-  // true statement of where the Trip stands, and the footnote below carries
-  // the reason in place of its usual promise.
-  const rows = blocked ? PHASES.filter((row) => row.id === current) : PHASES
 
   function move(phase: PhaseKey) {
     emit(tripPhaseMoved(trip.id, phase))
@@ -153,10 +139,6 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
    * corruption the gesture exists to prevent, arriving through a second
    * door. `move` stays bare for every other transition, which is right —
    * none of them owes the Depot anything.
-   *
-   * Unreachable while `blocked` is true, because the rows that would reach
-   * it are withheld above; the gate is here so a future row cannot inherit
-   * the emit without it.
    */
   function reopen(phase: PhaseKey) {
     for (const spec of reopenTrip(trip, phase, state)) emit(spec)
@@ -251,7 +233,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
       )}
 
       <ul className={styles['rows']}>
-        {rows.map((row) => {
+        {PHASES.map((row) => {
           const now = row.id === current
           // F12: the `CLOSED` row's own right-hand meta — drawn only while
           // there is still a gap for it to name. Withheld on the row that
@@ -300,25 +282,20 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
       </ul>
 
       {/*
-        The board's footnote, both sentences. The first is not decoration: a
-        list of five rows with one marked reads as a status readout, and
-        nothing else on screen says the row *above* the current one can be
-        tapped. It is the discoverability of the sheet's whole point, and the
-        second sentence is the reason — a phase is set by a quartermaster and
-        by nothing else.
-
-        **It is swapped, not merely dropped, where the rows are withheld.**
-        `ANY ROW TAPPABLE` is a promise, and a sheet drawing one row cannot
-        keep it; leaving the sentence there would state something the sheet
-        has just stopped doing. The replacement names the same fact the
-        closed ledger row's own meta names, in this sheet's voice — and, like
-        that one, it is code-authored copy no board reached (`design/README.md`
-        §5j).
+        The board's footnote, both sentences, unconditional again (S11, spec
+        §5.1). The first is not decoration: a list of five rows with one
+        marked reads as a status readout, and nothing else on screen says
+        the row *above* the current one can be tapped. It is the
+        discoverability of the sheet's whole point, and the second sentence
+        is the reason — a phase is set by a quartermaster and by nothing
+        else. S10's `reopenBlocked` swapped this for a reason-stating
+        sentence on a Trip whose close lowered an owned count; S11 makes the
+        close correct instead, so the swap and the one-row sheet it applied
+        to both retire.
       */}
       <p className={styles['footnote']}>
-        {blocked
-          ? 'CLOSED — COUNTS LOWERED AT CLOSE. NO DATE OR COUNT EVER MOVES A PHASE.'
-          : 'ANY ROW TAPPABLE, BACKWARDS INCLUDED. NO DATE OR COUNT EVER MOVES A PHASE.'}
+        ANY ROW TAPPABLE, BACKWARDS INCLUDED. NO DATE OR COUNT EVER MOVES A
+        PHASE.
       </p>
 
       <Sheet.Close>

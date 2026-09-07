@@ -2,6 +2,7 @@ import {
   gearOwnedCountSet,
   gearRecorded,
   tripConsumedCountSet,
+  tripConsumptionPosted,
   tripCreated,
   tripEntryAdded,
   tripEntryBringCountSet,
@@ -541,11 +542,17 @@ describe('the SET PHASE sheet', () => {
       await seeded.store.getState().drained()
 
       // The exact ops `gestures.test.ts` pins for this fixture
-      // (owned ×6, bring ×4, consumed ×2 → ×4), read back through the real
-      // store rather than the selector's own hand-built state — proof this
-      // sheet calls `closeTrip` and not a bare `trip.phase_moved`.
+      // (owned ×6, bring ×4, consumed ×2 → ×4, posts ×2), read back through
+      // the real store rather than the selector's own hand-built state —
+      // proof this sheet calls `closeTrip` and not a bare
+      // `trip.phase_moved`. Order is the assertion (spec §2.3): the
+      // reduction before its own posting, `trip.phase_moved` last.
       expect(await seeded.authored()).toEqual([
         { type: 'gear.owned_count_set', payload: { count: 4 } },
+        {
+          type: 'trip.consumption_posted',
+          payload: { gear_id: 'g-gas', units: 2 },
+        },
         {
           type: 'trip.phase_moved',
           payload: { phase: 'closed' },
@@ -556,64 +563,28 @@ describe('the SET PHASE sheet', () => {
   })
 
   /**
-   * **The reopen gate, at the second of its two doors.** The closed ledger
-   * row withholds its `REOPEN`; this sheet withholds the four rows out of
-   * `closed`, on the identical `reopenBlocked` — a Trip whose close lowered
-   * an owned count cannot be re-closed by this build without subtracting the
-   * Consumed-count again.
-   *
-   * The `● NOW` row survives, because where the Trip stands is a true
-   * statement either way and §3.7's mirror keeps the information when it
-   * takes the target. The footnote is **swapped rather than dropped**:
-   * `ANY ROW TAPPABLE` is a promise, and a sheet drawing one row cannot keep
-   * it.
+   * **S11 hands the route back (spec §5.1).** S10 withheld the four rows out
+   * of `closed` on a Trip whose close lowered an owned count, and swapped
+   * the footnote's first sentence for the reason. S11 makes the *close*
+   * correct instead, so a re-close of such a Trip subtracts nothing further,
+   * and every row draws out of `closed` regardless of what that Trip's close
+   * did.
    */
-  describe('the reopen gate on the rows out of CLOSED', () => {
+  describe('the rows out of CLOSED, on a Trip whose close lowered an owned count', () => {
     async function seededClosedWithReduction() {
       const seeded = await seededReadyToClose()
-      // The close itself, both of its ops — so the fixture is the state a
-      // real close leaves behind (`gestures.test.ts` pins the pair) rather
-      // than a phase move with an unreduced Depot behind it.
+      // The close itself, all three of its ops — so the fixture is the
+      // state a real close leaves behind (`gestures.test.ts` pins the
+      // triple) rather than a phase move with an unreduced Depot behind it.
       seeded.store.getState().emit(gearOwnedCountSet('g-gas', 4))
+      seeded.store.getState().emit(tripConsumptionPosted(TRIP, 'g-gas', 2))
       seeded.store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
       await seeded.store.getState().drained()
       return seeded
     }
 
-    it('draws CLOSED alone, and swaps the footnotes promise for the reason', async () => {
+    it('draws all four rows out of CLOSED, and the boards footnote', async () => {
       const seeded = await seededClosedWithReduction()
-      renderSheet(seeded)
-
-      expect(rowLabels()).toEqual(['CLOSED'])
-      expect(markedRow()).toBe('CLOSED')
-      expect(
-        screen.getByText(/COUNTS LOWERED AT CLOSE/, { selector: 'p' }),
-      ).toBeInTheDocument()
-      expect(screen.queryByText(/ANY ROW TAPPABLE/)).toBeNull()
-    })
-
-    it('offers no row that could reopen, so no confirm can be reached', async () => {
-      const user = userEvent.setup()
-      const seeded = await seededClosedWithReduction()
-      renderSheet(seeded)
-
-      expect(screen.queryByRole('button', { name: /UNPACK/ })).toBeNull()
-      expect(screen.queryByRole('button', { name: /DRAFT/ })).toBeNull()
-
-      // The one row left is the Trip's own, and tapping it writes nothing —
-      // `DAY N`'s rule, unchanged by any of this.
-      await user.click(screen.getByRole('button', { name: /CLOSED/ }))
-      await seeded.store.getState().drained()
-      expect(screen.queryByRole('alertdialog')).toBeNull()
-    })
-
-    /**
-     * The narrow half, mirroring the ledger row's own pair: a closed Trip
-     * whose close owed the Depot nothing keeps all five rows and the board's
-     * footnote, because re-closing it moves no count at all.
-     */
-    it('leaves a closed Trip that owed no reduction entirely alone', async () => {
-      const seeded = await seededTrip('closed')
       renderSheet(seeded)
 
       expect(rowLabels()).toEqual([
@@ -623,9 +594,23 @@ describe('the SET PHASE sheet', () => {
         'UNPACK',
         'CLOSED',
       ])
+      expect(markedRow()).toBe('CLOSED')
       expect(
-        screen.getByText(/ANY ROW TAPPABLE, BACKWARDS INCLUDED/),
+        screen.getByText(
+          'ANY ROW TAPPABLE, BACKWARDS INCLUDED. NO DATE OR COUNT EVER MOVES A PHASE.',
+        ),
       ).toBeInTheDocument()
+      expect(screen.queryByText(/COUNTS LOWERED AT CLOSE/)).toBeNull()
+    })
+
+    it('reaches the reopen confirm from a row out of CLOSED', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededClosedWithReduction()
+      renderSheet(seeded)
+
+      await user.click(screen.getByRole('button', { name: /UNPACK/ }))
+      await seeded.store.getState().drained()
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     })
   })
 

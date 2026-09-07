@@ -22,7 +22,6 @@ import {
 import {
   closeTrip,
   reHomeOnTheSpot,
-  reopenBlocked,
   reopenTrip,
   restoreConsumption,
 } from './gestures.ts'
@@ -640,85 +639,6 @@ describe('closeTrip', () => {
 
     expect(postedOf(trip, 'g-gas')).toBe(4)
     expect(closeTrip(trip, state)).toEqual([tripPhaseMoved(TRIP, 'closed')])
-  })
-})
-
-describe('reopenBlocked', () => {
-  const TRIP = 't-reopen'
-
-  it('is false on a closed Trip whose close owed the Depot nothing — the lost tent in November', () => {
-    const state = depot(
-      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
-      aGear({ id: 'g-tent', name: 'Tent' }),
-      [
-        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
-        // `lost` writes nothing against the Depot at all (story 11), so this
-        // Trip's close owed no reduction and reopening it is exact.
-        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
-      ],
-    )
-
-    expect(reopenBlocked(tripFrom(state, TRIP), state)).toBe(false)
-  })
-
-  it('is true on a closed Trip whose close applied a reduction', () => {
-    const state = depot(
-      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
-      aGear({
-        id: 'g-gas',
-        name: 'Gas canister',
-        kind: 'counted',
-        ownedCount: 4,
-      }),
-      [
-        tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }),
-        tripEntryBringCountSet(TRIP, 'e-gas', 4),
-        tripOutcomeSet(TRIP, 'e-gas', 'consumed'),
-        tripConsumedCountSet(TRIP, 'e-gas', 2),
-      ],
-    )
-
-    expect(reopenBlocked(tripFrom(state, TRIP), state)).toBe(true)
-  })
-
-  /**
-   * The predicate reads `consumedReductions`, which already gates a
-   * `consumed` outcome to a Counted **depot** Entry — so a Trip whose only
-   * consumption is on a Single owes nothing and reopens exactly. This is the
-   * whole reason the gate and `ReopenConfirm`'s fact line ask that one
-   * selector rather than re-deriving `outcomeOf` plus a Kind check.
-   */
-  it('is false when the only consumed Entry names a Gear that is not Counted', () => {
-    const state = depot(
-      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
-      aGear({ id: 'g-stove', name: 'Stove' }),
-      [
-        tripEntryAdded(TRIP, 'e-stove', { from: 'depot', gearId: 'g-stove' }),
-        tripOutcomeSet(TRIP, 'e-stove', 'consumed'),
-      ],
-    )
-
-    expect(reopenBlocked(tripFrom(state, TRIP), state)).toBe(false)
-  })
-
-  it('is false on a Trip that is not closed at all, whatever it would owe', () => {
-    const state = depot(
-      aTrip({ id: TRIP, name: 'Ardennes' }),
-      aGear({
-        id: 'g-gas',
-        name: 'Gas canister',
-        kind: 'counted',
-        ownedCount: 4,
-      }),
-      [
-        tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }),
-        tripEntryBringCountSet(TRIP, 'e-gas', 4),
-        tripOutcomeSet(TRIP, 'e-gas', 'consumed'),
-        tripConsumedCountSet(TRIP, 'e-gas', 2),
-      ],
-    )
-
-    expect(reopenBlocked(tripFrom(state, TRIP), state)).toBe(false)
   })
 })
 

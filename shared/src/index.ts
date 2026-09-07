@@ -102,7 +102,6 @@ export {
 export {
   closeTrip,
   reHomeOnTheSpot,
-  reopenBlocked,
   reopenTrip,
   restoreConsumption,
 } from './gestures.ts'

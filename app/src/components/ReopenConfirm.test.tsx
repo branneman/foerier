@@ -1,11 +1,13 @@
 import {
   gearOwnedCountSet,
   gearRecorded,
+  personRecorded,
   tripConsumedCountSet,
   tripCreated,
   tripEntryAdded,
   tripEntryBringCountSet,
   tripOutcomeSet,
+  tripParticipantAdded,
   tripPhaseMoved,
   type PhaseKey,
   type TripState,
@@ -41,6 +43,9 @@ import styles from './ReopenConfirm.module.css'
 const TRIP = 'tttttttt-0000-7000-8000-000000000001'
 const OTHER_TRIP = 'tttttttt-0000-7000-8000-000000000002'
 const GEAR = 'gggggggg-0000-7000-8000-000000000001'
+const GEAR_LAMP = 'gggggggg-0000-7000-8000-000000000002'
+const TENT = 'gggggggg-0000-7000-8000-000000000003'
+const PERSON = 'pppppppp-0000-7000-8000-000000000001'
 
 interface Seeded {
   store: StoreApi<HouseholdStoreState>
@@ -123,6 +128,102 @@ async function aClosedTripWithConsumed(): Promise<Seeded> {
   store.getState().emit(tripConsumedCountSet(TRIP, 'e-gas', 2))
   store.getState().emit(gearOwnedCountSet(GEAR, 4))
   store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
+  await store.getState().drained()
+  return { store, trip: () => store.getState().state.trips[TRIP]! }
+}
+
+/**
+ * `TRIP` closed holding one per-person Entry whose sole Piece is still
+ * `lost` — `standingLostOf`'s own shape, real Person named `K` so the
+ * rendered string matches spec §6's example verbatim rather than needing a
+ * regex.
+ */
+async function aClosedTripWithStandingLost(): Promise<Seeded> {
+  const store = createHouseholdStore({
+    log: inMemoryOpLog(),
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(personRecorded(PERSON, 'K'))
+  store.getState().emit(
+    gearRecorded(GEAR_LAMP, {
+      name: 'Headlamp',
+      container: false,
+      kind: 'per_person',
+    }),
+  )
+  store.getState().emit(tripCreated(TRIP, 'Tessin 2025'))
+  store.getState().emit(tripParticipantAdded(TRIP, PERSON))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: GEAR_LAMP }))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-lamp', 'lost', PERSON))
+  store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
+  await store.getState().drained()
+  return { store, trip: () => store.getState().state.trips[TRIP]! }
+}
+
+/**
+ * `TRIP` closed holding all three at once — the standing lost Piece
+ * (`aClosedTripWithStandingLost`), the consumed reduction
+ * (`aClosedTripWithConsumed`) and the clash with `OTHER_TRIP`
+ * (`aClosedTripClash`) — so the order test below asserts all three blocks
+ * against one real fold rather than three isolated ones that could each
+ * pass while the stacking order drifts.
+ */
+async function aClosedTripWithEverything(): Promise<Seeded> {
+  const store = createHouseholdStore({
+    log: inMemoryOpLog(),
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(personRecorded(PERSON, 'K'))
+  store.getState().emit(
+    gearRecorded(GEAR_LAMP, {
+      name: 'Headlamp',
+      container: false,
+      kind: 'per_person',
+    }),
+  )
+  store.getState().emit(
+    gearRecorded(GEAR, {
+      name: 'Gas canister',
+      container: false,
+      kind: 'counted',
+    }),
+  )
+  store.getState().emit(gearOwnedCountSet(GEAR, 6))
+  store.getState().emit(
+    gearRecorded(TENT, {
+      name: 'Tent, tunnel 4p',
+      container: false,
+      kind: 'single',
+    }),
+  )
+  store.getState().emit(tripCreated(TRIP, 'Tessin 2025'))
+  store.getState().emit(tripParticipantAdded(TRIP, PERSON))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: GEAR_LAMP }))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-lamp', 'lost', PERSON))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: GEAR }))
+  store.getState().emit(tripEntryBringCountSet(TRIP, 'e-gas', 4))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-gas', 'consumed'))
+  store.getState().emit(tripConsumedCountSet(TRIP, 'e-gas', 2))
+  store.getState().emit(gearOwnedCountSet(GEAR, 4))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-here', { from: 'depot', gearId: TENT }))
+  store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
+  store.getState().emit(tripCreated(OTHER_TRIP, 'Alps 2026'))
+  store.getState().emit(tripPhaseMoved(OTHER_TRIP, 'pack_out'))
+  store
+    .getState()
+    .emit(
+      tripEntryAdded(OTHER_TRIP, 'e-other', { from: 'depot', gearId: TENT }),
+    )
   await store.getState().drained()
   return { store, trip: () => store.getState().state.trips[TRIP]! }
 }
@@ -235,15 +336,48 @@ describe('the reopen confirm', () => {
     expect(screen.queryByRole('button', { name: /BRING ×/ })).toBeNull()
   })
 
-  it('renders no ENTRY STILL OPEN block — that needs outcomes', async () => {
+  /**
+   * **S11's last mono block (spec §6).** `standingLostOf` reads this Trip's
+   * own Entries and Pieces whose `lost` outcome still stands — a Person
+   * named `K` matches spec §6's own example verbatim, so the assertion pins
+   * the exact string rather than a regex around it.
+   */
+  it('renders the STILL UNACCOUNTED block for a standing lost Piece', async () => {
+    const seeded = await aClosedTripWithStandingLost()
+    renderConfirm(seeded, { to: 'unpack' })
+
+    expect(screen.getByTestId('reopen-unaccounted')).toHaveTextContent(
+      '1 STILL UNACCOUNTED — HEADLAMP, K · ▲ LOST',
+    )
+  })
+
+  it('draws no STILL UNACCOUNTED block on a Trip with nothing still lost (G3)', async () => {
     const seeded = await aClosedTripClash()
     renderConfirm(seeded, { to: 'unpack' })
 
-    // `1 ENTRY STILL OPEN — HEADLAMP, K · ▲ LOST` is S10's: outcomes do not
-    // exist yet, so nothing here fakes or stubs the mono line that would
-    // read them.
-    expect(screen.queryByText(/ENTRY STILL OPEN/)).toBeNull()
-    expect(screen.queryByText(/LOST/)).toBeNull()
+    expect(screen.queryByTestId('reopen-unaccounted')).not.toBeInTheDocument()
+    expect(screen.queryByText(/STILL UNACCOUNTED/)).toBeNull()
+  })
+
+  /**
+   * The sheet's own `children` slot stacks three conditional blocks in one
+   * order — this Trip's own history first, the world outside it last (spec
+   * §6): the unaccounted block, then G1's reduction lines, then the
+   * facts-only over-claim block.
+   */
+  it('stacks the unaccounted, reduction and over-claim blocks in that order', async () => {
+    const seeded = await aClosedTripWithEverything()
+    renderConfirm(seeded, { to: 'unpack' })
+
+    const confirm = screen.getByRole('alertdialog')
+    const text = confirm.textContent ?? ''
+    const unaccountedAt = text.indexOf('STILL UNACCOUNTED')
+    const reductionAt = text.indexOf('OWNED COUNTS LOWERED AT CLOSE')
+    const overClaimAt = text.indexOf('already claimed by')
+
+    expect(unaccountedAt).toBeGreaterThanOrEqual(0)
+    expect(reductionAt).toBeGreaterThan(unaccountedAt)
+    expect(overClaimAt).toBeGreaterThan(reductionAt)
   })
 
   it('keeps the reopen primary flush left and filled accent', async () => {

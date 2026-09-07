@@ -2,7 +2,6 @@ import {
   listTotals,
   packingTotals,
   phaseOf,
-  reopenBlocked,
   reopenTrip,
   tripLabel,
   tripNameOrUnnamed,
@@ -202,13 +201,6 @@ export function Trips() {
   // this map would be fifteen full-household walks on every render this
   // memo re-runs.
   //
-  // **`blocked` joins them for the identical reason, and belongs in this
-  // memo rather than at the row.** `reopenBlocked` reads
-  // `consumedReductions`, which walks the Trip's Entries through
-  // `entriesOf`'s label sort — the very cost the note above and `cards`' own
-  // memo were written for. Computed inline at the row it would re-run for
-  // every closed Trip on every `setPhaseTripId`/`setReopenTripId` click,
-  // neither of which touches `state`.
   const closedMeta = useMemo(() => {
     const standings = unaccountedOf(state)
     return new Map(
@@ -218,7 +210,6 @@ export function Trips() {
           pieces: listTotals(trip, state).pieces,
           lost: unpackTotals(trip, state).lost,
           attention: tripHasUnaccounted(trip, standings),
-          blocked: reopenBlocked(trip, state),
         },
       ]),
     )
@@ -279,15 +270,11 @@ export function Trips() {
                 <ul className={styles['rows']}>
                   {sections.closed.map((trip) => {
                     // The fallback is unreachable — the memo is keyed off
-                    // this same list — and `blocked: true` is the safe half
-                    // of it either way: a row that cannot say whether the
-                    // close owed a reduction must not offer the tap that
-                    // would double-apply one.
+                    // this same list.
                     const meta = closedMeta.get(trip.id) ?? {
                       pieces: 0,
                       lost: 0,
                       attention: false,
-                      blocked: true,
                     }
                     return (
                       <ClosedRow
@@ -296,7 +283,6 @@ export function Trips() {
                         pieces={meta.pieces}
                         lost={meta.lost}
                         lostIsAttention={meta.attention}
-                        blocked={meta.blocked}
                         onReopen={() => setReopenTripId(trip.id)}
                       />
                     )
@@ -317,9 +303,10 @@ export function Trips() {
             to={REOPEN_TO}
             onCancel={() => setReopenTripId(null)}
             onConfirm={() => {
-              // `reopenTrip` (`gestures.ts`) carries the gate, never
-              // re-derived here — the row below already withheld its control
-              // on the same predicate, so this loop emits exactly one op.
+              // `reopenTrip` (`gestures.ts`) — every closed Trip may reopen
+              // now (spec §5.1); this back-fills a posting for any Gear
+              // this Trip's own close reduced before this register existed
+              // (spec §5.2), then moves the phase.
               for (const spec of reopenTrip(reopenTarget, REOPEN_TO, state)) {
                 emit(spec)
               }
@@ -374,44 +361,27 @@ export function Trips() {
  * closed ledger states what left the Depot for good and what is still
  * unaccounted for, not the whole of what came back.
  *
- * ## The `REOPEN` is withheld where reopening would double-reduce the Depot
+ * ## `REOPEN` is on every closed row (S11, spec §5.1)
  *
- * `reopenBlocked` (`gestures.ts`) is `true` exactly on a Trip whose close
- * lowered an owned count, and this build cannot re-close such a Trip without
- * subtracting the Consumed-count a second time — the row's own `REOPEN` was
- * the first of the two doors onto it. The control is **withheld, never
- * greyed** (`patterns.md` §3.7), and §3.7's mirror is why the meta gains a
- * segment rather than the row simply losing a button: what goes is the
- * target, not the information.
- *
- * **The segment states a fact about this Trip, not about the roadmap.**
- * `NO REOPEN — COUNTS LOWERED AT CLOSE` is the honest half a Quartermaster
- * can act on; that S11 is the slice which hands the route back is a fact for
- * the docs, the same rule S7 set when it refused to put a missing op type on
- * screen. It is its own element rather than joined into the meta text for
- * `1 LOST`'s reason one paragraph up: it is the segment with a colour
- * question of its own, and a single text node could only colour all of the
- * line or none of it.
- *
- * **Code-authored copy.** No board draws a closed row without a `REOPEN`,
- * because no board reached the case — recorded in `docs/design/README.md`
- * §5j for the next round to rule rather than to re-derive from the shipped
- * string.
+ * S10's `reopenBlocked` withheld this control on a Trip whose close lowered
+ * an owned count, because re-closing it would have subtracted the
+ * Consumed-count a second time. S11 (spec §2) makes the *close* correct
+ * instead — it reads what this Trip has already posted before it ever
+ * reduces again — so there is nothing left for a gate on this row to
+ * prevent, and `NO REOPEN — COUNTS LOWERED AT CLOSE` retires with it. Every
+ * closed Trip draws `REOPEN`.
  */
 function ClosedRow({
   trip,
   pieces,
   lost,
   lostIsAttention,
-  blocked,
   onReopen,
 }: {
   trip: TripState
   pieces: number
   lost: number
   lostIsAttention: boolean
-  /** `reopenBlocked`, read once in `Trips()` — this component reads no store. */
-  blocked: boolean
   onReopen: () => void
 }) {
   const label = tripLabel(trip)
@@ -462,36 +432,23 @@ function ClosedRow({
               </span>
             </>
           )}
-          {blocked && (
-            <>
-              {' · '}
-              <span
-                className={styles['noReopen']}
-                data-testid={`no-reopen-${trip.id}`}
-              >
-                NO REOPEN — COUNTS LOWERED AT CLOSE
-              </span>
-            </>
-          )}
         </span>
       </Link>
 
-      {!blocked && (
-        <button
-          type="button"
-          className={styles['reopen']}
-          // A list of rows whose buttons all read `REOPEN` is unnavigable by
-          // control list, and reopening is the one action on this screen that
-          // needs saying which Trip it is about before it is pressed.
-          aria-label={`Reopen ${spokenName}`}
-          onClick={onReopen}
-        >
-          <span>REOPEN</span>
-          <span className={styles['chevron']} aria-hidden="true">
-            ›
-          </span>
-        </button>
-      )}
+      <button
+        type="button"
+        className={styles['reopen']}
+        // A list of rows whose buttons all read `REOPEN` is unnavigable by
+        // control list, and reopening is the one action on this screen that
+        // needs saying which Trip it is about before it is pressed.
+        aria-label={`Reopen ${spokenName}`}
+        onClick={onReopen}
+      >
+        <span>REOPEN</span>
+        <span className={styles['chevron']} aria-hidden="true">
+          ›
+        </span>
+      </button>
     </li>
   )
 }

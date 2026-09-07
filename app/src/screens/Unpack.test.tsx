@@ -2036,19 +2036,20 @@ describe('a closed Trip draws a record (§5i G6)', () => {
   })
 
   /**
-   * **The hint's route half stops naming a door once there is none.**
-   * `reopenBlocked` (`gestures.ts`) withholds both doors out of `closed` on a
-   * Trip whose close lowered an owned count — the ledger row's `REOPEN` and
-   * SET PHASE's four rows — so `REOPEN TO CHANGE ONE` would send a
-   * Quartermaster looking for a control that is deliberately not there. G6's
-   * first half is untouched either way: the screen is a record.
+   * **S11 hands the route back (spec §5.1).** S10's `reopenBlocked`
+   * withheld both doors out of `closed` on a Trip whose close lowered an
+   * owned count and swapped this hint's route half for
+   * `NO REOPEN — COUNTS LOWERED AT CLOSE.` S11 makes the *close* correct
+   * instead, so a re-close of such a Trip subtracts nothing further and the
+   * hint reads G6's form on every closed Trip regardless of what its close
+   * did.
    *
    * This scenario is `closedRecordScenario`'s Trip plus a `consumed` Counted
-   * Entry, which is the whole of what the gate reads. The test above pins the
-   * unblocked wording on the scenario without one, so the pair says the swap
-   * is narrow rather than unconditional.
+   * Entry, which is what the retired gate used to read — the pair with the
+   * test above says the same hint draws whether or not the close owed a
+   * reduction.
    */
-  it('names no reopen once the close lowered an owned count', async () => {
+  it('reads REOPEN TO CHANGE ONE even when the close lowered an owned count', async () => {
     await renderUnpack(
       `/trips/${ALPS}/unpack`,
       ...alps(),
@@ -2066,11 +2067,9 @@ describe('a closed Trip draws a record (§5i G6)', () => {
     )
 
     expect(
-      screen.getByText(
-        'CLOSED · OUTCOMES ARE HISTORY. NO REOPEN — COUNTS LOWERED AT CLOSE.',
-      ),
+      screen.getByText('CLOSED · OUTCOMES ARE HISTORY. REOPEN TO CHANGE ONE.'),
     ).toBeVisible()
-    expect(screen.queryByText(/REOPEN TO CHANGE ONE/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/NO REOPEN/)).not.toBeInTheDocument()
   })
 
   it('leaves a trip-only row exactly as it was — the treatment the others borrowed', async () => {
@@ -2172,8 +2171,14 @@ describe('the close card (F11, spec §4.7)', () => {
     await user.click(screen.getByRole('button', { name: 'Close trip' }))
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    // The reduction before its own posting (spec §2.3), `trip.phase_moved`
+    // last — `gestures.test.ts`'s own pinned order for this shape of fixture.
     expect(await seeded.authored()).toEqual([
       { type: 'gear.owned_count_set', payload: { count: 3 } },
+      {
+        type: 'trip.consumption_posted',
+        payload: { gear_id: CANISTER, units: 2 },
+      },
       { type: 'trip.phase_moved', payload: { phase: 'closed' } },
     ])
   })
@@ -2201,6 +2206,10 @@ describe('the close card (F11, spec §4.7)', () => {
     const firstBatch = await seeded.authored()
     expect(firstBatch).toEqual([
       { type: 'gear.owned_count_set', payload: { count: 3 } },
+      {
+        type: 'trip.consumption_posted',
+        payload: { gear_id: CANISTER, units: 2 },
+      },
       { type: 'trip.phase_moved', payload: { phase: 'closed' } },
     ])
 

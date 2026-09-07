@@ -3,7 +3,9 @@ import {
   ownedCountOf,
   isActivePhase,
   overClaimsIfActive,
+  personNameOrUnnamed,
   phaseName,
+  standingLostOf,
   tripNameOrUnnamed,
   type PhaseKey,
   type TripState,
@@ -26,12 +28,32 @@ import styles from './ReopenConfirm.module.css'
  * without the confirm would leave an invariant violated for five slices
  * (spec §6.3).
  *
- * What ships now is the board's title, its second line, and — Task 14 — the
- * over-claim block. `1 ENTRY STILL OPEN — HEADLAMP, K · ▲ LOST` is the one
- * mono block still missing: it needs **S10**'s outcomes, and architecture
- * §8.3 gives **S11** the reopen clause that fills it in. Neither block is
- * faked and neither is stubbed — an empty body states nothing false, while a
- * hard-coded count would.
+ * What ships is the board's title, its second line, and three conditional
+ * blocks stacked inside `children`, in one order (spec §6): the
+ * `STILL UNACCOUNTED` block (what about this Trip is still unsettled), G1's
+ * reduction lines (what the close did), then the facts-only over-claim block
+ * (what reopening would collide with) — this Trip's own history first, the
+ * world outside it last. None of the three is faked or stubbed — each is
+ * absent entirely rather than drawn empty (G3), so an empty body states
+ * nothing false.
+ *
+ * **`STILL UNACCOUNTED`, not the board's drawn `1 ENTRY STILL OPEN`.** Spec
+ * §6 argues the wording at length: a properly closed Trip has zero *open*
+ * outcomes (invariant 18 is what the close is gated on) and a `lost` Entry
+ * is *resolved*, not open — the drawn `▲ LOST` cannot be produced by an open
+ * count. The block states what the reason a Quartermaster reopens actually
+ * is: the tent that turned up.
+ *
+ * **{@link standingLostOf}, not `unaccountedOf`.** `unaccountedOf` is keyed
+ * by Gear across the whole household and names the *latest* Trip holding a
+ * live `lost` outcome for it — reading it from inside this Trip's own sheet
+ * could name a *different* Trip as the one still holding the standing, a
+ * false statement on a screen that is about to say "this Trip".
+ * `standingLostOf` (`selectors/unpack.ts`) answers the narrower question
+ * this sheet actually asks — of what **this Trip** recorded, what is still
+ * open — gathering its candidates from this Trip's own Entries while still
+ * reading the household-wide settle (`outcomeStands`) to decide whether each
+ * one still stands; its own docblock argues the split in full.
  *
  * **The over-claim block only asks the hypothetical when `to` is itself an
  * active phase** (Task 14 review F2). `overClaimsIfActive` answers "what if
@@ -138,18 +160,9 @@ export function ReopenConfirm({
   const groups = overClaimGroups(overClaims, trip.id, state)
 
   // Finding I2 — see this module's own docblock. Empty on every Trip whose
-  // close owes the Depot nothing, which is most of them.
-  //
-  // **Unreachable from the shipped UI as of the reopen gate, and kept
-  // deliberately.** `reopenBlocked` (`gestures.ts`) withholds both doors out
-  // of `closed` on exactly the Trips this block renders for — the gate and
-  // this line ask the identical `consumedReductions`, so the sets are the
-  // same set — which means no tap can currently open this sheet on a Trip
-  // with a reduction to disclose. It stays because deleting it would
-  // overturn ruling G1 in code rather than at a design round, and because
-  // S11's whole job is to make a re-close subtract nothing twice and hand
-  // the route back, at which point this block is the disclosure again with
-  // no work to redo. Recorded in `docs/design/README.md` §5j.
+  // close owes the Depot nothing, which is most of them. Reachable for the
+  // first time as of S11 (spec §5.1): every closed Trip may reopen, so
+  // every Trip this block renders for can actually reach this sheet.
   //
   // **§5i G1 moved this from prose into a fact.** The disclosure stays; its
   // register changes. `ReopenConfirm` already has a place for facts that
@@ -165,7 +178,44 @@ export function ReopenConfirm({
   // register that would answer better — the pre-close value exists only in
   // the log — and the reduction it describes is what the sheet is there to
   // disclose, so it is stated and this comment is the caveat.
+  //
+  // **Its sibling (spec §5.2): a Trip closed before this register existed
+  // reads a back-filled reconstruction, never a gap.** `reopenTrip`
+  // (`gestures.ts`) back-fills a posting from `consumedReductions` computed
+  // *now*, for the identical reason the `×6` above is one — ruling G6 makes
+  // F5's outcomes frozen on a closed Trip, so recomputing the reduction
+  // after the fact is a reconstruction from a fact that cannot have moved,
+  // not a guess. What that reconstruction cannot see is a peer on a
+  // **pre-gate** build (S10-era) that reopened and reclosed this Trip
+  // outside either build's view (spec §5.3) — recorded in
+  // `docs/technical-debt.md`, not fixed here.
   const reductions = consumedReductions(trip, state)
+
+  // **S11's last mono block (spec §6).** `standingLostOf` — never
+  // `unaccountedOf`, see this module's own docblock — gathers this Trip's
+  // own Entries and Pieces whose `lost` outcome still stands. The count is
+  // units, matching every other count on this sheet (G3: absent at zero);
+  // each line's `▲ LOST` is constant across every candidate — the selector
+  // only ever returns `lost` standings — so it is stated once per line, not
+  // deduplicated to the block's end, mirroring `reductionLines`' own
+  // self-contained-segment shape below. The comma divides the gear name
+  // from the Person inside one segment; a Person renders through
+  // `personNameOrUnnamed` (§5c's split — `—` is right in a list column,
+  // wrong in a sentence).
+  const standingLost = standingLostOf(trip, state)
+  const unaccountedUnits = standingLost.reduce(
+    (total, item) => total + item.units,
+    0,
+  )
+  const unaccountedLines = standingLost
+    .map((item) => {
+      const person =
+        item.personId === null
+          ? ''
+          : `, ${personNameOrUnnamed(state, item.personId)}`
+      return `${item.gearName.toUpperCase()}${person} · ▲ LOST`
+    })
+    .sort()
 
   // One entry per Gear the close reduced, in the Depot's own name order so
   // two Trips' sheets read alike. `owned` is the count **now**, already
@@ -214,6 +264,12 @@ export function ReopenConfirm({
         </>
       }
     >
+      {unaccountedLines.length > 0 && (
+        <p className={styles['unaccounted']} data-testid="reopen-unaccounted">
+          {`${unaccountedUnits} STILL UNACCOUNTED — ${unaccountedLines.join(' · ')}`}
+        </p>
+      )}
+
       {reductionLines.length > 0 && (
         <p className={styles['reduction']} data-testid="reopen-reduction">
           {`OWNED COUNTS LOWERED AT CLOSE STAY LOWERED — ${reductionLines.join(' · ')}`}
