@@ -632,6 +632,41 @@ const tripParticipantWritten =
     })
 
 /**
+ * `trip.consumption_posted` (S11, spec §2.1, §4): writes
+ * `trips.<id>.postings.<gear_id>`, `tripParticipantWritten`'s exact shape one
+ * field over — a per-gear register on the Trip root, resolved by plain LWW.
+ *
+ * **Folds unconditionally.** The Kind lives on the Gear aggregate, which has
+ * no ordering against the Trip's, so gating here on Kind or on whether
+ * `state.gear[gear_id]` has arrived would make the fold depend on which op
+ * happened to land first — `bringCountOf`'s and `consumedCountOf`'s reason,
+ * restated for a third register. Every gate belongs to `postedOf`, on the way
+ * out.
+ *
+ * **`units` is absolute, never a delta** — `gear.owned_count_set`'s own
+ * contract, one register over. `readCount` accepts `0`, and this reducer
+ * writes it exactly as it writes any other value: a restoration back to
+ * nothing is a fact distinct from the register never having been addressed.
+ */
+const tripConsumptionPosted: Handler = (state, op, stamp) => {
+  const gearId = readString(op.payload, 'gear_id')
+  if (gearId.kind !== 'value') return state
+  const units = readCount(op.payload, 'units')
+  if (units.kind !== 'value') return state
+  return writeTrip(state, op.aggregate_id, stamp, (trip, st) => {
+    const current = trip.postings?.[gearId.value]
+    const next = writeRegister(current, units.value, st)
+    // Identity propagated, same as every other handler: a lost write must
+    // not fabricate a new `trip` and invalidate a memo downstream.
+    if (next === current) return trip
+    return {
+      ...trip,
+      postings: { ...trip.postings, [gearId.value]: next },
+    }
+  })
+}
+
+/**
  * `trip.entry_added` (§4.4): creates the Entry and seeds `source`.
  *
  * A malformed or unrecognised source writes nothing and leaves an Entry that
@@ -1019,6 +1054,10 @@ const handlers: Record<string, Handler> = {
   // the last two registers `sync-protocol.md` §3.7 names for either path.
   'trip.outcome_set': tripOutcomeSet,
   'trip.consumed_count_set': tripConsumedCountSet,
+  // S11 (§4.4): the posting register, `participants`' per-key shape one row
+  // over on the Trip root — the fact that a close's reduction "applied once"
+  // (domain §6), now with somewhere to be recorded.
+  'trip.consumption_posted': tripConsumptionPosted,
 }
 
 /**

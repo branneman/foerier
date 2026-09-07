@@ -1,0 +1,130 @@
+[
+  {
+    "id": "ffffffff-0000-7000-8000-000000000001",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s11-1",
+    "type": "trip.created",
+    "hlc": "2026-09-07T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "S11 Fixture Trip"
+    },
+    "seq": 1,
+    "received_at": "2026-09-07T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000002",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s11-fuel",
+    "type": "gear.recorded",
+    "hlc": "2026-09-07T09:01:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Fuel canister",
+      "container": false,
+      "kind": "counted",
+      "owned_count": 6
+    },
+    "seq": 2,
+    "received_at": "2026-09-07T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000003",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s11-tent",
+    "type": "gear.recorded",
+    "hlc": "2026-09-07T09:02:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Tent",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 3,
+    "received_at": "2026-09-07T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000004",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s11-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-07T09:03:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s11-fuel",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s11-fuel"
+      }
+    },
+    "seq": 4,
+    "received_at": "2026-09-07T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000005",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s11-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-07T09:04:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s11-tent",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s11-tent"
+      }
+    },
+    "seq": 5,
+    "received_at": "2026-09-07T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000006",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s11-1",
+    "type": "trip.consumption_posted",
+    "hlc": "2026-09-07T09:05:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "gear_id": "g-s11-fuel",
+      "units": 4
+    },
+    "seq": 6,
+    "received_at": "2026-09-07T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000007",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s11-1",
+    "type": "trip.consumption_posted",
+    "hlc": "2026-09-07T09:06:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "gear_id": "g-s11-tent",
+      "units": 0
+    },
+    "seq": 7,
+    "received_at": "2026-09-07T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000008",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s11-1",
+    "type": "trip.consumption_posted",
+    "hlc": "2026-09-07T09:07:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "gear_id": "g-s11-ghost",
+      "units": 3
+    },
+    "seq": 8,
+    "received_at": "2026-09-07T10:00:00Z"
+  }
+]

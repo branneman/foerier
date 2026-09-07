@@ -1,0 +1,111 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the S11 fixture > folds to exactly the state it folded to when captured 1`] = `
+{
+  "gear": {
+    "g-s11-fuel": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:01:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s11-fuel",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:01:00.000Z-0000",
+        "value": "counted",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:01:00.000Z-0000",
+        "value": "Fuel canister",
+      },
+      "ownedCount": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:01:00.000Z-0000",
+        "value": 6,
+      },
+    },
+    "g-s11-tent": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:02:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s11-tent",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:02:00.000Z-0000",
+        "value": "single",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:02:00.000Z-0000",
+        "value": "Tent",
+      },
+    },
+  },
+  "people": {},
+  "places": {},
+  "trips": {
+    "t-s11-1": {
+      "entries": {
+        "e-s11-fuel": {
+          "id": "e-s11-fuel",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-07T09:03:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s11-fuel",
+            },
+          },
+        },
+        "e-s11-tent": {
+          "id": "e-s11-tent",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-07T09:04:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s11-tent",
+            },
+          },
+        },
+      },
+      "id": "t-s11-1",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:00:00.000Z-0000",
+        "value": "S11 Fixture Trip",
+      },
+      "phase": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-07T09:00:00.000Z-0000",
+        "value": "draft",
+      },
+      "postings": {
+        "g-s11-fuel": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-09-07T09:05:00.000Z-0000",
+          "value": 4,
+        },
+        "g-s11-ghost": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-09-07T09:07:00.000Z-0000",
+          "value": 3,
+        },
+        "g-s11-tent": {
+          "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+          "hlc": "2026-09-07T09:06:00.000Z-0000",
+          "value": 0,
+        },
+      },
+    },
+  },
+  "unfolded": {
+    "count": 0,
+    "types": {},
+  },
+}
+`;

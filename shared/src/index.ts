@@ -79,6 +79,7 @@ export {
   placeRemoved,
   placeRenamed,
   tripConsumedCountSet,
+  tripConsumptionPosted,
   tripContainerStageSet,
   tripCreated,
   tripDatesSet,

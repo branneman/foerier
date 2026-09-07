@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { aGear, anOp, hlcAt } from '../testUtils/index.ts'
 import {
   tripConsumedCountSet,
+  tripConsumptionPosted,
   tripEntryAdded,
   tripOutcomeSet,
+  tripPhaseMoved,
   type OpSpec,
 } from './authoring.ts'
 import { emptyState, fold } from './reduce.ts'
@@ -18,6 +20,7 @@ const TRIP = '66666666-0000-7000-8000-000000000001'
 const ENTRY = '77777777-0000-7000-8000-000000000001'
 const KIM = '88888888-0000-7000-8000-000000000001'
 const GEAR = '99999999-0000-7000-8000-000000000001'
+const GEAR_2 = '99999999-0000-7000-8000-000000000002'
 
 function foldOf(...specs: readonly OpSpec[]): HouseholdState {
   return fold(
@@ -200,6 +203,98 @@ describe('trip.consumed_count_set', () => {
     const stale = fold(
       [
         anOp(tripConsumedCountSet(TRIP, ENTRY, 1), {
+          hlc: hlcAt(1, DEFAULT_MS),
+          deviceId: DEV_A,
+        }),
+      ],
+      seeded,
+    )
+    expect(stale).toBe(seeded)
+  })
+})
+
+// S11 (spec §2.1, §4): the posting register that lets a re-close know what a
+// prior close already took. Four cases, all of which must hold
+// *unconditionally* — the reader-gate rule `bringCountOf` and
+// `consumedCountOf` already established, restated for a third register.
+describe('trip.consumption_posted', () => {
+  it('folds when the Gear it names has never arrived', () => {
+    const state = foldOf(tripConsumptionPosted(TRIP, GEAR, 4))
+    expect(state.trips[TRIP]?.postings?.[GEAR]?.value).toBe(4)
+    expect(state.gear[GEAR]).toBeUndefined()
+    expect(state.unfolded.count).toBe(0)
+  })
+
+  it('folds on a Trip in closed, and on one in draft', () => {
+    const closed = foldOf(
+      tripConsumptionPosted(TRIP, GEAR, 4),
+      tripPhaseMoved(TRIP, 'closed'),
+    )
+    expect(closed.trips[TRIP]?.postings?.[GEAR]?.value).toBe(4)
+    expect(closed.trips[TRIP]?.phase?.value).toBe('closed')
+
+    const draft = foldOf(
+      tripPhaseMoved(TRIP, 'draft'),
+      tripConsumptionPosted(TRIP, GEAR, 4),
+    )
+    expect(draft.trips[TRIP]?.postings?.[GEAR]?.value).toBe(4)
+    expect(draft.trips[TRIP]?.phase?.value).toBe('draft')
+  })
+
+  it('folds on a Gear whose Kind is single, not Counted', () => {
+    const state = foldOf(
+      ...aGear({ id: GEAR, kind: 'single' }),
+      tripConsumptionPosted(TRIP, GEAR, 4),
+    )
+    expect(state.gear[GEAR]?.kind?.value).toBe('single')
+    expect(state.trips[TRIP]?.postings?.[GEAR]?.value).toBe(4)
+  })
+
+  it('resolves two postings for the same Gear by LWW, and two for different Gear both survive', () => {
+    // Same gear: later HLC wins, `participants`' own shape one row up.
+    const sameGear = fold([
+      anOp(tripConsumptionPosted(TRIP, GEAR, 4), {
+        hlc: hlcAt(1, DEFAULT_MS),
+        deviceId: DEV_A,
+      }),
+      anOp(tripConsumptionPosted(TRIP, GEAR, 6), {
+        hlc: hlcAt(2, DEFAULT_MS),
+        deviceId: DEV_A,
+      }),
+    ])
+    expect(sameGear.trips[TRIP]?.postings?.[GEAR]?.value).toBe(6)
+
+    const stale = fold([
+      anOp(tripConsumptionPosted(TRIP, GEAR, 6), {
+        hlc: hlcAt(5, DEFAULT_MS),
+        deviceId: DEV_A,
+      }),
+      anOp(tripConsumptionPosted(TRIP, GEAR, 4), {
+        hlc: hlcAt(1, DEFAULT_MS),
+        deviceId: DEV_A,
+      }),
+    ])
+    expect(stale.trips[TRIP]?.postings?.[GEAR]?.value).toBe(6)
+
+    // Different gear: two registers, neither contested.
+    const twoGear = foldOf(
+      tripConsumptionPosted(TRIP, GEAR, 4),
+      tripConsumptionPosted(TRIP, GEAR_2, 2),
+    )
+    expect(twoGear.trips[TRIP]?.postings?.[GEAR]?.value).toBe(4)
+    expect(twoGear.trips[TRIP]?.postings?.[GEAR_2]?.value).toBe(2)
+  })
+
+  it('returns the identical object when a write loses LWW', () => {
+    const seeded = fold([
+      anOp(tripConsumptionPosted(TRIP, GEAR, 6), {
+        hlc: hlcAt(5, DEFAULT_MS),
+        deviceId: DEV_A,
+      }),
+    ])
+    const stale = fold(
+      [
+        anOp(tripConsumptionPosted(TRIP, GEAR, 4), {
           hlc: hlcAt(1, DEFAULT_MS),
           deviceId: DEV_A,
         }),

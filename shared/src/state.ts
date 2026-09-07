@@ -329,6 +329,29 @@ export interface TripState {
    */
   participants?: Readonly<Record<string, Register<boolean>>>
   /**
+   * S11 (spec §2.1, §4): the running total this Trip has posted against a
+   * Gear's owned count — the fact domain §6's *"applies once, at the
+   * close"* had nowhere to be recorded until this slice named it. Per-gear
+   * registers, not one register holding a map, for `participants`' own
+   * reason one row up (sync §3.4): two Devices posting *different* Gear
+   * address different registers and both survive, and two posting the
+   * *same* Gear is one register resolving by plain LWW — both compute the
+   * identical value from the identical fold, so LWW picks between two equal
+   * numbers.
+   *
+   * **`units` is absolute, never a delta** — `gear.owned_count_set`'s own
+   * contract, restated one register over. It is the running total this Trip
+   * has posted, so re-emitting the same value is idempotent and a Device
+   * that folds the op twice learns nothing new.
+   *
+   * **An absent register reads `0`**, and only `postedOf` (`unpack.ts`) says
+   * so — `ownerOf`'s rule again. Absent and an explicit `0` stay different
+   * facts about the log: absent means no close ever posted this Gear, `0`
+   * means a restoration took it back to nothing (spec §3) — and every
+   * reader treats them alike.
+   */
+  postings?: Readonly<Record<string, Register<number>>>
+  /**
    * The gear list, keyed by entry id. A map of **entities**, not of registers
    * — deliberately not `participants`' shape, which is a set whose member
    * carries only presence.

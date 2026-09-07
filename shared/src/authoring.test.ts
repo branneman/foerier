@@ -17,6 +17,7 @@ import {
   placeRecorded,
   placeRemoved,
   placeRenamed,
+  tripConsumptionPosted,
   authorOp,
   type OpAuthor,
 } from './authoring.ts'
@@ -107,6 +108,31 @@ describe('S4`s two builders', () => {
 
   it('personRenamed carries a name', () => {
     expect(personRenamed('pe1', 'Elsje').payload).toEqual({ name: 'Elsje' })
+  })
+})
+
+describe('tripConsumptionPosted', () => {
+  // S11 (spec §2.1, §4): `gear_id` crosses the same camelCase→snake_case
+  // boundary `gearOwnershipSet`'s `personId` does, and `units` is written
+  // exactly as given — this builder never computes a delta, only carries
+  // the absolute total the caller already worked out.
+  it('crosses the camelCase boundary and carries an absolute units', () => {
+    expect(tripConsumptionPosted('t1', 'g1', 4)).toEqual({
+      aggregate: 'trip',
+      aggregate_id: 't1',
+      type: 'trip.consumption_posted',
+      payload: { gear_id: 'g1', units: 4 },
+    })
+  })
+
+  // §2.1: an explicit `0` is a real posting (a restoration, spec §3), never
+  // dropped from the payload the way an absent optional field is elsewhere
+  // in this file — there is nothing optional about `units` to drop.
+  it('carries an explicit 0, the restoration case', () => {
+    expect(tripConsumptionPosted('t1', 'g1', 0).payload).toEqual({
+      gear_id: 'g1',
+      units: 0,
+    })
   })
 })
 

@@ -649,3 +649,25 @@ export function tripConsumedCountSet(
     payload: { entry_id: entryId, count },
   }
 }
+
+/**
+ * S11 (spec §2.1, §4): records that this Trip has posted `units` of `gear_id`
+ * against the Depot's owned count — the running total, never a delta
+ * (`gear.owned_count_set`'s own contract, restated one register over). The
+ * close emits this once its reduction lands (spec §2.3); the offer emits it
+ * after restoring a count a reopen had deducted (spec §3). Folds
+ * unconditionally, on any Gear id and any Trip phase — `postedOf` is the
+ * gate, on the way out.
+ */
+export function tripConsumptionPosted(
+  tripId: string,
+  gearId: string,
+  units: number,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.consumption_posted',
+    payload: { gear_id: gearId, units },
+  }
+}
