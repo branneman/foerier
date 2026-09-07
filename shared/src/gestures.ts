@@ -8,7 +8,7 @@ import {
 import { ownedCountOf } from './selectors/depot.ts'
 import { entryKind, isContainerEntry } from './selectors/entry.ts'
 import { piecesOf } from './selectors/piece.ts'
-import { isClosed } from './selectors/trip.ts'
+import { isClosed, type PhaseKey } from './selectors/trip.ts'
 import {
   consumedReductions,
   outcomeOf,
@@ -48,6 +48,15 @@ import type {
  * not the temperature — and doing so from a Depot screen with no reopen
  * touches a **closed** Trip's history in violation of invariant 19. RESOLVE
  * emits a bare `gear.rehomed`; `GearDetail.tsx` carries the reasoning.
+ *
+ * **`reopenTrip` is a third function here and is not one of sync §4.5's
+ * three.** It writes a single op on a single aggregate, so it is no
+ * cross-aggregate *write* — but deciding *whether* to emit it means reading
+ * the Gear aggregate (`consumedReductions` → `ownedCountOf`'s own subject),
+ * which is the property that keeps it out of `authoring.ts` and puts it
+ * here: this file is where an op's payload stops being a pure function of
+ * its arguments. It is the symmetric door to {@link closeTrip}, and the two
+ * belong beside each other for the reason {@link reopenBlocked} spells out.
  */
 
 /**
@@ -218,20 +227,15 @@ export function reHomeOnTheSpot(
  * no-crash double-tap and the already-synced two-replica path (a stale
  * peer's still-live close card, or a second Device that already folded this
  * Trip's `closed` phase before it next reads state). It does **not** close
- * two narrower paths, because neither can be told apart from "a reduction
- * is still pending" using only the fold this function is handed:
+ * the **crash mid-batch, then retried** path: a Device dies after `emit`
+ * durably writes the reduction op but before the phase move lands — the
+ * fold still reads `unpack`, exactly as a Trip that was never closed at
+ * all — and a retry recomputes the reduction from the now-already-reduced
+ * count, subtracting the Consumed-count twice. That path cannot be told
+ * apart from "a reduction is still pending" using only the fold this
+ * function is handed.
  *
- * - **Crash mid-batch, then retried.** A Device dies after `emit` durably
- *   writes the reduction op but before the phase move lands — the fold
- *   still reads `unpack`, exactly as a Trip that was never closed at all —
- *   and a retry recomputes the reduction from the now-already-reduced
- *   count, subtracting the Consumed-count twice.
- * - **Close → reopen → close.** `ReopenConfirm` (since S6) is an ordinary,
- *   shipped way to move a `closed` Trip back to `unpack`, so a second close
- *   is not a misuse — it recomputes from a fold the first close already
- *   reduced, for the identical reason.
- *
- * Both would need a fact the fold as specified cannot state: whether *this
+ * It would need a fact the fold as specified cannot state: whether *this
  * Gear's own reduction, for this Trip*, has already been applied — a
  * per-Trip-per-Gear "already reduced" register outside S10's op catalogue.
  * The one mechanism already precedented in this codebase for a
@@ -242,11 +246,14 @@ export function reHomeOnTheSpot(
  * consumption and closing, silently skipping a reduction that was never
  * applied. A wrong "already reduced" belief is worse than the narrow, rare
  * corruption it would replace, so this is written down rather than patched.
- * Tracked in `docs/technical-debt.md` (the crash window) and
- * `docs/specs/2026-09-05-unpack-resolve-and-close.md` §8 (both paths,
- * spelled out); close → reopen → close's Depot semantics are S11's to
- * design, per F10's own note that reopen "offers back" the write this
- * gesture makes.
+ * Tracked in `docs/technical-debt.md`.
+ *
+ * **The second path that used to sit beside it — close, reopen, close —
+ * is closed from the other end, at {@link reopenTrip}.** Not by a fact this
+ * function gained: it still cannot tell a reopened Trip from one that was
+ * never closed, because both fold to `unpack`. What changed is that this
+ * build no longer *produces* such a Trip. See {@link reopenBlocked} for the
+ * gate and for the cross-version case it does not reach.
  */
 export function closeTrip(
   trip: TripState,
@@ -270,4 +277,105 @@ export function closeTrip(
   }
   ops.push(tripPhaseMoved(trip.id, 'closed'))
   return ops
+}
+
+/**
+ * **Whether this build may reopen this closed Trip** — `true` exactly when
+ * its close applied a Consumed reduction the Depot cannot have applied
+ * twice safely.
+ *
+ * This is a **limitation of this build, not a rule of the domain.** Story 32
+ * says reopening is a deliberate, confirmed act and that the app *"never
+ * refuses to reopen"*; story 11 wants the tent marked `lost` in September
+ * corrected in November. Both still hold, and this predicate is `false` for
+ * every Trip they describe — `lost` writes nothing against the Depot at all,
+ * so a Trip whose outcomes are `back` and `lost` owes no reduction and
+ * reopens exactly as drawn. What it withholds is the narrower case the
+ * stories never reached: a Trip whose close **lowered an owned count**.
+ *
+ * **What goes wrong without it.** `gear.owned_count_set` is absolute, never
+ * a delta ([sync §4.3](../../docs/sync-protocol.md)), and {@link closeTrip}
+ * computes `owned − consumed` against the fold it is handed. A reopened
+ * Trip folds to `unpack` exactly like a Trip that was never closed, so
+ * `closeTrip`'s own `isClosed` guard cannot see it, and the second close
+ * recomputes from the already-reduced count: owned 6 → close → 4 → reopen →
+ * close → **2**. Four taps, one Device, no crash, nothing on screen. It is
+ * the Depot corruption S10 exists to prevent, arriving through S6's own
+ * shipped door.
+ *
+ * **Why a gate here rather than a smarter close.** Telling *"the reduction
+ * never landed"* apart from *"it landed and this fold reflects it"* needs a
+ * per-Trip-per-Gear "already reduced" register outside S10's op catalogue,
+ * and the one precedented alternative — a cross-aggregate stamp
+ * comparison — was considered and rejected (ruling R28) as a worse false
+ * negative. {@link closeTrip}'s own docblock carries that argument in full.
+ * A comparison against the Trip's *phase* stamp fails harder still:
+ * invariant 16 lets an outcome be recorded before the move into `unpack`, so
+ * on an ordinary **first** close every outcome stamp can precede the phase
+ * stamp and the reduction would be skipped outright.
+ *
+ * **`consumedReductions` is the one question, never re-derived.** It already
+ * gates a `consumed` outcome to a Counted **depot** Entry, so a container, a
+ * Single, a trip-only Entry and an unsynced Gear each contribute nothing and
+ * leave the Trip reopenable — and it is the identical read `closeTrip` sums
+ * and `ReopenConfirm` asks for its own disclosure line, which is what keeps
+ * the gate and the sentence beside it from ever disagreeing.
+ *
+ * **A `false` answer means reopening is exact, not merely permitted.** A
+ * Trip that owes nothing can be reopened and re-closed any number of times
+ * and the Depot never moves, because {@link closeTrip} emits no
+ * `gear.owned_count_set` at all on such a Trip.
+ *
+ * **What this does not reach, stated rather than implied.** Reopening is a
+ * bare `trip.phase_moved`, and an installed PWA running a build from before
+ * this gate emits one with nothing to stop it. Such a Trip syncs here as an
+ * ordinary `unpack` Trip and *any* build's close card will then reduce it a
+ * second time. The gate turns a four-tap defect on a current build into a
+ * cross-version one; only the register above removes it. Recorded in
+ * `docs/technical-debt.md` and handed to S11, whose job is to make the
+ * re-close correct and hand this route back.
+ */
+export function reopenBlocked(trip: TripState, state: HouseholdState): boolean {
+  // `isClosed`, never re-derived — the only definition of closed-ness in the
+  // codebase. A Trip that is not closed is not being reopened, whatever it
+  // would owe, so the question does not arise.
+  if (!isClosed(trip)) return false
+  return consumedReductions(trip, state).size > 0
+}
+
+/**
+ * **The reopen** — the gesture behind the closed ledger row's `REOPEN` and
+ * `PhaseSheet`'s rows out of `closed`: it moves a closed Trip back to a live
+ * phase, and refuses where doing so would let the Depot be reduced twice.
+ *
+ * **It lives here rather than at the two screens for {@link closeTrip}'s own
+ * reason**, restated on the way out: spell the composition once, call it
+ * twice, and a screen can never emit half of it. `PhaseSheet` already
+ * carries the note that *"a bare `tripPhaseMoved` past this gate is exactly
+ * the corruption F5's own close card exists to prevent, arriving through a
+ * second door"* — about entering `closed`. This is the symmetric hole on the
+ * way out, and ruling R36's argument applies unchanged: what a gate in a
+ * gesture changes is not what a Quartermaster can reach today but what a
+ * **third** caller inherits.
+ *
+ * **The `to` phase is the caller's**, not this function's: the closed ledger
+ * row targets `unpack` and `PhaseSheet` offers all four other rows, because
+ * invariant 16 makes every move expressible in either direction and the
+ * sheet's own footnote promises any row is tappable. This gesture decides
+ * *whether*, never *where*.
+ *
+ * **Both callers withhold their control on {@link reopenBlocked} rather than
+ * tapping into this silence** (`patterns.md` §3.7 — withheld, never greyed),
+ * and state the fact where the control was. A returned `[]` is therefore
+ * unreachable from the shipped UI; it is here so that a third caller
+ * inherits the gate rather than the emit.
+ */
+export function reopenTrip(
+  trip: TripState,
+  to: PhaseKey,
+  state: HouseholdState,
+): readonly OpSpec[] {
+  if (!isClosed(trip)) return []
+  if (reopenBlocked(trip, state)) return []
+  return [tripPhaseMoved(trip.id, to)]
 }

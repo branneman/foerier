@@ -112,22 +112,24 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   A per-Trip-per-Gear "already reduced" register would close it cleanly and
   is outside S10's op catalogue. `shared/src/gestures.ts`'s own docblock on
   `closeTrip`, anchor: `A known, recorded residual risk`
-- **`close → reopen → close` double-applies the Consumed reduction, in four
-  taps on one Device.** `gear.owned_count_set` is absolute, not a delta, so
-  the second close recomputes `already-reduced − consumed` and subtracts it
-  again: owned 6 → 4 at the first close, → 2 at the second. Not a crash
-  window — `ReopenConfirm` is a shipped, ordinary route out of `closed`, and
-  the reopen does not offer the reduction back. **§5i G1 declines to
-  disclose the double-subtraction on screen** — the ledger states what it
-  did, never what it might do wrong — so `ReopenConfirm` states the
-  reduction as a fact and says nothing about re-closing. The round hands
-  this to S11 by name: *reopen may not become the drawn corrections route
-  until a re-close subtracts nothing twice*, which is also what G7 declines
-  a closed-Trip corrections affordance on. Closing it needs the same
-  per-Trip-per-Gear "already reduced" register its crash-window sibling
-  above waits on (a stamp comparison reads as a false negative — ruling
-  R28). `shared/src/gestures.ts`'s own docblock on `closeTrip`, anchor:
-  `Close → reopen → close.`
+- **A closed Trip whose close lowered an owned count cannot be reopened, and
+  a peer on a pre-gate build still can.** `close → reopen → close` used to
+  double-apply the Consumed reduction in four taps on one Device — owned 6 →
+  4 at the first close, → 2 at the second, since `gear.owned_count_set` is
+  absolute and a reopened Trip folds to `unpack` exactly like one never
+  closed. `reopenBlocked` withholds both doors out of `closed` on precisely
+  those Trips, so the four-tap path is gone; **reopening is a bare
+  `trip.phase_moved`, and an installed PWA running an older build emits one
+  with nothing to stop it**, after which any build's close card reduces a
+  second time. Two costs stand meanwhile: stories 11 and 32 are narrowed for
+  such a Trip (G7's *"reopen is the route"* to correcting a closed Trip's
+  outcomes strands with it), and §5i G1's disclosure line is unreachable —
+  kept, not deleted, since removing it would overturn a ruling in code.
+  Closing it needs the per-Trip-per-Gear "already reduced" register its
+  crash-window sibling above waits on (a stamp comparison reads as a false
+  negative — ruling R28), which is S11's, and S11 hands the route back.
+  `shared/src/gestures.ts`'s own docblock on `reopenBlocked`, anchor:
+  `cross-version one; only the register`
 - **The property tier never meets a trip-side containment cycle, and never
   compares the trip tree across replicas at all.** `arbOpSets`'s generator
   produces a `tripContainmentView(…).brokenEdges` hit in **0–1 runs per

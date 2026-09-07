@@ -140,6 +140,17 @@ export function ReopenConfirm({
   // Finding I2 — see this module's own docblock. Empty on every Trip whose
   // close owes the Depot nothing, which is most of them.
   //
+  // **Unreachable from the shipped UI as of the reopen gate, and kept
+  // deliberately.** `reopenBlocked` (`gestures.ts`) withholds both doors out
+  // of `closed` on exactly the Trips this block renders for — the gate and
+  // this line ask the identical `consumedReductions`, so the sets are the
+  // same set — which means no tap can currently open this sheet on a Trip
+  // with a reduction to disclose. It stays because deleting it would
+  // overturn ruling G1 in code rather than at a design round, and because
+  // S11's whole job is to make a re-close subtract nothing twice and hand
+  // the route back, at which point this block is the disclosure again with
+  // no work to redo. Recorded in `docs/design/README.md` §5j.
+  //
   // **§5i G1 moved this from prose into a fact.** The disclosure stays; its
   // register changes. `ReopenConfirm` already has a place for facts that
   // hold on *this* Trip alone — the conditional mono blocks under the body

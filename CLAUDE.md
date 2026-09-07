@@ -956,6 +956,38 @@ endpoint, no migration, and not a line of `reduce.ts` or `state.ts`. See
   to make the claim structural — one function, or a named sibling that asks
   the right register.
 
+**Reopen is gated, and this is the one place the app deliberately narrows a
+story.** `close → reopen → close` was live in the deployed build and silently
+halved owned counts — `gear.owned_count_set` is absolute, `closeTrip` computes
+`owned − consumed` against the fold it is handed, and a reopened Trip folds to
+`unpack` exactly like one that was never closed, so `closeTrip`'s `isClosed`
+guard cannot see it: owned 6 → 4 → reopen → **2**, four taps, no crash, nothing
+on screen. `reopenBlocked` (`shared/src/gestures.ts`) now withholds **both**
+doors out of `closed` — the ledger row's `REOPEN` and SET PHASE's four rows —
+on exactly the Trips whose close owed a reduction, and `reopenTrip` is the
+gesture both emit through. Three things to know before touching it:
+
+- **The gate is narrow on purpose, and the narrowness is the argument.**
+  `lost` writes nothing against the Depot, so story 11's own example — the tent
+  marked `lost` in September, found in November — still reopens exactly as
+  drawn. What is withheld is the Trip that consumed something. Withholding on
+  every closed Trip would state on Trips where it is false what this states
+  only where it is true.
+- **It does not make the corruption impossible, and the docs say so.**
+  Reopening is a bare `trip.phase_moved`, so an installed PWA on a pre-gate
+  build still emits one; any build's close then reduces a second time. The
+  four-tap defect became a cross-version one. Only S11's per-Trip-per-Gear
+  "already reduced" register removes it — a stamp comparison was rejected
+  twice, once as R28's false negative and once (against the *phase* stamp)
+  because invariant 16 lets an outcome precede the move into `unpack`, which
+  would skip an ordinary **first** close's reduction outright.
+- **G1's disclosure line is now unreachable and is kept anyway.** The gate and
+  the line ask the identical `consumedReductions`, so they cover the same
+  Trips; deleting it would overturn a ruling in code rather than at a round.
+  S11 owes not just a correct re-close but **handing the route back** — the
+  `REOPEN`, the four rows, `REOPEN TO CHANGE ONE.` and that line. Argued in
+  [`docs/design/README.md`](docs/design/README.md) §5j, the shipped authority.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**

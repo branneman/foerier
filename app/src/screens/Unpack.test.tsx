@@ -2035,6 +2035,44 @@ describe('a closed Trip draws a record (§5i G6)', () => {
     ).not.toBeInTheDocument()
   })
 
+  /**
+   * **The hint's route half stops naming a door once there is none.**
+   * `reopenBlocked` (`gestures.ts`) withholds both doors out of `closed` on a
+   * Trip whose close lowered an owned count — the ledger row's `REOPEN` and
+   * SET PHASE's four rows — so `REOPEN TO CHANGE ONE` would send a
+   * Quartermaster looking for a control that is deliberately not there. G6's
+   * first half is untouched either way: the screen is a record.
+   *
+   * This scenario is `closedRecordScenario`'s Trip plus a `consumed` Counted
+   * Entry, which is the whole of what the gate reads. The test above pins the
+   * unblocked wording on the scenario without one, so the pair says the swap
+   * is narrow rather than unconditional.
+   */
+  it('names no reopen once the close lowered an owned count', async () => {
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...alps(),
+      gearRecorded(GAS_CANISTER, {
+        name: 'Gas canister 450',
+        container: false,
+        kind: 'counted',
+        owned_count: 6,
+      }),
+      tripEntryAdded(ALPS, E_GAS, { from: 'depot', gearId: GAS_CANISTER }),
+      tripEntryBringCountSet(ALPS, E_GAS, 4),
+      tripOutcomeSet(ALPS, E_GAS, 'consumed'),
+      tripConsumedCountSet(ALPS, E_GAS, 2),
+      tripPhaseMoved(ALPS, 'closed'),
+    )
+
+    expect(
+      screen.getByText(
+        'CLOSED · OUTCOMES ARE HISTORY. NO REOPEN — COUNTS LOWERED AT CLOSE.',
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(/REOPEN TO CHANGE ONE/)).not.toBeInTheDocument()
+  })
+
   it('leaves a trip-only row exactly as it was — the treatment the others borrowed', async () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...closedRecordScenario())
 

@@ -1,4 +1,5 @@
 import {
+  gearOwnedCountSet,
   gearRecorded,
   tripConsumedCountSet,
   tripCreated,
@@ -167,7 +168,11 @@ async function phaseMoves(log: OpLog): Promise<readonly unknown[]> {
     .map((entry) => entry.op.payload['phase'])
 }
 
-function renderSheet(seeded: Seeded) {
+// Takes only what it uses, as `renderSheetWithRouter` below already does:
+// `seededReadyToClose` reports `authored` rather than `moves`, and a sheet
+// that only mounts a Trip has no business requiring one reporter over the
+// other.
+function renderSheet(seeded: Pick<Seeded, 'store' | 'trip'>) {
   let closed = 0
   render(
     <HouseholdProvider value={seeded.store}>
@@ -180,6 +185,69 @@ function renderSheet(seeded: Seeded) {
     </HouseholdProvider>,
   )
   return { closes: () => closed }
+}
+
+/** Every op authored since the seed, by type — not filtered to phase moves,
+ * so "emits nothing" and "emits the close batch" are both statable claims
+ * rather than ones that only look at one register. */
+async function authoredSince(
+  log: OpLog,
+  seededCount: number,
+): Promise<readonly { type: string; payload: Record<string, unknown> }[]> {
+  const all = await log.all()
+  return all
+    .slice(seededCount)
+    .map((entry) => ({ type: entry.op.type, payload: entry.op.payload }))
+}
+
+/**
+ * A Trip in `unpack` holding one `consumed` Counted Entry, wholly resolved —
+ * `open` reads `0` — so tapping `CLOSED` must go through `closeTrip`'s
+ * reduction rather than a bare phase move. Owned ×6, bring ×4, consumed ×2 →
+ * reduces to ×4, `gestures.test.ts`'s own fixture read through the app's real
+ * store instead of the selector's hand-built one.
+ *
+ * At module scope rather than inside one `describe`, because the reopen gate's
+ * own suite needs the identical Trip one phase later: a Trip whose close owed
+ * a reduction is exactly the Trip that may not be reopened, and building it
+ * twice is how the two suites would come to disagree about what "owed a
+ * reduction" means.
+ */
+async function seededReadyToClose(): Promise<{
+  store: StoreApi<HouseholdStoreState>
+  trip: () => TripState
+  authored: () => Promise<readonly unknown[]>
+}> {
+  const log: OpLog = inMemoryOpLog()
+  const store = createHouseholdStore({
+    log,
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(
+    gearRecorded('g-gas', {
+      name: 'Gas canister',
+      container: false,
+      kind: 'counted',
+      owned_count: 6,
+    }),
+  )
+  store.getState().emit(tripCreated(TRIP, 'Alps 2026'))
+  store.getState().emit(tripPhaseMoved(TRIP, 'unpack'))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }))
+  store.getState().emit(tripEntryBringCountSet(TRIP, 'e-gas', 4))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-gas', 'consumed'))
+  store.getState().emit(tripConsumedCountSet(TRIP, 'e-gas', 2))
+  await store.getState().drained()
+
+  const seededCount = (await log.all()).length
+  return {
+    store,
+    trip: () => store.getState().state.trips[TRIP]!,
+    authored: async () => authoredSince(log, seededCount),
+  }
 }
 
 function rowLabels(): (string | null)[] {
@@ -289,19 +357,6 @@ describe('the SET PHASE sheet', () => {
    * close card.
    */
   describe('the CLOSED row while open > 0 (F12)', () => {
-    /** Every op authored since the seed, by type — not filtered to phase
-     * moves, so "emits nothing" and "emits the close batch" are both
-     * statable claims rather than ones that only look at one register. */
-    async function authoredSince(
-      log: OpLog,
-      seededCount: number,
-    ): Promise<readonly { type: string; payload: Record<string, unknown> }[]> {
-      const all = await log.all()
-      return all
-        .slice(seededCount)
-        .map((entry) => ({ type: entry.op.type, payload: entry.op.payload }))
-    }
-
     /** A Trip in `unpack` holding one depot Entry with no outcome — `open`
      * reads `1`, so the CLOSED row must route rather than write. */
     async function seededOpenTrip(): Promise<{
@@ -330,51 +385,6 @@ describe('the SET PHASE sheet', () => {
           gearId: 'g-headlamp',
         }),
       )
-      await store.getState().drained()
-
-      const seededCount = (await log.all()).length
-      return {
-        store,
-        trip: () => store.getState().state.trips[TRIP]!,
-        authored: async () => authoredSince(log, seededCount),
-      }
-    }
-
-    /**
-     * A Trip in `unpack` holding one `consumed` Counted Entry, wholly
-     * resolved — `open` reads `0` — so tapping `CLOSED` must go through
-     * `closeTrip`'s reduction rather than a bare phase move. Owned ×6,
-     * bring ×4, consumed ×2 → reduces to ×4, `gestures.test.ts`'s own
-     * fixture read through the app's real store instead of the selector's
-     * hand-built one.
-     */
-    async function seededReadyToClose(): Promise<{
-      store: StoreApi<HouseholdStoreState>
-      trip: () => TripState
-      authored: () => Promise<readonly unknown[]>
-    }> {
-      const log: OpLog = inMemoryOpLog()
-      const store = createHouseholdStore({
-        log,
-        engine: noopEngine,
-        author: anAuthor(),
-      })
-      store.getState().emit(
-        gearRecorded('g-gas', {
-          name: 'Gas canister',
-          container: false,
-          kind: 'counted',
-          owned_count: 6,
-        }),
-      )
-      store.getState().emit(tripCreated(TRIP, 'Alps 2026'))
-      store.getState().emit(tripPhaseMoved(TRIP, 'unpack'))
-      store
-        .getState()
-        .emit(tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }))
-      store.getState().emit(tripEntryBringCountSet(TRIP, 'e-gas', 4))
-      store.getState().emit(tripOutcomeSet(TRIP, 'e-gas', 'consumed'))
-      store.getState().emit(tripConsumedCountSet(TRIP, 'e-gas', 2))
       await store.getState().drained()
 
       const seededCount = (await log.all()).length
@@ -542,6 +552,80 @@ describe('the SET PHASE sheet', () => {
         },
       ])
       expect(closes()).toBe(1)
+    })
+  })
+
+  /**
+   * **The reopen gate, at the second of its two doors.** The closed ledger
+   * row withholds its `REOPEN`; this sheet withholds the four rows out of
+   * `closed`, on the identical `reopenBlocked` — a Trip whose close lowered
+   * an owned count cannot be re-closed by this build without subtracting the
+   * Consumed-count again.
+   *
+   * The `● NOW` row survives, because where the Trip stands is a true
+   * statement either way and §3.7's mirror keeps the information when it
+   * takes the target. The footnote is **swapped rather than dropped**:
+   * `ANY ROW TAPPABLE` is a promise, and a sheet drawing one row cannot keep
+   * it.
+   */
+  describe('the reopen gate on the rows out of CLOSED', () => {
+    async function seededClosedWithReduction() {
+      const seeded = await seededReadyToClose()
+      // The close itself, both of its ops — so the fixture is the state a
+      // real close leaves behind (`gestures.test.ts` pins the pair) rather
+      // than a phase move with an unreduced Depot behind it.
+      seeded.store.getState().emit(gearOwnedCountSet('g-gas', 4))
+      seeded.store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
+      await seeded.store.getState().drained()
+      return seeded
+    }
+
+    it('draws CLOSED alone, and swaps the footnotes promise for the reason', async () => {
+      const seeded = await seededClosedWithReduction()
+      renderSheet(seeded)
+
+      expect(rowLabels()).toEqual(['CLOSED'])
+      expect(markedRow()).toBe('CLOSED')
+      expect(
+        screen.getByText(/COUNTS LOWERED AT CLOSE/, { selector: 'p' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/ANY ROW TAPPABLE/)).toBeNull()
+    })
+
+    it('offers no row that could reopen, so no confirm can be reached', async () => {
+      const user = userEvent.setup()
+      const seeded = await seededClosedWithReduction()
+      renderSheet(seeded)
+
+      expect(screen.queryByRole('button', { name: /UNPACK/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /DRAFT/ })).toBeNull()
+
+      // The one row left is the Trip's own, and tapping it writes nothing —
+      // `DAY N`'s rule, unchanged by any of this.
+      await user.click(screen.getByRole('button', { name: /CLOSED/ }))
+      await seeded.store.getState().drained()
+      expect(screen.queryByRole('alertdialog')).toBeNull()
+    })
+
+    /**
+     * The narrow half, mirroring the ledger row's own pair: a closed Trip
+     * whose close owed the Depot nothing keeps all five rows and the board's
+     * footnote, because re-closing it moves no count at all.
+     */
+    it('leaves a closed Trip that owed no reduction entirely alone', async () => {
+      const seeded = await seededTrip('closed')
+      renderSheet(seeded)
+
+      expect(rowLabels()).toEqual([
+        'DRAFT',
+        'PACK-OUT',
+        'ON TRIP',
+        'UNPACK',
+        'CLOSED',
+      ])
+      expect(
+        screen.getByText(/ANY ROW TAPPABLE, BACKWARDS INCLUDED/),
+      ).toBeInTheDocument()
     })
   })
 

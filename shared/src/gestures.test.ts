@@ -18,11 +18,18 @@ import {
   tripPhaseMoved,
   tripPieceRemoved,
 } from './authoring.ts'
-import { closeTrip, reHomeOnTheSpot } from './gestures.ts'
+import {
+  closeTrip,
+  reHomeOnTheSpot,
+  reopenBlocked,
+  reopenTrip,
+} from './gestures.ts'
 import { fold } from './reduce.ts'
+import { ownedCountOf } from './selectors/depot.ts'
 import { unpackTotals } from './selectors/unpack.ts'
 import type {
   EntryState,
+  GearState,
   HouseholdState,
   OutcomeValue,
   TripState,
@@ -48,6 +55,12 @@ function entryFrom(trip: TripState, id: string): EntryState {
   const entry = trip.entries?.[id]
   if (entry === undefined) throw new Error(`the fold holds no Entry ${id}`)
   return entry
+}
+
+function gearFrom(state: HouseholdState, id: string): GearState {
+  const gear = state.gear[id]
+  if (gear === undefined) throw new Error(`the fold holds no Gear ${id}`)
+  return gear
 }
 
 describe('reHomeOnTheSpot', () => {
@@ -581,5 +594,192 @@ describe('closeTrip', () => {
 
     expect(unpackTotals(trip, state).open).toBe(0)
     expect(closeTrip(trip, state)).toEqual([tripPhaseMoved(TRIP, 'closed')])
+  })
+})
+
+describe('reopenBlocked', () => {
+  const TRIP = 't-reopen'
+
+  it('is false on a closed Trip whose close owed the Depot nothing — the lost tent in November', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        // `lost` writes nothing against the Depot at all (story 11), so this
+        // Trip's close owed no reduction and reopening it is exact.
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ],
+    )
+
+    expect(reopenBlocked(tripFrom(state, TRIP), state)).toBe(false)
+  })
+
+  it('is true on a closed Trip whose close applied a reduction', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 4,
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, 'e-gas', 4),
+        tripOutcomeSet(TRIP, 'e-gas', 'consumed'),
+        tripConsumedCountSet(TRIP, 'e-gas', 2),
+      ],
+    )
+
+    expect(reopenBlocked(tripFrom(state, TRIP), state)).toBe(true)
+  })
+
+  /**
+   * The predicate reads `consumedReductions`, which already gates a
+   * `consumed` outcome to a Counted **depot** Entry — so a Trip whose only
+   * consumption is on a Single owes nothing and reopens exactly. This is the
+   * whole reason the gate and `ReopenConfirm`'s fact line ask that one
+   * selector rather than re-deriving `outcomeOf` plus a Kind check.
+   */
+  it('is false when the only consumed Entry names a Gear that is not Counted', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
+      aGear({ id: 'g-stove', name: 'Stove' }),
+      [
+        tripEntryAdded(TRIP, 'e-stove', { from: 'depot', gearId: 'g-stove' }),
+        tripOutcomeSet(TRIP, 'e-stove', 'consumed'),
+      ],
+    )
+
+    expect(reopenBlocked(tripFrom(state, TRIP), state)).toBe(false)
+  })
+
+  it('is false on a Trip that is not closed at all, whatever it would owe', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 4,
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, 'e-gas', 4),
+        tripOutcomeSet(TRIP, 'e-gas', 'consumed'),
+        tripConsumedCountSet(TRIP, 'e-gas', 2),
+      ],
+    )
+
+    expect(reopenBlocked(tripFrom(state, TRIP), state)).toBe(false)
+  })
+})
+
+describe('reopenTrip', () => {
+  const TRIP = 't-reopen-gesture'
+
+  it('emits the phase move on a closed Trip whose close owed nothing', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ],
+    )
+
+    expect(reopenTrip(tripFrom(state, TRIP), 'unpack', state)).toEqual([
+      tripPhaseMoved(TRIP, 'unpack'),
+    ])
+  })
+
+  it('names the phase it is handed — SET PHASE offers all four rows out of closed', () => {
+    const state = depot(aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }))
+
+    expect(reopenTrip(tripFrom(state, TRIP), 'draft', state)).toEqual([
+      tripPhaseMoved(TRIP, 'draft'),
+    ])
+  })
+
+  it('emits nothing on a Trip that is not closed — there is nothing to reopen', () => {
+    const state = depot(aTrip({ id: TRIP, name: 'Ardennes' }))
+
+    expect(reopenTrip(tripFrom(state, TRIP), 'unpack', state)).toEqual([])
+  })
+
+  it('emits nothing on a closed Trip whose close applied a reduction', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 4,
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, 'e-gas', 4),
+        tripOutcomeSet(TRIP, 'e-gas', 'consumed'),
+        tripConsumedCountSet(TRIP, 'e-gas', 2),
+      ],
+    )
+
+    expect(reopenTrip(tripFrom(state, TRIP), 'unpack', state)).toEqual([])
+  })
+
+  /**
+   * **The regression test for the live defect this gate closes**, in the
+   * sequential shape R27's own test established: apply each call's ops to
+   * the fold, exactly as `emit` does after a tap, and ask what the **Depot**
+   * reads at the end.
+   *
+   * Before the gate these four taps ran `owned 6 → 4 → (the reopen writes
+   * nothing) → 2`: the second close read the **already-reduced** count and
+   * subtracted the Consumed-count again. `gear.owned_count_set` is absolute,
+   * never a delta ([sync §4.3](../../docs/sync-protocol.md)), and a reopened
+   * Trip's fold reads `unpack` exactly like a Trip that was never closed, so
+   * `closeTrip`'s own `isClosed` guard cannot see this path.
+   *
+   * After the gate the reopen emits nothing, the Trip never leaves `closed`,
+   * and the second close returns `[]` through the guard that *can* see it.
+   *
+   * **It asserts the Depot's own count and deliberately nothing about the
+   * three op lists on the way there.** Each of those is already pinned by a
+   * test of its own, and asserting them here would make this test fail at
+   * the *reopen* the moment the gate regressed — reporting an empty-array
+   * mismatch and never reaching the `×2` this test exists to name. One test,
+   * one claim: whatever route a future change takes, four taps must leave
+   * the canister at ×4.
+   */
+  it('close → reopen → close leaves the owned count reduced exactly once', () => {
+    const ENTRY = 'e-gas'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 6,
+      }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, ENTRY, 4),
+        tripOutcomeSet(TRIP, ENTRY, 'consumed'),
+        tripConsumedCountSet(TRIP, ENTRY, 2),
+      ],
+    )
+
+    const firstClose = closeTrip(tripFrom(state, TRIP), state)
+    const closed = fold(stamp(firstClose, { start: 100 }), state)
+
+    const reopen = reopenTrip(tripFrom(closed, TRIP), 'unpack', closed)
+    const reopened = fold(stamp(reopen, { start: 200 }), closed)
+
+    const secondClose = closeTrip(tripFrom(reopened, TRIP), reopened)
+    const finalState = fold(stamp(secondClose, { start: 300 }), reopened)
+
+    // The whole point: ×4, never ×2.
+    expect(ownedCountOf(gearFrom(finalState, 'g-gas'))).toBe(4)
   })
 })

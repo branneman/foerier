@@ -16,6 +16,7 @@ import {
   personNameOrUnnamed,
   reHomeOnTheSpot,
   rehomedSinceOutcome,
+  reopenBlocked,
   residenceOf,
   returnPathOf,
   tripContainmentView,
@@ -184,6 +185,21 @@ const CLOSE_HINT_READY =
  * door for one register applies to leaving `closed` as it did to entering
  * it. */
 const CLOSE_HINT_CLOSED = 'CLOSED · OUTCOMES ARE HISTORY. REOPEN TO CHANGE ONE.'
+
+/**
+ * And the form for a closed Trip that **has** no reopen (`reopenBlocked`,
+ * `gestures.ts`). `REOPEN TO CHANGE ONE` names a route, and on a Trip whose
+ * close lowered an owned count both doors onto that route are now withheld —
+ * so the sentence would send a Quartermaster looking for a control that is
+ * deliberately not there. The first half is untouched and still G6's: the
+ * screen is a record either way. What changes is the second half, which stops
+ * naming a door and states why there is none.
+ *
+ * Code-authored copy, like its two siblings on the ledger row and in SET
+ * PHASE, and recorded with them in `docs/design/README.md` §5j.
+ */
+const CLOSE_HINT_CLOSED_NO_REOPEN =
+  'CLOSED · OUTCOMES ARE HISTORY. NO REOPEN — COUNTS LOWERED AT CLOSE.'
 
 /**
  * The depot Gear id a row's body routes to in §5i G6's record mode.
@@ -1640,7 +1656,16 @@ export function Unpack() {
               // states what the screen now is and the one route to
               // changing it. The summary above stays — every word of it is
               // still true of a closed Trip.
-              <p className={styles['closeHint']}>{CLOSE_HINT_CLOSED}</p>
+              //
+              // The route half is conditional, because on a Trip whose close
+              // lowered an owned count there is no longer a route to name:
+              // both doors out of `closed` withhold themselves on this same
+              // `reopenBlocked`, never re-derived here.
+              <p className={styles['closeHint']}>
+                {reopenBlocked(trip, state)
+                  ? CLOSE_HINT_CLOSED_NO_REOPEN
+                  : CLOSE_HINT_CLOSED}
+              </p>
             ) : (
               <>
                 <button

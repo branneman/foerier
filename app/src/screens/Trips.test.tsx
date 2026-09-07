@@ -2,9 +2,11 @@ import {
   gearRecorded,
   gearRehomed,
   personRecorded,
+  tripConsumedCountSet,
   tripCreated,
   tripDatesSet,
   tripEntryAdded,
+  tripEntryBringCountSet,
   tripEntryStatusSet,
   tripOutcomeSet,
   tripParticipantAdded,
@@ -87,6 +89,8 @@ const ALPS = 'tttttttt-0000-7000-8000-00000000000a'
 const VOSGES = 'tttttttt-0000-7000-8000-00000000000b'
 const TESSIN = 'tttttttt-0000-7000-8000-00000000000c'
 const SCOTLAND = 'tttttttt-0000-7000-8000-00000000000d'
+const GAS = 'gggggggg-0000-7000-8000-00000000000a'
+const TENT = 'gggggggg-0000-7000-8000-00000000000b'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -607,6 +611,81 @@ describe('the Trips screen', () => {
     await store.store.getState().drained()
 
     expect(await store.moves()).toEqual([{ trip: TESSIN, phase: 'unpack' }])
+  })
+
+  /**
+   * **The reopen gate, at the first of its two doors.** `reopenBlocked`
+   * (`gestures.ts`) is `true` exactly on a closed Trip whose close lowered an
+   * owned count, and this build cannot re-close such a Trip without
+   * subtracting the Consumed-count again — `owned 6 → 4 → reopen → 2`, four
+   * taps and nothing on screen. The control is withheld rather than greyed
+   * (`patterns.md` §3.7) and the meta states the fact in its place (§3.7's
+   * mirror).
+   *
+   * The two tests are a pair on purpose: withholding on every closed row
+   * would be a different, blunter fix, and only the second of them says the
+   * gate is narrow. Each asserts both halves — the control **and** the
+   * segment — because a change that withheld the button without stating why,
+   * or stated it while leaving the button, would pass a one-sided assertion.
+   */
+  describe('the reopen gate on a closed ledger row', () => {
+    /** `owned ×6`, `consumed ×2` — the close lowered the Depot to ×4. */
+    const consumingClose: readonly OpSpec[] = [
+      gearRecorded(GAS, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 6,
+      }),
+      tripEntryAdded(TESSIN, 'e-gas', { from: 'depot', gearId: GAS }),
+      tripEntryBringCountSet(TESSIN, 'e-gas', 4),
+      tripOutcomeSet(TESSIN, 'e-gas', 'consumed'),
+      tripConsumedCountSet(TESSIN, 'e-gas', 2),
+    ]
+
+    it('withholds REOPEN, and says why, on a Trip whose close lowered an owned count', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+      const store = await seeded(
+        tripCreated(TESSIN, 'Tessin 2025'),
+        ...consumingClose,
+        tripPhaseMoved(TESSIN, 'closed'),
+      )
+      renderTrips(store)
+
+      expect(
+        screen.queryByRole('button', { name: 'Reopen Tessin 2025' }),
+      ).toBeNull()
+      expect(screen.getByTestId(`no-reopen-${TESSIN}`)).toHaveTextContent(
+        'NO REOPEN — COUNTS LOWERED AT CLOSE',
+      )
+    })
+
+    /**
+     * The narrow half. `lost` writes nothing against the Depot at all (story
+     * 11), so this Trip's close owed no reduction, re-closing it moves no
+     * count, and story 11's own example — the tent marked `lost` in
+     * September, found in November — keeps the route it names.
+     */
+    it('keeps REOPEN on a closed Trip whose close owed the Depot nothing', async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+      const store = await seeded(
+        tripCreated(TESSIN, 'Tessin 2025'),
+        gearRecorded(TENT, {
+          name: 'Tent',
+          container: false,
+          kind: 'single',
+        }),
+        tripEntryAdded(TESSIN, 'e-tent', { from: 'depot', gearId: TENT }),
+        tripOutcomeSet(TESSIN, 'e-tent', 'lost'),
+        tripPhaseMoved(TESSIN, 'closed'),
+      )
+      renderTrips(store)
+
+      expect(
+        screen.getByRole('button', { name: 'Reopen Tessin 2025' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByTestId(`no-reopen-${TESSIN}`)).toBeNull()
+    })
   })
 
   it('writes nothing when the reopen is declined', async () => {

@@ -777,8 +777,19 @@ See §8.4 for why story 11 is two slices and why the seam falls here.
   effect on every replica.** This is a *test* obligation, not implementation
   work: nothing is destroyed to close, and active-ness is derived from `phase`,
   so the arrangement returns for free. Tier 3 — the confirm and the offer.
+- **Also owed, and not optional: hand the reopen route back.** Reopen is
+  **withheld today** on any closed Trip whose close lowered an owned count,
+  because a re-close recomputes the reduction from the already-reduced count
+  (`reopenBlocked`, `shared/src/gestures.ts`; `docs/design/README.md` §5j).
+  Making the re-close correct is therefore only half of S11's job — the other
+  half is restoring what the gate withholds: the closed ledger row's
+  `REOPEN`, SET PHASE's four rows out of `closed`, F5's
+  `REOPEN TO CHANGE ONE.` and §5i G1's disclosure line, which is presently
+  unreachable and kept for exactly this moment. The three code-authored
+  strings the gate put in their place retire with it.
 - **Usable?** The tent marked `lost` in September and found in November can be
-  corrected without lying about it.
+  corrected without lying about it. Until then the tent can be — its Trip owes
+  no reduction — and the Trip that burned two gas canisters cannot.
 
 **S12 — Trip notes.** *Delivers 12.*
 
@@ -2604,6 +2615,20 @@ moved while it was being built.
   that reopen "offers back" the write this gesture makes — and is spelled out
   in `docs/specs/2026-09-05-unpack-resolve-and-close.md` §8 and
   `gestures.ts`'s own docblock, both paths.
+
+  **The second of those two paths has since been closed from the other
+  end, and this sentence is corrected rather than rewritten.** `close →
+  reopen → close` was live in the deployed app, and gating it did not need
+  the fact `closeTrip` still lacks: `reopenBlocked` (`gestures.ts`)
+  withholds both doors out of `closed` on exactly the Trips whose close owed
+  a reduction, so this build no longer *produces* a reopened Trip that a
+  re-close would reduce twice. `closeTrip` is unchanged and still cannot
+  tell such a Trip from one never closed — the crash-mid-batch path above is
+  untouched, and a peer on a pre-gate build can still emit the bare
+  `trip.phase_moved` that reaches it. The cost is that stories 11 and 32
+  are narrowed for such a Trip and G1's disclosure line is unreachable; both
+  are argued in `docs/design/README.md` §5j, which is the shipped authority,
+  and both retire when S11 hands the route back.
 
 ### 12.18 Consequences of the S10 round-2 closeout
 
