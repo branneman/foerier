@@ -55,7 +55,7 @@ import type {
  * here, and only one of them is one of sync §4.5's gestures.**
  * `restoreConsumption` emits `gear.owned_count_set` (Gear) beside
  * `trip.consumption_posted` (Trip), so it crosses an aggregate boundary as
- * plainly as {@link closeTrip} does and is §4.5's **fourth**. `reopenTrip`
+ * plainly as {@link closeTrip} does and is one of §4.5's four. `reopenTrip`
  * writes only the Trip — back-filled postings and the phase move — so it
  * stays outside that set. What puts *both* in this file is the other half
  * of §4.5's shape: each *decides* by reading the Gear aggregate

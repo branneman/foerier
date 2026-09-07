@@ -1017,8 +1017,9 @@ reopen:**
   catalogue is **39**, and `postings` is a register 11a never wrote.
 - **Four narrative mentions of the deleted gate stay in the code on purpose.**
   `Trips.tsx`, `Unpack.tsx`, `PhaseSheet.tsx` and `gestures.ts` each name it in
-  the past tense beside what S11 does instead — four in shipped source, beside
-  two more in `Trips.test.tsx` and `Unpack.test.tsx`. A deleted symbol usually
+  the past tense beside what S11 does instead — four sites in shipped source,
+  beside two test docblocks in `Trips.test.tsx` and `Unpack.test.tsx` (the
+  count is of sites, not of matching lines). A deleted symbol usually
   leaves no trace, but a deleted *condition* leaves a control that looks
   unguarded, and those comments are what stop the gate being re-added by the
   next author who sees `REOPEN` drawn on every closed row.
