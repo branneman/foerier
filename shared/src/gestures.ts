@@ -286,16 +286,20 @@ export function reHomeOnTheSpot(
  * fact is exactly what `postings` records.
  *
  * **The second path that used to sit beside it — close, reopen, close — is
- * closed from the other end, at {@link reopenTrip}, and this function did
- * not need to change to close it.** This function still cannot tell a
- * reopened Trip from one that was never closed — both fold to `unpack` — but
- * it no longer needs to: {@link reopenTrip} now back-fills a posting for
- * every Gear its own close already reduced (spec §5.2), so by the time this
- * function next runs against a reopened Trip, `postedOf` already reads what
- * the earlier close applied and `delta` is `0` for a re-close that owes
- * nothing new. `reopenBlocked` — kept for now, unused by this module — is
- * the code this register makes obsolete rather than the code that closes
- * this path.
+ * closed at both ends, and neither end alone is enough.** This function
+ * still cannot tell a reopened Trip from one that was never closed — both
+ * fold to `unpack` — so it does not try to: what makes the re-close correct
+ * is that `postedOf` (read via `delta`, above) tells the truth about what a
+ * *previous* close already applied, whichever build performed it.
+ * {@link reopenTrip} is the half that makes that true on a Trip closed
+ * before this register existed — it back-fills a posting for every Gear its
+ * own close already reduced (spec §5.2) — and this function's `delta`
+ * arithmetic is the half that then reads it: without the back-fill,
+ * `postedOf` would still read `0` for such a Trip and this loop would
+ * reduce it again; without this loop reading `postedOf` at all, the
+ * back-filled posting would be recorded and read by nobody, and the second
+ * close would reduce exactly as before. Neither function closes the path by
+ * itself.
  */
 export function closeTrip(
   trip: TripState,
@@ -520,13 +524,17 @@ export function reopenTrip(
  * reason, which is precisely what story 11's sentence above refuses.
  *
  * **Posting after restoring**, mirroring {@link closeTrip}'s own reduction-
- * before-posting order for the identical reason: a posting recorded without
- * its restoration would leave `postedOf` reading the old, higher value while
- * the Depot's own count had already moved, so a later close (or a later
- * restoration) would compute against a register that no longer matches what
- * was actually given back. The reverse order — restore first — leaves a
- * Device dying between the two ops with an under-posted register that a
- * later read still resolves correctly through `owed`'s own arithmetic.
+ * before-posting order for the identical reason: `emit` appends one op at a
+ * time, so a Device can die between these two. Posting *first* would lower
+ * `postedOf` to `owed` while the Depot's owned count has not yet moved — a
+ * Device dying right there leaves the register already at its final,
+ * lowered value with the restoration itself never applied. A later close
+ * then reads `delta = owed − postedOf = 0`, skips the Gear, and the units
+ * this offer meant to give back are silently never given back at all.
+ * Restoring first avoids that: a Device dying between the two ops leaves
+ * `postedOf` at its old, still-too-high value, so `delta` stays `≤ 0` and no
+ * close wrongly reduces the Gear again — the register is stale, not wrong,
+ * until a retry of this same offer completes the posting.
  *
  * **`owed` is the caller's own read**, not re-derived here — `OutcomeSheet`
  * already has it from the outcome change it just emitted (or from
