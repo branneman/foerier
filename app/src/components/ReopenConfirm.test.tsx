@@ -164,6 +164,51 @@ async function aClosedTripWithStandingLost(): Promise<Seeded> {
 }
 
 /**
+ * `TRIP` closed holding **two** standing lost items — the per-person
+ * Headlamp above plus a Single Tent with no Person. The reviewed ruling on
+ * the multi-item separator: items join on `·` and `▲ LOST` trails the whole
+ * block once, since every candidate `standingLostOf` returns is `lost` by
+ * construction and the mark is a property of the block, not of each row.
+ */
+async function aClosedTripWithTwoStandingLost(): Promise<Seeded> {
+  const store = createHouseholdStore({
+    log: inMemoryOpLog(),
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(personRecorded(PERSON, 'K'))
+  store.getState().emit(
+    gearRecorded(GEAR_LAMP, {
+      name: 'Headlamp',
+      container: false,
+      kind: 'per_person',
+    }),
+  )
+  // A plain name with no comma of its own, so the assertion below is not
+  // ambiguous about which comma belongs to the fact-line grammar.
+  store.getState().emit(
+    gearRecorded(TENT, {
+      name: 'Tent',
+      container: false,
+      kind: 'single',
+    }),
+  )
+  store.getState().emit(tripCreated(TRIP, 'Tessin 2025'))
+  store.getState().emit(tripParticipantAdded(TRIP, PERSON))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: GEAR_LAMP }))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-lamp', 'lost', PERSON))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: TENT }))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-tent', 'lost'))
+  store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
+  await store.getState().drained()
+  return { store, trip: () => store.getState().state.trips[TRIP]! }
+}
+
+/**
  * `TRIP` closed holding all three at once — the standing lost Piece
  * (`aClosedTripWithStandingLost`), the consumed reduction
  * (`aClosedTripWithConsumed`) and the clash with `OTHER_TRIP`
@@ -357,6 +402,22 @@ describe('the reopen confirm', () => {
 
     expect(screen.queryByTestId('reopen-unaccounted')).not.toBeInTheDocument()
     expect(screen.queryByText(/STILL UNACCOUNTED/)).toBeNull()
+  })
+
+  /**
+   * **Multi-item separator, ruled on review.** `·` divides items, and
+   * `▲ LOST` trails the whole block once rather than once per item —
+   * repeating it per item (joining whole `NAME · ▲ LOST` segments on the
+   * same `·` used between items) flattens the grammar's two levels and
+   * leaves no way to see where one item ends and the next begins.
+   */
+  it('joins multiple items on ·, with one trailing ▲ LOST', async () => {
+    const seeded = await aClosedTripWithTwoStandingLost()
+    renderConfirm(seeded, { to: 'unpack' })
+
+    expect(screen.getByTestId('reopen-unaccounted')).toHaveTextContent(
+      '2 STILL UNACCOUNTED — HEADLAMP, K · TENT · ▲ LOST',
+    )
   })
 
   /**

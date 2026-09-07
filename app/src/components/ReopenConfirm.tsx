@@ -110,17 +110,19 @@ import styles from './ReopenConfirm.module.css'
  * every Entry, every outcome and every Piece as they stood. It is not right
  * about the **owned counts**: closing applied each `consumed` Entry's
  * reduction (`closeTrip`, `gestures.ts`), and reopening does not offer that
- * back. Worse, closing a second time recomputes the reduction from the
- * already-reduced count and subtracts it again — `close → reopen → close` is
- * four taps on one Device, and it is tracked in `docs/technical-debt.md`
- * rather than fixed here, because telling *"the reduction never landed"*
- * apart from *"it landed and this fold reflects it"* needs a register outside
- * S10's op catalogue (ruling R28). Until then the honest thing is to say so
- * before the tap. `consumedReductions` (`selectors/unpack.ts`) is what
- * `closeTrip` itself sums, asked here for nothing but *is it empty* — never
- * re-derived from `outcomeOf` and a Kind check, which would state the
- * sentence on Trips whose close owes the Depot nothing (a container, a
- * Single, an unsynced Gear).
+ * back — that is a separate route, not this one. A re-close is free
+ * regardless of how many times a Trip is reopened and closed: `closeTrip`
+ * reads what this Trip has already posted (`postedOf`, `selectors/unpack.ts`)
+ * and only ever applies the positive remainder, `delta = owed − posted`
+ * (spec §2.3), so a second close after a reopen writes nothing further to
+ * the Depot. Handing the units back is `restoreConsumption`'s job (spec
+ * §3) — the offer `OutcomeSheet` raises the moment an outcome change makes
+ * `owed < posted`, never this confirm and never the reopen itself.
+ * `consumedReductions` (`selectors/unpack.ts`) is what `closeTrip` itself
+ * sums, asked here for nothing but *is it empty* — never re-derived from
+ * `outcomeOf` and a Kind check, which would state the sentence on Trips
+ * whose close owes the Depot nothing (a container, a Single, an unsynced
+ * Gear).
  *
  * **`variant="sheet"`, not the card default** — the same mismatch Task 12
  * fixed in `RemoveElsewhereConfirm`, caught here on the same terms: the board
@@ -194,26 +196,30 @@ export function ReopenConfirm({
   // **S11's last mono block (spec §6).** `standingLostOf` — never
   // `unaccountedOf`, see this module's own docblock — gathers this Trip's
   // own Entries and Pieces whose `lost` outcome still stands. The count is
-  // units, matching every other count on this sheet (G3: absent at zero);
-  // each line's `▲ LOST` is constant across every candidate — the selector
-  // only ever returns `lost` standings — so it is stated once per line, not
-  // deduplicated to the block's end, mirroring `reductionLines`' own
-  // self-contained-segment shape below. The comma divides the gear name
-  // from the Person inside one segment; a Person renders through
-  // `personNameOrUnnamed` (§5c's split — `—` is right in a list column,
-  // wrong in a sentence).
+  // units, matching every other count on this sheet (G3: absent at zero).
+  // The comma divides the gear name from the Person **inside** one segment
+  // (`HEADLAMP, K`); `·` divides segments, so multiple items are joined by
+  // `·` and `▲ LOST` is stated **once**, trailing the whole block, rather
+  // than once per item — `standingLostOf` only ever returns `lost`
+  // standings, so the mark is a property of the block, not of each row, and
+  // repeating it per item would flatten the grammar's two levels (a reviewed
+  // finding: joining whole `NAME · ▲ LOST` segments with the same `·` used
+  // between items gives a reader no way to see where one item ends and the
+  // next begins). A single item therefore reads identically to before —
+  // `1 STILL UNACCOUNTED — HEADLAMP, K · ▲ LOST` — because one name joined
+  // with nothing is just that name, and the trailing `▲ LOST` still applies.
   const standingLost = standingLostOf(trip, state)
   const unaccountedUnits = standingLost.reduce(
     (total, item) => total + item.units,
     0,
   )
-  const unaccountedLines = standingLost
+  const unaccountedNames = standingLost
     .map((item) => {
       const person =
         item.personId === null
           ? ''
           : `, ${personNameOrUnnamed(state, item.personId)}`
-      return `${item.gearName.toUpperCase()}${person} · ▲ LOST`
+      return `${item.gearName.toUpperCase()}${person}`
     })
     .sort()
 
@@ -264,9 +270,9 @@ export function ReopenConfirm({
         </>
       }
     >
-      {unaccountedLines.length > 0 && (
+      {unaccountedNames.length > 0 && (
         <p className={styles['unaccounted']} data-testid="reopen-unaccounted">
-          {`${unaccountedUnits} STILL UNACCOUNTED — ${unaccountedLines.join(' · ')}`}
+          {`${unaccountedUnits} STILL UNACCOUNTED — ${[...unaccountedNames, '▲ LOST'].join(' · ')}`}
         </p>
       )}
 

@@ -368,8 +368,9 @@ export function closeTrip(
  * withheld, so a closed Trip's outcomes are frozen by the time this function
  * ever runs against it, and `consumedReductions` computed *now* is exactly
  * what that earlier close applied — a reconstruction from a fact that cannot
- * have moved, the same standing {@link standingLostOf}'s own `×6` caveat
- * already carries. **What it cannot see** (spec §5.3): a peer on a
+ * have moved, the same standing `ReopenConfirm`'s own `×6` caveat
+ * (`app/src/components/ReopenConfirm.tsx`) already carries. **What it cannot
+ * see** (spec §5.3): a peer on a
  * **pre-gate** build — S10-era, before `reopenBlocked` ever shipped — that
  * reopened this same Trip with a bare `trip.phase_moved` and no posting,
  * and whose reopen this build never witnessed. Such a Trip can still arrive
