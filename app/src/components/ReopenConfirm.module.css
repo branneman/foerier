@@ -13,6 +13,21 @@
     color: var(--color-status-attention);
   }
 
+  /* Fidelity review, §5k — `Screens B:890`'s explainer sentence, drawn and
+     unshipped until now: the restoration offer it describes is S11's.
+     `AlertDialog.Description` is itself a `<p>`, so this is a `<span>`
+     (`RemoveElsewhereConfirm`'s own `.context` precedent), and `display:
+     block` is what forces the line break the board draws rather than
+     letting it run on from the body line beside it. `margin-top` is
+     `.context`'s own token, not the board's literal 10px — the token beats
+     a board's number (§5g E5). Colour is explicit rather than inherited
+     from `.descriptionSheet`, matching this module's own `.reduction`. */
+  .explainer {
+    display: block;
+    margin-top: var(--space-8);
+    color: var(--color-ink-muted);
+  }
+
   /* §5i G1 — the reopen sheet's own conditional fact, in the mono register
      §5a already reserves for facts that hold on this Trip alone (the block
      above uses). Muted rather than attention: nothing here is a warning, it

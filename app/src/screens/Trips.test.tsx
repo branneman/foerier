@@ -606,7 +606,7 @@ describe('the Trips screen', () => {
     )
     expect(await store.moves()).toEqual([])
 
-    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    await user.click(screen.getByRole('button', { name: 'Reopen trip' }))
     await store.store.getState().drained()
 
     expect(await store.moves()).toEqual([{ trip: TESSIN, phase: 'unpack' }])

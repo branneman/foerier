@@ -29,14 +29,18 @@ import styles from './ReopenConfirm.module.css'
  * without the confirm would leave an invariant violated for five slices
  * (spec §6.3).
  *
- * What ships is the board's title, its second line, and three conditional
- * blocks stacked inside `children`, in one order (spec §6): the
- * `STILL UNACCOUNTED` block (what about this Trip is still unsettled), G1's
- * reduction lines (what the close did), then the facts-only over-claim block
- * (what reopening would collide with) — this Trip's own history first, the
- * world outside it last. None of the three is faked or stubbed — each is
- * absent entirely rather than drawn empty (G3), so an empty body states
- * nothing false.
+ * What ships is the board's title, its body line, three conditional blocks
+ * stacked inside `children`, and — as of the fidelity review, §5k — the
+ * board's explainer sentence, `description`'s second paragraph: title, body,
+ * mono, explainer, the drawn order (`Screens B:869-895`). The `children`
+ * blocks stack in one order (spec §6): the `STILL UNACCOUNTED` block (what
+ * about this Trip is still unsettled), G1's reduction lines (what the close
+ * did), then the facts-only over-claim block (what reopening would collide
+ * with) — this Trip's own history first, the world outside it last. None of
+ * the three is faked or stubbed — each is absent entirely rather than drawn
+ * empty (G3), so an empty body states nothing false. The explainer sentence
+ * carries no condition of its own — it states what reopening *enables*, true
+ * of every Trip this sheet ever opens for.
  *
  * **`STILL UNACCOUNTED`, not the board's drawn `1 ENTRY STILL OPEN`.** Spec
  * §6 argues the wording at length: a properly closed Trip has zero *open*
@@ -275,8 +279,30 @@ export function ReopenConfirm({
       // rather than `Reopen —?`.
       title={`Reopen ${tripNameOrUnnamed(trip)}?`}
       // The body is the board's, verbatim, and stays true: the close
-      // *wrote*, it cleared nothing.
-      description={`It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.`}
+      // *wrote*, it cleared nothing. `AlertDialog.Description` is itself a
+      // `<p>` (Radix's `Primitive.p`), so the two lines are `<span>`s, not
+      // `<p>`s — `RemoveElsewhereConfirm`'s own precedent — and the second
+      // carries `.explainer`'s `display: block` to force the line break.
+      //
+      // **The explainer sentence is S11's to ship** (fidelity review,
+      // §5k). `Screens B:890` draws it, unconditionally, on a Trip whose
+      // visible meta is `1 LOST` — before this slice there was no
+      // restoration offer for it to describe, so it sat undrawn until now.
+      // Ship it verbatim and drawn beats derived (§5c J): it states what
+      // reopening *enables*, not a fact about this Trip, so it carries no
+      // condition of its own.
+      description={
+        <>
+          <span>
+            {`It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.`}
+          </span>
+          <span className={styles['explainer']}>
+            Changing an outcome away from consumed offers to restore the
+            owned-count and waits for the answer — a count corrected by hand is
+            never rewritten.
+          </span>
+        </>
+      }
       onClose={onCancel}
       actions={
         <>
@@ -286,7 +312,7 @@ export function ReopenConfirm({
               className={styles['primary']}
               onClick={onConfirm}
             >
-              Reopen
+              Reopen trip
             </button>
           </Confirm.Action>
           <Confirm.Cancel>

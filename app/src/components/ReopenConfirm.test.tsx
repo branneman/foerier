@@ -349,16 +349,17 @@ function renderConfirm(
 }
 
 describe('the reopen confirm', () => {
-  it('ships the boards title and its second line, and nothing else', async () => {
+  it('ships the boards title, both description lines, and nothing else', async () => {
     const seeded = await aClosedTrip()
     renderConfirm(seeded, { to: 'unpack' })
 
     const confirm = screen.getByRole('alertdialog')
-    // Word for word from `Screens B` §02B. The one mono block the board
-    // draws beneath still needs S10's outcomes; this assertion on the whole
-    // text is what says it is neither faked nor stubbed.
+    // Word for word from `Screens B` §02B, including the explainer sentence
+    // (fidelity review, §5k) — drawn unconditionally, so it ships even on a
+    // Trip with no conditional mono block. This assertion on the whole text
+    // is what says none of it is faked or stubbed.
     expect(confirm.textContent).toBe(
-      'Reopen Tessin 2025?It returns to Unpack exactly as it stood. Closing cleared nothing.ReopenCancel',
+      'Reopen Tessin 2025?It returns to Unpack exactly as it stood. Closing cleared nothing.Changing an outcome away from consumed offers to restore the owned-count and waits for the answer — a count corrected by hand is never rewritten.Reopen tripCancel',
     )
   })
 
@@ -405,7 +406,7 @@ describe('the reopen confirm', () => {
     const seeded = await aClosedTrip()
     renderConfirm(seeded, { to: 'unpack', onConfirm })
 
-    await user.click(screen.getByRole('button', { name: 'Reopen' }))
+    await user.click(screen.getByRole('button', { name: 'Reopen trip' }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 
@@ -500,7 +501,7 @@ describe('the reopen confirm', () => {
     const seeded = await aClosedTrip()
     renderConfirm(seeded, { to: 'unpack' })
 
-    const button = screen.getByRole('button', { name: 'Reopen' })
+    const button = screen.getByRole('button', { name: 'Reopen trip' })
     expect(button).toHaveClass(styles['primary']!)
   })
 
