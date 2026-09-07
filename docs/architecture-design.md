@@ -448,11 +448,15 @@ Two properties hold across every slice below and are not repeated in each:
   CI) and leaves the golden-path Tier 5 smoke test green. Tiers named below are
   the ones a slice must *add to*.
 
-The op counts below sum to **38** — exactly the MVP catalogue of
+The op counts below sum to **39** — exactly the MVP catalogue of
 [sync §4](sync-protocol.md), each op type introduced by precisely one slice:
-3 Place (S2), 2 Person (S2 · S4), 10 Gear (S2 · S3 · S4), 23 Trip (S6 · S7
-· S8 · S9 · S10 · S12 · S13 · S14). If a slice needs an op that is not in
-that catalogue, that is a signal to check the domain, not to invent a row.
+3 Place (S2), 2 Person (S2 · S4), 10 Gear (S2 · S3 · S4), 24 Trip (S6 · S7
+· S8 · S9 · S10 · S11 · S12 · S13 · S14). If a slice needs an op that is not
+in that catalogue, that is a signal to check the domain, not to invent a row.
+S11 is the one slice that has needed one: it followed that instruction, found
+*"it applies once, at the close"* asserted in [domain §6](domain-model.md) with
+nothing in the model recording it, and added the row the domain was already
+describing (§8.4).
 
 ---
 
@@ -765,9 +769,13 @@ See §8.4 for why story 11 is two slices and why the seam falls here.
 
 **S11 — Reopen.** *Delivers 11b. Advances 32 (reopen clause).*
 
-- **Ops:** **none new.** Reopening is `trip.phase_moved{phase:"unpack"}` out of
-  `closed`; changing an outcome is `trip.outcome_set`; the restoration is
-  `gear.owned_count_set`.
+- **Ops (1):** `trip.consumption_posted`. This entry read **none new** until the
+  slice was built, and §8.4 carries the correction and its reason. Reopening is
+  still `trip.phase_moved{phase:"unpack"}` out of `closed`, changing an outcome
+  is still `trip.outcome_set`, and the restoration is still
+  `gear.owned_count_set` — what none of those three could do is record that the
+  reduction had *already* been applied, which is what makes a second close of
+  the same Trip subtract nothing twice.
 - **UI:** the confirmation — the same weight as deleting a Trip; changing an
   outcome after the fact; the **offer** to put the Owned-count back, computed as
   a new absolute value and waiting for a human; the over-claim warning at the
@@ -777,16 +785,16 @@ See §8.4 for why story 11 is two slices and why the seam falls here.
   effect on every replica.** This is a *test* obligation, not implementation
   work: nothing is destroyed to close, and active-ness is derived from `phase`,
   so the arrangement returns for free. Tier 3 — the confirm and the offer.
-- **Also owed, and not optional: hand the reopen route back.** Reopen is
-  **withheld today** on any closed Trip whose close lowered an owned count,
-  because a re-close recomputes the reduction from the already-reduced count
-  (`reopenBlocked`, `shared/src/gestures.ts`; `docs/design/README.md` §5j).
-  Making the re-close correct is therefore only half of S11's job — the other
-  half is restoring what the gate withholds: the closed ledger row's
-  `REOPEN`, SET PHASE's four rows out of `closed`, F5's
-  `REOPEN TO CHANGE ONE.` and §5i G1's disclosure line, which is presently
-  unreachable and kept for exactly this moment. The three code-authored
-  strings the gate put in their place retire with it.
+- **Also owed, and not optional: hand the reopen route back.** Reopen was
+  **withheld** between S10 and S11 on any closed Trip whose close lowered an
+  owned count, because a re-close recomputed the reduction from the
+  already-reduced count (`docs/design/README.md` §5j). Making the re-close
+  correct was therefore only half of S11's job — the other half was restoring
+  what the gate withheld: the closed ledger row's `REOPEN`, SET PHASE's four
+  rows out of `closed`, F5's `REOPEN TO CHANGE ONE.` and §5i G1's disclosure
+  line, kept unreachable for exactly this moment. **Both halves shipped**, and
+  the three code-authored strings the gate put in their place retired with the
+  predicate itself (§12.19; `design/README.md` §5k).
 - **Usable?** The tent marked `lost` in September and found in November can be
   corrected without lying about it. Until then the tent can be — its Trip owes
   no reduction — and the Trip that burned two gas canisters cannot.
@@ -849,14 +857,27 @@ S11)**, and the decisive argument is at the protocol layer:
 
 > **11b introduces no new op types at all.**
 
-Reopening is `trip.phase_moved` — an op S6 already shipped and S10 already
-depends on. Changing an outcome is `trip.outcome_set`, from 11a. The offered
-restoration is `gear.owned_count_set`, from S2. So 11a carries **100% of the
-protocol weight** of story 11 — two new op types, two cross-aggregate gestures,
-the claim-release rule, the open-count selector — and 11b is entirely UI,
-selector, guard, and convergence-test work. A seam that leaves one side with no
-new ops is a seam in the right place: 11b cannot break 11a's merge behaviour,
-because it writes nothing 11a did not already write.
+**That sentence is false, by exactly one, and it is corrected here rather than
+deleted — the seam argument survives with the count changed.** 11b shipped
+`trip.consumption_posted` (S11; [its spec](specs/2026-09-07-reopen.md) §4). The
+reason the claim was wrong is worth more than the claim was: at planning time
+the **double-subtraction had not been found**, because nothing in this plan
+draws the `close → reopen → close` path. Every op 11b was expected to need was
+listed and every one of them exists — reopening is `trip.phase_moved`, an op S6
+shipped and S10 depends on; changing an outcome is `trip.outcome_set`, from 11a;
+the offered restoration is `gear.owned_count_set`, from S2 — and the omission
+was not an op the *user* performs but the fact that the reduction had already
+been applied, which no op in the catalogue could record. A plan enumerating
+gestures cannot catch a missing **record**.
+
+With the count corrected the seam holds unchanged. 11a still carries the
+protocol weight of story 11 — two new op types, two cross-aggregate gestures,
+the claim-release rule, the open-count selector — and 11b adds one op type that
+writes one register nothing 11a reads, plus UI, selector, guard and
+convergence-test work. The property that made this a seam in the right place was
+never the number itself but what it implied: **11b cannot break 11a's merge
+behaviour**, and that is still true, because `postings` is a register 11a never
+wrote and no 11a reader consults.
 
 The value test holds independently in both directions. **11a alone is the point
 of the story** — the Depot stops drifting, and a Trip can be unpacked and closed
@@ -2619,16 +2640,28 @@ moved while it was being built.
   **The second of those two paths has since been closed from the other
   end, and this sentence is corrected rather than rewritten.** `close →
   reopen → close` was live in the deployed app, and gating it did not need
-  the fact `closeTrip` still lacks: `reopenBlocked` (`gestures.ts`)
-  withholds both doors out of `closed` on exactly the Trips whose close owed
-  a reduction, so this build no longer *produces* a reopened Trip that a
-  re-close would reduce twice. `closeTrip` is unchanged and still cannot
-  tell such a Trip from one never closed — the crash-mid-batch path above is
-  untouched, and a peer on a pre-gate build can still emit the bare
-  `trip.phase_moved` that reaches it. The cost is that stories 11 and 32
-  are narrowed for such a Trip and G1's disclosure line is unreachable; both
+  the fact `closeTrip` then lacked: `reopenBlocked` (`gestures.ts`, deleted
+  at S11) withheld both doors out of `closed` on exactly the Trips whose
+  close owed a reduction, so that build no longer *produced* a reopened Trip
+  that a re-close would reduce twice. `closeTrip` was unchanged and still
+  could not
+  tell such a Trip from one never closed — the crash-mid-batch path above was
+  untouched, and a peer on a pre-gate build could still emit the bare
+  `trip.phase_moved` that reaches it. The cost was that stories 11 and 32
+  were narrowed for such a Trip and G1's disclosure line unreachable; both
   are argued in `docs/design/README.md` §5j, which is the shipped authority,
   and both retire when S11 hands the route back.
+
+  **S11 closed it from the correct end and the gate is gone.** The predicate
+  that withheld the two doors is deleted, not narrowed: with the posting
+  register (§12.19) a re-close computes `owed − posted` and writes nothing,
+  so there is no Trip left for a gate to withhold. `closeTrip` is no longer
+  the function that "cannot tell such a Trip from one never closed" — the
+  register is exactly that fact, on the Trip itself. What remains untouched
+  is the crash-mid-batch path above, which needs atomicity rather than a
+  fact, and one shrinking cross-version residue: a peer on a **pre-gate**
+  build can still emit a bare `trip.phase_moved` out of `closed` with no
+  posting behind it (`technical-debt.md`).
 
 ### 12.18 Consequences of the S10 round-2 closeout
 
@@ -2676,3 +2709,74 @@ Four consequences outlive the round:
   Each had a docstring claiming the property the code did not have. The fix
   in every case was to make the claim structural — one function, or a named
   sibling that asks the right register — rather than to correct a second copy.
+
+### 12.19 Consequences of S11: reopen
+
+One op type, no endpoints, no migration, no change to the slicing engine, and
+one register on the Trip root. See its
+[spec](specs/2026-09-07-reopen.md), whose §11 records what moved while it was
+being built, and `docs/design/README.md` §5k for the decisions its code took
+that no board reached.
+
+- **A domain assertion with nowhere to be recorded is a gap in the model, not
+  a convenience for the code.** [Domain §6](domain-model.md) has said *"it
+  applies once, at the close"* since before any of this was built, and nothing
+  in the model held it: the Trip records what it consumed, the Depot records
+  what is owned, and no aggregate recorded that the transfer had happened. §8.3
+  instructs that a slice needing an op outside the catalogue should check the
+  domain rather than invent a row; checked, the domain answered, and the row
+  the glossary now calls a **posting** is that answer. The general shape is
+  worth keeping: **when a rule is stated as *applies once*, ask what holds the
+  record**, because an absolute write plus no record is a rule enforced by
+  hope.
+- **The register is what a stamp comparison kept failing to be, and both
+  refusals stand.** Ruling R28 rejected a cross-aggregate stamp comparison for
+  reading as a **false negative** — silently skipping a reduction — exactly
+  when a Quartermaster corrects the owned count between declaring the
+  consumption and closing; a comparison against the Trip's *phase* stamp fails
+  harder still, since invariant 16 lets an outcome be recorded before the move
+  into `unpack`, so on an ordinary **first** close every outcome stamp can
+  precede the phase stamp and the reduction is skipped outright. `owed −
+  posted` is not a heuristic about *when* something happened but a statement of
+  *how much* has, and it is exact.
+- **`units` is absolute, never a delta, and that is the whole of the
+  convergence argument.** Two Devices closing the same Trip from the same fold
+  compute the identical posting, so the register resolves by plain LWW between
+  two equal numbers; a Device folding the op twice learns nothing new. A delta
+  would make the same op applied twice mean something different from the same
+  op applied once — precisely what `gear.owned_count_set` refuses one register
+  over, and for the same reason.
+- **The op folds unconditionally and every gate is a reader gate** — the
+  `TagString` split for a sixth time, after `bring_count`, `stage`/`status`,
+  `trip.entry_moved` on a per-person Entry and `consumed_count`. The Kind lives
+  on the Gear aggregate, which has no ordering against the Trip's, so gating in
+  the reducer would make the fold depend on whether `gear.kind_set` arrived
+  first. An absent register reads `0`, and only `postedOf` (`unpack.ts`) says
+  so — `ownerOf`'s rule again, with the same symptom when a call site
+  re-derives it: a Trip that owes nothing reduced again.
+- **The one place where absent and an explicit `0` must *not* be treated
+  alike is `reopenTrip`'s back-fill.** A Trip closed by a pre-S11 build has an
+  empty `postings` map, which is indistinguishable from *nothing was ever
+  posted* — so reopening back-fills a posting from `consumedReductions`
+  computed now, and a naive re-close would otherwise reduce a second time.
+  Reading the register's own **presence** rather than `postedOf`'s `0` is what
+  stops the back-fill undoing a restoration that deliberately took a posting
+  back to nothing. The reconstruction is legitimate because ruling G6 freezes
+  a closed Trip's outcomes: it is recomputed from a fact that cannot have
+  moved, not guessed. Recorded, not guarded: a peer on a build that *does*
+  rewrite a closed Trip's outcomes makes it state a number that was never
+  posted.
+- **The offer's trigger is one predicate over the arithmetic, not two rules
+  over the UI.** It fires when a change makes `owed < posted` — which covers
+  leaving `consumed` and lowering a Consumed-count with no second rule — and it
+  is self-limiting to reopened Trips with no phase check at all, since `posted`
+  is `0` on a Trip that was never closed. Deriving the lowered-count case from
+  its own rule later is how two numbers drift.
+- **The four-tap corruption is now a passing assertion at two tiers, and the
+  convergence tier is where it belongs.** The property closes, reopens and
+  re-closes the same Trip across two replicas in both interleavings and asserts
+  one owned count — the thing a unit test on one fold can demonstrate but not
+  prove. Building it surfaced a guard no plan named: `convergence.test.ts`
+  asserts that its own generator emits **every op type the reducer folds**, so
+  a new op type turns the tier red until an arbitrary exists for it. Every
+  future slice adding an op inherits that, and it is a good inheritance.

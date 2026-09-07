@@ -291,9 +291,15 @@ Two of the three touch Inventory, and they touch it very differently:
 - **`consumed`** genuinely writes: the owned-count falls by the consumed-count,
   because the household really does own fewer. This is the second and only other
   place a trip writes back to the depot (invariant 8). It applies once, at the
-  close; a later change to the outcome on a reopened trip **offers** the
-  correction for confirmation rather than silently re-applying it, because the
-  depot may have moved on since.
+  close — and *applies once* is recorded rather than merely asserted: the trip
+  keeps a **posting** per piece of gear, how many units of it this trip has
+  already applied to the owned-count. A close writes the difference between what
+  the trip owes and what it has posted, so a trip reopened and closed again owes
+  nothing further and writes nothing. A later change to the outcome on a reopened
+  trip **offers** the correction for confirmation rather than silently
+  re-applying it, because the depot may have moved on since — and confirming it
+  lowers the posting by exactly what it hands back, so the two numbers can never
+  disagree about what this trip has taken.
 - **`lost` writes nothing at all.** The gear's recorded home is left untouched —
   destroying it would throw away the very fact needed when the thing turns up — and
   the outcome is read instead by whereabouts, which reports the gear as
@@ -362,6 +368,12 @@ The rules the model must never violate.
    their depot details. The unpack pass is the only exception, and it writes back
    exactly twice: what the quartermaster **re-homes**, and the owned-count
    reduction of a **consumed** counted entry. An outcome of `lost` writes nothing.
+   The reduction **applies once**, and the trip records that it did: the
+   **posting** (§6) is what a second close reads, so closing a reopened trip
+   applies only the difference between what it now owes and what it has already
+   posted — never the whole amount a second time. Without that record the
+   assertion has nothing holding it, because the depot's owned-count is a number
+   and not a history.
 
 **Trip and packing**
 
@@ -454,6 +466,10 @@ other implementation.)
   on an entry or a per-person piece.
 - _Consumed-count set_ (counted entry resolved as consumed); _owned-count
   reduction applied_ at the close, and _offered_ if the outcome later changes.
+- _Consumption posted_ — the trip records that a reduction it owed has been
+  applied to the depot's owned-count, so it is never applied twice. The posting
+  is lowered again when an offered correction is accepted, and reconstructed on
+  reopening a trip closed before the record existed.
 - _Trip unpacked and closed_ — the unpack pass: gear re-homed, outcomes recorded,
   notes reviewed, trip retained as history with its arrangement and journeys made
   inert rather than cleared.

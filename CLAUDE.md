@@ -956,37 +956,71 @@ endpoint, no migration, and not a line of `reduce.ts` or `state.ts`. See
   to make the claim structural — one function, or a named sibling that asks
   the right register.
 
-**Reopen is gated, and this is the one place the app deliberately narrows a
-story.** `close → reopen → close` was live in the deployed build and silently
-halved owned counts — `gear.owned_count_set` is absolute, `closeTrip` computes
-`owned − consumed` against the fold it is handed, and a reopened Trip folds to
-`unpack` exactly like one that was never closed, so `closeTrip`'s `isClosed`
-guard cannot see it: owned 6 → 4 → reopen → **2**, four taps, no crash, nothing
-on screen. `reopenBlocked` (`shared/src/gestures.ts`) now withholds **both**
-doors out of `closed` — the ledger row's `REOPEN` and SET PHASE's four rows —
-on exactly the Trips whose close owed a reduction, and `reopenTrip` is the
-gesture both emit through. Three things to know before touching it:
+**S11, reopen, has landed** (story 11b; advances story 32's reopen clause).
+**One op type — `trip.consumption_posted`** — one register on the Trip root
+(`postings.<gear_id>`), three reads in `shared/src/selectors/unpack.ts`
+(`postedOf`, `owedOf`, `standingLostOf`), a third and fourth gesture
+(`reopenTrip` back-filling a pre-S11 close, `restoreConsumption`), one new
+confirm (the restoration offer) and `ReopenConfirm`'s last mono block. No
+endpoint, no migration, no new screen, no new route, and the slicing engine
+untouched. It closes the defect S10 left behind: `close → reopen → close` was
+live in the deployed build and silently halved owned counts — owned 6 → 4 →
+reopen → **2**, four taps, no crash, nothing on screen — and the S10-era gate
+that withheld the reopen is **deleted**, so `REOPEN`, SET PHASE's four rows out
+of `closed`, F5's `REOPEN TO CHANGE ONE.` and G1's disclosure line are all back.
+See [its spec](docs/specs/2026-09-07-reopen.md), whose **§11 records what moved
+while it was being built**, `docs/design/README.md` **§5k** (the shipped
+authority for everything its code decided that no board reached) and
+[§12.19](docs/architecture-design.md#1219-consequences-of-s11-reopen).
 
-- **The gate is narrow on purpose, and the narrowness is the argument.**
-  `lost` writes nothing against the Depot, so story 11's own example — the tent
-  marked `lost` in September, found in November — still reopens exactly as
-  drawn. What is withheld is the Trip that consumed something. Withholding on
-  every closed Trip would state on Trips where it is false what this states
-  only where it is true.
-- **It does not make the corruption impossible, and the docs say so.**
-  Reopening is a bare `trip.phase_moved`, so an installed PWA on a pre-gate
-  build still emits one; any build's close then reduces a second time. The
-  four-tap defect became a cross-version one. Only S11's per-Trip-per-Gear
-  "already reduced" register removes it — a stamp comparison was rejected
-  twice, once as R28's false negative and once (against the *phase* stamp)
-  because invariant 16 lets an outcome precede the move into `unpack`, which
-  would skip an ordinary **first** close's reduction outright.
-- **G1's disclosure line is now unreachable and is kept anyway.** The gate and
-  the line ask the identical `consumedReductions`, so they cover the same
-  Trips; deleting it would overturn a ruling in code rather than at a round.
-  S11 owes not just a correct re-close but **handing the route back** — the
-  `REOPEN`, the four rows, `REOPEN TO CHANGE ONE.` and that line. Argued in
-  [`docs/design/README.md`](docs/design/README.md) §5j, the shipped authority.
+**Five things about S11 are worth knowing before touching the close or the
+reopen:**
+
+- **A domain assertion with nowhere to be recorded is a gap in the model, and
+  that is why this slice has an op at all.** [Domain §6](docs/domain-model.md)
+  has said *"it applies once, at the close"* since long before S10, and nothing
+  held it: the Trip records what it consumed, the Depot records what is owned,
+  and no aggregate recorded that the transfer had **happened**. §8.3's own
+  instruction — a slice needing an op outside the catalogue should check the
+  domain rather than invent a row — was followed, and the domain answered. The
+  glossary now carries **posting**. The general shape to carry forward: when a
+  rule is stated as *applies once*, ask what holds the record, because an
+  absolute write plus no record is a rule enforced by hope.
+- **`owed − posted`, and both stamp-comparison refusals still stand.** The
+  close writes for a Gear only on a positive delta, which makes a re-close free
+  with no phase check; the offer is the negative delta surfaced to a human;
+  `delta = 0` writes nothing at all (`patterns.md` §2.3, as an **instance** of
+  the needless-write rule rather than an exception to it). A cross-aggregate
+  stamp comparison was rejected twice — once as R28's false negative, once
+  (against the *phase* stamp) because invariant 16 lets an outcome precede the
+  move into `unpack`, which would skip an ordinary **first** close's reduction
+  outright. `units` is **absolute, never a delta**, which is the whole of the
+  convergence argument and is now a property at the convergence tier.
+- **The one place absent and an explicit `0` must not be treated alike is
+  `reopenTrip`'s back-fill.** `postedOf` reads an absent register as `0`
+  (`ownerOf`'s rule for a sixth time), and every other reader treats the two
+  alike — but a Trip closed by a pre-S11 build has an empty map, which is
+  indistinguishable from *nothing was posted*, so the reopen records what that
+  close already applied by reading the register's own **presence**. A posting a
+  restoration deliberately took to `0` must never be back-filled. The
+  reconstruction is legitimate because ruling G6 freezes a closed Trip's
+  outcomes; what it cannot see is a peer on a **pre-gate** build performing the
+  reopen itself, which is in `technical-debt.md` as a shrinking cross-version
+  residue and cannot be closed from this side.
+- **§8.4's decisive sentence was falsified and is corrected in place, not
+  deleted.** *"11b introduces no new op types at all"* is wrong by exactly one,
+  and the reason is worth more than the claim: at planning time the
+  double-subtraction had not been found, because nothing in the plan draws the
+  `close → reopen → close` path. Every op 11b was expected to need existed; what
+  was missing was not a gesture but a **record**, and a plan enumerating
+  gestures cannot catch that. The seam survives with the count changed — the
+  catalogue is **39**, and `postings` is a register 11a never wrote.
+- **Four narrative mentions of the deleted gate stay in the code on purpose.**
+  `Trips.tsx`, `Unpack.tsx`, `PhaseSheet.tsx` and `gestures.ts` each name it in
+  the past tense beside what S11 does instead. A deleted symbol usually leaves
+  no trace, but a deleted *condition* leaves a control that looks unguarded, and
+  those comments are what stop the gate being re-added by the next author who
+  sees `REOPEN` drawn on every closed row.
 
 Four conventions the code now carries that are easy to trip over:
 

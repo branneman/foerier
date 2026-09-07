@@ -323,6 +323,15 @@ them.
   The third of the three counts, and deliberately named apart from **owned-count**
   (how many we own) and **bring-count** (how many we take).
 
+- **Posting** — the record that a trip's **consumed** gear has been applied to
+  the depot's **owned-count**: how many units of one piece of gear this trip has
+  already taken off the shelf. One number per trip per piece of gear, and the
+  reason the reduction applies once however many times a trip is closed —
+  closing writes only the difference between what the trip owes and what it has
+  posted. Accepting the offered correction after a reopen lowers the posting by
+  what it hands back. Distinct from **consumed-count**, which is what the trip
+  says it used up; the posting is what the depot has already been told.
+
 - **Re-home** — during the unpack pass, to record that a piece of gear's home has
   changed (the stuff sack came back into a different box). A single small update
   to the home arrangement. Re-homing gear is also what settles it after it was

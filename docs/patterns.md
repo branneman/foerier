@@ -282,6 +282,17 @@ own stamp); everywhere since it is invisible and exactly as wrong. So:
   §1.3](sync-protocol.md)), `People`'s and `HomePicker`'s renames.
 - **A pure picker's caller suppresses a selection equal to the current
   value** — see §4.3.
+- **A gesture writes nothing for the part of its work already done** —
+  `closeTrip`'s reduction loop skips a Gear whose `delta = owed − postedOf(…)`
+  is not positive (S11). This is an **instance of the rule, not an exception to
+  it**: `gear.owned_count_set` is absolute, so re-emitting the target a first
+  close already wrote is the needless write in its purest form, and here it is
+  not merely stamp-moving but arithmetically wrong — the loop reads the
+  *current* owned count, so a second close would subtract from the already
+  reduced one. The posting register is what lets the comparison be exact
+  instead of a stamp guess ([`sync-protocol.md` §4.4](sync-protocol.md)).
+  `restoreConsumption` is its mirror and needs no guard of its own: the offer
+  that calls it fires only on a change that actually moves the number.
 
 **One stated exception.** `GearDetail`'s unaccounted-standing settle route
 (`resolveOpen`'s `HomePicker`, `nowLabel="● NOW — FOUND HERE"`) writes

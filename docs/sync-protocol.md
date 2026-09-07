@@ -38,7 +38,7 @@ edited to match rather than left to disagree.
 | Clock drift | Op always applied; local clock adopts a peer's time only within **5 minutes** |
 | Merge | **Per-field LWW** by `(hlc, device_id)`, one rule, no stage overrides |
 | Deletion | Tombstones are ordinary LWW fields; only an explicit restore clears one |
-| Op catalogue | **38 op types**: 3 Place · 2 Person · 10 Gear · 23 Trip |
+| Op catalogue | **39 op types**: 3 Place · 2 Person · 10 Gear · 24 Trip |
 | Naming | `<aggregate>.<past_tense_verb>`, snake_case, two segments |
 | Evolution | Additive only. New optional fields, new op types. Never a version field |
 | Push | Atomic commit, **per-op outcomes** (`accepted` / `duplicate` / `rejected`) |
@@ -379,6 +379,7 @@ full:
 | --- | --- |
 | *(root)* | `name`, `phase`, `start_date`, `end_date`, `from_trip_id`, `deleted` |
 | `participants.<person_id>` | present / absent |
+| `postings.<gear_id>` | `units` |
 | `entries.<entry_id>` | `source`, `bring_count`, `status`, `residence`, `stage`, `outcome`, `consumed_count`, `removed` |
 | `entries.<entry_id>.pieces.<person_id>` | `status`, `residence`, `outcome`, `removed` |
 | `tasks.<task_id>` | `text`, `ticked` |
@@ -393,11 +394,26 @@ and never both on one entry ([domain §7](domain-model.md#7-two-tracks-where-vs-
 registers by construction, so the merge cannot silently make them agree — which
 is domain invariant 12, honoured for free.
 
+**`postings.<gear_id>` is the only root-level register keyed by something
+outside the Trip** (S11). It holds the **posting**
+([glossary](ubiquitous-language.md)): how many units of that Gear this Trip has
+already applied to the Depot's owned count. Per-Gear registers rather than one
+register holding a map, for §3.4's standing reason — two Devices posting
+different Gear address different registers and both survive, while two posting
+the *same* Gear is one register resolving by plain LWW between two numbers
+computed from the identical fold. The value is **absolute, never a delta**,
+`gear.owned_count_set`'s own contract (§4.3) restated one register over and for
+the same reason: re-emitting it is idempotent, and a Device that folds the op
+twice learns nothing new. An **absent** register reads `0` and an explicit `0`
+means a restoration handed the units back; every reader treats them alike, but
+`reopenTrip` reads the register's own presence and is the one place the
+difference matters (§4.5).
+
 ---
 
 ## 4. The op catalogue
 
-Every op type the MVP defines: **38** across four aggregates. Each traces to a
+Every op type the MVP defines: **39** across four aggregates. Each traces to a
 domain operation in [§9](domain-model.md#9-operations-and-domain-events) and to
 the story that introduced it. This is the table the slice plan and the
 implementation both work from — a vertical slice is one or more rows here plus
@@ -527,7 +543,7 @@ existing rule applied unchanged and both rows are typed `{name: string｜null}`
 above. Eight rows, one rule stated once in §1.3, three slices to reach all of
 them — and the catalogue's `name` fields are now settled entire.
 
-### 4.4 Trip — 23 ops
+### 4.4 Trip — 24 ops
 
 `aggregate_id` is the Trip in every row; entities inside it are addressed by ids
 in the payload.
@@ -676,6 +692,7 @@ container's own residence register is the one every reader consults.
 | --- | --- | --- | --- | --- |
 | `trip.outcome_set` | `{entry_id, person_id?, outcome: "back"｜"consumed"｜"lost"｜null}` | Sets the unpack outcome on an Entry, or on one Piece when `person_id` is present. `null` clears it back to **open**. Recording an outcome **releases the claim** immediately, mid-pass (§5.2) | Unpack outcome recorded / changed / cleared | 11 |
 | `trip.consumed_count_set` | `{entry_id, count: int ≥ 0}` | Sets the Consumed-count on a counted Entry resolved as `consumed`. Kept with the trip as history | Consumed-count set | 11 |
+| `trip.consumption_posted` | `{gear_id, units: int ≥ 0}` | Sets `postings.<gear_id>` (§3.7) — how many units of that Gear this Trip has applied to the Depot's owned count. **Absolute, never a delta.** Written by the close beside its own `gear.owned_count_set`, by the restoration (§4.5), and back-filled by a reopen | Consumption posted | 11 |
 
 **`trip.outcome_set` is the first op in the catalogue whose entity path is
 chosen by an optional payload field.** `person_id` present routes the write to
@@ -684,6 +701,21 @@ neither changes. A malformed `person_id` — present but not a string — reads
 `absent` through the tolerant reader, so the op lands on the Entry: the
 conservative direction, since the outcome then sits on the line the
 Quartermaster was looking at rather than being dropped.
+
+**`trip.consumption_posted` is what makes *"it applies once, at the close"*
+([domain §6](domain-model.md)) a recorded fact rather than an assertion nothing
+holds** (S11). The Trip records what it consumed and the Depot records what is
+owned; until this op nothing recorded that the transfer had happened, so a
+second close of the same Trip recomputed `owned − consumed` from the
+already-reduced count and subtracted twice. The close now writes for a Gear only
+when `owed − posted` is positive, which makes a re-close free with no phase
+check and no stamp comparison.
+
+**It folds unconditionally**, whatever the Trip's phase, whatever the Gear's
+Kind, and whether or not the Gear aggregate has arrived — the `TagString` split
+(§4.3) for a sixth time, after `bring_count`, `stage`/`status`,
+`trip.entry_moved` on a per-person Entry and `consumed_count`. Every gate is a
+**reader** gate, in `postedOf` (`selectors/unpack.ts`) and its callers.
 
 **`consumed_count` is a reader gate, not a reducer gate, for the identical
 reason `bring_count` and `TagString` already state (S10).** The catalogue says
@@ -699,9 +731,11 @@ draw the `TagString` split (§4.3), after `bring_count` (S7), `stage` / `status`
 
 ### 4.5 Gestures that emit more than one op
 
-Three user actions cross an aggregate boundary or expand into many ops. All of
+Four user actions cross an aggregate boundary or expand into many ops. All of
 them are ordinary ops in one push batch — there is no cross-aggregate
-transaction, because every op merges independently.
+transaction, because every op merges independently, and none of the four is
+atomic: a Device can die between any two of their ops, so the **order** inside
+each is chosen for what a partial batch leaves behind.
 
 **Re-homing during the unpack pass** emits `trip.outcome_set` (Trip) and
 `gear.rehomed` (Gear). The two writes invariant 8 permits are exactly these,
@@ -709,9 +743,28 @@ plus the third below.
 
 **Resolving a `consumed` counted entry at the close** emits
 `trip.consumed_count_set` (Trip) and `gear.owned_count_set` (Gear) with the new
-absolute owned-count. `lost` emits nothing against the depot at all — the gear
+absolute owned-count, **followed by `trip.consumption_posted`** recording that
+the transfer happened (S11). The reduction goes before its own posting: a
+posting recorded without its reduction would make every later close skip a
+reduction that never landed, a silent under-count, whereas the reverse leaves a
+retried close to find the same positive `owed − posted` and apply it correctly.
+`trip.phase_moved` goes last, so a Device dying mid-batch leaves a Trip still in
+`unpack` with a prefix of its reductions applied rather than a closed Trip whose
+Depot never moved. `lost` emits nothing against the depot at all — the gear
 keeps its recorded home, and *unaccounted for* is a selector reading the outcome
 (story 3, story 11).
+
+**Putting a consumed reduction back** — the restoration story 11 requires be
+*offered* rather than applied silently — emits `gear.owned_count_set` (Gear)
+with `owned + (posted − owed)` computed from the count **now**, then
+`trip.consumption_posted` (Trip) lowering the posting to what the Trip currently
+owes (S11). Posting-after-restoring, mirroring the close. This is not a third
+write against the depot in invariant 8's sense: it is the second write partly
+undone, on a Trip that has been reopened, at a moment a human agreed to. A
+**reopen** is the same shape one aggregate smaller — `trip.consumption_posted`
+back-filling whatever a pre-S11 close applied without recording, then
+`trip.phase_moved` — and it back-fills only Gear whose register is *absent*,
+never one an earlier restoration explicitly set to `0`.
 
 **Starting a trip from a past one** expands **at creation time** into ordinary
 ops in one batch: `trip.created{from_trip_id}`, then a
