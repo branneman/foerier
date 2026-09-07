@@ -22,11 +22,6 @@
     container-type: inline-size;
   }
 
-  .header {
-    display: flex;
-    align-items: center;
-  }
-
   /*
    * Two lines while the pane is under 40rem: the title and the add control on
    * the first, the search full width beneath. That is what `Depot split`

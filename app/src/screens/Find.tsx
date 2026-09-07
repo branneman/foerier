@@ -16,7 +16,7 @@ import {
   type Unaccounted,
   type WhereaboutsSlice,
 } from '@foerier/shared'
-import { GearRow, Logo, PersonCircle } from '@foerier/ui'
+import { GearRow, PersonCircle } from '@foerier/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'wouter'
 
@@ -26,7 +26,6 @@ import {
   type PersonRow,
 } from '../household/people'
 import { useHousehold } from '../household/store'
-import { DESKTOP, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Find.module.css'
 
 /**
@@ -446,7 +445,6 @@ function PerPersonCard({
 
 export function Find() {
   const state = useHousehold((depot) => depot.state)
-  const isDesktop = useMediaQuery(DESKTOP)
   const [query, setQuery] = useState('')
   const [recent, setRecent] = useState<string[]>([])
   const previousQuery = useRef('')
@@ -478,14 +476,6 @@ export function Find() {
 
   return (
     <div className={styles['screen']}>
-      {/* The phone shell's logo header, withheld at Desktop exactly as Depot
-          withholds it: the sidebar there already carries the logo. */}
-      {!isDesktop && (
-        <header className={styles['header']}>
-          <Logo size={28} title="foerier" />
-        </header>
-      )}
-
       <h1 className={styles['title']}>Find</h1>
 
       <input

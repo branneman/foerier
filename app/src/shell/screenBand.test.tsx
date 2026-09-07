@@ -8,7 +8,7 @@ import {
   type OpAuthor,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -24,8 +24,10 @@ import {
 } from '../household/store'
 import { Account } from '../screens/Account'
 import { AddGear } from '../screens/AddGear'
+import { Depot } from '../screens/Depot'
 import { DepotPicker } from '../screens/DepotPicker'
 import { Devices } from '../screens/Devices'
+import { Find } from '../screens/Find'
 import { GearDetail } from '../screens/GearDetail'
 import { GearListBuilder } from '../screens/GearListBuilder'
 import { InviteIssued } from '../screens/InviteIssued'
@@ -33,6 +35,7 @@ import { NewTrip } from '../screens/NewTrip'
 import { Packing } from '../screens/Packing'
 import { People } from '../screens/People'
 import { Trip } from '../screens/Trip'
+import { Trips } from '../screens/Trips'
 import { Unpack } from '../screens/Unpack'
 import { setViewport } from '../testSetup'
 import { AppShell } from './AppShell'
@@ -206,6 +209,20 @@ function renderInShell(store: StoreApi<HouseholdStoreState>, path: string) {
       <AppShell syncLine="SYNCED" syncTone="reachable">
         <HouseholdProvider value={store}>
           <Switch>
+            {/* The three destinations. They push nothing and draw no band,
+                so they are here for the brand-mark count alone — which is a
+                composed-page fact for exactly the reason the sync line is:
+                the mark is the shell's, and a per-screen suite can only ever
+                see the half of it the screen draws. */}
+            <Route path="/">
+              <Depot />
+            </Route>
+            <Route path="/trips">
+              <Trips />
+            </Route>
+            <Route path="/find">
+              <Find />
+            </Route>
             <Route path="/add">
               <AddGear />
             </Route>
@@ -284,6 +301,12 @@ function renderInShell(store: StoreApi<HouseholdStoreState>, path: string) {
   )
 }
 
+/** Every duffel mark on the page — `ui/Logo`'s `Mark`, whether it was
+ * rendered alone or inside the sidebar's `Logo`. */
+function brandMarks(): readonly HTMLElement[] {
+  return screen.queryAllByTestId('foerier-mark')
+}
+
 /** Every element whose own text is exactly `SYNCED`, anywhere on the page. */
 function syncLines(): readonly HTMLElement[] {
   return screen.queryAllByText('SYNCED')
@@ -308,6 +331,98 @@ async function aTrip(): Promise<{
   const store = await seededStore([tripCreated(id, 'Alps 2026')])
   return { store, id }
 }
+
+/**
+ * **The brand mark, counted the way the sync line is — and for the same
+ * reason it had to be.**
+ *
+ * The mark is chrome: it says which app this is, which is a fact about the
+ * shell and not about the destination inside it. It shipped as each screen's
+ * own `<header>` instead, and drifted exactly as the sync line had before
+ * `ScreenBand` existed — `Depot` and `Find` drew one, `Trips` drew none, and
+ * only `Find` had a test, which could see the screen's half and nothing about
+ * the shell's. Two further drifts came with the per-screen copy: both drew
+ * `Logo` (mark **and** wordmark) where every phone frame draws the bare mark,
+ * and both gated on `!isDesktop`, which is true at Split — where the 56px rail
+ * already carries one, so the page held two.
+ *
+ * The rule this counts, from `AppShell`:
+ *
+ * | Mode | Where the mark is | So the screen draws |
+ * | --- | --- | --- |
+ * | below Split (`tabs`) | the header band, left of the chrome | none |
+ * | Split (`rail`) | atop the 56px rail | none |
+ * | Desktop (`sidebar`) | the sidebar, beside the wordmark | none |
+ *
+ * One mark per page at every width, on every destination — which no
+ * per-screen suite can assert, since a screen rendered without the shell has
+ * nothing to double against.
+ */
+describe('the shell and a destination, composed — one brand mark, at every width', () => {
+  const DESTINATIONS = [
+    ['Depot', '/'],
+    ['Trips', '/trips'],
+    ['Find', '/find'],
+  ] as const
+
+  for (const [name, path] of DESTINATIONS) {
+    it(`draws one mark on a phone for ${name}, in the shell header`, async () => {
+      const store = await seededStore()
+      renderInShell(store, path)
+
+      const marks = brandMarks()
+      expect(marks).toHaveLength(1)
+      // The shell's, not the screen's. `Trips` shipped with none of its own
+      // and `Depot`/`Find` with one each, which is the whole drift.
+      expect(screen.getByRole('main')).not.toContainElement(marks[0] ?? null)
+    })
+
+    it(`draws one mark at Split for ${name}, on the rail`, async () => {
+      setViewport(SPLIT)
+      const store = await seededStore()
+      renderInShell(store, path)
+
+      const marks = brandMarks()
+      expect(marks).toHaveLength(1)
+      const nav = screen.getByRole('navigation', { name: 'Sections' })
+      expect(nav).toContainElement(marks[0] ?? null)
+    })
+
+    it(`draws one mark at Desktop for ${name}, in the sidebar`, async () => {
+      setViewport(SPLIT, DESKTOP)
+      const store = await seededStore()
+      renderInShell(store, path)
+
+      const marks = brandMarks()
+      expect(marks).toHaveLength(1)
+      const nav = screen.getByRole('navigation', { name: 'Sections' })
+      expect(nav).toContainElement(marks[0] ?? null)
+    })
+  }
+
+  /**
+   * The wordmark is the sidebar's alone. Every phone and Roomy frame opens
+   * with the bare 28×22 duffel and no text beside it; the 216px sidebar is
+   * the one place a board draws the pair. `Depot` and `Find` had been
+   * rendering `Logo` in the header, so the word appeared at a width no board
+   * puts it at.
+   */
+  it('keeps the wordmark for the sidebar, and draws the mark alone below it', async () => {
+    const store = await seededStore()
+    renderInShell(store, '/')
+    expect(screen.queryByTestId('foerier-logo')).toBeNull()
+    cleanup()
+
+    setViewport(SPLIT)
+    renderInShell(store, '/')
+    expect(screen.queryByTestId('foerier-logo')).toBeNull()
+    cleanup()
+
+    setViewport(SPLIT, DESKTOP)
+    renderInShell(store, '/')
+    expect(screen.getByTestId('foerier-logo')).toBeInTheDocument()
+  })
+})
 
 describe('the shell and a pushed screen, composed — one sync line, at every width', () => {
   it('states SYNCED once on a phone, in the shell header', async () => {

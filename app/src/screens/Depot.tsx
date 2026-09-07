@@ -18,7 +18,7 @@ import {
   type GroupKey,
   type SliceGroup,
 } from '@foerier/shared'
-import { GearRow, Logo } from '@foerier/ui'
+import { GearRow } from '@foerier/ui'
 import { useMemo } from 'react'
 import { Link } from 'wouter'
 
@@ -302,12 +302,6 @@ export function Depot({ selectedId }: DepotProps = {}) {
     <>
       <div className={styles['screen']} data-testid="depot-screen">
         <div className={styles['main']}>
-          {!isDesktop && (
-            <header className={styles['header']}>
-              <Logo size={28} title="foerier" />
-            </header>
-          )}
-
           <div className={styles['titleRow']}>
             <h1 className={styles['title']}>Depot</h1>
             {isDesktop && (

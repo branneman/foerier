@@ -14,7 +14,7 @@ import {
   tripPieceStatusSet,
   type OpSpec,
 } from '@foerier/shared'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
@@ -28,8 +28,6 @@ import {
   type HouseholdStoreState,
   type EngineFactory,
 } from '../household/store'
-import { DESKTOP, SPLIT } from '../shell/useMediaQuery'
-import { setViewport } from '../testSetup'
 import { anAuthor, anId, noopEngine } from '../testUtils'
 import { Find } from './Find'
 
@@ -236,20 +234,14 @@ describe('Find', () => {
     expect(screen.getByRole('button', { name: 'axe' })).toBeInTheDocument()
   })
 
-  // The logo header is the phone shell's, and Depot withholds it at Desktop
-  // because the sidebar there already carries the logo (`AppShell`). Find
-  // drew it at every width, so Desktop showed two — the one drift the three
-  // destination screens had between them.
-  it('draws the logo header below Desktop and withholds it there', async () => {
-    const store = await seededStore([])
-
-    renderFind(store)
-    expect(screen.getByText('foerier')).toBeInTheDocument()
-    cleanup()
-
-    setViewport(SPLIT, DESKTOP)
-    renderFind(store)
-    expect(screen.queryByText('foerier')).toBeNull()
+  // The brand mark moved to `AppShell` at the layout review — it is chrome,
+  // and a copy per screen is what let `Trips` ship without one. The count
+  // that replaces this assertion lives in `shell/screenBand.test.tsx`, which
+  // renders the shell and the screen together; from here the shell is absent,
+  // so a mark's absence proves nothing about the composed page.
+  it('draws no brand mark of its own — the shell carries it', async () => {
+    renderFind(await seededStore([]))
+    expect(screen.queryByTestId('foerier-mark')).toBeNull()
   })
 })
 

@@ -275,6 +275,16 @@ Cannot be coded yet: no frame draws it, or the ruling that would settle it
 has not been made. These want a design sitting, not an afternoon — reading
 them looking for work is the thing this section exists to stop.
 
+- **`Find` spends the full 1120 at Desktop, and no frame draws it there.**
+  `.shell__main` caps the column at 70rem and `Find` adds no measure cap of
+  its own, so its answer cards stretch the whole width — where `Depot` spends
+  that width on eight table columns and `Trips` on 2-up cards, both drawn.
+  `Screens B`'s Find frame is 393 only, and §6 already records that the
+  Desktop *withholding* of the header was inherited from `Depot desktop`
+  rather than drawn. Blocked on a board, not on an afternoon: a cap is one
+  declaration, but which one is a design call.
+  [`docs/design/README.md`](design/README.md) §6, anchor:
+  `no frame draws Find at 1024`
 - **`InviteIssued` draws no sync line at Split**, the one mode where nothing
   legible states sync status — the rail gives a bare 6px dot with the words on an
   `aria-label`. Blocked on a board rather than on the rule: no frame draws this

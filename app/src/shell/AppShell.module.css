@@ -169,9 +169,27 @@
     text-transform: uppercase;
   }
 
+  /*
+   * One band: the mark left, the sync line and the avatar right — which is
+   * what every phone and Roomy frame draws. It carried the chrome alone until
+   * the layout review, with each destination screen drawing a second band
+   * below it for the mark (`AppShell.tsx`'s own note).
+   *
+   * The gutter is the shell's, so this band's inline edge is the main area's,
+   * and the mark sits directly above the title rather than 16px inboard of it.
+   */
   .header {
     justify-content: space-between;
     padding: var(--space-8) var(--gutter);
+    color: var(--color-ink-primary);
+  }
+
+  /* The right half of the band. `.header`'s `space-between` is for the mark
+     against this group, not for its two members, which stay a cluster. */
+  .headerChrome {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-12);
   }
 
   .headerAccount {

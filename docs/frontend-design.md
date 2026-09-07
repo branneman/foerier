@@ -168,6 +168,20 @@ Nav therefore has three treatments — bottom tabs (thumb zone) → icon rail �
 labeled sidebar. **Roomy** is the mode added specifically to kill the wasted side
 space a 393-px-designed single column leaves on a large phone or foldable.
 
+**The brand mark belongs to whichever treatment is drawn, and never to a
+screen.** It is chrome — it says which app this is, which is a fact about the
+shell — so `AppShell` draws it once per mode and a destination screen opens
+with its own title row and nothing above it: below Split in the header band,
+mark left and the sync line plus the account avatar right, exactly as every
+phone and Roomy frame draws that band; at Split atop the 56px rail; at Desktop
+in the sidebar, where it is the **only** place a board draws the wordmark
+beside it. It shipped as each screen's job instead and drifted three ways —
+`Depot` and `Find` drew one and `Trips` drew none, both drew `Logo` rather than
+the bare `Mark`, and both gated on `!isDesktop`, which is true at Split, where
+the rail already carries one. The gate is `mode === 'tabs'`; the count that
+holds it is in `screenBand.test.tsx`, beside the sync line's, because one mark
+per page is a fact about the composed page (`patterns.md` §3.2a).
+
 **The two-pane unlock is not one screen's alone.** `DepotView` was the first to
 take it — the Depot list and the gear detail, as two panes of one view — and
 until S7 the only one. S7's gear-list builder (`/trips/:id/list`) is the
@@ -178,6 +192,14 @@ picker as its own route. A comment in `app/src/screens/Trip.tsx` once named
 `DepotView` "the only two-pane view in `App.tsx`"; it no longer is, and the
 comment is corrected. See [technical-debt.md](technical-debt.md) for what this
 means for the pane-local-scroller debt both views now carry.
+
+**The gutter in that last column is `.shell__main`'s, and a screen adds none
+of its own.** The main area carries `padding-inline: var(--gutter)` and
+`padding-block: var(--space-16) var(--fab-clearance)`, so a `.screen` that
+declares its own inline or block padding pays twice and drifts from its
+neighbours at every width at once — which `Find` and `GearDetail` both did
+until the layout review (`patterns.md` §6.8). A `max-width` measure cap is a
+different thing and stays the screen's.
 
 **The shell is one viewport tall in every mode, and the screen scrolls inside
 it.** `.shell` is a fixed `100svh` grid and `.shell__main` is the scroll

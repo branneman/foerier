@@ -364,6 +364,32 @@ drift a centralised decision with a decentralised rendering invites.
 
 *Argued in:* [`frontend-design.md` §3.3](frontend-design.md#33-screen-headers--the-back-link-and-the-sync-line).
 
+### 3.2a Shell chrome is the shell's; a destination screen draws none of it
+
+The brand mark, the sync line and the account avatar are chrome — they say
+which app this is, how it is doing and who is signed in, none of which is a
+fact about the destination inside the shell. `AppShell` draws all three, once
+per nav mode: below Split as one header band (mark left, sync line and avatar
+right), at Split atop the 56px rail, at Desktop in the 216px sidebar. A
+destination screen (`Depot`, `Trips`, `Find`) opens with its own title row and
+nothing above it.
+
+The mark shipped as each screen's job and drifted three ways at once, which is
+§3.2's lesson a second time: `Depot` and `Find` drew one and `Trips` drew none;
+both drew `Logo` (mark **and** wordmark) where every phone frame draws the bare
+`Mark`, the wordmark belonging to the sidebar alone; and both gated on
+`!isDesktop`, which is true at Split — where the rail already carries one, so
+the page held two. Only `Find` had a test, and a per-screen suite could see the
+screen's half and nothing about the shell's.
+
+The count that holds it is in `shell/screenBand.test.tsx`, beside the sync
+line's, and for the same reason: one mark per page at every width is a fact
+about the **composed** page, and a screen rendered without the shell has
+nothing to double against.
+
+*Departures:* none known.
+*Argued in:* `AppShell.tsx`'s "Why the mark is the shell's and not a screen's".
+
 ### 3.3 The floating control is the screen's sibling, sticky against the shell
 
 A screen returns a fragment: `<div className={styles.screen}>…</div>` and,
@@ -720,6 +746,32 @@ substring.
 *Departures:* none known.
 *Argued in:* `PackingRow.tsx`'s `.nameLine` note;
 [`specs/2026-09-01-packing-and-the-journey.md`](specs/2026-09-01-packing-and-the-journey.md) §11.5.
+
+### 6.8 `.shell__main` owns the gutter; a `.screen` adds none
+
+`ui/styles/layout.css` gives the shell's main area `padding-inline:
+var(--gutter)` and `padding-block: var(--space-16) var(--fab-clearance)`, and
+the gutter steps by mode (12 · 16 · 24). A signed-in screen's own `.screen`
+therefore sets **no inline padding and no block padding** — fourteen of the
+sixteen do, and take the shell's. A screen that adds its own pays twice and
+drifts from its neighbours at every width at once.
+
+Two did. `Find` carried `padding: var(--space-16)` with no media query, so
+its title sat 16px right and 16px down of `Depot`'s at all five modes —
+measured in a browser: `titleLeft` 28/32/40/158/256 against Depot's
+12/16/24/142/240. `GearDetail` carried the same plus `padding-bottom:
+var(--space-32)`, which at Split misaligned the two panes of one view (the
+board's `Depot split` draws the list pane at 16 and the detail at 18; shipped
+they were 16 and 32).
+
+The three signed-out screens (`SignIn`, `Join`, `NoPasskey`) render outside
+`AppShell` entirely and keep their own padding — there is no shell under them
+to inherit from. A **measure cap** is a different thing and stays the
+screen's: `max-width` plus `margin-inline: auto` narrows the column the shell
+handed over, and does not restate its inset.
+
+*Departures:* none known.
+*Argued in:* `ui/styles/layout.css`'s `.shell__main` note; the layout review.
 
 ### 6.7 Variants: a modifier class for a boolean, `data-*` for an enumeration, ARIA for state the DOM already carries
 

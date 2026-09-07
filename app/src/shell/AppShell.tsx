@@ -17,11 +17,28 @@ import { DESKTOP, SPLIT, useMediaQuery } from './useMediaQuery'
  * ([frontend-design §3.1](../../../docs/frontend-design.md), and the
  * **SIDEBAR ANATOMY** card on `Screens A` §02 as settled in R3).
  *
- * | Mode | Nav | Sync |
- * | --- | --- | --- |
- * | below Split | bottom tabs, three labels | header line |
- * | Split 52–64em | 56px icon rail, mark on top | dot only, in the rail |
- * | Desktop ≥64em | 216px sidebar, logo + wordmark, counts | line, in the sidebar |
+ * | Mode | Brand | Nav | Sync |
+ * | --- | --- | --- | --- |
+ * | below Split | mark, in the header | bottom tabs, three labels | header line |
+ * | Split 52–64em | mark, atop the rail | 56px icon rail | dot only, in the rail |
+ * | Desktop ≥64em | mark + wordmark | 216px sidebar, counts | line, in the sidebar |
+ *
+ * ## Why the mark is the shell's and not a screen's
+ *
+ * Every phone and Roomy frame opens with one band — mark left, chrome
+ * right — and the mark is chrome: it says which app this is, which is a fact
+ * about the shell and not about the destination inside it. It shipped as a
+ * screen's job instead, and drifted exactly the way §3.2's screen band did
+ * before `ScreenBand` existed: `Depot` and `Find` each drew their own, `Trips`
+ * drew none, and only `Find` had a test. It also drifted in two ways a
+ * per-screen copy invites — both drew `Logo` where the frames draw the bare
+ * `Mark`, and both gated on `!isDesktop`, which is true at Split, where the
+ * rail already carries one. Measured in a browser at 393px, the title landed
+ * at 100px on Depot and 54px on Trips.
+ *
+ * So the condition is `mode === 'tabs'` and not `!isDesktop`: the mark is
+ * drawn once per mode, by whichever of the three treatments owns the brand
+ * slot, and a destination screen has nothing left to remember.
  *
  * ## Why the mode is a media query and not CSS
  *
@@ -328,8 +345,15 @@ export function AppShell({
           desktop" (SIDEBAR ANATOMY). */}
       {mode === 'tabs' && (
         <header className={styles['header']}>
-          <SyncMarker line={syncLine} tone={syncTone} mode={mode} />
-          <AccountLink mode={mode} initial={accountInitial} />
+          {/* `Mark`, not `Logo`: every phone and Roomy frame opens with the
+              bare 28×22 duffel and no wordmark — the wordmark belongs to the
+              216px sidebar, which is the one place a board draws it beside
+              the mark. */}
+          <Mark size={28} title="foerier" />
+          <span className={styles['headerChrome']}>
+            <SyncMarker line={syncLine} tone={syncTone} mode={mode} />
+            <AccountLink mode={mode} initial={accountInitial} />
+          </span>
         </header>
       )}
 
