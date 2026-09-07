@@ -998,7 +998,7 @@ reopen:**
   convergence argument and is now a property at the convergence tier.
 - **The one place absent and an explicit `0` must not be treated alike is
   `reopenTrip`'s back-fill.** `postedOf` reads an absent register as `0`
-  (`ownerOf`'s rule for a sixth time), and every other reader treats the two
+  (`ownerOf`'s rule again), and every other reader treats the two
   alike — but a Trip closed by a pre-S11 build has an empty map, which is
   indistinguishable from *nothing was posted*, so the reopen records what that
   close already applied by reading the register's own **presence**. A posting a
@@ -1017,10 +1017,11 @@ reopen:**
   catalogue is **39**, and `postings` is a register 11a never wrote.
 - **Four narrative mentions of the deleted gate stay in the code on purpose.**
   `Trips.tsx`, `Unpack.tsx`, `PhaseSheet.tsx` and `gestures.ts` each name it in
-  the past tense beside what S11 does instead. A deleted symbol usually leaves
-  no trace, but a deleted *condition* leaves a control that looks unguarded, and
-  those comments are what stop the gate being re-added by the next author who
-  sees `REOPEN` drawn on every closed row.
+  the past tense beside what S11 does instead — four in shipped source, beside
+  two more in `Trips.test.tsx` and `Unpack.test.tsx`. A deleted symbol usually
+  leaves no trace, but a deleted *condition* leaves a control that looks
+  unguarded, and those comments are what stop the gate being re-added by the
+  next author who sees `REOPEN` drawn on every closed row.
 
 Four conventions the code now carries that are easy to trip over:
 

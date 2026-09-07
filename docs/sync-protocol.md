@@ -394,8 +394,8 @@ and never both on one entry ([domain §7](domain-model.md#7-two-tracks-where-vs-
 registers by construction, so the merge cannot silently make them agree — which
 is domain invariant 12, honoured for free.
 
-**`postings.<gear_id>` is the only root-level register keyed by something
-outside the Trip** (S11). It holds the **posting**
+**`postings.<gear_id>` is the second root-level map keyed by another
+aggregate's id — `participants`' exact shape one field over** (S11). It holds the **posting**
 ([glossary](ubiquitous-language.md)): how many units of that Gear this Trip has
 already applied to the Depot's owned count. Per-Gear registers rather than one
 register holding a map, for §3.4's standing reason — two Devices posting

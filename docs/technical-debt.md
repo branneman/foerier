@@ -130,7 +130,7 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   would be an op that build never wrote. Recorded as a shrinking cross-version
   residue rather than outstanding work; it retires when no such installed PWA
   remains. `shared/src/gestures.ts`'s own docblock on `reopenTrip`, anchor:
-  `pre-gate` build — S10-era
+  `whose reopen this build never witnessed`
 - **The property tier never meets a trip-side containment cycle, and never
   compares the trip tree across replicas at all.** `arbOpSets`'s generator
   produces a `tripContainmentView(…).brokenEdges` hit in **0–1 runs per

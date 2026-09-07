@@ -52,10 +52,13 @@ import type {
  * emits a bare `gear.rehomed`; `GearDetail.tsx` carries the reasoning.
  *
  * **`reopenTrip` and `restoreConsumption` are a third and fourth function
- * here and are not among sync §4.5's three.** Each writes ops on a single
- * aggregate (the Trip's own `postings`, plus — for `restoreConsumption` —
- * the Gear's owned count), so neither is a cross-aggregate *write* in §4.5's
- * sense — but each *decides* by reading the Gear aggregate
+ * here, and only one of them is one of sync §4.5's gestures.**
+ * `restoreConsumption` emits `gear.owned_count_set` (Gear) beside
+ * `trip.consumption_posted` (Trip), so it crosses an aggregate boundary as
+ * plainly as {@link closeTrip} does and is §4.5's **fourth**. `reopenTrip`
+ * writes only the Trip — back-filled postings and the phase move — so it
+ * stays outside that set. What puts *both* in this file is the other half
+ * of §4.5's shape: each *decides* by reading the Gear aggregate
  * (`consumedReductions` → `ownedCountOf`'s own subject, `postedOf` beside
  * it), which is the property that keeps both out of `authoring.ts` and puts
  * them here: this file is where an op's payload stops being a pure function
