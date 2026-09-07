@@ -11,9 +11,12 @@ import {
   outcomeOf,
   ownedCountOf,
   OUTCOMES,
+  owedOf,
   pieceOutcomeOf,
   piecesOf,
+  postedOf,
   rehomedSincePieceOutcome,
+  restoreConsumption,
   returnPathOf,
   tripConsumedCountSet,
   tripOutcomeSet,
@@ -32,6 +35,7 @@ import { useMemo, useState } from 'react'
 import { useHousehold } from '../household/store'
 import { tripParticipants } from '../household/trips'
 import styles from './OutcomeSheet.module.css'
+import { RestoreConsumptionConfirm } from './RestoreConsumptionConfirm'
 
 /**
  * **F5's outcome sheet** (`docs/design/README.md` §7, rulings F5/F9; spec
@@ -359,6 +363,70 @@ export function OutcomeSheet({
     return new Set(everyone)
   })
 
+  // **S11's restoration offer (spec §3).** `{ gearId, owed }` while raised,
+  // `null` while not — mount is the confirm, exactly as `PhaseSheet`'s
+  // `reopenTo`/`activating` state raises `ReopenConfirm`/`ActivationConfirm`.
+  // Set by {@link offerRestorationIfNeeded}, cleared by either of
+  // `RestoreConsumptionConfirm`'s own two exits.
+  const [offer, setOffer] = useState<{ gearId: string; owed: number } | null>(
+    null,
+  )
+
+  /**
+   * **The trigger is one predicate, not two** (spec §3): raise the offer
+   * whenever the change {@link choose} or {@link handleConsumedChange} is
+   * about to author would make `owed < posted` for this Entry's own Gear —
+   * covering both the outcome moving off `consumed` and the Consumed-count
+   * being lowered with the identical arithmetic, never two hand-typed rules.
+   *
+   * **It cannot fire on a Trip that was never closed, and needs no
+   * `isClosed`/phase check of its own to say so** — {@link postedOf} reads
+   * `0` for a Gear this Trip has never posted, so `owed < posted` is
+   * unreachable and the offer is self-limiting to exactly the reopened
+   * Trips story 11 describes. It cannot fire on a **closed** Trip either,
+   * because ruling G6 already makes F5 a record and `showStepper` below
+   * withholds the Consumed stepper there — the offer inherits that gate
+   * rather than restating it.
+   *
+   * **Computed from the *current* fold plus this one change, never from a
+   * hypothetical re-fold.** `owedOf` already sums every Entry pointing at
+   * this Gear; only this Entry's own contribution moves, so subtracting its
+   * old contribution and adding its new one is the identical total
+   * {@link owedOf} would report against a patched Trip, without
+   * constructing one or re-deriving `consumedReductions`' own gates
+   * (`consumedCountOf` already answers `null` for anything that does not
+   * contribute — a container, a Single, a per-person Entry, a trip-only
+   * Entry — so this Entry's contribution is `0` on both sides of the
+   * subtraction for every one of those, and no offer is ever raised for
+   * them).
+   */
+  function offerRestorationIfNeeded(
+    nextOutcome: OutcomeValue | null,
+    nextConsumedCount: number | null,
+  ): void {
+    const source = entry.source?.value
+    if (source === undefined || source.from !== 'depot') return
+    const gearId = source.gearId
+    const posted = postedOf(trip, gearId)
+    const before = outcome === 'consumed' ? (consumedCount ?? 0) : 0
+    const after = nextOutcome === 'consumed' ? (nextConsumedCount ?? 0) : 0
+    const nextOwed = owedOf(trip, gearId, state) - before + after
+    if (nextOwed < posted) setOffer({ gearId, owed: nextOwed })
+  }
+
+  function confirmRestoration(): void {
+    if (offer === null) return
+    for (const spec of restoreConsumption(
+      trip,
+      offer.gearId,
+      offer.owed,
+      state,
+    )) {
+      emit(spec)
+    }
+    setOffer(null)
+  }
+
   function toggleRow(personId: string): void {
     setSelection((prev) => {
       const next = new Set(prev)
@@ -431,6 +499,9 @@ export function OutcomeSheet({
     // nothing.
     if (next === outcome) return
     emit(tripOutcomeSet(trip.id, entry.id, next))
+    // The outcome op stands whether or not the offer that follows is taken
+    // (spec §3's own ordering) — emitted first, offered after.
+    offerRestorationIfNeeded(next, consumedCount)
   }
 
   function applyToSelection(next: OutcomeValue | null): void {
@@ -452,6 +523,9 @@ export function OutcomeSheet({
     if (next === null || consumedCount === null) return
     if (next === consumedCount) return
     emit(tripConsumedCountSet(trip.id, entry.id, next))
+    // The outcome is unchanged here (still `consumed` — `showStepper`'s own
+    // gate below), so only the Consumed-count side of the arithmetic moves.
+    offerRestorationIfNeeded(outcome, next)
   }
 
   // consumedCountOf already answers `null` for a container (checked first)
@@ -617,6 +691,16 @@ export function OutcomeSheet({
           Close
         </button>
       </Sheet.Close>
+
+      {offer !== null && (
+        <RestoreConsumptionConfirm
+          trip={trip}
+          gearId={offer.gearId}
+          owed={offer.owed}
+          onCancel={() => setOffer(null)}
+          onConfirm={confirmRestoration}
+        />
+      )}
     </Sheet>
   )
 }

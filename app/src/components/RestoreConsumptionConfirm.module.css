@@ -1,0 +1,39 @@
+@layer components {
+  /* The restoration's own fact line, `ReopenConfirm.module.css`'s `.reduction`
+     transplanted: mono, muted — nothing here is a warning, it is what
+     confirming would do. */
+  .fact {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    line-height: 1.6;
+    color: var(--color-ink-muted);
+  }
+
+  /* `ReopenConfirm.module.css`'s two buttons, verbatim: accent primary
+     growing `flex: 1`, ghost cancel its own width. Nothing is thrown away
+     here either — the offer is a restoration, not a warning. */
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+
+  .primary {
+    flex: 1;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+}

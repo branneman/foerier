@@ -6,6 +6,7 @@ import {
   personRecorded,
   placeRecorded,
   tripConsumedCountSet,
+  tripConsumptionPosted,
   tripCreated,
   tripEntryAdded,
   tripEntryBringCountSet,
@@ -465,6 +466,12 @@ describe('the outcome sheet', () => {
         payload: { entry_id: E_GAS, outcome: 'back' },
       },
     ])
+
+    // S11 spec §3: "it does not fire on a closed Trip either" — this fixture
+    // never posted (no `trip.consumption_posted` in its own seed above), so
+    // the arithmetic self-limits with no `isClosed` check of its own: `owed
+    // < posted` is unreachable while `posted` reads `0`.
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('grows no stepper for a Single Entry, even when CONSUMED is tapped', async () => {
@@ -544,6 +551,150 @@ describe('the outcome sheet', () => {
         'ONE OP PER TAP. LOST KEEPS THE HOME SLOT AND STAYS SEARCHABLE.',
       ),
     ).toBeInTheDocument()
+  })
+})
+
+/**
+ * **The restoration offer** (S11, spec §3) — raised by `choose` and
+ * `handleConsumedChange` whenever the change they just emitted makes `owed <
+ * posted` for the Entry's own Gear. `GAS` matches the spec's own worked
+ * example throughout: Bring-count 4, owned reduced ×6 → ×2 by a close that
+ * posted ×4, then reopened — the fixture every test below starts from via
+ * `aReopenedGasOwingFour`.
+ */
+async function aReopenedGasOwingFour(extra: readonly OpSpec[] = []) {
+  return seeded(
+    tripOutcomeSet(TRIP, E_GAS, 'consumed'),
+    tripConsumedCountSet(TRIP, E_GAS, 4),
+    // What a real close already applied — the reduction and its posting —
+    // then the reopen. Phase moves last on each side, `closeTrip`'s and
+    // `reopenTrip`'s own order.
+    gearOwnedCountSet(GAS, 2),
+    tripConsumptionPosted(TRIP, GAS, 4),
+    tripPhaseMoved(TRIP, 'closed'),
+    tripPhaseMoved(TRIP, 'unpack'),
+    ...extra,
+  )
+}
+
+describe('the restoration offer (S11, spec §3)', () => {
+  it('emits the outcome change and raises the offer when BACK moves a reopened Trip off consumed', async () => {
+    const user = userEvent.setup()
+    const seed = await aReopenedGasOwingFour()
+    renderSheet(seed, E_GAS)
+
+    await user.click(chipNamed('● BACK'))
+
+    // The outcome op stands on its own — spec §3's ordering — whether or
+    // not the offer that follows is ever taken.
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_GAS, outcome: 'back' },
+      },
+    ])
+    expect(
+      screen.getByRole('alertdialog', {
+        name: 'Put ×4 back on Gas canister 450?',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('confirming the offer restores the owned count and posts the difference', async () => {
+    const user = userEvent.setup()
+    const seed = await aReopenedGasOwingFour()
+    renderSheet(seed, E_GAS)
+
+    await user.click(chipNamed('● BACK'))
+    await user.click(screen.getByRole('button', { name: 'Put it back' }))
+
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_GAS, outcome: 'back' },
+      },
+      { type: 'gear.owned_count_set', payload: { count: 6 } },
+      {
+        type: 'trip.consumption_posted',
+        payload: { gear_id: GAS, units: 0 },
+      },
+    ])
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  /**
+   * **Declining is a decision that stands (G1's default).** The posting is
+   * not lowered, so the units stay deducted, and neither restore op is
+   * authored — the offer's own `Cancel`/scrim-refusal path never touches the
+   * Depot.
+   */
+  it('declining the offer leaves the outcome change standing and emits neither restore op', async () => {
+    const user = userEvent.setup()
+    const seed = await aReopenedGasOwingFour()
+    renderSheet(seed, E_GAS)
+
+    await user.click(chipNamed('● BACK'))
+    await user.click(screen.getByRole('button', { name: 'Leave it' }))
+
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_GAS, outcome: 'back' },
+      },
+    ])
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  /**
+   * **One predicate, both cases.** Lowering the Consumed-count is the
+   * second trigger spec §3 names, and it is the identical `owed < posted`
+   * read — never a second, hand-typed rule.
+   */
+  it('raises the offer for the remainder when the Consumed-count is lowered, not only when the outcome clears', async () => {
+    const user = userEvent.setup()
+    const seed = await aReopenedGasOwingFour()
+    renderSheet(seed, E_GAS)
+
+    await user.click(
+      screen.getByRole('button', { name: /decrease consumed count/i }),
+    )
+    expect(
+      screen.getByRole('alertdialog', {
+        name: 'Put ×1 back on Gas canister 450?',
+      }),
+    ).toBeInTheDocument()
+
+    // The offer traps focus (Radix's own AlertDialog behaviour) until it is
+    // resolved — declining leaves the units deducted (G1's default) and a
+    // second lowering raises the offer again, for the new remainder.
+    await user.click(screen.getByRole('button', { name: 'Leave it' }))
+    await user.click(
+      screen.getByRole('button', { name: /decrease consumed count/i }),
+    )
+
+    expect(
+      screen.getByRole('alertdialog', {
+        name: 'Put ×2 back on Gas canister 450?',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * **Self-limiting to reopened Trips.** `posted` reads `0` on a Trip whose
+   * close (if any) never posted this Gear, so `owed < posted` is
+   * unreachable — no `isClosed`/phase check of its own is needed here.
+   */
+  it('raises no offer on a Trip that was never closed, because posted is 0', async () => {
+    const user = userEvent.setup()
+    const seed = await seeded(
+      tripOutcomeSet(TRIP, E_GAS, 'consumed'),
+      tripConsumedCountSet(TRIP, E_GAS, 2),
+    )
+    renderSheet(seed, E_GAS)
+
+    await user.click(chipNamed('● BACK'))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })
 
