@@ -646,6 +646,39 @@ describe('the restoration offer (S11, spec §3)', () => {
   })
 
   /**
+   * **Review finding.** Spec §3 fires the offer when a change *makes* `owed
+   * < posted` — not merely when the state a change lands on happens to
+   * already read that way. After declining, `owed` (0) already sits below
+   * `posted` (4); a later change that moves no units at all must not
+   * re-raise the offer just because that standing inequality is still true.
+   * `back → lost` is exactly such a change — neither `back` nor `lost`
+   * contributes to `owedOf` (only `consumed` does), so this Entry's own
+   * contribution is `0` before and after and nothing about what this Trip
+   * owes has moved.
+   */
+  it('does not re-raise the offer on a later change that moves no units, after declining', async () => {
+    const user = userEvent.setup()
+    const seed = await aReopenedGasOwingFour()
+    renderSheet(seed, E_GAS)
+
+    await user.click(chipNamed('● BACK'))
+    await user.click(screen.getByRole('button', { name: 'Leave it' }))
+    await user.click(chipNamed('▲ LOST'))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(await seed.authored()).toEqual([
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_GAS, outcome: 'back' },
+      },
+      {
+        type: 'trip.outcome_set',
+        payload: { entry_id: E_GAS, outcome: 'lost' },
+      },
+    ])
+  })
+
+  /**
    * **One predicate, both cases.** Lowering the Consumed-count is the
    * second trigger spec §3 names, and it is the identical `owed < posted`
    * read — never a second, hand-typed rule.

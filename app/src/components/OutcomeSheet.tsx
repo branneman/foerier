@@ -383,10 +383,24 @@ export function OutcomeSheet({
    * `isClosed`/phase check of its own to say so** — {@link postedOf} reads
    * `0` for a Gear this Trip has never posted, so `owed < posted` is
    * unreachable and the offer is self-limiting to exactly the reopened
-   * Trips story 11 describes. It cannot fire on a **closed** Trip either,
-   * because ruling G6 already makes F5 a record and `showStepper` below
-   * withholds the Consumed stepper there — the offer inherits that gate
-   * rather than restating it.
+   * Trips story 11 describes. **It cannot fire on a closed Trip either, but
+   * not because anything in this file withholds it** — the outcome chips
+   * stay live on a closed Trip regardless (`showStepper` below gates only
+   * the Consumed-count trigger, never the outcome one). The gate that
+   * actually holds is `Unpack.tsx`'s own row routing: a closed Trip's row
+   * draws the outcome as text, so this sheet is never mounted on one at all
+   * (ruling G6). This function inherits that by never running, not by
+   * checking `isClosed` itself.
+   *
+   * **Fires only when this change actually moves the number, never merely
+   * because the state it lands on already reads `owed < posted`.** Spec §3
+   * says the offer fires when a change *makes* `owed < posted` — so a
+   * decline that leaves `owed` already below `posted` (G1's own standing
+   * default) must not re-raise the offer on a later, unrelated change that
+   * moves no units at all (`back → lost` moves nothing, whatever `owed` and
+   * `posted` already stood at). `before !== after` is that guard: a change
+   * that does not touch this Entry's own contribution to `owedOf` is not a
+   * change this function has anything to say about.
    *
    * **Computed from the *current* fold plus this one change, never from a
    * hypothetical re-fold.** `owedOf` already sums every Entry pointing at
@@ -410,6 +424,7 @@ export function OutcomeSheet({
     const posted = postedOf(trip, gearId)
     const before = outcome === 'consumed' ? (consumedCount ?? 0) : 0
     const after = nextOutcome === 'consumed' ? (nextConsumedCount ?? 0) : 0
+    if (before === after) return
     const nextOwed = owedOf(trip, gearId, state) - before + after
     if (nextOwed < posted) setOffer({ gearId, owed: nextOwed })
   }
