@@ -104,6 +104,7 @@ export {
   reHomeOnTheSpot,
   reopenBlocked,
   reopenTrip,
+  restoreConsumption,
 } from './gestures.ts'
 
 export { applyOp, emptyState, fold } from './reduce.ts'

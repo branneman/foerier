@@ -12,6 +12,7 @@ import {
   gearOwnedCountSet,
   gearRehomed,
   tripConsumedCountSet,
+  tripConsumptionPosted,
   tripEntryAdded,
   tripEntryBringCountSet,
   tripOutcomeSet,
@@ -23,10 +24,11 @@ import {
   reHomeOnTheSpot,
   reopenBlocked,
   reopenTrip,
+  restoreConsumption,
 } from './gestures.ts'
 import { fold } from './reduce.ts'
 import { ownedCountOf } from './selectors/depot.ts'
-import { unpackTotals } from './selectors/unpack.ts'
+import { postedOf, unpackTotals } from './selectors/unpack.ts'
 import type {
   EntryState,
   GearState,
@@ -327,7 +329,7 @@ describe('closeTrip', () => {
     expect(ops).toEqual([tripPhaseMoved(TRIP, 'closed')])
   })
 
-  it('one consumed Counted Entry (owned ×6, consumed ×2) reduces to ×4, reduction before the phase move', () => {
+  it('one consumed Counted Entry (owned ×6, consumed ×2) reduces to ×4, posts ×2, phase move last', () => {
     const ENTRY = 'e-consumed'
     const state = depot(
       aTrip({ id: TRIP, name: 'Ardennes' }),
@@ -348,13 +350,18 @@ describe('closeTrip', () => {
 
     const ops = closeTrip(trip, state)
 
+    // The order is the assertion: the reduction before its own posting
+    // (spec §2.3 — a posting without its reduction makes a later close skip
+    // a reduction that never landed), and `trip.phase_moved` last regardless
+    // of how many Gears the loop above it touched.
     expect(ops).toEqual([
       gearOwnedCountSet('g-gas', 4),
+      tripConsumptionPosted(TRIP, 'g-gas', 2),
       tripPhaseMoved(TRIP, 'closed'),
     ])
   })
 
-  it('sums two consumed Entries naming the same Gear into one gear.owned_count_set', () => {
+  it('sums two consumed Entries naming the same Gear into one gear.owned_count_set and one posting', () => {
     const state = depot(
       aTrip({ id: TRIP, name: 'Ardennes' }),
       aGear({
@@ -378,8 +385,12 @@ describe('closeTrip', () => {
 
     const ops = closeTrip(trip, state)
 
+    // `consumedReductions` sums both Entries before this function reads a
+    // single base count (its own docblock) — one posting per Gear, not one
+    // per Entry, exactly as there is one `gear.owned_count_set` per Gear.
     expect(ops).toEqual([
       gearOwnedCountSet('g-gas', 3),
+      tripConsumptionPosted(TRIP, 'g-gas', 3),
       tripPhaseMoved(TRIP, 'closed'),
     ])
   })
@@ -405,8 +416,12 @@ describe('closeTrip', () => {
 
     const ops = closeTrip(trip, state)
 
+    // The floor applies to the owned-count write alone — the posting still
+    // records the raw `owed` (5), because the posting is this Trip's own
+    // running total against the Depot, not what the Depot had left to give.
     expect(ops).toEqual([
       gearOwnedCountSet('g-gas', 0),
+      tripConsumptionPosted(TRIP, 'g-gas', 5),
       tripPhaseMoved(TRIP, 'closed'),
     ])
   })
@@ -487,6 +502,7 @@ describe('closeTrip', () => {
     const first = closeTrip(trip, state)
     expect(first).toEqual([
       gearOwnedCountSet('g-gas', 3),
+      tripConsumptionPosted(TRIP, 'g-gas', 2),
       tripPhaseMoved(TRIP, 'closed'),
     ])
 
@@ -593,6 +609,36 @@ describe('closeTrip', () => {
     const trip = tripFrom(state, TRIP)
 
     expect(unpackTotals(trip, state).open).toBe(0)
+    expect(closeTrip(trip, state)).toEqual([tripPhaseMoved(TRIP, 'closed')])
+  })
+
+  it('a negative delta (posted 4, owed 2) makes the close emit neither op for that gear', () => {
+    const ENTRY = 'e-consumed'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 6,
+      }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, ENTRY, 4),
+        tripOutcomeSet(TRIP, ENTRY, 'consumed'),
+        tripConsumedCountSet(TRIP, ENTRY, 2),
+        // Simulates a posting ahead of what this Trip currently owes — the
+        // shape a restoration (spec §3) can leave behind once a lowered
+        // Consumed-count is re-raised only part way. `owed` (2) − `posted`
+        // (4) is negative, and §2.2's bottom row says the close skips it
+        // silently; only the offer (`restoreConsumption`) may lower a
+        // posting, and never the close.
+        tripConsumptionPosted(TRIP, 'g-gas', 4),
+      ],
+    )
+    const trip = tripFrom(state, TRIP)
+
+    expect(postedOf(trip, 'g-gas')).toBe(4)
     expect(closeTrip(trip, state)).toEqual([tripPhaseMoved(TRIP, 'closed')])
   })
 })
@@ -708,7 +754,20 @@ describe('reopenTrip', () => {
     expect(reopenTrip(tripFrom(state, TRIP), 'unpack', state)).toEqual([])
   })
 
-  it('emits nothing on a closed Trip whose close applied a reduction', () => {
+  /**
+   * **§5.2's whole reason for existing.** A closed Trip in a real household
+   * today was closed by a build with no posting op: its `postings` map is
+   * empty and its `owed` is ×2, indistinguishable from *nothing was ever
+   * posted*. `reopenTrip` records what that close already did, from
+   * `consumedReductions` computed **now** — legitimate because G6 makes F5
+   * on a closed Trip a record: every write is withheld, so a closed Trip's
+   * outcomes are frozen and this read is exactly what that close applied.
+   * `g-gas`'s `ownedCount: 4` here stands in for "a pre-S11 build already
+   * subtracted ×2 from ×6"; nothing in this test computes that arithmetic
+   * again, because §5.2 does not — it only records that the reduction
+   * already happened.
+   */
+  it('back-fills a gear with no posting register — a pre-S11 close', () => {
     const state = depot(
       aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
       aGear({
@@ -725,34 +784,80 @@ describe('reopenTrip', () => {
       ],
     )
 
-    expect(reopenTrip(tripFrom(state, TRIP), 'unpack', state)).toEqual([])
+    expect(reopenTrip(tripFrom(state, TRIP), 'unpack', state)).toEqual([
+      tripConsumptionPosted(TRIP, 'g-gas', 2),
+      tripPhaseMoved(TRIP, 'unpack'),
+    ])
   })
 
   /**
-   * **The regression test for the live defect this gate closes**, in the
-   * sequential shape R27's own test established: apply each call's ops to
-   * the fold, exactly as `emit` does after a tap, and ask what the **Depot**
-   * reads at the end.
-   *
-   * Before the gate these four taps ran `owned 6 → 4 → (the reopen writes
-   * nothing) → 2`: the second close read the **already-reduced** count and
-   * subtracted the Consumed-count again. `gear.owned_count_set` is absolute,
-   * never a delta ([sync §4.3](../../docs/sync-protocol.md)), and a reopened
-   * Trip's fold reads `unpack` exactly like a Trip that was never closed, so
-   * `closeTrip`'s own `isClosed` guard cannot see this path.
-   *
-   * After the gate the reopen emits nothing, the Trip never leaves `closed`,
-   * and the second close returns `[]` through the guard that *can* see it.
-   *
-   * **It asserts the Depot's own count and deliberately nothing about the
-   * three op lists on the way there.** Each of those is already pinned by a
-   * test of its own, and asserting them here would make this test fail at
-   * the *reopen* the moment the gate regressed — reporting an empty-array
-   * mismatch and never reaching the `×2` this test exists to name. One test,
-   * one claim: whatever route a future change takes, four taps must leave
-   * the canister at ×4.
+   * **The one place the presence check and `postedOf` deliberately
+   * disagree** (spec §5.2). `g-rope`'s posting was explicitly restored to
+   * `0` — a close that *was* recorded, and whose units this Trip already
+   * handed back (§3) — so `trip.postings?.['g-rope'] !== undefined` is
+   * `true` and the back-fill leaves it alone. Reading `postedOf(...) > 0`
+   * instead would read `0` as "never posted" and fabricate a second posting
+   * for a Gear whose close this build already knows about. `g-gas` carries
+   * no register at all, so it still back-fills — proving the two Gears are
+   * told apart by presence, not by value — and the phase move stays last.
    */
-  it('close → reopen → close leaves the owned count reduced exactly once', () => {
+  it('skips a gear whose posting register is present at 0, back-fills the rest, phase move last', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes', phase: 'closed' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 4,
+      }),
+      aGear({
+        id: 'g-rope',
+        name: 'Rope',
+        kind: 'counted',
+        ownedCount: 9,
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, 'e-gas', 4),
+        tripOutcomeSet(TRIP, 'e-gas', 'consumed'),
+        tripConsumedCountSet(TRIP, 'e-gas', 2),
+        tripEntryAdded(TRIP, 'e-rope', { from: 'depot', gearId: 'g-rope' }),
+        tripEntryBringCountSet(TRIP, 'e-rope', 3),
+        tripOutcomeSet(TRIP, 'e-rope', 'consumed'),
+        tripConsumedCountSet(TRIP, 'e-rope', 3),
+        tripConsumptionPosted(TRIP, 'g-rope', 0),
+      ],
+    )
+
+    expect(reopenTrip(tripFrom(state, TRIP), 'unpack', state)).toEqual([
+      tripConsumptionPosted(TRIP, 'g-gas', 2),
+      tripPhaseMoved(TRIP, 'unpack'),
+    ])
+  })
+
+  /**
+   * **The regression test for the live defect this slice closes**, in the
+   * sequential shape R27's own test established: apply each call's ops to
+   * the fold, exactly as `emit` does after a tap, and ask what the second
+   * close's own op list — not just the Depot's final number — says.
+   *
+   * Before S11 these four taps ran `owned 6 → 4 → reopen (a bare phase
+   * move, no posting) → 2`: the second close read the **already-reduced**
+   * count and subtracted the Consumed-count again. `gear.owned_count_set`
+   * is absolute, never a delta ([sync §4.3](../../docs/sync-protocol.md)),
+   * and a reopened Trip's fold reads `unpack` exactly like a Trip that was
+   * never closed, so `closeTrip`'s own `isClosed` guard cannot see this
+   * path.
+   *
+   * After S11 the first close posts what it reduced (§2.3); the reopen's
+   * back-fill has nothing to do, since this Gear already carries a
+   * register; the second close computes `delta = owed (2) − posted (2) =
+   * 0` and skips the Gear — no `gear.owned_count_set` at all, for this
+   * Gear or any other. **This one assertion is the slice**: not that the
+   * final count happens to come out right, but that the second close's own
+   * op list carries no reduction to make it so.
+   */
+  it('close → reopen → close leaves the owned count reduced exactly once, and the second close emits no reduction', () => {
     const ENTRY = 'e-gas'
     const state = depot(
       aTrip({ id: TRIP, name: 'Ardennes' }),
@@ -779,7 +884,45 @@ describe('reopenTrip', () => {
     const secondClose = closeTrip(tripFrom(reopened, TRIP), reopened)
     const finalState = fold(stamp(secondClose, { start: 300 }), reopened)
 
-    // The whole point: ×4, never ×2.
+    // The slice's own assertion: the second close writes no reduction for
+    // this Gear at all.
+    expect(secondClose).toEqual([tripPhaseMoved(TRIP, 'closed')])
+    // And the number that assertion protects: ×4, never ×2.
     expect(ownedCountOf(gearFrom(finalState, 'g-gas'))).toBe(4)
+  })
+})
+
+describe('restoreConsumption', () => {
+  const TRIP = 't-restore'
+
+  /**
+   * **The target is computed from the count now, not reset to a number
+   * nobody recorded** (spec §3). Posted ×4, owed 0 (the outcome has moved
+   * off `consumed`, or been cleared) — but the Depot's own owned-count has
+   * since been hand-corrected to 5, independently of this Trip. The
+   * restoration raises it by exactly what this Trip is giving back
+   * (`posted − owed` = 4), landing on 9, and posts the new absolute target
+   * (0) — never the old ×4 this Trip no longer owes.
+   */
+  it('computes its target from the count now: posted 4, owed 0, hand-corrected owned 5 → owned 9, posts 0, in that order', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes', phase: 'unpack' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 5,
+      }),
+      [tripConsumptionPosted(TRIP, 'g-gas', 4)],
+    )
+    const trip = tripFrom(state, TRIP)
+    expect(postedOf(trip, 'g-gas')).toBe(4)
+
+    const ops = restoreConsumption(trip, 'g-gas', 0, state)
+
+    expect(ops).toEqual([
+      gearOwnedCountSet('g-gas', 9),
+      tripConsumptionPosted(TRIP, 'g-gas', 0),
+    ])
   })
 })
