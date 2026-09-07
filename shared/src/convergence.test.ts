@@ -27,6 +27,7 @@ import {
   placeRemoved,
   placeRenamed,
   tripConsumedCountSet,
+  tripConsumptionPosted,
   tripContainerStageSet,
   tripCreated,
   tripDatesSet,
@@ -46,7 +47,7 @@ import {
   tripRenamed,
   type OpSpec,
 } from './authoring.ts'
-import { closeTrip, reHomeOnTheSpot } from './gestures.ts'
+import { closeTrip, reHomeOnTheSpot, reopenTrip } from './gestures.ts'
 import type { OpEnvelope } from './ops.ts'
 import { overClaims, overClaimsFor } from './selectors/claim.ts'
 import { containmentView } from './selectors/containment.ts'
@@ -54,13 +55,20 @@ import { entriesOf } from './selectors/entry.ts'
 import {
   disagreements,
   isPacked,
+  packingItems,
   stageOf,
   statusOf,
 } from './selectors/packing.ts'
 import { piecesOf } from './selectors/piece.ts'
 import { isActive } from './selectors/trip.ts'
 import { tripContainmentView } from './selectors/tripContainment.ts'
-import { unaccountedOf } from './selectors/unpack.ts'
+import {
+  outcomeOf,
+  pieceOutcomeOf,
+  postedOf,
+  unaccountedOf,
+  unpackTotals,
+} from './selectors/unpack.ts'
 import { whereabouts } from './selectors/whereabouts.ts'
 import type {
   HouseholdState,
@@ -477,6 +485,17 @@ const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbPersonId)
     .map(([id, personId]) => tripParticipantRemoved(id, personId)),
+  // S11's one op type (spec §2.1, §4): `trips.<id>.postings.<gear_id>` sits
+  // on the Trip's **root** entity path beside `participants`, the same level
+  // as the six branches above — so this joins them as a seventh, unweighted
+  // branch rather than a fourth arm, exactly the reasoning
+  // {@link arbTripEntrySpec}'s own doc gives for joining a branch to the arm
+  // that already addresses its entity path. `units` draws from the same
+  // small `nat` range {@link arbTripEntrySpec}'s own count-like fields use
+  // (bring-count, consumed-count), rather than a fresh, unbounded one.
+  fc
+    .tuple(arbTripId, arbGearId, fc.nat({ max: 5 }))
+    .map(([id, gearId, units]) => tripConsumptionPosted(id, gearId, units)),
 )
 
 /**
@@ -3052,6 +3071,385 @@ describe('convergence', () => {
         in: 'place',
         id: placeShed,
       })
+    }
+  })
+
+  /**
+   * **S11's own named property, and the reason `trip.consumption_posted`'s
+   * `units` is absolute rather than a delta (spec §2.1, §2.2) — the property
+   * the whole slice exists for.** Two Devices tap `Close trip` from an
+   * identical synced fold (S10's own obligation, restated here as the
+   * opening round); one then reopens, and the other re-closes. Pre-S11 this
+   * exact sequence corrupted the Depot on a **single** Device alone — owned
+   * 6 → close → 4 → reopen → close → 2 (`gestures.ts`'s own docblock) —
+   * because the second close recomputed `owned − consumed` against the
+   * already-reduced count with nothing recording that the first reduction
+   * had already landed. With the posting register in place, the re-close
+   * reads what this Trip has already posted and owes nothing further, so
+   * the owned count settles on the ONE reduction it ever owed, whichever
+   * Device authors which tap.
+   *
+   * Asserted twice: once through the ordinary `exchange` round-trips a real
+   * app performs after every tap, and a second time by folding the two
+   * Devices' own authored streams into two fresh, empty replicas in the two
+   * possible relative orders. The second check is not redundant with the
+   * first — `exchange` always delivers both directions in the same call, so
+   * on its own it could not catch a bug that only shows up when one
+   * Device's whole stream is folded entirely before the other's ever is.
+   * This is the direct proof of `sync-protocol.md` §3.2's commutativity
+   * claim for exactly this op mix, not an assumption borrowed from it.
+   */
+  it('two Devices close, reopen and re-close the same Trip converge on one owned count', () => {
+    const { clock, a, b } = aWorld()
+    const gear = GEAR_IDS[0]
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+
+    const aStream: OpEnvelope[] = []
+    const bStream: OpEnvelope[] = []
+    const emitA = (spec: OpSpec): void => {
+      aStream.push(a.emit(spec))
+    }
+    const emitB = (spec: OpSpec): void => {
+      bStream.push(b.emit(spec))
+    }
+
+    emitA(
+      gearRecorded(gear, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 6,
+      }),
+    )
+    emitA(tripCreated(trip, 'Alps'))
+    emitA(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+    emitA(tripEntryBringCountSet(trip, entry, 4))
+    emitA(tripOutcomeSet(trip, entry, 'consumed'))
+    emitA(tripConsumedCountSet(trip, entry, 2))
+    exchange(a, b)
+
+    // Tap 1 and tap 2: both Devices close, each from the identical fold
+    // they already share — offline from each other, exactly as two
+    // Quartermasters tapping "Close trip" on their own phones would.
+    clock.advance(1000)
+    for (const spec of closeTrip(a.state().trips[trip]!, a.state())) {
+      emitA(spec)
+    }
+    for (const spec of closeTrip(b.state().trips[trip]!, b.state())) {
+      emitB(spec)
+    }
+    exchange(a, b)
+    for (const r of [a, b]) {
+      expect(r.state().gear[gear]?.ownedCount?.value).toBe(4)
+      expect(r.state().trips[trip]?.phase?.value).toBe('closed')
+    }
+
+    // Tap 3: A reopens.
+    clock.advance(1000)
+    for (const spec of reopenTrip(
+      a.state().trips[trip]!,
+      'unpack',
+      a.state(),
+    )) {
+      emitA(spec)
+    }
+    exchange(a, b)
+
+    // Tap 4: B re-closes — the fourth tap, on the OTHER Device, from the
+    // fold it now shares with A. Nothing about the Trip's own consumption
+    // changed since the first close, so `postedOf` already reads what
+    // `consumedReductions` owes: the delta is zero and this tap's own ops
+    // are the phase move alone.
+    clock.advance(1000)
+    for (const spec of closeTrip(b.state().trips[trip]!, b.state())) {
+      emitB(spec)
+    }
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      // Four taps, two Devices, and the owned count never moves below the
+      // ONE reduction it ever owed — pre-S11 this exact sequence read 2.
+      expect(r.state().gear[gear]?.ownedCount?.value).toBe(4)
+      expect(r.state().trips[trip]?.phase?.value).toBe('closed')
+    }
+
+    // Fold A's whole stream and B's whole stream into two fresh, empty
+    // replicas in the two possible relative orders.
+    const orderAB = createReplica({
+      deviceId: DEVICE_IDS[2],
+      householdId: HOUSEHOLD,
+      clock: fakeClock(BASE_MS),
+    })
+    orderAB.receive(aStream)
+    orderAB.receive(bStream)
+    const orderBA = createReplica({
+      deviceId: DEVICE_IDS[3],
+      householdId: HOUSEHOLD,
+      clock: fakeClock(BASE_MS),
+    })
+    orderBA.receive(bStream)
+    orderBA.receive(aStream)
+
+    expect(orderAB.state()).toEqual(orderBA.state())
+    expect(orderAB.state()).toEqual(a.state())
+    expect(orderAB.state().gear[gear]?.ownedCount?.value).toBe(4)
+    expect(orderAB.state().trips[trip]?.phase?.value).toBe('closed')
+  })
+
+  /**
+   * **§8.4's "nothing is destroyed to close a Trip" claim, put to the test
+   * rather than assumed.** `closeTrip` and `reopenTrip` write exactly three
+   * kinds of op — a Gear's owned count, this Trip's own postings, and its
+   * phase — and touch no Entry or Piece register at all. So every fact F4
+   * draws (a status, a trip residence, a container's stage, an outcome)
+   * must read identically before the close and after the reopen, on both
+   * replicas, with no op ever having addressed them in between. "The
+   * arrangement returns for free" is exactly that: no fact ever left the
+   * fold; only `phase`, a single register three levels up, moved and moved
+   * back, and every reader downstream of these registers derives
+   * active-ness from that one field rather than from anything stored per
+   * arrangement.
+   *
+   * Close authored on A, reopen authored on B — deliberately the OTHER
+   * replica, so the retained arrangement is proven visible on a Device that
+   * itself wrote neither the close nor ever touched an Entry or Piece
+   * register on this Trip.
+   */
+  it("a reopened Trip's retained packing arrangement is unchanged by closing or reopening, on both replicas", () => {
+    const { a, b } = aWorld()
+    const gearCounted = GEAR_IDS[0]
+    const gearItem = GEAR_IDS[1]
+    const gearBox = GEAR_IDS[2]
+    const gearShared = GEAR_IDS[3]
+    const trip = TRIP_IDS[0]
+    const eCounted = 'counted'
+    const eItem = 'item'
+    const eBox = 'box'
+    const eShared = 'shared'
+    const personA = PERSON_IDS[0]
+    const personB = PERSON_IDS[1]
+
+    a.emit(
+      gearRecorded(gearCounted, {
+        name: 'Gas canister',
+        container: false,
+        kind: 'counted',
+        owned_count: 6,
+      }),
+    )
+    a.emit(
+      gearRecorded(gearItem, {
+        name: 'Stove',
+        container: false,
+        kind: 'single',
+      }),
+    )
+    a.emit(
+      gearRecorded(gearBox, {
+        name: 'Duffel',
+        container: true,
+        kind: 'single',
+      }),
+    )
+    a.emit(
+      gearRecorded(gearShared, {
+        name: 'Trekking poles',
+        container: false,
+        kind: 'per_person',
+      }),
+    )
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripParticipantAdded(trip, personA))
+    a.emit(tripParticipantAdded(trip, personB))
+    a.emit(tripEntryAdded(trip, eBox, { from: 'depot', gearId: gearBox }))
+    a.emit(tripEntryAdded(trip, eItem, { from: 'depot', gearId: gearItem }))
+    a.emit(
+      tripEntryAdded(trip, eCounted, { from: 'depot', gearId: gearCounted }),
+    )
+    a.emit(tripEntryAdded(trip, eShared, { from: 'depot', gearId: gearShared }))
+
+    a.emit(tripEntryBringCountSet(trip, eCounted, 4))
+    a.emit(tripOutcomeSet(trip, eCounted, 'consumed'))
+    a.emit(tripConsumedCountSet(trip, eCounted, 2))
+
+    a.emit(tripEntryStatusSet(trip, eItem, 'packed'))
+    a.emit(tripEntryMoved(trip, eItem, { in: 'container', entryId: eBox }))
+    a.emit(tripOutcomeSet(trip, eItem, 'back'))
+
+    a.emit(tripContainerStageSet(trip, eBox, 'car'))
+    a.emit(tripOutcomeSet(trip, eBox, 'back'))
+
+    a.emit(tripPieceStatusSet(trip, eShared, personA, 'staged'))
+    a.emit(
+      tripPieceMoved(trip, eShared, personA, {
+        in: 'container',
+        entryId: eBox,
+      }),
+    )
+    a.emit(tripOutcomeSet(trip, eShared, 'back', personA))
+
+    a.emit(tripPieceStatusSet(trip, eShared, personB, 'packed'))
+    a.emit(tripOutcomeSet(trip, eShared, 'lost', personB))
+
+    exchange(a, b)
+
+    // Every Entry and Piece is resolved (invariant 18's `open = 0`), so the
+    // Trip is legitimately closeable — this is not a hand-picked shortcut,
+    // it is the only fold `closeTrip`'s own reduction loop ever runs from.
+    expect(unpackTotals(a.state().trips[trip]!, a.state()).open).toBe(0)
+
+    const packingBefore = packingItems(a.state().trips[trip]!, a.state())
+    const stageBefore = stageOf(
+      a.state().trips[trip]!.entries![eBox]!,
+      a.state(),
+    )
+    const snapshotOutcomes = (state: HouseholdState): unknown => ({
+      counted: outcomeOf(state.trips[trip]!.entries![eCounted]!),
+      item: outcomeOf(state.trips[trip]!.entries![eItem]!),
+      box: outcomeOf(state.trips[trip]!.entries![eBox]!),
+      sharedA: pieceOutcomeOf(
+        state.trips[trip]!.entries![eShared]!.pieces?.[personA],
+      ),
+      sharedB: pieceOutcomeOf(
+        state.trips[trip]!.entries![eShared]!.pieces?.[personB],
+      ),
+    })
+    const outcomesBefore = snapshotOutcomes(a.state())
+
+    for (const spec of closeTrip(a.state().trips[trip]!, a.state())) {
+      a.emit(spec)
+    }
+    exchange(a, b)
+    for (const spec of reopenTrip(
+      b.state().trips[trip]!,
+      'unpack',
+      b.state(),
+    )) {
+      b.emit(spec)
+    }
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      expect(r.state().trips[trip]?.phase?.value).toBe('unpack')
+      // The one register the close DID move — unchanged by the reopen,
+      // which restores nothing (G1: "owned counts lowered at close stay
+      // lowered").
+      expect(r.state().gear[gearCounted]?.ownedCount?.value).toBe(4)
+
+      expect(packingItems(r.state().trips[trip]!, r.state())).toEqual(
+        packingBefore,
+      )
+      expect(stageOf(r.state().trips[trip]!.entries![eBox]!, r.state())).toBe(
+        stageBefore,
+      )
+      expect(snapshotOutcomes(r.state())).toEqual(outcomesBefore)
+    }
+  })
+
+  /**
+   * **The posting and a hand `gear.owned_count_set` live on different
+   * aggregates — Trip and Gear — so no arrival order lets one erase the
+   * other** (spec §2.1's own reason for a per-Gear register on the Trip
+   * root rather than folding the fact into the Gear's own owned count).
+   * Two directions, the shape {@link unaccountedOf}'s own racing test above
+   * already uses: the close is the LATER write in one, a hand correction is
+   * LATER in the other. Either way `gear.ownedCount` resolves by ordinary
+   * LWW between the two writes that actually contest IT, and `postedOf` — a
+   * register on a different aggregate altogether — is never part of that
+   * contest and never moves for a reason that never touched it.
+   */
+  it('a posting and a hand gear.owned_count_set race on different aggregates: neither erases the other', () => {
+    // Direction one: the close is the LATER write.
+    {
+      const { clock, a, b } = aWorld()
+      const gear = GEAR_IDS[0]
+      const trip = TRIP_IDS[0]
+      const entry = ENTRY_IDS[0]
+
+      a.emit(
+        gearRecorded(gear, {
+          name: 'Gas canister',
+          container: false,
+          kind: 'counted',
+          owned_count: 6,
+        }),
+      )
+      a.emit(tripCreated(trip, 'Alps'))
+      a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+      a.emit(tripEntryBringCountSet(trip, entry, 4))
+      a.emit(tripOutcomeSet(trip, entry, 'consumed'))
+      a.emit(tripConsumedCountSet(trip, entry, 2))
+      exchange(a, b)
+
+      // Offline on B: a hand recount, before A ever closes.
+      clock.advance(1000)
+      b.emit(gearOwnedCountSet(gear, 10))
+      // A closes later, against the fold it actually holds — it has not
+      // seen B's recount, so it still targets 6 − 2 = 4.
+      clock.advance(1000)
+      for (const spec of closeTrip(a.state().trips[trip]!, a.state())) {
+        a.emit(spec)
+      }
+      exchange(a, b)
+
+      expect(a.state()).toEqual(b.state())
+      for (const r of [a, b]) {
+        // The close's write is later, so it wins the ordinary LWW contest
+        // on `ownedCount` — unremarkable on its own.
+        expect(r.state().gear[gear]?.ownedCount?.value).toBe(4)
+        // The point: the Trip's OWN record of what it posted is a
+        // different register on a different aggregate. B's hand edit
+        // never touched it, whether or not it went on to win `ownedCount`.
+        expect(postedOf(r.state().trips[trip]!, gear)).toBe(2)
+      }
+    }
+
+    // Direction two: the hand correction is the LATER write.
+    {
+      const { clock, a, b } = aWorld()
+      const gear = GEAR_IDS[0]
+      const trip = TRIP_IDS[0]
+      const entry = ENTRY_IDS[0]
+
+      a.emit(
+        gearRecorded(gear, {
+          name: 'Gas canister',
+          container: false,
+          kind: 'counted',
+          owned_count: 6,
+        }),
+      )
+      a.emit(tripCreated(trip, 'Alps'))
+      a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: gear }))
+      a.emit(tripEntryBringCountSet(trip, entry, 4))
+      a.emit(tripOutcomeSet(trip, entry, 'consumed'))
+      a.emit(tripConsumedCountSet(trip, entry, 2))
+      exchange(a, b)
+
+      // A closes first this time.
+      clock.advance(1000)
+      for (const spec of closeTrip(a.state().trips[trip]!, a.state())) {
+        a.emit(spec)
+      }
+      // B's hand recount lands later, still not having seen A's close.
+      clock.advance(1000)
+      b.emit(gearOwnedCountSet(gear, 10))
+      exchange(a, b)
+
+      expect(a.state()).toEqual(b.state())
+      for (const r of [a, b]) {
+        // B's later hand edit wins `ownedCount` — a real correction this
+        // build must honour, whatever the close last wrote.
+        expect(r.state().gear[gear]?.ownedCount?.value).toBe(10)
+        // But the Trip's record of what IT posted survives regardless — a
+        // later reopen-and-reclose still reads `postedOf` as 2 and owes
+        // nothing further, exactly as if the hand edit had never landed.
+        expect(postedOf(r.state().trips[trip]!, gear)).toBe(2)
+        expect(r.state().trips[trip]?.phase?.value).toBe('closed')
+      }
     }
   })
 })
