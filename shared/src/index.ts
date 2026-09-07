@@ -250,6 +250,7 @@ export type { PieceInclusion } from './selectors/piece.ts'
 export { pieceInclusion, piecesOf } from './selectors/piece.ts'
 
 export type {
+  StandingLost,
   Unaccounted,
   UnpackCount,
   UnpackItem,
@@ -265,10 +266,13 @@ export {
   outcomeLabel,
   outcomeOf,
   OUTCOMES,
+  owedOf,
   pieceOutcomeOf,
+  postedOf,
   rehomedSinceOutcome,
   rehomedSincePieceOutcome,
   returnPathOf,
+  standingLostOf,
   unaccountedOf,
   unpackDestinationOf,
   unpackItems,

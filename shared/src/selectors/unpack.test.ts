@@ -12,6 +12,7 @@ import {
   gearRehomed,
   placeRemoved,
   tripConsumedCountSet,
+  tripConsumptionPosted,
   tripEntryAdded,
   tripEntryBringCountSet,
   tripEntryMoved,
@@ -33,10 +34,13 @@ import {
   outcomeGlyph,
   outcomeLabel,
   outcomeOf,
+  owedOf,
   pieceOutcomeOf,
+  postedOf,
   rehomedSinceOutcome,
   rehomedSincePieceOutcome,
   returnPathOf,
+  standingLostOf,
   type Unaccounted,
   unaccountedOf,
   type UnpackItem,
@@ -1429,5 +1433,199 @@ describe('rehomedSincePieceOutcome', () => {
     expect(rehomedSincePieceOutcome(entry, KIM, state.gear['g-lamp'])).toBe(
       false,
     )
+  })
+})
+
+describe('postedOf — the running total this Trip has posted (spec §2.1)', () => {
+  const TRIP = 't-posted'
+
+  it('reads 0 for an absent register — no close has ever posted this Gear', () => {
+    const state = depot(aTrip({ id: TRIP, name: 'Alps 2026' }))
+
+    expect(tripFrom(state, TRIP).postings?.['g-tent']).toBeUndefined()
+    expect(postedOf(tripFrom(state, TRIP), 'g-tent')).toBe(0)
+  })
+
+  it('reads 0 for an explicit 0 — a restoration took it back to nothing, a different fact read the same way', () => {
+    const state = depot(aTrip({ id: TRIP, name: 'Alps 2026' }), [
+      tripConsumptionPosted(TRIP, 'g-tent', 0),
+    ])
+
+    expect(tripFrom(state, TRIP).postings?.['g-tent']?.value).toBe(0)
+    expect(postedOf(tripFrom(state, TRIP), 'g-tent')).toBe(0)
+  })
+
+  it('reads the posted total', () => {
+    const state = depot(aTrip({ id: TRIP, name: 'Alps 2026' }), [
+      tripConsumptionPosted(TRIP, 'g-gas', 2),
+    ])
+
+    expect(postedOf(tripFrom(state, TRIP), 'g-gas')).toBe(2)
+  })
+})
+
+describe('owedOf — a thin read over consumedReductions (spec §2.2)', () => {
+  const TRIP = 't-owed'
+
+  it('is consumedReductions(...).get(gearId) ?? 0 for a Counted depot Entry marked consumed', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      aGear({ id: 'g-gas', name: 'Gas canister', kind: 'counted' }),
+      [
+        tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, 'e-gas', 4),
+        tripOutcomeSet(TRIP, 'e-gas', 'consumed'),
+        tripConsumedCountSet(TRIP, 'e-gas', 2),
+      ],
+    )
+
+    expect(owedOf(tripFrom(state, TRIP), 'g-gas', state)).toBe(2)
+  })
+
+  it('is 0 for a container', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      aGear({ id: 'g-crate', name: 'Crate', container: true }),
+      [
+        tripEntryAdded(TRIP, 'e-crate', { from: 'depot', gearId: 'g-crate' }),
+        tripOutcomeSet(TRIP, 'e-crate', 'consumed'),
+      ],
+    )
+
+    expect(owedOf(tripFrom(state, TRIP), 'g-crate', state)).toBe(0)
+  })
+
+  it('is 0 for a Single', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      aGear({ id: 'g-stove', name: 'Stove' }),
+      [
+        tripEntryAdded(TRIP, 'e-stove', { from: 'depot', gearId: 'g-stove' }),
+        tripOutcomeSet(TRIP, 'e-stove', 'consumed'),
+      ],
+    )
+
+    expect(owedOf(tripFrom(state, TRIP), 'g-stove', state)).toBe(0)
+  })
+
+  it('is 0 for a trip-only Entry — there is no Gear id to owe against', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      [
+        tripEntryAdded(TRIP, 'e-tarp', {
+          from: 'trip_only',
+          name: 'Borrowed tarp',
+          container: false,
+        }),
+        tripOutcomeSet(TRIP, 'e-tarp', 'consumed'),
+      ],
+    )
+
+    expect(owedOf(tripFrom(state, TRIP), 'g-nonexistent', state)).toBe(0)
+  })
+
+  it('is 0 for an unsynced Gear — no gear.recorded has reached this replica', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      [
+        tripEntryAdded(TRIP, 'e-unsynced', {
+          from: 'depot',
+          gearId: 'g-unsynced',
+        }),
+        tripOutcomeSet(TRIP, 'e-unsynced', 'consumed'),
+      ],
+    )
+
+    expect(state.gear['g-unsynced']).toBeUndefined()
+    expect(owedOf(tripFrom(state, TRIP), 'g-unsynced', state)).toBe(0)
+  })
+})
+
+describe('standingLostOf — what about this Trip is still unaccounted (spec §6)', () => {
+  const TRIP = 't-standing'
+  const MARK = 'p-mark'
+  const KIM = 'p-kim'
+
+  it('returns an Entry whose lost outcome still stands', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ],
+    )
+
+    expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([
+      { entryId: 'e-tent', personId: null, gearName: 'Tent', units: 1 },
+    ])
+  })
+
+  it('omits an Entry settled by a later gear.rehomed — the residence stamp is later than the outcome stamp', () => {
+    const base = [
+      ...aGear({ id: 'g-tent', name: 'Tent' }),
+      ...aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+    ]
+    const lost = stamp([tripOutcomeSet(TRIP, 'e-tent', 'lost')], { start: 10 })
+    const rehomeAfter = stamp([gearRehomed('g-tent', { in: 'loose' })], {
+      start: 20,
+    })
+    const state = fold(
+      [...stamp(base, { start: 1 }), ...lost, ...rehomeAfter],
+      emptyState(),
+    )
+
+    expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([])
+  })
+
+  it('returns per-Piece standings with their personId, and an Entry-level one with personId: null', () => {
+    const state = depot(
+      aPerson({ id: MARK, name: 'Mark' }),
+      aPerson({ id: KIM, name: 'Kim' }),
+      aGear({ id: 'g-lamp', name: 'Headlamp', kind: 'per_person' }),
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aTrip({
+        id: TRIP,
+        name: 'Alps 2026',
+        phase: 'unpack',
+        participants: [MARK, KIM],
+      }),
+      [
+        tripEntryAdded(TRIP, 'e-lamp', { from: 'depot', gearId: 'g-lamp' }),
+        // KIM's Piece is left open — R35 settles per Gear, so a KIM `back`
+        // here would settle MARK's `lost` too, which is a different test
+        // (see `unaccountedOf`'s own "settles per Gear, not per Person").
+        tripOutcomeSet(TRIP, 'e-lamp', 'lost', MARK),
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'lost'),
+      ],
+    )
+
+    expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([
+      {
+        entryId: 'e-lamp',
+        personId: MARK,
+        gearName: 'Headlamp',
+        units: 1,
+      },
+      { entryId: 'e-tent', personId: null, gearName: 'Tent', units: 1 },
+    ])
+  })
+
+  it('returns [] on a Trip where everything is back', () => {
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Alps 2026', phase: 'unpack' }),
+      aGear({ id: 'g-tent', name: 'Tent' }),
+      aGear({ id: 'g-stove', name: 'Stove' }),
+      [
+        tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: 'g-tent' }),
+        tripOutcomeSet(TRIP, 'e-tent', 'back'),
+        tripEntryAdded(TRIP, 'e-stove', { from: 'depot', gearId: 'g-stove' }),
+        tripOutcomeSet(TRIP, 'e-stove', 'back'),
+      ],
+    )
+
+    expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([])
   })
 })

@@ -18,6 +18,7 @@ import {
   bringCountOf,
   entriesOf,
   entryKind,
+  entryLabel,
   isContainerEntry,
   pieceCountOf,
 } from './entry.ts'
@@ -450,6 +451,43 @@ export function consumedReductions(
     byGear.set(source.gearId, (byGear.get(source.gearId) ?? 0) + consumed)
   }
   return byGear
+}
+
+/**
+ * The running total this Trip has posted against `gearId`'s owned count —
+ * S11 (spec §2.1), a plain read of `TripState.postings`.
+ *
+ * **An absent register reads `0`, and only this function says so** —
+ * `ownerOf`'s rule again, for the reason `state.ts`'s own docstring on
+ * {@link TripState.postings} already states and this one restates because a
+ * caller reads the selector, not the field comment: absent means no close
+ * has ever posted this Gear, an explicit `0` means a restoration (spec §3)
+ * took it back to nothing, and every reader treats the two alike. **The
+ * symptom when a call site re-derives this instead of calling `postedOf`:**
+ * a Trip that owes the Depot nothing gets reduced again, because the
+ * re-derivation reads `0` for a case that was actually posted, or reads a
+ * stale non-zero for a case a restoration cleared.
+ */
+export function postedOf(trip: TripState, gearId: string): number {
+  return trip.postings?.[gearId]?.value ?? 0
+}
+
+/**
+ * What closing this Trip still owes the Depot for `gearId` — a **thin** read
+ * over {@link consumedReductions}, so `closeTrip` (§2.3) and the restoration
+ * offer (§3) ask the identical question rather than each deriving its own
+ * copy of "does this Gear owe a reduction". It exists only so both call
+ * sites name one function; it adds nothing {@link consumedReductions} does
+ * not already answer, which is why it is `0` for exactly the cases that
+ * selector's own docblock lists — a container, a Single, a trip-only Entry
+ * and an unsynced Gear — without repeating any of those gates here.
+ */
+export function owedOf(
+  trip: TripState,
+  gearId: string,
+  state: HouseholdState,
+): number {
+  return consumedReductions(trip, state).get(gearId) ?? 0
 }
 
 /**
@@ -951,6 +989,157 @@ export function unaccountedOf(
       units: acc.personIds.size > 0 ? acc.personIds.size : acc.units,
       personIds: [...acc.personIds],
       pieceIds: [...acc.pieceIds],
+    })
+  }
+  return result
+}
+
+/**
+ * One row of {@link standingLostOf} — an Entry, or one Piece of a
+ * non-container per-person Entry, whose `lost` outcome still stands.
+ * `personId` is `null` for an Entry-level row (a Single, a Counted, a
+ * container, or a per-person **container** — R10/R11's family, {@link
+ * unaccountedOf}'s own rule for a container that happens to be per-person)
+ * and the Person for a per-Piece row.
+ */
+export interface StandingLost {
+  readonly entryId: string
+  readonly personId: string | null
+  readonly gearName: string
+  readonly units: number
+}
+
+/**
+ * **`ReopenConfirm`'s last mono block** (spec §6): this Trip's own Entries
+ * and Pieces whose `lost` outcome still stands, through {@link
+ * outcomeStands} — the one definition of *still stands*, never re-derived
+ * here or anywhere else.
+ *
+ * **This is deliberately not {@link unaccountedOf}.** That selector is keyed
+ * by Gear **across the whole household** and names the *latest* Trip holding
+ * a live `lost` outcome for it — so on a Gear lost on two Trips, reading
+ * `unaccountedOf` from inside *this* Trip's sheet could name a different
+ * Trip entirely as the one still holding the standing, which is a false
+ * statement on a screen that is about to say "this Trip". `standingLostOf`
+ * answers a narrower question — *what, of what **this Trip** recorded, is
+ * still open* — so it walks {@link entriesOf} itself rather than filtering
+ * `unaccountedOf`'s map down to this Trip's ids.
+ *
+ * **`outcomeStands`'s `settledAt` is built from this Trip's own Entries and
+ * Pieces only, never from another Trip.** A settling outcome recorded on a
+ * *different* Trip is exactly the fact `unaccountedOf` exists to fold across
+ * the household — reaching for it here would blur the "this Trip's own
+ * sheet" boundary the paragraph above draws the whole function to keep. What
+ * this scope still has to account for, and does: {@link consumedReductions}'s
+ * own reason a Trip may list one Gear on **two Entries**, and — the sharper
+ * case — two Participants' Pieces on **one** Entry, where ruling R35's "a
+ * later non-`lost` outcome **anywhere** settles an earlier `lost`, whole" is
+ * per Gear and not per Person (Mark's `back` ends Kim's Piece's standing).
+ * Both are gathered in one pass over this Trip alone before any
+ * `outcomeStands` call is made, exactly {@link unaccountedOf}'s two-pass
+ * shape, narrowed from *every visible Trip* to *this one*.
+ *
+ * **The check order is {@link unpackItems}' and {@link unaccountedOf}'s**:
+ * invariant 18 first (a trip-only Entry names no Gear and is skipped before
+ * anything else is asked of it), then container before the per-person
+ * fan-out — a per-person **container** Entry's own outcome is the unit, its
+ * Pieces' outcomes (if any exist off-label) fold-but-ignore, exactly as
+ * {@link unaccountedOf}'s own docblock states for the identical shape.
+ * `units` follows {@link pieceCountOf} with the container override to `1`,
+ * {@link unpackItems}'s own rule restated rather than called, so this stays
+ * one walk over `entriesOf` rather than a second one nested inside it.
+ *
+ * **Absent at zero** (G3) — a Trip with everything `back` (or nothing lost
+ * at all) returns `[]`, drawing no block, exactly as the rest of the sheet's
+ * conditional blocks do.
+ */
+export function standingLostOf(
+  trip: TripState,
+  state: HouseholdState,
+): readonly StandingLost[] {
+  interface Candidate {
+    entryId: string
+    personId: string | null
+    gearId: string
+    gearName: string
+    register: Register<OutcomeValue | null>
+    units: number
+  }
+
+  const candidates: Candidate[] = []
+  const settledAt = new Map<string, Stamp>()
+
+  function noteSettled(
+    gearId: string,
+    register: Register<OutcomeValue | null>,
+  ): void {
+    const stamp = stampOf(register)
+    const seen = settledAt.get(gearId)
+    if (seen === undefined || compareStamps(stamp, seen) > 0) {
+      settledAt.set(gearId, stamp)
+    }
+  }
+
+  for (const entry of entriesOf(trip, state)) {
+    const source = entry.source?.value
+    // Invariant 18: a trip-only Entry names no Gear and takes no outcome.
+    if (source === undefined || source.from !== 'depot') continue
+
+    const gearId = source.gearId
+    const gearName = entryLabel(entry, state)
+    const kind = entryKind(entry, state)
+    const container = isContainerEntry(entry, state)
+
+    if (kind === 'per_person' && !container) {
+      for (const personId of piecesOf(entry, trip)) {
+        const register = entry.pieces?.[personId]?.outcome
+        if (register === undefined) continue
+        if (register.value === 'lost') {
+          candidates.push({
+            entryId: entry.id,
+            personId,
+            gearId,
+            gearName,
+            register,
+            units: 1,
+          })
+        } else if (register.value !== null) {
+          noteSettled(gearId, register)
+        }
+      }
+      continue
+    }
+
+    const register = entry.outcome
+    if (register === undefined) continue
+    if (register.value === 'lost') {
+      candidates.push({
+        entryId: entry.id,
+        personId: null,
+        gearId,
+        gearName,
+        register,
+        // F1: a container's unit is a flat `1` — see this file's header.
+        units: container ? 1 : pieceCountOf(entry, trip, state),
+      })
+    } else if (register.value !== null) {
+      noteSettled(gearId, register)
+    }
+  }
+
+  const result: StandingLost[] = []
+  for (const candidate of candidates) {
+    const stands = outcomeStands(
+      candidate.register,
+      state.gear[candidate.gearId],
+      settledAt.get(candidate.gearId) ?? null,
+    )
+    if (!stands) continue
+    result.push({
+      entryId: candidate.entryId,
+      personId: candidate.personId,
+      gearName: candidate.gearName,
+      units: candidate.units,
     })
   }
   return result
