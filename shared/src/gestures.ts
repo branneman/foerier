@@ -222,8 +222,8 @@ export function reHomeOnTheSpot(
  * than through that thin wrapper.
  *
  * **S11 (spec §2.2, §2.3): a Gear's reduction fires only on a positive
- * `delta = owed − postedOf(trip, gearId)`, and a fired reduction is paired
- * with its own posting.** `postedOf` (`unpack.ts`) is this Trip's own
+ * `delta = owed − postedOf(trip, gearId)`, and every reduction is paired
+ * with the posting that records what it applied.** `postedOf` (`unpack.ts`) is this Trip's own
  * running total already applied against this Gear's owned count — `0` for a
  * Gear this Trip has never posted, since {@link postedOf}'s own doc is the
  * one place that reads an absent register that way. `delta <= 0` means
@@ -247,11 +247,31 @@ export function reHomeOnTheSpot(
  * the two ops leaves an under-posted Gear that a retried close still finds
  * `delta > 0` for, and reduces (and posts) correctly on the retry.
  *
- * **Floored at `0`.** `Math.max(0, owned - delta)` — a Trip cannot reduce a
- * Gear's owned count below nothing. The posting is **not** floored: it
- * records `owed`, this Trip's own absolute total, which is a fact about what
- * this Trip's outcomes say it consumed, independent of how much the Depot
- * had left to give.
+ * **Floored at `0`, and the posting is floored with it.** `applied =
+ * min(delta, owned)` is what the reduction can actually take — a Trip cannot
+ * reduce a Gear's owned count below nothing — and the posting records
+ * `posted + applied`, the running total this Trip has **applied** to the
+ * Depot (spec §2.1's own words). The two must be floored together, because
+ * over-claim is a supported state in this app (S7 surfaces it and never
+ * blocks it) and `owed` can therefore exceed what the Depot has: owned ×1
+ * with ×5 consumed reduces to `0` and posts `1`, never `5`. Posting the
+ * unfloored `owed` made {@link restoreConsumption} hand back four units the
+ * Depot never lost — `owned + (posted − owed)` = `0 + (5 − 0)` = `5` on a
+ * Gear the household owned one of. Note the consequence for the restoration:
+ * once the offer has restored, the posting it writes (`owed`) is again
+ * exactly what stays applied, so the two arithmetics compose.
+ *
+ * **A Gear the Depot has nothing left to give writes nothing — unless this
+ * close is not yet on the record for it.** `applied === 0` with a posting
+ * register already present is the re-close after a declined offer (owed ×5,
+ * posted ×1, owned ×0): a `gear.owned_count_set(0)` over `0` and a posting
+ * of the value it already holds are both needless writes, and a needless
+ * write moves the stamp LWW compares (`patterns.md` §2.3). With **no**
+ * register present it still posts — `0` — because absence is what
+ * {@link reopenTrip}'s back-fill reads as *this close was never recorded*,
+ * and it would then fabricate a posting of the full `owed` for a close that
+ * applied nothing, re-opening the same over-credit through the back-fill
+ * door. Recording the `0` is the fact, and it is cheap.
  *
  * **A `consumed` Entry whose Gear is not Counted contributes nothing.**
  * {@link consumedCountOf} answers `null` for anything that is not a Counted
@@ -323,14 +343,22 @@ export function closeTrip(
     // §2.2's table: `delta <= 0` is nobody's move here — either an ordinary
     // re-close that owes nothing new, or a lowered Consumed-count that only
     // the restoration offer may reconcile (`restoreConsumption`, below).
-    const delta = owed - postedOf(trip, gearId)
+    const posted = postedOf(trip, gearId)
+    const delta = owed - posted
     if (delta <= 0) continue
     const gear = state.gear[gearId]
     const owned = gear === undefined ? 0 : (ownedCountOf(gear) ?? 0)
+    // What the reduction can actually take, which is what the posting must
+    // record — see this function's docblock: the floor is on the *pair*,
+    // not on the owned-count write alone.
+    const applied = Math.min(delta, owned)
+    // Nothing left to take, and this close is already on the record for
+    // this Gear: no write at all (`patterns.md` §2.3).
+    if (applied === 0 && trip.postings?.[gearId] !== undefined) continue
     // The reduction before its own posting — see this function's docblock
     // for why the order is a decision, not an accident.
-    ops.push(gearOwnedCountSet(gearId, Math.max(0, owned - delta)))
-    ops.push(tripConsumptionPosted(trip.id, gearId, owed))
+    if (applied > 0) ops.push(gearOwnedCountSet(gearId, owned - applied))
+    ops.push(tripConsumptionPosted(trip.id, gearId, posted + applied))
   }
   ops.push(tripPhaseMoved(trip.id, 'closed'))
   return ops
@@ -372,8 +400,14 @@ export function closeTrip(
  * ever runs against it, and `consumedReductions` computed *now* is exactly
  * what that earlier close applied — a reconstruction from a fact that cannot
  * have moved, the same standing `ReopenConfirm`'s own `×6` caveat
- * (`app/src/components/ReopenConfirm.tsx`) already carries. **What it cannot
- * see** (spec §5.3): a peer on a
+ * (`app/src/components/ReopenConfirm.tsx`) already carries. **The
+ * reconstruction posts `owed`, which is right unless that pre-S11 close was
+ * itself floored** — a close of ×5 against a Depot holding ×1 applied ×1 and
+ * this back-fill records ×5, since the pre-close owned count exists only in
+ * the log and no register survives to say otherwise. A close performed by
+ * *this* build never needs the reconstruction: it always leaves a posting
+ * behind, `0` included, precisely so the presence check below can tell the
+ * two apart. **What it cannot see** (spec §5.3): a peer on a
  * **pre-gate** build — S10-era, before `reopenBlocked` ever shipped — that
  * reopened this same Trip with a bare `trip.phase_moved` and no posting,
  * and whose reopen this build never witnessed. Such a Trip can still arrive
@@ -460,6 +494,15 @@ export function reopenTrip(
  * `postedOf` at its old, still-too-high value, so `delta` stays `≤ 0` and no
  * close wrongly reduces the Gear again — the register is stale, not wrong,
  * until a retry of this same offer completes the posting.
+ *
+ * **It posts `owed`, and that is the applied total once this restoration
+ * lands.** {@link closeTrip} records what it *applied* rather than what was
+ * owed (its own docblock argues the floor), so `posted` on the way in is
+ * already the true applied figure; handing back `posted − owed` leaves
+ * exactly `owed` applied, and the running total is absolute, so writing it
+ * is the whole of the bookkeeping. The two arithmetics compose over any
+ * number of close/reopen rounds, including a close the Depot could only
+ * partly satisfy.
  *
  * **`owed` is the caller's own read**, not re-derived here — `OutcomeSheet`
  * already has it from the outcome change it just emitted (or from

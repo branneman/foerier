@@ -76,6 +76,16 @@ interface Seeded {
   authored: () => Promise<
     readonly { type: string; payload: Record<string, unknown> }[]
   >
+  /**
+   * The same ops read by **which entity they address** rather than by what
+   * they say. {@link Seeded.authored} deliberately drops `aggregate_id`, so
+   * every assertion built on it is blind to a cross-aggregate gesture
+   * writing the right payload at the wrong Gear — which is exactly the
+   * mistake the restoration offer (`restoreConsumption`, `gestures.ts`) is
+   * in a position to make, since it is the one path here that emits against
+   * two aggregates from one tap.
+   */
+  targets: () => Promise<readonly { type: string; aggregate_id: string }[]>
 }
 
 /**
@@ -154,6 +164,13 @@ async function seeded(...extra: readonly OpSpec[]): Promise<Seeded> {
       return (await log.all())
         .slice(seedCount)
         .map((entry) => ({ type: entry.op.type, payload: entry.op.payload }))
+    },
+    targets: async () => {
+      await store.getState().drained()
+      return (await log.all()).slice(seedCount).map((entry) => ({
+        type: entry.op.type,
+        aggregate_id: entry.op.aggregate_id,
+      }))
     },
   }
 }
@@ -618,6 +635,16 @@ describe('the restoration offer (S11, spec §3)', () => {
         type: 'trip.consumption_posted',
         payload: { gear_id: GAS, units: 0 },
       },
+    ])
+    // The payloads above say nothing about *which* Gear the restoration
+    // raised — `gear.owned_count_set` carries its target in `aggregate_id`
+    // and nothing else. This is the one tap in the sheet that writes across
+    // two aggregates, so it is the one that can put the right number on the
+    // wrong shelf.
+    expect(await seed.targets()).toEqual([
+      { type: 'trip.outcome_set', aggregate_id: TRIP },
+      { type: 'gear.owned_count_set', aggregate_id: GAS },
+      { type: 'trip.consumption_posted', aggregate_id: TRIP },
     ])
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })

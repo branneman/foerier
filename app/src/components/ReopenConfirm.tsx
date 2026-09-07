@@ -2,6 +2,7 @@ import {
   consumedReductions,
   ownedCountOf,
   isActivePhase,
+  postedOf,
   overClaimsIfActive,
   personNameOrUnnamed,
   phaseName,
@@ -118,11 +119,16 @@ import styles from './ReopenConfirm.module.css'
  * the Depot. Handing the units back is `restoreConsumption`'s job (spec
  * §3) — the offer `OutcomeSheet` raises the moment an outcome change makes
  * `owed < posted`, never this confirm and never the reopen itself.
- * `consumedReductions` (`selectors/unpack.ts`) is what `closeTrip` itself
- * sums, asked here for nothing but *is it empty* — never re-derived from
- * `outcomeOf` and a Kind check, which would state the sentence on Trips
- * whose close owes the Depot nothing (a container, a Single, an unsynced
- * Gear).
+ * **The disclosure block reads {@link postedOf}, not `consumedReductions`,
+ * wherever the register exists.** What the line claims is what the close
+ * *applied*, and that is precisely what the posting register records (spec
+ * §2.1); `consumedReductions` answers what the Trip currently *owes*, which
+ * a declined restoration or a lowered Consumed-count moves away from it.
+ * `consumedReductions` stays as the fallback for a Trip closed before that
+ * register existed — the same *register when present, reconstruction when
+ * absent* rule `reopenTrip` applies — and is still never re-derived from
+ * `outcomeOf` and a Kind check, which would state the fact on Trips whose
+ * close owes the Depot nothing (a container, a Single, an unsynced Gear).
  *
  * **`variant="sheet"`, not the card default** — the same mismatch Task 12
  * fixed in `RemoveElsewhereConfirm`, caught here on the same terms: the board
@@ -172,26 +178,47 @@ export function ReopenConfirm({
   // — and a sentence true of some Trips belongs there rather than in body
   // prose that reads as though it were always so.
   //
-  // **The `×6` is a reconstruction, not a record.** The close wrote
-  // `gear.owned_count_set` absolutely, so the fold holds the reduced count
-  // and nothing else; the pre-close number is `owned + consumed`, read now.
-  // A Quartermaster who corrected the count by hand *since* the close makes
-  // that arithmetic state a number that was never on the shelf. There is no
-  // register that would answer better — the pre-close value exists only in
-  // the log — and the reduction it describes is what the sheet is there to
-  // disclose, so it is stated and this comment is the caveat.
+  // **The number is the register when there is one, and a reconstruction
+  // only when there is not** — the identical rule `reopenTrip`'s own
+  // back-fill applies (spec §5.2), and for the identical reason: presence,
+  // never value. `postedOf` is *"the running total this Trip has posted
+  // against that Gear's owned count"* (spec §2.1) — what the close actually
+  // applied — so it is the answer to the question this line asks. Two ways
+  // it beats `consumedReductions`, both reachable in four taps:
   //
-  // **Its sibling (spec §5.2): a Trip closed before this register existed
-  // reads a back-filled reconstruction, never a gap.** `reopenTrip`
-  // (`gestures.ts`) back-fills a posting from `consumedReductions` computed
-  // *now*, for the identical reason the `×6` above is one — ruling G6 makes
-  // F5's outcomes frozen on a closed Trip, so recomputing the reduction
-  // after the fact is a reconstruction from a fact that cannot have moved,
-  // not a guess. What that reconstruction cannot see is a peer on a
-  // **pre-gate** build (S10-era) that reopened and reclosed this Trip
-  // outside either build's view (spec §5.3) — recorded in
-  // `docs/technical-debt.md`, not fixed here.
-  const reductions = consumedReductions(trip, state)
+  // - **A declined offer empties the reconstruction and not the fact.**
+  //   Reopen, move an outcome off `consumed`, decline the restoration
+  //   (G1's own default — counts stay lowered), re-close: `owed` is now `0`
+  //   and `consumedReductions` is empty, so the block *disappeared* on the
+  //   very Trip where it is most true. The posting is still ×2.
+  // - **A partly-lowered Consumed-count under-states the arrow.** `owed`
+  //   ×2 against a posting of ×4 drew an arrow two units wide for a count
+  //   the Depot is four short of.
+  //
+  // A posting present at `0` is a Gear whose units have already been handed
+  // back (spec §3), so it owes no line at all — which falls out of the
+  // filter below rather than needing a clause of its own.
+  //
+  // **The fallback is still a reconstruction, and still carries its
+  // caveat.** A Trip closed by a pre-S11 build has no `postings` register
+  // at render time — `reopenTrip` back-fills one, but only *after* this
+  // confirm is accepted — so those Gears read `consumedReductions`
+  // computed now, legitimate because ruling G6 freezes a closed Trip's
+  // outcomes and false the moment a peer on another build changes one
+  // anyway (spec §5.3, recorded in `docs/technical-debt.md`).
+  //
+  // The arrow's right-hand side is the count **now**, from the fold; its
+  // left-hand side is that plus what this Trip lowered it by. A
+  // Quartermaster who corrected the count by hand since the close makes
+  // that sum state a number that was never on the shelf — unavoidable on
+  // either path, since the pre-close value exists only in the log.
+  const lowered = new Map<string, number>()
+  for (const gearId of Object.keys(trip.postings ?? {})) {
+    lowered.set(gearId, postedOf(trip, gearId))
+  }
+  for (const [gearId, owed] of consumedReductions(trip, state)) {
+    if (!lowered.has(gearId)) lowered.set(gearId, owed)
+  }
 
   // **S11's last mono block (spec §6).** `standingLostOf` — never
   // `unaccountedOf`, see this module's own docblock — gathers this Trip's
@@ -223,17 +250,17 @@ export function ReopenConfirm({
     })
     .sort()
 
-  // One entry per Gear the close reduced, in the Depot's own name order so
-  // two Trips' sheets read alike. `owned` is the count **now**, already
-  // reduced; the arrow's left-hand side is that plus what was consumed.
-  const reductionLines = [...reductions]
-    .flatMap(([gearId, consumed]) => {
+  // One entry per Gear this Trip's close lowered, in the Depot's own name
+  // order so two Trips' sheets read alike.
+  const reductionLines = [...lowered]
+    .flatMap(([gearId, units]) => {
+      if (units <= 0) return []
       const gear = state.gear[gearId]
       if (gear === undefined) return []
       const owned = ownedCountOf(gear)
       if (owned === null) return []
       const name = gear.name?.value ?? ''
-      return [`${name.toUpperCase()} ×${owned + consumed} → ×${owned}`]
+      return [`${name.toUpperCase()} ×${owned + units} → ×${owned}`]
     })
     .sort()
 

@@ -3,6 +3,7 @@ import {
   gearRecorded,
   personRecorded,
   tripConsumedCountSet,
+  tripConsumptionPosted,
   tripCreated,
   tripEntryAdded,
   tripEntryBringCountSet,
@@ -130,6 +131,60 @@ async function aClosedTripWithConsumed(): Promise<Seeded> {
   store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
   await store.getState().drained()
   return { store, trip: () => store.getState().state.trips[TRIP]! }
+}
+
+/**
+ * `TRIP` closed by **this** build, so its close left a posting behind: the
+ * ×2 it applied to the Depot is on the record as `trip.consumption_posted`,
+ * beside the reduced owned count. `consumed` is the resting outcome, so
+ * `consumedReductions` and the register agree here — the helpers below are
+ * the ones where they come apart.
+ */
+async function aClosedTripPosted(
+  ...after: readonly ReturnType<typeof tripConsumptionPosted>[]
+): Promise<Seeded> {
+  const store = createHouseholdStore({
+    log: inMemoryOpLog(),
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(
+    gearRecorded(GEAR, {
+      name: 'Gas canister',
+      container: false,
+      kind: 'counted',
+    }),
+  )
+  store.getState().emit(gearOwnedCountSet(GEAR, 6))
+  store.getState().emit(tripCreated(TRIP, 'Tessin 2025'))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: GEAR }))
+  store.getState().emit(tripEntryBringCountSet(TRIP, 'e-gas', 4))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-gas', 'consumed'))
+  store.getState().emit(tripConsumedCountSet(TRIP, 'e-gas', 2))
+  store.getState().emit(gearOwnedCountSet(GEAR, 4))
+  store.getState().emit(tripConsumptionPosted(TRIP, GEAR, 2))
+  store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
+  for (const op of after) store.getState().emit(op)
+  await store.getState().drained()
+  return { store, trip: () => store.getState().state.trips[TRIP]! }
+}
+
+/**
+ * `TRIP` closed by this build, reopened, the outcome moved off `consumed`,
+ * the restoration offer **declined** (G1's own default — the posting is not
+ * lowered, so the units stay deducted), and re-closed. `owed` is now `0` and
+ * `consumedReductions` is empty; the ×2 the Depot is short of is recorded
+ * only in the posting register.
+ */
+async function aClosedTripDeclinedRestore(): Promise<Seeded> {
+  const seeded = await aClosedTripPosted()
+  seeded.store.getState().emit(tripPhaseMoved(TRIP, 'unpack'))
+  seeded.store.getState().emit(tripOutcomeSet(TRIP, 'e-gas', 'back'))
+  seeded.store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
+  await seeded.store.getState().drained()
+  return seeded
 }
 
 /**
@@ -490,6 +545,51 @@ describe('the reopen confirm', () => {
     expect(screen.getByTestId('reopen-reduction')).toHaveTextContent(
       'OWNED COUNTS LOWERED AT CLOSE STAY LOWERED — GAS CANISTER ×6 → ×4',
     )
+  })
+
+  /**
+   * **The register is the fact; `consumedReductions` is only the fallback.**
+   * Reopen, move the outcome off `consumed`, decline the restoration
+   * (G1's own default) and re-close: `owed` is `0`, so a line built from
+   * `consumedReductions` **disappears** — on the very Trip where it is most
+   * true, since the ×2 was never handed back. `postedOf` still says ×2.
+   */
+  it('keeps the fact line after a declined restoration, where the reconstruction is empty', async () => {
+    const seeded = await aClosedTripDeclinedRestore()
+    renderConfirm(seeded, { to: 'unpack' })
+
+    expect(screen.getByTestId('reopen-reduction')).toHaveTextContent(
+      'OWNED COUNTS LOWERED AT CLOSE STAY LOWERED — GAS CANISTER ×6 → ×4',
+    )
+  })
+
+  /**
+   * **The arrow is as wide as what was applied, not as what is owed now.**
+   * A Consumed-count re-raised only part way leaves `owed` ×2 against a
+   * posting of ×4 — §2.2's negative-delta row, which the close refuses to
+   * write and only the restoration offer may reconcile. Reading `owed` drew
+   * an arrow two units wide for a count the Depot is four short of.
+   */
+  it('states the applied units, not the owed ones, when the two disagree', async () => {
+    const seeded = await aClosedTripPosted(tripConsumptionPosted(TRIP, GEAR, 4))
+    renderConfirm(seeded, { to: 'unpack' })
+
+    expect(screen.getByTestId('reopen-reduction')).toHaveTextContent(
+      'OWNED COUNTS LOWERED AT CLOSE STAY LOWERED — GAS CANISTER ×8 → ×4',
+    )
+  })
+
+  /**
+   * **A posting restored to `0` owes no line.** Present, not absent — the
+   * close *was* recorded and its units have since been handed back (spec
+   * §3) — so there is nothing lowered to disclose, and the block goes with
+   * the fact rather than being drawn empty (G3).
+   */
+  it('draws no fact line for a Gear whose posting has been restored to 0', async () => {
+    const seeded = await aClosedTripPosted(tripConsumptionPosted(TRIP, GEAR, 0))
+    renderConfirm(seeded, { to: 'unpack' })
+
+    expect(screen.queryByTestId('reopen-reduction')).not.toBeInTheDocument()
   })
 
   it('draws no fact line at all on a Trip whose close owed the Depot nothing (I2)', async () => {

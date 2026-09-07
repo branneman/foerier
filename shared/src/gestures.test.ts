@@ -394,7 +394,18 @@ describe('closeTrip', () => {
     ])
   })
 
-  it('floors a reduction that would go negative at 0', () => {
+  /**
+   * **The floor applies to the pair, not to the owned-count write alone.**
+   * Over-claim is a supported state (S7 surfaces it and never blocks it), so
+   * `owed` (×5) can exceed what the Depot holds (×1). The reduction takes
+   * what there is — ×1 — and the posting records ×1, because the register is
+   * *"the running total this Trip has posted against that Gear's owned
+   * count"* (spec §2.1): what was **applied**, not what was declared.
+   * Posting the unfloored ×5 was a live over-credit — see the restore
+   * sequence at the bottom of `restoreConsumption`'s own block, which is the
+   * assertion that would catch a regression to it.
+   */
+  it('floors the reduction AND its posting at what the Depot had to give', () => {
     const ENTRY = 'e-over'
     const state = depot(
       aTrip({ id: TRIP, name: 'Ardennes' }),
@@ -415,12 +426,125 @@ describe('closeTrip', () => {
 
     const ops = closeTrip(trip, state)
 
-    // The floor applies to the owned-count write alone — the posting still
-    // records the raw `owed` (5), because the posting is this Trip's own
-    // running total against the Depot, not what the Depot had left to give.
     expect(ops).toEqual([
       gearOwnedCountSet('g-gas', 0),
+      tripConsumptionPosted(TRIP, 'g-gas', 1),
+      tripPhaseMoved(TRIP, 'closed'),
+    ])
+  })
+
+  /**
+   * **A partly-satisfiable close posts the part it satisfied, and a later
+   * close finishes the job against a hand-corrected count.** owned ×3 with
+   * ×5 owed applies ×3; re-raising the Depot to ×10 and closing again
+   * applies the remaining ×2 and lands the running total on ×5 — the total
+   * this Trip owed, reached in two instalments and never exceeded.
+   */
+  it('a second close applies only the remainder once the Depot can afford it', () => {
+    const ENTRY = 'e-part'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 3,
+      }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, ENTRY, 5),
+        tripOutcomeSet(TRIP, ENTRY, 'consumed'),
+        tripConsumedCountSet(TRIP, ENTRY, 5),
+      ],
+    )
+
+    const first = closeTrip(tripFrom(state, TRIP), state)
+    expect(first).toEqual([
+      gearOwnedCountSet('g-gas', 0),
+      tripConsumptionPosted(TRIP, 'g-gas', 3),
+      tripPhaseMoved(TRIP, 'closed'),
+    ])
+    const closed = fold(stamp(first, { start: 100 }), state)
+
+    // Reopened, and the shelf restocked by hand — unrelated to this Trip.
+    const reopened = fold(
+      stamp(
+        [
+          ...reopenTrip(tripFrom(closed, TRIP), 'unpack', closed),
+          gearOwnedCountSet('g-gas', 10),
+        ],
+        { start: 200 },
+      ),
+      closed,
+    )
+
+    const second = closeTrip(tripFrom(reopened, TRIP), reopened)
+    expect(second).toEqual([
+      gearOwnedCountSet('g-gas', 8),
       tripConsumptionPosted(TRIP, 'g-gas', 5),
+      tripPhaseMoved(TRIP, 'closed'),
+    ])
+  })
+
+  /**
+   * **`applied === 0` with the close already on the record writes nothing —
+   * and with no record at all writes the `0`.** The first is the re-close
+   * after a declined offer: owed ×5, posted ×1, owned ×0, so a
+   * `gear.owned_count_set(0)` over `0` and a posting of the value already
+   * held are both needless writes (`patterns.md` §2.3). The second is a
+   * close that could apply nothing at all — the `0` posting is what stops
+   * {@link reopenTrip}'s back-fill later fabricating a posting of the whole
+   * `owed` for it, which would re-open the over-credit through a second
+   * door.
+   */
+  it('writes nothing when the Depot has nothing left and this close is already recorded', () => {
+    const ENTRY = 'e-declined'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 0,
+      }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, ENTRY, 5),
+        tripOutcomeSet(TRIP, ENTRY, 'consumed'),
+        tripConsumedCountSet(TRIP, ENTRY, 5),
+        tripConsumptionPosted(TRIP, 'g-gas', 1),
+      ],
+    )
+    const trip = tripFrom(state, TRIP)
+
+    expect(postedOf(trip, 'g-gas')).toBe(1)
+    expect(closeTrip(trip, state)).toEqual([tripPhaseMoved(TRIP, 'closed')])
+  })
+
+  it('posts the 0 when it could apply nothing and holds no register yet', () => {
+    const ENTRY = 'e-nothing'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 0,
+      }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, ENTRY, 5),
+        tripOutcomeSet(TRIP, ENTRY, 'consumed'),
+        tripConsumedCountSet(TRIP, ENTRY, 5),
+      ],
+    )
+    const trip = tripFrom(state, TRIP)
+
+    // No `gear.owned_count_set` — writing `0` over `0` moves a stamp for
+    // nothing — but the posting stands, because absence is what the
+    // back-fill reads as "this close was never recorded".
+    expect(closeTrip(trip, state)).toEqual([
+      tripConsumptionPosted(TRIP, 'g-gas', 0),
       tripPhaseMoved(TRIP, 'closed'),
     ])
   })
@@ -844,5 +968,72 @@ describe('restoreConsumption', () => {
       gearOwnedCountSet('g-gas', 9),
       tripConsumptionPosted(TRIP, 'g-gas', 0),
     ])
+  })
+
+  /**
+   * **The over-claim sequence, end to end — the review finding this block
+   * exists to pin.** Owned ×1, Bring-count ×5, all ×5 consumed: over-claim
+   * is a supported state (S7 surfaces it and never blocks it), so the close
+   * owes ×5 against a Depot that holds ×1. Close, reopen, tap the outcome to
+   * `back`, `Put it back`.
+   *
+   * While the close posted the **unfloored** `owed`, this ran ×1 → ×0 →
+   * restore ×0 + (5 − 0) = **×5** — the household ending up owning five of
+   * something it owned one of, in four ordinary taps on one Device with no
+   * crash: the same shape of defect S11 exists to remove, reintroduced by
+   * the gesture that hands units back. Posting what was **applied** (×1)
+   * makes the restoration hand back exactly ×1.
+   *
+   * The assertion is on the fold, not on the op list, because the op list
+   * was individually defensible at every step and the number still came out
+   * wrong.
+   */
+  it('close (floored) → reopen → restore hands back only what the close took', () => {
+    const ENTRY = 'e-over'
+    const state = depot(
+      aTrip({ id: TRIP, name: 'Ardennes' }),
+      aGear({
+        id: 'g-gas',
+        name: 'Gas canister',
+        kind: 'counted',
+        ownedCount: 1,
+      }),
+      [
+        tripEntryAdded(TRIP, ENTRY, { from: 'depot', gearId: 'g-gas' }),
+        tripEntryBringCountSet(TRIP, ENTRY, 5),
+        tripOutcomeSet(TRIP, ENTRY, 'consumed'),
+        tripConsumedCountSet(TRIP, ENTRY, 5),
+      ],
+    )
+
+    const closed = fold(
+      stamp(closeTrip(tripFrom(state, TRIP), state), { start: 100 }),
+      state,
+    )
+    expect(ownedCountOf(gearFrom(closed, 'g-gas'))).toBe(0)
+    expect(postedOf(tripFrom(closed, TRIP), 'g-gas')).toBe(1)
+
+    const reopened = fold(
+      stamp(reopenTrip(tripFrom(closed, TRIP), 'unpack', closed), {
+        start: 200,
+      }),
+      closed,
+    )
+
+    // The outcome moves off `consumed`, which is what makes `owed` fall to
+    // 0 and raises the offer (`OutcomeSheet`'s trigger, not this gesture's).
+    const backed = fold(
+      stamp([tripOutcomeSet(TRIP, ENTRY, 'back')], { start: 300 }),
+      reopened,
+    )
+    const restored = fold(
+      stamp(restoreConsumption(tripFrom(backed, TRIP), 'g-gas', 0, backed), {
+        start: 400,
+      }),
+      backed,
+    )
+
+    expect(ownedCountOf(gearFrom(restored, 'g-gas'))).toBe(1)
+    expect(postedOf(tripFrom(restored, TRIP), 'g-gas')).toBe(0)
   })
 })

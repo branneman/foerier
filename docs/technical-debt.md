@@ -117,6 +117,18 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   read the posting as satisfied and skip a reduction that never landed, a
   silent under-count. `shared/src/gestures.ts`'s own docblock on `closeTrip`,
   anchor: `does not close the crash-mid-batch debt`
+- **A pre-S11 close that the Depot could only partly satisfy is back-filled at
+  the full amount it owed.** `reopenTrip`'s back-fill reconstructs a missing
+  posting from `consumedReductions`, which is what that close *declared*; a
+  close of ×5 against a Depot holding ×1 applied ×1, and the pre-close owned
+  count survives only in the log, so nothing distinguishes the two after the
+  fact. A restoration on such a Trip then hands back more than it took. It
+  needs a Trip closed before S11 **and** an over-claim on it, and every close
+  performed by this build leaves a posting behind — `0` included — so the
+  reconstruction is never consulted for one. Recorded as a shrinking
+  cross-version residue rather than outstanding work.
+  `shared/src/gestures.ts`'s own docblock on `reopenTrip`, anchor:
+  `right unless that pre-S11 close was itself floored`
 - **A peer on a pre-gate build can reopen a Trip without leaving a posting,
   after which any build's close reduces a second time.** Reopening is a bare
   `trip.phase_moved` out of `closed`, and a build from before S11 emits one

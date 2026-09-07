@@ -416,14 +416,16 @@ export function unpackTotals(
  * id, empty when it owes nothing.
  *
  * `closeTrip` (`gestures.ts`) turns each entry into one
- * `gear.owned_count_set`; `ReopenConfirm` asks only whether the map is empty,
- * to decide whether reopening needs its extra sentence about the reduction
- * closing already applied. **The two must not derive the question
- * separately** — a confirm that promises "closing cleared nothing" on a Trip
- * whose close *did* lower an owned count is a false statement, and it becomes
- * false in exactly the cases a hand-copied gate would get wrong (a container,
- * a Single, an unsynced Gear, a trip-only Entry). {@link consumedCountOf}
- * carries every one of those gates; nothing here re-derives them.
+ * `gear.owned_count_set`; {@link reopenTrip}'s back-fill and
+ * `ReopenConfirm`'s disclosure block each read it as the **reconstruction**
+ * for a Trip closed before {@link postedOf}'s register existed, never in
+ * preference to that register where it is present. **None of them may derive
+ * the question separately** — a confirm that promises "closing cleared
+ * nothing" on a Trip whose close *did* lower an owned count is a false
+ * statement, and it becomes false in exactly the cases a hand-copied gate
+ * would get wrong (a container, a Single, an unsynced Gear, a trip-only
+ * Entry). {@link consumedCountOf} carries every one of those gates; nothing
+ * here re-derives them.
  *
  * **Summed per Gear** because a Trip may list one Gear on two Entries (spec
  * §1.5). **`consumed` alone** — a `back` or `lost` outcome owes the Depot
