@@ -159,4 +159,78 @@ describe('Confirm', () => {
       text.indexOf('4 pieces of gear'),
     )
   })
+
+  /**
+   * **Ruling H9 — two prose registers, one slot each.** `description` is the
+   * answer and takes default ink; `note` is the explainer beneath it and is
+   * muted. They were one slot until S11, with `.descriptionSheet` drawing
+   * every body in the explainer's own colour, so the distinction the boards
+   * have drawn since S6 did not exist on any screen.
+   *
+   * The colours are tokens the jsdom run resolves to nothing, so what is
+   * asserted is the **structure** the colours hang on: the note is its own
+   * element, carries `.note`, and sits after the description's own text
+   * inside the one `AlertDialog.Description` — which is what puts both
+   * sentences in a single announcement.
+   */
+  it('draws the note as its own element after the description', () => {
+    render(
+      <Confirm
+        variant="sheet"
+        title="Reopen Tessin 2025?"
+        description="It returns to Unpack exactly as it stood."
+        note="A count corrected by hand is never rewritten."
+        onClose={() => {}}
+        actions={
+          <Confirm.Cancel>
+            <button type="button">Cancel</button>
+          </Confirm.Cancel>
+        }
+      />,
+    )
+
+    const note = screen.getByText(
+      'A count corrected by hand is never rewritten.',
+    )
+    expect(note.className).toContain('note')
+
+    const described = note.closest('p')
+    expect(described?.textContent).toContain('It returns to Unpack')
+
+    const text = described?.textContent ?? ''
+    expect(text.indexOf('A count corrected')).toBeGreaterThan(
+      text.indexOf('It returns to Unpack'),
+    )
+  })
+
+  /**
+   * A confirm whose `children` block **is** its answer carries only a note —
+   * the over-claim sheet's own shape (H9). Radix still needs a Description,
+   * so the note fills it rather than the sheet announcing a title and two
+   * buttons.
+   */
+  it('accepts a note with no description, and it is still the accessible description', async () => {
+    render(
+      <Confirm
+        variant="sheet"
+        title="Start pack-out — Alps 2026?"
+        note="Starting warns, never blocks."
+        onClose={() => {}}
+        actions={
+          <Confirm.Cancel>
+            <button type="button">Cancel</button>
+          </Confirm.Cancel>
+        }
+      >
+        <p>▲ 1 entry is already claimed by Tessin 2025.</p>
+      </Confirm>,
+    )
+
+    const confirm = screen.getByRole('alertdialog')
+    const describedBy = confirm.getAttribute('aria-describedby')
+    expect(describedBy).not.toBeNull()
+    expect(document.getElementById(describedBy!)?.textContent).toBe(
+      'Starting warns, never blocks.',
+    )
+  })
 })

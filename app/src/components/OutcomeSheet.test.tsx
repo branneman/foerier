@@ -594,6 +594,81 @@ async function aReopenedGasOwingFour(extra: readonly OpSpec[] = []) {
   )
 }
 
+/**
+ * **Ruling H6's own case, and the fixture that exercises it.** A partial
+ * close: Bring-count 4, Consumed-count 2, so the close applied ×2 (owned ×6
+ * → ×4) and posted ×2. Reopened, the remaining headroom is what the re-close
+ * can still take — which `aReopenedGasOwingFour`, closed at the ceiling,
+ * cannot show, since its stepper is already at `max`.
+ */
+async function aReopenedGasPartlyPosted(extra: readonly OpSpec[] = []) {
+  return seeded(
+    tripOutcomeSet(TRIP, E_GAS, 'consumed'),
+    tripConsumedCountSet(TRIP, E_GAS, 2),
+    gearOwnedCountSet(GAS, 4),
+    tripConsumptionPosted(TRIP, GAS, 2),
+    tripPhaseMoved(TRIP, 'closed'),
+    tripPhaseMoved(TRIP, 'unpack'),
+    ...extra,
+  )
+}
+
+describe('F9’s consequence line on a reopened Trip (ruling H6)', () => {
+  /**
+   * **The arrow states what the re-close will apply, never the whole count
+   * again.** `closeTrip` only ever applies `owed − posted` (spec §2.3), so
+   * a line drawing the full Consumed-count against today's owned count
+   * predicts a second subtraction that cannot happen — the very corruption
+   * S11 exists to end, restated as a lie in the copy. Raising ×2 → ×3 on a
+   * Trip that has already posted ×2 owes the Depot exactly one more unit.
+   */
+  it('reads the remainder against the posting, not the whole count', async () => {
+    const user = userEvent.setup()
+    const seed = await aReopenedGasPartlyPosted()
+    renderSheet(seed, E_GAS)
+
+    await user.click(
+      screen.getByRole('button', { name: /increase consumed count/i }),
+    )
+
+    expect(
+      screen.getByText('THE REST CAME BACK. OWNED ×4 → ×3 AT CLOSE.'),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * At rest on the same reopened Trip the re-close owes nothing, and the
+   * line says so by naming the same count on both sides. It is the honest
+   * reading rather than a withheld one: the sentence's subject is what
+   * closing does, and closing here does nothing.
+   */
+  it('names the same count on both sides when the re-close owes nothing', async () => {
+    const seed = await aReopenedGasPartlyPosted()
+    renderSheet(seed, E_GAS)
+
+    expect(
+      screen.getByText('THE REST CAME BACK. OWNED ×4 → ×4 AT CLOSE.'),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * The counterpart, and the reason nothing on a first close moved:
+   * {@link postedOf} reads `0` for a Gear this Trip has never posted, so an
+   * unclosed Trip draws F9 verbatim.
+   */
+  it('draws F9 verbatim on a Trip that has never closed', async () => {
+    const seed = await seeded(
+      tripOutcomeSet(TRIP, E_GAS, 'consumed'),
+      tripConsumedCountSet(TRIP, E_GAS, 2),
+    )
+    renderSheet(seed, E_GAS)
+
+    expect(
+      screen.getByText('THE REST CAME BACK. OWNED ×6 → ×4 AT CLOSE.'),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('the restoration offer (S11, spec §3)', () => {
   it('emits the outcome change and raises the offer when BACK moves a reopened Trip off consumed', async () => {
     const user = userEvent.setup()
@@ -612,7 +687,7 @@ describe('the restoration offer (S11, spec §3)', () => {
     ])
     expect(
       screen.getByRole('alertdialog', {
-        name: 'Put ×4 back on Gas canister 450?',
+        name: 'Put ×4 back — Gas canister 450?',
       }),
     ).toBeInTheDocument()
   })
@@ -623,7 +698,7 @@ describe('the restoration offer (S11, spec §3)', () => {
     renderSheet(seed, E_GAS)
 
     await user.click(chipNamed('● BACK'))
-    await user.click(screen.getByRole('button', { name: 'Put it back' }))
+    await user.click(screen.getByRole('button', { name: /^Put ×\d+ back$/ }))
 
     expect(await seed.authored()).toEqual([
       {
@@ -661,7 +736,7 @@ describe('the restoration offer (S11, spec §3)', () => {
     renderSheet(seed, E_GAS)
 
     await user.click(chipNamed('● BACK'))
-    await user.click(screen.getByRole('button', { name: 'Leave it' }))
+    await user.click(screen.getByRole('button', { name: 'Leave it lowered' }))
 
     expect(await seed.authored()).toEqual([
       {
@@ -689,7 +764,7 @@ describe('the restoration offer (S11, spec §3)', () => {
     renderSheet(seed, E_GAS)
 
     await user.click(chipNamed('● BACK'))
-    await user.click(screen.getByRole('button', { name: 'Leave it' }))
+    await user.click(screen.getByRole('button', { name: 'Leave it lowered' }))
     await user.click(chipNamed('▲ LOST'))
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -720,21 +795,21 @@ describe('the restoration offer (S11, spec §3)', () => {
     )
     expect(
       screen.getByRole('alertdialog', {
-        name: 'Put ×1 back on Gas canister 450?',
+        name: 'Put ×1 back — Gas canister 450?',
       }),
     ).toBeInTheDocument()
 
     // The offer traps focus (Radix's own AlertDialog behaviour) until it is
     // resolved — declining leaves the units deducted (G1's default) and a
     // second lowering raises the offer again, for the new remainder.
-    await user.click(screen.getByRole('button', { name: 'Leave it' }))
+    await user.click(screen.getByRole('button', { name: 'Leave it lowered' }))
     await user.click(
       screen.getByRole('button', { name: /decrease consumed count/i }),
     )
 
     expect(
       screen.getByRole('alertdialog', {
-        name: 'Put ×2 back on Gas canister 450?',
+        name: 'Put ×2 back — Gas canister 450?',
       }),
     ).toBeInTheDocument()
   })

@@ -28,12 +28,21 @@ import styles from './Sheet.module.css'
  * can be mid-flight with `stopSync()` already called. Escape still closes.
  *
  * As with `Sheet`, there is no `open` prop: rendered is open.
+ *
+ * **Two prose registers, and the boards have drawn both since S6** (ruling
+ * H9). {@link ConfirmProps.description} is the answer — the one sentence
+ * saying what will happen — and takes default ink; {@link ConfirmProps.note}
+ * is the explainer beneath it, muted. They were one slot and one colour
+ * until S11: `.descriptionSheet` drew every body in `--color-ink-muted`,
+ * which is the explainer's own colour, so the distinction 02B draws did not
+ * exist and a confirm's answer sat demoted under the question it answers.
+ * A confirm with only a `note` is legitimate and drawn — the over-claim
+ * sheet's block *is* its answer, and its closing sentence is an explainer —
+ * which is why the pair is a union rather than two optional props.
  */
-export interface ConfirmProps {
+interface ConfirmBaseProps {
   /** Drawn as the heading, and the confirm's accessible name. */
   title: string
-  /** The one line stating the consequence. Radix requires it, and so do we. */
-  description: ReactNode
   /** Escape, or {@link Confirm.Cancel}. Never the scrim. */
   onClose: () => void
   /**
@@ -58,9 +67,24 @@ export interface ConfirmProps {
   children?: ReactNode
 }
 
+/**
+ * The prose slots, and why the type says *at least one*.
+ *
+ * Radix requires an `AlertDialog.Description`, and a confirm with neither
+ * sentence would announce a title and a pair of buttons. Every confirm
+ * therefore carries one of the two — which the union states rather than a
+ * comment asking each caller to remember it.
+ */
+type ConfirmProseProps =
+  | { description: ReactNode; note?: ReactNode }
+  | { description?: undefined; note: ReactNode }
+
+export type ConfirmProps = ConfirmBaseProps & ConfirmProseProps
+
 function ConfirmRoot({
   title,
   description,
+  note,
   onClose,
   actions,
   variant = 'card',
@@ -106,6 +130,16 @@ function ConfirmRoot({
             }
           >
             {description}
+            {/* Inside the Description, not beside it: the explainer is part
+                of what the dialog is describing, so a screen reader gets
+                both sentences from one announcement — and a `<p>` cannot
+                nest another, which is why this is a `<span>` (the same
+                reason `RemoveElsewhereConfirm`'s context line is one).
+                `.note` re-states the muted colour the container no longer
+                carries. */}
+            {note !== undefined && (
+              <span className={styles['note']}>{note}</span>
+            )}
           </AlertDialog.Description>
           <div
             className={sheet ? styles['actionsSheet'] : styles['actionsCard']}

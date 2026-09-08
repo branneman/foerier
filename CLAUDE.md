@@ -1024,6 +1024,46 @@ reopen:**
   unguarded, and those comments are what stop the gate being re-added by the
   next author who sees `REOPEN` drawn on every closed row.
 
+**A design round has since ruled all nine decisions S11's code took because no
+board reached them** (`docs/design/README.md` **§5k**, H1–H9;
+`S11 Round - Reopen and the Restoration Offer.dc.html`). Five blessed, one
+drew a surface the code had invented whole, three changed an answer. No op
+type, no endpoint, no migration, and not a line of `reduce.ts` or `state.ts`.
+The dated spec is not rewritten —
+[its §12](docs/specs/2026-09-07-reopen.md) lists what the round settled, and
+§5k is the shipped authority.
+
+**Three things about it are worth knowing before touching a confirm:**
+
+- **A component with one slot for two registers cannot be *seen* to be wrong
+  until something needs both** (H9). `ui/`'s `.descriptionSheet` drew every
+  sheet confirm's body in `--color-ink-muted` — which is the **explainer's**
+  own colour — so the two prose registers the boards have drawn since S6
+  rendered identically, and a confirm's answer sat demoted under the question
+  it answers. It shipped that way from the Radix conversion and no sheet had
+  ever stacked both sentences at once until S11's reopen confirm did.
+  `Confirm` now takes `description` (the answer, default ink) and an optional
+  `note` (the explainer, muted), typed as a **union** so a confirm whose
+  `children` block *is* its answer — `ActivationConfirm` — can carry a `note`
+  alone and still satisfy Radix's requirement of a description. A mono fact
+  line is not an explainer and stays in `description`
+  (`RemoveElsewhereConfirm`).
+- **The mark leads a standing line, and `·` then has one job** (H2). The
+  block reads `▲ 2 STILL UNACCOUNTED — HEADLAMP, K · TENT`, never a trailing
+  `▲ LOST`: the block's own word already says lost, and the head is where
+  `▲ CLAIMED ×4 · OWNED ×2` and `▲ 2 OF 3 PIECES` already carry it. A Counted
+  item states its own units after its name so the head count and the items
+  add up — decided in `standingLostOf` through a `count: number | null`
+  field, D1's *which field is non-null* encoding one surface over, so no
+  screen re-derives a Kind.
+- **A copy line that predicts an op is wrong the moment the op changes**
+  (H6). F9's `OWNED ×6 → ×4 AT CLOSE` still drew the whole Consumed-count
+  against today's owned count, so on a **reopened** Trip it predicted a
+  second subtraction `closeTrip` will never make — the corruption this slice
+  exists to end, restated as a lie in the copy of the screen that ends it. It
+  reads `max(consumedCount − posted, 0)` now, and names the same count on
+  both sides when the re-close owes nothing.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**

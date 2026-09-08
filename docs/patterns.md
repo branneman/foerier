@@ -506,7 +506,12 @@ restored by `restoreOpenerFocus` only while the opener is still on the page.
 
 A selection, list or form is a `Sheet`; anything titled with a question and
 ending in a consequence is a `Confirm`, which ignores the scrim, gives initial
-focus to Cancel and always renders a `description`. Tone lives in the caller's
+focus to Cancel and always renders a description. Its prose comes in **two
+registers and two slots** (ruling H9): `description` is the answer — the one
+sentence saying what will happen — in default ink, and `note` is the
+explainer beneath it, muted. A confirm whose `children` block *is* its answer
+carries a `note` alone, which the prop type states as a union rather than
+leaving to each caller. Tone lives in the caller's
 button class — attention-bordered text for destructive, accent for
 non-destructive — never in a prop. `Confirm.Action` closes on click, so a
 caller never also calls `onClose`; a decision that must **outlive** its own
@@ -516,8 +521,11 @@ uses a plain button and closes when the sequence finishes.
 *Departures:* the remote sign-out and the revoke-login confirms put an async
 handler on `Confirm.Action`, so their `busy` state and their failure line are
 unreachable; card confirms disagree on Cancel-first versus Action-first
-between the S3-era cards and the S9 card, which is a board question.
-*Argued in:* `Confirm.tsx`'s header.
+between the S3-era cards and the S9 card, which is a board question;
+`RemoveElsewhereConfirm` still puts a second `<span>` inside `description`
+rather than in `note`, because what it adds is a mono **fact** line about
+the other Trip, not an explaining sentence.
+*Argued in:* `Confirm.tsx`'s header; `docs/design/README.md` §5k H9.
 
 ### 4.3 A picker is pure selection; the caller suppresses and decides
 

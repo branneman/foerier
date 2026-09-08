@@ -627,11 +627,11 @@ describe('the SET PHASE sheet', () => {
       expect(confirm).toHaveTextContent(
         'It returns to Unpack exactly as it stood. Closing cleared nothing.',
       )
-      // The two mono blocks the board draws under that line are S10's
+      // The two mono blocks the board draws above that line are S10's
       // outcomes and S7's over-claim. Neither is faked or stubbed here, and
-      // this assertion is what says so: the confirm holds its title, both
-      // description lines (the explainer sentence, fidelity review §5k) and
-      // its two buttons, and nothing more.
+      // this assertion is what says so: the confirm holds its title, its
+      // answer, the explainer in `Confirm`'s own `note` slot (ruling H9)
+      // and its two buttons, and nothing more.
       expect(confirm.textContent).toBe(
         'Reopen Alps 2026?It returns to Unpack exactly as it stood. Closing cleared nothing.Changing an outcome away from consumed offers to restore the owned-count and waits for the answer — a count corrected by hand is never rewritten.Reopen tripCancel',
       )

@@ -90,7 +90,13 @@ export function ActivationConfirm({
     <Confirm
       variant="sheet"
       title={`${activationVerb(to)} — ${tripNameOrUnnamed(trip)}?`}
-      description="Starting warns, never blocks. Nothing changes here — the settle routes are on the trip screen."
+      // **`note`, not `description` — ruling H9.** This sheet's answer is
+      // the ▲ block above: the sentence beneath it explains what the block
+      // means and what the sheet will not do, which is the explainer
+      // register. It has read muted since it was written and it still does;
+      // what changed is that the muted is now stated rather than inherited
+      // from a `description` that muted every confirm body in the app.
+      note="Starting warns, never blocks. Nothing changes here — the settle routes are on the trip screen."
       onClose={onCancel}
       actions={
         <>

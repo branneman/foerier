@@ -975,7 +975,7 @@ describe('restoreConsumption', () => {
    * exists to pin.** Owned ×1, Bring-count ×5, all ×5 consumed: over-claim
    * is a supported state (S7 surfaces it and never blocks it), so the close
    * owes ×5 against a Depot that holds ×1. Close, reopen, tap the outcome to
-   * `back`, `Put it back`.
+   * `back`, then take the restoration offer.
    *
    * While the close posted the **unfloored** `owed`, this ran ×1 → ×0 →
    * restore ×0 + (5 − 0) = **×5** — the household ending up owning five of

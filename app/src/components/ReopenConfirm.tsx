@@ -29,10 +29,10 @@ import styles from './ReopenConfirm.module.css'
  * without the confirm would leave an invariant violated for five slices
  * (spec §6.3).
  *
- * What ships is the board's title, its body line, three conditional blocks
- * stacked inside `children`, and — as of the fidelity review, §5k — the
- * board's explainer sentence, `description`'s second paragraph: title, body,
- * mono, explainer, the drawn order (`Screens B:869-895`). The `children`
+ * What ships is the board's title, three conditional blocks stacked inside
+ * `children`, its body line, and — as of the fidelity review, §5k — the
+ * board's explainer sentence in `Confirm`'s own `note` slot: title, mono,
+ * body, explainer, the drawn order (the S11 round board §02). The `children`
  * blocks stack in one order (spec §6): the `STILL UNACCOUNTED` block (what
  * about this Trip is still unsettled), G1's reduction lines (what the close
  * did), then the facts-only over-claim block (what reopening would collide
@@ -42,12 +42,14 @@ import styles from './ReopenConfirm.module.css'
  * carries no condition of its own — it states what reopening *enables*, true
  * of every Trip this sheet ever opens for.
  *
- * **`STILL UNACCOUNTED`, not the board's drawn `1 ENTRY STILL OPEN`.** Spec
- * §6 argues the wording at length: a properly closed Trip has zero *open*
- * outcomes (invariant 18 is what the close is gated on) and a `lost` Entry
- * is *resolved*, not open — the drawn `▲ LOST` cannot be produced by an open
- * count. The block states what the reason a Quartermaster reopens actually
- * is: the tent that turned up.
+ * **`STILL UNACCOUNTED`, not S6's drawn `1 ENTRY STILL OPEN`** — ruling H1,
+ * blessed. Spec §6 argues the wording at length: a properly closed Trip has
+ * zero *open* outcomes (invariant 18 is what the close is gated on) and a
+ * `lost` Entry is *resolved*, not open — the drawn `▲ LOST` cannot be
+ * produced by an open count. The block states what the reason a
+ * Quartermaster reopens actually is: the tent that turned up. *Still* is the
+ * word carrying the predicate — a Gear lost here and re-homed since, or
+ * brought `back` by a later Trip, is not in the block at all.
  *
  * **{@link standingLostOf}, not `unaccountedOf`.** `unaccountedOf` is keyed
  * by Gear across the whole household and names the *latest* Trip holding a
@@ -72,14 +74,17 @@ import styles from './ReopenConfirm.module.css'
  * on its own and drift from it.
  *
  * **The over-claim block sits in `children`, above the body line**, exactly
- * where `ActivationConfirm` puts its own — `Confirm`'s own layout, title
- * then `children` then `description`, and the house rule
- * `SignOutThisDeviceSheet` already set: a ▲ block states a condition, the
- * body line beneath it is reassurance, and the two are different registers.
- * The board's own mockup draws the still-open block (S10's, not this one)
- * *after* the body line, but `children` cannot render on both sides of
- * `description` — reusing the one slot every other `Confirm` attention block
- * already uses beats inventing a second one for this sheet alone.
+ * where `ActivationConfirm` puts its own — `Confirm`'s one shape, title →
+ * facts → answer, and the house rule `SignOutThisDeviceSheet` already set:
+ * a ▲ block states a condition, the body line beneath it is reassurance,
+ * and the two are different registers. Ruling H3 **blessed both the order
+ * and the position and declined a second slot**: the boards that drew mono
+ * beneath the body were corrected in place instead, since one component
+ * with two shapes is worse than one shape the boards agree on. One
+ * treatment for a facts block, which the three lines here already share —
+ * bare mono, no box, `.sheet`'s own 12px gap between them (the board draws
+ * 10; the token beats a board's number, §5g E5). A box in a sheet is a
+ * card, and a card carries routes.
  * `overClaimGroups` is what both callers ask, computed here rather than
  * threaded through both (`PhaseSheet` and `Trips.tsx`), since this component
  * already reads the store for nothing else and neither caller otherwise
@@ -224,21 +229,27 @@ export function ReopenConfirm({
     if (!lowered.has(gearId)) lowered.set(gearId, owed)
   }
 
-  // **S11's last mono block (spec §6).** `standingLostOf` — never
-  // `unaccountedOf`, see this module's own docblock — gathers this Trip's
-  // own Entries and Pieces whose `lost` outcome still stands. The count is
-  // units, matching every other count on this sheet (G3: absent at zero).
-  // The comma divides the gear name from the Person **inside** one segment
-  // (`HEADLAMP, K`); `·` divides segments, so multiple items are joined by
-  // `·` and `▲ LOST` is stated **once**, trailing the whole block, rather
-  // than once per item — `standingLostOf` only ever returns `lost`
-  // standings, so the mark is a property of the block, not of each row, and
-  // repeating it per item would flatten the grammar's two levels (a reviewed
-  // finding: joining whole `NAME · ▲ LOST` segments with the same `·` used
-  // between items gives a reader no way to see where one item ends and the
-  // next begins). A single item therefore reads identically to before —
-  // `1 STILL UNACCOUNTED — HEADLAMP, K · ▲ LOST` — because one name joined
-  // with nothing is just that name, and the trailing `▲ LOST` still applies.
+  // **S11's last mono block (spec §6), redrawn at ruling H2.**
+  // `standingLostOf` — never `unaccountedOf`, see this module's own
+  // docblock — gathers this Trip's own Entries and Pieces whose `lost`
+  // outcome still stands. The count is units, matching every other count on
+  // this sheet (G3: absent at zero).
+  //
+  // **`▲` leads the line, and `·` then has exactly one job.** The block's
+  // own word — *unaccounted* — already says lost, so a trailing `▲ LOST`
+  // said it twice; and the head is where every other standing line in the
+  // app carries the mark (`▲ 2 entries…`, `▲ CLAIMED ×4 · OWNED ×2`,
+  // `▲ 2 OF 3 PIECES`). The comma divides the gear name from the Person
+  // **inside** one segment (`HEADLAMP, K`) and `·` divides items, two
+  // levels of grammar with one glyph each. The whole line takes the
+  // attention tone, because colour is the standing (G12) and
+  // `standingLostOf` only ever returns standings.
+  //
+  // **A Counted item states its units after its name**, `GAS CANISTER 450
+  // ×2`, so the head count and the items add up in the reader's eye. Which
+  // items those are is `standingLostOf`'s call, not this screen's — it
+  // hands back `count` non-null for exactly the Kind that splits by
+  // quantity, D1's own encoding, so nothing here re-derives a Kind.
   const standingLost = standingLostOf(trip, state)
   const unaccountedUnits = standingLost.reduce(
     (total, item) => total + item.units,
@@ -250,7 +261,8 @@ export function ReopenConfirm({
         item.personId === null
           ? ''
           : `, ${personNameOrUnnamed(state, item.personId)}`
-      return `${item.gearName.toUpperCase()}${person}`
+      const count = item.count === null ? '' : ` ×${item.count}`
+      return `${item.gearName.toUpperCase()}${count}${person}`
     })
     .sort()
 
@@ -291,18 +303,13 @@ export function ReopenConfirm({
       // Ship it verbatim and drawn beats derived (§5c J): it states what
       // reopening *enables*, not a fact about this Trip, so it carries no
       // condition of its own.
-      description={
-        <>
-          <span>
-            {`It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.`}
-          </span>
-          <span className={styles['explainer']}>
-            Changing an outcome away from consumed offers to restore the
-            owned-count and waits for the answer — a count corrected by hand is
-            never rewritten.
-          </span>
-        </>
-      }
+      description={`It returns to ${phaseName(to)} exactly as it stood. Closing cleared nothing.`}
+      // **`Confirm`'s second prose slot, ruling H9.** The sentence was a
+      // `<span>` inside `description` when it first shipped, because there
+      // was nowhere else to put it and `.descriptionSheet` muted the body
+      // anyway; the two registers the board draws — the answer in ink, the
+      // explainer muted — are now two slots, so this states its own.
+      note="Changing an outcome away from consumed offers to restore the owned-count and waits for the answer — a count corrected by hand is never rewritten."
       onClose={onCancel}
       actions={
         <>
@@ -325,7 +332,7 @@ export function ReopenConfirm({
     >
       {unaccountedNames.length > 0 && (
         <p className={styles['unaccounted']} data-testid="reopen-unaccounted">
-          {`${unaccountedUnits} STILL UNACCOUNTED — ${[...unaccountedNames, '▲ LOST'].join(' · ')}`}
+          {`▲ ${unaccountedUnits} STILL UNACCOUNTED — ${unaccountedNames.join(' · ')}`}
         </p>
       )}
 

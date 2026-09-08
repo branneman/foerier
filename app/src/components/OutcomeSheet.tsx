@@ -252,12 +252,16 @@ function ConsumedStepperBlock({
   bringCount,
   consumedCount,
   owned,
+  posted,
   onChange,
 }: {
   title: string
   bringCount: number
   consumedCount: number
   owned: number
+  /** What this Trip has already posted against this Gear's owned count —
+   * `0` on a Trip that has never closed. Ruling H6. */
+  posted: number
   onChange: (next: number | null) => void
 }) {
   // **G3: a zero segment draws nothing, and the fact line swaps one word.**
@@ -268,6 +272,18 @@ function ConsumedStepperBlock({
   // which is why they are composed here rather than spelled twice.
   const back = bringCount - consumedCount
   const rest = back === 0 ? 'NONE CAME BACK.' : 'THE REST CAME BACK.'
+  // **The arrow states what the close will apply, never the whole count
+  // again** (ruling H6). On a Trip that has never closed `posted` is `0` and
+  // this is `consumedCount` — F9 verbatim. On a *reopened* Trip whose close
+  // already took units off the Depot, the re-close applies only the
+  // remainder, exactly as `closeTrip` computes it (`delta = owed − posted`,
+  // spec §2.3), so drawing the full `consumedCount` here would predict a
+  // second subtraction that will not happen — the very corruption S11
+  // exists to end, restated as a lie in the copy. A raise on a reopened
+  // Trip reads `OWNED ×2 → ×1 AT CLOSE`; a count that owes nothing further
+  // reads its own count on both sides, which is the honest way to say the
+  // re-close changes nothing.
+  const atClose = Math.max(consumedCount - posted, 0)
   return (
     <div className={styles['stepperBlock']}>
       <div className={styles['stepperRow']}>
@@ -282,7 +298,7 @@ function ConsumedStepperBlock({
         {back > 0 && <span className={styles['back']}>×{back} BACK</span>}
       </div>
       <p className={styles['consequence']}>
-        {`${rest} OWNED ×${owned} → ×${Math.max(owned - consumedCount, 0)} AT CLOSE.`}
+        {`${rest} OWNED ×${owned} → ×${Math.max(owned - atClose, 0)} AT CLOSE.`}
       </p>
     </div>
   )
@@ -694,6 +710,11 @@ export function OutcomeSheet({
           consumedCount={consumedCount}
           owned={
             gear === undefined ? bringCount : (ownedCountOf(gear) ?? bringCount)
+          }
+          posted={
+            entry.source?.value?.from === 'depot'
+              ? postedOf(trip, entry.source.value.gearId)
+              : 0
           }
           onChange={handleConsumedChange}
         />

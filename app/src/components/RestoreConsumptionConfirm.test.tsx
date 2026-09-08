@@ -28,8 +28,8 @@ import styles from './RestoreConsumptionConfirm.module.css'
  *
  * `GAS`'s own numbers throughout: owned ×6 before the close, a Bring-count
  * of 4 fully consumed, reduced to ×2 and posted ×4 — the spec §3 example
- * verbatim (`Put ×4 back on Gas canister 450?` / `GAS CANISTER 450 ×2 →
- * ×6`).
+ * verbatim, in ruling H4's own strings (`Put ×4 back — Gas canister 450?` /
+ * `GAS CANISTER 450 · OWNED ×2 → ×6`).
  */
 
 const TRIP = 'tttttttt-0000-7000-8000-000000000021'
@@ -84,25 +84,37 @@ function renderConfirm(
 }
 
 describe('the restoration offer', () => {
-  it('titles the offer with what would go back, and states the trip and the arrow', async () => {
+  /**
+   * **Rulings H4 and H5.** The title takes 02B's act — object shape with
+   * the number riding in it, and the body states the arithmetic it actually
+   * does rather than the first draft's *"It goes back to what it was before
+   * that close"* — false the moment a hand correction sits between the
+   * close and this offer, which is story 11's own waiting case.
+   */
+  it('titles the offer act — object, and states the arithmetic it does', async () => {
     const seeded = await aReopenedTripOwingFour()
     renderConfirm(seeded, { owed: 0 })
 
     const confirm = screen.getByRole('alertdialog', {
-      name: 'Put ×4 back on Gas canister 450?',
+      name: 'Put ×4 back — Gas canister 450?',
     })
     expect(confirm).toHaveTextContent(
-      'Alps 2026 lowered the owned count when it closed. It goes back to what it was before that close.',
+      'Closing Alps 2026 took ×4 off the owned count. Putting them back adds ×4 to the count as it stands.',
     )
-    expect(screen.getByText('GAS CANISTER 450 ×2 → ×6')).toBeInTheDocument()
+    expect(
+      screen.getByText('GAS CANISTER 450 · OWNED ×2 → ×6'),
+    ).toBeInTheDocument()
   })
 
-  it('offers Put it back and Leave it, Action above Cancel in the DOM', async () => {
+  it('offers Put ×N back and Leave it lowered, Action above Cancel in the DOM', async () => {
     const seeded = await aReopenedTripOwingFour()
     renderConfirm(seeded, { owed: 0 })
 
-    const putItBack = screen.getByRole('button', { name: 'Put it back' })
-    const leaveIt = screen.getByRole('button', { name: 'Leave it' })
+    // H4: the number rides in the button as `BRING ×1 HERE`'s does, and the
+    // ghost is a second verb rather than a `Cancel` — nothing here is
+    // cancelled, the outcome op is already written.
+    const putItBack = screen.getByRole('button', { name: 'Put ×4 back' })
+    const leaveIt = screen.getByRole('button', { name: 'Leave it lowered' })
     expect(
       putItBack.compareDocumentPosition(leaveIt) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -113,31 +125,31 @@ describe('the restoration offer', () => {
     const seeded = await aReopenedTripOwingFour()
     renderConfirm(seeded, { owed: 0 })
 
-    const button = screen.getByRole('button', { name: 'Put it back' })
+    const button = screen.getByRole('button', { name: 'Put ×4 back' })
     expect(button).toHaveClass(styles['primary']!)
 
     const confirm = screen.getByRole('alertdialog')
     expect(confirm.querySelector('[aria-hidden="true"]')).not.toBeNull()
   })
 
-  it('takes the decision on Put it back', async () => {
+  it('takes the decision on the primary', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
     const seeded = await aReopenedTripOwingFour()
     renderConfirm(seeded, { owed: 0, onConfirm })
 
-    await user.click(screen.getByRole('button', { name: 'Put it back' }))
+    await user.click(screen.getByRole('button', { name: 'Put ×4 back' }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 
-  it('withdraws on Leave it without confirming', async () => {
+  it('withdraws on Leave it lowered without confirming', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
     const seeded = await aReopenedTripOwingFour()
     renderConfirm(seeded, { owed: 0, onCancel, onConfirm })
 
-    await user.click(screen.getByRole('button', { name: 'Leave it' }))
+    await user.click(screen.getByRole('button', { name: 'Leave it lowered' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
     expect(onConfirm).not.toHaveBeenCalled()
   })
@@ -183,11 +195,17 @@ describe('the restoration offer', () => {
     const seeded = await aReopenedTripOwingFour()
     renderConfirm(seeded, { owed: 2 })
 
+    const confirm = screen.getByRole('alertdialog', {
+      name: 'Put ×2 back — Gas canister 450?',
+    })
+    // H5's two sentences pull apart here and must: the close took ×4, this
+    // offer hands back ×2. A body that said *back to what it was* would
+    // state the wrong number outright.
+    expect(confirm).toHaveTextContent(
+      'Closing Alps 2026 took ×4 off the owned count. Putting them back adds ×2 to the count as it stands.',
+    )
     expect(
-      screen.getByRole('alertdialog', {
-        name: 'Put ×2 back on Gas canister 450?',
-      }),
+      screen.getByText('GAS CANISTER 450 · OWNED ×2 → ×4'),
     ).toBeInTheDocument()
-    expect(screen.getByText('GAS CANISTER 450 ×2 → ×4')).toBeInTheDocument()
   })
 })

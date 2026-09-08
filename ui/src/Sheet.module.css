@@ -128,12 +128,31 @@
     color: var(--color-status-attention);
   }
 
+  /* **Default ink, as of ruling H9.** It drew in `--color-ink-muted` until
+     S11 — the same value `.note` resolves to — so a confirm's answer and its
+     explainer rendered identically and the two registers 02B draws since S6
+     collapsed into one. A body that says what will happen is the sheet's
+     answer and reads as one; the explaining sentence beneath it is `.note`. */
   .descriptionSheet {
     font-size: 0.8125rem;
     line-height: 1.5;
     font-family: var(--font-ui);
-    color: var(--color-ink-muted);
+    color: var(--color-ink-primary);
     margin-top: var(--space-4);
+  }
+
+  /* The explainer under the answer (H9). `display: block` forces the line
+     break — this is a `<span>` inside Radix's `<p>` Description, so it cannot
+     be a block element of its own — and the top margin is withheld when the
+     note is the whole description, which is the over-claim sheet's shape:
+     its block is the answer and this sentence is all the prose there is. */
+  .note {
+    display: block;
+    color: var(--color-ink-muted);
+  }
+
+  .note:not(:first-child) {
+    margin-top: var(--space-8);
   }
 
   .actionsCard {

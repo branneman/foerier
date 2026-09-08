@@ -2715,8 +2715,9 @@ Four consequences outlive the round:
 One op type, no endpoints, no migration, no change to the slicing engine, and
 one register on the Trip root. See its
 [spec](specs/2026-09-07-reopen.md), whose §11 records what moved while it was
-being built, and `docs/design/README.md` §5k for the decisions its code took
-that no board reached.
+being built and whose §12 records what the design round settled after it
+landed, and `docs/design/README.md` §5k — rulings **H1–H9** — for the
+decisions its code took that no board reached.
 
 - **A domain assertion with nowhere to be recorded is a gap in the model, not
   a convenience for the code.** [Domain §6](domain-model.md) has said *"it
@@ -2780,3 +2781,18 @@ that no board reached.
   asserts that its own generator emits **every op type the reducer folds**, so
   a new op type turns the tier red until an arbitrary exists for it. Every
   future slice adding an op inherits that, and it is a good inheritance.
+- **The round found one `ui/` defect that had been shipping since the Radix
+  conversion, and it is the kind only a second prose slot can surface.**
+  `.descriptionSheet` drew every sheet confirm's body in `--color-ink-muted`
+  — the *explainer's* own colour — so the two prose registers the boards have
+  drawn since S6 rendered identically, and a confirm's answer sat demoted
+  under the question it answers. It went unnoticed for six slices because no
+  sheet had ever stacked both sentences at once; S11's reopen confirm was the
+  first, and the collapse became visible the moment it did. `Confirm` now
+  carries `description` (the answer, default ink) and an optional `note` (the
+  explainer, muted) as two slots, typed as a union so a confirm whose block
+  **is** its answer can carry a `note` alone and still satisfy Radix's
+  requirement of a description. The lesson generalises past colour: **a
+  component with one slot for two registers cannot be seen to be wrong until
+  something needs both**, and the first caller that does is where the whole
+  app's accumulated drift arrives at once.

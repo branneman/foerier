@@ -26,12 +26,13 @@ import styles from './RestoreConsumptionConfirm.module.css'
  * destructive confirm carries: nothing is thrown away here either, a count
  * is being given back.
  *
- * **`Leave it` is truthful because the outcome change already stands.** The
- * caller (`OutcomeSheet`'s `choose` / `handleConsumedChange`) emits the
- * outcome or Consumed-count op *before* raising this offer — spec §3's own
- * ordering — so declining changes nothing about what was just recorded. The
+ * **`Leave it lowered` is truthful because the outcome change already
+ * stands.** The caller (`OutcomeSheet`'s `choose` / `handleConsumedChange`)
+ * emits the outcome or Consumed-count op *before* raising this offer —
+ * spec §3's own ordering — so declining changes nothing about what was just
+ * recorded, and the ghost is a second verb rather than a `Cancel`. The
  * posting is not lowered either way: G1's `OWNED COUNTS LOWERED AT CLOSE
- * STAY LOWERED` is the default this confirm's `Cancel` falls back to, and a
+ * STAY LOWERED` is the default this confirm's ghost falls back to, and a
  * later re-raise of the Consumed-count posts only the difference (spec §3).
  *
  * **The target is read fresh from the fold, never derived from {@link
@@ -40,15 +41,16 @@ import styles from './RestoreConsumptionConfirm.module.css'
  * and the Gear's *current* owned count itself, so a hand-correction to the
  * Depot since the close is disclosed honestly rather than papered over by a
  * number computed before this offer mounted. `restoreConsumption`
- * (`gestures.ts`) performs the identical read at the moment `Put it back` is
+ * (`gestures.ts`) performs the identical read at the moment the offer is
  * actually taken, so the two can never disagree about what confirming will
  * do.
  *
- * **The fact line sits in `children`, above the body — `ReopenConfirm`'s own
- * precedent, not the board's drawn order.** `Confirm`'s layout is title,
- * `children`, then `description`, and `children` cannot render on both
- * sides of it — reusing the one slot every other `Confirm` attention block
- * already uses beats inventing a second one for this sheet alone.
+ * **The fact line sits in `children`, above the body**, which ruling H3
+ * blessed as `Confirm`'s one shape — title → facts → answer — and which the
+ * S11 round board §01 draws for this sheet. The body takes default ink (H9)
+ * and there is no `note`: the general promise this offer keeps — *a count
+ * corrected by hand is never rewritten* — is stated once, on the reopen
+ * sheet's own explainer, and is not repeated here.
  */
 export interface RestoreConsumptionConfirmProps {
   trip: TripState
@@ -78,8 +80,19 @@ export function RestoreConsumptionConfirm({
   return (
     <Confirm
       variant="sheet"
-      title={`Put ×${delta} back on ${name}?`}
-      description={`${tripNameOrUnnamed(trip)} lowered the owned count when it closed. It goes back to what it was before that close.`}
+      // **Act, then the object** — 02B's title shape, and the number rides
+      // in the title as it rides in the button (ruling H4).
+      title={`Put ×${delta} back — ${name}?`}
+      // **The body states the arithmetic it does** (ruling H5). Its first
+      // draft read *"It goes back to what it was before that close"*, which
+      // is false the moment a hand correction sits between the close and
+      // this offer — and that case is story 11's whole reason for making
+      // this a question rather than an automatic write. Two sentences: what
+      // happened, then what confirming does. `posted` is what the close
+      // took; `delta` is what this hands back, and the two differ whenever
+      // the change was a *lowered* Consumed-count rather than an outcome
+      // leaving `consumed` altogether.
+      description={`Closing ${tripNameOrUnnamed(trip)} took ×${posted} off the owned count. Putting them back adds ×${delta} to the count as it stands.`}
       onClose={onCancel}
       actions={
         <>
@@ -89,19 +102,25 @@ export function RestoreConsumptionConfirm({
               className={styles['primary']}
               onClick={onConfirm}
             >
-              Put it back
+              {`Put ×${delta} back`}
             </button>
           </Confirm.Action>
           <Confirm.Cancel>
+            {/* `Leave it lowered`, not `Cancel` — nothing here is
+                cancelled, the outcome op is already written, and the word
+                names what declining leaves behind: the count stays down and
+                G1's line on the reopen sheet keeps saying so. */}
             <button type="button" className={styles['ghost']}>
-              Leave it
+              Leave it lowered
             </button>
           </Confirm.Cancel>
         </>
       }
     >
+      {/* F9's own line run the other way — that sheet states `OWNED ×6 → ×2
+          AT CLOSE`, this one states the count as it stands going back up. */}
       <p className={styles['fact']}>
-        {`${name.toUpperCase()} ×${ownedNow} → ×${target}`}
+        {`${name.toUpperCase()} · OWNED ×${ownedNow} → ×${target}`}
       </p>
     </Confirm>
   )

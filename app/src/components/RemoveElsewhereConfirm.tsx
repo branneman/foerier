@@ -42,7 +42,10 @@ import styles from './RemoveElsewhereConfirm.module.css'
  * in amber mono, the colour `▲` owns — which would make *"the gear itself
  * does not move"*, whose entire job is to say nothing was destroyed, read as
  * a second alarm inside a band that is already amber. `.descriptionSheet`
- * carries no such colour.
+ * carries no such colour: it draws the body in default ink, which is the
+ * register a confirm's answer belongs in (ruling H9 — it was muted until
+ * S11, and the *deliberate* this docblock once claimed for that recorded a
+ * fix, not a decision).
  *
  * **An unnamed other Trip reads `Unnamed trip`**, via `tripNameOrUnnamed`
  * (`depot/trips.ts`) — the same substitution `OverClaimBand`'s row and settle
@@ -158,9 +161,12 @@ export function RemoveElsewhereConfirm({
       description={
         // Two `<span>`s, not two `<p>`s: `AlertDialog.Description` is itself
         // a `<p>` (Radix's `Primitive.p`), and a `<p>` cannot nest another.
-        // The body carries no class of its own — `.descriptionSheet` already
-        // gives it the right quiet, non-attention treatment, and `.context`'s
-        // own `display: block` is what forces the line break after it.
+        // The body carries no class of its own — `.descriptionSheet` gives
+        // it the answer's own ink (H9), and `.context`'s own `display:
+        // block` is what forces the line break after it. The context line
+        // stays here rather than moving to `Confirm`'s `note` slot: it is a
+        // mono fact about where the other Trip stands, not an explaining
+        // sentence.
         <>
           <span>
             {personName === undefined ? (

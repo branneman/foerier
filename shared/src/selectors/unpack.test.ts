@@ -1557,7 +1557,14 @@ describe('standingLostOf — what about this Trip is still unaccounted (spec §6
     )
 
     expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([
-      { entryId: 'e-tent', personId: null, gearName: 'Tent', units: 1 },
+      {
+        entryId: 'e-tent',
+        personId: null,
+        gearName: 'Tent',
+        units: 1,
+        // A Single names one thing, so no quantity rides beside it (H2).
+        count: null,
+      },
     ])
   })
 
@@ -1608,8 +1615,16 @@ describe('standingLostOf — what about this Trip is still unaccounted (spec §6
         personId: MARK,
         gearName: 'Headlamp',
         units: 1,
+        // A per-person row names the Person, never a quantity (H2).
+        count: null,
       },
-      { entryId: 'e-tent', personId: null, gearName: 'Tent', units: 1 },
+      {
+        entryId: 'e-tent',
+        personId: null,
+        gearName: 'Tent',
+        units: 1,
+        count: null,
+      },
     ])
   })
 
@@ -1641,7 +1656,15 @@ describe('standingLostOf — what about this Trip is still unaccounted (spec §6
     )
 
     expect(standingLostOf(tripFrom(state, TRIP), state)).toEqual([
-      { entryId: 'e-pegs', personId: null, gearName: 'Peg', units: 4 },
+      {
+        entryId: 'e-pegs',
+        personId: null,
+        gearName: 'Peg',
+        units: 4,
+        // Ruling H2: only a Counted Entry carries a quantity beside its
+        // name, and it is the same number as its contribution.
+        count: 4,
+      },
     ])
   })
 
@@ -1672,6 +1695,10 @@ describe('standingLostOf — what about this Trip is still unaccounted (spec §6
         personId: null,
         gearName: 'Personal crate',
         units: 1,
+        // A container's unit is a flat 1 (F1), so it prints no quantity
+        // either — a `×N` beside the name would contradict the count it
+        // contributes.
+        count: null,
       },
     ])
   })

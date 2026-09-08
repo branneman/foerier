@@ -1056,6 +1056,20 @@ export interface StandingLost {
   readonly personId: string | null
   readonly gearName: string
   readonly units: number
+  /**
+   * The quantity to state **after the name** — `GAS CANISTER 450 ×2` — or
+   * `null` where the item names no quantity of its own.
+   *
+   * Ruling H2: a Counted item states its units so a reader can see the
+   * block's head count and its items add up; a Single names one thing and a
+   * per-person row names a Person instead. That is ruling D1's encoding one
+   * surface over — *which field is non-null* is what says how this item
+   * splits, so no caller re-derives a Kind to find out. It is deliberately
+   * not the same number as {@link StandingLost.units} in general: `units` is
+   * this row's contribution to the head count and exists for every row,
+   * while `count` exists only where it is also a thing to print.
+   */
+  readonly count: number | null
 }
 
 /**
@@ -1122,6 +1136,7 @@ export function standingLostOf(
     gearName: string
     register: Register<OutcomeValue | null>
     units: number
+    count: number | null
   }
 
   const candidates: Candidate[] = []
@@ -1147,6 +1162,9 @@ export function standingLostOf(
           gearName,
           register,
           units: 1,
+          // A per-person row names the Person after the name, never a
+          // quantity — ruling H2, D1's rule one surface over.
+          count: null,
         })
       }
       continue
@@ -1154,14 +1172,21 @@ export function standingLostOf(
 
     const register = entry.outcome
     if (register === undefined || register.value !== 'lost') continue
+    // F1: a container's unit is a flat `1` — see this file's header.
+    const units = container ? 1 : pieceCountOf(entry, trip, state)
     candidates.push({
       entryId: entry.id,
       personId: null,
       gearId,
       gearName,
       register,
-      // F1: a container's unit is a flat `1` — see this file's header.
-      units: container ? 1 : pieceCountOf(entry, trip, state),
+      units,
+      // Ruling H2, and the Kind gate is stated here so the sheet never
+      // asks: only a Counted Entry prints a quantity beside its name. A
+      // container is excluded even when its Gear is Counted, for F1's own
+      // reason — its unit is a flat `1`, so a printed `×N` would contradict
+      // the count it contributes.
+      count: kind === 'counted' && !container ? units : null,
     })
   }
 
@@ -1182,6 +1207,7 @@ export function standingLostOf(
       personId: candidate.personId,
       gearName: candidate.gearName,
       units: candidate.units,
+      count: candidate.count,
     })
   }
   return result

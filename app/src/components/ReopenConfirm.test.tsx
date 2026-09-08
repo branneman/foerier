@@ -264,6 +264,49 @@ async function aClosedTripWithTwoStandingLost(): Promise<Seeded> {
 }
 
 /**
+ * **Ruling H2's third form.** A Counted Entry states its units after its
+ * name, `GAS CANISTER 450 ×2`, so the block's head count and its items add
+ * up in the reader's eye — one Counted Entry bringing ×2 beside a Single is
+ * `▲ 3 STILL UNACCOUNTED`, and without the `×2` the reader sees two names
+ * under a count of three.
+ */
+async function aClosedTripWithCountedStandingLost(): Promise<Seeded> {
+  const store = createHouseholdStore({
+    log: inMemoryOpLog(),
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  store.getState().emit(
+    gearRecorded(GEAR, {
+      name: 'Gas canister 450',
+      container: false,
+      kind: 'counted',
+    }),
+  )
+  store.getState().emit(gearOwnedCountSet(GEAR, 6))
+  store.getState().emit(
+    gearRecorded(TENT, {
+      name: 'Tent',
+      container: false,
+      kind: 'single',
+    }),
+  )
+  store.getState().emit(tripCreated(TRIP, 'Tessin 2025'))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-gas', { from: 'depot', gearId: GEAR }))
+  store.getState().emit(tripEntryBringCountSet(TRIP, 'e-gas', 2))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-gas', 'lost'))
+  store
+    .getState()
+    .emit(tripEntryAdded(TRIP, 'e-tent', { from: 'depot', gearId: TENT }))
+  store.getState().emit(tripOutcomeSet(TRIP, 'e-tent', 'lost'))
+  store.getState().emit(tripPhaseMoved(TRIP, 'closed'))
+  await store.getState().drained()
+  return { store, trip: () => store.getState().state.trips[TRIP]! }
+}
+
+/**
  * `TRIP` closed holding all three at once — the standing lost Piece
  * (`aClosedTripWithStandingLost`), the consumed reduction
  * (`aClosedTripWithConsumed`) and the clash with `OTHER_TRIP`
@@ -448,7 +491,7 @@ describe('the reopen confirm', () => {
     renderConfirm(seeded, { to: 'unpack' })
 
     expect(screen.getByTestId('reopen-unaccounted')).toHaveTextContent(
-      '1 STILL UNACCOUNTED — HEADLAMP, K · ▲ LOST',
+      '▲ 1 STILL UNACCOUNTED — HEADLAMP, K',
     )
   })
 
@@ -461,18 +504,37 @@ describe('the reopen confirm', () => {
   })
 
   /**
-   * **Multi-item separator, ruled on review.** `·` divides items, and
-   * `▲ LOST` trails the whole block once rather than once per item —
-   * repeating it per item (joining whole `NAME · ▲ LOST` segments on the
-   * same `·` used between items) flattens the grammar's two levels and
-   * leaves no way to see where one item ends and the next begins.
+   * **Ruling H2 — the mark leads, and `·` then has one job.** The block's
+   * own word already says lost, so a trailing `▲ LOST` said it twice; the
+   * head is where every other standing line in the app carries the mark.
+   * `·` divides items and the comma divides a gear name from its Person
+   * inside one item — two levels of grammar, one glyph each, which the
+   * first draft's `HEADLAMP, K · ▲ LOST · TENT · ▲ LOST` flattened.
    */
-  it('joins multiple items on ·, with one trailing ▲ LOST', async () => {
+  it('leads with ▲ and joins items on ·, never a trailing ▲ LOST', async () => {
     const seeded = await aClosedTripWithTwoStandingLost()
     renderConfirm(seeded, { to: 'unpack' })
 
+    const block = screen.getByTestId('reopen-unaccounted')
+    expect(block).toHaveTextContent(
+      '▲ 2 STILL UNACCOUNTED — HEADLAMP, K · TENT',
+    )
+    expect(block.textContent).not.toContain('▲ LOST')
+  })
+
+  /**
+   * **Ruling H2, the Counted form.** The head count is units and a Counted
+   * item names its own, so the two agree; a Single names one thing and
+   * carries nothing. Which items print a quantity is `standingLostOf`'s
+   * call — it hands back `count` non-null for exactly the Kind that splits
+   * by quantity (D1's encoding), so this screen never asks a Kind.
+   */
+  it('states units after a Counted item’s name, and nothing after a Single’s', async () => {
+    const seeded = await aClosedTripWithCountedStandingLost()
+    renderConfirm(seeded, { to: 'unpack' })
+
     expect(screen.getByTestId('reopen-unaccounted')).toHaveTextContent(
-      '2 STILL UNACCOUNTED — HEADLAMP, K · TENT · ▲ LOST',
+      '▲ 3 STILL UNACCOUNTED — GAS CANISTER 450 ×2 · TENT',
     )
   })
 
