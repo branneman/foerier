@@ -295,6 +295,21 @@ Nine decisions the S9b implementation must take and no board reaches — §5e's 
 - **D8 — drawn: an over-claimed home count floors at `×0 THERE`, and the card's footer turns ▲.** A negative count of things on a shelf is not a fact about the shelf; it is a fact about the claims, and the ledger states it where it belongs — the footer, which cannot say *both true at once* when they are not: `▲ CLAIMED ×4 · OWNED ×2` + `RESOLVE`, routing per D7. Not a new door: the unaccounted variant already puts ▲ + `RESOLVE` on this card, and an over-claim is a Whereabouts fact — claims exceeding supply means *where* has no answer. Trip rows keep their honest `×2 OUT` each. `COUNT`'s chips draw the same numbers as the rows — `×0 ⌂ CRATE B · ×2 ▸ ALPS 2026 · ×2 ▸ VOSGES` — and carry no ▲ of their own: one screen, one ▲, one door. The one-slot surfaces read `▲ 2 TRIPS` (glyph = world, Components §11; word = B2's count). `×0 THERE` stays legitimate on Counted gear; D1's objection was to Single, which has no quantity.
 - **D9 — blessed: the two list rows and the table, drawn once.** The Depot 2-line row's whereabouts slot takes the column string at column density, amber (`▸ ALPS 2026 · CAR`, `▸ 2 TRIPS`, `▲ 2 TRIPS`), and the meta keeps the **home** path, muted, unchanged whether the gear is out or not. Find's plain 2-line row is the same row with the meta-slot swap (Components §03) and gives the same answer, in the order a Quartermaster in a garage needs it: *it is in the car; it lives in Crate B*. The Depot table's `HOME` column is the home path in every case; `WHEREABOUTS` is the only column the trip world reaches. This is why D1's one-slot answer costs nothing: the row itself is the split.
 
+**Written by code while S12 was built, not by the round — keep these through
+the next regeneration** (the slice spec's §11 argues each in full). Three
+decisions I1–I27 do not reach, all copy or treatment:
+
+- **`1 NOTE`, singular.** I3 fixes `4 NOTES` and F5's `3 NOTES · 2 TO REVIEW`;
+  neither states the one-note case, and `1 NOTES` is not a thing the ledger
+  voice would write. Both bands inflect. `1 TO REVIEW` inflects with it.
+- **F5's card at zero notes reads `0 NOTES.` and nothing else.** I18 gives the
+  trip screen's panel a second line — *Notes are reviewed at the unpack pass.*
+  — which on F5 would state where the reader already is. The card keeps its
+  band and its `+ NOTE`, since I20 renders it wherever F5 has a list.
+- **A discarded Note's strike covers the text alone, never its meta line.**
+  I16 gives it the RETIRED grammar; the meta beneath it ends `· DISCARDED`,
+  and striking that would strike the word explaining the strike.
+
 **Where these rulings contradict a doc, plainly:** §2's S9b paragraph named the sentinel `CONTAINER: LOOSE` — this file is the authority, so the sentence is amended in place (D4), and `S9 Round` §08's card and §09's string list, which draw the same chip, now carry a `retired` annotation, no pixel moved; Components §04 draws only the dashed rung and needs nothing. §4's *one chip per Person* and §6's *one per Person* are narrowed to *Participant* in place (D6); frame 07 stands. Components §11's whereabouts-words ruling says the word after the glyph names the residence, and `MIXED` (D2) names the absence of one — §11 wants a line saying the container segment may read `MIXED`, named here and drawn at the next Components pass. No spec or domain doc is contradicted: D3 walks the containment tree S9a stores, D6 reads Participants, D7 and D8 read `overClaims`, already derived for the band, and the glossary is protected by D4 rather than stretched.
 
 ### 5g. S9 round 4 — the leftovers the code took, eleven rulings (`S9 Round 4 - The Leftovers the Code Took.dc.html`)

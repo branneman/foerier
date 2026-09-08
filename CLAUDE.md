@@ -14,7 +14,7 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 ## Current status
 
 **Code has started.** Every slice of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
-through S11 has landed:
+through S12 has landed (S13 is in flight beside it):
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
   `ui`; `landing` deferred), the Tier 0 toolchain and pre-commit hook, the test
@@ -1063,6 +1063,51 @@ The dated spec is not rewritten —
   exists to end, restated as a lie in the copy of the screen that ends it. It
   reads `max(consumedCount − posted, 0)` now, and names the same count on
   both sides when the re-close owes nothing.
+
+**S12, trip notes, has landed** (story 12). Two op types —
+`trip.note_posted`, `trip.note_kept` — the Trip's second nested entity map
+(`notes.<note_id>`), `shared/src/selectors/note.ts`, the `NOTES` panel, the
+`/trips/:id/note` composer with its `ABOUT` picker, and F5's review card. No
+endpoint, no migration, no `ui/` change, and the slicing engine untouched.
+Every design question was ruled before a line of it existed — see
+`docs/design/README.md` **§5l** (I1–I27), [its
+spec](docs/specs/2026-09-08-trip-notes.md), whose **§11 records what moved
+while it was being built**, and
+[§12.20](docs/architecture-design.md#1220-consequences-of-s12-trip-notes).
+
+**S12 and S13 are the one pair §8.6 lets run at once**, and the shell that
+makes that safe landed on `main` before either branch: `TripPanels`, the
+element ruling I7's `1fr 1fr` requires, rendering `null` when it holds no
+children. Rulings **I1–I8** are the shared set, **I9–I20** S12's and
+**I21–I27** S13's.
+
+**Four things about S12 are worth knowing before touching Notes:**
+
+- **`kept` is the first register in this codebase whose absence is a *state*,
+  not a default.** `phaseOf` reads `draft`, `ownerOf` reads `SHARED`,
+  `statusOf` reads `not_packed`, `stageOf` reads `home`, `postedOf` reads `0`
+  — `noteKeptOf` answers `boolean | undefined`, `kindOf`'s shape, because
+  *unreviewed* is a thing the surfaces draw (I13). The rule that decides
+  between the two: a default when every reader treats absence alike, a third
+  answer when a surface has something distinct to say about *nobody has
+  addressed this yet*.
+- **`entry_id` is optional but its register is not nullable.** Sync §1.3's
+  *"`null` clears"* governs a register whose declared type includes `null`,
+  and this one's does not — so a peer's explicit `null` leaves the reference
+  standing, and the authoring builder **omits the key** rather than sending
+  one. No op detaches a Note from its Entry, so honouring a `null` would
+  implement the clear ruling I10 declined.
+- **A Note can hold a `kept` and no `text`, and the reader is what excludes
+  it.** The two ops address different registers on one entity path, so a
+  peer's review can arrive before the post — the *reader gates, not reducer
+  gates* rule for the fourth time. `notesOf` drops such a Note from the list
+  **and** from both counts; an exclusion applied to the list alone leaves a
+  band counting rows it does not draw.
+- **Notes do not join the close gate** (I15), and F5's `record` prop does not
+  reach the review card (I17). Invariant 18 names *"every entry and every
+  per-person piece"* and means the Depot; 19 and G6 freeze **outcomes**. Both
+  have their own tests, and the second is the one most likely to be broken
+  later by analogy.
 
 Four conventions the code now carries that are easy to trip over:
 

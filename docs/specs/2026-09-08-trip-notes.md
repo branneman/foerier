@@ -283,3 +283,87 @@ turns out to be a new shape rather than an instance of an existing one;
 the shipped authority, and anything this slice's code decides that no ruling
 reached goes there, not only into this file. That is S9 round 4's lesson: a
 dated spec is invisible to the next design round.
+
+## 11. What changed during implementation
+
+Recorded here rather than edited into the sections above, per
+`trips-and-phases.md` §10's precedent: a dated spec is left as it was written,
+and what moved lives in its own section. What belongs to the *next design
+round* is in `design/README.md` §5l instead — S9 round 4's lesson, and the
+reason §10 says this file is not the only place a code decision may live.
+
+### 11.1 `null` does not clear `entry_id`, and §2 said it did
+
+The spec's §2 originally read *"an absent field leaves the register alone, and
+`null` clears it"*, citing [sync §1.3](../sync-protocol.md). That is §1.3's
+rule about a register **whose declared type includes `null`**, and
+`NoteState.entryId`'s does not. Folded through `writeIfPresent`, an explicit
+`null` is read as `null`, matches no branch, and leaves the register standing.
+
+The sentence is corrected in place — not left standing with a note — because
+it described the register's contract rather than a decision taken later, and a
+reader reaching §2 for the contract would have got the wrong answer. The
+argument that makes it a decision rather than an accident is now stated with
+it: no op in the catalogue detaches a Note from its Entry, so honouring a
+`null` would be implementing the clear ruling I10 declined. `sync-protocol.md`
+§4.4 carries the same note for a peer author, plus the authoring half — the
+key is **omitted**, never sent as `null`.
+
+### 11.2 Task 3 arrived with Task 1, because a guard made it
+
+`convergence.test.ts` carries an assertion that every op type `reduce.ts`
+folds is also **generated** by `arbSpec`, read out of the dispatch table's own
+source. Adding two handlers turned it red immediately, so the plan's Task 3
+could not be deferred past Task 1 and the two landed in one commit.
+
+That is the guard doing exactly its job — it exists because from S8 until it
+was written, seven shipped op types were folded, hand-fixtured, and generated
+by nothing, while the docstring above them claimed otherwise. Worth knowing
+for **S13**, which will hit the same wall on its first commit: two new
+handlers means a new `arbSpec` arm in the same file. The two slices touch
+`convergence.test.ts` in different places (a fourth arm each, and their own
+named cases at the end), so it is a textual conflict rather than a logical one
+— but it is the one file §8.6's *disjoint registers* argument does not by
+itself keep them out of.
+
+`arbTripNoteSpec` is a **fourth arm** beside root, entry and piece rather than
+two more branches of the root, for `arbTripPieceSpec`'s own stated reason: a
+nested entity map earns the level's share, instead of a share decided by how
+many op types the root happens to have. Post and review are separate branches
+inside it, or the case that actually matters — a review landing on a Note this
+replica has not seen posted — would never be drawn.
+
+### 11.3 The row became its own component when F5 needed it
+
+§4 and §6 each describe a Note's anatomy, and the first implementation drew it
+twice. Task 6 folded both onto one `NoteRow` (`app/src/components/`), whose
+optional `review` prop is the F5 card's two writes **grouped** —
+`OverClaimBand`'s `SettleRoutes` precedent, where the prop's absence *is* the
+read-only rendering rather than a degraded one.
+
+The reason to state it here: ruling I11 describes one anatomy, and two copies
+of it would have been two places for `· KEPT` to be spelled differently — the
+same failure `headerlessMeta` produced at the S10 round 2 closeout, where a
+restated rule was not a shared one and PERSON and ALL went on drawing `×0
+BACK` for a commit.
+
+### 11.4 F11's own test grew rather than weakened
+
+`Unpack.test.tsx` asserted that the close card's `previousElementSibling` is
+the groups region — F11's *last card* stated structurally. S12 puts a card
+between them, so the assertion had to move.
+
+It now pins the whole chain — groups → notes card → close card, and the close
+card's `nextElementSibling` is `null`. Relaxing it to name the new neighbour
+alone would have traded *last card* for *next to the notes card*, which is the
+weaker claim the original test was written to avoid.
+
+### 11.5 The composer's chosen Entry is read back, not held
+
+§5 says `entry_id` is set at post. What it does not say is what happens when
+the Entry is removed by a peer **while the composer is open**. The chosen id is
+resolved through `visibleEntry` on every render rather than held as a resolved
+Entry, so such a removal falls the reference back to `The trip` — the same
+guard `entriesOf` applies to the picker's own list, applied to the value it
+produced. A composer holding a row the gear list no longer draws would post a
+Note about a line nobody can see.

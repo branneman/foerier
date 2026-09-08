@@ -808,6 +808,16 @@ See §8.4 for why story 11 is two slices and why the seam falls here.
   — concurrent Notes, both kept.
 - **Usable?** "Ran low on gas" is captured where it will be read again.
 
+**Landed.** Both ops, `shared/src/selectors/note.ts`, the `NOTES` panel, the
+`/trips/:id/note` composer with its `ABOUT` picker, and F5's review card. Two
+sentences above turned out slightly off and are corrected here rather than in
+place: *"against an Entry"* is the **composer's own `ABOUT` row**, never an
+affordance on the Entry's row (ruling I10 — F4 and F5 rows keep the two targets
+they have); and the capture is a **screen, not a sheet** (I9), because the
+picker has to stack on it. The Tier 2 line stands as written and gained a
+second case, keep-against-discard on one register. See §12.20 and
+[the slice spec](specs/2026-09-08-trip-notes.md).
+
 **S13 — Pre-trip tasks.** *Delivers 15.*
 
 Story 15 is tagged "deliberately the last MVP story; first to move to Later".
@@ -999,7 +1009,14 @@ What genuinely parallelises:
   (`notes.<id>` vs `tasks.<id>`, [sync §3.7](sync-protocol.md)) and disjoint
   panels. Their only collision is the Trip screen shell, which is a layout
   conflict rather than a logic one. They can run concurrently if the shell is
-  settled first.
+  settled first. **Spent, and the condition turned out to have a
+  code consequence this bullet does not name** (§12.20): "settled" is not only
+  a set of rulings, it is `TripPanels` — the element ruling I7's `1fr 1fr`
+  requires — landed on `main` before either branch. There is also a **second**
+  shared file the disjoint-registers argument does not reach:
+  `convergence.test.ts`, whose completeness guard turns red for each slice's
+  new op types. Both are textual conflicts, and both are avoidable only by
+  going first.
 - **`landing/`** is fully independent — it depends only on `ui/`, deploys
   separately to GitHub Pages, and carries no ops, no auth, and no household data.
   It can be built at any point by anyone.
@@ -2796,3 +2813,55 @@ decisions its code took that no board reached.
   component with one slot for two registers cannot be seen to be wrong until
   something needs both**, and the first caller that does is where the whole
   app's accumulated drift arrives at once.
+
+### 12.20 Consequences of S12: trip notes
+
+- **The parallel build's real cost was one element, not one file.** §8.6 rests
+  the S12/S13 concurrency on disjoint register namespaces, and that half held
+  exactly as argued — `notes.<id>` and `tasks.<id>` never meet in `reduce.ts`,
+  `state.ts` or a selector. What the plan did not name is that ruling I7 lays
+  the two panels `1fr 1fr` above a 40rem container, and **side by side means a
+  real parent element**: a wrapper both slices need is a wrapper neither may
+  invent. `TripPanels` therefore landed on `main` alone, before either branch,
+  rendering `null` when it has no children — ruling I2 held structurally
+  rather than by two branches agreeing to behave. The general shape:
+  *disjoint data does not imply disjoint layout*, and a design round that
+  settles two surfaces together should be read for the element that has to
+  exist before either can.
+- **`kept` is the codebase's first register whose absence is a state rather
+  than a default.** Five selectors say *an absent register reads X* —
+  `phaseOf` reads `draft`, `ownerOf` reads `SHARED`, `statusOf` reads
+  `not_packed`, `stageOf` reads `home`, `postedOf` reads `0`. `noteKeptOf`
+  says something different: absent is **unreviewed**, a third thing the
+  surfaces draw, so it answers `boolean | undefined` — `kindOf`'s shape, not
+  `ownerOf`'s. The rule the next slice should carry is the one that decides
+  between them: an absent register gets a default when every reader would
+  treat it alike, and gets a third answer when a surface has something
+  distinct to say about *nobody has addressed this yet*. Getting it wrong in
+  the defaulting direction is the expensive one — it makes an unreviewed Note
+  indistinguishable from a discarded one, and no test of either surface would
+  notice.
+- **A Note whose review outran its post is legal, and it is the third time
+  this codebase has put the gate on the way out.** `TagString`, invariant 6's
+  `bring_count` and `stage` xor `status` are the precedents; this is the same
+  shape once more, and the *reason* is the same one every time — the two ops
+  address different registers on one entity path and neither waits for the
+  other, so a reducer that gated would make the fold order-dependent.
+  `notesOf` excludes such a Note from the list **and** from both counts,
+  which is the part worth stating: an exclusion applied to the list alone
+  leaves a band counting rows it does not draw.
+- **The convergence tier's completeness guard is now load-bearing for
+  planning, not just for correctness.** It asserts that `arbSpec` generates
+  every op type `reduce.ts` folds, so S12's first commit could not land
+  without its convergence arm — the plan's Task 3 was pulled forward by the
+  suite rather than by a decision. That is the guard working, and it has a
+  scheduling consequence worth knowing: **`convergence.test.ts` is the one
+  file S12 and S13 both must edit**, which §8.6's disjoint-registers argument
+  does not by itself keep them out of. A fourth and fifth generator arm and
+  two sets of named cases is a textual conflict, not a logical one — but it is
+  the conflict, and it is where the second branch to merge will feel it.
+- **Story 12 is delivered and its promotion clause is not, which is the seam
+  working as designed.** *Promote a Note* (stories 17–19) needs destinations
+  that do not exist; the entry reference **is** the join, and the panel draws
+  no `LATER` tag and no ghost row for it (I19). A Note about an Entry already
+  carries everything a promotion would read.

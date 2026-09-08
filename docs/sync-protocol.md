@@ -686,6 +686,27 @@ container's own residence register is the one every reader consults.
 | `trip.note_posted` | `{note_id, text, entry_id?}` | Creates the Trip note, optionally *about* one Entry | Trip note posted | 12 |
 | `trip.note_kept` | `{note_id, kept: bool}` | `true` = kept as reference, `false` = discarded. Reviewed at the unpack pass | Note kept / discarded | 12 |
 
+**`entry_id` is the catalogue's first optional reference on a register that is
+deliberately *not* nullable** (S12). §1.3's *"`null` clears"* is a rule about a
+register whose declared type includes `null`; `NoteState.entryId`'s does not,
+so an explicit `null` from a peer is read, matched against no branch of
+`writeIfPresent`, and leaves the register standing. That is a decision rather
+than an omission: no op here detaches a Note from its Entry — the reference is
+set at post and addressed by nothing after — so honouring a `null` would be
+implementing a clear the catalogue does not define. The authoring side keeps
+the other half of the discipline and **omits the key entirely** for a Note
+about the Trip, never sending `entry_id: null`.
+
+**A Note carrying no `text` is legal, and it is the reader that excludes it.**
+`trip.note_kept` and `trip.note_posted` address different registers on one
+entity path, so a peer's review can arrive first and the reducer creates the
+Note either way — the same tolerant-reader shape as `trip.entry_added`'s
+sourceless Entry (§4.4) and the third instance of the *reader gates, not
+reducer gates* rule §4.4 already carries for `bring_count` and for
+`stage` xor `status`. `notesOf` (`shared/src/selectors/note.ts`) is the one
+place that says so, and it excludes such a Note from the list **and** from
+every count, so a band can never state a total its own rows do not reach.
+
 **Closing**
 
 | Type | Payload | Effect on folded state | Domain §9 | Story |
