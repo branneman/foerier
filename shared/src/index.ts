@@ -194,6 +194,9 @@ export {
   whereaboutsText,
 } from './selectors/whereabouts.ts'
 
+export type { NoteView } from './selectors/note.ts'
+export { noteCounts, noteKeptOf, notesOf } from './selectors/note.ts'
+
 export type { ListTotals } from './selectors/entry.ts'
 export {
   bringCountOf,
