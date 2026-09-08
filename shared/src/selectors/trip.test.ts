@@ -14,6 +14,7 @@ import {
   tripDeleted,
   tripParticipantAdded,
   tripParticipantRemoved,
+  tripPhaseMoved,
   tripRenamed,
 } from '../authoring.ts'
 import { emptyState, fold } from '../reduce.ts'
@@ -30,6 +31,7 @@ import {
   phaseNext,
   phaseOf,
   PHASES,
+  sourceTrips,
   tripLabel,
   tripNameOrUnnamed,
   tripSections,
@@ -363,6 +365,83 @@ describe('visibleTrips', () => {
  * S14's J5: the trip screen draws two different sentences for the two ways a
  * Trip id can fail to name a Trip, so the fold has to tell them apart.
  */
+/**
+ * S14's source picker. The ids below are real UUIDv7 shapes: the first 48
+ * bits are a big-endian millisecond timestamp, so `OLDER < NEWER < NEWEST`
+ * as plain strings *because* they were minted in that order — which is the
+ * whole mechanism `sourceTrips` relies on.
+ */
+describe('sourceTrips', () => {
+  const OLDER = '01920000-0000-7000-8000-000000000001'
+  const NEWER = '01930000-0000-7000-8000-000000000002'
+  const NEWEST = '01940000-0000-7000-8000-000000000003'
+
+  it('orders newest-created first', () => {
+    const state = depot(
+      aTrip({ id: OLDER, name: 'Vosges 2024' }),
+      aTrip({ id: NEWEST, name: 'Alps 2026' }),
+      aTrip({ id: NEWER, name: 'Tessin 2025' }),
+    )
+    expect(ids(sourceTrips(state))).toEqual([NEWEST, NEWER, OLDER])
+  })
+
+  it('offers closed, active and draft Trips alike', () => {
+    // J8: copying only *reads* the source, so nothing about a Trip's phase
+    // bears on whether its list is worth copying. S7's `TRIP` dimension took
+    // the same view of membership.
+    const state = depot(
+      aTrip({ id: OLDER, name: 'Vosges 2024', phase: 'closed' }),
+      aTrip({ id: NEWER, name: 'Alps 2026', phase: 'pack_out' }),
+      aTrip({ id: NEWEST, name: 'Next one' }),
+    )
+    expect(ids(sourceTrips(state))).toEqual([NEWEST, NEWER, OLDER])
+  })
+
+  it('does not re-order when a Trip is renamed or its phase moves', () => {
+    // **The assertion this selector exists for.** It fails against every
+    // ordering that reads a register's stamp, because the only two registers
+    // `trip.created` seeds are `name` and `phase` and both of them move
+    // afterwards. Ruling J8 asks for `trip.created`'s clock; the fold does
+    // not have one, and the id does.
+    const created = [
+      aTrip({ id: OLDER, name: 'Vosges 2024' }),
+      aTrip({ id: NEWEST, name: 'Alps 2026' }),
+    ]
+    const before = ids(sourceTrips(depot(...created)))
+    const after = ids(
+      sourceTrips(
+        foldAt(DEFAULT_HLC_MS + 60_000, [
+          ...created,
+          [tripRenamed(OLDER, 'Vosges 2024 — redux')],
+          [tripPhaseMoved(OLDER, 'closed')],
+        ]),
+      ),
+    )
+    expect(after).toEqual(before)
+  })
+
+  it('omits a deleted Trip', () => {
+    const state = depot(
+      aTrip({ id: OLDER, name: 'Vosges 2024' }),
+      aTrip({ id: NEWEST, name: 'Alps 2026' }),
+      [tripDeleted(OLDER)],
+    )
+    expect(ids(sourceTrips(state))).toEqual([NEWEST])
+  })
+
+  it('still orders a Trip whose id did not come from systemIdSource', () => {
+    // A peer on another build, or a hand-shaped fixture. It sorts somewhere
+    // arbitrary and sorts there on every replica, which is all a replicated
+    // list needs — no reader breaks and no order is replica-dependent.
+    const foreign = 'zzz-not-a-uuid'
+    const state = depot(
+      aTrip({ id: OLDER, name: 'Vosges 2024' }),
+      aTrip({ id: foreign, name: 'From elsewhere' }),
+    )
+    expect(ids(sourceTrips(state))).toEqual([foreign, OLDER])
+  })
+})
+
 describe('tripStandingOf', () => {
   it('reads a folded, untombstoned Trip as live', () => {
     const state = depot(aTrip({ id: 't1' }))

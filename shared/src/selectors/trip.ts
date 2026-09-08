@@ -421,6 +421,60 @@ export function visibleTrips(state: HouseholdState): readonly TripState[] {
 }
 
 /**
+ * Every Trip that may serve as a template — S14's source picker, newest
+ * created first.
+ *
+ * ## The order is the id, and that is a correction to ruling J8's wording
+ *
+ * J8 asks for *`trip.created`'s clock, newest first*, and **the fold has no
+ * such stamp.** `trip.created` seeds exactly two registers, `name` and
+ * `phase`, and both of them move afterwards — `name` on a `trip.renamed`,
+ * `phase` on every `trip.phase_moved`. Ordering by either would re-shuffle
+ * this list the moment somebody renamed a Trip or moved its phase, which is
+ * a symptom a household would actually meet rather than a theoretical one.
+ * This is S13's I24 one slice later: where a board's words imply a mechanism
+ * the fold cannot provide, the slice owes the corrected reading.
+ *
+ * The corrected reading is the Trip's **own id**. Entity ids come from
+ * `systemIdSource`, which is UUID **v7** — a 48-bit big-endian millisecond
+ * timestamp in the most significant bits, and the canonical hex string
+ * preserves that order lexicographically. So descending id is newest-created
+ * first: total, replica-identical, and free of any register read.
+ *
+ * It is also *more* faithful to J8's words than a stamp would be. The id is
+ * minted in the same tick as `trip.created` on the authoring Device, while
+ * an HLC may already have been advanced by a peer's clock (§2.5's `max`) —
+ * so the id carries the authoring moment and the stamp carries the fold's.
+ * And it has no missing case: `writeTrip` creates the entity for *any* Trip
+ * op, so a Trip that exists only because a `trip.renamed` overtook its
+ * creation still has a v7 id and still sorts.
+ *
+ * **Clock skew does not matter; agreement does.** Two Devices with skewed
+ * wall clocks mint ids whose order is not true creation order — but it is
+ * the *same* order on every replica, which is the only thing a replicated
+ * list needs. `notesOf` takes the identical bargain with HLC stamps.
+ *
+ * **A foreign id still sorts.** An id from another build or a hand-shaped
+ * fixture files somewhere arbitrary and files there everywhere, so no reader
+ * breaks and no order is replica-dependent.
+ *
+ * The rejected alternative is the minimum stamp across the Trip's registers:
+ * sound, since a min cannot move once the earliest op has folded, but a scan
+ * per Trip and a *proxy* for the id's own timestamp rather than the thing.
+ *
+ * **Every visible Trip is offered** — closed, active and Draft alike (J8, on
+ * S7's `TRIP`-dimension precedent, and because copying only *reads* the
+ * source). Story 14's *a past one* is read as the motivating case rather
+ * than a fence; the round flagged that wording to requirements rather than
+ * resolving it silently.
+ */
+export function sourceTrips(state: HouseholdState): readonly TripState[] {
+  return [...visibleTrips(state)].sort((a, b) =>
+    a.id < b.id ? 1 : a.id > b.id ? -1 : 0,
+  )
+}
+
+/**
  * What a Trip id means to this fold — {@link visibleTrips}' predicate asked
  * about one id, with the two ways of *not* being visible told apart.
  *

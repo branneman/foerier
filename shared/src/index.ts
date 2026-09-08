@@ -302,6 +302,7 @@ export {
   phaseNext,
   phaseOf,
   PHASES,
+  sourceTrips,
   tripLabel,
   tripNameOrUnnamed,
   tripSections,
