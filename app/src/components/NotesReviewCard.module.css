@@ -1,27 +1,24 @@
 @layer components {
-  .panel {
+  /* The close card's own surface, one card up — `Unpack.module.css`'s
+     `.closeCard`, matched rather than re-derived, so the list's last two
+     cards read as a pair rather than as two ideas about what a card is. */
+  .card {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-card);
+    background: var(--color-bg-surface);
   }
 
-  /*
-   * The `GEAR LIST` band's anatomy, borrowed rather than re-derived
-   * (`Trip.module.css`'s `.gearListBand`): label left, trailing group right,
-   * `space-between` holding them apart, and the same hairline under it so the
-   * two bands on one screen read as one system.
-   */
   .band {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    padding-block: var(--space-4);
-    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+    gap: var(--space-12);
   }
 
-  /* `flex: none` + `nowrap` for `.gearListLabel`'s stated reason: without
-     them a width deficit shrinks both flex items in proportion and wraps
-     `NOTES` itself rather than landing on the trailing slot. */
   .label {
     flex: none;
     white-space: nowrap;
@@ -41,11 +38,17 @@
   }
 
   .count {
-    font: var(--text-data) var(--font-mono);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
     color: var(--color-ink-muted);
   }
 
-  /* No `›`: that glyph marks a sheet, and `/trips/:id/note` is a screen. */
+  /* `6 OPEN`'s own treatment on the close summary: the segment naming the
+     work left is full ink, the rest of the line muted. */
+  .toReview {
+    color: var(--color-ink-primary);
+  }
+
   .compose {
     font-family: var(--font-mono);
     font-size: 0.6875rem;
@@ -53,8 +56,6 @@
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
     text-decoration: none;
-    /* The hit extension, clamped to the band (§5b O): the link is drawn at
-       its text size and the target reaches 48 without painting anything. */
     position: relative;
   }
 
@@ -68,7 +69,7 @@
   .notes {
     display: flex;
     flex-direction: column;
-    gap: var(--space-12);
+    gap: var(--space-16);
     list-style: none;
     margin: 0;
     padding: 0;
@@ -77,12 +78,6 @@
   .empty {
     margin: 0;
     font: var(--text-body) var(--font-ui);
-    color: var(--color-ink-primary);
-  }
-
-  .source {
-    margin: 0;
-    font: var(--text-secondary) var(--font-ui);
     color: var(--color-ink-muted);
   }
 }

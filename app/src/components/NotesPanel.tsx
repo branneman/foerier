@@ -1,8 +1,8 @@
-import { entryLabel, noteCounts, notesOf, type NoteView } from '@foerier/shared'
+import { noteCounts, notesOf } from '@foerier/shared'
 import { Link } from 'wouter'
 
-import { formatDateTime } from '../format'
 import { useHousehold } from '../household/store'
+import { NoteRow } from './NoteRow'
 import styles from './NotesPanel.module.css'
 
 /**
@@ -80,64 +80,5 @@ export function NotesPanel({ tripId }: { tripId: string }) {
         </ul>
       )}
     </section>
-  )
-}
-
-/**
- * One Note: the text whole and unclamped in ink, over a mono meta line
- * (I11).
- *
- * **No byline.** The envelope carries a `device_id` and a Device is not a
- * Person, so a name here would be the `API FIELD` rule broken — copy blocked
- * on a field that does not exist is omitted, never faked.
- *
- * **A discarded Note is struck and stays** (I16). It is still counted in
- * `N NOTES` and still on screen; what `false` costs it is S14's template
- * copy, not its place in the record.
- */
-function NoteRow({ note, tripId }: { note: NoteView; tripId: string }) {
-  const state = useHousehold((depot) => depot.state)
-  const entry =
-    note.entryId === undefined
-      ? undefined
-      : state.trips[tripId]?.entries?.[note.entryId]
-
-  // I10: the reference reads on the Note alone, and a removed Entry keeps
-  // reading — the pointer is an id, and the Entry's tombstone says nothing
-  // about a sentence somebody wrote. An Entry this replica has not folded at
-  // all takes the same path, since `entryLabel` needs one to name.
-  const about =
-    note.entryId === undefined
-      ? undefined
-      : entry === undefined
-        ? undefined
-        : entryLabel(entry, state).toUpperCase()
-
-  return (
-    <li
-      className={
-        // `patterns.md` §6.7: a modifier class for a boolean, `data-*` only
-        // for an enumeration. `kept` is a triple in the selector but two
-        // renderings here — struck, or not — so the class is the honest
-        // encoding.
-        note.kept === false
-          ? `${styles['note']} ${styles['discarded']}`
-          : styles['note']
-      }
-    >
-      <p className={styles['text']}>{note.text}</p>
-      <p className={styles['meta']}>
-        {[
-          note.postedAtMs === undefined
-            ? undefined
-            : formatDateTime(new Date(note.postedAtMs)),
-          about === undefined ? undefined : `ABOUT: ${about}`,
-          note.kept === true ? 'KEPT' : undefined,
-          note.kept === false ? 'DISCARDED' : undefined,
-        ]
-          .filter((segment) => segment !== undefined)
-          .join(' · ')}
-      </p>
-    </li>
   )
 }

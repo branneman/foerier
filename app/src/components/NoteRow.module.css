@@ -1,0 +1,64 @@
+@layer components {
+  .note {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .text {
+    margin: 0;
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+    /* The board draws the note whole — no clamp, no `more` affordance. A
+       Quartermaster's own sentence is the content, not a preview of it. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* I16: a discarded Note never vanishes — it takes the RETIRED grammar
+     (Foundations' Status Grammar: strikethrough, muted) and stays counted and
+     on screen. The line-through is on the text alone; the meta beneath it
+     already says `DISCARDED` in words. */
+  .discarded .text {
+    text-decoration: line-through;
+    color: var(--color-ink-muted);
+  }
+
+  .meta {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+  }
+
+  /* The settle-routes grammar the over-claim band already uses: accent mono
+     words on the row, not bordered buttons competing with the pills above. */
+  .routes {
+    display: flex;
+    gap: var(--space-16);
+    margin: 0;
+  }
+
+  .route {
+    border: 0;
+    padding: 0;
+    background: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    cursor: pointer;
+    /* Attention text rather than a button (§11's treatment, and §5b O's
+       third case): drawn at its text size, with the hit area floored to 48
+       by a non-painting `::after` clamped to the row it sits in. */
+    position: relative;
+  }
+
+  .route::after {
+    content: '';
+    position: absolute;
+    inset-block: calc((48px - 100%) / -2);
+    inset-inline: calc(var(--space-8) * -1);
+  }
+}

@@ -8,6 +8,7 @@ import {
   tripEntryAdded,
   tripEntryBringCountSet,
   tripEntryMoved,
+  tripNotePosted,
   tripOutcomeSet,
   tripParticipantAdded,
   tripPhaseMoved,
@@ -470,6 +471,10 @@ describe('the empty screen (F19)', () => {
     expect(
       screen.queryByRole('button', { name: /Close trip/ }),
     ).not.toBeInTheDocument()
+    // S12's card goes with them (ruling I20): it renders wherever F5 has a
+    // list, and here there is none. A `+ NOTE` beside `0 ENTRIES.` would be
+    // an affordance on a screen that has nothing to say.
+    expect(screen.queryByTestId('unpack-notes-card')).not.toBeInTheDocument()
   })
 
   it('keeps the title and the back link', async () => {
@@ -2089,13 +2094,21 @@ describe('the close card (F11, spec §4.7)', () => {
    * in `.screen`'s column", which a docked footer bolted on afterward would
    * also satisfy if it happened to share a parent.
    */
-  it('is the last card, immediately after the groups region — not a docked footer', async () => {
+  it('is the last card, after the groups region and S12’s notes card — not a docked footer', async () => {
     await renderUnpack(`/trips/${ALPS}/unpack`, ...closeCardScenario())
 
     const groups = screen.getByTestId('unpack-groups')
+    const notes = screen.getByTestId('unpack-notes-card')
     const card = screen.getByTestId('unpack-close-card')
 
-    expect(card.previousElementSibling).toBe(groups)
+    // The whole chain, not just one link. S12 put a card between these two
+    // (ruling I14 — *above* the close card, which stays the list's **last**
+    // card, F11), and asserting only `card.previousElementSibling` after
+    // that would pin the new neighbour while quietly losing the fact that
+    // both sit in the groups region's own column rather than in a footer.
+    expect(notes.previousElementSibling).toBe(groups)
+    expect(card.previousElementSibling).toBe(notes)
+    expect(card.nextElementSibling).toBeNull()
   })
 
   it('reads the four-segment summary exactly and gates the button while open > 0', async () => {
@@ -2133,6 +2146,37 @@ describe('the close card (F11, spec §4.7)', () => {
         'CLOSE WRITES THE CONSUMED REDUCTION. THE ARRANGEMENT AND EVERY OUTCOME ARE KEPT. LOST KEEPS ITS HOME SLOT.',
       ),
     ).toBeInTheDocument()
+  })
+
+  /**
+   * **S12's ruling I15 — notes do not join the gate.** Invariant 18 is exact
+   * about what closing requires: *"every entry and every per-person piece"*,
+   * and its purpose is the Depot. The close writes a consumed reduction and
+   * an outcome settles a claim; a Note writes nothing anywhere, so two
+   * unreviewed ones must leave the summary, the label and the `disabled`
+   * attribute exactly as they were.
+   *
+   * This is the assertion that fails the day somebody reads story 12's *"at
+   * the Unpack pass I review"* as a fourth condition on the gate.
+   */
+  it('closes past unreviewed notes, with the summary and the label untouched', async () => {
+    await renderUnpack(
+      `/trips/${ALPS}/unpack`,
+      ...finishedCloseCardScenario(),
+      tripNotePosted(ALPS, 'n1', 'Ran low on gas.'),
+      tripNotePosted(ALPS, 'n2', 'Warmer gloves.'),
+    )
+
+    expect(screen.getByTestId('unpack-notes-count')).toHaveTextContent(
+      '2 NOTES · 2 TO REVIEW',
+    )
+    // Unchanged, word for word, from the case directly above.
+    expect(screen.getByTestId('unpack-close-summary').textContent).toBe(
+      '4 BACK · 2 CONSUMED · 1 LOST · 0 OPEN',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Close trip' }),
+    ).not.toBeDisabled()
   })
 
   /**

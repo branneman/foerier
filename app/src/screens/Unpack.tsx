@@ -44,6 +44,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'wouter'
 
 import { HomePicker } from '../components/HomePicker'
+import { NotesReviewCard } from '../components/NotesReviewCard'
 import { overClaimGroups, OverClaimGroups } from '../components/OverClaimBand'
 // The standing band's own card paint (`.band`) — this screen renders it
 // facts-only, through `OverClaimGroups` directly rather than `OverClaimBand`
@@ -1592,6 +1593,15 @@ export function Unpack() {
               )}
             </div>
           )}
+
+          {/* S12's review card (§5l I14, I20): after the groups and
+              **directly above** the close card, which stays the list's last
+              card (F11). It renders on every F5 that has a list — gated, at
+              `open = 0`, and on a closed Trip — and is absent from the empty
+              branch above with everything else F19 withholds. It takes no
+              `closed`/`record` prop on purpose: invariant 19 freezes
+              outcomes, and a Note is not one (I17). */}
+          <NotesReviewCard tripId={trip.id} />
 
           {/*
            * The close card (F11, spec §4.7) — the list's last card at every
