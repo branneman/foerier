@@ -47,6 +47,8 @@ import {
   tripPieceRestored,
   tripPieceStatusSet,
   tripRenamed,
+  tripTaskAdded,
+  tripTaskTicked,
   type OpSpec,
 } from './authoring.ts'
 import { closeTrip, reHomeOnTheSpot, reopenTrip } from './gestures.ts'
@@ -63,6 +65,7 @@ import {
 } from './selectors/packing.ts'
 import { piecesOf } from './selectors/piece.ts'
 import { dimension } from './selectors/slice.ts'
+import { taskCounts, taskTickedOf, tasksOf } from './selectors/task.ts'
 import { isActive } from './selectors/trip.ts'
 import { tripContainmentView } from './selectors/tripContainment.ts'
 import {
@@ -160,6 +163,14 @@ const TRIP_IDS = [
  * together.
  */
 const ENTRY_IDS = ['e1', 'e2', 'e3'] as const
+
+/**
+ * S13's Pre-trip tasks, the same size as {@link ENTRY_IDS} and for the same
+ * reason: a pool small enough that two devices reliably reach the same
+ * `tasks.<id>` path, which is the only way `trip.task_ticked` ever contests
+ * anything.
+ */
+const TASK_IDS = ['k1', 'k2', 'k3'] as const
 
 /**
  * S12's notes, three for {@link ENTRY_IDS}' reason: with two Trips and three
@@ -307,6 +318,12 @@ const arbNoteText = fc.constantFrom(
   'Warmer gloves next time.',
 )
 const arbTripName = fc.constantFrom('Ardennes', 'Vosges', 'Sarek')
+const arbTaskId = fc.constantFrom(...TASK_IDS)
+const arbTaskText = fc.constantFrom(
+  'Charge the devices',
+  'Buy the vignette',
+  'Print the hut vouchers',
+)
 /** `shakedown` is deliberately not one of the five known phases — `arbKind`'s
  * rule a second time, and §5.3 obligation 4's whole point: an unrecognised
  * enum value has to survive the merge exactly as it arrived. */
@@ -513,6 +530,50 @@ const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbGearId, fc.nat({ max: 5 }))
     .map(([id, gearId, units]) => tripConsumptionPosted(id, gearId, units)),
+  // S13's two op types (§4.4), joining this arm as an eighth and ninth
+  // branch for `trip.consumption_posted`'s own reason one branch up:
+  // `tasks.<task_id>` is a per-key map hanging off the Trip **root**, beside
+  // `participants` and `postings`, and {@link tripRegisterPaths} counts
+  // every path not under `entries` as a root register, so a contested
+  // `tasks.<id>.ticked` lands in the column this arm feeds.
+  //
+  // **Deliberately not a fourth arm.** The arms exist to give each *level* of
+  // the Trip an equal share of the budget, and a fourth would hand two op
+  // types a quarter of it while cutting the entry and piece levels from a
+  // third each to a quarter — the dilution {@link arbTripEntrySpec}'s tables
+  // measure twice and warn about both times. Adding branches *inside* an arm
+  // moves no arm's share, so the floors those tables defend are untouched;
+  // the floored counter in the contest test is what actually says so.
+  fc
+    .tuple(arbTripId, arbTaskId, arbTaskText)
+    .map(([id, taskId, text]) => tripTaskAdded(id, taskId, text)),
+  // Both directions from one branch: `ticked` is a boolean the payload
+  // carries, so this is not `tripParticipantAdded`/`Removed`'s curried pair
+  // and needs no second branch to contest itself.
+  fc
+    .tuple(arbTripId, arbTaskId, fc.boolean())
+    .map(([id, taskId, ticked]) => tripTaskTicked(id, taskId, ticked)),
+  // S12's two op types, here rather than in an arm of their own for the
+  // reason `arbTripSpec`'s doc gives in full: `notes.<note_id>` is a nested
+  // map on the Trip root exactly as `tasks.<task_id>` is, and
+  // `tripRegisterPaths` reports both into this arm's own column. The post and
+  // the review stay **separate branches** — S12's own reasoning, unchanged:
+  // they address different registers on one entity path, and drawing them
+  // together would never generate the case that matters, a peer's
+  // `trip.note_kept` landing on a Note this replica has not seen posted.
+  fc
+    .tuple(
+      arbTripId,
+      arbNoteId,
+      arbNoteText,
+      fc.option(arbEntryId, { nil: undefined }),
+    )
+    .map(([id, noteId, text, entryId]) =>
+      tripNotePosted(id, noteId, text, entryId),
+    ),
+  fc
+    .tuple(arbTripId, arbNoteId, fc.boolean())
+    .map(([id, noteId, kept]) => tripNoteKept(id, noteId, kept)),
 )
 
 /**
@@ -685,46 +746,46 @@ const arbTripPieceSpec: fc.Arbitrary<OpSpec> = fc.oneof(
     ),
 )
 
-/**
- * **S12's arm**, and a fourth level rather than two more branches of the root
- * — {@link arbTripPieceSpec}'s argument, one map over. `notes.<id>` is a
- * nested entity map exactly as `entries.<id>` is, so it gets the level's own
- * share instead of a share decided by how many op types the root happens to
- * have.
+/*
+ * S12's note branches used to be a fourth arm here, `arbTripNoteSpec`. They
+ * are now two branches of {@link arbTripRootSpec}; see {@link arbTripSpec}
+ * for the measurement that moved them and the rule it settles.
  *
- * **`entry_id` is drawn optional**, so the generator produces both shapes the
- * fold keeps apart: a Note about one Entry and a Note about the Trip. It is
- * never drawn as `null` — `NoteState.entryId` is not nullable and
- * `tripNotePosted` refuses to author a clear no reader honours, so a `null`
- * here would be testing a wire shape this build does not emit.
- *
- * The post and the review are separate branches on purpose. They address
- * different registers on one entity path, so drawing them together would
- * never generate the case that actually matters: a peer's `trip.note_kept`
- * landing on a Note this replica has not seen posted.
+ * Two of S12's reasons survive the move verbatim and are kept at the branches
+ * themselves: **`entry_id` is drawn optional**, so the generator produces
+ * both shapes the fold keeps apart, and is never drawn as `null` — a wire
+ * shape this build does not emit; and **the post and the review are separate
+ * branches**, because drawing them together would never generate a peer's
+ * `trip.note_kept` landing on a Note this replica has not seen posted.
  */
-const arbTripNoteSpec: fc.Arbitrary<OpSpec> = fc.oneof(
-  fc
-    .tuple(
-      arbTripId,
-      arbNoteId,
-      arbNoteText,
-      fc.option(arbEntryId, { nil: undefined }),
-    )
-    .map(([id, noteId, text, entryId]) =>
-      tripNotePosted(id, noteId, text, entryId),
-    ),
-  fc
-    .tuple(arbTripId, arbNoteId, fc.boolean())
-    .map(([id, noteId, kept]) => tripNoteKept(id, noteId, kept)),
-)
 
-/** Equal, unweighted split — see {@link arbTripEntrySpec}'s doc for why. */
+/**
+ * Equal, unweighted split — see {@link arbTripEntrySpec}'s doc for why.
+ *
+ * **Three arms, not four, and the fourth is the integration bug S12 and S13
+ * could not each see alone.** Both slices added a nested entity map on the
+ * Trip and answered *which arm?* differently: S12 gave `notes` an arm of its
+ * own, S13 put `tasks` in the root arm because {@link tripRegisterPaths}
+ * classifies **every** register path outside `entries` as a root register —
+ * which is equally true of a Note. So a note arm does not buy a fourth
+ * column; it takes a quarter of the trip budget and reports into the column
+ * the root arm already fills, while cutting entry and piece from a third each
+ * to a quarter. Measured: the entry level fell to **49 in 1000**, under
+ * {@link CONTEST_FLOOR}, with root at 288 — the exact dilution
+ * {@link arbTripEntrySpec}'s tables warn about twice, arriving this time from
+ * two branches that were each green on their own.
+ *
+ * `arbTripNoteSpec` is therefore folded into {@link arbTripRootSpec} as two
+ * more branches, beside `tasks`', `postings`' and `participants`'. The rule
+ * the next slice should read off this: **an arm is a level of the aggregate,
+ * not a slice and not a map.** A new nested map keyed off the Trip root joins
+ * the root arm; only a genuinely new *entity path depth* — as `pieces` was
+ * below `entries` — earns an arm.
+ */
 const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   arbTripRootSpec,
   arbTripEntrySpec,
   arbTripPieceSpec,
-  arbTripNoteSpec,
 )
 
 /**
@@ -3565,6 +3626,83 @@ describe('convergence', () => {
         // nothing further, exactly as if the hand edit had never landed.
         expect(postedOf(r.state().trips[trip]!, gear)).toBe(2)
         expect(r.state().trips[trip]?.phase?.value).toBe('closed')
+      }
+    }
+  })
+
+  /**
+   * **S13's two named properties** (spec §7). Architecture §8.6's whole case
+   * for building S12 and S13 in parallel is that `tasks.<id>` and
+   * `notes.<id>` are disjoint registers, and the first of these is that claim
+   * exercised on the tasks side: two Devices, offline, each writing a
+   * checklist line the other has never heard of.
+   */
+  it('two Devices adding different tasks offline keep both', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+
+    a.emit(tripCreated(trip, 'Alps'))
+    exchange(a, b)
+
+    // Neither has seen the other's line: two different task ids are two
+    // different registers, so the union is not computed anywhere — it is
+    // the absence of a conflict.
+    clock.advance(1000)
+    a.emit(tripTaskAdded(trip, 'k1', 'Charge the devices'))
+    b.emit(tripTaskAdded(trip, 'k2', 'Buy the vignette'))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const view = tasksOf(r.state().trips[trip]!)
+      expect(view.map((t) => t.text)).toEqual([
+        'Charge the devices',
+        'Buy the vignette',
+      ])
+      expect(taskCounts(r.state().trips[trip]!)).toEqual({
+        total: 2,
+        ticked: 0,
+      })
+    }
+  })
+
+  /**
+   * The contested case, and the reason `trip.task_ticked` is **one op for
+   * both directions**: a tick racing an untick is two values on one register
+   * resolving by plain LWW, not a create racing a delete where the delete
+   * might win by being a delete.
+   *
+   * Both directions are run, so the assertion cannot pass by the later write
+   * happening to be the one the test expected.
+   */
+  it('a tick racing an untick of the same task resolves by clock, both ways', () => {
+    for (const lateIsTick of [true, false]) {
+      const { clock, a, b } = aWorld()
+      const trip = TRIP_IDS[0]
+
+      a.emit(tripCreated(trip, 'Alps'))
+      a.emit(tripTaskAdded(trip, 'k1', 'Charge the devices'))
+      exchange(a, b)
+
+      // The earlier write, on whichever replica is not going last.
+      clock.advance(1000)
+      const early = lateIsTick ? b : a
+      const late = lateIsTick ? a : b
+      early.emit(tripTaskTicked(trip, 'k1', !lateIsTick))
+      clock.advance(1000)
+      late.emit(tripTaskTicked(trip, 'k1', lateIsTick))
+      exchange(a, b)
+
+      expect(a.state()).toEqual(b.state())
+      for (const r of [a, b]) {
+        const task = r.state().trips[trip]?.tasks?.['k1']
+        expect(taskTickedOf(task!)).toBe(lateIsTick)
+        // Never a dropped key: an untick leaves a present `false` register,
+        // which is what stops a re-delivered tick winning by arrival order.
+        expect(task?.ticked).toBeDefined()
+        // The row it names has not moved — the tick writes no `text` stamp,
+        // which is the whole of `tasksOf`'s ordering guarantee.
+        expect(tasksOf(r.state().trips[trip]!).map((t) => t.id)).toEqual(['k1'])
       }
     }
   })

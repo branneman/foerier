@@ -21,6 +21,7 @@ import type {
   PhaseValue,
   PieceState,
   PlaceState,
+  TaskState,
   TripState,
 } from './state.ts'
 
@@ -220,6 +221,44 @@ function writePiece(
     const updated = update(current, st)
     if (updated === current && existing !== undefined) return entry
     return { ...entry, pieces: { ...entry.pieces, [personId]: updated } }
+  })
+}
+
+/**
+ * The **sixth** entity writer (S13, spec §1.1), for `tasks.<task_id>` — nested
+ * inside `writeTrip` exactly as {@link writeEntry} is, and carrying the same
+ * identity guard for the same reason: a losing write must return the object it
+ * was given, or `slice.ts`'s `WeakMap` memo is invalidated by an op that
+ * changed nothing.
+ *
+ * **`writeEntry`'s docblock says a sixth should re-open the generic-writer
+ * argument, and it fires here — twice at once.** S12's `writeNote` is the
+ * seventh, landing in a parallel worktree the same week, which is precisely
+ * why neither slice may take the refactor: it rewrites five call sites in the
+ * one file the whole correctness argument rests on, and hands the other branch
+ * the collision architecture §8.6 promised these two would not have. Recorded
+ * as re-opened rather than settled, logged in `technical-debt.md`, and named
+ * as S14's — its template copy reads every one of these maps, so it is the
+ * first slice with a reason to be in all seven writers at once.
+ *
+ * Unlike `writeEntry` this needs **no** "created but untouched" departure.
+ * That case exists there because `trip.entry_added` writes no register
+ * unconditionally, so identity alone cannot tell *existed, untouched* from
+ * *just created, untouched* apart; `trip.task_added` always writes `text`, so
+ * a malformed one persists nothing and the ordinary guard is exact.
+ */
+function writeTask(
+  state: HouseholdState,
+  tripId: string,
+  taskId: string,
+  stamp: Stamp,
+  update: (task: TaskState, stamp: Stamp) => TaskState,
+): HouseholdState {
+  return writeTrip(state, tripId, stamp, (trip, st) => {
+    const current = trip.tasks?.[taskId] ?? { id: taskId }
+    const updated = update(current, st)
+    if (updated === current) return trip
+    return { ...trip, tasks: { ...trip.tasks, [taskId]: updated } }
   })
 }
 
@@ -1064,6 +1103,54 @@ const tripPieceMoved: Handler = (state, op, stamp) => {
 }
 
 /**
+ * `trip.task_added` (§4.4): creates the Pre-trip task and seeds its `text`.
+ *
+ * `ticked` is deliberately not written — a new Task is unticked **by
+ * absence**, which is `taskTickedOf`'s rule and not a payload field. That is
+ * what makes a re-delivered add idempotent and lets a `trip.task_ticked` that
+ * arrived first survive the add landing after it: nothing here contests the
+ * register that op wrote.
+ *
+ * A payload with no `text` writes nothing at all, so no Task is created. There
+ * is no defaultable value for a checklist line, exactly as there is none for
+ * an Entry's `source`.
+ */
+const tripTaskAdded: Handler = (state, op, stamp) => {
+  const taskId = readString(op.payload, 'task_id')
+  if (taskId.kind !== 'value') return state
+  return writeTask(state, op.aggregate_id, taskId.value, stamp, (task, st) => {
+    const text = writeIfPresent(task.text, readString(op.payload, 'text'), st)
+    if (text === task.text) return task
+    return { ...task, ...(text === undefined ? {} : { text }) }
+  })
+}
+
+/**
+ * `trip.task_ticked` (§4.4): sets `ticked`. **One op for both directions** —
+ * `true` and `false` are two values of one register, not a create and a
+ * delete. That is `tripParticipantWritten`'s and `tripPieceWritten`'s shape
+ * without even needing their curried pair, because here the value rides the
+ * payload rather than the op type.
+ *
+ * **Folds unconditionally**, and may create a Task holding `ticked` and no
+ * `text`: a peer may tick on another Device while the add is still queued.
+ * Nothing about a Task lives on another aggregate, so this is not
+ * `bringCount`'s cross-aggregate case — the reason here is plain arrival
+ * order, and the reader is where a textless Task is dropped.
+ */
+const tripTaskTicked: Handler = (state, op, stamp) => {
+  const taskId = readString(op.payload, 'task_id')
+  if (taskId.kind !== 'value') return state
+  const ticked = readBoolean(op.payload, 'ticked')
+  if (ticked.kind !== 'value') return state
+  return writeTask(state, op.aggregate_id, taskId.value, stamp, (task, st) => {
+    const next = writeRegister(task.ticked, ticked.value, st)
+    if (next === task.ticked) return task
+    return { ...task, ticked: next }
+  })
+}
+
+/**
  * The op-type dispatch table (`sync-protocol.md` §4.1, §4.3). A `Record`, not
  * a `switch`, so "is this type known?" is a lookup — the same question the
  * tolerant reader asks.
@@ -1141,6 +1228,13 @@ const handlers: Record<string, Handler> = {
   // over on the Trip root — the fact that a close's reduction "applied once"
   // (domain §6), now with somewhere to be recorded.
   'trip.consumption_posted': tripConsumptionPosted,
+  // S13 (§4.4): `tasks.<task_id>`, a nested entity map on the Trip —
+  // `entries`' shape, not `participants`', because two registers on one
+  // entity is not something a presence flag can hold. `task_ticked` needs no
+  // add/remove pair: the value rides the payload, so one op writes both
+  // directions.
+  'trip.task_added': tripTaskAdded,
+  'trip.task_ticked': tripTaskTicked,
   // S12 (§4.4): `notes.<note_id>`, the second of the Trip's nested entity
   // maps — `entries`' shape, not `participants`'. S13's `tasks` is the third
   // and shares nothing with it, which is the disjointness architecture §8.6

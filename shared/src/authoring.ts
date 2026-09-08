@@ -673,6 +673,54 @@ export function tripConsumptionPosted(
 }
 
 /**
+ * S13 (§4.4): adds a Pre-trip task, unticked. `text` is written
+ * unconditionally by the reducer, which makes it this op's
+ * `trip.created`-shaped seed — see `writeTask`.
+ *
+ * **`ticked` is not a payload field.** A new Task is unticked *by absence*
+ * (`taskTickedOf`), so this op cannot contest the register, and a
+ * `trip.task_ticked` that arrived first survives the add landing after it.
+ *
+ * The caller trims: a whitespace-only well commits nothing at all (spec §4),
+ * so no op reaches here carrying a blank line.
+ */
+export function tripTaskAdded(
+  tripId: string,
+  taskId: string,
+  text: string,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.task_added',
+    payload: { task_id: taskId, text },
+  }
+}
+
+/**
+ * S13 (§4.4): ticks or unticks a Pre-trip task — **one op for both
+ * directions**, because `true` and `false` are two values of one register
+ * rather than a create and a delete.
+ *
+ * No needless-write guard is needed at the call site here, unlike
+ * `PhaseSheet`'s or `JourneyRail`'s (`patterns.md` §2.3): the row's only
+ * gesture flips the value, so an op equal to the current one is not
+ * reachable.
+ */
+export function tripTaskTicked(
+  tripId: string,
+  taskId: string,
+  ticked: boolean,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.task_ticked',
+    payload: { task_id: taskId, ticked },
+  }
+}
+
+/**
  * §4.4 (S12): posts a Trip note — free text, optionally *about* one Entry.
  *
  * **`entry_id` is omitted, never sent as `null`, for a Note about the Trip.**

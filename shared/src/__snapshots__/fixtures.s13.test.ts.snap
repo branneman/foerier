@@ -1,0 +1,72 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the S13 fixture > folds to exactly the state it folded to when captured 1`] = `
+{
+  "gear": {},
+  "people": {},
+  "places": {},
+  "trips": {
+    "t-s13-1": {
+      "id": "t-s13-1",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:00.000Z-0000",
+        "value": "S13 Fixture Trip",
+      },
+      "phase": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:00.000Z-0000",
+        "value": "draft",
+      },
+      "tasks": {
+        "k-s13-charge": {
+          "id": "k-s13-charge",
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:01:00.000Z-0000",
+            "value": "Charge the devices",
+          },
+          "ticked": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:00.000Z-0000",
+            "value": true,
+          },
+        },
+        "k-s13-orphan": {
+          "id": "k-s13-orphan",
+          "ticked": {
+            "deviceId": "bbbbbbbb-0000-7000-8000-000000000002",
+            "hlc": "2026-09-08T09:07:00.000Z-0000",
+            "value": true,
+          },
+        },
+        "k-s13-vignette": {
+          "id": "k-s13-vignette",
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:03:00.000Z-0000",
+            "value": "Buy the vignette",
+          },
+          "ticked": {
+            "deviceId": "bbbbbbbb-0000-7000-8000-000000000002",
+            "hlc": "2026-09-08T09:05:00.000Z-0000",
+            "value": false,
+          },
+        },
+        "k-s13-vouchers": {
+          "id": "k-s13-vouchers",
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:06:00.000Z-0000",
+            "value": "Print the hut vouchers",
+          },
+        },
+      },
+    },
+  },
+  "unfolded": {
+    "count": 0,
+    "types": {},
+  },
+}
+`;

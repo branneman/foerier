@@ -290,6 +290,51 @@ export interface EntryState {
 }
 
 /**
+ * A **Pre-trip task** (story 15): a non-gear checklist item on a Trip —
+ * charge the devices, check tire pressure, buy the vignette. `sync-protocol.md`
+ * §3.7's `tasks.<task_id>` row, built by S13.
+ *
+ * Two registers, which is what makes this an entity rather than the presence
+ * flag `participants` members carry, and it is why the map is
+ * {@link EntryState}'s shape and not that one's.
+ *
+ * The Trip's other two nested maps arrived with the slice that wrote them and
+ * this is no different — `pieces` at S8, `notes` at S12, `tasks` here.
+ */
+export interface TaskState {
+  readonly id: string
+  /**
+   * Written **unconditionally** by `trip.task_added`, which is what makes it
+   * that op's `trip.created`-shaped seed: a posted Task always writes at
+   * least one register, so `writeTask` never has to tell *existed, untouched*
+   * from *just created, untouched* apart. `writeEntry` carries a departure
+   * for exactly that case because `trip.entry_added` has no such field.
+   *
+   * A Task may still hold no `text` — a `trip.task_ticked` arriving ahead of
+   * its add creates the entity — and such a Task is retained in the fold and
+   * drawn nowhere. `tasksOf` (`selectors/task.ts`) is the one place that says
+   * so, S7's sourceless Entry one aggregate row over.
+   *
+   * **Its stamp is also the list's order.** Nothing else writes it, so the
+   * order a tick sees is the order the add wrote — see `tasksOf`.
+   */
+  readonly text?: Register<string>
+  /**
+   * Ticked off as done. One op writes both directions, so there is no
+   * untick op and no tombstone here.
+   *
+   * **An absent register reads `false`**, and only `taskTickedOf`
+   * (`selectors/task.ts`) says so — `ownerOf`'s rule again. Absent and an
+   * explicit `false` stay different facts about the log (nothing has ever
+   * addressed this task's state, versus somebody unticked it) and every
+   * reader treats them alike. Deliberately **not** `noteKeptOf`'s third
+   * state: a Note is *unreviewed* until the unpack pass reaches it, and a
+   * Task has no third thing to be.
+   */
+  readonly ticked?: Register<boolean>
+}
+
+/**
  * The **fourth aggregate** (`sync-protocol.md` §3.7). S6 built the *root* row
  * of that table and the `participants` row; S7 adds `entries`, the first of
  * the three remaining nested maps — pieces, tasks, notes — belong to S8
@@ -395,6 +440,13 @@ export interface TripState {
    * carries only presence.
    */
   readonly entries?: Readonly<Record<string, EntryState>>
+  /**
+   * S13 (spec §1): the Pre-trip tasks, keyed by task id. {@link EntryState}'s
+   * shape rather than `participants`', for the plainest of reasons — two
+   * registers on one entity, and a set whose member carries only presence
+   * cannot hold both a sentence and a checkbox.
+   */
+  readonly tasks?: Readonly<Record<string, TaskState>>
   /**
    * The Trip's Notes, keyed by note id — `entries`' shape, a map of
    * **entities**, and the second of the three nested maps this interface's

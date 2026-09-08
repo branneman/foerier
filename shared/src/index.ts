@@ -36,6 +36,7 @@ export type {
   Residence,
   StageValue,
   StatusValue,
+  TaskState,
   TripResidence,
   TripState,
   UnfoldedOps,
@@ -100,6 +101,8 @@ export {
   tripPieceRestored,
   tripPieceStatusSet,
   tripRenamed,
+  tripTaskAdded,
+  tripTaskTicked,
 } from './authoring.ts'
 
 export {
@@ -305,6 +308,9 @@ export {
   UNNAMED_TRIP_GLYPH,
   visibleTrips,
 } from './selectors/trip.ts'
+
+export type { TaskView } from './selectors/task.ts'
+export { taskCounts, taskTickedOf, tasksOf } from './selectors/task.ts'
 
 export type { Claim, OverClaim } from './selectors/claim.ts'
 export {

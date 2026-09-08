@@ -1,0 +1,121 @@
+[
+  {
+    "id": "ffffffff-0000-7000-8000-000000000101",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s13-1",
+    "type": "trip.created",
+    "hlc": "2026-09-08T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "S13 Fixture Trip"
+    },
+    "seq": 1,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000102",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s13-1",
+    "type": "trip.task_added",
+    "hlc": "2026-09-08T09:01:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "task_id": "k-s13-charge",
+      "text": "Charge the devices"
+    },
+    "seq": 2,
+    "received_at": "2026-09-08T10:00:01Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000103",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s13-1",
+    "type": "trip.task_ticked",
+    "hlc": "2026-09-08T09:02:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "task_id": "k-s13-charge",
+      "ticked": true
+    },
+    "seq": 3,
+    "received_at": "2026-09-08T10:00:02Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000104",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s13-1",
+    "type": "trip.task_added",
+    "hlc": "2026-09-08T09:03:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "task_id": "k-s13-vignette",
+      "text": "Buy the vignette"
+    },
+    "seq": 4,
+    "received_at": "2026-09-08T10:00:03Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000105",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s13-1",
+    "type": "trip.task_ticked",
+    "hlc": "2026-09-08T09:04:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "task_id": "k-s13-vignette",
+      "ticked": true
+    },
+    "seq": 5,
+    "received_at": "2026-09-08T10:00:04Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000106",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s13-1",
+    "type": "trip.task_ticked",
+    "hlc": "2026-09-08T09:05:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000002",
+    "payload": {
+      "task_id": "k-s13-vignette",
+      "ticked": false
+    },
+    "seq": 6,
+    "received_at": "2026-09-08T10:00:05Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000107",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s13-1",
+    "type": "trip.task_added",
+    "hlc": "2026-09-08T09:06:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "task_id": "k-s13-vouchers",
+      "text": "Print the hut vouchers"
+    },
+    "seq": 7,
+    "received_at": "2026-09-08T10:00:06Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000108",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s13-1",
+    "type": "trip.task_ticked",
+    "hlc": "2026-09-08T09:07:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000002",
+    "payload": {
+      "task_id": "k-s13-orphan",
+      "ticked": true
+    },
+    "seq": 8,
+    "received_at": "2026-09-08T10:00:07Z"
+  }
+]
