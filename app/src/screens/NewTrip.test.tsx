@@ -687,6 +687,75 @@ describe('New trip — START FROM (S14)', () => {
     ).toBeVisible()
   })
 
+  /**
+   * **Review finding.** The choice was held in a `useState` initializer, which
+   * runs once at mount — and the store fills `state` asynchronously from
+   * IndexedDB while `App` gates only on the auth flag, so a cold start or a
+   * refresh on `/trips/new?from=<id>` evaluated the standing against an empty
+   * fold, read `unknown`, and pinned the row to `None` for the life of the
+   * screen. Everything else here self-corrects on the next render; that one
+   * value could not, because it was frozen. State holds only the
+   * Quartermaster's own override now.
+   */
+  it('picks the requested source up when the fold arrives after mount', async () => {
+    const store = await seeded()
+    const location = memoryLocation({
+      path: `/trips/new?from=${SOURCE}`,
+      record: true,
+    })
+    render(
+      <Router hook={location.hook}>
+        <HouseholdProvider value={store.store}>
+          <NewTrip />
+        </HouseholdProvider>
+      </Router>,
+    )
+
+    // Mounted against a household with no Trips at all: the row is withheld.
+    expect(screen.queryByRole('button', { name: /^Start from:/ })).toBeNull()
+
+    // The log folds — a first sync, a snapshot read, a peer's page.
+    for (const spec of aSource()) store.store.getState().emit(spec)
+    await store.store.getState().drained()
+
+    expect(
+      await screen.findByRole('button', { name: 'Start from: Vosges 2025' }),
+    ).toBeVisible()
+  })
+
+  /**
+   * **Review finding.** `sourceTrip` was a raw `state.trips[id]` lookup, so a
+   * peer's delete arriving while this screen was open left the choice held
+   * invisibly — the row itself vanishes with `anySource` when the deleted
+   * Trip was the only one — and `submit()` went on taking the copy branch.
+   * A silent full copy of a deleted Trip, whose `from_trip_id` then points at
+   * a tombstone the trip screen correctly refuses to name.
+   */
+  it('drops the choice when a peer deletes the source mid-sitting', async () => {
+    const user = userEvent.setup()
+    const store = await seeded(...aSource())
+    renderNewTrip(store)
+
+    await choose('Vosges 2025')
+    expect(screen.getByRole('button', { name: 'Start from: Vosges 2025' }))
+
+    store.store.getState().emit(tripDeleted(SOURCE))
+    await store.store.getState().drained()
+
+    await user.type(screen.getByLabelText('Name'), 'Vosges 2026')
+    await user.click(screen.getByRole('button', { name: 'Create trip' }))
+
+    // One op, not a batch: the source is gone, so there is nothing to copy.
+    // The `trip.deleted` above is the *peer's*, emitted through this store
+    // because that is how a test plays a peer — `authored()` cannot tell the
+    // two apart, so it is filtered out by type rather than by origin.
+    const authored = (await store.authored()).filter(
+      (op) => op.type !== 'trip.deleted',
+    )
+    expect(authored.map((op) => op.type)).toEqual(['trip.created'])
+    expect(authored[0]?.payload['from_trip_id']).toBeUndefined()
+  })
+
   it('ignores a ?from= naming a Trip this device cannot show', async () => {
     const store = await seeded(...aSource(), tripDeleted(SOURCE))
     const location = memoryLocation({

@@ -442,11 +442,16 @@ describe('the trip screen — the header the board draws', () => {
     await renderTrip(`/trips/${ALPS}`, ...alps())
 
     await user.click(screen.getByRole('button', { name: 'EDIT' }))
-    // EDIT is open — `Save` proves it — and holds no destructive control of
-    // its own. The footer's `DELETE TRIP` is elsewhere on the screen and is
-    // asserted in its own describe below.
-    expect(screen.getByRole('button', { name: 'Save' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: /^Delete trip$/ })).toBeNull()
+    // EDIT is open — `Save` proves it — and the delete control is **outside
+    // it**, in the footer. The assertion is on the footer's own accessible
+    // name (`Delete Alps 2026`) and on where it sits: an earlier version
+    // queried `/^Delete trip$/`, which no control on this screen answers to
+    // while the confirm is unmounted, so it passed vacuously and would have
+    // gone on passing if the footer had been moved inside the edit form.
+    const edit = screen.getByRole('button', { name: 'Save' }).closest('div')
+    const remove = screen.getByRole('button', { name: 'Delete Alps 2026' })
+    expect(remove).toBeVisible()
+    expect(edit?.contains(remove)).toBe(false)
   })
 })
 

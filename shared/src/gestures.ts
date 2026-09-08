@@ -13,12 +13,7 @@ import {
   type OpSpec,
 } from './authoring.ts'
 import { ownedCountOf } from './selectors/depot.ts'
-import {
-  bringCountOf,
-  entriesOf,
-  entryKind,
-  isContainerEntry,
-} from './selectors/entry.ts'
+import { entriesOf, entryKind, isContainerEntry } from './selectors/entry.ts'
 import { notesOf } from './selectors/note.ts'
 import { piecesOf } from './selectors/piece.ts'
 import { tasksOf } from './selectors/task.ts'
@@ -627,19 +622,33 @@ export function startTripFrom(
     copiedEntryIds.set(entry.id, entryId)
     specs.push(tripEntryAdded(newTripId, entryId, entrySource))
 
-    // **The register, not `bringCountOf`.** That reader answers `?? 1` for a
-    // Counted Entry whose count nobody ever set, so copying through it would
-    // author `count: 1` for every such Entry — a needless write
-    // (`patterns.md` §2.3) that changes nothing a reader sees, hundreds at a
-    // time in the largest batch this app has.
+    // **The register, and only the register.** Two rules meet here and they
+    // point the same way.
     //
-    // The second half is invariant 6's **authoring** gate, which the reducer
-    // deliberately does not enforce (the Kind lives on the Gear aggregate)
-    // and every caller must: an Entry whose Gear has stopped being Counted
-    // shows no Bring-count on the source list either, so copying none is
-    // what *takes over its Bring-counts* means.
+    // `bringCountOf` answers `?? 1` for a Counted Entry whose count nobody
+    // ever set, so copying through the *reader* would author `count: 1` for
+    // every such Entry — a needless write (`patterns.md` §2.3) that changes
+    // nothing anyone sees, hundreds at a time in the largest batch this app
+    // has.
+    //
+    // And the reader must not gate it either, which is the sharper half.
+    // `bringCountOf` returns `null` for a Counted Entry **and** for one whose
+    // Gear has not folded here yet — `isCounted(undefined)` is `false`, the
+    // same conflation `pieceCountOf` avoids by treating unsynced Gear as the
+    // conservative `1`. Gating on it would make the batch's *contents* depend
+    // on how much of the **Gear** aggregate this replica happens to hold, so
+    // two Devices copying the same Trip a page of sync apart would produce
+    // two different copies. That is exactly the non-determinism
+    // [§4.5](../../docs/sync-protocol.md) materialises the copy to avoid, and
+    // it would be unrecoverable: nothing re-runs the batch.
+    //
+    // So the copy reads one register on the Trip aggregate and asks the Gear
+    // aggregate nothing. A `bring_count` riding along on an Entry whose Kind
+    // has since changed is inert — every reader gates on the Kind (invariant
+    // 6 is a *reader* gate throughout this codebase) — and inert is the right
+    // price for a copy that is identical on every replica.
     const authored = entry.bringCount?.value
-    if (authored !== undefined && bringCountOf(entry, state) !== null) {
+    if (authored !== undefined) {
       specs.push(tripEntryBringCountSet(newTripId, entryId, authored))
     }
   }

@@ -125,11 +125,21 @@ export function NewTrip() {
   // the row simply opens unchosen.
   const search = useSearch()
   const requested = new URLSearchParams(search).get('from')
-  const [source, setSource] = useState<string | null>(
-    requested !== null && tripStandingOf(state, requested) === 'live'
-      ? requested
-      : null,
-  )
+  // **The request is derived on every render, never frozen at mount.** The
+  // obvious shape — seeding a `useState` from the search string — pins the
+  // answer to the fold as it stood on the *first* render, and on a cold start
+  // that fold is empty: `store.load()` fills it asynchronously from IndexedDB
+  // and `App` gates only on the auth flag, so a refresh or a PWA restore on
+  // `/trips/new?from=<id>` would evaluate the standing against `emptyState()`,
+  // read `unknown`, and pin the row to `None` for the life of the screen —
+  // permanently, and indistinguishably from a stale link, while every other
+  // value on this screen self-corrected on the next render.
+  //
+  // So state holds only the Quartermaster's own **override**: `undefined`
+  // means untouched, and everything else is a choice they made, including the
+  // `null` the picker's first row writes. That is what lets the clear survive
+  // a re-render without the request re-applying itself underneath it.
+  const [override, setOverride] = useState<string | null | undefined>(undefined)
   const [sourceOpen, setSourceOpen] = useState(false)
 
   // With nothing to offer, the row is not drawn at all (J13) — not disabled,
@@ -142,7 +152,21 @@ export function NewTrip() {
   // deleted would draw a row opening on nothing, which is exactly the dead
   // affordance this condition exists to prevent.
   const anySource = sourceTrips(state).length > 0
-  const sourceTrip = source === null ? undefined : state.trips[source]
+
+  // **One predicate for the chosen source, the same one the seed and the trip
+  // screen's provenance line use.** A raw `state.trips[id]` lookup would go on
+  // resolving a Trip a peer deleted while this screen was open — and if it was
+  // the household's only other Trip, `anySource` would drop the whole row at
+  // the same moment, leaving the choice held invisibly and `submit()` still
+  // taking the copy branch: a silent full copy of a deleted Trip, whose
+  // `from_trip_id` then points at a tombstone and whose provenance line the
+  // trip screen correctly withholds. Nothing on any screen would say where
+  // the list came from.
+  const sourceId = override === undefined ? requested : override
+  const sourceTrip =
+    sourceId !== null && tripStandingOf(state, sourceId) === 'live'
+      ? state.trips[sourceId]
+      : undefined
 
   // A media query, in JS, because the answer decides *behaviour* rather than
   // layout and no stylesheet can carry it (`useMediaQuery`'s own reason, one
@@ -445,12 +469,12 @@ export function NewTrip() {
 
       {sourceOpen && (
         <SourcePicker
-          selected={source}
+          selected={sourceTrip?.id ?? null}
           // The picker is pure selection and the caller closes it — the Home
           // picker's rule, and why its first row is the clear rather than an
           // `✕` on the field.
           onSelect={(id) => {
-            setSource(id)
+            setOverride(id)
             setSourceOpen(false)
           }}
           onClose={() => setSourceOpen(false)}

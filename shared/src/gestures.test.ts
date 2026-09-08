@@ -1175,6 +1175,38 @@ describe('startTripFrom', () => {
     expect(counts[0]?.payload['count']).toBe(4)
   })
 
+  it('copies an authored Bring-count even when the Gear has not folded here', () => {
+    // **Review finding.** `bringCountOf` returns `null` both for a
+    // non-Counted Entry and for one whose Gear this replica has not folded
+    // yet (`isCounted(undefined)` is `false`), so gating the copy on it made
+    // the batch's *contents* depend on how much of the Gear aggregate the
+    // copying Device happened to hold — two replicas a sync page apart would
+    // produce two different copies, which is the non-determinism §4.5
+    // materialises the copy to avoid, and unrecoverable because nothing
+    // re-runs the batch.
+    const state = depot(aTrip({ id: SOURCE, name: 'Vosges 2025' }), [
+      // No `gear.recorded` for this id anywhere in the fold.
+      tripEntryAdded(SOURCE, 'e-unsynced', {
+        from: 'depot',
+        gearId: 'g-not-here',
+      }),
+      tripEntryBringCountSet(SOURCE, 'e-unsynced', 7),
+    ])
+    const specs = startTripFrom(
+      NEW,
+      'Vosges 2026',
+      tripFrom(state, SOURCE),
+      state,
+      countingIdSource(),
+    )
+
+    const counts = specs.filter(
+      (spec) => spec.type === 'trip.entry_bring_count_set',
+    )
+    expect(counts).toHaveLength(1)
+    expect(counts[0]?.payload['count']).toBe(7)
+  })
+
   it('copies tasks unticked, by absence rather than by writing false', () => {
     const specs = copy()
     expect(
