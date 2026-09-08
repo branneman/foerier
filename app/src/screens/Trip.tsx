@@ -27,6 +27,7 @@ import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
 import { TripOnlySheet } from '../components/TripOnlySheet'
+import { TripPanels } from '../components/TripPanels'
 import { useHousehold } from '../household/store'
 import {
   parseIsoDate,
@@ -654,6 +655,16 @@ export function Trip() {
           onRemovePieceThere: handleRemovePieceThere,
         }}
       />
+
+      {/* Ruling I1's slot: the two panels sit here, between the over-claim
+          band and the `GEAR LIST` band, `TASKS` first. It draws nothing until
+          a panel is passed (I2), which is what lets S12 and S13 land in
+          either order — each adds one child and neither edits the other's
+          line. See `docs/specs/2026-09-08-trip-notes.md` §1. */}
+      <TripPanels>
+        {/* S13 · TASKS */}
+        {/* S12 · NOTES */}
+      </TripPanels>
 
       {totals.entries === 0 ? (
         // The noun ruling's empty state: the second line is a domain fact

@@ -1,0 +1,59 @@
+@layer components {
+  /*
+   * The query container, and nothing else. `Trip`'s `.screen` declares none,
+   * so the row carries its own — an element is never its own container, which
+   * is why this is two elements rather than one.
+   *
+   * `container-type: inline-size` makes this the containing block for any
+   * `position: fixed` descendant (CLAUDE.md's standing note, and the bug that
+   * put the Depot's FAB beside the title). Nothing here is fixed: the screen's
+   * floating control is a sibling of `.screen`, two levels up.
+   */
+  .panels {
+    container-type: inline-size;
+  }
+
+  /*
+   * Ruling I7. One column is the base, so a browser with no container-query
+   * support renders both panels full width — the fail-open `frontend-design.md`
+   * §3.2 requires, and the phone layout either way.
+   */
+  .row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-24);
+  }
+
+  @container (min-width: 40rem) {
+    /* Roomy — the width at which the shell stops wasting the sides and card
+       content goes 2-up, exactly as `Trips.module.css` folds the trip cards. */
+    .row {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /*
+     * A lone panel caps at A10's 560 rather than running the full width: one
+     * panel stretched across a desktop is a measure no board draws, and 560 is
+     * the cap F5's own single column already uses.
+     *
+     * `:has()` unsupported degrades to the full-width column, which is the
+     * pre-I7 drawing rather than a broken one.
+     */
+    .row:has(> :only-child) {
+      grid-template-columns: minmax(0, 35rem);
+    }
+
+    /*
+     * "Bordered cards from there" is the **row's** treatment, not each panel's.
+     * Stating it once here is what stops S12 and S13 spelling the same card
+     * twice and drifting; below 40rem the panels stay edge-to-edge and carry no
+     * border at all, so there is nothing for a panel to opt out of.
+     */
+    .row > * {
+      padding: var(--space-16);
+      border: var(--stroke-rule) solid var(--color-rule);
+      border-radius: var(--radius-card);
+      min-width: 0;
+    }
+  }
+}
