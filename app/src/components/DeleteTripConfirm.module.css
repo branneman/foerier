@@ -1,0 +1,52 @@
+@layer components {
+  /* The conditional fact block, between title and answer — `Confirm`'s one
+     shape (ruling H3, `ReopenConfirm.module.css`'s own `.block`): bare 12px
+     mono lines, 10 apart, no box and no border. A box would make the counts
+     look like a thing being acted on rather than a thing being stated. */
+  .facts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .fact {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-primary);
+  }
+
+  /* **Bordered-attention, never filled** — §11's `SIGN OUT` / `REMOVE`
+     treatment, and the register that separates this confirm from
+     `ReopenConfirm`'s accent primary: reopening throws nothing away and this
+     throws away a Trip. A filled red button is the thing the status grammar
+     forbids outright. */
+  .primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(3rem, 48px);
+    padding: 0 var(--space-16);
+    border: var(--stroke-control) solid var(--color-status-attention);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-status-attention);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(3rem, 48px);
+    padding: 0 var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}

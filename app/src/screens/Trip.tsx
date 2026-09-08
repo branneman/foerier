@@ -5,6 +5,7 @@ import {
   taskCounts,
   tasksOf,
   tripDatesSet,
+  tripDeleted,
   tripEntryBringCountSet,
   tripEntryRemoved,
   tripLabel,
@@ -21,13 +22,14 @@ import {
 } from '@foerier/shared'
 import { PersonCluster } from '@foerier/ui'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'wouter'
+import { Link, useLocation, useParams } from 'wouter'
 
 import {
   entryCountLabel,
   GearListSection,
   pieceLabel,
 } from '../components/GearListSection'
+import { DeleteTripConfirm } from '../components/DeleteTripConfirm'
 import { NotesPanel } from '../components/NotesPanel'
 import { OverClaimBand } from '../components/OverClaimBand'
 import { ParticipantPicker } from '../components/ParticipantPicker'
@@ -244,6 +246,10 @@ export function Trip() {
   const [phaseOpen, setPhaseOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [tripOnlyOpen, setTripOnlyOpen] = useState(false)
+  const [, navigate] = useLocation()
+  // The delete confirm, mounted only while it is open — `ui/`'s primitives
+  // have no `open` prop, and mount is what resets a sheet's own state.
+  const [deleting, setDeleting] = useState(false)
   // The pending cross-Trip removal, or `null` when nothing is — mount is the
   // reset, same as every other `ui/`-backed sheet on this screen, so a
   // declined removal cannot come back attached to the next row tapped.
@@ -885,6 +891,59 @@ export function Trip() {
             + Add from the depot
           </Link>
         </>
+      )}
+
+      {/* **The footer** (rulings J1, J7) — two controls in opposite registers,
+          destructive last, under a rule, at every width.
+
+          It sits **after** the phone's add affordances rather than between
+          the panels: a destructive control never interrupts a list. And
+          neither control folds, re-docks or becomes a button in a pane mode —
+          unlike `+ NEW`, neither accompanies the tab bar, so there is nothing
+          for a pane mode to re-dock.
+
+          `/trips/:id` is the only door to a delete (J6). The closed ledger
+          row keeps `REOPEN` alone: a destructive control at the end of that
+          row would sit a thumb-width from the one control that brings a Trip
+          back.
+
+          Both are standalone controls and therefore drawn ≥48 with no hit
+          extension — ruling O's standalone clause. Both name the Trip in
+          their accessible name, because a screen-reader user meeting
+          `DELETE TRIP` in a control list has no other way to know which. */}
+      <footer className={styles['footer']}>
+        <Link
+          href={`/trips/new?from=${tripId}`}
+          className={styles['startFrom']}
+          aria-label={`Start a new trip from ${tripNameOrUnnamed(trip)}`}
+        >
+          START A NEW TRIP FROM THIS ›
+        </Link>
+        <button
+          type="button"
+          className={styles['deleteTrip']}
+          aria-label={`Delete ${tripNameOrUnnamed(trip)}`}
+          onClick={() => setDeleting(true)}
+        >
+          DELETE TRIP
+        </button>
+      </footer>
+
+      {deleting && (
+        <DeleteTripConfirm
+          trip={trip}
+          state={state}
+          onCancel={() => setDeleting(false)}
+          onConfirm={() => {
+            // No UNDO and no toast (J4). The list, whereabouts, claims, the
+            // TRIP dimension and the nav count are all already right through
+            // the one selector that filters the tombstone, so there is
+            // nothing to refresh — and no op restores a Trip, so an UNDO
+            // would offer a route the catalogue does not hold.
+            emit(tripDeleted(tripId))
+            navigate('/trips')
+          }}
+        />
       )}
 
       {phaseOpen && (

@@ -83,6 +83,39 @@ describe("ruling O's drawn sizes", () => {
     expect(ruleBody(css, '.editList::after')).toMatch(/inset:\s*-0\.6875rem/)
   })
 
+  /**
+   * S14's three standalone controls — the footer's two and the not-here
+   * state's route out. All three sit alone in their own row or column with
+   * no interactive neighbour, so ruling O's standalone clause applies to
+   * each: the hit area is **drawn**, and none of them may grow an `::after`
+   * with nothing to clamp against.
+   */
+  it('draws S14\u2019s three standalone controls at the floor, with no extension', () => {
+    const css = moduleCss('Trip.module.css')
+
+    for (const selector of ['.startFrom', '.deleteTrip', '.openTrips']) {
+      const body = ruleBody(css, selector)
+      expect(body, selector).toBeDefined()
+      expect(body, selector).toMatch(FLOOR)
+      expect(body, selector).not.toMatch(/position:\s*relative/)
+      expect(ruleBody(css, `${selector}::after`), selector).toBeUndefined()
+    }
+  })
+
+  /**
+   * `DELETE TRIP` is **attention text, never a filled red button** — §11's
+   * `SIGN OUT` / `REMOVE` treatment. The failure this guards is a later
+   * author reaching for a filled destructive primary, which the status
+   * grammar forbids outright.
+   */
+  it('paints DELETE TRIP as attention text with no background', () => {
+    const body = ruleBody(moduleCss('Trip.module.css'), '.deleteTrip')
+
+    expect(body).toMatch(/color:\s*var\(--color-status-attention\)/)
+    expect(body).toMatch(/background:\s*none/)
+    expect(body).toMatch(/border:\s*0/)
+  })
+
   it('paints the Depot column head as its drawn band, not a 48px box', () => {
     const css = moduleCss('Depot.module.css')
     const head = ruleBody(css, '.columnHead')

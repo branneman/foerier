@@ -57,6 +57,8 @@ type OpPayload = Record<string, unknown>
 interface Seeded {
   /** Everything the *screen* authored — the seed is subtracted. */
   authored: () => Promise<readonly { type: string; payload: OpPayload }[]>
+  /** Where the router stands now — S14's delete lands on `/trips` (J4). */
+  path: () => string
 }
 
 /** Renders `/trips/:id` at `path`, over a store seeded with `specs`. */
@@ -94,6 +96,7 @@ async function renderTrip(
         .slice(seedCount)
         .map((entry) => ({ type: entry.op.type, payload: entry.op.payload }))
     },
+    path: () => location.history[location.history.length - 1] ?? path,
   }
 }
 
@@ -431,14 +434,99 @@ describe('the trip screen — the header the board draws', () => {
     expect(screen.getByRole('img', { name: 'Participants: Els' })).toBeVisible()
   })
 
-  it('offers no way to delete a Trip', async () => {
+  it('keeps delete out of EDIT, which covers the two typed registers only', async () => {
+    // S14 gives the screen a `DELETE TRIP`, in the footer — never inside the
+    // edit mode, whose whole scope is name and dates under one commit model.
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
     const user = userEvent.setup()
     await renderTrip(`/trips/${ALPS}`, ...alps())
 
     await user.click(screen.getByRole('button', { name: 'EDIT' }))
-    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /remove trip/i })).toBeNull()
+    // EDIT is open — `Save` proves it — and holds no destructive control of
+    // its own. The footer's `DELETE TRIP` is elsewhere on the screen and is
+    // asserted in its own describe below.
+    expect(screen.getByRole('button', { name: 'Save' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /^Delete trip$/ })).toBeNull()
+  })
+})
+
+/**
+ * **The footer** (rulings J1, J6, J7) — two controls in opposite registers,
+ * destructive last, and the only door in the app to a delete.
+ */
+describe('the trip screen — the footer (S14)', () => {
+  it('draws both controls with delete last, on a Draft as on any phase', async () => {
+    await renderTrip(`/trips/${ALPS}`, tripCreated(ALPS, 'Vosges 2026'))
+
+    const start = screen.getByRole('link', {
+      name: 'Start a new trip from Vosges 2026',
+    })
+    const remove = screen.getByRole('button', { name: 'Delete Vosges 2026' })
+    // Every phase, Draft included: a Draft made by mistake is the commonest
+    // deletion there is.
+    expect(
+      start.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('routes the second door to /trips/new with the source pre-chosen', async () => {
+    await renderTrip(`/trips/${ALPS}`, tripCreated(ALPS, 'Vosges 2026'))
+
+    expect(
+      screen.getByRole('link', { name: 'Start a new trip from Vosges 2026' }),
+    ).toHaveAttribute('href', `/trips/new?from=${ALPS}`)
+  })
+
+  it('names the Trip in both accessible names', async () => {
+    // A control list full of `DELETE TRIP` is unnavigable, and this is the
+    // one act on the screen that most needs saying which Trip it is about.
+    await renderTrip(`/trips/${ALPS}`, tripParticipantAdded(ALPS, 'els'))
+
+    expect(
+      screen.getByRole('button', { name: 'Delete Unnamed trip' }),
+    ).toBeVisible()
+  })
+
+  it('emits trip.deleted once and lands on /trips', async () => {
+    const user = userEvent.setup()
+    const seeded = await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'Vosges 2026'),
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Delete/ }))
+    await user.click(screen.getByRole('button', { name: 'Delete trip' }))
+
+    expect(await seeded.authored()).toEqual([
+      { type: 'trip.deleted', payload: {} },
+    ])
+    expect(seeded.path()).toBe('/trips')
+  })
+
+  it('emits nothing when the confirm is refused', async () => {
+    const user = userEvent.setup()
+    const seeded = await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'Vosges 2026'),
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Delete/ }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(await seeded.authored()).toEqual([])
+    expect(seeded.path()).toBe(`/trips/${ALPS}`)
+  })
+
+  it('draws neither control on a Trip that is not there', async () => {
+    // There is no Trip to start from and none to delete.
+    await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'V'),
+      tripDeleted(ALPS),
+    )
+
+    expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Start a new trip/ })).toBeNull()
   })
 })
 
