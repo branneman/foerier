@@ -90,9 +90,13 @@ an op that changed nothing.
 **`text` is written unconditionally by `trip.note_posted`**, which makes it that
 op's `trip.created`-shaped seed: unlike `trip.entry_added`, identity alone is
 never ambiguous here, because a posted Note always writes at least one register.
-`entry_id` is written **only if present** (`writeIfPresent`) — an absent field
-leaves the register alone, and `null` clears it
-([sync §1.3](../sync-protocol.md)); the composer sets it at post time and no op
+`entry_id` is written **only if present** (`writeIfPresent`), and the register is
+**not nullable**: an absent field leaves it alone, and so does an explicit
+`null`, because [sync §1.3](../sync-protocol.md)'s *"`null` clears"* is a rule
+about a register whose declared type includes `null`, and this one's does not.
+That is deliberate rather than an oversight — no op in the catalogue detaches a
+Note from its Entry, so honouring a peer's `null` here would be inventing the
+clear this round declined. The composer sets `entry_id` at post time and no op
 addresses it again (I10).
 
 **The reducer folds both unconditionally.** `kept` may arrive before the
