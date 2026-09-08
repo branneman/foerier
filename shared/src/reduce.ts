@@ -1197,6 +1197,21 @@ const handlers: Record<string, Handler> = {
   'trip.renamed': setTripName,
   'trip.dates_set': tripDatesSet,
   'trip.phase_moved': tripPhaseMoved,
+  // S14 (§4.4): the Trip's tombstone — `gear.retired`'s handler transplanted,
+  // and deliberately **unpaired**, since the catalogue holds no
+  // `trip.restored`. Inline for the same reason that pair is: the whole
+  // handler is one register write, and a named `const` above would buy a name
+  // for three lines nothing else calls.
+  //
+  // `writeTrip` creates the Trip for this op as it does for any other, so a
+  // `trip.deleted` arriving before its `trip.created` still tombstones and the
+  // creation still lands its name — the two registers are independent and
+  // neither can lose the other's write.
+  'trip.deleted': (state, op, stamp) =>
+    writeTrip(state, op.aggregate_id, stamp, (trip, st) => {
+      const next = writeRegister(trip.deleted, true, st)
+      return next === trip.deleted ? trip : { ...trip, deleted: next }
+    }),
   // Per-person registers (§3.4). Present and absent, not create and delete —
   // exactly the tag pair above.
   'trip.participant_added': tripParticipantWritten(true),

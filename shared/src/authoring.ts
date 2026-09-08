@@ -399,6 +399,31 @@ export function tripPhaseMoved(id: string, phase: PhaseValue): OpSpec {
 }
 
 /**
+ * `sync-protocol.md` §4.4: sets the Trip's tombstone. The payload is empty —
+ * there is nothing to say beyond the fact — and the confirmation is the
+ * screen's (invariant 15), never the op's and never the reducer's.
+ *
+ * **There is no partner, and that absence is the feature.**
+ * {@link gearRetired} / {@link gearRestored} are an ordinary LWW pair over
+ * one register (§3.5); the catalogue defines one Trip tombstone op and no
+ * restore, which is what S14's confirm states to a human in as many words:
+ * `Permanent. No route puts a trip back.`
+ *
+ * `TripState.deleted` stays a `Register<boolean>` rather than a presence
+ * flag, so a later slice that wants a restore adds an op type and writes
+ * `false` without touching the fold's shape. Nothing here anticipates that,
+ * and no surface may hint at it.
+ */
+export function tripDeleted(id: string): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: id,
+    type: 'trip.deleted',
+    payload: {},
+  }
+}
+
+/**
  * `sync-protocol.md` §4.4: sets the per-person register to **present**
  * (§3.4), the same shape {@link gearTagApplied} has on tags.
  */

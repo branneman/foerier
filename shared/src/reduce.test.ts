@@ -195,6 +195,18 @@ function tripRenamedOp(
 }
 
 /**
+ * S14's tombstone. The payload is `{}` — there is nothing to say beyond the
+ * fact — so this helper takes none, unlike its four neighbours.
+ */
+function tripDeletedOp(
+  tripId: string,
+  hlc: string,
+  deviceId = DEVICE,
+): OpEnvelope {
+  return op('trip', tripId, 'trip.deleted', {}, hlc, deviceId)
+}
+
+/**
  * The payload keys are `start` and `end`; the registers they write are
  * `startDate` and `endDate` (spec §1.4) — the same split
  * `gear.owned_count_set{count}` already has. Spelled out here so a reader of
@@ -1300,6 +1312,54 @@ describe('trips', () => {
       seeded,
     )
     expect(applyOp(seeded, tripPhaseMovedOp('t1', 'draft', at(2)))).toBe(seeded)
+  })
+
+  it('trip.deleted sets the tombstone', () => {
+    const state = fold([
+      tripCreatedOp('t1', { name: 'Ardennes' }, at(1)),
+      tripDeletedOp('t1', at(2)),
+    ])
+    expect(state.trips['t1']?.deleted?.value).toBe(true)
+    // A tombstone is a write and nothing else — the Trip keeps everything it
+    // had, which is what `visibleTrips` filtering rather than deleting means.
+    expect(state.trips['t1']?.name?.value).toBe('Ardennes')
+  })
+
+  it('trip.deleted is idempotent under replay', () => {
+    // `gear.retired`'s property: the second write is identical on an
+    // identical stamp, so it loses on `<= 0` and the fold is identity.
+    const deleteOp = tripDeletedOp('t1', at(2))
+    const once = fold([
+      tripCreatedOp('t1', { name: 'Ardennes' }, at(1)),
+      deleteOp,
+    ])
+    expect(applyOp(once, deleteOp)).toBe(once)
+  })
+
+  it('trip.deleted creates the Trip when it arrives out of authoring order', () => {
+    // `writeTrip` creates the entity for any Trip op, and `deleted` and
+    // `name` are independent registers — so arrival order cannot lose the
+    // tombstone, and the creation still lands its name afterwards. S6's
+    // out-of-order `trip.phase_moved`, one register over.
+    const created = tripCreatedOp('t1', { name: 'Ardennes' }, at(1))
+    const deleted = tripDeletedOp('t1', at(5))
+
+    const late = fold([deleted, created])
+    expect(late.trips['t1']?.deleted?.value).toBe(true)
+    expect(late.trips['t1']?.name?.value).toBe('Ardennes')
+
+    expect(fold([created, deleted]).trips['t1']).toEqual(late.trips['t1'])
+  })
+
+  it('trip.deleted ignores a payload field it does not know', () => {
+    // Obligation 2: the payload is `{}` and a peer sending more is folded
+    // for what this build understands, never rejected. The op is retained
+    // verbatim in the log by the store, which this fold does not model.
+    const state = fold([
+      tripCreatedOp('t1', { name: 'Ardennes' }, at(1)),
+      op('trip', 't1', 'trip.deleted', { reason: 'duplicate' }, at(2)),
+    ])
+    expect(state.trips['t1']?.deleted?.value).toBe(true)
   })
 })
 

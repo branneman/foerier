@@ -85,6 +85,7 @@ export {
   tripContainerStageSet,
   tripCreated,
   tripDatesSet,
+  tripDeleted,
   tripEntryAdded,
   tripEntryBringCountSet,
   tripEntryMoved,

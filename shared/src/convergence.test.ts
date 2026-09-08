@@ -31,6 +31,7 @@ import {
   tripContainerStageSet,
   tripCreated,
   tripDatesSet,
+  tripDeleted,
   tripEntryAdded,
   tripEntryBringCountSet,
   tripEntryMoved,
@@ -530,6 +531,17 @@ const arbTripRootSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   fc
     .tuple(arbTripId, arbGearId, fc.nat({ max: 5 }))
     .map(([id, gearId, units]) => tripConsumptionPosted(id, gearId, units)),
+  // S14's one op type. `trips.<id>.deleted` is a **root** register beside
+  // `name`, `phase` and `fromTripId`, so this joins the root arm for the
+  // reason `trip.consumption_posted` above and `trip.task_added` below each
+  // give: {@link tripRegisterPaths} counts every path outside `entries` as a
+  // root register, so a contested `deleted` lands in the column this arm
+  // already feeds. **Deliberately not a fourth arm** — the arms give each
+  // *level* of the Trip an equal share, and a fourth would hand one op type a
+  // quarter of the budget while cutting entry and piece from a third each,
+  // the dilution S13 measured and {@link arbTripEntrySpec}'s tables warn
+  // about twice.
+  arbTripId.map((id) => tripDeleted(id)),
   // S13's two op types (§4.4), joining this arm as an eighth and ninth
   // branch for `trip.consumption_posted`'s own reason one branch up:
   // `tasks.<task_id>` is a per-key map hanging off the Trip **root**, beside
