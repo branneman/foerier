@@ -1,0 +1,206 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the S14 fixture > folds to exactly the state it folded to when captured 1`] = `
+{
+  "gear": {
+    "g-s14-gas": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:01.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s14-gas",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:01.000Z-0000",
+        "value": "counted",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:01.000Z-0000",
+        "value": "Gas canister 450",
+      },
+      "ownedCount": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:01.000Z-0000",
+        "value": 6,
+      },
+    },
+    "g-s14-tent": {
+      "container": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:00.000Z-0000",
+        "value": false,
+      },
+      "id": "g-s14-tent",
+      "kind": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:00.000Z-0000",
+        "value": "single",
+      },
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:00.000Z-0000",
+        "value": "Tent Arpy 3",
+      },
+    },
+  },
+  "people": {},
+  "places": {},
+  "trips": {
+    "t-s14-copy": {
+      "entries": {
+        "e-s14-gas": {
+          "bringCount": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:03.000Z-0000",
+            "value": 4,
+          },
+          "id": "e-s14-gas",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:02.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s14-gas",
+            },
+          },
+        },
+        "e-s14-passports": {
+          "id": "e-s14-passports",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:04.000Z-0000",
+            "value": {
+              "container": false,
+              "from": "trip_only",
+              "name": "Passports",
+            },
+          },
+        },
+        "e-s14-tent": {
+          "id": "e-s14-tent",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:01.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s14-tent",
+            },
+          },
+        },
+      },
+      "fromTripId": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:02:00.000Z-0000",
+        "value": "t-s14-source",
+      },
+      "id": "t-s14-copy",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:02:00.000Z-0000",
+        "value": "Vosges 2026",
+      },
+      "notes": {
+        "n-s14-orphan": {
+          "id": "n-s14-orphan",
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:08.000Z-0000",
+            "value": "Two canisters was not enough for five days.",
+          },
+        },
+        "n-s14-sleeve": {
+          "entryId": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:07.000Z-0000",
+            "value": "e-s14-tent",
+          },
+          "id": "n-s14-sleeve",
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:07.000Z-0000",
+            "value": "The left pole sleeve was already splitting last year.",
+          },
+        },
+      },
+      "phase": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:02:00.000Z-0000",
+        "value": "draft",
+      },
+      "tasks": {
+        "k-s14-dav": {
+          "id": "k-s14-dav",
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:06.000Z-0000",
+            "value": "Renew the DAV cards",
+          },
+        },
+        "k-s14-hut": {
+          "id": "k-s14-hut",
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:05.000Z-0000",
+            "value": "Book the Rothenbrunnen hut",
+          },
+        },
+      },
+    },
+    "t-s14-orphan": {
+      "fromTripId": {
+        "deviceId": "bbbbbbbb-0000-7000-8000-000000000002",
+        "hlc": "2026-09-08T09:03:00.000Z-0000",
+        "value": "t-s14-never-folded",
+      },
+      "id": "t-s14-orphan",
+      "name": {
+        "deviceId": "bbbbbbbb-0000-7000-8000-000000000002",
+        "hlc": "2026-09-08T09:03:00.000Z-0000",
+        "value": "Started from nowhere",
+      },
+      "phase": {
+        "deviceId": "bbbbbbbb-0000-7000-8000-000000000002",
+        "hlc": "2026-09-08T09:03:00.000Z-0000",
+        "value": "draft",
+      },
+    },
+    "t-s14-source": {
+      "deleted": {
+        "deviceId": "bbbbbbbb-0000-7000-8000-000000000002",
+        "hlc": "2026-09-08T09:30:00.000Z-0000",
+        "value": true,
+      },
+      "entries": {
+        "e-s14-src-tent": {
+          "id": "e-s14-src-tent",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:01:01.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s14-tent",
+            },
+          },
+        },
+      },
+      "id": "t-s14-source",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:01:00.000Z-0000",
+        "value": "Vosges 2025",
+      },
+      "phase": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:01:00.000Z-0000",
+        "value": "draft",
+      },
+    },
+  },
+  "unfolded": {
+    "count": 0,
+    "types": {},
+  },
+}
+`;

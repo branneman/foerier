@@ -1,0 +1,233 @@
+[
+  {
+    "id": "ffffffff-0000-7000-8000-000000000201",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s14-tent",
+    "type": "gear.recorded",
+    "hlc": "2026-09-08T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Tent Arpy 3",
+      "container": false,
+      "kind": "single"
+    },
+    "seq": 1,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000202",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s14-gas",
+    "type": "gear.recorded",
+    "hlc": "2026-09-08T09:00:01.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Gas canister 450",
+      "container": false,
+      "kind": "counted",
+      "owned_count": 6
+    },
+    "seq": 2,
+    "received_at": "2026-09-08T10:00:01Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000203",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-source",
+    "type": "trip.created",
+    "hlc": "2026-09-08T09:01:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Vosges 2025"
+    },
+    "seq": 3,
+    "received_at": "2026-09-08T10:01:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000204",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-source",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-08T09:01:01.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s14-src-tent",
+      "source": { "from": "depot", "gear_id": "g-s14-tent" }
+    },
+    "seq": 4,
+    "received_at": "2026-09-08T10:01:01Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000205",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-source",
+    "type": "trip.deleted",
+    "hlc": "2026-09-08T09:30:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000002",
+    "payload": {
+      "reason": "duplicate"
+    },
+    "seq": 5,
+    "received_at": "2026-09-08T10:30:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000206",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.created",
+    "hlc": "2026-09-08T09:02:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Vosges 2026",
+      "from_trip_id": "t-s14-source"
+    },
+    "seq": 6,
+    "received_at": "2026-09-08T10:02:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000207",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-08T09:02:01.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s14-tent",
+      "source": { "from": "depot", "gear_id": "g-s14-tent" }
+    },
+    "seq": 7,
+    "received_at": "2026-09-08T10:02:01Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000208",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-08T09:02:02.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s14-gas",
+      "source": { "from": "depot", "gear_id": "g-s14-gas" }
+    },
+    "seq": 8,
+    "received_at": "2026-09-08T10:02:02Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000209",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.entry_bring_count_set",
+    "hlc": "2026-09-08T09:02:03.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s14-gas",
+      "count": 4
+    },
+    "seq": 9,
+    "received_at": "2026-09-08T10:02:03Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-00000000020a",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-08T09:02:04.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s14-passports",
+      "source": {
+        "from": "trip_only",
+        "name": "Passports",
+        "container": false
+      }
+    },
+    "seq": 10,
+    "received_at": "2026-09-08T10:02:04Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-00000000020b",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.task_added",
+    "hlc": "2026-09-08T09:02:05.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "task_id": "k-s14-hut",
+      "text": "Book the Rothenbrunnen hut"
+    },
+    "seq": 11,
+    "received_at": "2026-09-08T10:02:05Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-00000000020c",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.task_added",
+    "hlc": "2026-09-08T09:02:06.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "task_id": "k-s14-dav",
+      "text": "Renew the DAV cards"
+    },
+    "seq": 12,
+    "received_at": "2026-09-08T10:02:06Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-00000000020d",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.note_posted",
+    "hlc": "2026-09-08T09:02:07.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "note_id": "n-s14-sleeve",
+      "text": "The left pole sleeve was already splitting last year.",
+      "entry_id": "e-s14-tent"
+    },
+    "seq": 13,
+    "received_at": "2026-09-08T10:02:07Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-00000000020e",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-copy",
+    "type": "trip.note_posted",
+    "hlc": "2026-09-08T09:02:08.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "note_id": "n-s14-orphan",
+      "text": "Two canisters was not enough for five days."
+    },
+    "seq": 14,
+    "received_at": "2026-09-08T10:02:08Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-00000000020f",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s14-orphan",
+    "type": "trip.created",
+    "hlc": "2026-09-08T09:03:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000002",
+    "payload": {
+      "name": "Started from nowhere",
+      "from_trip_id": "t-s14-never-folded"
+    },
+    "seq": 15,
+    "received_at": "2026-09-08T10:03:00Z"
+  }
+]
