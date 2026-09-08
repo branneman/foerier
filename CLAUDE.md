@@ -13,10 +13,10 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 
 ## Current status
 
-**Code has started.** Every slice of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
-through S13 has landed — S12 and S13 were built in parallel on the float
+**The MVP is complete.** Every slice of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
+has landed, S14 last — S12 and S13 were built in parallel on the float
 [§8.6](docs/architecture-design.md#86-what-can-be-built-in-parallel) grants
-them, and only S14 is left of the MVP:
+them. What the plan called for is built:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
   `ui`; `landing` deferred), the Tier 0 toolchain and pre-commit hook, the test
@@ -1176,6 +1176,67 @@ hold), `shared/src/selectors/task.ts`, one component (`TasksPanel`) in
   keeps the 48 target size and needs no hit extension at all. The glyph is a
   square with no status colour (I23): `○ ◐ ●` is packing progress and `▲` is
   attention, and reusing either is S5's trap.
+
+**S14, trip history and templates, has landed** (story 14; completes story
+15). **One op type — `trip.deleted`** — the last of the catalogue's
+thirty-nine, `gear.retired`'s handler with no partner; `trip.created` gaining
+`from_trip_id` at the builder eight slices after the reducer began folding
+it; `tripStandingOf` and `sourceTrips` in `shared/src/selectors/trip.ts`; the
+fifth gesture, `startTripFrom`; one component (`DeleteTripConfirm`), one
+picker (`SourcePicker`), and `START FROM` as `/trips/new`'s first row. **No
+endpoint, no migration, no `ui/` change and no slicing dimension**, and the
+template copy introduces **nothing** — it materialises at creation into ops
+that have existed since S6, S7, S12 and S13. Every design question was ruled
+before a line of it existed: see `docs/design/README.md` **§5m** (J1–J20),
+[its spec](docs/specs/2026-09-08-trip-history-and-templates.md), whose **§11
+records what moved while it was being built**, and
+[§12.22](docs/architecture-design.md#1222-consequences-of-s14-trip-history-and-templates).
+
+**Five things about S14 are worth knowing before touching a Trip's history:**
+
+- **A ruling's wording was wrong about the fold for the second slice running,
+  and the correction is I24's shape.** J8 orders the source picker by
+  *"`trip.created`'s clock, newest first"* — and no register holds that clock,
+  because the two `trip.created` seeds (`name`, `phase`) both move afterwards,
+  on a rename and on every phase move. The order is the Trip's own **UUIDv7
+  id** descending: `systemIdSource` puts a big-endian millisecond timestamp in
+  the most significant bits and the hex string preserves it. It is *more*
+  faithful to J8 than a stamp, since the id is minted in the same tick as
+  `trip.created` while an HLC may already carry a peer's clock. Two of these
+  in successive slices makes it a pattern: **where a board's words imply a
+  mechanism the fold cannot provide, the slice owes the round the corrected
+  reading, not the literal one.**
+- **A soft delete's reader gate must be spelled once, and the surface that
+  misses it is the detail screen.** `visibleTrips` has filtered the tombstone
+  since S6, so every *list* was right the moment `trip.deleted` became
+  authorable — but `/trips/:id` guarded on `state.trips[id] === undefined`
+  and would have drawn a deleted Trip in full, panels and controls and all,
+  while the rest of the app agreed it was gone. A list enumerates through the
+  gate naturally; a detail screen does not. `tripStandingOf` is now the only
+  place the question is asked, and it distinguishes *tombstoned* from *never
+  folded here* because J5 draws two different sentences for them.
+- **A bulk write reads registers where a surface reads selectors.**
+  `bringCountOf` answers `?? 1` for a Counted Entry nobody set a count on —
+  right for one row on screen, and a fabricated fact once it is *written*
+  several hundred times into a copy. `startTripFrom` copies the register and
+  gates on the read being non-null (invariant 6's authoring rule, which the
+  reducer deliberately does not enforce). Carry this into any future bulk
+  write; it is now [`patterns.md`](docs/patterns.md) §2.3's batch case.
+- **A copy cannot over-claim, by construction rather than by a guard.** The
+  new Trip is `draft` and `claim.ts` reads active Trips only (invariant 17),
+  so copying a fifty-entry list another Trip is packing creates zero claims.
+  The instinct on reading *"copies a whole gear list"* is to reach for the
+  claim machinery; doing so would have added a confirm nothing can trigger.
+  The next moment **is** guarded, by `PhaseSheet`'s existing preview.
+- **A board drawn and never built leaves no code to delete.** `Screens B`'s
+  1024 builder has drawn `VOSGES 2025 LIST · 24 MATCH THIS DEPOT · ADD ALL /
+  DISMISS` since S7, handed to S14 as `from_trip_id`'s reader — and it cannot
+  ship beside a copy that materialises at creation, because by then all 24
+  Entries are on the list. J18 discharges the obligation with a header line
+  instead. The band was never implemented, so the spec's planned test
+  asserting its absence was **not** written: it would assert that we never
+  built something. Retiring such a board owes the boards an edit rather than
+  the suite a guard.
 
 Four conventions the code now carries that are easy to trip over:
 

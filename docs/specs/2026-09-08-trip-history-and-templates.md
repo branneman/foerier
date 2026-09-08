@@ -660,3 +660,63 @@ band's **absence**, which is the only way a retired string stays retired.
 - **`docs/technical-debt.md`** — the popover entry gains its seventh caller.
 - **`CLAUDE.md`** — the S14 paragraph, and the status line that has said
   *"only S14 is left of the MVP"* since S13.
+
+---
+
+## 11. What moved while it was being built
+
+The house convention since `trips-and-phases.md` §10: this document is left as
+it was written, and what changed lives here rather than being edited back into
+the sections it corrects. Everything below is also in `design/README.md` §5m's
+code-authored block or in [§12.22](../architecture-design.md), because a dated
+spec is invisible to the next design round (S9 round 4's lesson).
+
+**1. The suggestion-band absence test should not be written, and was not.**
+§9 asks for a Tier 3 assertion that the builder pane draws no
+`VOSGES 2025 LIST · 24 MATCH THIS DEPOT`. The band was drawn at S7 and
+**never built** — no string in `app/` or `ui/` has ever matched it — so there
+is nothing to regress and the test would assert that we never built
+something. §6.2's retirement was documentation from the start. The general
+form: *a board drawn and never built leaves no code to delete, and a slice
+retiring it owes the boards an edit rather than the suite a guard.*
+
+**2. `N OUTCOMES` counts units, not lines.** §6.4 draws the fact block
+without saying what its fourth line counts. `unpackTotals(...).resolved` is
+F5's own arithmetic, so a Trip of two Entries whose Counted headlamp is ×3
+reads `4 OUTCOMES`, not `2`. The two numbers standing beside each other in
+that block deliberately count different things, which is why one says
+ENTRIES and the other OUTCOMES. My first test asserted `2` and the code was
+right.
+
+**3. The carry line and the delete confirm count notes differently, and both
+are correct.** §5's `COMES ACROSS · … · 4 NOTES` names what the copy will
+take — kept *and* unreviewed, never discarded — while §6.4's `4 NOTES`
+counts every Note the Trip holds, discarded ones included, because a
+discarded Note never vanishes from its own Trip (I16). This is the one place
+in the app where those two numbers legitimately differ on the same Trip.
+Neither should be "fixed" to match the other.
+
+**4. `START FROM`'s unchosen value is muted; the Participants row's `None` is
+ink.** §5's table says *muted `NONE` unchosen* and does not say why the row
+directly below it differs. An empty Participants list is a *state of the
+Trip* the ledger states; an unchosen source is a decision not yet taken.
+Muted says *nothing here yet*, ink says *this is the value*.
+
+**5. The `START FROM` row's presence test is `sourceTrips`, not the raw
+map.** §5 says the row is absent in a household with no other Trip. Written
+as `Object.keys(state.trips).length > 0` that is wrong: the map holds
+tombstones, so a household whose only Trip has been deleted draws a row
+opening a picker containing nothing but its own clear row — the dead
+affordance J13's withdrawal exists to prevent. It reads the same list the
+picker draws, so the row and its contents cannot disagree. Caught by a test.
+
+**6. `Trip.tsx` was already rendering deleted Trips, which §2 predicted and
+understated.** The spec says the screen "would render a deleted Trip in
+full"; the failing test printed that Trip's own date range before the fix
+landed. Worth recording as a defect this slice closed rather than as a
+consequence it introduced — the tombstone has been authorable only since
+task 1, but the guard has been wrong since S6.
+
+**7. `unpackTotals` is a fifth reader the delete confirm needs**, alongside
+`taskCounts`, `noteCounts` and `listTotals`. §6.4 names the four lines and
+not the four selectors; all four already existed and none needed widening.

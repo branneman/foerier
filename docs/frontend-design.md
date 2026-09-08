@@ -569,12 +569,14 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   hand-rolled avatars with it.
 
   The rest of
-  this list is unbuilt, and `Popover` is the one with waiting callers — **six
-  of them** that a board *names* as a popover: §4a's desktop tag picker and the
-  slice bar's `ValueMenu` are approximated by `Sheet`'s `desktopCard` until it
-  lands, and so are S8's Piece picker and S9a's Piece status sheet, both
-  popovers from Split up on the boards — and, since S10, the outcome sheet and
-  its roster variant, approximated the identical way. Four more sheets pass
+  this list is unbuilt, and `Popover` is the one with waiting callers —
+  **seven of them** that a board *names* as a popover: §4a's desktop tag
+  picker and the slice bar's `ValueMenu` are approximated by `Sheet`'s
+  `desktopCard` until it lands, and so are S8's Piece picker and S9a's Piece
+  status sheet, both popovers from Split up on the boards; since S10, the
+  outcome sheet and its roster variant, approximated the identical way; and
+  since S14, the template source picker, whose own round declined to draw the
+  seventh popover rather than take a set of visual decisions against nothing. Four more sheets pass
   `desktopCard` with no board behind them (`patterns.md` §4.5 records which),
   which is the count to look at when `Popover` does land.
 

@@ -307,13 +307,24 @@ precisely the fact that ends it. `reHomeOnTheSpot`'s own unconditional
 rule's *complement*, because that write is always paired with a genuine
 outcome change, never offered alone against an unchanged residence.
 
+**The rule inside a batch, where it costs hundreds of ops rather than one**
+(S14). `startTripFrom` copies a Bring-count from the **register** and never
+from `bringCountOf`, which supplies a default — an absent count on a Counted
+Entry reads `1`. That default is right for one row on a screen and becomes a
+fabricated fact the moment it is *written*, several hundred times, on a copy
+of a two-hundred-line gear list. The general form is worth carrying into any
+future bulk write: **read registers where a surface reads selectors.** A
+selector's job is to answer what a reader should see, and a default is part
+of that answer; an op is a claim about what somebody did.
+
 There is no helper for this in `authoring.ts`: every builder is a pure
 payload constructor, and the comparison is spelled at each site. That is the
 pattern's weak point, and the audit that produced this file found the rule
 missed at four of them.
 
 *Argued in:* [§12.11](architecture-design.md#1211-consequences-of-s6-trips-and-phases),
-[§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
+[§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey),
+[§12.22](architecture-design.md#1222-consequences-of-s14-trip-history-and-templates).
 
 ### 2.4 Created while picking is selected
 

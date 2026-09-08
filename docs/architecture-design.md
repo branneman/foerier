@@ -424,8 +424,8 @@ issuance waits. Auth slices 3 and 4 float freely (§8.6).
 
 ### 8.3 The slices
 
-**Landed so far: S0, S1, S2a, S2b, S3, S3.5, S4, S6, S5, S7, S8, S9a, S9b and
-S10**, plus
+**Every slice has landed: S0, S1, S2a, S2b, S3, S3.5, S4, S6, S5, S7, S8,
+S9a, S9b, S10, S11, S12, S13 and S14 — the MVP is complete.** Plus
 two pieces of work carrying no slice number (the Radix conversion, §12.9; Tier 4
 and 5 against production, §12.8). S2 was the first slice to need the op log,
 the reducer, and `/sync`, and it landed in **two halves rather than one** —
@@ -846,7 +846,9 @@ on what happens if 15 does move.
   Task is copied, ticked or not**, and a Task holding no `text` is not
   drawable and so is not copied.
 
-**S14 — Trip history and templates.** *Delivers 14. Completes the MVP.*
+**S14 — Trip history and templates. Landed.** *Delivers 14. Completes the
+MVP.* See [its spec](specs/2026-09-08-trip-history-and-templates.md) and
+§12.22.
 
 - **Ops (1 new):** `trip.deleted`. The template copy introduces nothing: it
   **materialises at creation time** into one batch of ordinary existing ops —
@@ -862,6 +864,11 @@ on what happens if 15 does move.
   (the reason it is materialised, not derived).
 - **Usable?** A hüttentour starts from a proven list. The spreadsheets are
   retired.
+- **One test in the plan above should not be written, and was not.** *The
+  copy does not mutate as late ops for the source Trip arrive* is a real
+  property and it is tested; the **suggestion band**, though, was drawn at S7
+  and never built, so there is nothing to assert the absence of. §12.22 has
+  the general form.
 
 ---
 
@@ -2965,3 +2972,111 @@ permitted to be.
   test should extend to *shared test infrastructure*, and this is the worked
   example of why the full suite runs on the merged `main` and not merely on
   each branch (`CLAUDE.md`'s merge convention).
+
+### 12.22 Consequences of S14: trip history and templates
+
+Story 14 and story 15's second criterion — **the last slice of the MVP**. One
+op type, `trip.deleted`; no endpoint, no migration, no `ui/` component and no
+change to the slicing engine. The template copy introduces **nothing**: it
+materialises at creation into a batch of ops that have existed since S6, S7,
+S12 and S13, and *start fresh* is the absence of an op rather than a value
+anybody writes.
+
+Story 14's first criterion — *past Trips remain browsable with their final
+decisions* — was **already met** when the slice began, by the closed ledger
+(S6), the trip screen at every phase, and F5 frozen as a record (ruling G6).
+The round said so in its opening paragraph and drew no history screen. The
+one place S14 enumerates a closed Trip's contents is the delete confirm.
+
+- **A ruling's wording was wrong about the fold for the second slice running,
+  and the correction is the same shape.** J8 orders the source picker by
+  *"`trip.created`'s clock, newest first"*, and no register's stamp is that
+  clock: `trip.created` seeds `name` and `phase`, and both move afterwards —
+  on a rename and on every phase move — so either would re-sort the picker
+  when somebody renamed a Trip. The order is the Trip's **own UUIDv7 id**,
+  descending: `systemIdSource` puts a 48-bit big-endian millisecond timestamp
+  in the most significant bits and the canonical hex string preserves it
+  lexicographically. It is *more* faithful to J8's words than a stamp would
+  be, because the id is minted in the same tick as `trip.created` on the
+  authoring Device while an HLC may already have been advanced by a peer's
+  clock (§2.5's `max`), and it has no missing case — `writeTrip` creates the
+  entity for any Trip op, so a Trip that exists only because a `trip.renamed`
+  overtook its creation still sorts. S13's I24 was the first of these; two in
+  successive slices makes it a pattern worth naming rather than a coincidence,
+  and both are recorded in `design/README.md` rather than only in a spec.
+- **A tombstone on an entity the fold keeps is invisible to a guard that
+  tests `undefined`, and this one had been for eight slices.** `visibleTrips`
+  has filtered `deleted?.value !== true` since S6, so every *list* was already
+  right the moment `trip.deleted` could be authored — but `/trips/:id` guarded
+  only on `state.trips[id] === undefined` and would have rendered a deleted
+  Trip in full, name, panels, gear list and every control, while the rest of
+  the app agreed it was gone. `tripStandingOf` is the one place the question
+  is asked now. **The general shape: a soft delete's reader gate has to be
+  spelled once and consulted by every surface, and the surface most likely to
+  miss it is the detail screen, because a list naturally enumerates through
+  the gate and a detail screen naturally does not.**
+- **The reader a copy must not use is the one every screen uses.**
+  `bringCountOf` answers `?? 1` for a Counted Entry whose count nobody set, so
+  copying a gear list *through the read* would author `count: 1` for every
+  such Entry — a needless write (`patterns.md` §2.3) that changes nothing a
+  reader sees, several hundred at a time in the largest batch the app has.
+  `startTripFrom` copies the **register** and gates on the read being non-null,
+  which is invariant 6's authoring rule the reducer deliberately does not
+  enforce. The rule generalises past this slice: **a bulk write reads
+  registers, where a surface reads selectors** — a default that is right for
+  one row on screen becomes a fabricated fact when it is written down a
+  hundred times.
+- **A copy cannot over-claim, by construction rather than by a guard.** The
+  new Trip is created in `draft` and `claim.ts` reads active Trips only
+  (invariant 17), so a fifty-entry copy of a list another Trip is packing
+  creates exactly zero claims. Nothing is guarded, previewed or confirmed at
+  creation — and the *next* moment already is, by `PhaseSheet`'s existing
+  `overClaimsIfActive` preview. Worth stating because the instinct on reading
+  "copies a whole gear list" is to reach for the claim machinery, and doing so
+  would have added a confirm nothing can trigger.
+- **The batch is not atomic, and the op order is what makes that survivable.**
+  `emit` appends one op at a time, so a copy is N durable appends —
+  sync §4.5's own property, which is why that section says the order inside
+  each gesture is chosen for what a partial batch leaves behind.
+  `trip.created` goes first, so a Device dying part-way leaves a **named Trip
+  with a prefix of its list**: visible, recoverable, and something this very
+  slice gives a route out of, since `DELETE TRIP` now exists. Nothing chunks
+  and nothing caps — §6.1's 500-op limit is the outbox's business, and every
+  op merges independently, so a copy split across two pushes is not a state
+  anyone can observe.
+- **A board drawn before a protocol decision loses to it, and the loss is
+  recorded rather than quietly dropped.** `Screens B`'s 1024 builder has drawn
+  `VOSGES 2025 LIST · 24 MATCH THIS DEPOT · ADD ALL / DISMISS` since S7, and
+  S7's spec handed it to S14 as *`from_trip_id`'s reader*. It cannot ship
+  beside a copy that materialises at creation: by the time that pane renders
+  all 24 Entries are on the list, so `ADD ALL` has nothing to add and
+  `DISMISS` nothing to decline. The count string goes for a second,
+  independent reason — J15 filters nothing, so there is no non-matching
+  remainder to count. The obligation is discharged by a header line instead
+  (J18, J20), and `from_trip_id` is a property of the **Trip**, so §5b H's
+  *property of the list, not of a route* is deliberately **not** extended by
+  analogy: a claim is a fact about listed gear and an origin is not.
+- **The band was never built, which changed what the slice owed.** The spec's
+  test plan asked for a Tier 3 assertion that the builder pane draws no
+  suggestion band — and no string in `app/` or `ui/` has ever matched one, so
+  there is nothing to regress and the test would assert that we never built
+  something. J18's retirement was documentation from the start. **A board
+  drawn and never built leaves no code to delete, and a slice retiring it owes
+  the boards an edit rather than the suite a guard.**
+- **Participants do not copy, the consequence is drawn, and the wording is
+  routed to requirements rather than overridden.** Story 14 and domain §9 both
+  enumerate what carries over and Participants are in neither, so every
+  per-person Entry lands on a fresh copy inert — ruling E9's
+  `PER-PERSON · NO PIECES`, doing S14's work with no new code and no new
+  string. The round drew that first impression, accepted it, and disclosed it
+  **before the create** in `START FROM`'s second field line rather than
+  explaining it afterwards. It did not overturn the enumeration: that is a
+  story change through the requirements process, and a frame is not the place
+  to make one. Its sibling — story 14's *a past one* against a picker offering
+  every visible Trip — is flagged the same way.
+- **S14 declined the three consolidations `technical-debt.md` named it for**,
+  to keep the MVP's last slice to its own scope. The two index entries that
+  named this slice as their owner now name the **trigger** instead, because an
+  entry with a scheduled owner reads as work already spoken for and nobody
+  picks it up. What each is waiting for is unchanged and unblocked: both
+  parallel branches have landed and neither is holding those call sites open.

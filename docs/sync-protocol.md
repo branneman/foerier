@@ -579,7 +579,7 @@ in the payload.
 | `trip.renamed` | `{name: string｜null}` | Sets `name`. `null` clears; absent ≠ null (§1.3) | *(implied by Trip created)* | 5 |
 | `trip.dates_set` | `{start?: date｜null, end?: date｜null}` | Sets either date **independently**; `null` clears. `YYYY-MM-DD` by convention, not by enforcement. Absent ≠ null (§1.3) | Trip dates set / cleared | 5 |
 | `trip.phase_moved` | `{phase: "draft"｜"pack_out"｜"on_trip"｜"unpack"｜"closed"}` | Sets `phase`. Moves **in both directions**; reopening is this op with `phase = "unpack"` from `closed`. The close gate and the reopen confirmation are UI, not protocol | Trip phase moved · Trip reopened | 32 |
-| `trip.deleted` | `{}` | Sets the tombstone. The confirmation is UI (invariant 15) | Trip deleted | 14 |
+| `trip.deleted` | `{}` | Sets the tombstone. The confirmation is UI (invariant 15), and there is deliberately **no partner op** — nothing restores a Trip, which is what the confirm states in words. Every reader goes through one selector (`visibleTrips`), so a tombstone reaches lists, whereabouts, claims and the slicing engine without any of them knowing about it | Trip deleted | 14 |
 | `trip.participant_added` | `{person_id}` | Per-person-id register → present (§3.4) | Participant added | 5 |
 | `trip.participant_removed` | `{person_id}` | → absent | Participant removed | 5 |
 
@@ -832,6 +832,23 @@ ops in one batch: `trip.created{from_trip_id}`, then a
 `trip.entry_added` per entry, `trip.entry_bring_count_set`, `trip.task_added`,
 and `trip.note_posted` for each kept note. Packing statuses, journeys, outcomes,
 consumed-counts and dates start fresh by simply not being written.
+
+**The batch mints a fresh entry id per entry and carries the mapping**, because
+a copied note may be *about* an entry: its `entry_id` is re-pointed at the copy,
+and a note whose subject is not in the batch — removed from the source after
+the note was posted — is posted about the **trip**, with the key omitted rather
+than sent as `null` (`NoteState.entryId` is not nullable, §1.3). The prose is
+the thing worth keeping; dropping the note to protect its pointer would lose
+the note to protect the footnote. No `kept` and no `ticked` is written for anything
+copied: a copied note arrives *unreviewed* and a copied task *unticked*, both by
+absence, because each is a verdict about the source trip's own pass.
+
+**A bring-count copies from the register, never from the reader.** The reader
+supplies a default (an absent count on a counted entry reads `1`), which is
+right for one row on a screen and becomes a fabricated fact written several
+hundred times in a batch — a needless write that moves stamps LWW compares.
+The same caution applies to any future bulk write: **read registers where a
+surface reads selectors.**
 
 It would be tempting to make the copy **derived** — store only `from_trip_id`
 and read the source trip's list. That is wrong here: the new trip's contents

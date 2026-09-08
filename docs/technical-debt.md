@@ -309,18 +309,20 @@ them looking for work is the thing this section exists to stop.
   learns nothing. Blocked on a board: no frame draws a refused write.
   [`patterns.md`](patterns.md) §2.5, anchor:
   `read by no screen`
-- **`ui/`'s `Popover` is unbuilt, has six waiting callers, and no board
+- **`ui/`'s `Popover` is unbuilt, has seven waiting callers, and no board
   draws one.** §4a's desktop tag picker, the slice bar's `ValueMenu`, S8's
-  Piece picker, S9a's Piece status sheet, and — since S10 — the outcome sheet
-  and its roster variant are each described in board prose as *sheet below
-  Split, popover from Split up*, and all six are approximated by `Sheet`'s
-  `desktopCard` meanwhile. **That prose is the whole of the
+  Piece picker, S9a's Piece status sheet, the outcome sheet and its roster
+  variant (S10), and — since S14 — the template source picker are each
+  described in board prose as *sheet below Split, popover from Split up*, and
+  all seven are approximated by `Sheet`'s `desktopCard` meanwhile. S14's own
+  round declined to draw the seventh rather than take a set of visual
+  decisions against nothing, and said so. **That prose is the whole of the
   specification.** The bundle contains no popover artboard: nothing states a
   side, an alignment, an offset, a width, collision behaviour or whether it
   carries an arrow, and the only popover token in `Foundations` is the
   `bg/raised` background it shares with a hovered row. Building it therefore
-  means taking six visual decisions across six surfaces with nothing to build
-  against, which is why this sits here and not under *Specified and not
+  means taking seven visual decisions across seven surfaces with nothing to
+  build against, which is why this sits here and not under *Specified and not
   built*. It also needs each caller restructured so the trigger and the
   content are siblings under one Radix root, against the app's settled
   mounted-is-open convention ([`patterns.md`](patterns.md) §4.1) — so a
