@@ -1506,6 +1506,137 @@ describe('the trip screen — a stored date EDIT cannot draw', () => {
   })
 })
 
+/**
+ * **S13's wiring** — the panel itself is exercised in
+ * `TasksPanel.test.tsx`; what these assert is the four things only this
+ * screen owns: the panel is in `TripPanels`' slot, the ids are minted here,
+ * the two ops reach the log, and ruling I25 holds on a closed Trip.
+ */
+describe('the trip screen — the TASKS panel', () => {
+  it('draws the panel between the header and the GEAR LIST band', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'Alps 2026'),
+      gearRecorded('g1', { name: 'Tent', container: false, kind: 'single' }),
+      tripEntryAdded(ALPS, 'e1', { from: 'depot', gearId: 'g1' }),
+    )
+
+    // Document order is ruling I1's whole claim, and the only place it can
+    // be asserted is here — the panel does not know what it sits between.
+    const tasks = screen.getByText('TASKS')
+    const gearList = screen.getByTestId('gear-list-band')
+    expect(
+      tasks.compareDocumentPosition(gearList) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('mints the id here and emits one trip.task_added per Return', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'Alps 2026'),
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: /^\+ TASK — NOT GEAR/ }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'Add a pre-trip task' }),
+      'Charge the devices{Enter}Buy the vignette{Enter}',
+    )
+
+    const authored = await seed.authored()
+    expect(authored.map((op) => op.type)).toEqual([
+      'trip.task_added',
+      'trip.task_added',
+    ])
+    expect(authored.map((op) => op.payload['text'])).toEqual([
+      'Charge the devices',
+      'Buy the vignette',
+    ])
+    // Two lines, two ids — minted at the call site, never reused.
+    const ids = authored.map((op) => op.payload['task_id'])
+    expect(new Set(ids).size).toBe(2)
+    for (const id of ids) expect(typeof id).toBe('string')
+  })
+
+  it('emits one trip.task_ticked per tap, both directions', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'Alps 2026'),
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: /^\+ TASK — NOT GEAR/ }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'Add a pre-trip task' }),
+      'Charge the devices{Enter}',
+    )
+    await user.tab()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Charge the devices, not ticked' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Charge the devices, ticked' }),
+    )
+
+    const authored = await seed.authored()
+    expect(authored.map((op) => op.type)).toEqual([
+      'trip.task_added',
+      'trip.task_ticked',
+      'trip.task_ticked',
+    ])
+    expect(authored.slice(1).map((op) => op.payload['ticked'])).toEqual([
+      true,
+      false,
+    ])
+    // The band followed the register, not a local counter.
+    expect(screen.getByText('0/1 TICKED')).toBeInTheDocument()
+  })
+
+  /**
+   * Ruling I25 — I17's test, applied a panel over. Invariant 19 and ruling
+   * G6 freeze a closed Trip's *outcomes*; invariant 16 locks no register;
+   * invariant 18's gate is about the Depot, which a Task never writes to.
+   * *Pre-trip* names when a task is **for**, not when its register may be
+   * written, so a task added on a closed Trip for the next one is a
+   * correction of the record.
+   */
+  it('stays live on a closed Trip, unlike F5s frozen outcomes', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    const user = userEvent.setup()
+    const seed = await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'Alps 2026'),
+      tripPhaseMoved(ALPS, 'closed'),
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: /^\+ TASK — NOT GEAR/ }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'Add a pre-trip task' }),
+      'Return the borrowed axe{Enter}',
+    )
+
+    expect((await seed.authored()).map((op) => op.type)).toEqual([
+      'trip.task_added',
+    ])
+    expect(
+      screen.getByRole('button', {
+        name: 'Return the borrowed axe, not ticked',
+      }),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('the trip screen — Participants on the resting screen', () => {
   it('emits a toggle immediately, both ways', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)

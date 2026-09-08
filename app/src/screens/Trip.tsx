@@ -1,6 +1,9 @@
 import {
   listTotals,
   overClaimsFor,
+  systemIdSource,
+  taskCounts,
+  tasksOf,
   tripDatesSet,
   tripEntryBringCountSet,
   tripEntryRemoved,
@@ -10,6 +13,8 @@ import {
   tripParticipantRemoved,
   tripPieceRemoved,
   tripRenamed,
+  tripTaskAdded,
+  tripTaskTicked,
   UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
@@ -27,6 +32,7 @@ import { OverClaimBand } from '../components/OverClaimBand'
 import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
+import { TasksPanel } from '../components/TasksPanel'
 import { TripOnlySheet } from '../components/TripOnlySheet'
 import { TripPanels } from '../components/TripPanels'
 import { useHousehold } from '../household/store'
@@ -347,6 +353,28 @@ export function Trip() {
   const totals = listTotals(trip, state)
   const overClaims = overClaimsFor(state, tripId)
 
+  // S13's two reads, pure folds like the four above. `tasksOf`'s order is a
+  // convergence property (`selectors/task.ts`) and this screen never sorts
+  // it — a second opinion here is how two Devices start drawing different
+  // checklists.
+  const tasks = tasksOf(trip)
+  const tasksCount = taskCounts(trip)
+
+  // Ruling I21's batch loop. The id is minted here, at the call site, as
+  // every creation's is (`patterns.md` §2.1); the panel has already trimmed
+  // and refused a blank line, so no op ever carries one.
+  function handleAddTask(text: string) {
+    emit(tripTaskAdded(tripId, systemIdSource.next(), text))
+  }
+
+  // One op per tap, both directions (I22). No needless-write guard, unlike
+  // `PhaseSheet`'s and `JourneyRail`'s: the row's only gesture flips the
+  // value, so an op equal to the current one is unreachable
+  // (`patterns.md` §2.3).
+  function handleToggleTask(taskId: string, ticked: boolean) {
+    emit(tripTaskTicked(tripId, taskId, ticked))
+  }
+
   function handleBringCountChange(entryId: string, next: number) {
     emit(tripEntryBringCountSet(tripId, entryId, next))
   }
@@ -663,7 +691,12 @@ export function Trip() {
           either order — each adds one child and neither edits the other's
           line. See `docs/specs/2026-09-08-trip-notes.md` §1. */}
       <TripPanels>
-        {/* S13 · TASKS */}
+        <TasksPanel
+          tasks={tasks}
+          counts={tasksCount}
+          onAdd={handleAddTask}
+          onToggle={handleToggleTask}
+        />
         <NotesPanel tripId={tripId} />
       </TripPanels>
 

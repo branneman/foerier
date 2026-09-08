@@ -1,0 +1,160 @@
+@layer components {
+  .panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /*
+   * The `GEAR LIST` band's anatomy, third copy (`Trip.module.css`'s
+   * `.gearListBand` and `NotesPanel`'s are the others) — `technical-debt.md`
+   * carries the extraction, and it takes all three at once.
+   *
+   * Two children and no trailing link: the composer is the end-of-list row,
+   * so there is nothing for one to lead to. `space-between` therefore puts
+   * the count on the trailing edge with no wrapper of its own, which is the
+   * simplification `.gearListTrailing` exists to avoid needing there.
+   */
+  .band {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-block: var(--space-4);
+    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  .label {
+    flex: none;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .count {
+    flex: none;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-muted);
+  }
+
+  .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /*
+   * Ruling I22: the whole row is the target, so it is drawn at the 48 target
+   * size and needs no `::after` hit extension at all — ruling O's rule 4,
+   * "standalone controls are drawn ≥48 and feel nothing". The square inside
+   * is a readout and never a target, which is the only reason it may be 18px.
+   */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: 3rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+    cursor: pointer;
+  }
+
+  .text {
+    font-size: 0.9375rem;
+    line-height: 1.4667;
+    color: var(--color-ink-primary);
+  }
+
+  /*
+   * Ruling I23. Shape and fill carry the state and **nothing else does** —
+   * no status colour, so the parchment theme has nothing to collapse (S5's
+   * trap, where an encoding inherited as meaningless becomes load-bearing).
+   * `○ ◐ ●` is packing progress and `▲` is attention; this is neither.
+   */
+  .square {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--color-rule-control);
+    border-radius: 3px;
+    font-size: 0.75rem;
+    line-height: 1;
+    color: var(--color-ink-primary);
+  }
+
+  /* Ticked takes the text to muted and puts the ✓ in ink — the fill is the
+     signal, and the muting is what a done line reads as. */
+  .row[data-ticked='yes'] .text {
+    color: var(--color-ink-muted);
+  }
+
+  /*
+   * The trip-only Entry's dashed row, reused whole (I21). Drawn at the
+   * target size like the rows above it, for the same reason.
+   */
+  .composer {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 3rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    border-bottom: var(--stroke-rule) dashed var(--color-rule);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-muted);
+    cursor: pointer;
+  }
+
+  .composing {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  /*
+   * No placeholder is set on the element at all — the hint below carries
+   * what one would say and, unlike a placeholder, stays legible while
+   * typing.
+   */
+  .well {
+    width: 100%;
+    min-height: 3rem;
+    padding-inline: var(--space-12);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    font-size: 0.9375rem;
+    color: var(--color-ink-primary);
+  }
+
+  .well:focus-visible {
+    outline: 2px solid var(--color-brand-amber);
+    outline-offset: -2px;
+  }
+
+  .hint {
+    margin: 0;
+    padding-block-end: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-muted);
+  }
+}
