@@ -311,10 +311,17 @@ export function personRenamed(id: string, name: string | null): OpSpec {
  * re-delivered creation is idempotent, and no client can author a Trip that
  * arrives already `closed`.
  *
- * `from_trip_id` has no parameter here, deliberately: nothing before S14
- * copies a Trip from a template, and a builder parameter with no caller is a
- * shape frozen by §5.4 on a guess. The reducer folds the field regardless
- * (`TripState.fromTripId`), and the fixture pins it with a hand-written op.
+ * `from_trip_id` is **S14's**, and it is the one parameter here that may be
+ * left off. The reducer has folded the field into `TripState.fromTripId`
+ * since S6 — it had to, because §5.4 froze this payload the moment S6
+ * shipped — while `authoring.ts` deliberately had no parameter for it,
+ * since a builder parameter with no caller is a shape frozen on a guess.
+ * S14 is the caller: the template copy is the only thing that authors one.
+ *
+ * **The key is omitted, never sent as `null`.** `TripState.fromTripId` is
+ * `Register<string>` and not nullable, so a `null` would author an
+ * instruction no reader in this codebase honours (§1.3) — and no op detaches
+ * a Trip from its source, so there is nothing a clear could mean.
  *
  * `name` is a `string`, though {@link tripRenamed} and the reader both accept
  * `null`: no screen can author a Trip with no name — F3 step 1 requires
@@ -322,12 +329,19 @@ export function personRenamed(id: string, name: string | null): OpSpec {
  * build emitted (spec §1.2). {@link personRecorded} draws the same line for
  * the same reason.
  */
-export function tripCreated(id: string, name: string): OpSpec {
+export function tripCreated(
+  id: string,
+  name: string,
+  fromTripId?: string,
+): OpSpec {
   return {
     aggregate: 'trip',
     aggregate_id: id,
     type: 'trip.created',
-    payload: { name },
+    payload: {
+      name,
+      ...(fromTripId !== undefined && { from_trip_id: fromTripId }),
+    },
   }
 }
 

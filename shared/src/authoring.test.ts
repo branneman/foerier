@@ -18,6 +18,7 @@ import {
   placeRemoved,
   placeRenamed,
   tripConsumptionPosted,
+  tripCreated,
   tripNoteKept,
   tripNotePosted,
   authorOp,
@@ -134,6 +135,29 @@ describe('tripConsumptionPosted', () => {
     expect(tripConsumptionPosted('t1', 'g1', 0).payload).toEqual({
       gear_id: 'g1',
       units: 0,
+    })
+  })
+})
+
+describe('tripCreated', () => {
+  it('omits from_trip_id entirely for a Trip started from nothing', () => {
+    // The key, not the value, for `tripNotePosted`'s reason one describe
+    // down: `TripState.fromTripId` is `Register<string>` and not nullable,
+    // so a `null` would author a clear no reader in this codebase honours —
+    // and `toEqual` alone would pass against `{ from_trip_id: undefined }`,
+    // which serialises to a present key.
+    const { payload } = tripCreated('t1', 'Vosges 2026')
+
+    expect(Object.hasOwn(payload, 'from_trip_id')).toBe(false)
+    expect(payload).toEqual({ name: 'Vosges 2026' })
+  })
+
+  it('carries from_trip_id for a Trip started from a past one', () => {
+    expect(tripCreated('t2', 'Vosges 2026', 't1')).toEqual({
+      aggregate: 'trip',
+      aggregate_id: 't2',
+      type: 'trip.created',
+      payload: { name: 'Vosges 2026', from_trip_id: 't1' },
     })
   })
 })
