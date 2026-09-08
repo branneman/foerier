@@ -22,6 +22,7 @@ import {
   GearListSection,
   pieceLabel,
 } from '../components/GearListSection'
+import { NotesPanel } from '../components/NotesPanel'
 import { OverClaimBand } from '../components/OverClaimBand'
 import { ParticipantPicker } from '../components/ParticipantPicker'
 import { PhaseSheet } from '../components/PhaseSheet'
@@ -663,7 +664,7 @@ export function Trip() {
           line. See `docs/specs/2026-09-08-trip-notes.md` §1. */}
       <TripPanels>
         {/* S13 · TASKS */}
-        {/* S12 · NOTES */}
+        <NotesPanel tripId={tripId} />
       </TripPanels>
 
       {totals.entries === 0 ? (

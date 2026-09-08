@@ -1,0 +1,121 @@
+@layer components {
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  /*
+   * The `GEAR LIST` band's anatomy, borrowed rather than re-derived
+   * (`Trip.module.css`'s `.gearListBand`): label left, trailing group right,
+   * `space-between` holding them apart, and the same hairline under it so the
+   * two bands on one screen read as one system.
+   */
+  .band {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-block: var(--space-4);
+    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /* `flex: none` + `nowrap` for `.gearListLabel`'s stated reason: without
+     them a width deficit shrinks both flex items in proportion and wraps
+     `NOTES` itself rather than landing on the trailing slot. */
+  .label {
+    flex: none;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .trailing {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-12);
+  }
+
+  .count {
+    font: var(--text-data) var(--font-mono);
+    color: var(--color-ink-muted);
+  }
+
+  /* No `›`: that glyph marks a sheet, and `/trips/:id/note` is a screen. */
+  .compose {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+    text-decoration: none;
+    /* The hit extension, clamped to the band (§5b O): the link is drawn at
+       its text size and the target reaches 48 without painting anything. */
+    position: relative;
+  }
+
+  .compose::after {
+    content: '';
+    position: absolute;
+    inset-block: calc((48px - 100%) / -2);
+    inset-inline: calc(var(--space-8) * -1);
+  }
+
+  .notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .note {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  /* I16: a discarded Note never vanishes — it takes the RETIRED grammar
+     (Foundations' Status Grammar: strikethrough, muted) and stays counted and
+     on screen. The line-through is on the text alone; the meta beneath it
+     already says `DISCARDED` in words, and striking a line that reads
+     `· DISCARDED` would strike the word explaining the strike. */
+  .discarded .text {
+    text-decoration: line-through;
+    color: var(--color-ink-muted);
+  }
+
+  .text {
+    margin: 0;
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+    /* The board draws the note whole — no clamp, no `more` affordance. A
+       Quartermaster's own sentence is the content, not a preview of it. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .meta {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+  }
+
+  .empty {
+    margin: 0;
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+  }
+
+  .source {
+    margin: 0;
+    font: var(--text-secondary) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+}
