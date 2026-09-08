@@ -1,6 +1,7 @@
 import {
   gearRecorded,
   tripCreated,
+  tripDeleted,
   tripEntryAdded,
   tripEntryRemoved,
   type OpSpec,
@@ -209,6 +210,22 @@ describe('the note composer — a Trip this replica has not folded', () => {
   it('says so rather than drawing a composer that posts nowhere', async () => {
     const store = await seededStore([])
     renderComposer(store)
+
+    expect(screen.getByText('No such trip.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Post note' })).toBeNull()
+  })
+
+  /**
+   * **A deleted Trip falls into the same state** (S14). `trip.deleted` writes
+   * a register on an entity the fold *keeps*, so a guard testing `undefined`
+   * alone goes on drawing a Trip the household has thrown away — the defect
+   * the trip screen carried until S14, and every sub-route of a Trip carried
+   * it too. `tripStandingOf` is the one place the question is asked; J5's two
+   * sentences stay the trip screen's own, because a sub-route of a Trip that
+   * is gone has nothing more to add.
+   */
+  it('says so for a deleted Trip too', async () => {
+    renderComposer(await seeded(tripDeleted(TRIP)))
 
     expect(screen.getByText('No such trip.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Post note' })).toBeNull()

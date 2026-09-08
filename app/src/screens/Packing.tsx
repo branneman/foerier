@@ -21,6 +21,7 @@ import {
   tripPath,
   tripPieceMoved,
   TRIP_LOOSE,
+  tripStandingOf,
   type HouseholdState,
   type Disagreement,
   type EntryState,
@@ -803,7 +804,20 @@ export function Packing() {
     [trip, state],
   )
 
-  if (tripId === undefined || trip === undefined) {
+  // **A deleted Trip is not a Trip this screen may draw** (S14). `trip.deleted`
+  // writes a register on an entity the fold *keeps*, so `state.trips[id]` stays
+  // defined after a delete and a guard testing `undefined` alone goes on
+  // drawing. `tripStandingOf` is the one place that question is asked
+  // (`selectors/trip.ts`), and the tombstone falls into the state this screen
+  // already has rather than restating J5's two sentences: those are the trip
+  // screen's, drawn for the route somebody is most likely to be standing on
+  // when a peer deletes, and a sub-route of a Trip that is gone has nothing
+  // more to add.
+  if (
+    tripId === undefined ||
+    trip === undefined ||
+    tripStandingOf(state, tripId) !== 'live'
+  ) {
     return (
       <div className={styles['screen']}>
         <p className={styles['missing']}>No such trip.</p>

@@ -5,6 +5,7 @@ import {
   placeRecorded,
   tripConsumedCountSet,
   tripCreated,
+  tripDeleted,
   tripEntryAdded,
   tripEntryBringCountSet,
   tripEntryMoved,
@@ -372,6 +373,22 @@ describe('the unpack screen — the shell every mode hangs off', () => {
     expect(screen.getByText('No such trip.')).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Unpack' })).toBeNull()
     expect(await seeded.authored()).toEqual([])
+  })
+
+  /**
+   * **A deleted Trip falls into the same state** (S14). `trip.deleted` writes
+   * a register on an entity the fold *keeps*, so a guard testing `undefined`
+   * alone goes on drawing a Trip the household has thrown away — the defect
+   * the trip screen carried until S14, and every sub-route of a Trip carried
+   * it too. `tripStandingOf` is the one place the question is asked; J5's two
+   * sentences stay the trip screen's own, because a sub-route of a Trip that
+   * is gone has nothing more to add.
+   */
+  it('says No such trip. for a deleted Trip too', async () => {
+    await renderUnpack(`/trips/${ALPS}/unpack`, ...alps(), tripDeleted(ALPS))
+
+    expect(screen.getByText('No such trip.')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Unpack' })).toBeNull()
   })
 })
 

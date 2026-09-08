@@ -2,6 +2,7 @@ import {
   gearRecorded,
   personRecorded,
   tripCreated,
+  tripDeleted,
   tripEntryAdded,
   tripParticipantAdded,
   tripPhaseMoved,
@@ -129,6 +130,25 @@ describe('the gear list builder — two panes', () => {
   it('renders No such trip. for an id the fold has never seen, rather than a broken pane', async () => {
     const { store } = await seededStore()
     renderBuilder(store, { tripId: 'ffffffff-0000-7000-8000-000000000099' })
+
+    expect(screen.getByText('No such trip.')).toBeVisible()
+    expect(screen.queryByText('FROM THE DEPOT')).toBeNull()
+  })
+
+  /**
+   * **A deleted Trip falls into the same state** (S14). `trip.deleted` writes
+   * a register on an entity the fold *keeps*, so a guard testing `undefined`
+   * alone goes on drawing a Trip the household has thrown away — the defect
+   * the trip screen carried until S14 and every sub-route of a Trip carried
+   * with it. `tripStandingOf` is the one place the question is asked; J5's
+   * two sentences stay the trip screen's own.
+   */
+  it('renders No such trip. for a deleted Trip too', async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Alps 2026'),
+      tripDeleted(ALPS),
+    )
+    renderBuilder(store, { tripId: ALPS })
 
     expect(screen.getByText('No such trip.')).toBeVisible()
     expect(screen.queryByText('FROM THE DEPOT')).toBeNull()

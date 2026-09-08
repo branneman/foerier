@@ -13,6 +13,7 @@ import {
   systemIdSource,
   tripEntryAdded,
   tripLabel,
+  tripStandingOf,
   visibleGear,
   type ContainmentView,
   type HouseholdState,
@@ -273,7 +274,16 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
   // it, a `+ ADD` against an unknown `tripId` would author a
   // `trip.entry_added` that materialises a Trip no delete op can remove
   // before S14 — see the class docstring.
-  if (trip === undefined) {
+  // **A deleted Trip is not a Trip this screen may draw** (S14). `trip.deleted`
+  // writes a register on an entity the fold *keeps*, so `state.trips[id]` stays
+  // defined after a delete and a guard testing `undefined` alone goes on
+  // drawing. `tripStandingOf` is the one place that question is asked
+  // (`selectors/trip.ts`), and the tombstone falls into the state this screen
+  // already has rather than restating J5's two sentences: those are the trip
+  // screen's, drawn for the route somebody is most likely to be standing on
+  // when a peer deletes, and a sub-route of a Trip that is gone has nothing
+  // more to add.
+  if (trip === undefined || tripStandingOf(state, tripId) !== 'live') {
     return (
       <div
         className={variant === 'screen' ? styles['screen'] : styles['pane']}

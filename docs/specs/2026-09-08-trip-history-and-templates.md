@@ -720,3 +720,23 @@ task 1, but the guard has been wrong since S6.
 **7. `unpackTotals` is a fifth reader the delete confirm needs**, alongside
 `taskCounts`, `noteCounts` and `listTotals`. §6.4 names the four lines and
 not the four selectors; all four already existed and none needed widening.
+
+**8. The guard §2 fixes was on six screens, not one.** `Trip.tsx` is the one
+J5 draws and the one this document names — but `Packing`, `Unpack`,
+`GearListBuilder`, `DepotPicker` and `NoteComposer` all read
+`state.trips[id]` and all guarded on `undefined` alone, so each would have
+gone on drawing a deleted Trip's contents. The state is reachable **because
+of** this slice: before `trip.deleted` was authorable nothing could write the
+register. All five now ask `tripStandingOf` and fall into the `No such trip.`
+state they already had — J5's two sentences stay the trip screen's own,
+because that is the route somebody is most likely to be standing on when a
+peer deletes, and a sub-route of a Trip that is gone has nothing more to add.
+Found by sweeping for the shape after §2's fix landed, not by the round.
+
+**9. Six screens is the general shape**, and it is worth stating past this
+slice: **a soft delete's reader gate has to be consulted by every surface
+that resolves the entity by id, and a detail screen is the one that misses
+it** — a list enumerates through the gate naturally, while a detail screen
+resolves one id and was written before the tombstone existed. `visibleTrips`
+had been right since S6 and six screens had been wrong for as long as each
+had existed.

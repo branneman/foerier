@@ -5,6 +5,7 @@ import {
   personRecorded,
   tripContainerStageSet,
   tripCreated,
+  tripDeleted,
   tripEntryAdded,
   tripEntryBringCountSet,
   tripEntryMoved,
@@ -231,8 +232,10 @@ describe('the packing screen — the shell every mode hangs off', () => {
   /**
    * `Trip.tsx`'s and `GearListBuilder.tsx`'s guard, with **every hook above
    * it** for the identical reason (S7 review F2): a control reachable against
-   * an unknown `tripId` would author an op materialising a Trip that no
-   * delete op can remove before S14.
+   * an unknown `tripId` would author an op materialising a Trip that, before
+   * S14, no delete op could remove. `trip.deleted` exists now — but the guard
+   * is still the right answer, and materialising a Trip by accident is still
+   * not something a delete should have to clean up after.
    */
   it('says No such trip. for an unknown id, and authors nothing', async () => {
     const seeded = await renderPacking(
@@ -243,6 +246,22 @@ describe('the packing screen — the shell every mode hangs off', () => {
     expect(screen.getByText('No such trip.')).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Pack-out' })).toBeNull()
     expect(await seeded.authored()).toEqual([])
+  })
+
+  /**
+   * **A deleted Trip falls into the same state** (S14). `trip.deleted` writes
+   * a register on an entity the fold *keeps*, so a guard testing `undefined`
+   * alone goes on drawing a Trip the household has thrown away — the defect
+   * the trip screen carried until S14, and every sub-route of a Trip carried
+   * it too. `tripStandingOf` is the one place the question is asked; J5's two
+   * sentences stay the trip screen's own, because a sub-route of a Trip that
+   * is gone has nothing more to add.
+   */
+  it('says No such trip. for a deleted Trip too', async () => {
+    await renderPacking(`/trips/${ALPS}/packing`, ...alps(), tripDeleted(ALPS))
+
+    expect(screen.getByText('No such trip.')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Pack-out' })).toBeNull()
   })
 
   it('draws the back link to the Trip it belongs to', async () => {

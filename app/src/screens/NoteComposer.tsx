@@ -2,6 +2,7 @@ import {
   entryLabel,
   systemIdSource,
   tripNotePosted,
+  tripStandingOf,
   visibleEntry,
 } from '@foerier/shared'
 import { useState } from 'react'
@@ -107,7 +108,16 @@ export function NoteComposer() {
     globalThis.history.back()
   }
 
-  if (trip === undefined) {
+  // **A deleted Trip is not a Trip this screen may draw** (S14). `trip.deleted`
+  // writes a register on an entity the fold *keeps*, so `state.trips[id]` stays
+  // defined after a delete and a guard testing `undefined` alone goes on
+  // drawing. `tripStandingOf` is the one place that question is asked
+  // (`selectors/trip.ts`), and the tombstone falls into the state this screen
+  // already has rather than restating J5's two sentences: those are the trip
+  // screen's, drawn for the route somebody is most likely to be standing on
+  // when a peer deletes, and a sub-route of a Trip that is gone has nothing
+  // more to add.
+  if (trip === undefined || tripStandingOf(state, tripId) !== 'live') {
     // `patterns.md` §3.4's guard, after every hook: a Trip this replica has
     // not folded is not an error state, it is a route to nothing.
     return (

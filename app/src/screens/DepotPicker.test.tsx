@@ -4,6 +4,7 @@ import {
   personRecorded,
   placeRecorded,
   tripCreated,
+  tripDeleted,
   tripEntryAdded,
   type OpSpec,
 } from '@foerier/shared'
@@ -586,6 +587,27 @@ describe('the depot picker — an unknown Trip', () => {
   // `trip.entry_added` that materialises a permanent, nameless Trip — a
   // consequence worth pinning as its own suite, `Trip.tsx`'s and
   // `GearDetail.tsx`'s own `No such trip.` guards' precedent.
+
+  /**
+   * **A deleted Trip falls into the same state** (S14). `trip.deleted` writes
+   * a register on an entity the fold *keeps*, so a guard testing `undefined`
+   * alone goes on drawing a Trip the household has thrown away — the defect
+   * the trip screen carried until S14, and every sub-route of a Trip carried
+   * it too. `tripStandingOf` is the one place the question is asked; J5's two
+   * sentences stay the trip screen's own, because a sub-route of a Trip that
+   * is gone has nothing more to add.
+   */
+  it('renders No such trip. for a deleted Trip too', async () => {
+    const { store } = await seededStore(
+      tripCreated(ALPS, 'Alps 2026'),
+      tripDeleted(ALPS),
+    )
+    renderPicker(store, { tripId: ALPS })
+
+    expect(screen.getByText('No such trip.')).toBeVisible()
+    expect(screen.queryByRole('searchbox')).toBeNull()
+  })
+
   it('renders No such trip. rather than the picker, and offers nothing to add', async () => {
     const { store } = await seededStore()
     renderPicker(store, { tripId: JURA })

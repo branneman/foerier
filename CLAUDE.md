@@ -1214,7 +1214,12 @@ records what moved while it was being built**, and
   while the rest of the app agreed it was gone. A list enumerates through the
   gate naturally; a detail screen does not. `tripStandingOf` is now the only
   place the question is asked, and it distinguishes *tombstoned* from *never
-  folded here* because J5 draws two different sentences for them.
+  folded here* because J5 draws two different sentences for them. **It was
+  six screens, not one** — `Packing`, `Unpack`, `GearListBuilder`,
+  `DepotPicker` and `NoteComposer` each resolve a Trip by id and each guarded
+  on `undefined` alone. All five now ask the same function and fall into the
+  `No such trip.` state they already had; J5's two sentences stay the trip
+  screen's.
 - **A bulk write reads registers where a surface reads selectors.**
   `bringCountOf` answers `?? 1` for a Counted Entry nobody set a count on —
   right for one row on screen, and a fabricated fact once it is *written*
