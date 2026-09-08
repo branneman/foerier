@@ -493,6 +493,39 @@ export function Trip() {
       </span>
     )
 
+  // **`STARTED FROM VOSGES 2025`** — `from_trip_id`'s one reader (J18), and
+  // the first thing to read it since S6 folded it.
+  //
+  // **A property of the Trip, not of the gear list** (J20), so it sits in the
+  // header block where the Trip's other facts are and *not* in the builder's
+  // right pane. §5b H — the over-claim band as a property of the list rather
+  // than of a route — is deliberately not extended by analogy: a claim is a
+  // fact about listed gear, and a Trip's origin is not. The copy brought
+  // tasks and notes across as well as Entries, so a band above the gear list
+  // would file the fact at one register of three.
+  //
+  // **Withdrawn rather than falsified** (J19). The line *is* the claim that
+  // the source can be named, so when `tripStandingOf` says it cannot — the
+  // source deleted, or its ops not folded on this Device — the whole line
+  // goes, never `STARTED FROM —`. S5's login ring, one surface over. A
+  // source that folded *without a name* is a different case and keeps the
+  // line: `tripNameOrUnnamed` puts the prose sentinel in a name slot (§5c),
+  // where `tripLabel`'s `—` would be wrong.
+  //
+  // Not dismissible and not a route: it is a fact, and the over-claim band
+  // already names another Trip without becoming a link.
+  const sourceId = trip.fromTripId?.value
+  const sourceTrip =
+    sourceId !== undefined && tripStandingOf(state, sourceId) === 'live'
+      ? state.trips[sourceId]
+      : undefined
+  const provenance =
+    sourceTrip === undefined ? null : (
+      <span className={styles['provenance']} data-testid="trip-provenance">
+        {`STARTED FROM ${tripNameOrUnnamed(sourceTrip)}`}
+      </span>
+    )
+
   // Gear detail's tag chips, in Person circles: display, then the one dashed
   // ghost that edits. Drawn for every Trip, Participants or none — a gear with
   // no tags shows the lone ghost, and so does a Trip with nobody on it yet.
@@ -556,6 +589,7 @@ export function Trip() {
           {title}
           {phaseChip}
           {dateLine}
+          {provenance}
           {participantCluster}
           {modeToggle}
         </div>
@@ -571,6 +605,8 @@ export function Trip() {
             {phaseChip}
             {dateLine}
           </div>
+
+          {provenance}
 
           <div className={styles['participants']}>
             {/* `aria-hidden`, because the two elements under it already say

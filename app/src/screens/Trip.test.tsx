@@ -1879,3 +1879,98 @@ describe('the trip screen — the 1024 frame', () => {
     )
   })
 })
+
+/**
+ * **`STARTED FROM VOSGES 2025`** (rulings J18, J19, J20) — `from_trip_id`'s
+ * one reader, folded and unread since S6. A fact about the Trip, so it rides
+ * the header block beside the dates and the phase; not dismissible, not a
+ * route, and **withdrawn** rather than falsified when the source cannot be
+ * named.
+ */
+describe('the trip screen — provenance (S14)', () => {
+  const SOURCE = 'tttttttt-0000-7000-8000-00000000000c'
+
+  it('names the source beneath the dates', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(SOURCE, 'Vosges 2025'),
+      tripCreated(ALPS, 'Alps 2026', SOURCE),
+    )
+
+    // The DOM carries the Trip's name in its own casing; the uppercase is
+    // CSS, exactly as `REMOVE ON ALPS 2026` does it (§5b G), because the
+    // sentinel this slot may hold is prose. jsdom computes no cascade, so
+    // the transform is asserted where it is written.
+    expect(screen.getByTestId('trip-provenance')).toHaveTextContent(
+      'STARTED FROM Vosges 2025',
+    )
+    const css = readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
+      'utf8',
+    )
+    expect(css).toMatch(/\.provenance\s*\{[^}]*text-transform:\s*uppercase/)
+  })
+
+  it('is a fact and not a route', async () => {
+    // The over-claim band's precedent: another Trip may be named as a fact
+    // without becoming a link. There is nothing to do about provenance.
+    await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(SOURCE, 'Vosges 2025'),
+      tripCreated(ALPS, 'Alps 2026', SOURCE),
+    )
+
+    const line = screen.getByTestId('trip-provenance')
+    expect(line.querySelector('a')).toBeNull()
+    expect(line.querySelector('button')).toBeNull()
+  })
+
+  it('takes the prose sentinel for a source that folded unnamed', async () => {
+    // A name slot takes the name sentinel (§5c) — `Unnamed trip`, not `—`.
+    // The source here exists only because a participant op reached it first.
+    await renderTrip(
+      `/trips/${ALPS}`,
+      personRecorded('els', 'Els'),
+      tripParticipantAdded(SOURCE, 'els'),
+      tripCreated(ALPS, 'Alps 2026', SOURCE),
+    )
+
+    // `Unnamed trip`, the prose sentinel — never `—`, which is for list
+    // columns, group headers and circles (§5c). Uppercased by the same CSS.
+    expect(screen.getByTestId('trip-provenance')).toHaveTextContent(
+      'STARTED FROM Unnamed trip',
+    )
+  })
+
+  it('withdraws the line when the source has been deleted', async () => {
+    // J19, and S5's ring rule: the line *is* the claim that the source can be
+    // named. When it cannot, the line goes — never `STARTED FROM —`.
+    await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(SOURCE, 'Vosges 2025'),
+      tripCreated(ALPS, 'Alps 2026', SOURCE),
+      tripDeleted(SOURCE),
+    )
+
+    expect(screen.queryByTestId('trip-provenance')).toBeNull()
+  })
+
+  it('withdraws the line when the source has not folded here', async () => {
+    // The fixture's own second probe, met on a screen: a peer's
+    // `from_trip_id` naming a Trip this Device has never seen.
+    await renderTrip(
+      `/trips/${ALPS}`,
+      tripCreated(ALPS, 'Alps 2026', 'tttttttt-0000-7000-8000-0000000000fe'),
+    )
+
+    expect(screen.queryByTestId('trip-provenance')).toBeNull()
+  })
+
+  it('draws nothing at all for a Trip nobody started from anything', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(SEEDED_AT)
+    await renderTrip(`/trips/${ALPS}`, ...alps())
+
+    expect(screen.queryByTestId('trip-provenance')).toBeNull()
+  })
+})

@@ -547,6 +547,23 @@
     text-decoration: none;
   }
 
+  /* `STARTED FROM VOSGES 2025` (ruling J18) — one muted mono line in the
+     header block, beneath the dates, at every width. The Trip's name arrives
+     in the reader's own casing and is uppercased here rather than in the
+     string, exactly as `REMOVE ON ALPS 2026` is (§5b G): the sentinel it may
+     carry is `Unnamed trip`, prose, and a name slot takes the name sentinel.
+
+     11px muted, the meta register the dates and the group labels already
+     use — provenance is read once at the top of the screen and never acted
+     on, which is what it is sized for. */
+  .provenance {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
   /* `Open trips` — the route out of both not-here states (ruling J5), drawn
      as a bordered 48 rather than as accent mono, because at Desktop it is
      the **only** way out: `useScreenHeader` withholds the back link there
