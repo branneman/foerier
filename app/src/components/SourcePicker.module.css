@@ -1,0 +1,58 @@
+@layer components {
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+  }
+
+  /* The list's 56, not the 48 the roster pickers use: this row carries a
+     two-line body — a name over a mono meta — where `ParticipantPicker`'s
+     carries one line beside a circle. The sheet primitive's row, taller
+     because the content is (Screens A §03). */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: 3.5rem;
+    padding-inline: var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .name {
+    font-weight: 600;
+  }
+
+  .meta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-muted);
+  }
+
+  /* `● NOW` — single select's own word, reserved for a register holding
+     exactly one value, which is precisely what this picker sets. The
+     `PARTICIPANT ✓` / `IN LIST ✓` grammar belongs to membership and would be
+     wrong here. */
+  .now {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+}

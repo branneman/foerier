@@ -94,6 +94,40 @@
     white-space: nowrap;
   }
 
+  /* `START FROM`'s two value states (ruling J10): **muted `None` unchosen,
+     the Trip's name in ink chosen**. The row above draws `None` in primary
+     ink for Participants, and the difference is deliberate rather than
+     drift — an empty Participants list is a *state of the Trip* the ledger
+     states, while an unchosen source is an absence of a decision that has
+     not been taken yet. Muted is what says "nothing here yet"; ink is what
+     says "this is the value". */
+  .pickNone {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pickChosen {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The field-level mono note under a row — one line unchosen, two chosen.
+     Flush left with the label above it, muted, the register every fact line
+     on a form uses (`AddGear`'s own `OPENS EMPTY — GATES THE CTA`). */
+  .fieldNote {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+  }
+
   /*
    * The `aria-hidden` wrapper `PersonCluster` (`ui/`) sits inside — kept from
    * before ruling E folded this row in, because `.pickRow`'s own

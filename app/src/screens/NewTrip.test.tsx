@@ -1,4 +1,18 @@
-import { personRecorded, personRenamed, type OpSpec } from '@foerier/shared'
+import {
+  gearRecorded,
+  personRecorded,
+  personRenamed,
+  tripCreated,
+  tripDatesSet,
+  tripDeleted,
+  tripEntryAdded,
+  tripEntryBringCountSet,
+  tripNoteKept,
+  tripNotePosted,
+  tripPhaseMoved,
+  tripTaskAdded,
+  type OpSpec,
+} from '@foerier/shared'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
@@ -504,5 +518,192 @@ describe('New trip — the fact line under the CTA', () => {
     // instead. Never a literal either way: the module's own names are
     // generated.
     expect(classes).toEqual([styles['fact'], styles['ctaFact']])
+  })
+})
+
+/**
+ * **`START FROM`** — rulings J7 and J10–J13. The row that changes what every
+ * row below it means, and the only place in the app the template copy is
+ * started.
+ */
+describe('New trip — START FROM (S14)', () => {
+  const SOURCE = '01920000-0000-7000-8000-000000000001'
+  const GEAR = 'gggggggg-0000-7000-8000-000000000001'
+
+  /** A closed source Trip with two Entries, a task and two notes. */
+  function aSource(): readonly OpSpec[] {
+    return [
+      gearRecorded(GEAR, { name: 'Tent', container: false, kind: 'counted' }),
+      tripCreated(SOURCE, 'Vosges 2025'),
+      tripDatesSet(SOURCE, { start: '2025-07-19' }),
+      tripEntryAdded(SOURCE, 'e-1', { from: 'depot', gearId: GEAR }),
+      tripEntryBringCountSet(SOURCE, 'e-1', 3),
+      tripEntryAdded(SOURCE, 'e-2', {
+        from: 'trip_only',
+        name: 'Passports',
+        container: false,
+      }),
+      tripTaskAdded(SOURCE, 'k-1', 'Book the hut'),
+      tripNotePosted(SOURCE, 'n-1', 'The pole sleeve is splitting.'),
+      tripNotePosted(SOURCE, 'n-2', 'Bring the small pump.'),
+      // Discarded, so it does **not** travel — and the carry line must not
+      // count it, unlike the delete confirm's `N NOTES` one screen over.
+      tripNoteKept(SOURCE, 'n-2', false),
+      tripPhaseMoved(SOURCE, 'closed'),
+    ]
+  }
+
+  async function choose(name: string) {
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /^Start from:/ }))
+    await user.click(screen.getByRole('button', { name: new RegExp(name) }))
+  }
+
+  it('draws START FROM above NAME, and leaves the caret in NAME', async () => {
+    renderNewTrip(await seeded(...aSource()))
+
+    const row = screen.getByRole('button', { name: /^Start from:/ })
+    const nameField = screen.getByLabelText('Name')
+    // §5's ledger-line order gains its one stated exception (J13) — and the
+    // order changes while the focus does not.
+    expect(
+      row.compareDocumentPosition(nameField) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(nameField).toHaveFocus()
+  })
+
+  it('withholds the row entirely in a household with no other Trip', async () => {
+    renderNewTrip(await seeded())
+
+    // Not disabled, and not opening an empty picker: the withdrawal rule
+    // (J13), and the same answer an empty gear list's `PACKING ›` gets.
+    expect(screen.queryByRole('button', { name: /^Start from:/ })).toBeNull()
+  })
+
+  it('states one line unchosen and two chosen', async () => {
+    renderNewTrip(await seeded(...aSource()))
+
+    expect(screen.getByTestId('start-from-note')).toHaveTextContent(
+      "A PAST TRIP'S LIST, TASKS AND NOTES CAN COME ACROSS",
+    )
+
+    await choose('Vosges 2025')
+
+    // Only the note that travels is counted — the discarded one is not
+    // copied (I16), which is why this number and the delete confirm's
+    // `N NOTES` are allowed to differ.
+    expect(screen.getByTestId('start-from-carries')).toHaveTextContent(
+      'COMES ACROSS · 2 ENTRIES · BRING-COUNTS · 1 TASKS, UNTICKED · 1 NOTES',
+    )
+    // Where PARTICIPANTS is disclosed, before the Trip exists (J10, J17).
+    expect(screen.getByTestId('start-from-fresh')).toHaveTextContent(
+      'STARTS FRESH · PACKING · JOURNEYS · OUTCOMES · DATES · PARTICIPANTS',
+    )
+    expect(screen.queryByTestId('start-from-note')).toBeNull()
+  })
+
+  it('does not prefill the name, so the CTA stays gated', async () => {
+    renderNewTrip(await seeded(...aSource()))
+    await choose('Vosges 2025')
+
+    // J11: a prefilled `Vosges 2025` ungates the CTA, so the fastest path
+    // through this screen would create a second Trip with an identical name —
+    // in the household that keeps recurring Trip types, with no rename op.
+    expect(screen.getByLabelText('Name')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Create trip' })).toBeDisabled()
+  })
+
+  it('clears the choice through the picker`s first row', async () => {
+    renderNewTrip(await seeded(...aSource()))
+    await choose('Vosges 2025')
+    expect(screen.getByRole('button', { name: 'Start from: Vosges 2025' }))
+
+    await choose('Nothing — start empty')
+
+    expect(screen.getByRole('button', { name: 'Start from: None' }))
+    expect(screen.getByTestId('start-from-note')).toBeVisible()
+  })
+
+  it('emits the whole template batch on create, and the dates beside it', async () => {
+    const user = userEvent.setup()
+    const store = await seeded(...aSource())
+    renderNewTrip(store)
+
+    await choose('Vosges 2025')
+    await user.type(screen.getByLabelText('Name'), 'Vosges 2026')
+    await user.type(screen.getByLabelText('Start'), '2026-07-18')
+    await user.click(screen.getByRole('button', { name: 'Create trip' }))
+
+    const authored = await store.authored()
+    // The copy authors its own `trip.created`, carrying the provenance; the
+    // screen's dates ride behind it, because the copy supplies none.
+    expect(authored[0]?.type).toBe('trip.created')
+    expect(authored[0]?.payload['from_trip_id']).toBe(SOURCE)
+    expect(authored[0]?.payload['name']).toBe('Vosges 2026')
+    // Entries in `entriesOf`'s order, which is by label — so `Passports`
+    // precedes `Tent`, and the Bring-count follows the Entry it belongs to
+    // rather than sitting at a fixed position in the batch.
+    expect(authored.map((op) => op.type)).toEqual([
+      'trip.created',
+      'trip.entry_added',
+      'trip.entry_added',
+      'trip.entry_bring_count_set',
+      'trip.task_added',
+      'trip.note_posted',
+      'trip.dates_set',
+    ])
+  })
+
+  it('emits the plain one-op create when no source is chosen', async () => {
+    const user = userEvent.setup()
+    const store = await seeded(...aSource())
+    renderNewTrip(store)
+
+    await user.type(screen.getByLabelText('Name'), 'Alps 2026')
+    await user.click(screen.getByRole('button', { name: 'Create trip' }))
+
+    expect((await store.authored()).map((op) => op.type)).toEqual([
+      'trip.created',
+    ])
+  })
+
+  it('pre-chooses the source named by ?from=', async () => {
+    const store = await seeded(...aSource())
+    const location = memoryLocation({
+      path: `/trips/new?from=${SOURCE}`,
+      record: true,
+    })
+    render(
+      <Router hook={location.hook}>
+        <HouseholdProvider value={store.store}>
+          <NewTrip />
+        </HouseholdProvider>
+      </Router>,
+    )
+
+    // The trip screen's footer door arrives this way (J7).
+    expect(
+      screen.getByRole('button', { name: 'Start from: Vosges 2025' }),
+    ).toBeVisible()
+  })
+
+  it('ignores a ?from= naming a Trip this device cannot show', async () => {
+    const store = await seeded(...aSource(), tripDeleted(SOURCE))
+    const location = memoryLocation({
+      path: `/trips/new?from=${SOURCE}`,
+      record: true,
+    })
+    render(
+      <Router hook={location.hook}>
+        <HouseholdProvider value={store.store}>
+          <NewTrip />
+        </HouseholdProvider>
+      </Router>,
+    )
+
+    // A create screen is the wrong place to explain a stale link, so the row
+    // simply opens unchosen — and here there is no other Trip, so it is not
+    // drawn at all.
+    expect(screen.queryByRole('button', { name: /^Start from:/ })).toBeNull()
   })
 })

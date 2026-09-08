@@ -1,15 +1,25 @@
 import {
+  listTotals,
+  notesOf,
+  sourceTrips,
+  startTripFrom,
   systemIdSource,
   tripCreated,
   tripDatesSet,
+  tripNameOrUnnamed,
   tripParticipantAdded,
+  taskCounts,
+  tripStandingOf,
   UNNAMED_PERSON_GLYPH,
+  type HouseholdState,
+  type TripState,
 } from '@foerier/shared'
 import { PersonCluster } from '@foerier/ui'
 import { useState } from 'react'
-import { useLocation } from 'wouter'
+import { useLocation, useSearch } from 'wouter'
 
 import { ParticipantPicker } from '../components/ParticipantPicker'
+import { SourcePicker } from '../components/SourcePicker'
 import { useHousehold } from '../household/store'
 import { peopleOn } from '../household/trips'
 import { ScreenBand } from '../shell/ScreenBand'
@@ -103,6 +113,37 @@ export function NewTrip() {
   const [participants, setParticipants] = useState<readonly string[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
 
+  // **`START FROM`, the first row** (rulings J7, J10, J13). The second door —
+  // the trip screen's own footer control — arrives as `?from=<id>`, so the
+  // choice is *seeded* from the search string and then owned here: a
+  // Quartermaster who arrives pre-chosen can still clear it through the
+  // picker's first row.
+  //
+  // A source that is not `live` is ignored rather than honoured. The id can
+  // name a Trip this Device has never folded, or one deleted since the link
+  // was drawn, and a create screen is the wrong place to explain either —
+  // the row simply opens unchosen.
+  const search = useSearch()
+  const requested = new URLSearchParams(search).get('from')
+  const [source, setSource] = useState<string | null>(
+    requested !== null && tripStandingOf(state, requested) === 'live'
+      ? requested
+      : null,
+  )
+  const [sourceOpen, setSourceOpen] = useState(false)
+
+  // With nothing to offer, the row is not drawn at all (J13) — not disabled,
+  // and not opening a picker holding only its own clear row: the withdrawal
+  // rule, and the same answer §1 gives an empty gear list's `PACKING ›`.
+  //
+  // **`sourceTrips`, not `Object.keys(state.trips)`** — the same list the
+  // picker itself draws, so the row and its contents can never disagree. The
+  // raw map counts tombstones, so a household whose only Trip has been
+  // deleted would draw a row opening on nothing, which is exactly the dead
+  // affordance this condition exists to prevent.
+  const anySource = sourceTrips(state).length > 0
+  const sourceTrip = source === null ? undefined : state.trips[source]
+
   // A media query, in JS, because the answer decides *behaviour* rather than
   // layout and no stylesheet can carry it (`useMediaQuery`'s own reason, one
   // step further along than a pane that exists or does not).
@@ -140,7 +181,28 @@ export function NewTrip() {
     if (!canSubmit) return
 
     const id = systemIdSource.next()
-    emit(tripCreated(id, trimmedName))
+
+    // **The copy is a batch of ordinary ops, materialised here** (sync §4.5).
+    // `startTripFrom` authors the `trip.created` itself — carrying
+    // `from_trip_id` — so the two branches are exclusive rather than one
+    // adding to the other.
+    //
+    // Dates and Participants are authored by *this screen* in both branches:
+    // the copy deliberately supplies neither (they start fresh), and a
+    // Quartermaster may well pick both on the same sitting.
+    if (sourceTrip !== undefined) {
+      for (const spec of startTripFrom(
+        id,
+        trimmedName,
+        sourceTrip,
+        state,
+        systemIdSource,
+      )) {
+        emit(spec)
+      }
+    } else {
+      emit(tripCreated(id, trimmedName))
+    }
 
     if (start !== '' || end !== '') {
       emit(
@@ -178,6 +240,72 @@ export function NewTrip() {
       />
 
       <h1 className={styles['title']}>New trip</h1>
+
+      {/* **First, above `NAME`** — §5's ledger-line order gaining its one
+          stated exception (J13). It is the row answered before the Trip is
+          conceived, and it changes what every row below it means. **The
+          order changes and the focus does not**: `autoFocus` stays on the
+          name field, which is still the only required input.
+
+          Add gear's `HOME` anatomy, because a value that is picked rather
+          than typed reads the same way wherever it appears. */}
+      {anySource && (
+        <div className={styles['field']}>
+          <span className={styles['label']} aria-hidden="true">
+            Start from
+          </span>
+          <button
+            type="button"
+            className={styles['pickRow']}
+            aria-label={`Start from: ${
+              sourceTrip === undefined ? 'None' : tripNameOrUnnamed(sourceTrip)
+            }`}
+            onClick={() => setSourceOpen(true)}
+          >
+            <span
+              className={
+                sourceTrip === undefined
+                  ? styles['pickNone']
+                  : styles['pickChosen']
+              }
+            >
+              {sourceTrip === undefined
+                ? 'None'
+                : tripNameOrUnnamed(sourceTrip)}
+            </span>
+            <span className={styles['chevron']} aria-hidden="true">
+              ›
+            </span>
+          </button>
+
+          {/* One line unchosen, two chosen — and the second is where
+              `PARTICIPANTS` is disclosed **before the Trip exists** (J10,
+              J17). Every per-person Entry lands on the copy inert, with no
+              Pieces, because Participants do not come across; a fact belongs
+              at the decision, not in an explainer after it. */}
+          {sourceTrip === undefined ? (
+            <span className={styles['fieldNote']} data-testid="start-from-note">
+              A PAST TRIP&apos;S LIST, TASKS AND NOTES CAN COME ACROSS
+            </span>
+          ) : (
+            <>
+              <span
+                className={styles['fieldNote']}
+                data-testid="start-from-carries"
+              >
+                {carriesLine(sourceTrip, state)}
+              </span>
+              <span
+                className={styles['fieldNote']}
+                data-testid="start-from-fresh"
+              >
+                STARTS FRESH · PACKING · JOURNEYS · OUTCOMES · DATES ·
+                PARTICIPANTS
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
       <label className={styles['field']}>
         <span className={styles['label']}>Name</span>
@@ -315,6 +443,20 @@ export function NewTrip() {
         NAME IS THE ONLY REQUIRED INPUT
       </p>
 
+      {sourceOpen && (
+        <SourcePicker
+          selected={source}
+          // The picker is pure selection and the caller closes it — the Home
+          // picker's rule, and why its first row is the clear rather than an
+          // `✕` on the field.
+          onSelect={(id) => {
+            setSource(id)
+            setSourceOpen(false)
+          }}
+          onClose={() => setSourceOpen(false)}
+        />
+      )}
+
       {pickerOpen && (
         <ParticipantPicker
           selected={participants}
@@ -332,4 +474,35 @@ export function NewTrip() {
       )}
     </div>
   )
+}
+
+/**
+ * `COMES ACROSS · 35 ENTRIES · BRING-COUNTS · 7 TASKS, UNTICKED · 4 NOTES` —
+ * what the Quartermaster is agreeing to, stated before the Trip exists.
+ *
+ * Segments are absent at zero (G3), so a source with no notes does not
+ * mention notes. `BRING-COUNTS` rides with `ENTRIES` and carries no number of
+ * its own: it is a property of the lines above it rather than a count, and a
+ * figure there would invite the reader to check it against a list they cannot
+ * see. `TASKS, UNTICKED` states the one thing about the copy that differs
+ * from the source in kind rather than in quantity.
+ *
+ * `NOTES` counts what will actually travel — kept **and** unreviewed, never
+ * discarded (I13, I16) — rather than `noteCounts(...).total`, which counts
+ * discarded ones too because a discarded Note never vanishes from its own
+ * Trip. This is the one place in the app where those two numbers differ, and
+ * this line has to be the copy's.
+ */
+function carriesLine(trip: TripState, state: HouseholdState): string {
+  const list = listTotals(trip, state)
+  const tasks = taskCounts(trip)
+  const copiedNotes = notesOf(trip).filter((note) => note.kept !== false).length
+
+  const segments = ['COMES ACROSS']
+  if (list.entries > 0) {
+    segments.push(`${list.entries} ENTRIES`, 'BRING-COUNTS')
+  }
+  if (tasks.total > 0) segments.push(`${tasks.total} TASKS, UNTICKED`)
+  if (copiedNotes > 0) segments.push(`${copiedNotes} NOTES`)
+  return segments.join(' · ')
 }
