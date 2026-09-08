@@ -393,16 +393,21 @@ every one of them gets more expensive per slice.
   three small `--text-*` pairs would close most of it.
   [`patterns.md`](patterns.md) §6.2, anchor:
   `most-copied rule`
-- **Seven entity writers in `reduce.ts`, and the generic one is now two slices
-  overdue.** `writeEntry`'s docblock has said since S7 that *"a sixth should
+- **Seven entity writers in `reduce.ts`, and the trigger for the generic one
+  has fired.** `writeEntry`'s docblock has said since S7 that *"a sixth should
   re-open the argument"* for a generic `writeEntity`; the sixth (`writeTask`,
   S13) and the seventh (`writeNote`, S12) landed in the same week, in parallel
   worktrees, and neither could take the refactor without rewriting five call
   sites the other branch was also editing. Nothing is wrong today — all seven
   carry the identical identity guard — but the trigger has fired and the
-  argument is re-opened rather than settled. **S14 is the slice that should
-  take it**: the template copy reads every one of these maps, so it is the
-  first with a reason to be in all seven at once.
+  argument is re-opened rather than settled. **What blocked it is gone** —
+  both writers have landed, and no branch is holding these call sites open
+  any more — so this waits on nothing but a slice already working in the file.
+  S14 was the obvious one, because its template copy reads every one of these
+  maps and is the first code with a reason to be in all seven at once; it
+  **declined**, to keep the MVP's last slice to its own scope. The fit is
+  recorded because it outlives the decline: whoever takes it wants a reason to
+  be in all seven at once, and that shape is what to look for.
   `shared/src/reduce.ts`, anchor: `The generic \`writeEntity\``
 - **The stamp-then-id comparator is spelled twice, in `task.ts` and
   `note.ts`.** Both order a nested entity map by its creating register's stamp
@@ -410,8 +415,10 @@ every one of them gets more expensive per slice.
   because *"a second copy of a total-order comparator is exactly how two
   devices start drawing lists differently again"* — is where it belongs. It is
   not there because S12 and S13 were built in parallel and `order.ts` is a
-  file only one of them could own. Same reasoning as the entity writers above,
-  and the same moment to fix it.
+  file only one of them could own. Both have landed, so the collision that
+  kept it out is over: same shape as the entity writers above, unblocked by
+  the same event, and — S14 having declined that one — waiting on the same
+  kind of slice.
   `shared/src/selectors/task.ts`, anchor: `The comparator is local rather than`
 - **The `GEAR LIST` band's anatomy is spelled three times.** `Trip.module.css`'s
   `.gearListBand`, `NotesPanel`'s and `TasksPanel`'s — label, count, optional
