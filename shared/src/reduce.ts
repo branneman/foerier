@@ -16,6 +16,7 @@ import type {
   HouseholdState,
   EntryState,
   GearState,
+  NoteState,
   PersonState,
   PhaseValue,
   PieceState,
@@ -177,6 +178,34 @@ function writeEntry(
  * write must return the identical object so `slice.ts`'s `WeakMap` memo is
  * not invalidated by an op that changed nothing.
  */
+/**
+ * The Trip's second nested entity map (S12), and `writeEntry`'s twin one map
+ * over rather than a new shape.
+ *
+ * The identity guard reads exactly as `writeEntry`'s and is there for the
+ * identical reason: an update that changes no register must return the object
+ * it was given, so a losing write cannot fabricate a new `trip` and invalidate
+ * `slice.ts`'s `WeakMap` memo. The `existing !== undefined` half is what tells
+ * "existed, untouched" from "just created, untouched" — needed here for
+ * `trip.note_kept`, whose payload can be malformed enough to write nothing
+ * while the Note itself is still legitimately created.
+ */
+function writeNote(
+  state: HouseholdState,
+  tripId: string,
+  noteId: string,
+  stamp: Stamp,
+  update: (note: NoteState, stamp: Stamp) => NoteState,
+): HouseholdState {
+  return writeTrip(state, tripId, stamp, (trip, st) => {
+    const existing = trip.notes?.[noteId]
+    const current = existing ?? { id: noteId }
+    const updated = update(current, st)
+    if (updated === current && existing !== undefined) return trip
+    return { ...trip, notes: { ...trip.notes, [noteId]: updated } }
+  })
+}
+
 function writePiece(
   state: HouseholdState,
   tripId: string,
@@ -667,6 +696,60 @@ const tripConsumptionPosted: Handler = (state, op, stamp) => {
 }
 
 /**
+ * `trip.note_posted` (§4.4): creates the Note and seeds `text`, optionally
+ * `entry_id` (S12 spec §2).
+ *
+ * Both fields go through `writeIfPresent`, which for `entry_id` is the whole
+ * of the not-nullable decision: an explicit `null` reads as `null`, matches no
+ * branch, and leaves the register standing. See {@link NoteState} for why that
+ * is the right answer rather than a missing case.
+ *
+ * A malformed `text` leaves a Note with no text — the same shape a review
+ * arriving before its post leaves — which `notesOf` excludes from every list
+ * and every count. Retained in the fold, drawn nowhere, exactly as
+ * `trip.entry_added`'s sourceless Entry is.
+ */
+const tripNotePosted: Handler = (state, op, stamp) => {
+  const noteId = readString(op.payload, 'note_id')
+  if (noteId.kind !== 'value') return state
+  return writeNote(state, op.aggregate_id, noteId.value, stamp, (note, st) => {
+    const text = writeIfPresent(note.text, readString(op.payload, 'text'), st)
+    const entryId = writeIfPresent(
+      note.entryId,
+      readString(op.payload, 'entry_id'),
+      st,
+    )
+    if (text === note.text && entryId === note.entryId) return note
+    return {
+      ...note,
+      ...(text !== undefined && { text }),
+      ...(entryId !== undefined && { entryId }),
+    }
+  })
+}
+
+/**
+ * `trip.note_kept` (§4.4): `true` keeps as reference, `false` discards.
+ *
+ * One op in both directions, so a discard is reversed by an ordinary later
+ * keep and nothing is special-cased (ruling I14). Folded on **any** Note,
+ * including one this replica has not seen posted: the review and the post
+ * address different registers on one entity path, and neither waits for the
+ * other.
+ */
+const tripNoteKept: Handler = (state, op, stamp) => {
+  const noteId = readString(op.payload, 'note_id')
+  if (noteId.kind !== 'value') return state
+  const kept = readBoolean(op.payload, 'kept')
+  if (kept.kind !== 'value') return state
+  return writeNote(state, op.aggregate_id, noteId.value, stamp, (note, st) => {
+    const next = writeRegister(note.kept, kept.value, st)
+    if (next === note.kept) return note
+    return { ...note, kept: next }
+  })
+}
+
+/**
  * `trip.entry_added` (§4.4): creates the Entry and seeds `source`.
  *
  * A malformed or unrecognised source writes nothing and leaves an Entry that
@@ -1058,6 +1141,12 @@ const handlers: Record<string, Handler> = {
   // over on the Trip root — the fact that a close's reduction "applied once"
   // (domain §6), now with somewhere to be recorded.
   'trip.consumption_posted': tripConsumptionPosted,
+  // S12 (§4.4): `notes.<note_id>`, the second of the Trip's nested entity
+  // maps — `entries`' shape, not `participants`'. S13's `tasks` is the third
+  // and shares nothing with it, which is the disjointness architecture §8.6
+  // rests the parallel build on.
+  'trip.note_posted': tripNotePosted,
+  'trip.note_kept': tripNoteKept,
 }
 
 /**

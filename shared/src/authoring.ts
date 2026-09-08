@@ -671,3 +671,56 @@ export function tripConsumptionPosted(
     payload: { gear_id: gearId, units },
   }
 }
+
+/**
+ * §4.4 (S12): posts a Trip note — free text, optionally *about* one Entry.
+ *
+ * **`entry_id` is omitted, never sent as `null`, for a Note about the Trip.**
+ * This module is the strict half of the reader/writer pair (see the header):
+ * a `null` on the wire means *clear this register*, and `NoteState.entryId`
+ * is not nullable, so a `null` here would be authoring an instruction no
+ * reader in this codebase honours — and inviting a future one to honour it.
+ * An absent key is the honest way to say *about the Trip*.
+ *
+ * There is no rename and no delete for a Note, deliberately (ruling I12):
+ * the catalogue defines two note ops and this is both of the writes.
+ */
+export function tripNotePosted(
+  tripId: string,
+  noteId: string,
+  text: string,
+  entryId?: string,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.note_posted',
+    payload: {
+      note_id: noteId,
+      text,
+      ...(entryId !== undefined && { entry_id: entryId }),
+    },
+  }
+}
+
+/**
+ * §4.4 (S12): `true` keeps the Note as reference, `false` discards it.
+ *
+ * One op in both directions, exactly as `trip.task_ticked` and
+ * `trip.entry_status_set` are — so a discard is undone by an ordinary later
+ * keep rather than by a restore op (ruling I14). What "kept" then means
+ * downstream is S14's: a Note **not discarded** is copied by the template,
+ * which is kept *and* unreviewed both (I13).
+ */
+export function tripNoteKept(
+  tripId: string,
+  noteId: string,
+  kept: boolean,
+): OpSpec {
+  return {
+    aggregate: 'trip',
+    aggregate_id: tripId,
+    type: 'trip.note_kept',
+    payload: { note_id: noteId, kept },
+  }
+}

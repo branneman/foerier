@@ -36,6 +36,8 @@ import {
   tripEntryMoved,
   tripEntryRemoved,
   tripEntryStatusSet,
+  tripNoteKept,
+  tripNotePosted,
   tripOutcomeSet,
   tripParticipantAdded,
   tripParticipantRemoved,
@@ -158,6 +160,14 @@ const TRIP_IDS = [
  * together.
  */
 const ENTRY_IDS = ['e1', 'e2', 'e3'] as const
+
+/**
+ * S12's notes, three for {@link ENTRY_IDS}' reason: with two Trips and three
+ * note ids, two devices reviewing the same `notes.<id>.kept` register is the
+ * common case rather than a rarity, which is what makes the merge — and not
+ * merely a union of disjoint writes — the thing under test.
+ */
+const NOTE_IDS = ['n1', 'n2', 'n3'] as const
 
 /**
  * Three tags, shared across every device, for exactly the reason the id pools
@@ -290,6 +300,12 @@ const arbOwner: fc.Arbitrary<Owner> = fc.oneof(
 
 const arbTripId = fc.constantFrom(...TRIP_IDS)
 const arbEntryId = fc.constantFrom(...ENTRY_IDS)
+const arbNoteId = fc.constantFrom(...NOTE_IDS)
+const arbNoteText = fc.constantFrom(
+  'Ran low on gas.',
+  'The chair was useless.',
+  'Warmer gloves next time.',
+)
 const arbTripName = fc.constantFrom('Ardennes', 'Vosges', 'Sarek')
 /** `shakedown` is deliberately not one of the five known phases — `arbKind`'s
  * rule a second time, and §5.3 obligation 4's whole point: an unrecognised
@@ -669,11 +685,46 @@ const arbTripPieceSpec: fc.Arbitrary<OpSpec> = fc.oneof(
     ),
 )
 
+/**
+ * **S12's arm**, and a fourth level rather than two more branches of the root
+ * — {@link arbTripPieceSpec}'s argument, one map over. `notes.<id>` is a
+ * nested entity map exactly as `entries.<id>` is, so it gets the level's own
+ * share instead of a share decided by how many op types the root happens to
+ * have.
+ *
+ * **`entry_id` is drawn optional**, so the generator produces both shapes the
+ * fold keeps apart: a Note about one Entry and a Note about the Trip. It is
+ * never drawn as `null` — `NoteState.entryId` is not nullable and
+ * `tripNotePosted` refuses to author a clear no reader honours, so a `null`
+ * here would be testing a wire shape this build does not emit.
+ *
+ * The post and the review are separate branches on purpose. They address
+ * different registers on one entity path, so drawing them together would
+ * never generate the case that actually matters: a peer's `trip.note_kept`
+ * landing on a Note this replica has not seen posted.
+ */
+const arbTripNoteSpec: fc.Arbitrary<OpSpec> = fc.oneof(
+  fc
+    .tuple(
+      arbTripId,
+      arbNoteId,
+      arbNoteText,
+      fc.option(arbEntryId, { nil: undefined }),
+    )
+    .map(([id, noteId, text, entryId]) =>
+      tripNotePosted(id, noteId, text, entryId),
+    ),
+  fc
+    .tuple(arbTripId, arbNoteId, fc.boolean())
+    .map(([id, noteId, kept]) => tripNoteKept(id, noteId, kept)),
+)
+
 /** Equal, unweighted split — see {@link arbTripEntrySpec}'s doc for why. */
 const arbTripSpec: fc.Arbitrary<OpSpec> = fc.oneof(
   arbTripRootSpec,
   arbTripEntrySpec,
   arbTripPieceSpec,
+  arbTripNoteSpec,
 )
 
 /**
@@ -3516,5 +3567,87 @@ describe('convergence', () => {
         expect(r.state().trips[trip]?.phase?.value).toBe('closed')
       }
     }
+  })
+
+  /**
+   * **S12, and architecture §8.6's own argument proved one slice down.** The
+   * plan let S12 and S13 be built in two worktrees at once because
+   * `notes.<id>` and `tasks.<id>` are disjoint register namespaces; this is
+   * the same disjointness one level in, between two Notes. Two Devices
+   * offline, two note ids, nothing contested — both survive, in either fold
+   * order.
+   */
+  it('two Devices posting different Notes offline keep both', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+    const entry = ENTRY_IDS[0]
+
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripEntryAdded(trip, entry, { from: 'depot', gearId: GEAR_IDS[0] }))
+    exchange(a, b)
+
+    clock.advance(1000)
+    const gas = a.emit(tripNotePosted(trip, 'n1', 'Ran low on gas.', entry))
+    clock.advance(1000)
+    const gloves = b.emit(
+      tripNotePosted(trip, 'n2', 'Warmer gloves next time.'),
+    )
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      const notes = r.state().trips[trip]!.notes!
+      expect(notes['n1']!.text).toEqual({
+        value: 'Ran low on gas.',
+        hlc: gas.hlc,
+        deviceId: gas.device_id,
+      })
+      expect(notes['n1']!.entryId?.value).toBe(entry)
+      expect(notes['n2']!.text?.value).toBe('Warmer gloves next time.')
+      // The Trip-wide Note never acquires a reference: authoring omits the
+      // key, so there is no `null` on the wire for a reader to mistake for a
+      // clear. Absent stays absent through the merge.
+      expect(notes['n2']!.entryId).toBeUndefined()
+    }
+    expect(gas.hlc < gloves.hlc).toBe(true)
+  })
+
+  /**
+   * The slice's **one contended path**: `kept` is a single register with two
+   * writers and no third state on the wire — the third state is the
+   * register's own absence, which neither of these ops can produce.
+   *
+   * It resolves by plain LWW and nothing else, which is what makes ruling
+   * I14's *"a discard is reversed by KEEP"* true by construction rather than
+   * by a restore op: the later write simply wins, whichever way it points.
+   */
+  it('a keep and a discard of one Note resolve by plain LWW on both replicas', () => {
+    const { clock, a, b } = aWorld()
+    const trip = TRIP_IDS[0]
+
+    a.emit(tripCreated(trip, 'Alps'))
+    a.emit(tripNotePosted(trip, 'n1', 'The chair was useless.'))
+    exchange(a, b)
+
+    clock.advance(1000)
+    const kept = a.emit(tripNoteKept(trip, 'n1', true))
+    clock.advance(1000)
+    const discarded = b.emit(tripNoteKept(trip, 'n1', false))
+    exchange(a, b)
+
+    expect(a.state()).toEqual(b.state())
+    for (const r of [a, b]) {
+      expect(r.state().trips[trip]!.notes!['n1']!.kept).toEqual({
+        value: false,
+        hlc: discarded.hlc,
+        deviceId: discarded.device_id,
+      })
+      // The losing op is retained in the log and changes nothing — the text
+      // it was reviewing is untouched by either write.
+      expect(r.state().trips[trip]!.notes!['n1']!.text?.value).toBe(
+        'The chair was useless.',
+      )
+    }
+    expect(kept.hlc < discarded.hlc).toBe(true)
   })
 })

@@ -162,6 +162,44 @@ export type PhaseValue =
  * Entry's. A Piece is a thing that travels exactly as an Entry is; nothing
  * about the two registers differs but the entity path they hang on.
  */
+/**
+ * **A Trip note** (S12; sync §3.7's `notes.<note_id>` row, `design/README.md`
+ * §5l I9–I20). Free text, optionally *about* one Entry, kept or discarded at
+ * the unpack pass.
+ *
+ * **`entryId` is deliberately not nullable**, unlike every other optional
+ * reference in this file. Sync §1.3's *"`null` clears"* is a rule about a
+ * register whose declared type includes `null`; this one's does not, so a
+ * peer's explicit `null` reads as `null`, matches no branch of
+ * `writeIfPresent` and leaves the register standing. No op in the catalogue
+ * detaches a Note from its Entry — ruling I10 puts the reference on the
+ * composer and nowhere else — so honouring a `null` here would be inventing
+ * the clear the round declined.
+ *
+ * **`kept` is the one register in this codebase whose absence is a third
+ * state rather than a default** (I13). `phase` reads `draft` when absent,
+ * `owner` reads `SHARED`, `status` reads `not_packed`; an absent `kept` reads
+ * *unreviewed*, and the surfaces draw three things. `selectors/note.ts`'s
+ * `noteKeptOf` is the only place that says so, and it answers
+ * `boolean | undefined` — `kindOf`'s shape, not `ownerOf`'s.
+ */
+export interface NoteState {
+  /** The Note id. The map key and this field are the same value. */
+  readonly id: string
+  /**
+   * Written unconditionally by `trip.note_posted`, which makes it this op's
+   * `trip.created`-shaped seed: a posted Note always writes at least one
+   * register, so unlike `trip.entry_added` identity alone is never ambiguous
+   * here. A Note holding no `text` is one whose review arrived before its
+   * post — folded, retained, and drawn nowhere (`notesOf`).
+   */
+  readonly text?: Register<string>
+  /** The Entry this Note is *about*, set at post and addressed by no later op. */
+  readonly entryId?: Register<string>
+  /** `true` kept as reference, `false` discarded. Absent is *unreviewed*. */
+  readonly kept?: Register<boolean>
+}
+
 export interface PieceState {
   /** The Person id. The map key and this field are the same value. */
   readonly id: string
@@ -357,6 +395,14 @@ export interface TripState {
    * carries only presence.
    */
   readonly entries?: Readonly<Record<string, EntryState>>
+  /**
+   * The Trip's Notes, keyed by note id — `entries`' shape, a map of
+   * **entities**, and the second of the three nested maps this interface's
+   * own header promised. S12 takes it; `tasks` is S13's, and the two are
+   * disjoint register namespaces, which is what let the two slices be built
+   * at once (architecture §8.6).
+   */
+  readonly notes?: Readonly<Record<string, NoteState>>
 }
 
 /**

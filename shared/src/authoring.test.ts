@@ -18,6 +18,8 @@ import {
   placeRemoved,
   placeRenamed,
   tripConsumptionPosted,
+  tripNoteKept,
+  tripNotePosted,
   authorOp,
   type OpAuthor,
 } from './authoring.ts'
@@ -132,6 +134,41 @@ describe('tripConsumptionPosted', () => {
     expect(tripConsumptionPosted('t1', 'g1', 0).payload).toEqual({
       gear_id: 'g1',
       units: 0,
+    })
+  })
+})
+
+describe('tripNotePosted / tripNoteKept', () => {
+  // S12 (spec §2): the reference is carried when there is one.
+  it('carries entry_id for a Note about one Entry', () => {
+    expect(tripNotePosted('t1', 'n1', 'Ran low on gas.', 'e1')).toEqual({
+      aggregate: 'trip',
+      aggregate_id: 't1',
+      type: 'trip.note_posted',
+      payload: { note_id: 'n1', text: 'Ran low on gas.', entry_id: 'e1' },
+    })
+  })
+
+  // The one that matters, and the reason it asserts on the key rather than
+  // on the value: a `null` here would mean *clear this register*, and
+  // `NoteState.entryId` is not nullable, so authoring one would be emitting
+  // an instruction no reader honours. `toEqual` alone would pass against
+  // `{ entry_id: undefined }`, which serialises to a present key.
+  it('omits entry_id entirely for a Note about the Trip', () => {
+    const { payload } = tripNotePosted('t1', 'n1', 'Warmer gloves next time.')
+
+    expect(Object.hasOwn(payload, 'entry_id')).toBe(false)
+    expect(payload).toEqual({ note_id: 'n1', text: 'Warmer gloves next time.' })
+  })
+
+  it('carries the kept flag in both directions', () => {
+    expect(tripNoteKept('t1', 'n1', true).payload).toEqual({
+      note_id: 'n1',
+      kept: true,
+    })
+    expect(tripNoteKept('t1', 'n1', false).payload).toEqual({
+      note_id: 'n1',
+      kept: false,
     })
   })
 })

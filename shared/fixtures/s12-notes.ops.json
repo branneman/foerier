@@ -1,0 +1,140 @@
+[
+  {
+    "id": "ffffffff-0000-7000-8000-000000000101",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s12-1",
+    "type": "trip.created",
+    "hlc": "2026-09-08T09:00:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "S12 Fixture Trip"
+    },
+    "seq": 1,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000102",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "gear",
+    "aggregate_id": "g-s12-gas",
+    "type": "gear.recorded",
+    "hlc": "2026-09-08T09:01:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "name": "Gas canister 450"
+    },
+    "seq": 2,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000103",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s12-1",
+    "type": "trip.entry_added",
+    "hlc": "2026-09-08T09:02:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "entry_id": "e-s12-gas",
+      "source": {
+        "from": "depot",
+        "gear_id": "g-s12-gas"
+      }
+    },
+    "seq": 3,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000104",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s12-1",
+    "type": "trip.note_posted",
+    "hlc": "2026-09-08T09:03:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "note_id": "n-s12-gas",
+      "text": "Ran low on gas by day 2. Bring ×6 next time.",
+      "entry_id": "e-s12-gas"
+    },
+    "seq": 4,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000105",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s12-1",
+    "type": "trip.note_kept",
+    "hlc": "2026-09-08T09:04:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "note_id": "n-s12-gas",
+      "kept": true
+    },
+    "seq": 5,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000106",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s12-1",
+    "type": "trip.note_posted",
+    "hlc": "2026-09-08T09:05:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "note_id": "n-s12-chair",
+      "text": "The chair was useless on gravel.",
+      "entry_id": "e-s12-chair"
+    },
+    "seq": 6,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000107",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s12-1",
+    "type": "trip.note_kept",
+    "hlc": "2026-09-08T09:06:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "note_id": "n-s12-chair",
+      "kept": false
+    },
+    "seq": 7,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000108",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s12-1",
+    "type": "trip.note_posted",
+    "hlc": "2026-09-08T09:07:00.000Z-0000",
+    "device_id": "aaaaaaaa-0000-7000-8000-000000000001",
+    "payload": {
+      "note_id": "n-s12-gloves",
+      "text": "Warmer gloves next time."
+    },
+    "seq": 8,
+    "received_at": "2026-09-08T10:00:00Z"
+  },
+  {
+    "id": "ffffffff-0000-7000-8000-000000000109",
+    "household_id": "11111111-0000-7000-8000-000000000001",
+    "aggregate": "trip",
+    "aggregate_id": "t-s12-1",
+    "type": "trip.note_kept",
+    "hlc": "2026-09-08T09:08:00.000Z-0000",
+    "device_id": "bbbbbbbb-0000-7000-8000-000000000002",
+    "payload": {
+      "note_id": "n-s12-ghost",
+      "kept": true
+    },
+    "seq": 9,
+    "received_at": "2026-09-08T10:00:00Z"
+  }
+]

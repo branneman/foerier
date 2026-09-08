@@ -1,0 +1,104 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the S12 fixture > folds to exactly the state it folded to when captured 1`] = `
+{
+  "gear": {
+    "g-s12-gas": {
+      "id": "g-s12-gas",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:01:00.000Z-0000",
+        "value": "Gas canister 450",
+      },
+    },
+  },
+  "people": {},
+  "places": {},
+  "trips": {
+    "t-s12-1": {
+      "entries": {
+        "e-s12-gas": {
+          "id": "e-s12-gas",
+          "source": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:02:00.000Z-0000",
+            "value": {
+              "from": "depot",
+              "gearId": "g-s12-gas",
+            },
+          },
+        },
+      },
+      "id": "t-s12-1",
+      "name": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:00.000Z-0000",
+        "value": "S12 Fixture Trip",
+      },
+      "notes": {
+        "n-s12-chair": {
+          "entryId": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:05:00.000Z-0000",
+            "value": "e-s12-chair",
+          },
+          "id": "n-s12-chair",
+          "kept": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:06:00.000Z-0000",
+            "value": false,
+          },
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:05:00.000Z-0000",
+            "value": "The chair was useless on gravel.",
+          },
+        },
+        "n-s12-gas": {
+          "entryId": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:03:00.000Z-0000",
+            "value": "e-s12-gas",
+          },
+          "id": "n-s12-gas",
+          "kept": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:04:00.000Z-0000",
+            "value": true,
+          },
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:03:00.000Z-0000",
+            "value": "Ran low on gas by day 2. Bring ×6 next time.",
+          },
+        },
+        "n-s12-ghost": {
+          "id": "n-s12-ghost",
+          "kept": {
+            "deviceId": "bbbbbbbb-0000-7000-8000-000000000002",
+            "hlc": "2026-09-08T09:08:00.000Z-0000",
+            "value": true,
+          },
+        },
+        "n-s12-gloves": {
+          "id": "n-s12-gloves",
+          "text": {
+            "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+            "hlc": "2026-09-08T09:07:00.000Z-0000",
+            "value": "Warmer gloves next time.",
+          },
+        },
+      },
+      "phase": {
+        "deviceId": "aaaaaaaa-0000-7000-8000-000000000001",
+        "hlc": "2026-09-08T09:00:00.000Z-0000",
+        "value": "draft",
+      },
+    },
+  },
+  "unfolded": {
+    "count": 0,
+    "types": {},
+  },
+}
+`;
