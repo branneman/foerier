@@ -11,6 +11,7 @@ import {
   stamp,
 } from '../../testUtils/index.ts'
 import {
+  tripDeleted,
   tripParticipantAdded,
   tripParticipantRemoved,
   tripRenamed,
@@ -32,6 +33,7 @@ import {
   tripLabel,
   tripNameOrUnnamed,
   tripSections,
+  tripStandingOf,
   UNNAMED_TRIP,
   UNNAMED_TRIP_GLYPH,
   visibleTrips,
@@ -346,23 +348,51 @@ describe('visibleTrips', () => {
   })
 
   it('excludes a Trip whose deleted register holds true', () => {
-    // S14 authors `trip.deleted`; at S6 there is no builder and **no
-    // handler**, so an op of that type folds as unfolded and would write
-    // nothing. The fixture therefore writes the register the way S14's
-    // handler will — the selector has to honour it now, because every later
-    // surface counts through this function (spec §2's table).
-    const state = depot(aTrip({ id: 't1' }), aTrip({ id: 't2' }))
-    const withDeleted: HouseholdState = {
-      ...state,
-      trips: {
-        ...state.trips,
-        t2: {
-          ...trip(state, 't2'),
-          deleted: { value: true, hlc: hlcAt(9), deviceId: DEV_A },
-        },
-      },
+    // Written by the op now. S6 had to hand-shape the register here, because
+    // it read `deleted` a slice before anything could write it; S14 supplies
+    // both the builder and the handler, so the fold is the honest source and
+    // this test no longer has to describe what a future handler *will* do.
+    const state = depot(aTrip({ id: 't1' }), aTrip({ id: 't2' }), [
+      tripDeleted('t2'),
+    ])
+    expect(ids(visibleTrips(state))).toEqual(['t1'])
+  })
+})
+
+/**
+ * S14's J5: the trip screen draws two different sentences for the two ways a
+ * Trip id can fail to name a Trip, so the fold has to tell them apart.
+ */
+describe('tripStandingOf', () => {
+  it('reads a folded, untombstoned Trip as live', () => {
+    const state = depot(aTrip({ id: 't1' }))
+    expect(tripStandingOf(state, 't1')).toBe('live')
+  })
+
+  it('reads a tombstoned Trip as deleted, not as unknown', () => {
+    // The distinction this function exists for. `trip.deleted` writes a
+    // register on an entity the fold **keeps**, so `state.trips[id]` stays
+    // defined after a delete — which is exactly why a screen guarding only
+    // on `undefined` goes on drawing a Trip the household has thrown away.
+    const state = depot(aTrip({ id: 't1' }), [tripDeleted('t1')])
+    expect(state.trips['t1']).toBeDefined()
+    expect(tripStandingOf(state, 't1')).toBe('deleted')
+  })
+
+  it('reads an id the fold has never seen as unknown', () => {
+    expect(tripStandingOf(emptyState(), 't1')).toBe('unknown')
+  })
+
+  it('calls live exactly what visibleTrips lists', () => {
+    // One predicate, two callers: the moment these disagree, a deleted Trip
+    // renders in full on one surface while every list agrees it is gone.
+    const state = depot(aTrip({ id: 't1' }), aTrip({ id: 't2' }), [
+      tripDeleted('t2'),
+    ])
+    const listed = new Set(visibleTrips(state).map((each) => each.id))
+    for (const id of Object.keys(state.trips)) {
+      expect(tripStandingOf(state, id) === 'live').toBe(listed.has(id))
     }
-    expect(ids(visibleTrips(withDeleted))).toEqual(['t1'])
   })
 })
 

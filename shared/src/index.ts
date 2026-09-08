@@ -305,6 +305,7 @@ export {
   tripLabel,
   tripNameOrUnnamed,
   tripSections,
+  tripStandingOf,
   UNNAMED_TRIP,
   UNNAMED_TRIP_GLYPH,
   visibleTrips,

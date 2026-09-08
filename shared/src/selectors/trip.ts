@@ -420,6 +420,33 @@ export function visibleTrips(state: HouseholdState): readonly TripState[] {
     .sort(byNameThenId)
 }
 
+/**
+ * What a Trip id means to this fold — {@link visibleTrips}' predicate asked
+ * about one id, with the two ways of *not* being visible told apart.
+ *
+ * The trip screen needs all three because S14's J5 draws two different
+ * sentences: a tombstone is a fact this Device holds (*it was deleted on
+ * this or another device*), while an unfolded id is an absence that may
+ * still arrive (*it may not have synced here yet; this clears itself*).
+ * Collapsing them would make a screen state the wrong one half the time, and
+ * a redirect — the third option the round refused — would state neither.
+ *
+ * **The tombstone test is spelled here and in {@link visibleTrips}, nowhere
+ * else.** `trip.deleted` writes a register on an entity the fold *keeps*, so
+ * `state.trips[id]` stays defined after a delete; a screen guarding only on
+ * `undefined` therefore goes on drawing a Trip the household has thrown
+ * away, which is precisely the defect this function fixes. A third spelling
+ * would reintroduce it somewhere new.
+ */
+export function tripStandingOf(
+  state: HouseholdState,
+  id: string,
+): 'live' | 'deleted' | 'unknown' {
+  const trip = state.trips[id]
+  if (trip === undefined) return 'unknown'
+  return trip.deleted?.value === true ? 'deleted' : 'live'
+}
+
 /** The Trips list's three sections, each already in its own order. */
 export interface TripSections {
   /** `pack_out`, `on_trip`, `unpack` — start date ascending, undated last. */
