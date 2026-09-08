@@ -1,0 +1,111 @@
+@layer components {
+  /* `NewTrip.module.css`'s screen, and for its stated reason: `min-height`
+     gives `.primary`'s `margin-top: auto` a height to push against, and where
+     the percentage does not resolve the CTA simply follows the last field. */
+  .screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    min-height: 100%;
+  }
+
+  .title {
+    font: var(--text-display) var(--font-display);
+    font-weight: 700;
+    color: var(--color-ink-primary);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /*
+   * The input well, `NewTrip`'s `.input` grown a height. `resize: none`
+   * because the row count is the drawn size and a drag handle would let a
+   * Quartermaster resize the screen's own subject; `rows={6}` in the markup
+   * is what sets it, so the well's height tracks the reader's font size
+   * rather than a pixel constant.
+   */
+  .well {
+    width: 100%;
+    padding: var(--space-12) var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    resize: none;
+  }
+
+  /* The same 48px bordered row Add gear gives HOME and OWNER, and `NewTrip`
+     gives PARTICIPANTS — a value that is picked rather than typed reads the
+     same way wherever it appears. */
+  .pickRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: 48px;
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    text-align: start;
+  }
+
+  .pickValue {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chevron {
+    flex: none;
+    color: var(--color-ink-faint);
+  }
+
+  /* The thumb-zone CTA, `NewTrip`'s own: two controls do not fill a phone,
+     so without `margin-top: auto` the primary sits mid-screen on exactly the
+     device the thumb zone is for. */
+  .primary {
+    margin-top: auto;
+    width: 100%;
+    min-height: 48px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Disabled is a state of the ledger line, not a failure. Unlike `NewTrip`
+     and Add gear there is no fact line under it saying what is missing —
+     the empty well above it is already the answer, and a line reading
+     "TEXT IS REQUIRED" over a visibly empty box states nothing. */
+  .primary:disabled {
+    background: var(--color-bg-raised);
+    color: var(--color-ink-muted);
+    cursor: default;
+  }
+
+  .missing {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+}

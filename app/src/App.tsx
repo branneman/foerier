@@ -39,6 +39,7 @@ import { Find } from './screens/Find'
 import { JoinContainer } from './screens/JoinContainer'
 import { SignIn } from './screens/SignIn'
 import { NewTrip } from './screens/NewTrip'
+import { NoteComposer } from './screens/NoteComposer'
 import { Packing } from './screens/Packing'
 import { Trip } from './screens/Trip'
 import { Trips } from './screens/Trips'
@@ -386,6 +387,14 @@ export function App({
               </Route>
               <Route path="/trips/:id">
                 <Trip />
+              </Route>
+              {/* S12's composer, at **every** width (ruling I4): the Split
+                  read/edit split exists because the builder needs a second
+                  pane, and this screen has none. The laptop-after-the-trip
+                  note is story 12's own case, so there is no width guard
+                  here of the kind the two routes below carry. */}
+              <Route path="/trips/:id/note">
+                <NoteComposer />
               </Route>
               {/* Below Split only — the `isDesktop ? <X/> : <Redirect/>`
                   shape `/account/devices` and `/account/people` already use

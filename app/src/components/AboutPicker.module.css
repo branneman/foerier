@@ -1,0 +1,77 @@
+@layer components {
+  /* `ParticipantPicker.module.css`'s own note applies here too: these class
+     names are this file's, so changing them cannot reach another picker's
+     rendering. The anatomy is shared; the declarations are not. */
+  .rows {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* The sheet's row primitive (Screens A §03), drawn at 48 — a standalone
+     control is simply drawn ≥48 (§5b O), so there is no hit extension here
+     and none is wanted. */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: 48px;
+    padding-inline: var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--color-ink-primary);
+    text-align: start;
+  }
+
+  /* Takes the slack, so `● NOW` sits at the trailing edge rather than being
+     spread evenly with the name by the row's `space-between`. */
+  .rowText {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .rowName {
+    font: var(--text-body) var(--font-ui);
+    color: inherit;
+  }
+
+  /* The GearRow name+meta anatomy, as the Home picker's own `Loose` row
+     uses it to teach the glossary word. */
+  .rowMeta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* The SET PHASE anatomy, reused: one app, one way of saying "this is the
+     one you are on". */
+  .now {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-accent);
+  }
+
+  /* The picker's context line — faint uppercase mono, the Home picker's
+     `.fact` treatment at the same 8.5px. */
+  .fact {
+    margin: var(--space-12) 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.53125rem;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+}

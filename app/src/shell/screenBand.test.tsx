@@ -32,6 +32,7 @@ import { GearDetail } from '../screens/GearDetail'
 import { GearListBuilder } from '../screens/GearListBuilder'
 import { InviteIssued } from '../screens/InviteIssued'
 import { NewTrip } from '../screens/NewTrip'
+import { NoteComposer } from '../screens/NoteComposer'
 import { Packing } from '../screens/Packing'
 import { People } from '../screens/People'
 import { Trip } from '../screens/Trip'
@@ -242,6 +243,13 @@ function renderInShell(store: StoreApi<HouseholdStoreState>, path: string) {
                 own reason rather than deriving it from `splitPane`. */}
             <Route path="/trips/:id/packing">
               <Packing />
+            </Route>
+            {/* S12's composer — `Packing`'s shape: reachable at every width
+                (ruling I4), not a pane, and its Desktop back link drawn
+                because the sidebar's `TRIPS` row names the list and not this
+                Trip. `useScreenHeader`'s thirteenth caller. */}
+            <Route path="/trips/:id/note">
+              <NoteComposer />
             </Route>
             {/* F5's own route, `/trips/:id/packing`'s twin above: not
                 width-gated and not a pane, reachable at every width for the
@@ -519,9 +527,52 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
   })
 
   /**
-   * **F5 — the twelfth `useScreenHeader` caller**, `Packing`'s own three
-   * cases restated over `/trips/:id/unpack`: the same route shape, the same
-   * flags, the same reason.
+   * **S12's composer — the thirteenth `useScreenHeader` caller**, and the
+   * same three cases again. It earns them for `Packing`'s reason rather than
+   * by resemblance: reachable at every width (ruling I4) and not a pane, so
+   * the Desktop back link is drawn — the sidebar's `TRIPS` row names the
+   * list, never this Trip — while the sync line is the shell's everywhere
+   * but Split.
+   */
+  it('states SYNCED once on a phone for the note composer, in the shell header', async () => {
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/note`)
+
+    const lines = syncLines()
+    expect(lines).toHaveLength(1)
+    const [line] = lines
+    expect(line).toBeVisible()
+    expect(screen.getByRole('main')).not.toContainElement(line ?? null)
+  })
+
+  it('states SYNCED once at Split for the note composer, in the screen', async () => {
+    setViewport(SPLIT)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/note`)
+
+    const lines = syncLines()
+    expect(lines).toHaveLength(1)
+    const [line] = lines
+    expect(line).toBeVisible()
+    expect(screen.getByRole('main')).toContainElement(line ?? null)
+  })
+
+  it('keeps the composer’s back link at Desktop, where the sidebar names the list', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const { store, id } = await aTrip()
+    renderInShell(store, `/trips/${id}/note`)
+
+    // `atDesktopSidebarCarriesDestination: false` — the half of the rule the
+    // per-screen suite cannot prove, because it renders without a sidebar to
+    // be wrong about.
+    expect(
+      within(screen.getByRole('main')).getByRole('link', { name: /‹/ }),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * **F5**, `Packing`'s own three cases restated over `/trips/:id/unpack`:
+   * the same route shape, the same flags, the same reason.
    */
   it('states SYNCED once on a phone for Unpack, in the shell header', async () => {
     const { store, id } = await aTrip()
