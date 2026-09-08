@@ -547,6 +547,30 @@
     text-decoration: none;
   }
 
+  /* `Open trips` — the route out of both not-here states (ruling J5), drawn
+     as a bordered 48 rather than as accent mono, because at Desktop it is
+     the **only** way out: `useScreenHeader` withholds the back link there
+     (the sidebar's own `TRIPS` row is the destination), so this is a
+     primary rather than a secondary door. Below Desktop it is the second
+     route and looks the same, which is the point — the control does not
+     change size because the band beside it did.
+
+     Standalone in a centred column with nothing beside it, so ruling O's
+     standalone clause applies exactly as it does to `.editListEmpty` above:
+     the hit area is simply drawn, with no `::after` to clamp against a
+     neighbour that does not exist. */
+  .openTrips {
+    display: inline-flex;
+    align-items: center;
+    min-height: max(3rem, 48px);
+    padding: 0 var(--space-16);
+    border: var(--stroke-control) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    text-decoration: none;
+  }
+
   /* `PACKING ›` — `.editList`'s twin in the same band, so every word of that
      rule's reasoning above applies here unchanged: the baseline row forbids
      a `min-height`, and the `::after` is what makes an 11px link reachable

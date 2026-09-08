@@ -13,6 +13,7 @@ import {
   tripParticipantRemoved,
   tripPieceRemoved,
   tripRenamed,
+  tripStandingOf,
   tripTaskAdded,
   tripTaskTicked,
   UNNAMED_PERSON_GLYPH,
@@ -322,15 +323,19 @@ export function Trip() {
     setEditing(false)
   }
 
-  if (tripId === undefined || trip === undefined) {
-    // A Trip the fold has never seen is a different fact from a Trip that
-    // exists and carries nothing: `state.trips[id]` is `undefined` for the
-    // first and an entity with no registers for the second, which draws as an
-    // ordinary unnamed Trip. Gear detail's `No such gear.` is the register.
+  // **Three standings, two of which draw no Trip** (ruling J5). The fold
+  // tells them apart and `tripStandingOf` is the only place that asks, so a
+  // deleted Trip cannot be mistaken here for a live one — which it was until
+  // S14, because `trip.deleted` writes a register on an entity the fold
+  // *keeps* and the guard here tested only `undefined`.
+  //
+  // A Trip that exists and carries nothing is a third, *live* case and is
+  // emphatically not either of these: it draws as an ordinary unnamed Trip.
+  const standing =
+    tripId === undefined ? 'unknown' : tripStandingOf(state, tripId)
+  if (standing !== 'live' || trip === undefined) {
     return (
-      <div className={styles['screen']}>
-        <p className={styles['empty']}>No such trip.</p>
-      </div>
+      <TripNotHere standing={standing === 'deleted' ? 'deleted' : 'unknown'} />
     )
   }
 
@@ -941,4 +946,62 @@ function StoredDateNote({
  */
 function undrawable(value: string): boolean {
   return value !== '' && parseIsoDate(value) === null
+}
+
+/**
+ * **A Trip that is not there** — ruling J5, drawn at 393 and 1024 because it
+ * is the one S14 surface whose element set differs by width.
+ *
+ * ## Two states, because the fold knows two things
+ *
+ * A **tombstone** is a fact this Device holds: somebody deleted this Trip,
+ * here or on another Device, and it is not coming back. An **unfolded id**
+ * is an absence: the ops may simply not have arrived yet, and the state
+ * clears itself when they do. One string for both would be wrong half the
+ * time, and the fold has never needed to guess — `tripStandingOf` reads it.
+ *
+ * ## It renders in place; it never redirects
+ *
+ * A screen that teleports when a peer's op lands reads as a defect and takes
+ * the reason with it. The route the Quartermaster is standing on keeps
+ * rendering and says what happened. `/trips` is one tap away, and after
+ * their *own* delete they are sent there anyway (J4) — this is the surface
+ * for somebody *else's*.
+ *
+ * ## Neither state takes amber or `▲`
+ *
+ * §5b F's rule: a sync race is not an error. Nothing here needs settling and
+ * nothing was discarded, so the attention class stays where it belongs.
+ *
+ * No title, no phase chip, no panels, no footer — there is no Trip to carry
+ * them. The screen band above still follows `useScreenHeader`'s own rule, so
+ * at Desktop there is no back link (the sidebar draws `TRIPS`) and
+ * `Open trips` is the only route out; below it, the second.
+ */
+function TripNotHere({ standing }: { standing: 'deleted' | 'unknown' }) {
+  const header = useScreenHeader({ splitPane: false })
+  const sync = useHousehold((depot) => depot.sync)
+  const deleted = standing === 'deleted'
+  return (
+    <div className={styles['screen']}>
+      <ScreenBand
+        header={header}
+        back={{ href: '/trips', label: 'TRIPS' }}
+        sync={sync}
+      />
+      <section className={styles['gear']}>
+        <p className={styles['gearEmpty']}>
+          {deleted ? 'TRIP DELETED' : 'TRIP NOT ON THIS DEVICE'}
+        </p>
+        <p className={styles['gearSource']}>
+          {deleted
+            ? 'It was deleted on this or another device. The depot is untouched.'
+            : 'It may not have synced here yet. This clears itself.'}
+        </p>
+        <Link href="/trips" className={styles['openTrips']}>
+          Open trips
+        </Link>
+      </section>
+    </div>
+  )
 }

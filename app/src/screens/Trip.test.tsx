@@ -3,6 +3,7 @@ import {
   personRecorded,
   tripCreated,
   tripDatesSet,
+  tripDeleted,
   tripEntryAdded,
   tripEntryBringCountSet,
   tripParticipantAdded,
@@ -360,12 +361,52 @@ describe('the trip screen — the header the board draws', () => {
     expect(screen.queryByText('SYNCED')).toBeNull()
   })
 
-  it('renders a line rather than throwing for an id the fold has never seen', async () => {
-    // `state.trips[id]` is `undefined`, which is a different fact from a Trip
-    // that exists and carries nothing: this one the fold has never heard of.
+  /**
+   * **A Trip that is not there** (J5). The fold knows two different things
+   * and the screen says which: a tombstone is a fact this Device holds, an
+   * unfolded id is an absence that may still arrive. Neither redirects —
+   * a screen that teleports on a peer's op reads as a defect and hides the
+   * reason.
+   */
+  it('says a Trip was deleted, on the route the Quartermaster is standing on', async () => {
+    await renderTrip(`/trips/${ALPS}`, ...alps(), tripDeleted(ALPS))
+
+    expect(screen.getByText('TRIP DELETED')).toBeVisible()
+    expect(
+      screen.getByText(
+        'It was deleted on this or another device. The depot is untouched.',
+      ),
+    ).toBeVisible()
+    // Before S14 this state did not exist: `trip.deleted` writes a register
+    // on an entity the fold **keeps**, so the old `trip === undefined` guard
+    // never fired and the screen drew the deleted Trip in full.
+    expect(screen.queryByRole('heading', { name: 'Alps 2026' })).toBeNull()
+    expect(screen.queryByTestId('gear-list')).toBeNull()
+    expect(screen.queryByTestId('phase-chip')).toBeNull()
+  })
+
+  it('says a Trip has not synced here for an id the fold has never seen', async () => {
     await renderTrip('/trips/tttttttt-0000-7000-8000-0000000000ff')
 
-    expect(screen.getByText('No such trip.')).toBeVisible()
+    expect(screen.getByText('TRIP NOT ON THIS DEVICE')).toBeVisible()
+    expect(
+      screen.getByText('It may not have synced here yet. This clears itself.'),
+    ).toBeVisible()
+  })
+
+  it('offers Open trips as a route out of both states', async () => {
+    await renderTrip(`/trips/${ALPS}`, ...alps(), tripDeleted(ALPS))
+    expect(screen.getByRole('link', { name: 'Open trips' })).toHaveAttribute(
+      'href',
+      '/trips',
+    )
+  })
+
+  it('draws no attention glyph on either state', async () => {
+    // §5b F's rule: a sync race is not an error. Nothing is wrong here and
+    // nothing needs settling, so no ▲ and no amber.
+    await renderTrip('/trips/tttttttt-0000-7000-8000-0000000000ff')
+    expect(screen.queryByText('▲')).toBeNull()
   })
 
   /**
@@ -383,7 +424,7 @@ describe('the trip screen — the header the board draws', () => {
       tripParticipantAdded(ALPS, 'els'),
     )
 
-    expect(screen.queryByText('No such trip.')).toBeNull()
+    expect(screen.queryByText('TRIP NOT ON THIS DEVICE')).toBeNull()
     expect(screen.getByRole('heading', { name: '—' })).toBeVisible()
     // The phase register is absent too, and an absent one reads `draft`.
     expect(screen.getByTestId('phase-chip')).toHaveTextContent('DRAFT')
