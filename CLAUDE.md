@@ -14,7 +14,9 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 ## Current status
 
 **Code has started.** Every slice of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
-through S12 has landed (S13 is in flight beside it):
+through S13 has landed — S12 and S13 were built in parallel on the float
+[§8.6](docs/architecture-design.md#86-what-can-be-built-in-parallel) grants
+them, and only S14 is left of the MVP:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
   `ui`; `landing` deferred), the Tier 0 toolchain and pre-commit hook, the test
@@ -1108,6 +1110,72 @@ children. Rulings **I1–I8** are the shared set, **I9–I20** S12's and
   per-person piece"* and means the Depot; 19 and G6 freeze **outcomes**. Both
   have their own tests, and the second is the one most likely to be broken
   later by analogy.
+
+**S13, pre-trip tasks, has landed** (story 15), in parallel with S12 and
+merged after it. Two op types — `trip.task_added`, `trip.task_ticked` — the
+Trip's **third** nested entity map (`tasks`, `entries`' shape, since two
+registers on one entity is not something `participants`' presence flag can
+hold), `shared/src/selectors/task.ts`, one component (`TasksPanel`) in
+`TripPanels`' first slot. **No endpoint, no migration, no route, no sheet, no
+`ui/` component and no change to the slicing engine.** See
+[its spec](docs/specs/2026-09-08-pre-trip-tasks.md) and
+[§12.21](docs/architecture-design.md#1221-consequences-of-s13-pre-trip-tasks).
+
+**Four things about S13 are worth knowing before touching tasks:**
+
+- **A ruling's wording can be wrong about the fold, and I24's was.** *Insertion
+  order* taken literally is a divergence bug: `tasks` is a `Record` whose key
+  order is arrival order, so two Devices holding identical registers would draw
+  two different checklists — no symptom on either one, and only the convergence
+  tier can see it. `tasksOf` orders by the **`text` register's own stamp**,
+  ties broken by task id, which is `notesOf`'s ordering one map over and
+  §3.6's containment break for the same reason. I24's second half — *ticked
+  rows do not sink* — then needs no clause of its own, because
+  `trip.task_ticked` writes `ticked` and never touches the stamp the order
+  reads. The general rule, recorded in `design/README.md` §5l beside the
+  ruling: **where a board's words imply a mechanism the fold cannot provide,
+  the slice owes the round the corrected reading, not the literal one.**
+- **Parallelism cost three consolidations rather than one merge conflict, and
+  all three are S14's.** §8.6 promised S12 and S13 would not collide and they
+  did not — but the same disjointness forbade either from taking a shared
+  abstraction. `writeTask` is the **sixth** entity writer and `writeNote` the
+  seventh, at the exact moment `writeEntry`'s docblock says a sixth re-opens
+  the generic-`writeEntity` argument; the stamp comparator is spelled twice
+  because `order.ts` is a file only one branch could own; and the `GEAR LIST`
+  band's anatomy is spelled **three** times, because the board's §08 named a
+  shared band component the shell commit did not land. All three are in
+  `technical-debt.md`; S14's template copy reads every one of these maps and is
+  the first thing with a reason to be in all seven writers at once.
+- **The convergence tier's completeness guard is now load-bearing for every
+  slice that adds an op.** §12.19 predicted the inheritance and S13 is the
+  first to receive it: `convergence.test.ts` asserts its generator emits every
+  op type the reducer folds, so the two handlers turned the tier red on the
+  commit that added them and *reducer now, property later* stopped being a
+  schedule a slice can choose.
+- **The generator's arms are levels of the aggregate, not slices and not maps
+  — and getting that wrong is the one bug the parallel build actually
+  produced.** S12 gave `notes` an arm of its own; S13 put `tasks` in the root
+  arm, because `tripRegisterPaths` classifies **every** register path outside
+  `entries` as a root register, which is equally true of a Note. Each branch
+  was green alone. Integrated, the fourth arm bought no fourth column — it took
+  a quarter of the trip budget and reported into the column the root arm
+  already fills, cutting entry and piece from a third each to a quarter:
+  **entry contests fell to 49 in 1000, under `CONTEST_FLOOR`, with root at
+  288.** Exactly the dilution `arbTripEntrySpec`'s tables warn about twice.
+  S13's rebase folded the note branches into the root arm, restoring three
+  arms and the floors. **A new nested map keyed off the Trip root joins the
+  root arm; only a genuinely new entity-path *depth* — as `pieces` was below
+  `entries` — earns an arm.** This is also the worked example for CLAUDE.md's
+  own merge rule: a resolution can be green in isolation and wrong once
+  integrated, which is why the suite runs on the merged `main`.
+- **The row states its value in its accessible name and is not a checkbox.**
+  The board gives `Charge the devices, ticked` / `…, not ticked`, so a
+  `role="checkbox"` would carry `aria-checked` as well and announce the state
+  twice. The whole row is the target and the 18px square is a readout inside
+  it (I22) — which is the only reason it may be drawn that small while the row
+  keeps the 48 target size and needs no hit extension at all. The glyph is a
+  square with no status colour (I23): `○ ◐ ●` is packing progress and `▲` is
+  attention, and reusing either is S5's trap.
 
 Four conventions the code now carries that are easy to trip over:
 

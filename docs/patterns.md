@@ -486,6 +486,31 @@ locks things*.
 *Argued in:* `docs/design/README.md` §5i G6/G7; `app/src/components/UnpackRow.tsx`'s
 `record` prop; `app/src/screens/Unpack.tsx`'s `recordProp`.
 
+### 3.9 An end-of-list composer commits per line and keeps the caret
+
+A list whose items are one short string each takes its composer as the **last
+row of the list**, not a screen and not a sheet: a dashed row naming the verb
+and a permanent fact, becoming a well on tap. The commit model is the typed
+`Stepper`'s (§5b K) read onto a field that creates rather than edits —
+**Return commits and keeps focus** so a batch of lines is one sitting,
+**blur with text commits**, **empty commits nothing** on either path, and
+**Escape discards**, because a composer has no committed value for Escape to
+restore. Whitespace is empty, and the trimmed string is what reaches the
+payload, so no op ever carries a blank line.
+
+Two things follow that a screen-shaped composer does not need. The empty state
+**is** the composer — a list drawing its own composer needs no `0 THINGS.`
+line to stand in for one elsewhere (`TasksPanel` writes none; `NotesPanel` and
+the gear region both do, and both have their composer somewhere else). And the
+read stays **non-optimistic** despite §2.2's durable-first gap: the list is
+above the well and focus never leaves it, so the queue-turn before the folded
+row appears is a frame nobody is looking at. `DepotPicker`'s `IN LIST ✓` needs
+the local union because the tapped row *is* the thing that must change; here it
+is not.
+
+*Argued in:* `docs/design/README.md` §5l I21/I27; `app/src/components/TasksPanel.tsx`'s
+`Composer`.
+
 ---
 
 ## 4. Overlays

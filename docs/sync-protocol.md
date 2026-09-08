@@ -409,6 +409,29 @@ means a restoration handed the units back; every reader treats them alike, but
 `reopenTrip` reads the register's own presence and is the one place the
 difference matters (§4.5).
 
+**`tasks.<task_id>` is a map of *entities*, `entries`' shape and not
+`participants`'** (S13). Two registers on one entity is the whole of the
+argument: a set whose member carries only presence cannot hold both a sentence
+and a checkbox. `text` is written unconditionally by `trip.task_added`, which
+is why the writer needs none of `trip.entry_added`'s created-but-untouched
+case — a malformed add persists nothing at all. `ticked` folds
+unconditionally and may arrive **first**, leaving a Task that holds a state and
+no words; that Task is retained in the fold and drawn nowhere, `entries`'
+sourceless Entry one map over. An **absent** `ticked` reads `false`, and
+absent and an explicit `false` stay different facts about the log that every
+reader treats alike.
+
+**The order the checklist draws in is the `text` register's own stamp**, ties
+broken by task id — *not* the map's key order, which is the order this replica
+happened to receive ops in and would have two Devices drawing two different
+checklists from identical registers. §3.6's containment break makes the same
+move for the same reason: a display that must converge cannot be ordered by
+arrival. A tick therefore never moves a row, since `trip.task_ticked` writes
+`ticked` and never touches the stamp the order reads. **`notes.<note_id>` is
+ordered the same way and for the same reason** — by its own `text` stamp, ties
+broken by note id — so the rule holds for both of the Trip's root-level entity
+maps and should hold for any third.
+
 ---
 
 ## 4. The op catalogue
@@ -686,6 +709,14 @@ container's own residence register is the one every reader consults.
 | `trip.note_posted` | `{note_id, text, entry_id?}` | Creates the Trip note, optionally *about* one Entry | Trip note posted | 12 |
 | `trip.note_kept` | `{note_id, kept: bool}` | `true` = kept as reference, `false` = discarded. Reviewed at the unpack pass | Note kept / discarded | 12 |
 
+**`trip.task_added` carries no `ticked` field, and that is deliberate** (S13).
+A new Task is unticked *by absence* rather than by a written `false`, which is
+what makes a re-delivered add idempotent and lets a `trip.task_ticked` that
+arrived first survive the add landing after it — the add cannot contest a
+register it never writes. `trip.task_ticked` needs no add/remove pair the way
+`trip.participant_added`/`_removed` does, for the plainest of reasons: the
+value rides the payload, so one type writes both directions.
+
 **`entry_id` is the catalogue's first optional reference on a register that is
 deliberately *not* nullable** (S12). §1.3's *"`null` clears"* is a rule about a
 register whose declared type includes `null`; `NoteState.entryId`'s does not,
@@ -701,11 +732,20 @@ about the Trip, never sending `entry_id: null`.
 `trip.note_kept` and `trip.note_posted` address different registers on one
 entity path, so a peer's review can arrive first and the reducer creates the
 Note either way — the same tolerant-reader shape as `trip.entry_added`'s
-sourceless Entry (§4.4) and the third instance of the *reader gates, not
-reducer gates* rule §4.4 already carries for `bring_count` and for
-`stage` xor `status`. `notesOf` (`shared/src/selectors/note.ts`) is the one
+sourceless Entry (§4.4) and one more instance of the *reader gates, not
+reducer gates* rule §4.4 already carries for `bring_count`, for
+`stage` xor `status`, and for a Task with no `text` one row up. `notesOf`
+(`shared/src/selectors/note.ts`) is the one
 place that says so, and it excludes such a Note from the list **and** from
 every count, so a band can never state a total its own rows do not reach.
+`tasksOf` does the identical thing for the identical reason, and the two are
+the pattern's third and fourth statements rather than one shared helper.
+
+**Neither slice's ops have a remove or an edit**, and §9's requirements-gap
+entry is still the route for one — it names the hole for a Pre-trip task and
+for a Note alike. Both shipped without either and state nothing about it on
+any surface: a missing op is a fact for these docs, not release meta-text for
+a Quartermaster mid-sitting.
 
 **Closing**
 

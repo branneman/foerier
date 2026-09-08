@@ -828,6 +828,23 @@ on what happens if 15 does move.
 - **UI:** the checklist on the Trip.
 - **Tests:** Tier 1 — ticked/unticked as one op in both directions. Tier 3 — the
   checklist.
+- **Landed as written, plus one tier this entry did not name.** Tier 2 was not
+  optional and not a judgement call: `convergence.test.ts` asserts its own
+  generator emits every op type the reducer folds, so the two handlers turned
+  the tier red on the commit that added them (§12.19 predicted this
+  inheritance; S13 is the first slice to receive it). The property that
+  matters most is not either op's own — it is that **two replicas receiving
+  the same two adds in opposite order draw the same checklist**, which is what
+  pins the ordering ruling I24's literal wording would have got wrong. See
+  [its spec](specs/2026-09-08-pre-trip-tasks.md) and
+  [§12.21](#1221-consequences-of-s13-pre-trip-tasks).
+- **Story 15's second criterion is S14's, not this slice's.** *A Trip Started
+  from a past Trip takes over its task list, unticked* is delivered by the
+  template batch materialising one `trip.task_added` per Task and simply not
+  writing `ticked` (§4.5) — which is why 15 is placed before 14 at all. S13
+  owes S14 exactly one sentence and its spec §6 states it: **every drawable
+  Task is copied, ticked or not**, and a Task holding no `text` is not
+  drawable and so is not copied.
 
 **S14 — Trip history and templates.** *Delivers 14. Completes the MVP.*
 
@@ -1015,8 +1032,18 @@ What genuinely parallelises:
   requires — landed on `main` before either branch. There is also a **second**
   shared file the disjoint-registers argument does not reach:
   `convergence.test.ts`, whose completeness guard turns red for each slice's
-  new op types. Both are textual conflicts, and both are avoidable only by
-  going first.
+  new op types. **The first is a textual conflict; the second turned out not
+  to be, and that correction is the more useful half.** Written from S12's
+  side this bullet expected a merge conflict in the generator and got a
+  *semantic* one instead: both slices added a nested Trip map and chose its
+  generator arm differently — S12 an arm of its own, S13 the root arm — each
+  green alone, and integrated they cut the entry level to **49 in 1000**
+  against a floor of 60, because `tripRegisterPaths` reports every path
+  outside `entries` into the root column whichever arm produced it. The rule
+  §12.21 settles: **an arm is a level of the aggregate, not a slice and not a
+  map.** So the disjointness test this bullet applies to registers and panels
+  has to extend to **shared test infrastructure**, where two branches can
+  agree textually and still disagree about what the suite measures.
 - **`landing/`** is fully independent — it depends only on `ui/`, deploys
   separately to GitHub Pages, and carries no ops, no auth, and no household data.
   It can be built at any point by anyone.
@@ -2865,3 +2892,76 @@ decisions its code took that no board reached.
   that do not exist; the entry reference **is** the join, and the panel draws
   no `LATER` tag and no ghost row for it (I19). A Note about an Entry already
   carries everything a promotion would read.
+
+### 12.21 Consequences of S13: pre-trip tasks
+
+Story 15, and the plan's own last MVP story before S14 completes it. **Two op
+types, no endpoint, no migration, no route, no sheet, no `ui/` component and
+no change to the slicing engine** — the smallest domain slice since S9b, and
+the first built in genuine parallel with another (S12) rather than merely
+permitted to be.
+
+- **A ruling's wording can be wrong about the fold, and this one was.** I24
+  says *insertion order*, and taken literally that is a divergence bug:
+  `tasks` is a `Record` whose key order is arrival order, so two Devices
+  holding identical registers would draw two different checklists. The order
+  is the `text` register's own stamp with the task id as tie-break — which is
+  I24 made true in the only sense a replicated log can mean it, and it makes
+  the ruling's second half (*ticked rows do not sink*) fall out with no clause
+  of its own, since a tick writes `ticked` and never touches the stamp the
+  order reads. **The general lesson: a board rules on what the Quartermaster
+  sees, and where its words imply a mechanism the fold cannot provide, the
+  slice owes the design round the corrected reading rather than the literal
+  one.** It is recorded in `design/README.md` for that reason and not only in
+  the slice's spec — S9 round 4's lesson, applied to a decision that reverses
+  a ruling's plain wording rather than merely filling a gap.
+- **The convergence tier's completeness guard collapsed two planned commits
+  into one, which is the guard working.** §12.19 predicted every future slice
+  adding an op type would inherit it; S13 is the first to, and the tier went
+  red the instant the two handlers landed. The op-type table and the generator
+  cannot drift, so *write the reducer now and the property later* is no longer
+  a schedule a slice can choose.
+- **Two ops joined the generator's root arm rather than forming a fourth.**
+  `tripRegisterPaths` classifies every register path outside `entries` as a
+  root register, so a contested `tasks.<id>.ticked` counts in the column that
+  arm already feeds — and branches added *inside* an arm move no arm's share,
+  so the measured floors `arbTripEntrySpec`'s tables defend twice are
+  untouched. A fourth arm would have handed two op types a quarter of the trip
+  budget and cut the entry and piece levels from a third each, which is the
+  dilution those tables warn about both times they were re-measured.
+- **Parallelism has a price, and it is three consolidations rather than one
+  merge conflict.** Architecture §8.6 promised S12 and S13 would not collide,
+  and they did not — but the same disjointness that bought that also forbade
+  both slices from taking any shared abstraction. `writeTask` is the **sixth**
+  entity writer and `writeNote` the seventh, at the exact moment
+  `writeEntry`'s docblock says a sixth re-opens the generic-writer argument;
+  the stamp comparator is spelled twice because `order.ts` is a file both
+  would have to own; and the `GEAR LIST` band's anatomy is now spelled three
+  times because the board's own §08 named a shared component the shell commit
+  did not land. All three are in `technical-debt.md`, and all three are
+  **S14's**: the template copy reads every one of these maps, so it is the
+  first slice with a reason to be in all seven writers at once.
+- **The float's real shape, restated for the next planner.** §8.6 grants
+  parallelism on *disjoint registers and disjoint panels*, and that condition
+  held exactly as written. What it does not say, and now should be read as
+  saying, is that two parallel slices also share every **abstraction** either
+  might want to extract — so the float is paid for in duplication that a later
+  slice discharges, not in duplication avoided. Worth it here; worth counting
+  before granting it again.
+- **And one thing the float genuinely did break, which no register-level
+  argument would have caught.** §8.6's condition is about *state*; the
+  convergence generator is neither state nor a panel, and both slices edited
+  it. S12 gave `notes` an arm of its own, S13 put `tasks` in the root arm —
+  two defensible answers to one question, each green on its own branch. The
+  fourth arm bought no fourth column, because `tripRegisterPaths` reports
+  **every** path outside `entries` into the root column: it took a quarter of
+  the trip budget and cut entry and piece from a third each to a quarter, so
+  the entry level fell to **49 in 1000** against a floor of 60. The rebase
+  folded the note branches into the root arm. **The rule, for the next slice
+  and the next round of parallelism alike: a generator arm is a *level of the
+  aggregate*, not a slice and not a map.** A nested map keyed off the Trip
+  root joins the root arm; only a new entity-path depth — as `pieces` was
+  below `entries` — earns an arm. Two lessons stack here: §8.6's disjointness
+  test should extend to *shared test infrastructure*, and this is the worked
+  example of why the full suite runs on the merged `main` and not merely on
+  each branch (`CLAUDE.md`'s merge convention).
