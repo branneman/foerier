@@ -111,6 +111,7 @@ export {
   reHomeOnTheSpot,
   reopenTrip,
   restoreConsumption,
+  startTripFrom,
 } from './gestures.ts'
 
 export { applyOp, emptyState, fold } from './reduce.ts'

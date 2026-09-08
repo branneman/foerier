@@ -1,14 +1,27 @@
+import type { IdSource } from './boundaries.ts'
 import {
   gearOwnedCountSet,
   gearRehomed,
   tripConsumptionPosted,
+  tripCreated,
+  tripEntryAdded,
+  tripEntryBringCountSet,
+  tripNotePosted,
   tripOutcomeSet,
   tripPhaseMoved,
+  tripTaskAdded,
   type OpSpec,
 } from './authoring.ts'
 import { ownedCountOf } from './selectors/depot.ts'
-import { entryKind, isContainerEntry } from './selectors/entry.ts'
+import {
+  bringCountOf,
+  entriesOf,
+  entryKind,
+  isContainerEntry,
+} from './selectors/entry.ts'
+import { notesOf } from './selectors/note.ts'
 import { piecesOf } from './selectors/piece.ts'
+import { tasksOf } from './selectors/task.ts'
 import { isClosed, type PhaseKey } from './selectors/trip.ts'
 import {
   consumedReductions,
@@ -69,6 +82,13 @@ import type {
  * symmetric door to {@link closeTrip}; `restoreConsumption` is the third
  * function the offer needs (spec §3) so a second caller cannot emit half of
  * it, the same reason `closeTrip` itself is spelled once.
+ *
+ * **{@link startTripFrom} is the fifth function here and §4.5's fourth
+ * *named* gesture** (S14). Like `reopenTrip` it writes only the Trip, so the
+ * cross-aggregate count is not what admits it: it reads the Gear aggregate
+ * to decide a Bring-count's authoring gate, and it composes a dozen builders
+ * from one read of the fold. That is the criterion, and the criterion rather
+ * than the aggregate count is what this file sorts on.
  */
 
 /**
@@ -524,4 +544,133 @@ export function restoreConsumption(
     gearOwnedCountSet(gearId, owned + (posted - owed)),
     tripConsumptionPosted(trip.id, gearId, owed),
   ]
+}
+
+/**
+ * **Starting a Trip from a past one** — [sync §4.5](../../docs/sync-protocol.md)'s
+ * fourth named gesture, and the whole of S14's feature.
+ *
+ * ## It introduces no op type, and *start fresh* is the absence of an op
+ *
+ * `trip.created{name, from_trip_id}`, then a `trip.entry_added` per visible
+ * Entry with a **fresh** id, its Bring-count where the source authored one,
+ * a `trip.task_added` per Task and a `trip.note_posted` per undiscarded
+ * Note. Every one of those has existed since S6, S7, S12 or S13.
+ *
+ * Packing statuses, journeys, outcomes, consumed-counts, postings, dates and
+ * Participants are **not written at all**. That is what makes the feature
+ * free in the reducer: there is no "fresh" value anywhere, only ops nobody
+ * authored. Participants are absent from story 14's enumeration and from
+ * §4.5's batch, and the visible consequence — every per-person Entry lands
+ * inert, `PER-PERSON · NO PIECES` — is drawn and disclosed at the create
+ * screen rather than explained afterwards (rulings J10, J17).
+ *
+ * ## Materialised at creation, never derived
+ *
+ * §4.5 argues this and it is load-bearing: a derived list would depend on
+ * the source Trip's *current* fold, so the copy would keep mutating as old
+ * ops for the source arrived and two replicas mid-sync would disagree.
+ * Everything below is computed once, from one read, and then it is ordinary
+ * history.
+ *
+ * ## The readers are the gates
+ *
+ * {@link entriesOf}, {@link tasksOf} and {@link notesOf} — never
+ * `Object.values(...)`. Each already excludes what its own map must not draw
+ * (a sourceless Entry, a tombstoned one, a Task or Note with no text), so
+ * this inherits four exclusions instead of restating them. A restated gate
+ * is what ruling G3 caught three separate times in one round.
+ *
+ * ## The order is chosen for what a partial batch leaves behind
+ *
+ * `emit` appends one op at a time (`app/src/household/store.ts`), so this is
+ * N durable appends and **not atomic** — true of all §4.5's gestures, which
+ * is why that section says the order inside each is chosen for its prefix.
+ * `trip.created` goes first, so a Device dying part-way leaves a **named
+ * Trip with a prefix of its list**: visible, recoverable, and something S14
+ * itself gives a route out of, since `DELETE TRIP` now exists. The reverse
+ * would leave an unnamed Trip nobody recognises.
+ *
+ * Nothing chunks and nothing caps: §6.1's 500-op push limit is the outbox's
+ * business, and every op merges independently against its own register, so a
+ * copy split across two pushes is not a state anyone can observe.
+ *
+ * ## It cannot over-claim
+ *
+ * The new Trip is created in `draft` and `claim.ts` reads **active** Trips
+ * only (invariant 17), so a fifty-entry copy creates exactly zero claims.
+ * There is nothing here to guard, preview or confirm — and the *next*
+ * moment already is guarded, by `PhaseSheet`'s existing
+ * `overClaimsIfActive` preview.
+ */
+export function startTripFrom(
+  newTripId: string,
+  name: string,
+  source: TripState,
+  state: HouseholdState,
+  ids: IdSource,
+): readonly OpSpec[] {
+  const specs: OpSpec[] = [tripCreated(newTripId, name, source.id)]
+
+  // Source entry id → the id minted for its copy. Built while the entry ops
+  // are emitted and read exactly once, by the note loop at the bottom; no
+  // surface ever sees it.
+  const copiedEntryIds = new Map<string, string>()
+
+  for (const entry of entriesOf(source, state)) {
+    const entrySource = entry.source?.value
+    // `entriesOf` has already dropped every sourceless Entry, so this
+    // narrows for the compiler rather than gating a second time.
+    if (entrySource === undefined) continue
+
+    const entryId = ids.next()
+    copiedEntryIds.set(entry.id, entryId)
+    specs.push(tripEntryAdded(newTripId, entryId, entrySource))
+
+    // **The register, not `bringCountOf`.** That reader answers `?? 1` for a
+    // Counted Entry whose count nobody ever set, so copying through it would
+    // author `count: 1` for every such Entry — a needless write
+    // (`patterns.md` §2.3) that changes nothing a reader sees, hundreds at a
+    // time in the largest batch this app has.
+    //
+    // The second half is invariant 6's **authoring** gate, which the reducer
+    // deliberately does not enforce (the Kind lives on the Gear aggregate)
+    // and every caller must: an Entry whose Gear has stopped being Counted
+    // shows no Bring-count on the source list either, so copying none is
+    // what *takes over its Bring-counts* means.
+    const authored = entry.bringCount?.value
+    if (authored !== undefined && bringCountOf(entry, state) !== null) {
+      specs.push(tripEntryBringCountSet(newTripId, entryId, authored))
+    }
+  }
+
+  // Unticked **by absence**: `trip.task_added` writes `text` and nothing
+  // else, and `taskTickedOf` reads a missing register as not ticked. A
+  // `trip.task_ticked{ticked: false}` here would be a write saying what
+  // silence already says.
+  for (const task of tasksOf(source)) {
+    specs.push(tripTaskAdded(newTripId, ids.next(), task.text))
+  }
+
+  for (const note of notesOf(source)) {
+    // A Note **not discarded** is copied — kept and unreviewed both (I13),
+    // and a discarded one never (I16). The pair, not the triple.
+    if (note.kept === false) continue
+
+    // **No `kept` is written.** The verdict belongs to the source Trip's own
+    // unpack pass, so a copied Note arrives *unreviewed* — I13's third arm,
+    // and the reason S12 made absence a state rather than a default.
+    //
+    // The subject is re-pointed through this batch's own map. A Note about
+    // an Entry the batch has not got — removed from the source after the
+    // note was posted — is posted **about the Trip**, with the key omitted
+    // rather than nulled, because `NoteState.entryId` is not nullable. The
+    // prose is what is worth keeping; dropping the note to protect its
+    // pointer would lose the note to protect the footnote.
+    const subject =
+      note.entryId === undefined ? undefined : copiedEntryIds.get(note.entryId)
+    specs.push(tripNotePosted(newTripId, ids.next(), note.text, subject))
+  }
+
+  return specs
 }

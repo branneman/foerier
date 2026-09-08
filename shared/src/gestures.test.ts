@@ -5,6 +5,7 @@ import {
   aPerson,
   aPlace,
   aTrip,
+  countingIdSource,
   depot,
   stamp,
 } from '../testUtils/index.ts'
@@ -15,18 +16,29 @@ import {
   tripConsumptionPosted,
   tripEntryAdded,
   tripEntryBringCountSet,
+  tripEntryRemoved,
+  tripNoteKept,
+  tripNotePosted,
   tripOutcomeSet,
   tripPhaseMoved,
   tripPieceRemoved,
+  tripTaskAdded,
+  tripTaskTicked,
+  type OpSpec,
 } from './authoring.ts'
 import {
   closeTrip,
   reHomeOnTheSpot,
   reopenTrip,
   restoreConsumption,
+  startTripFrom,
 } from './gestures.ts'
 import { fold } from './reduce.ts'
 import { ownedCountOf } from './selectors/depot.ts'
+import { entriesOf, entryLabel } from './selectors/entry.ts'
+import { notesOf } from './selectors/note.ts'
+import { tasksOf } from './selectors/task.ts'
+import { participantIds, phaseOf } from './selectors/trip.ts'
 import { postedOf, unpackTotals } from './selectors/unpack.ts'
 import type {
   EntryState,
@@ -1035,5 +1047,240 @@ describe('restoreConsumption', () => {
 
     expect(ownedCountOf(gearFrom(restored, 'g-gas'))).toBe(1)
     expect(postedOf(tripFrom(restored, TRIP), 'g-gas')).toBe(0)
+  })
+})
+
+/**
+ * S14's template copy. The source Trip below is deliberately awkward: a
+ * Counted Entry **with** an authored Bring-count and one **without**, a
+ * trip-only Entry, an Entry that was removed after a note was posted about
+ * it, a ticked task, and one note of each of I13's three review states.
+ * Every rule the gesture has to follow shows up in at least one of them.
+ */
+describe('startTripFrom', () => {
+  const SOURCE = 'src-trip'
+  const NEW = 'new-trip'
+
+  // Ids that read at a glance in a failure message.
+  const GEAR_COUNTED = 'g-counted'
+  const GEAR_PLAIN = 'g-plain'
+  const GEAR_GONE = 'g-gone'
+  const E_COUNTED = 'e-counted'
+  const E_PLAIN = 'e-plain'
+  const E_TRIP_ONLY = 'e-trip-only'
+  const E_REMOVED = 'e-removed'
+
+  const KEPT_TEXT = 'The left pole sleeve was splitting. Check it.'
+  const UNREVIEWED_TEXT = 'Two canisters was not enough for five days.'
+  const DISCARDED_TEXT = 'Bring the small pump next time.'
+
+  function sourceState(): HouseholdState {
+    return depot(
+      aPerson({ id: 'p1', name: 'Els' }),
+      aGear({ id: GEAR_COUNTED, name: 'Gas canister', kind: 'counted' }),
+      aGear({ id: GEAR_PLAIN, name: 'Tent Arpy 3', kind: 'counted' }),
+      aGear({ id: GEAR_GONE, name: 'Stove', kind: 'counted' }),
+      aTrip({ id: SOURCE, name: 'Vosges 2025', phase: 'closed' }),
+      [
+        tripEntryAdded(SOURCE, E_COUNTED, {
+          from: 'depot',
+          gearId: GEAR_COUNTED,
+        }),
+        tripEntryBringCountSet(SOURCE, E_COUNTED, 4),
+        // Counted too, and nobody ever set a count — `bringCountOf` answers
+        // `1` by default, which is exactly the read this gesture must not use.
+        tripEntryAdded(SOURCE, E_PLAIN, { from: 'depot', gearId: GEAR_PLAIN }),
+        tripEntryAdded(SOURCE, E_TRIP_ONLY, {
+          from: 'trip_only',
+          name: 'Passports',
+          container: false,
+        }),
+        tripEntryAdded(SOURCE, E_REMOVED, { from: 'depot', gearId: GEAR_GONE }),
+        tripTaskAdded(SOURCE, 'task-1', 'Book the hut'),
+        tripTaskAdded(SOURCE, 'task-2', 'Renew the DAV cards'),
+        tripTaskTicked(SOURCE, 'task-2', true),
+        tripNotePosted(SOURCE, 'n-kept', KEPT_TEXT, E_COUNTED),
+        tripNoteKept(SOURCE, 'n-kept', true),
+        // Posted about an Entry that is then removed — so at copy time there
+        // is no id to re-point at.
+        tripNotePosted(SOURCE, 'n-orphan', UNREVIEWED_TEXT, E_REMOVED),
+        tripNotePosted(SOURCE, 'n-gone', DISCARDED_TEXT),
+        tripNoteKept(SOURCE, 'n-gone', false),
+        tripEntryRemoved(SOURCE, E_REMOVED),
+      ],
+    )
+  }
+
+  function copy(): readonly OpSpec[] {
+    const state = sourceState()
+    return startTripFrom(
+      NEW,
+      'Vosges 2026',
+      tripFrom(state, SOURCE),
+      state,
+      countingIdSource(),
+    )
+  }
+
+  function ofType(specs: readonly OpSpec[], type: string): readonly OpSpec[] {
+    return specs.filter((spec) => spec.type === type)
+  }
+
+  it('creates the Trip first, named by the screen and pointing at the source', () => {
+    const specs = copy()
+    expect(specs[0]?.type).toBe('trip.created')
+    expect(specs[0]?.payload).toEqual({
+      name: 'Vosges 2026',
+      from_trip_id: SOURCE,
+    })
+    // Every op addresses the new Trip. An op left pointing at the source
+    // would edit the very list being copied from.
+    expect(specs.every((spec) => spec.aggregate_id === NEW)).toBe(true)
+  })
+
+  it('copies every visible Entry and no removed one', () => {
+    const added = ofType(copy(), 'trip.entry_added')
+    expect(added).toHaveLength(3)
+    // `entriesOf` is the gate, so the tombstoned Entry is excluded without
+    // this gesture restating the rule.
+    const sources = added.map((spec) => spec.payload['source'])
+    expect(sources).toContainEqual({ from: 'depot', gear_id: GEAR_COUNTED })
+    expect(sources).toContainEqual({ from: 'depot', gear_id: GEAR_PLAIN })
+    expect(sources).toContainEqual({
+      from: 'trip_only',
+      name: 'Passports',
+      container: false,
+    })
+    expect(sources).not.toContainEqual({ from: 'depot', gear_id: GEAR_GONE })
+  })
+
+  it('mints a fresh id per Entry and never reuses the source ids', () => {
+    const added = ofType(copy(), 'trip.entry_added').map(
+      (spec) => spec.payload['entry_id'],
+    )
+    expect(new Set(added).size).toBe(added.length)
+    for (const old of [E_COUNTED, E_PLAIN, E_TRIP_ONLY]) {
+      expect(added).not.toContain(old)
+    }
+  })
+
+  it('copies a Bring-count only where the source authored the register', () => {
+    // The rule this test exists for: `bringCountOf` answers `1` for a
+    // Counted Entry whose count nobody set, so copying through the *read*
+    // would author `count: 1` for every such Entry — a needless write
+    // (`patterns.md` §2.3), hundreds at a time in the largest batch the app
+    // has. Only the register the source actually holds travels.
+    const counts = ofType(copy(), 'trip.entry_bring_count_set')
+    expect(counts).toHaveLength(1)
+    expect(counts[0]?.payload['count']).toBe(4)
+  })
+
+  it('copies tasks unticked, by absence rather than by writing false', () => {
+    const specs = copy()
+    expect(
+      ofType(specs, 'trip.task_added').map((spec) => spec.payload['text']),
+    ).toEqual(['Book the hut', 'Renew the DAV cards'])
+    // The source's second task is ticked and the copy's is not — and no
+    // `trip.task_ticked` is authored to say so.
+    expect(ofType(specs, 'trip.task_ticked')).toHaveLength(0)
+  })
+
+  it('copies a Note that is kept or unreviewed, never a discarded one', () => {
+    const texts = ofType(copy(), 'trip.note_posted').map(
+      (spec) => spec.payload['text'],
+    )
+    expect(texts).toEqual([KEPT_TEXT, UNREVIEWED_TEXT])
+    expect(texts).not.toContain(DISCARDED_TEXT)
+  })
+
+  it('carries no review verdict, so a copied Note arrives unreviewed', () => {
+    // `kept` is the verdict of the *source* Trip's unpack pass (I13). The
+    // kept note above must not arrive already kept on a Trip nobody has
+    // reviewed.
+    expect(ofType(copy(), 'trip.note_kept')).toHaveLength(0)
+  })
+
+  it('re-points a copied Note at the copied Entry', () => {
+    const specs = copy()
+    const newIds = new Set(
+      ofType(specs, 'trip.entry_added').map((spec) => spec.payload['entry_id']),
+    )
+    const kept = ofType(specs, 'trip.note_posted').find(
+      (spec) => spec.payload['text'] === KEPT_TEXT,
+    )
+    expect(newIds.has(kept?.payload['entry_id'])).toBe(true)
+    expect(kept?.payload['entry_id']).not.toBe(E_COUNTED)
+  })
+
+  it('drops the subject when the Note is about an Entry the batch has not got', () => {
+    const orphan = ofType(copy(), 'trip.note_posted').find(
+      (spec) => spec.payload['text'] === UNREVIEWED_TEXT,
+    )
+    // The key is absent, not `null`: `NoteState.entryId` is not nullable, so
+    // a `null` would author a clear no reader honours. The prose is what is
+    // worth keeping, so the note travels and only its pointer is dropped.
+    expect(Object.hasOwn(orphan?.payload ?? {}, 'entry_id')).toBe(false)
+  })
+
+  it('writes nothing for anything that starts fresh', () => {
+    const types = new Set(copy().map((spec) => spec.type))
+    // *Start fresh* is the absence of an op, not a value — which is what
+    // makes the whole feature free in the reducer.
+    for (const absent of [
+      'trip.dates_set',
+      'trip.participant_added',
+      'trip.entry_status_set',
+      'trip.piece_status_set',
+      'trip.entry_moved',
+      'trip.piece_moved',
+      'trip.container_stage_set',
+      'trip.piece_removed',
+      'trip.outcome_set',
+      'trip.consumed_count_set',
+      'trip.consumption_posted',
+      'trip.phase_moved',
+      'trip.task_ticked',
+      'trip.note_kept',
+    ]) {
+      expect(types.has(absent)).toBe(false)
+    }
+  })
+
+  it('folds to a copy whose list matches and whose packing is empty', () => {
+    const state = sourceState()
+    const after = fold(
+      stamp(
+        startTripFrom(
+          NEW,
+          'Vosges 2026',
+          tripFrom(state, SOURCE),
+          state,
+          countingIdSource(),
+        ),
+        { start: 500 },
+      ),
+      state,
+    )
+    const made = tripFrom(after, NEW)
+    const source = tripFrom(after, SOURCE)
+
+    expect(
+      entriesOf(made, after).map((entry) => entryLabel(entry, after)),
+    ).toEqual(entriesOf(source, after).map((entry) => entryLabel(entry, after)))
+    expect(tasksOf(made).map((task) => task.text)).toEqual([
+      'Book the hut',
+      'Renew the DAV cards',
+    ])
+    expect(tasksOf(made).every((task) => !task.ticked)).toBe(true)
+    expect(notesOf(made).every((note) => note.kept === undefined)).toBe(true)
+
+    // Fresh, by absence.
+    expect(made.startDate).toBeUndefined()
+    expect(made.endDate).toBeUndefined()
+    expect(participantIds(made)).toEqual([])
+    expect(phaseOf(made)).toBe('draft')
+    // And the source is untouched: its own phase, its own tick, its verdict.
+    expect(phaseOf(source)).toBe('closed')
+    expect(tasksOf(source).filter((task) => task.ticked)).toHaveLength(1)
   })
 })
