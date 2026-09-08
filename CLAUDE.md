@@ -14,7 +14,7 @@ framing, [docs/user-stories.md](docs/user-stories.md) for the requirements, and
 ## Current status
 
 **Code has started.** Every slice of [§8's plan](docs/architecture-design.md#8-the-slice-plan)
-through S10 has landed:
+through S11 has landed:
 
 - **S0, the walking skeleton** — the four workspaces (`app` · `api` · `shared` ·
   `ui`; `landing` deferred), the Tier 0 toolchain and pre-commit hook, the test
