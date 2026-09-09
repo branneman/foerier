@@ -576,8 +576,9 @@ the other Trip, not an explaining sentence.
 
 `PackPicker`, `HomePicker`, `OwnerPicker`, `ParticipantPicker`, `TagPicker`,
 `ValueMenu`, `SortGroupSheet` report every pick, the current one included.
-The **caller** compares against the current value (`sameTripResidence`,
-`sameResidence` are exported for exactly that) and closes the picker.
+The **caller** compares against the current value (`sameTripResidence` and
+`sameResidence`, both in `shared/` beside the types they compare and
+exported for exactly that) and closes the picker.
 `PackPicker`'s own container-move confirm is the caller's
 (`ContainerMoveConfirm`, rendered by `Packing.tsx`): the sheet reports the
 pick and nothing stands between it and the caller's own decision. The `● NOW`

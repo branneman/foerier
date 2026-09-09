@@ -125,6 +125,7 @@ export {
   containmentView,
   homePath,
   residenceOf,
+  sameResidence,
 } from './selectors/containment.ts'
 
 // Beside its twin on purpose: `tripContainment.ts` duplicates the file above

@@ -68,6 +68,36 @@ function isContainer(gear: GearState): boolean {
 const LOOSE_RESIDENCE: Residence = Object.freeze({ in: 'loose' })
 
 /**
+ * Two home residences naming the same place. Loose equals loose — a loose
+ * pointer carries no id — a Place or a container equals itself by id, and
+ * `undefined` (no current residence at all) equals nothing, so nothing is
+ * marked.
+ *
+ * **`sameTripResidence`'s twin, and it moves here for the same reason that
+ * one moved to `packing.ts`: beside the type it compares.** That one lived in
+ * `app/src/components/PackPicker.tsx` until a second world needed it; this
+ * one lived in `app/src/components/HomePicker.tsx` with four callers — three
+ * inside that file's own render, marking `● NOW`, and `GearDetail`'s MOVE
+ * guard. Nothing was wrong while it sat there, because neither comparison was
+ * duplicated a second time anywhere; the S9b lift exists precisely because a
+ * duplicate had drifted once already, and a home-world comparison in `app/`
+ * is one import away from being re-derived by the next screen that needs it.
+ *
+ * **The suppression it serves stays the caller's**, which is the picker rule
+ * (`patterns.md` §4.3): a picker marks `● NOW` with this and still reports a
+ * tap on that row, because it cannot know whether the caller means to author
+ * an op from it. `GearDetail`'s MOVE does, so it is what drops a selection
+ * equal to the current residence — a redundant `gear.rehomed` moves the stamp
+ * LWW compares and can silently beat a genuine move from an offline Device.
+ * Add gear never needs it: there is no prior residence to be equal to.
+ */
+export function sameResidence(a: Residence | undefined, b: Residence): boolean {
+  if (a === undefined) return false
+  if (a.in !== b.in) return false
+  return a.in === 'loose' || b.in === 'loose' ? true : a.id === b.id
+}
+
+/**
  * The gear's home residence **as written** — an absent residence reads
  * loose, and only this function says so.
  *

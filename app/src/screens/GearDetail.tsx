@@ -21,6 +21,7 @@ import {
   ownerOf,
   personLabel,
   residenceOf,
+  sameResidence,
   tagsOf,
   type GearState,
   type HouseholdState,
@@ -45,7 +46,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'wouter'
 
-import { HomePicker, sameResidence } from '../components/HomePicker'
+import { HomePicker } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
 import {

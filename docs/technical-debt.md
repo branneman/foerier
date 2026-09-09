@@ -328,16 +328,6 @@ every one of them gets more expensive per slice.
   already compute them. `TripCard` has the same shape of debt at one read.
   [`patterns.md`](patterns.md) §5.2, anchor:
   `computes its own groups`
-- **`sameResidence` never moved to `shared/` beside its twin
-  `sameTripResidence`.** S9b hoisted `sameTripResidence` out of
-  `PackPicker.tsx` into `shared/src/selectors/packing.ts` so both worlds read
-  one definition; `sameResidence` is the identical comparison over the home
-  world and still lives in `app/src/components/HomePicker.tsx`, called three
-  times inside that file's own render and once more from `GearDetail.tsx`'s
-  MOVE guard. Nothing is wrong today — both worlds still agree, because
-  neither comparison is duplicated a second time anywhere else — but the S9b
-  fix exists precisely because a duplicate drifted once already.
-  `HomePicker.tsx`'s own header, anchor: `` `sameTripResidence` set ``
 - **`HomePicker` holds its own MOVE confirm; every other picker leaves the
   decision to its caller.** `patterns.md` §4.3's rule — a picker is pure
   selection, and the caller decides whether a confirm stands between the pick

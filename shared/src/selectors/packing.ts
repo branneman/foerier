@@ -398,6 +398,9 @@ const LOOSE = TRIP_LOOSE
  * a slice's residences are not all this-equal — so it moves here, beside the
  * type it compares and {@link TRIP_LOOSE}.
  *
+ * Its home-world twin, {@link sameResidence} in `containment.ts`, followed
+ * after the MVP for the same reason — beside the type it compares.
+ *
  * That move is what keeps two surfaces from disagreeing about one word:
  * `PackingRow` already draws `▸ MIXED` on F4 the moment two Pieces differ by
  * this test, **a loose one included**, and ruling D2 adopts `MIXED` precisely

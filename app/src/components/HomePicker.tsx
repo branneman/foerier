@@ -3,6 +3,7 @@ import {
   placeRecorded,
   placeRemoved,
   placeRenamed,
+  sameResidence,
   systemIdSource,
   visiblePlaces,
   type ContainmentView,
@@ -288,27 +289,6 @@ function looseLine(count: number): string {
   return count === 1
     ? '1 piece of gear becomes loose.'
     : `${count} pieces of gear become loose.`
-}
-
-/**
- * Are two home residences the same place? Loose equals loose; a Place or a
- * container equals itself by id; `undefined` — no `current` at all — equals
- * nothing, so nothing is marked.
- *
- * **Exported because the suppression it serves is the caller's job**, the
- * precedent `PackPicker`'s `sameTripResidence` set. This sheet is pure
- * selection: it marks the `● NOW` row with this and still reports a tap on
- * it through `onSelect`, because it cannot know whether the caller means to
- * author an op from it. `GearDetail`'s MOVE does, so it is the one that has
- * to drop a selection equal to the current residence — a redundant
- * `gear.rehomed` moves the stamp LWW compares and can silently beat a
- * genuine move from an offline Device. Add gear never needs it: there is no
- * prior residence to be equal to.
- */
-export function sameResidence(a: Residence | undefined, b: Residence): boolean {
-  if (a === undefined) return false
-  if (a.in !== b.in) return false
-  return a.in === 'loose' || b.in === 'loose' ? true : a.id === b.id
 }
 
 export function HomePicker({
