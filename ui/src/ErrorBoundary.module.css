@@ -13,12 +13,19 @@
     background: var(--color-bg-surface);
   }
 
-  /* The root boundary has no shell around it — `.shell__main`'s gutter and
-     capped measure are what it is standing in for. */
+  /*
+   * **Page scope is not a card** (§5n K1b): a card implies a page around it,
+   * and at this scope there is none. It takes the signed-out shell's own
+   * shape instead (§8) — a centred column on `bg/base`, which is what the
+   * sign-in screen this most resembles already draws.
+   */
   .fallback[data-variant='page'] {
-    max-width: 45rem;
-    margin: var(--space-16);
+    max-width: 28rem;
     margin-inline: auto;
+    padding: var(--space-32) var(--space-24);
+    border: 0;
+    border-radius: 0;
+    background: var(--color-bg-base);
   }
 
   .title {

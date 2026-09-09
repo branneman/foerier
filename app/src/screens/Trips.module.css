@@ -30,17 +30,33 @@
     color: var(--color-ink-primary);
   }
 
-  /* The step from Split up, where there is no bottom tab bar for a floating
-     button to clear. `Depot`'s `+ Add gear` sits in the same slot. */
+  /*
+   * The step from Split up, where there is no bottom tab bar for a floating
+   * button to clear. `Depot`'s `+ Add gear` sits in the same slot — and since
+   * §5n K11 it is the same **control**.
+   *
+   * It was a 48px mono-caps `+ NEW` in accent text, recorded as a *departure*
+   * on the grounds of provenance: Depot's slot is drawn at both widths the
+   * app renders it, this one at neither. K11 retires that argument, because
+   * provenance stops being one the moment a ruling covers the slot — and
+   * §5b N settled it at **40px** for `Start pack-out`, in this exact row,
+   * calling the 900 frame's 36 drift and the shipped 48 "O's paint floor
+   * deciding". So this is `.addButton` declaration for declaration, with the
+   * destination's own noun; the accessible name already said `New trip`.
+   * Below Split the FAB below is unchanged.
+   */
   .new {
     display: inline-flex;
     align-items: center;
-    min-height: max(3rem, 48px);
-    font: var(--text-label) var(--font-mono);
+    min-height: max(2.5rem, 40px);
+    padding-inline: var(--space-16);
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
     font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    color: var(--color-accent);
     text-decoration: none;
+    white-space: nowrap;
   }
 
   /*

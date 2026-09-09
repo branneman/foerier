@@ -156,7 +156,10 @@ describe('the Trips screen', () => {
     // row" (`docs/design/README.md` §5).
     const steps = screen.getAllByRole('link', { name: 'New trip' })
     expect(steps).toHaveLength(1)
-    expect(steps[0]).toHaveTextContent('+ NEW')
+    // `+ New trip` since §5n K11: §5b N had already ruled this slot at 40px
+    // filled accent for `Start pack-out`, and this control never took it —
+    // the recorded "provenance" departure retires with the ruling.
+    expect(steps[0]).toHaveTextContent('+ New trip')
     expect(steps[0]).toHaveAttribute('href', '/trips/new')
   })
 
@@ -168,7 +171,7 @@ describe('the Trips screen', () => {
     // the same entry — the sidebar is the navigation there, and `Depot` keeps
     // `+ Add gear` in the same slot.
     const step = screen.getByRole('link', { name: 'New trip' })
-    expect(step).toHaveTextContent('+ NEW')
+    expect(step).toHaveTextContent('+ New trip')
     expect(step).toHaveAttribute('href', '/trips/new')
   })
 

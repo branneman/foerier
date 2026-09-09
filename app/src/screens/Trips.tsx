@@ -238,7 +238,7 @@ export function Trips() {
               className={styles['new']}
               aria-label="New trip"
             >
-              + NEW
+              + New trip
             </Link>
           )}
         </div>

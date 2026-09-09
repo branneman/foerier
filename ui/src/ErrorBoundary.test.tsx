@@ -179,3 +179,64 @@ describe('ErrorBoundary', () => {
     vi.unstubAllGlobals()
   })
 })
+
+/**
+ * **The scope decides the noun, the vessel and the control** (§5n K1/K1b).
+ * One sentence is true of a screen and a panel because the fallback sits
+ * inside the box that failed and the placement states the scope; at page
+ * scope it is false, there being no whole with other parts standing.
+ */
+describe('the page scope', () => {
+  function Boom(): React.ReactNode {
+    throw new Error('the session store is gone')
+  }
+
+  it('names the app, and offers the only move left', () => {
+    render(
+      <ErrorBoundary buildSha="7c39f2a" variant="page">
+        <Boom />
+      </ErrorBoundary>,
+    )
+
+    expect(screen.getByText('foerier could not be drawn.')).toBeInTheDocument()
+    // The body drops its first clause: there is no `Try again` to name.
+    expect(
+      screen.getByText('The ledger is saved on this device. Reload the app.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  })
+
+  it('keeps the other two scopes on the sentence that is true of both', () => {
+    render(
+      <ErrorBoundary buildSha="7c39f2a">
+        <Boom />
+      </ErrorBoundary>,
+    )
+
+    expect(
+      screen.getByText('This part could not be drawn.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Try again' }),
+    ).toBeInTheDocument()
+  })
+
+  it('reloads rather than re-rendering the children that just threw', async () => {
+    const reload = vi.fn()
+    vi.stubGlobal('location', { ...globalThis.location, reload })
+    const user = userEvent.setup()
+
+    render(
+      <ErrorBoundary buildSha="7c39f2a" variant="page">
+        <Boom />
+      </ErrorBoundary>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Reload' }))
+
+    // Retrying at this scope re-renders the same children, which is the move
+    // least likely to work — so the control does what its word says.
+    expect(reload).toHaveBeenCalledTimes(1)
+    vi.unstubAllGlobals()
+  })
+})

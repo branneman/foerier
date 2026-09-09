@@ -57,11 +57,20 @@ export interface ErrorBoundaryProps {
    */
   label?: string
   /**
+   * **The scope decides the noun, the vessel and the control** (§5n K1/K1b).
+   *
    * `inline` is the default and is what a screen or a panel boundary wears:
-   * the fallback stands in the box the crashed thing occupied and takes its
-   * width. `page` is the root boundary's, outside every shell — it has no box
-   * to inherit, so it supplies the gutter and the capped measure
-   * `.shell__main` would otherwise have given it.
+   * the fallback stands in the box the crashed thing occupied, so the
+   * placement states the scope and one sentence is true of both — a screen
+   * with the nav beside it and a panel with its sibling beside it are each
+   * *a part* that could not be drawn.
+   *
+   * `page` is the root boundary's, and at that scope the same sentence is
+   * **false**: there is no whole with other parts standing and no shell. So
+   * it names the app, drops the body's first clause (there is no *try again*
+   * left to offer), takes the sign-in shell's centred column on `bg/base`
+   * rather than a card — a card implies a page around it — and its control
+   * reloads rather than retries.
    */
   variant?: 'inline' | 'page'
 }
@@ -149,14 +158,25 @@ export class ErrorBoundary extends Component<
       })
   }
 
+  /**
+   * Reloading is the page scope's move: re-rendering the same children is
+   * what `Try again` does, and at this scope it is the one least likely to
+   * work. `location.reload()` asks `ui/` for no router import (§5.1).
+   */
+  private readonly reload = (): void => {
+    globalThis.location.reload()
+  }
+
   override render(): ReactNode {
     const { error, componentStack, copied } = this.state
     if (error === null) return this.props.children
 
+    const page = this.props.variant === 'page'
+
     return (
       <section
         className={styles['fallback']}
-        data-variant={this.props.variant ?? 'inline'}
+        data-variant={page ? 'page' : 'inline'}
         /* The one stable hook a caller's stylesheet can match on: a CSS
            module's class name is hashed, and `ui/`'s is not the app's to
            name. `TripPanels` uses it to keep the fallback's own card from
@@ -164,12 +184,22 @@ export class ErrorBoundary extends Component<
         data-error-boundary=""
         role="alert"
       >
-        <h2 className={styles['title']}>This part could not be drawn.</h2>
+        <h2 className={styles['title']}>
+          {page
+            ? 'foerier could not be drawn.'
+            : 'This part could not be drawn.'}
+        </h2>
         <p className={styles['line']}>
-          The ledger is saved on this device. Try again, or reload the app.
+          {page
+            ? 'The ledger is saved on this device. Reload the app.'
+            : 'The ledger is saved on this device. Try again, or reload the app.'}
         </p>
-        <button type="button" className={styles['retry']} onClick={this.retry}>
-          Try again
+        <button
+          type="button"
+          className={styles['retry']}
+          onClick={page ? this.reload : this.retry}
+        >
+          {page ? 'Reload' : 'Try again'}
         </button>
         <details className={styles['details']} data-testid="error-report">
           <summary className={styles['summary']}>TECHNICAL DETAILS</summary>

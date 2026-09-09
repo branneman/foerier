@@ -528,3 +528,54 @@ describe('a crashed screen inside the shell', () => {
     expect(screen.getByText('find')).toBeInTheDocument()
   })
 })
+
+/**
+ * **The sidebar's foot is one block** (§5n K10). The audit found three x
+ * positions in a 216px column: the destinations' labels at the 10px inset,
+ * `ACCOUNT`'s behind a 22px avatar, and the sync line's behind a 6px dot. The
+ * avatar and the dot are the same class of thing — chrome markers — so both
+ * take one 22px column and both words start at the same edge.
+ *
+ * Asserted as stylesheet text for `drawnSizes.test.ts`'s reason: jsdom
+ * computes no layout, and this is a claim about two x positions.
+ */
+describe('the Desktop sidebar’s foot', () => {
+  function sidebarCss(): string {
+    return readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'AppShell.module.css'),
+      'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '')
+  }
+
+  it('gives the avatar and the sync dot one marker column', () => {
+    const css = sidebarCss()
+
+    // One rule covering both, so the two cannot drift apart again — which is
+    // exactly how they came to differ.
+    expect(css).toMatch(
+      /\.nav-sidebar \.accountRow > \[aria-hidden='true'\],\s*\.nav-sidebar \.syncDot \{[^}]*width:\s*1\.375rem/,
+    )
+    expect(css).toMatch(
+      /\.nav-sidebar \.accountRow,\s*\.nav-sidebar \.syncLine \{[^}]*gap:\s*var\(--space-8\)/,
+    )
+  })
+
+  it('keeps the dot painted at 6px inside that column, with its tones', () => {
+    const css = sidebarCss()
+
+    // The column is reserved space, not a bigger dot: the marker still means
+    // reachable or not, and K24 will add a third tone to the same slot.
+    expect(css).toMatch(
+      /\.nav-sidebar \.syncDot::before \{[^}]*width:\s*0\.375rem/,
+    )
+    expect(css).toMatch(
+      /\.nav-sidebar \.syncDotUnreachable::before \{[^}]*var\(--color-brand-amber\)/,
+    )
+  })
+
+  it('leaves the destination rows at the inset, with no indent to match', () => {
+    // A row with no marker has nothing to reserve for; an indent is
+    // meaningful where something occupies it and accidental otherwise.
+    expect(sidebarCss()).not.toMatch(/\.sidebar \{[^}]*padding-left:\s*2/)
+  })
+})
