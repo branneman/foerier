@@ -4,35 +4,6 @@
     flex-direction: column;
   }
 
-  /*
-   * The `GEAR LIST` band's anatomy, third copy (`Trip.module.css`'s
-   * `.gearListBand` and `NotesPanel`'s are the others) — `technical-debt.md`
-   * carries the extraction, and it takes all three at once.
-   *
-   * Two children and no trailing link: the composer is the end-of-list row,
-   * so there is nothing for one to lead to. `space-between` therefore puts
-   * the count on the trailing edge with no wrapper of its own, which is the
-   * simplification `.gearListTrailing` exists to avoid needing there.
-   */
-  .band {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding-block: var(--space-4);
-    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
-  }
-
-  .label {
-    flex: none;
-    white-space: nowrap;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--color-ink-muted);
-  }
-
   .count {
     flex: none;
     white-space: nowrap;

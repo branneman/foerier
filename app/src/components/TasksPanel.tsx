@@ -1,3 +1,4 @@
+import { Band } from '@foerier/ui'
 import { useState } from 'react'
 
 import type { TaskView } from '@foerier/shared'
@@ -17,13 +18,11 @@ import styles from './TasksPanel.module.css'
  * second opinion about it here is exactly how two Devices start drawing
  * different checklists.
  *
- * **The band is spelled here, and that is the third copy of one anatomy** —
- * `Trip.module.css`'s `gearListBand` and `NotesPanel`'s are the others. The
- * board's §08 lists a shared band component among what the shell commit
- * lands and the shell that landed is `TripPanels` alone; extracting it now
- * would mean landing onto `main` mid-flight and asking the S12 worktree to
- * adopt it, which is the coordination architecture §8.6's float exists to
- * avoid. `technical-debt.md` carries it, and the lift takes all three.
+ * **The band is `ui/Band` now** — the component the board's §08 named among
+ * what the shell commit was to land, extracted once all three copies
+ * (`Trip.module.css`'s `GEAR LIST`, `NotesPanel`'s and this one) were on
+ * `main` and no branch held any of them open. What stays here is what the
+ * band *says*: the label's words and the `3/7 TICKED` count.
  */
 export interface TasksPanelProps {
   /** `tasksOf`'s order, rendered verbatim. */
@@ -48,20 +47,23 @@ export function TasksPanel({
 }: TasksPanelProps) {
   return (
     <section className={styles['panel']} aria-labelledby="tasks-band">
-      <div className={styles['band']}>
-        <span className={styles['label']} id="tasks-band">
-          TASKS
-        </span>
-        {/* I3: absent at N = 0 — which is what makes the empty panel I27's
-            band and composer and nothing else. `0/7` is legal and drawn,
-            because a fraction is not a zero segment (ruling G3 does not
-            reach it); `0 of nothing` is not a fraction at all. */}
-        {counts.total > 0 && (
-          <span className={styles['count']}>
-            {counts.ticked}/{counts.total} TICKED
-          </span>
-        )}
-      </div>
+      <Band
+        label="TASKS"
+        labelId="tasks-band"
+        {...(counts.total > 0
+          ? {
+              // I3: absent at N = 0 — which is what makes the empty panel
+              // I27's band and composer and nothing else. `0/7` is legal and
+              // drawn, because a fraction is not a zero segment (ruling G3
+              // does not reach it); `0 of nothing` is not a fraction at all.
+              trailing: (
+                <span className={styles['count']}>
+                  {counts.ticked}/{counts.total} TICKED
+                </span>
+              ),
+            }
+          : {})}
+      />
 
       {tasks.length > 0 && (
         <ul className={styles['list']}>

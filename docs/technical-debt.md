@@ -358,12 +358,3 @@ every one of them gets more expensive per slice.
   three small `--text-*` pairs would close most of it.
   [`patterns.md`](patterns.md) §6.2, anchor:
   `most-copied rule`
-- **The `GEAR LIST` band's anatomy is spelled three times.** `Trip.module.css`'s
-  `.gearListBand`, `NotesPanel`'s and `TasksPanel`'s — label, count, optional
-  trailing link, one rule and one border. The board's own §08 lists *"the band
-  component with its count slot and trailing link"* among what the shell commit
-  lands, and the shell that landed (`6e72cd3`) is `TripPanels` alone;
-  `patterns.md` §5.5's *a second caller is the bar for moving into `ui/`* is
-  met by two callers who could not coordinate. The extraction takes **all
-  three**, not two — the third copy is the one that has been there since S7.
-  [`patterns.md`](patterns.md) §5.5, anchor: `third copy of one anatomy`

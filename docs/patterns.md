@@ -711,6 +711,14 @@ difference between an in-place fallback and a white-out.
 (`InviteIssued`, `People`, since joined by `Join`). A primitive on §5's list
 that is hand-rolled at a third site is the codebase's own trigger to build it.
 
+`Band` is the fourth, and the one where the count was
+**three** — `Trip`'s `GEAR LIST` (S7) plus `NotesPanel`'s and `TasksPanel`'s
+(S12 and S13, in parallel worktrees, each borrowing the first and saying so).
+It also shows what a primitive keeps and what it hands back: the row, the
+label's paint and the trailing slot's reflow are anatomy; the count's words,
+the routes and the class that paints them are the caller's, because a count
+is a fact about a section rather than about a band.
+
 **Three fired at once after S9**, and the count was wrong on the first two.
 `SegmentedControl` was hand-rolled at **four** sites, not the three anyone had
 counted — `TripOnlySheet`'s copy had never been noticed — and one of the four

@@ -642,6 +642,10 @@ trivially unit-testable in isolation.
 
 Cross-cutting pieces, also in `ui/`:
 
+- **`Band`** — the section band: a mono caps label, and a trailing slot for
+  what the section counts or leads to. **Built** after the MVP, out of its
+  three copies; `Screens B` §08 named it among what S12/S13's shell commit
+  was to land, and the shell that landed was `TripPanels` alone.
 - **`Icon`** set — inline-SVG React components (the design mandates no rasters;
   the duffel logo and stroke icons live here). **Built.**
 - **`ErrorBoundary`** — wraps each screen and each independent panel.

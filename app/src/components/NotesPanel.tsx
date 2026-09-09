@@ -1,4 +1,5 @@
 import { noteCounts, notesOf } from '@foerier/shared'
+import { Band } from '@foerier/ui'
 import { Link } from 'wouter'
 
 import { useHousehold } from '../household/store'
@@ -39,28 +40,29 @@ export function NotesPanel({ tripId }: { tripId: string }) {
       role="group"
       aria-labelledby="notes-label"
     >
-      <div className={styles['band']}>
-        <span id="notes-label" className={styles['label']}>
-          NOTES
-        </span>
-        <span className={styles['trailing']}>
-          {/* I3: absent at zero, not `0 NOTES` — the empty state below says
+      <Band
+        label="NOTES"
+        labelId="notes-label"
+        trailing={
+          <>
+            {/* I3: absent at zero, not `0 NOTES` — the empty state below says
               it in a sentence, and one fact stated twice in two registers is
               how the two drift. */}
-          {total > 0 && (
-            <span className={styles['count']} data-testid="notes-count">
-              {total} {total === 1 ? 'NOTE' : 'NOTES'}
-            </span>
-          )}
-          <Link
-            href={`/trips/${tripId}/note`}
-            className={styles['compose']}
-            aria-label={`Post a note for ${trip?.name?.value ?? 'this trip'}`}
-          >
-            + NOTE
-          </Link>
-        </span>
-      </div>
+            {total > 0 && (
+              <span className={styles['count']} data-testid="notes-count">
+                {total} {total === 1 ? 'NOTE' : 'NOTES'}
+              </span>
+            )}
+            <Link
+              href={`/trips/${tripId}/note`}
+              className={styles['compose']}
+              aria-label={`Post a note for ${trip?.name?.value ?? 'this trip'}`}
+            >
+              + NOTE
+            </Link>
+          </>
+        }
+      />
 
       {notes.length === 0 ? (
         // I18, and the `0 ENTRIES.` pattern: the second line is a permanent

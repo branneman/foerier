@@ -1,0 +1,49 @@
+@layer components {
+  .band {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-block: var(--space-4);
+    border-bottom: var(--stroke-rule) solid var(--color-rule-row);
+  }
+
+  /*
+   * `flex: none` + `white-space: nowrap`, and both are load-bearing: the band
+   * is a non-wrapping flex row of exactly two children, so a width deficit
+   * shrinks **both** in proportion unless the label refuses to shrink at all.
+   * Without them a narrow band wraps `GEAR LIST` into `GEAR` / `LIST` before
+   * the trailing slot below — which is built to absorb the whole deficit —
+   * wraps at all. No board draws that, and jsdom cannot see it.
+   */
+  .label {
+    flex: none;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  /*
+   * One flex item however many children it holds, which is what the band's
+   * `space-between` needs to keep them glued to the trailing edge rather than
+   * spread apart.
+   *
+   * `flex-wrap` + `justify-content: flex-end` is organic reflow rather than a
+   * breakpoint: this box shrinks to whatever is left after the label, and
+   * once its children no longer fit on one line flex wraps the overflow onto
+   * a second — right-aligned, which is what makes the wrapped line read as
+   * the board's own "second, right-aligned line" instead of drifting left
+   * under the count. The gap is the board's 14 read as the system's step, the
+   * same `--space-12` the settle-routes row it borrows its grammar from uses.
+   */
+  .trailing {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-12);
+  }
+}

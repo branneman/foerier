@@ -1265,48 +1265,26 @@ describe('the trip screen — UNPACK › (F14)', () => {
   })
 
   /**
-   * The wrap itself is organic reflow — `flex-wrap` on `.gearListTrailing`,
-   * not a breakpoint — so jsdom (which computes no layout at all) cannot be
-   * asked to lay the band out narrow and watch it happen. What it *can*
-   * prove is the CSS that would make it happen: the wrap and the grouping
-   * that keeps the pair together rather than splitting between lines.
+   * **The band's own half of this moved to `ui/Band`** — the wrap, the
+   * right-alignment and the label's refusal to shrink are the anatomy, and
+   * `ui/src/Band.test.tsx` pins them there for all three callers at once.
+   * What stays this screen's is the *grouping*: the two routes are one flex
+   * item, not two, so the band's wrap moves them together rather than
+   * splitting the pair between lines. Only this caller knows that, which is
+   * why `Band` takes the trailing group as a node.
+   *
+   * The wrap is organic reflow rather than a breakpoint, so jsdom — which
+   * computes no layout at all — cannot be asked to lay the band out narrow
+   * and watch it happen. What it can prove is the CSS that makes it possible.
    */
-  it('wraps the two routes together on a narrow band — the CSS that makes it possible', () => {
+  it('keeps the two routes one flex item, so a wrap moves them together', () => {
     const css = readFileSync(
       join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
       'utf8',
     )
-    const trailing = /\.gearListTrailing\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
-    expect(trailing).toMatch(/flex-wrap:\s*wrap/)
-    expect(trailing).toMatch(/justify-content:\s*flex-end/)
-
-    // The two routes are one flex item, not two, so a wrap moves them
-    // together — `.gearListRoutes` is what makes that true, and its own gap
-    // is the unchanged `--space-12` the pair already carried unwrapped.
     const routes = /\.gearListRoutes\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
     expect(routes).toMatch(/display:\s*inline-flex/)
     expect(routes).toMatch(/gap:\s*var\(--space-12\)/)
-  })
-
-  /**
-   * Review I1. `.gearListBand` is a non-wrapping flex row of exactly two
-   * children — the label and the trailing slot — and neither
-   * `.gearListTrailing`'s own `flex-wrap` nor its `justify-content` stops a
-   * width deficit from shrinking the *label* too, unless the label refuses
-   * to shrink at all. Without `flex: none` + `white-space: nowrap` here, a
-   * narrow band wraps `GEAR LIST` into `GEAR` / `LIST` before or alongside
-   * the routes wrapping — a visible regression at the phone width jsdom
-   * (which computes no layout) cannot see, so this is pinned in the
-   * stylesheet the same way the wrap above is.
-   */
-  it('pins the GEAR LIST label so a width deficit lands on the trailing slot, never on the label', () => {
-    const css = readFileSync(
-      join(dirname(expect.getState().testPath ?? ''), 'Trip.module.css'),
-      'utf8',
-    )
-    const label = /\.gearListLabel\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
-    expect(label).toMatch(/flex:\s*none/)
-    expect(label).toMatch(/white-space:\s*nowrap/)
   })
 
   it('grows UNPACK › to a ≥44px hit area without reaching its neighbour', () => {

@@ -6,6 +6,9 @@ export type { LogoProps, MarkProps } from './Logo'
 export { ErrorBoundary } from './ErrorBoundary'
 export type { ErrorBoundaryProps } from './ErrorBoundary'
 
+export { Band } from './Band'
+export type { BandProps } from './Band'
+
 export { Chip } from './Chip'
 export type { ChipProps } from './Chip'
 

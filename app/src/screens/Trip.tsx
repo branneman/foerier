@@ -20,7 +20,7 @@ import {
   UNNAMED_PERSON_GLYPH,
   type TripState,
 } from '@foerier/shared'
-import { PersonCluster } from '@foerier/ui'
+import { Band, PersonCluster } from '@foerier/ui'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'wouter'
 
@@ -800,30 +800,32 @@ export function Trip() {
               (`GearListSection.module.css`'s `.groupHeader`), so this one
               reads as their parent rather than the one row on the screen
               that doesn't line up with them. */}
-          <div className={styles['gearListBand']} data-testid="gear-list-band">
-            <span id="gear-list-label" className={styles['gearListLabel']}>
-              GEAR LIST
-            </span>
-            <span className={styles['gearListTrailing']}>
-              <span
-                className={styles['gearListCount']}
-                data-testid="gear-list-count"
-              >
-                {entryCountLabel(totals.entries)} · {pieceLabel(totals.pieces)}
-              </span>
-              {!editable && (
-                // A real `<Link>` now that `/trips/:id/list` (Task 11)
-                // exists — carries no door param, so the builder's own
-                // default (the "trip" door) applies, giving `‹ {label}`
-                // back rather than `‹ TRIPS`.
-                <Link
-                  href={`/trips/${tripId}/list`}
-                  className={styles['editList']}
+          <Band
+            label="GEAR LIST"
+            labelId="gear-list-label"
+            testId="gear-list-band"
+            trailing={
+              <>
+                <span
+                  className={styles['gearListCount']}
+                  data-testid="gear-list-count"
                 >
-                  EDIT LIST ›
-                </Link>
-              )}
-              {/* `PACKING ›` and `UNPACK ›` (ruling A11, F14), grouped so
+                  {entryCountLabel(totals.entries)} ·{' '}
+                  {pieceLabel(totals.pieces)}
+                </span>
+                {!editable && (
+                  // A real `<Link>` now that `/trips/:id/list` (Task 11)
+                  // exists — carries no door param, so the builder's own
+                  // default (the "trip" door) applies, giving `‹ {label}`
+                  // back rather than `‹ TRIPS`.
+                  <Link
+                    href={`/trips/${tripId}/list`}
+                    className={styles['editList']}
+                  >
+                    EDIT LIST ›
+                  </Link>
+                )}
+                {/* `PACKING ›` and `UNPACK ›` (ruling A11, F14), grouped so
                   `.gearListTrailing`'s wrap moves the pair together rather
                   than splitting it — the trailing-most thing in the band at
                   every width, which is where the drawn phone frame puts it,
@@ -834,32 +836,33 @@ export function Trip() {
                   route at every width rather than a pane, and a phase locks
                   nothing, so hiding either — or trading one for the other —
                   would be a soft lock the phase model does not have. */}
-              <span className={styles['gearListRoutes']}>
-                <Link
-                  href={`/trips/${tripId}/packing`}
-                  className={styles['packing']}
-                  // Ruling D: the `›` is decoration and stays out of the
-                  // name, which `aria-label` does wholesale — read as text
-                  // content it would be spoken "greater-than sign".
-                  // `Build list for …`'s own pattern (`TripCard.tsx`), down
-                  // to the name it interpolates: an accessible name is a
-                  // sentence, so it takes `tripNameOrUnnamed`'s prose and
-                  // not the `—` this screen's own title draws (§5c's
-                  // glyph/prose split).
-                  aria-label={`Open packing for ${tripNameOrUnnamed(trip)}`}
-                >
-                  PACKING ›
-                </Link>
-                <Link
-                  href={`/trips/${tripId}/unpack`}
-                  className={styles['unpack']}
-                  aria-label={`Open unpack for ${tripNameOrUnnamed(trip)}`}
-                >
-                  UNPACK ›
-                </Link>
-              </span>
-            </span>
-          </div>
+                <span className={styles['gearListRoutes']}>
+                  <Link
+                    href={`/trips/${tripId}/packing`}
+                    className={styles['packing']}
+                    // Ruling D: the `›` is decoration and stays out of the
+                    // name, which `aria-label` does wholesale — read as text
+                    // content it would be spoken "greater-than sign".
+                    // `Build list for …`'s own pattern (`TripCard.tsx`), down
+                    // to the name it interpolates: an accessible name is a
+                    // sentence, so it takes `tripNameOrUnnamed`'s prose and
+                    // not the `—` this screen's own title draws (§5c's
+                    // glyph/prose split).
+                    aria-label={`Open packing for ${tripNameOrUnnamed(trip)}`}
+                  >
+                    PACKING ›
+                  </Link>
+                  <Link
+                    href={`/trips/${tripId}/unpack`}
+                    className={styles['unpack']}
+                    aria-label={`Open unpack for ${tripNameOrUnnamed(trip)}`}
+                  >
+                    UNPACK ›
+                  </Link>
+                </span>
+              </>
+            }
+          />
           <GearListSection
             trip={trip}
             editable={editable}
