@@ -6,8 +6,8 @@ import { Router, useLocation } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
 import { setViewport } from '../testSetup'
-import { AppShell } from './AppShell'
-import { DESKTOP, SPLIT } from './useMediaQuery'
+import { AppShell, DESTINATIONS } from './AppShell'
+import { DESKTOP, SPLIT, sidebarCarries } from './useMediaQuery'
 
 /**
  * The shell's three nav treatments (`frontend-design.md` §3.1, and the
@@ -184,6 +184,49 @@ describe('AppShell — the sidebar at Desktop', () => {
  * because that diff is the record that the debt was discharged rather than
  * dropped.
  */
+/**
+ * **The two lists that must agree** (§5n K27). `useScreenHeader` withholds a
+ * screen's back link at Desktop when a labelled sidebar row already carries
+ * its destination, and it answers that from a list of hrefs in
+ * `useMediaQuery.ts` — while the rows themselves are drawn from
+ * `DESTINATIONS` here plus the Account row. Nothing in the type system makes
+ * the two agree, and the symptom of a drift is silent in both directions: a
+ * back link withheld against a row that is not there strands the reader, and
+ * one drawn beside the row it names is the duplicate §3.3 exists to prevent.
+ *
+ * This is the sidebar's half. The redirect half — `/account/people` and
+ * `/account/devices`, which put Account on the page by way of `App.tsx` —
+ * cannot be asserted from here, because it is a property of the router; it is
+ * pinned by `screenBand.test.tsx` rendering `InviteIssued` at Desktop and
+ * finding no `‹ PEOPLE & LOGINS`.
+ */
+describe('the sidebar’s rows and the back link’s question', () => {
+  it('treats every drawn destination as carried', () => {
+    for (const destination of DESTINATIONS) {
+      expect(sidebarCarries(destination.href)).toBe(true)
+    }
+  })
+
+  it('treats the Account row as carried, though it is not a destination', () => {
+    setViewport(SPLIT, DESKTOP)
+    const nav = renderShell()
+
+    // The row is drawn — reached from the avatar, so the tab bar stays at
+    // three and this is not a fourth `DESTINATIONS` entry.
+    expect(within(nav).getByRole('link', { name: 'Account' })).toHaveAttribute(
+      'href',
+      '/account',
+    )
+    expect(sidebarCarries('/account')).toBe(true)
+  })
+
+  it('treats one specific Trip as carried by nothing, which is the whole rule', () => {
+    expect(sidebarCarries('/trips/0198abcd-ef01-7000-8000-000000000001')).toBe(
+      false,
+    )
+  })
+})
+
 describe('AppShell — the account affordance', () => {
   it('offers one in every mode, now that the Account screen exists', () => {
     for (const viewport of [[], [SPLIT], [SPLIT, DESKTOP]]) {

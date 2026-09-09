@@ -2444,7 +2444,10 @@ moved while it was being built.
   the round did not look at it. **Either the builder is drawn wrong at Desktop
   or F4 is**, and the boards draw the builder at 1024 with no sidebar at all,
   which is why the question has never been forced. Named here rather than
-  answered.
+  answered. **Answered at §5n K27: neither is drawn wrong; the parameter
+  was.** A per-screen boolean cannot be right for a screen with two doors, so
+  the hook takes the destination's `href` and answers `sidebarCarries` for
+  itself, and both callers keep the link they already drew.
 - **What S9b still owed, and what it cost meanwhile — discharged, see
   §12.16.** `whereabouts()` kept returning its single `'home'` slice, so the
   Depot's `WHEREABOUTS` column, gear detail's card, Find's per-person answer

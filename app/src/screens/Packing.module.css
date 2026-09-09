@@ -44,7 +44,8 @@
 
   /* The band — `Trip.module.css`'s rule verbatim, since it is the same band
      answering the same hook. The difference is entirely in `Packing.tsx`:
-     `atDesktopSidebarCarriesDestination: false` keeps the link at Desktop. */
+     the back link points at one Trip, which no sidebar row carries, so the
+     link survives at Desktop (§5n K27). */
   /* DISPLAY, 28/34 at every width. The type table's *34 on desktop* is
      **drawn but not built** (ruling E5): no screen implements the step and no
      frame draws it, so a round that wants it changes the token and every

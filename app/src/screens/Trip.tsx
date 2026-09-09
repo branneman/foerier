@@ -235,7 +235,7 @@ export function Trip() {
   // is also on screen — a Trip is nobody's pane, so at Split this screen
   // stands alone. The builder Task 11 adds (`/trips/:id/list`) is its own
   // route, not a second pane grafted onto this one.
-  const header = useScreenHeader({ splitPane: false })
+  const header = useScreenHeader({ splitPane: false, back: '/trips' })
   // Below Split this screen edits; from Split up it reads (spec §4.2).
   const editable = !isSplitOrWider
 
@@ -1077,7 +1077,7 @@ function undrawable(value: string): boolean {
  * `Open trips` is the only route out; below it, the second.
  */
 function TripNotHere({ standing }: { standing: 'deleted' | 'unknown' }) {
-  const header = useScreenHeader({ splitPane: false })
+  const header = useScreenHeader({ splitPane: false, back: '/trips' })
   const sync = useHousehold((depot) => depot.sync)
   const deleted = standing === 'deleted'
   return (

@@ -276,7 +276,7 @@ export function GearDetail() {
   const sync = useHousehold((depot) => depot.sync)
   // `splitPane`: at Split this screen is the right-hand pane of `DepotView`,
   // with the Depot list drawn in the left one.
-  const header = useScreenHeader({ splitPane: true })
+  const header = useScreenHeader({ splitPane: true, back: '/' })
 
   const [moveOpen, setMoveOpen] = useState(false)
   /**

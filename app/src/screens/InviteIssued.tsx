@@ -85,7 +85,6 @@ export function InviteIssued({
   purpose,
 }: InviteIssuedProps) {
   const own = subjectPersonId === personId
-  const header = useScreenHeader({ splitPane: false })
   const sync = useHousehold((depot) => depot.sync)
   const subjectName = useHousehold(
     (depot) => depot.state.people[subjectPersonId]?.name?.value ?? null,
@@ -134,6 +133,12 @@ export function InviteIssued({
           qrTitle: 'Join invite',
           revokeLabel: 'REVOKE INVITE',
         }
+
+  // Below `copy`, because the band's Desktop answer reads the destination
+  // `copy` names (§5n K27) — `/account` for the reader's own device link,
+  // `/account/people` for the other two, which `App.tsx` redirects to
+  // `/account` at Desktop. Stated once, read twice.
+  const header = useScreenHeader({ splitPane: false, back: copy.back.href })
 
   useEffect(() => {
     if (issuedRef.current) return

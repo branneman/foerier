@@ -148,15 +148,6 @@ session rather than an edit, because the symptom shows up somewhere else.
   fails only its own suite and nothing compares them. Argued in the module's
   own header, `shared/src/selectors/tripContainment.ts`, anchor:
   `non-drift is the obligation it`
-- **`useScreenHeader`'s tenth and eleventh callers disagree about the same
-  question.** F4 passes `atDesktopSidebarCarriesDestination: false` and keeps
-  `‹ ALPS 2026` at Desktop; `GearListBuilder`'s **default** door points at the
-  same kind of destination — one specific Trip, which no sidebar row
-  carries — and the S9 round did not look at it. One of the two is drawn
-  wrong at Desktop, and the boards draw the builder at 1024 with no sidebar at
-  all, which is why the question has never been forced.
-  [`architecture-design.md`](architecture-design.md) §12.15, anchor:
-  `the first screen where that flag's`
 - **Who closes a picker after a pick is decided per component.** `PackPicker`
   and `PhaseSheet` close themselves; `HomePicker`, `OwnerPicker`,
   `ParticipantPicker` and `SortGroupSheet` are closed by the caller. A new

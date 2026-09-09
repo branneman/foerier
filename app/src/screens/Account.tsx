@@ -174,7 +174,7 @@ export function Account({
   // `splitPane: false` — `/account` is its own screen at every width, not a
   // pane of a list that is also on screen. (`DepotView` and, since S7, the
   // gear-list builder are the app's two-pane views; this screen is neither.)
-  const header = useScreenHeader({ splitPane: false })
+  const header = useScreenHeader({ splitPane: false, back: '/' })
   const canAddPasskey = usePlatformAuthenticatorAvailable()
 
   const [householdName, setHouseholdName] = useState<string | null>(null)

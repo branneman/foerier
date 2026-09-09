@@ -1186,10 +1186,11 @@ function GroupSection({
  *
  * ## The back link survives Desktop
  *
- * `useScreenHeader({ splitPane: false, atDesktopSidebarCarriesDestination:
- * false })` — `Packing`'s own answer and the same reason: the 216px sidebar
- * names the Trips list, not this Trip, so the destination this screen's back
- * link points at is never already on the page.
+ * `useScreenHeader({ splitPane: false, back: `/trips/${tripId}` })` —
+ * `Packing`'s own answer and the same reason: the 216px sidebar names the
+ * Trips list, not this Trip, so the destination this screen's back link
+ * points at is never already on the page, and since §5n K27 handing in that
+ * destination is the whole of how the hook is told.
  */
 
 /**
@@ -1226,11 +1227,12 @@ export function Unpack() {
   const state = useHousehold((depot) => depot.state)
   const sync = useHousehold((depot) => depot.sync)
   const emitAll = useHousehold((depot) => depot.emitAll)
+  // The sidebar carries `TRIPS`, never one Trip's name, so this screen's
+  // own back link is owed at Desktop too — and the destination is what says
+  // so now (§5n K27), not a boolean this screen answers about itself.
   const header = useScreenHeader({
     splitPane: false,
-    // See the docstring: the sidebar carries `TRIPS`, never one Trip's name,
-    // so this screen's own back link is owed at Desktop too.
-    atDesktopSidebarCarriesDestination: false,
+    back: `/trips/${tripId}`,
   })
 
   // The two controls' own state, `Packing.tsx`'s `mode`/`leftOnly` twins:

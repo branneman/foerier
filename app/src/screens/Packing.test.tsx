@@ -275,9 +275,10 @@ describe('the packing screen — the shell every mode hangs off', () => {
 
   /**
    * **The first screen whose Desktop back link is drawn**, and it needs no
-   * new rule: `useScreenHeader` has carried
-   * `atDesktopSidebarCarriesDestination` since S7, and the 216px sidebar
-   * carries `TRIPS`, not `Alps 2026`. Task 12's `screenBand.test.tsx` proves
+   * new rule: §3.3 withholds the link only where the sidebar already carries
+   * its destination, and the 216px sidebar carries `TRIPS`, not `Alps 2026`.
+   * The screen says nothing about itself for this — since §5n K27 it hands
+   * the hook the `href` and the hook answers. Task 12's `screenBand.test.tsx` proves
    * the other side of this — the same screen *inside* `AppShell` — because a
    * per-screen suite renders the screen alone.
    */

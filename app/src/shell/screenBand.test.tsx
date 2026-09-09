@@ -479,9 +479,9 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
 
   /**
    * **F4 — the first screen whose Desktop answer is *drawn*.** Every caller
-   * above and below this one passes no `atDesktopSidebarCarriesDestination`
-   * override, or passes it for a door the sidebar's own row already answers
-   * (`GearListBuilder`'s `?from=trips`) — so a per-screen suite proving
+   * above and below this one points its back link at a row the sidebar
+   * already carries, or at a door that does (`GearListBuilder`'s
+   * `?from=trips`) — so a per-screen suite proving
    * `Packing.test.tsx`'s own absence-of-`AppShell` half was, until this
    * suite, the only check this rule had. Counted here for the identical
    * reason the builder is: an inverted rule (the shell's marker doubled with
@@ -562,9 +562,9 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
     const { store, id } = await aTrip()
     renderInShell(store, `/trips/${id}/note`)
 
-    // `atDesktopSidebarCarriesDestination: false` — the half of the rule the
-    // per-screen suite cannot prove, because it renders without a sidebar to
-    // be wrong about.
+    // The link names one Trip, which no sidebar row carries — the half of
+    // the rule the per-screen suite cannot prove, because it renders without
+    // a sidebar to be wrong about.
     expect(
       within(screen.getByRole('main')).getByRole('link', { name: /‹/ }),
     ).toBeInTheDocument()
@@ -927,11 +927,11 @@ describe('the back link — withheld only where its destination is already drawn
   })
 
   /**
-   * F4 is the **eleventh** `useScreenHeader` caller, and the first where
-   * `atDesktopSidebarCarriesDestination: false` is the *only* reason the
-   * link survives — it has one door, not two, so unlike the builder there is
-   * no `?from=trips` arm to withhold it for. The 216px sidebar carries
-   * `TRIPS`, never one Trip's name, so `‹ Alps 2026` is owed at every width.
+   * F4 is the **eleventh** `useScreenHeader` caller, and the first where the
+   * destination is the *only* reason the link survives — it has one door, not
+   * two, so unlike the builder there is no `?from=trips` arm to withhold it
+   * for. The 216px sidebar carries `TRIPS`, never one Trip's name, so
+   * `‹ Alps 2026` is owed at every width.
    */
   it('keeps its back link at Desktop — the sidebar carries TRIPS, not the Trip', async () => {
     setViewport(SPLIT, DESKTOP)

@@ -216,7 +216,10 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
   // screen. Only the `'screen'` variant renders what it answers: the `'pane'`
   // variant's own band (back link + sync) belongs to Task 11's builder page,
   // which draws one band for both panes together, per spec §4.4.
-  const header = useScreenHeader({ splitPane: false })
+  const header = useScreenHeader({
+    splitPane: false,
+    back: `/trips/${tripId}`,
+  })
 
   const [spec, setSpec] = useState<SliceSpec>(EMPTY_SLICE)
   const [picking, setPicking] = useState<DimensionId | null>(null)

@@ -54,9 +54,14 @@ import styles from './NoteComposer.module.css'
  *
  * The trip screen and F5 both open it (I20), and both are `‹ ALPS 2026`'s
  * destination — so `history.back()` is right where a hardcoded route would be
- * wrong on one of the two. `atDesktopSidebarCarriesDestination: false`:
- * the sidebar's `TRIPS` row does not name *this* Trip, which is
- * `GearListBuilder`'s trip door's own argument.
+ * wrong on one of the two. The sidebar's `TRIPS` row does not name *this*
+ * Trip, which is `GearListBuilder`'s trip door's own argument — and since
+ * §5n K27 the destination says so rather than the screen. **This screen asks
+ * twice**, because it draws two different back links: `‹ ALPS 2026` on the
+ * ordinary path and `‹ TRIPS` on the `No such trip.` one, which points at a
+ * row the sidebar does carry. Under the old boolean the second was drawn at
+ * Desktop against the sidebar's own `Trips` row; it is withheld now, and no
+ * clause was needed to say so.
  */
 export function NoteComposer() {
   const params = useParams<{ id: string }>()
@@ -71,8 +76,13 @@ export function NoteComposer() {
 
   const header = useScreenHeader({
     splitPane: false,
-    atDesktopSidebarCarriesDestination: false,
+    back: `/trips/${tripId}`,
   })
+  // The `No such trip.` band's own answer: its link names the Trips list,
+  // which the sidebar carries. Two calls rather than one because a screen
+  // that draws two destinations has two answers (§5n K27); both are
+  // unconditional, so the hook order never moves.
+  const missingHeader = useScreenHeader({ splitPane: false, back: '/trips' })
 
   const trip = state.trips[tripId]
   const tripLabel = trip?.name?.value ?? ''
@@ -123,7 +133,7 @@ export function NoteComposer() {
     return (
       <div className={styles['screen']}>
         <ScreenBand
-          header={header}
+          header={missingHeader}
           back={{ href: '/trips', label: 'TRIPS' }}
           sync={sync}
         />

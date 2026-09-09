@@ -461,7 +461,7 @@ export function Devices({
   // `splitPane: false` — `/account/devices` has no two-pane view, and at
   // Desktop it has no render at all: `App.tsx` redirects it to `/account`
   // there, where the same rows unfold into that screen's own card.
-  const header = useScreenHeader({ splitPane: false })
+  const header = useScreenHeader({ splitPane: false, back: '/account' })
   const [devices, setDevices] = useState<readonly DeviceRow[]>([])
   const [devicesStatus, setDevicesStatus] = useState<LoadStatus>('loading')
   const search = useSearch()

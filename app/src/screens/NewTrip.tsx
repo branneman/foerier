@@ -175,7 +175,7 @@ export function NewTrip() {
   const desk = useMediaQuery(DESKTOP)
   // `splitPane: false` — `/trips/new` has no two-pane view at any width, so at
   // Split the back link is the only route out of a half-typed Trip.
-  const header = useScreenHeader({ splitPane: false })
+  const header = useScreenHeader({ splitPane: false, back: '/trips' })
 
   const trimmedName = name.trim()
   // The name is the only requirement. Dates are optional by story 5 — "a

@@ -411,13 +411,15 @@ needs a breakpoint composes the same two constants; nothing reads a width.
 ### 3.2 A pushed screen asks `useScreenHeader` and draws the band it answers
 
 Every screen that draws a back link or a sync line asks
-`useScreenHeader({ splitPane, atDesktopSidebarCarriesDestination })` and
-renders `ScreenBand` (`app/src/shell/ScreenBand.tsx`) with the answer. The
-hook decides; the component draws — the back link as `‹ DESTINATION`, the sync
-line as the dot plus `syncLabel(sync)`, the dot's tone from `syncTone(sync)`.
-`splitPane` is `true` for `GearDetail` alone; the Desktop flag is `false` only
-where the destination is one specific Trip, which no sidebar row carries
-(`Packing`, `GearListBuilder`'s trip door). **Every caller gates on `band`
+`useScreenHeader({ splitPane, back })` and renders `ScreenBand`
+(`app/src/shell/ScreenBand.tsx`) with the answer. The hook decides; the
+component draws — the back link as `‹ DESTINATION`, the sync line as the dot
+plus `syncLabel(sync)`, the dot's tone from `syncTone(sync)`. `splitPane` is
+`true` for `GearDetail` alone; `back` is the same `href` handed to
+`ScreenBand`, so the Desktop answer is derived rather than declared — a screen
+whose link names one specific Trip keeps it there without saying anything
+about itself, and a screen with two doors (`GearListBuilder`, `NoteComposer`)
+asks per destination instead of answering once for both. **Every caller gates on `band`
 and every caller hands in a `sync`** — `InviteIssued` was the one exemption to
 both, and §5n K23 gave it the sync line, so the prop is required and the
 component has one gate instead of two.

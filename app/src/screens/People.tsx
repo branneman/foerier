@@ -213,7 +213,7 @@ export function People({
   // but Account's inline card. The hook is called unconditionally, before the
   // `variant === 'inline'` return below, because a hook cannot be; `inline`
   // simply never reads the answer.
-  const header = useScreenHeader({ splitPane: false })
+  const header = useScreenHeader({ splitPane: false, back: '/account' })
 
   const [editing, setEditing] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)

@@ -116,9 +116,11 @@ import styles from './GearListBuilder.module.css'
  * fails: the `?from=trips` door's `‹ TRIPS` names the sidebar's own `TRIPS`
  * row (withheld at Desktop, same as every other caller), but the "trip"
  * door's `‹ {label}` names one specific Trip, which no sidebar row ever
- * carries (kept at Desktop). `useScreenHeader` takes an explicit
- * `atDesktopSidebarCarriesDestination` for exactly this — `fromTrips` here,
- * so the "trips" door still withholds and the "trip" door still shows.
+ * carries (kept at Desktop). This screen carried the difference as a boolean
+ * it recomputed from its own query string; **§5n K27 moved the question to
+ * where the answer lives** — `useScreenHeader` takes the `href` and asks
+ * whether a sidebar row carries it, so the two doors still differ and this
+ * screen no longer says anything about itself to make them.
  *
  * ## No `GEAR LIST` band, and no weight
  *
@@ -161,13 +163,13 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   const [activating, setActivating] = useState(false)
   const search = useSearch()
   const fromTrips = new URLSearchParams(search).get('from') === 'trips'
-  // `splitPane: false` — see this file's own docstring on the two-doors
-  // section for why `atDesktopSidebarCarriesDestination` is not left at its
-  // default here (S7 review F4).
-  const header = useScreenHeader({
-    splitPane: false,
-    atDesktopSidebarCarriesDestination: fromTrips,
-  })
+  // Where the link points, hoisted above the hook because the hook reads it:
+  // §5n K27 makes the Desktop answer a property of the destination, and this
+  // screen is the one it was ruled for — see the two-doors section above.
+  const backHref = fromTrips ? '/trips' : `/trips/${tripId}`
+  // `splitPane: false` — two panes of itself, not a detail pane of a list
+  // also on screen.
+  const header = useScreenHeader({ splitPane: false, back: backHref })
 
   // Every hook above runs regardless (S7 review F2's own guard, transplanted
   // from `DepotPicker.tsx`), so this early return costs nothing except the
@@ -279,7 +281,6 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
     setTripOnlyOpen(true)
   }
 
-  const backHref = fromTrips ? '/trips' : `/trips/${tripId}`
   const backLabel = fromTrips ? 'TRIPS' : label
 
   // The Desktop header row draws the link outside the band — the one place

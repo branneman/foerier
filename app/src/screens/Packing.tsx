@@ -684,18 +684,19 @@ interface PendingMove {
  * first and an entity with no registers for the second, which draws as an
  * ordinary unnamed Trip.
  *
- * ## The back link survives Desktop — and that is the flag's own reason
+ * ## The back link survives Desktop — and that is the rule's own reason
  *
- * `useScreenHeader({ splitPane: false, atDesktopSidebarCarriesDestination:
- * false })`, the **eleventh** caller. The flag has existed since S7, added
- * for `GearListBuilder`'s "trip" door, and **F4 needs no new rule**: the
- * 216px sidebar carries `TRIPS`, not `Alps 2026`, so the destination this
- * screen's link points at is not on the page and the link is owed at every
- * width.
+ * `useScreenHeader({ splitPane: false, back: `/trips/${tripId}` })`, the
+ * **eleventh** caller. **F4 needs no new rule**: the 216px sidebar carries
+ * `TRIPS`, not `Alps 2026`, so the destination this screen's link points at
+ * is not on the page and the link is owed at every width. The screen states
+ * only where it points and the hook draws the conclusion (§5n K27); it used
+ * to hand in `atDesktopSidebarCarriesDestination: false` instead, a boolean
+ * beside an `href` that already implied it.
  *
- * Worth stating outright, because this is the first screen where the flag's
- * *reason* is the **only** reason it applies — the builder passes it for one
- * of two doors and withholds it for the other, so a reader meeting F4 first
+ * Worth stating outright, because this is the first screen where that
+ * *reason* is the **only** reason the link survives — the builder's two doors
+ * differ, one from the other, so a reader meeting F4 first
  * will otherwise read a Desktop back link as an exception to §3.3 rather
  * than as §3.3 answering the question it was written to answer. The sync
  * line is the ordinary rule: Split alone, where `AppShell` puts only a bare
@@ -759,11 +760,12 @@ export function Packing() {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
   const sync = useHousehold((depot) => depot.sync)
+  // The sidebar carries `TRIPS`, never one Trip's name, so this screen's
+  // own back link is owed at Desktop too — and the destination is what says
+  // so now (§5n K27), not a boolean this screen answers about itself.
   const header = useScreenHeader({
     splitPane: false,
-    // See the docstring: the sidebar carries `TRIPS`, never one Trip's name,
-    // so this screen's own back link is owed at Desktop too.
-    atDesktopSidebarCarriesDestination: false,
+    back: `/trips/${tripId}`,
   })
 
   // The two controls' own state. `mode` chooses the partition; `leftOnly`

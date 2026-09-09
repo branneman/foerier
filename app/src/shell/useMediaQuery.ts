@@ -81,32 +81,63 @@ export interface ScreenPlacement {
   splitPane: boolean
 
   /**
-   * At Desktop, does the 216px sidebar already carry the destination this
-   * screen's own back link would point at? Defaults to `true`, because every
-   * caller before S7 has exactly one back link and it always names a sidebar
-   * row (`‹ DEPOT`, `‹ TRIPS`, `‹ ACCOUNT`, both of `InviteIssued`'s) — for
-   * all of them `splitPane` alone was a sound proxy for "is the destination
-   * already on the page", since the two questions happened to have the same
-   * answer at every existing call site.
+   * **Where this screen's own back link points** — the same `href` handed to
+   * `ScreenBand`, stated once and read twice.
    *
-   * `GearListBuilder` is the first screen where the two questions come
-   * apart: it has two doors (spec §4.11), and only one of them
-   * (`?from=trips`, `‹ TRIPS`) names the sidebar's own `TRIPS` row — the
-   * other (the "trip" door, `‹ <name>`) names one specific Trip, which no
-   * sidebar row ever carries. Passing `false` for that door keeps the back
-   * link at Desktop rather than stranding the reader on browser Back, with
-   * no route from the builder to the Trip they opened it from — S7 review
-   * F4.
+   * §3.3's rule is *the back link is drawn unless its destination is already
+   * on the page*, which is a statement about the **destination**. This used
+   * to be asked of the screen instead, as `atDesktopSidebarCarriesDestination`
+   * — a boolean each caller answered once, for good — and §5n K27 replaced
+   * it, because a screen with two doors cannot answer once. `GearListBuilder`
+   * is that screen: `‹ TRIPS` from the Trips card names a sidebar row and
+   * `‹ VOSGES — OCT` from the trip's own band names one specific Trip, which
+   * no sidebar row ever carries, so the honest answer differs per route and
+   * the screen had to recompute the boolean from its query string. Handing in
+   * the destination lets {@link sidebarCarries} answer, and the recomputation
+   * goes away with the parameter.
    *
-   * `Packing` (S9a, F4) is the second, and the first where this flag's
-   * *reason* is the **only** reason it applies: it has one door, `‹ <name>`,
-   * pointing at the Trip it belongs to, so the flag is `false`
-   * unconditionally and the back link is drawn at every width. Worth naming
-   * here, because a reader meeting that screen first will otherwise read its
-   * Desktop back link as an exception to the rule below rather than as the
-   * rule answering the question it was written for.
+   * Neither caller was ever *drawn* wrong — F4 kept `‹ ALPS 2026` at Desktop
+   * and the builder's two doors already differed. What was wrong was that the
+   * fact lived twice: once as this flag and once as the `href` beside it,
+   * with nothing making them agree.
    */
-  atDesktopSidebarCarriesDestination?: boolean
+  back: string
+}
+
+/**
+ * The hrefs a **labelled** nav row already puts on the page at Desktop, which
+ * is the whole of what {@link ScreenPlacement.back} is checked against.
+ *
+ * The three destinations plus Account — which is deliberately *not* a fourth
+ * destination (it is reached from the avatar, so the tab bar stays at three)
+ * but is a labelled row in the sidebar, which is the only mode this question
+ * is asked in.
+ *
+ * `app/src/shell/AppShell.tsx` owns the rows themselves; `AppShell.test.tsx`
+ * asserts that every row it draws is one this list carries, so the two cannot
+ * drift into a link that is withheld against a row that is not there.
+ */
+const SIDEBAR_ROWS: readonly string[] = ['/', '/trips', '/find', '/account']
+
+/**
+ * ...and the routes `App.tsx` **redirects** to one of those at Desktop, which
+ * put the destination on the page just as surely. Both unfold into Account's
+ * own cards there (§11), so `‹ PEOPLE & LOGINS` at Desktop would have bounced
+ * through a redirect to a row already in the navigation.
+ */
+const REDIRECTED_TO_SIDEBAR: readonly string[] = [
+  '/account/people',
+  '/account/devices',
+]
+
+/**
+ * Does a labelled sidebar row already carry this destination at Desktop?
+ *
+ * Exported for the suites that pin the two lists against what `AppShell` and
+ * `App.tsx` actually draw; screens ask through {@link useScreenHeader}.
+ */
+export function sidebarCarries(href: string): boolean {
+  return SIDEBAR_ROWS.includes(href) || REDIRECTED_TO_SIDEBAR.includes(href)
 }
 
 /** What {@link useScreenHeader} answers: the band, and the two things in it. */
@@ -161,14 +192,14 @@ export interface ScreenHeader {
  * `‹ DEPOT` points at the Depot. A screen owes the reader that link only where
  * the Depot is not already in front of them.
  *
- * - **At Desktop, never — unless {@link ScreenPlacement.atDesktopSidebarCarriesDestination}
- *   says the sidebar does not carry it.** The 216px sidebar is labeled
- *   navigation and the row the link points at is usually *in* it — which is
- *   what `Screens B` §02A's `Trip screen — S6 desktop` draws: the sidebar
- *   carries `TRIPS` and `SYNCED 14:32`, and the main column carries neither.
- *   `GearListBuilder`'s "trip" door and `Packing` are the two callers for
- *   which that is false, and both say so explicitly rather than having it
- *   derived wrong from `splitPane` alone (S7 review F4).
+ * - **At Desktop, only when {@link sidebarCarries} says no.** The 216px
+ *   sidebar is labeled navigation and the row the link points at is usually
+ *   *in* it — which is what `Screens B` §02A's `Trip screen — S6 desktop`
+ *   draws: the sidebar carries `TRIPS` and `SYNCED 14:32`, and the main
+ *   column carries neither. The exceptions are every screen whose back link
+ *   names **one specific Trip** — `Packing`, `Unpack`, `NoteComposer`,
+ *   `DepotPicker` and `GearListBuilder`'s trip door — because no sidebar row
+ *   ever carries a Trip's name. They do not say so; the destination does.
  * - **At Split, it depends on {@link ScreenPlacement.splitPane}.** The rail
  *   draws no labels, so a screen standing alone there still owes the link —
  *   and every caller but `GearDetail` does stand alone, `GearListBuilder`
@@ -180,7 +211,7 @@ export interface ScreenHeader {
  */
 export function useScreenHeader({
   splitPane,
-  atDesktopSidebarCarriesDestination = true,
+  back,
 }: ScreenPlacement): ScreenHeader {
   const isSplit = useMediaQuery(SPLIT)
   const isDesktop = useMediaQuery(DESKTOP)
@@ -190,14 +221,10 @@ export function useScreenHeader({
   // agree there.
   //
   // The `splitPane: false` branch used to be `!isDesktop` alone, which reads
-  // "never at Desktop" — sound for every caller through S3.5, wrong for
-  // `GearListBuilder`'s "trip" door (S7 review F4): `!atDesktopSidebarCarries-
-  // Destination` is `false` for every existing caller (the default), so this
-  // is unchanged for all of them, and `true` only for the one door whose
-  // destination the sidebar cannot name.
-  const backLink = splitPane
-    ? !isSplit
-    : !isDesktop || !atDesktopSidebarCarriesDestination
+  // "never at Desktop" — sound for every caller through S3.5, wrong from S7's
+  // builder on. It asks the destination now (§5n K27), so a screen whose link
+  // names one Trip keeps it at Desktop without saying anything about itself.
+  const backLink = splitPane ? !isSplit : !isDesktop || !sidebarCarries(back)
   const syncLine = isSplit && !isDesktop
 
   return { band: backLink || syncLine, backLink, syncLine }

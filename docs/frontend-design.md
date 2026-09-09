@@ -333,10 +333,17 @@ withheld at a single width**, because the two answer different questions.
   which is not a width alone. At Desktop the labeled sidebar *is* that
   destination — `Trip screen — S6 desktop` draws `TRIPS` and the sync line in
   the sidebar and neither in the main column — so no screen whose destination
-  is a sidebar row draws one there. Two screens' destination is one specific
-  Trip, which no sidebar row carries: `Packing`, and `GearListBuilder`'s trip
-  door. Both say so with `atDesktopSidebarCarriesDestination: false` and keep
-  their link at Desktop (S7 review F4; `screenBand.test.tsx` asserts it).
+  is a sidebar row draws one there. Five screens' destination is one specific
+  Trip, which no sidebar row carries — `Packing`, `Unpack`, `NoteComposer`,
+  `DepotPicker` and `GearListBuilder`'s trip door — and all five keep their
+  link at Desktop (`screenBand.test.tsx` asserts it). **None of them says so.**
+  Each hands `useScreenHeader` the `href` its back link points at and the hook
+  answers `sidebarCarries` for itself (§5n K27); the parameter used to be a
+  per-screen boolean, `atDesktopSidebarCarriesDestination`, which a screen with
+  two doors cannot answer once — the builder had to recompute it from its own
+  query string, and the fact then lived twice, as the flag and as the `href`
+  beside it, with nothing making the two agree. The sidebar's list and the
+  hook's list are pinned against each other by `AppShell.test.tsx`.
   Below Desktop it depends on the screen: `GearDetail` is the detail half of
   `DepotView` at Split with the Depot list in the pane beside it, and
   `Depot split` contains **no `‹` anywhere**; every other pushed screen has no

@@ -160,7 +160,7 @@ export function AddGear() {
   // `splitPane: false` — see the class docstring: `/add` is its own screen at
   // every width, so at Split the back link is the only route back to the
   // Depot.
-  const header = useScreenHeader({ splitPane: false })
+  const header = useScreenHeader({ splitPane: false, back: '/' })
 
   const nameField = useRef<HTMLInputElement>(null)
 
