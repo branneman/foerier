@@ -7,6 +7,15 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-8);
+    /*
+     * **12 between lines, not 8** — the room `ui/Chip`'s 32px hit extension
+     * is clamped inside. The `+ tag` ghost is a button painted at 32 and
+     * reaching 44 through a `::after` of 6 each side, so two wrapped lines
+     * 8 apart would overlap by 4 and a tap in that band would be decided by
+     * paint order. The column gap stays at the drawn 8; only the gap between
+     * lines pays for the target.
+     */
+    row-gap: var(--space-12);
   }
 
   .screen {

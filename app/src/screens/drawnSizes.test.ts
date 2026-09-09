@@ -611,4 +611,161 @@ describe("ruling O's drawn sizes", () => {
     expect(ruleBody(css, '.closeButton')).toMatch(FLOOR)
     expect(ruleBody(css, '.closeButton::after')).toBeUndefined()
   })
+  /**
+   * **The eight that had none** — the departure `patterns.md` §6.5 carried
+   * from the round-2 closeout until now: controls the boards draw between 32
+   * and 40px that were reachable only at their paint. Each takes a clamp
+   * measured against **its own row**, and the six cases below are six
+   * different bounds, which is why one shared declaration was never the
+   * answer.
+   */
+  it("clamps the trip card's phase chip inside the card's own 8px gap", () => {
+    const css = moduleCss('..', 'components', 'TripCard.module.css')
+    const chip = ruleBody(css, '.chip')
+
+    expect(chip).toBeDefined()
+    expect(chip).not.toMatch(FLOOR)
+    expect(chip).toMatch(/min-height:\s*max\(2rem,\s*32px\)/)
+    expect(chip).toMatch(/position:\s*relative/)
+    // 32 + 6 + 6 = 44, and 6 is what the card's own flex `gap` allows. What
+    // the extension takes is `.surface`'s — the card-wide link the chip is
+    // raised above — which is the deliberate half of this one.
+    expect(ruleBody(css, '.chip::after')).toMatch(/inset:\s*-0\.375rem 0/)
+    expect(ruleBody(css, '.card')).toMatch(/gap:\s*var\(--space-8\)/)
+  })
+
+  it("clamps the slice bar's arrange readout inside the bar's 12px column gap", () => {
+    const css = moduleCss('..', 'components', 'SliceBar.module.css')
+    const readout = ruleBody(css, '.readout')
+
+    expect(readout).toBeDefined()
+    expect(readout).not.toMatch(FLOOR)
+    expect(readout).toMatch(/min-height:\s*max\(2rem,\s*32px\)/)
+    expect(readout).toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.readout::after')).toMatch(/inset:\s*-0\.375rem 0/)
+    expect(ruleBody(css, '.bar')).toMatch(/gap:\s*var\(--space-12\)/)
+  })
+
+  /**
+   * The tag picker's ✕, and the one case that does **not** reach 44 on both
+   * axes: 44 tall, 40 wide. The missing 4 could only come from the tag's own
+   * label, and a tap that appears to land on the word would then delete it.
+   * The `row-gap` is asserted beside it because the vertical half is only
+   * legitimate while the wrapped lines are 12 apart.
+   */
+  it("clamps the tag picker's ✕ at 44 × 40, over a 12px row gap", () => {
+    const css = moduleCss('..', 'components', 'TagPicker.module.css')
+    const remove = ruleBody(css, '.chipRemove')
+
+    expect(remove).toBeDefined()
+    expect(remove).not.toMatch(FLOOR)
+    expect(remove).toMatch(/min-height:\s*2rem/)
+    expect(remove).toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.chipRemove::after')).toMatch(
+      /inset:\s*-0\.375rem -0\.25rem/,
+    )
+    expect(ruleBody(css, '.chips')).toMatch(/row-gap:\s*var\(--space-12\)/)
+  })
+
+  /**
+   * `ui/Chip`'s 32px tag size reaches 44 through 6px each side, so the one
+   * caller that wraps a row of them owes the room. Pinned here because the
+   * component's own suite cannot see its callers, and a `row-gap` deleted as
+   * cosmetic is exactly how the overlap comes back.
+   */
+  it('keeps gear detail’s tag row 12 apart between lines', () => {
+    const css = moduleCss('GearDetail.module.css')
+    const chips = ruleBody(css, '.tagChips')
+
+    expect(chips).toMatch(/gap:\s*var\(--space-8\)/)
+    expect(chips).toMatch(/row-gap:\s*var\(--space-12\)/)
+  })
+
+  /**
+   * **The sort-and-group sheet is ruling O's third category, both ways at
+   * once.** Its sheet rows are stacked full width with no gap, so no
+   * extension is possible without deciding a tap by paint order — they take
+   * the explicit 48 the board's *rows 40+* permits. Its inline rows, the
+   * same options drawn in the arrange row, keep their 36 and take the clamp,
+   * because there the 16 between wrapped lines pays for it.
+   */
+  it('paints the sort sheet’s rows at 48 and clamps the inline ones at 44', () => {
+    const css = moduleCss('..', 'components', 'SortGroupSheet.module.css')
+
+    // Matched at the start of its own line: `ruleBody` would otherwise
+    // return `.inline .row`'s body, whose selector merely ends in `.row`.
+    const row = /\n {2}\.row\s*\{([^}]*)\}/.exec(css)?.[1]
+    expect(row).toMatch(FLOOR)
+    // Anchored for the same reason: `.inline .row::after` exists and is not
+    // this rule.
+    expect(/\n {2}\.row::after/.test(css)).toBe(false)
+    // The stacked column with nothing between rows — the fact that makes an
+    // extension impossible here.
+    const rows = /\n {2}\.rows\s*\{([^}]*)\}/.exec(css)?.[1]
+    expect(rows).toBeDefined()
+    expect(rows).not.toMatch(/gap:/)
+
+    const inline = ruleBody(css, '.inline .row')
+    expect(inline).toMatch(/min-height:\s*2\.25rem/)
+    expect(inline).toMatch(/position:\s*relative/)
+    // 36 + 4 + 4 = 44, vertical only: they sit 4px apart on one line.
+    expect(ruleBody(css, '.inline .row::after')).toMatch(/inset:\s*-0\.25rem 0/)
+    expect(ruleBody(css, '.inline .rows')).toMatch(/gap:\s*var\(--space-4\)/)
+  })
+
+  /**
+   * The Split rail's links — the one case where a horizontal extension is
+   * free, because the rail is the shell's own column and the only thing past
+   * its edge is the screen, which its border separates.
+   */
+  it("clamps the rail's links at 44 tall and the rail's full 56 wide", () => {
+    const css = moduleCss('..', 'shell', 'AppShell.module.css')
+    const rail = ruleBody(css, '.rail')
+
+    expect(rail).toBeDefined()
+    expect(rail).not.toMatch(FLOOR)
+    expect(rail).toMatch(/position:\s*relative/)
+    // 40 painted (`.railSquare`) + 2 above and below = 44, which is all the
+    // rail's own 4px column gap allows; 8 each side is the rest of the 56.
+    expect(ruleBody(css, '.railSquare')).toMatch(/height:\s*2\.5rem/)
+    expect(ruleBody(css, '.rail::after')).toMatch(
+      /inset:\s*-0\.125rem -0\.5rem/,
+    )
+    expect(ruleBody(css, '.nav-rail')).toMatch(/gap:\s*var\(--space-4\)/)
+  })
+
+  /**
+   * The inline `Save` / `Cancel` pair, in all four copies. Asserted per file
+   * rather than once: they are four stylesheets, so a regression in one is
+   * invisible to the others — the reason F5's two filter pills are pinned
+   * twice above. The duplication itself is `technical-debt.md`'s entry, not
+   * this test's business.
+   */
+  it.each([
+    ['..', 'components', 'HomePicker.module.css'],
+    ['..', 'components', 'OwnerPicker.module.css'],
+    ['..', 'components', 'ParticipantPicker.module.css'],
+    ['People.module.css'],
+  ] as const)(
+    'clamps %s %s %s\u2019s inline Save/Cancel at 48',
+    (...segments) => {
+      const css = moduleCss(...segments)
+
+      for (const selector of ['.inlineSave', '.inlineCancel']) {
+        const body = ruleBody(css, selector)
+        expect(body, selector).toBeDefined()
+        expect(body, selector).not.toMatch(FLOOR)
+        // 40 painted, stated — an extension is only worth what it measures from.
+        expect(body, selector).toMatch(/min-height:\s*2\.5rem/)
+        expect(body, selector).toMatch(/position:\s*relative/)
+      }
+
+      // One rule for the pair, 40 + 4 + 4 = 48, vertical only: they sit 8px
+      // apart and 8px from the input, so a sideways grow would put a tap meant
+      // for `Cancel` on `Save`.
+      expect(css).toMatch(
+        /\.inlineSave::after,\s*\.inlineCancel::after\s*\{[^}]*inset:\s*-0\.25rem 0/,
+      )
+    },
+  )
 })

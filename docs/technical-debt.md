@@ -68,13 +68,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   owns that file is the one that should make the claim false. Argued in the
   memo's own JSDoc, `shared/src/selectors/slice.ts`, anchor:
   `The rejected alternative was memoising`
-- **Eight touch controls between 32 and 40px carry no hit extension.**
-  `TripCard`'s phase chip, `ui/Chip`'s two sizes rendered as buttons, the
-  slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows, the
-  Split rail's links and the inline Save/Cancel pair copied into four
-  pickers. Each wants ruling O's `::after` with a clamp chosen against its own
-  row, and the chip's trip-screen twin already has it.
-  [`patterns.md`](patterns.md) §6.5, anchor: `touch-surface controls`
 - **One control answers to two accessible names.** Add gear's hand-rolled
   Owned-count stepper says `Fewer` / `More`; `ui/Stepper` says
   `Decrease {label}` / `Increase {label}`. A screen-reader user meets two names

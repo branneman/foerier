@@ -31,11 +31,22 @@
     gap: var(--space-4);
   }
 
+  /* The arrange row's own density: 36 painted, and the 44 reached through a
+     `::after` clamped in the 16 between wrapped lines. Vertical only — these
+     sit 4px apart on one line, so a sideways grow would put a tap meant for
+     `A→Z` on `NEWEST`. */
   .inline .row {
+    position: relative;
     min-height: 2.25rem;
     padding-inline: var(--space-12);
     border: var(--stroke-rule) solid var(--color-rule-control);
     border-radius: var(--radius-control);
+  }
+
+  .inline .row::after {
+    content: '';
+    position: absolute;
+    inset: -0.25rem 0;
   }
 
   .inline .row[aria-pressed='true'] {
@@ -68,14 +79,23 @@
     list-style: none;
   }
 
-  /* Rows 40+ — the sheet primitive (Screens A §03). */
+  /*
+   * **Rows 40+ — the sheet primitive (Screens A §03), and this one takes the
+   * `+`.** It is the one control on this list that cannot reach its target
+   * through a `::after`: the rows are stacked full-width in a column with no
+   * gap at all, so any extension overlaps its neighbour and a tap in the
+   * overlap is decided by paint order — on a list whose whole job is picking
+   * one row rather than the one above it. The board's own range permits the
+   * paint, and every other sheet row in the app already states it
+   * (`PieceStatusSheet`'s `.rowButton`, `OutcomeSheet`'s `.rosterRow`).
+   */
   .row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-12);
     width: 100%;
-    min-height: 2.5rem;
+    min-height: max(3rem, 48px);
     padding-inline: var(--space-4);
     border: 0;
     background: none;

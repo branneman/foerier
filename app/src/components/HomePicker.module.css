@@ -229,6 +229,7 @@
   }
 
   .inlineSave {
+    position: relative;
     flex: none;
     min-height: 2.5rem;
     padding-inline: var(--space-12);
@@ -248,6 +249,7 @@
   }
 
   .inlineCancel {
+    position: relative;
     flex: none;
     min-height: 2.5rem;
     padding-inline: var(--space-8);
@@ -256,6 +258,23 @@
     color: var(--color-ink-muted);
     font: var(--text-body) var(--font-ui);
     cursor: pointer;
+  }
+
+  /*
+   * 40 painted + 4 above and below = 48, vertical only. The row is ≥64 tall
+   * (a 48px input plus its own 8px block padding), so the extension is well
+   * inside it; sideways the pair sits 8px apart and 8px from the input, and a
+   * grow there would put a tap meant for `Cancel` on `Save`.
+   *
+   * One of four identical copies — `HomePicker`, `ParticipantPicker`,
+   * `OwnerPicker` and `People` — which is the duplication
+   * `technical-debt.md` records, not a fifth spelling of the rule.
+   */
+  .inlineSave::after,
+  .inlineCancel::after {
+    content: '';
+    position: absolute;
+    inset: -0.25rem 0;
   }
 
   .addPlace {

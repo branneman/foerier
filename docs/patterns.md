@@ -792,13 +792,28 @@ examples, and `app/src/screens/drawnSizes.test.ts` pins each case by parsing
 the stylesheet text, asserting the paint, the presence of the extension and —
 where a board states a number — the inset.
 
-*Departures:* eight touch-surface controls between 32 and 40px carry no
-extension (`TripCard`'s phase chip, `ui/Chip`'s two sizes as buttons, the
-slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows, the Split
-rail's links, and the inline Save/Cancel pair copied four times).
-`GearDetail`'s segments were the ninth and are closed: folding them into
-`ui/SegmentedControl` removed the `overflow: hidden` that made an extension
-impossible and gave them one.
+**A wrapping row of controls owes the extension its room.** Two lines whose
+extensions overlap put the tap in the band between them at the mercy of paint
+order, so a caller that wraps `ui/Chip`'s 32px tag size states a `row-gap` of
+12 — `GearDetail`'s `.tagChips` and `TagPicker`'s `.chips` both say so, and
+`drawnSizes.test.ts` pins the gap beside the inset, since the component's own
+suite cannot see its callers.
+
+**Where no extension is possible, the paint moves.** `SortGroupSheet`'s sheet
+rows are stacked full width with no gap at all, so they take the explicit 48
+the board's *rows 40+* permits rather than an `::after` that would decide a
+tap by paint order; the same options drawn **inline** in the arrange row keep
+their 36 and take the clamp, because 16 between wrapped lines pays for it.
+One control, two rows, two answers — which is why this can never be one
+declaration.
+
+*Departures:* `TagPicker`'s ✕ reaches 44 × **40**, not 44 × 44: the missing 4
+could only come from the tag's own label, and a tap that appears to land on
+the word would then delete it. The Desktop sidebar's rows paint 36 and carry
+no extension — a pointer surface, and outside the eight this rule closed.
+`GearDetail`'s segments were a ninth and are closed the same way: folding them
+into `ui/SegmentedControl` removed the `overflow: hidden` that made an
+extension impossible and gave them one.
 *Argued in:* `docs/design/README.md` §5b ruling O; [`frontend-design.md` §2.1](frontend-design.md#21-root-and-units); `ui/styles/base.css`.
 
 ### 6.6 A flex `gap` is not a character; adjacent spans need a real space

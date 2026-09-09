@@ -30,7 +30,42 @@
   }
 
   button.chip {
+    position: relative;
     cursor: pointer;
+  }
+
+  /*
+   * **Ruling O, for the two sizes a board draws below the floor.** A chip is
+   * not a primary action and the boards draw it at 36 and 32, so the paint
+   * stays and the hit area is a non-painting `::after` — vertical only,
+   * because chips sit 8px apart on one line and a sideways grow would put a
+   * tap meant for `TRIP: ALPS 2026` on the ghost beside it.
+   *
+   * The clamp a caller owes: a **wrapping** chip row must keep a `row-gap`
+   * of at least twice the inset, or two lines' extensions overlap and a tap
+   * in the band between them is decided by paint order. 8px is enough for
+   * the 36 (4 + 4); the 32 needs 12, which is why `GearDetail.module.css`'s
+   * `.tagChips` states a `row-gap` of its own and says so.
+   */
+  button.chip::after {
+    content: '';
+    position: absolute;
+    /* 36 + 4 + 4 = 44. */
+    inset: -0.25rem 0;
+  }
+
+  /* 32 + 6 + 6 = 44. */
+  button.chip.tag::after {
+    inset: -0.375rem 0;
+  }
+
+  /*
+   * A chip inside a group is **stretched by `.remove`'s own 48**, so it is
+   * already a floor-height target and an extension would only reach into the
+   * rows above and below for nothing.
+   */
+  .group > button.chip::after {
+    content: none;
   }
 
   /* 36px — Components §04 settles the drift across boards. */

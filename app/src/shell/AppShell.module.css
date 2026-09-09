@@ -72,7 +72,23 @@
   }
 
   .rail {
+    position: relative;
     justify-content: center;
+  }
+
+  /*
+   * The rail link is sized by the 40px square inside it, and the rail's own
+   * column gap is 4 — so the extension takes 2 above and below (40 + 2 + 2 =
+   * 44, two neighbours' extensions meeting rather than overlapping) and 8
+   * each side, which is the rest of the 56px rail. Sideways is free here in
+   * a way it never is in a row: the rail is the shell's own column, and the
+   * only thing beyond its right edge is the screen — which the border
+   * separates and which no extension crosses.
+   */
+  .rail::after {
+    content: '';
+    position: absolute;
+    inset: -0.125rem -0.5rem;
   }
 
   /* The 40px square an icon or the ACCOUNT avatar sits in. */

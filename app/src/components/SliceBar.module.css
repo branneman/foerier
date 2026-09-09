@@ -76,6 +76,7 @@
   }
 
   .readout {
+    position: relative;
     display: flex;
     align-items: center;
     gap: var(--space-4);
@@ -89,6 +90,16 @@
     text-transform: uppercase;
     white-space: nowrap;
     cursor: pointer;
+  }
+
+  /* 32 painted + 6 each side = 44, vertical only: `.bar`'s own 12px column
+     gap is what it is clamped inside, and the hint sits immediately beside it
+     on the same row — a sideways grow would take taps meant for nothing at
+     all, and on a wrapped `.arrangeRow` the 16 between lines is the bound. */
+  .readout::after {
+    content: '';
+    position: absolute;
+    inset: -0.375rem 0;
   }
 
   .arrangeRow {

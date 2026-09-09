@@ -158,6 +158,21 @@
   }
 
   /*
+   * 32 painted + 6 each side = the 44 minimum, clamped inside the card's own
+   * 8px column gap so the extension stays off the name above and the meta
+   * below. **Vertical only, and what it takes is the card link's**:
+   * `.surface` stretches across the whole card, and the chip is raised above
+   * it, so those 6px each side are 6px the card's own link no longer has. That
+   * is the right trade — the chip is the card's one control besides the CTA,
+   * and a tap that lands just above it means the phase, not the trip.
+   */
+  .chip::after {
+    content: '';
+    position: absolute;
+    inset: -0.375rem 0;
+  }
+
+  /*
    * A Draft's chip is the quiet register: the card draws `DRAFT · 0 ENTRIES`
    * (S7's noun ruling; drawn `GEAR LISTED` before it) as a plain mono line
    * rather than as an amber pill, because amber is the trip world and a
