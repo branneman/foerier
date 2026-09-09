@@ -72,13 +72,19 @@ describe('the deployed api', () => {
     // The failure this exists for is a reverse proxy that strips or rewrites
     // `Authorization`: every authenticated request would 401 in production and
     // pass everywhere else. A *rejected* token proves the header arrived —
-    // Hono's own 401 body is the evidence that Hono, not Caddy, answered.
+    // the app's own 401 body is the evidence that Hono, not Caddy, answered.
+    //
+    // The body is `sync-protocol.md` §6.3's envelope, which every error the
+    // API returns now wears; it was `{ error: 'unauthorized' }` until the two
+    // shapes were unified. **This assertion and the server move together**:
+    // Tier 4 runs against the box *after* a deploy, so the run that sees this
+    // line is the run against the build that emits it.
     const res = await fetch(`${API}/api/v1/auth/me`, {
       headers: { Authorization: 'Bearer not-a-real-device-token' },
     })
 
     expect(res.status).toBe(401)
-    expect(await res.json()).toEqual({ error: 'unauthorized' })
+    expect(await res.json()).toMatchObject({ error: { code: 'unauthorized' } })
   })
 })
 

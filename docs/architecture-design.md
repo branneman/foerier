@@ -1422,14 +1422,29 @@ byte-exact.
   `shared/src/selectors/depot.ts`'s `depotCounts`, and `GearDetail.tsx`'s
   `metaLine`. This is the most important entry — two screens two lines apart
   depend on it and no durable doc said so until now.
-- **Two different 401 body shapes.** `/auth/*` returns a flat
-  `{ "error": "unauthorized" }` (`api/src/auth/middleware.ts:41,63,67,69,72`);
-  `/sync/*` returns sync §6.3's `{ error: { code, message, detail } }`
-  (`api/src/sync/routes.ts:47-60`, whose comment ends "Unifying the two shapes
-  is a later decision for whoever owns `/auth/*`"). `auth-design.md` specifies
-  no 401 body at all, so neither shape is a contract violation — but the
-  divergence is real, and the decision to unify them is deferred rather than
-  made.
+- **Two different 401 body shapes, since unified onto one.** `/auth/*`
+  returned a flat `{ "error": "unauthorized" }` and `/sync/*` sync §6.3's
+  `{ error: { code, message, detail } }`; `auth-design.md` specified no 401
+  body at all, so neither was a contract violation, and the decision to unify
+  was deferred rather than made. **It is made after the MVP, and the deferral
+  had been mostly a deferral of *checking*.** Two facts decided it, both
+  verified rather than assumed: the app's auth client reads the **status** and
+  never the body (`AuthRequestError(res.status)`), and the sync transport
+  already tolerated both shapes by design — so no installed PWA could notice,
+  and the expand-contract discipline is not engaged.
+
+  §6.3's envelope is emitted at the one place a 401 is decided
+  (`api/src/auth/middleware.ts`), which **deleted `withSyncAuthShape`** — a
+  wrapper that existed only to rewrite that answer on the way out of
+  `/sync/*`. `/auth/*`'s own bodies take the same envelope and **keep their
+  own codes**: `auth_failed` and `slow_down` are auth's, and §6.3's five are
+  the batch-level set — unifying the envelope was the debt, renaming what a
+  client could switch on would have been a second change. The vague failure's
+  `message` is constant and its `detail` empty, because the moment either
+  varies by cause the indistinguishability auth-design §3.3 asks for is gone.
+  The client keeps both arms of its tolerant read, which is now a version
+  tolerance rather than a live divergence: a build of the app can meet a box
+  running the older API.
 - **`WhereaboutsCard` has a known future collision.** `HOME_LABEL` is
   hardcoded inside the map and `key={slice.kind}` collides the moment two
   `'trip'` slices coexist — i.e. multiple active trips. Recorded today only

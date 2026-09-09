@@ -18,6 +18,43 @@ export interface AuthMiddlewareDeps {
 }
 
 /**
+ * **One body shape for every failure the API returns**, `sync-protocol.md`
+ * §6.3's.
+ *
+ * This middleware answered `{ "error": "unauthorized" }` and `/sync/*`
+ * answered the structured object, so the API spoke two shapes for one status
+ * — recorded as a divergence rather than a broken contract, since
+ * `auth-design.md` specified no 401 body at all. It is one shape now, emitted
+ * here, at the single place a 401 is decided.
+ *
+ * That deletes `withSyncAuthShape` (`api/src/sync/routes.ts`), which existed
+ * only to rewrite this middleware's answer into §6.3's on the way out.
+ *
+ * **Nothing on the wire depended on the old shape**, which is what made the
+ * change safe rather than a lockstep break: the app's auth client reads the
+ * *status* and never the body (`AuthRequestError(res.status)`), and the sync
+ * transport already tolerated both shapes by design. An installed PWA running
+ * an older build is therefore unaffected.
+ *
+ * `detail` is always `{}` here. The field is §6.3's, and a 401 has nothing to
+ * put in it that would not be a hint about why authentication failed.
+ */
+function unauthorized(c: {
+  json: (body: unknown, status: 401) => Response
+}): Response {
+  return c.json(
+    {
+      error: {
+        code: 'unauthorized',
+        message: 'Missing, revoked, or expired device token.',
+        detail: {},
+      },
+    },
+    401,
+  )
+}
+
+/**
  * One middleware in front of every authenticated route
  * (`auth-design.md` §9.3):
  *
@@ -38,7 +75,7 @@ export function createAuthMiddleware({
 }: AuthMiddlewareDeps): MiddlewareHandler<{ Variables: AuthVariables }> {
   return async (c, next) => {
     const token = bearerFrom(c.req.header('authorization'))
-    if (token === null) return c.json({ error: 'unauthorized' }, 401)
+    if (token === null) return unauthorized(c)
 
     const now = new Date(clock.now())
 
@@ -60,16 +97,12 @@ export function createAuthMiddleware({
       .where('device.token_hash', '=', hashSecret(token))
       .executeTakeFirst()
 
-    if (device === undefined) return c.json({ error: 'unauthorized' }, 401)
+    if (device === undefined) return unauthorized(c)
     // Revocation is immediate and server-side: a revoked Device fails at its
     // very next request (auth-design.md §6.2).
-    if (device.revoked_at !== null)
-      return c.json({ error: 'unauthorized' }, 401)
-    if (device.expires_at.getTime() <= now.getTime()) {
-      return c.json({ error: 'unauthorized' }, 401)
-    }
-    if (device.disabled_at !== null)
-      return c.json({ error: 'unauthorized' }, 401)
+    if (device.revoked_at !== null) return unauthorized(c)
+    if (device.expires_at.getTime() <= now.getTime()) return unauthorized(c)
+    if (device.disabled_at !== null) return unauthorized(c)
 
     // Sliding expiry, throttled so the common sync request stays read-only.
     if (shouldRefreshLastSeen(device.last_seen_at, clock)) {

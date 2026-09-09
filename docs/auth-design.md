@@ -103,6 +103,27 @@ drag domain state into the thin op store the architecture deliberately keeps
 This is the one place where an access row references domain data, and keeping it
 a dumb UUID is what stops auth and domain from entangling.
 
+### 2.2 One error body, for every failure the API returns
+
+`sync-protocol.md` §6.3's envelope — `{ error: { code, message, detail } }` —
+is what **every** route answers with, `/auth/*` included. This document
+specified no 401 body for its first four slices, and one shipped anyway: a
+flat `{ "error": "unauthorized" }` from the auth middleware, beside `/sync/*`'s
+structured object. Recorded as a divergence and unified after the MVP.
+
+Two rules come with it:
+
+- **The envelope is shared; the codes are not.** §6.3's five codes are the
+  batch-level set `/sync/*` is bound by. `/auth/*` keeps `auth_failed` (its one
+  indistinguishable enrolment/sign-in failure, §3.3) and `slow_down`, inside
+  the same envelope.
+- **The vague failure's `message` is a constant and its `detail` is empty.**
+  A message that varies by cause is the indistinguishability of §3.3 leaking
+  out through a field nobody was watching.
+
+The 401 is emitted at one place, the auth middleware, which is what lets
+`/sync/*` bind that middleware directly instead of rewriting its answer.
+
 ## 3. Enrolment
 
 There is **no registration endpoint that can be called without an Invite.** That

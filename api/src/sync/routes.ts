@@ -45,38 +45,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * `requireAuth`'s own 401 is `{ "error": "unauthorized" }` — the flat shape
- * `/auth/*` shipped with in the auth slice. `auth-design.md` specifies no
- * body for a 401, so that shape is incidental rather than contractual, but an
- * installed app may already parse it, so it stays exactly as it is for
- * `/auth/*`; rewriting another slice's observable responses is not this
- * route's business.
- *
- * `/sync/*` is bound by a different contract: `sync-protocol.md` §6.3 lists
- * 401 in the *batch-level* error table alongside 400/413/429/5xx, all under
- * the one `{ error: { code, message, detail } }` shape. This wrapper is what
- * makes `/sync/*`'s 401 honour that, without touching `requireAuth` or
- * `/auth/*` at all. Unifying the two shapes is a later decision for whoever
- * owns `/auth/*`.
- */
-function withSyncAuthShape(
-  requireAuth: MiddlewareHandler<Vars>,
-): MiddlewareHandler<Vars> {
-  return async (c, next) => {
-    const result = await requireAuth(c, next)
-    if (result !== undefined && result.status === 401) {
-      return batchError(
-        c,
-        401,
-        'unauthorized',
-        'Missing, revoked, or expired device token.',
-      )
-    }
-    return result
-  }
-}
-
-/**
  * A `SyncError` and a driver failure both become the same `server_error` to
  * the client — §6.3 has no code for either, and its per-op set is closed —
  * but they are logged distinctly, which is the whole point of `SyncError`
@@ -102,7 +70,7 @@ export function createSyncRoutes({
 }: SyncRoutesDeps) {
   const sync = new Hono<Vars>()
 
-  sync.use('*', withSyncAuthShape(requireAuth))
+  sync.use('*', requireAuth)
 
   // `/sync/*` gets its own bucket, much higher than `/auth/*`'s, and keyed by
   // Device rather than by IP: every caller here is already authenticated —

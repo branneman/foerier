@@ -74,10 +74,16 @@ function defaultCodeFor(status: number): string {
 }
 
 /**
- * Pulls a code out of a failed response's body, tolerating both shapes on
- * the wire: `/sync/*`'s `{ error: { code, message, detail } }` (§6.3) and
- * `/auth/*`'s flat `{ error: "unauthorized" }`. Never assumes either — a
- * body that matches neither, or fails to parse at all, falls back to the
+ * Pulls a code out of a failed response's body, tolerating both shapes it
+ * could meet: §6.3's `{ error: { code, message, detail } }`, which is what
+ * every route now answers, and the flat `{ error: "unauthorized" }` that
+ * `/auth/*` spoke until the two were unified.
+ *
+ * **The flat arm stays after the unification**, and not out of sentiment: a
+ * client updates when its cached shell does and a server when it is deployed,
+ * so a build of this app can meet a box running the older API — the same
+ * asymmetry the expand-contract discipline exists for. Never assumes either;
+ * a body that matches neither, or fails to parse at all, falls back to the
  * status-code default rather than throwing.
  */
 async function codeFrom(res: Response): Promise<string> {

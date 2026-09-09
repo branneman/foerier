@@ -13,8 +13,23 @@ export interface AuthRoutesDeps {
   limiter: RateLimiter
 }
 
-/** One indistinguishable failure for every way enrolment or sign-in can fail. */
-const VAGUE_FAILURE = { error: 'auth_failed' } as const
+/**
+ * One indistinguishable failure for every way enrolment or sign-in can fail.
+ *
+ * In `sync-protocol.md` §6.3's envelope, which is now the API's only error
+ * shape (`auth/middleware.ts`'s own note explains why that was safe to
+ * change). The **code stays auth's own**: §6.3's five codes are the
+ * batch-level set for `/sync/*`, and `auth_failed` is deliberately not one of
+ * them — unifying the envelope is this change; renaming what a client could
+ * switch on would be a second one.
+ *
+ * `message` is a constant and `detail` is always empty, which is the whole
+ * point of this constant existing: the moment either varies by cause, the
+ * indistinguishability auth-design §3.3 asks for is gone.
+ */
+const VAGUE_FAILURE = {
+  error: { code: 'auth_failed', message: 'Authentication failed.', detail: {} },
+} as const
 
 /**
  * Reads a JSON body without trusting it.
@@ -68,7 +83,16 @@ export function createAuthRoutes({
   // (auth-design.md §9.4).
   const rateLimited: MiddlewareHandler = async (c, next) => {
     if (!limiter.take(clientKey(c.req.raw.headers))) {
-      return c.json({ error: 'slow_down' }, 429)
+      return c.json(
+        {
+          error: {
+            code: 'slow_down',
+            message: 'Too many attempts. Try again shortly.',
+            detail: {},
+          },
+        },
+        429,
+      )
     }
     await next()
     return undefined

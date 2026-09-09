@@ -570,9 +570,10 @@ describe('the /sync routes', () => {
   }
 
   /**
-   * `/sync/*`'s 401 must use §6.3's one batch-error shape — unlike
-   * `/auth/*`'s flat `{ error: 'unauthorized' }`, which is a different,
-   * earlier-shipped contract this router deliberately leaves alone.
+   * §6.3's one batch-error shape — which is now **every** route's, `/auth/*`
+   * included, so this is no longer a claim about `/sync/*` alone. It still
+   * belongs here: this suite is what would notice if the middleware's own
+   * answer stopped honouring §6.3 for the routes bound by it.
    */
   async function expectUnauthorized(res: Response): Promise<void> {
     expect(res.status).toBe(401)

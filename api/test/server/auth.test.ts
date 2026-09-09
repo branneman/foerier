@@ -504,7 +504,16 @@ describe('the join and sign-in ceremonies', () => {
       const res = await signIn(replayed)
 
       expect(res.status).toBe(401)
-      await expect(res.json()).resolves.toEqual({ error: 'auth_failed' })
+      // §6.3's envelope, which every error the API returns now wears; the
+      // code stays auth's own, and the message and detail stay constant so
+      // one failure is indistinguishable from another.
+      await expect(res.json()).resolves.toEqual({
+        error: {
+          code: 'auth_failed',
+          message: expect.any(String),
+          detail: {},
+        },
+      })
     })
 
     it('advances its own counter, so a second sign-in in one run is accepted', async () => {

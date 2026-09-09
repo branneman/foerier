@@ -289,13 +289,6 @@ them looking for work is the thing this section exists to stop.
   not a code change — and so does the card confirms' Cancel-first versus
   Action-first order, which the S3-era and S9 boards draw differently.
   [`patterns.md`](patterns.md) §4.5, anchor: `no board draws as a`
-- **Two 401 body shapes.** `/auth/*` answers a flat `{ "error": "unauthorized" }`
-  and `/sync/*` answers [`sync-protocol.md`](sync-protocol.md) §6.3's structured
-  object. Neither breaks a contract — [`auth-design.md`](auth-design.md)
-  specifies no 401 body at all — but the divergence is real and the decision to
-  unify is deferred rather than made.
-  [`architecture-design.md`](architecture-design.md) §12.4, anchor:
-  `Unifying the two shapes`, which is also the comment at `api/src/sync/routes.ts`
 
 ### Consolidation
 
