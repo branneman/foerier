@@ -451,7 +451,7 @@ export function Find() {
 
   const trimmed = query.trim()
   const matches = useMemo(() => findGear(state, trimmed), [state, trimmed])
-  const view = useMemo(() => containmentView(state), [state])
+  const view = containmentView(state)
 
   // Recent searches are a per-viewer convenience, not a fact about the
   // household — nothing here is an op, so nothing here is folded, synced, or

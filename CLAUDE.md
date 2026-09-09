@@ -761,9 +761,13 @@ records what moved while it was being built**, and
   the same pass — and `CONTAINER_ANCESTORS` in `slice.ts`, which the dimension's
   `valuesOf` and the grouping's `keyOf` **share**, so the filter and the group
   can never disagree about what contains what. The rejected alternative,
-  memoising `containmentView` itself, now has three callers and is debt:
-  `containment.ts` states its own non-caching as a property, and the slice that
-  owns that file is the one that should make the claim false.
+  memoising `containmentView` itself, was recorded as debt on the ground that
+  `containment.ts` stated its own non-caching as a property and the file that
+  owns the claim is the one that should falsify it. **It since has**: the view
+  is memoised on the fold in `containment.ts`, the six screens that hoisted a
+  `useMemo` by hand no longer do, and `slice.ts`'s ancestor index survives
+  beside it — the view answers *who holds this*, a dimension needs *every
+  ancestor of this*.
 - **`MIXED` is decided by residence, not by holder id, and that is what keeps
   the two worlds agreeing.** A loose residence *is* a residence, so one Piece in
   Crate B beside one loose reads `▸ MIXED` — which is what F4's ALL mode already

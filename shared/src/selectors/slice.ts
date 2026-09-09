@@ -204,18 +204,15 @@ const NOT_IN_A_CONTAINER = 'none'
  * walks it once per Gear, memoising the result the same way
  * `tripMembershipOf` does.
  *
- * **The rejected alternative was memoising `containmentView` itself** — in a
- * module-level `WeakMap`, the same shape as this one — which three other
- * callers (F4, the Pack picker, gear detail) would also benefit from. It
- * stays rejected here: `containment.ts`'s own header states, as a property,
- * that the view is *"memoised only within this one call — nothing is cached
- * across calls in module state"*, and quietly making that documented purity
- * claim false, from a file that owns neither it nor the property, is the
- * wrong place to make that call. `docs/specs/2026-09-04-whereabouts-reaches-the-depot.md`
- * §3.5 and §7 name it as a candidate instead. So this memo stores only what
- * `slice.ts` itself needs — each Gear's ancestor list — built from one
- * *local*, unmemoised `containmentView(state)` call that goes out of scope
- * the moment the build finishes.
+ * **`containmentView` is memoised too now, and this memo survives it.** S9b
+ * rejected memoising the view *from here* — `containment.ts` stated its own
+ * non-caching as a property, and falsifying a documented claim from a file
+ * that owns neither it nor the property is the wrong place to make that
+ * call. That file has since made it itself, on the same `WeakMap` shape. What
+ * this one still buys is the **walk**: the view answers *who holds this*, and
+ * a dimension needs *every ancestor of this*, which is one walk per Gear per
+ * row. So the view below is now the shared one, and this memo keeps storing
+ * only what `slice.ts` itself needs.
  */
 const CONTAINER_ANCESTORS = new WeakMap<
   HouseholdState,

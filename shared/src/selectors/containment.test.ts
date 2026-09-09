@@ -349,3 +349,43 @@ describe('residenceOf', () => {
     })
   })
 })
+
+/**
+ * **One view per fold.** The build is O(depot log depot) and had eight
+ * callers making their own — including six screens hoisting one by hand,
+ * which is what the memo replaces.
+ */
+describe('the view is memoised on the fold', () => {
+  const ops = [
+    ...at(aPlace({ id: 'attic', name: 'Attic' }), 1),
+    ...at(aGear({ id: 'crate', name: 'Crate B', container: true }), 2),
+    one(gearRehomed('crate', { in: 'place', id: 'attic' }), 3),
+  ]
+
+  it('hands the same instance back for the same state', () => {
+    const state = fold(ops)
+
+    expect(containmentView(state)).toBe(containmentView(state))
+  })
+
+  it('builds a new one for a new fold, so no caller can read a stale tree', () => {
+    const before = fold(ops)
+    const after = fold([...ops, one(gearRehomed('crate', { in: 'loose' }), 4)])
+
+    expect(containmentView(after)).not.toBe(containmentView(before))
+    expect(containmentView(after).holderOf('crate')).toEqual({ kind: 'loose' })
+    // The earlier fold still answers what it always answered: the key is the
+    // state, so a held view and a held state agree by construction.
+    expect(containmentView(before).holderOf('crate')).toEqual({
+      kind: 'place',
+      id: 'attic',
+    })
+  })
+
+  it('keys on identity, not on content, since a fold is replaced and never mutated', () => {
+    // Two equal-but-distinct folds are two keys. That is the conservative
+    // direction: a redundant build, never a shared answer between two states
+    // that merely look alike.
+    expect(containmentView(fold(ops))).not.toBe(containmentView(fold(ops)))
+  })
+})

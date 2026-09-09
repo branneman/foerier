@@ -275,7 +275,9 @@ export function Depot({ selectedId }: DepotProps = {}) {
   const isDesktop = useMediaQuery(DESKTOP)
   const isSplit = useMediaQuery(SPLIT)
 
-  const view = useMemo(() => containmentView(state), [state])
+  // One view per fold, and `containment.ts` is what guarantees that now —
+  // the hand-rolled `useMemo` this replaced predated the module's own memo.
+  const view = containmentView(state)
   const result = useMemo(() => sliceDepot(state, spec), [state, spec])
   const counts = useMemo(() => depotCounts(state), [state])
   // Both bound to the state this screen already holds, so `SliceBar` stays a

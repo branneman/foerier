@@ -1318,9 +1318,10 @@ export function Unpack() {
   // outcomes, and it is the one that reaches here.
   const closed = trip !== undefined && isClosed(trip)
 
-  // One view of each kind, built once per fold and handed down to every
-  // group — never one per group (`containerTotals`'s own rule).
-  const view = useMemo<ContainmentView>(() => containmentView(state), [state])
+  // One view of each kind, handed down to every group — never one per group
+  // (`containerTotals`'s own rule). The home view is memoised on the fold by
+  // `containment.ts` itself; this line only names it.
+  const view: ContainmentView = containmentView(state)
   const tripView = useMemo<TripContainmentView | undefined>(
     () => (trip === undefined ? undefined : tripContainmentView(trip, state)),
     [trip, state],

@@ -153,8 +153,47 @@ function lowestEdgeOf(
 }
 
 /**
- * Builds the containment view. Pure, and memoised only within this one call —
- * nothing is cached across calls in module state.
+ * One view per fold, built once and handed to every caller.
+ *
+ * **This file used to state its own non-caching as a property**, and
+ * `slice.ts`'s `CONTAINER_ANCESTORS` memo declined to falsify that claim from
+ * a module owning neither it nor the file. It is falsified here instead, by
+ * the file that owns it — which is the whole of what that note asked for. By
+ * then the view had eight callers building their own: `find.ts`, `depot.ts`
+ * (twice), `whereabouts.ts` (twice), `unpack.ts` (twice) and `homePath`
+ * defaulting one per call, plus six screens hoisting one by hand because the
+ * build is O(depot log depot).
+ *
+ * **Keyed on the fold's own identity**, exactly as `slice.ts`'s two memos
+ * already are: a `HouseholdState` is replaced rather than mutated, so a key
+ * that is still reachable is still the state that produced the view, and one
+ * that is not is collected with it. A `WeakMap` is what makes that automatic —
+ * this holds no state alive.
+ *
+ * Two obligations come with a shared view, both of which a per-call build
+ * hid. `childrenOf` hands out the view's **own** arrays, so a caller that
+ * mutated one would now corrupt every other caller's answer — the
+ * `readonly string[]` in {@link ContainmentView} was a courtesy and is now
+ * load-bearing. And a caller holding a view across a change to the fold is
+ * holding a stale one, which was always true and is no more true now: the
+ * view is a function of the state it was keyed on, and a new fold is a new
+ * key.
+ */
+const VIEWS = new WeakMap<HouseholdState, ContainmentView>()
+
+export function containmentView(state: HouseholdState): ContainmentView {
+  const cached = VIEWS.get(state)
+  if (cached !== undefined) return cached
+
+  const view = buildContainmentView(state)
+  VIEWS.set(state, view)
+  return view
+}
+
+/**
+ * Builds the containment view. Pure: everything it reads is captured at
+ * construction, so the object it returns answers from its own maps and never
+ * consults `state` again — which is what makes one build shareable.
  *
  * **Every iteration over gear ids is sorted.** `Object.keys` returns insertion
  * order, which differs between two replicas that received the same ops in a
@@ -163,7 +202,7 @@ function lowestEdgeOf(
  * failure mode outright — a failure mode the convergence tier cannot see,
  * because it compares folded state and this runs downstream of the fold.
  */
-export function containmentView(state: HouseholdState): ContainmentView {
+function buildContainmentView(state: HouseholdState): ContainmentView {
   const gearIds = Object.keys(state.gear).sort()
 
   // Reasons 1–3.

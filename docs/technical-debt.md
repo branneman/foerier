@@ -61,13 +61,6 @@ entry.
 Something is incorrect right now — what a screen states, what a control
 offers, or what the tiers claim to cover. Nothing here is blocked on anything.
 
-- **Three callers now want a memoised `containmentView`.** `whereabouts`, the
-  `CONTAINER` dimension and every list screen that hoists one by hand each
-  build their own; `slice.ts` memoises the *ancestor index* instead, because
-  `containment.ts` states its own non-caching as a property and the slice that
-  owns that file is the one that should make the claim false. Argued in the
-  memo's own JSDoc, `shared/src/selectors/slice.ts`, anchor:
-  `The rejected alternative was memoising`
 - **Print gets one viewport.** §6 promises nav hidden, single column,
   ink-on-white and truncation expanded; the first and third are written, and
   nothing unpins `.shell__main`'s inner scroller or re-enables the ellipsis

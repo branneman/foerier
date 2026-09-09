@@ -299,13 +299,11 @@ export function GearDetail() {
     gearId === undefined ? undefined : state.gear[gearId]
 
   // **One containment view for the whole screen** (finding M4). `whereabouts`
-  // and `HomePicker`'s `moving.ridesAlong` both need one, and every call
-  // that omits it builds a fresh O(depot) view — `containment.ts` states its
-  // own non-caching as a property, and `tripSlicesOf`'s memo covers the
-  // *trip* slices only, never this. Keyed on `state`, whose identity changes
-  // on exactly the folds that could change the answer (`slice.ts`'s own
-  // `WeakMap` argument, one hook over).
-  const view = useMemo(() => containmentView(state), [state])
+  // and `HomePicker`'s `moving.ridesAlong` both need one. It is a plain
+  // call rather than a `useMemo` because `containment.ts` now holds the
+  // memo itself, keyed on the fold — the hoist here was a screen defending
+  // against a per-call O(depot) build that no longer happens.
+  const view = containmentView(state)
 
   // F16(3)'s standing, read here — ahead of the `gear === undefined` return
   // below — only so the `useEffect` beside it can be called unconditionally

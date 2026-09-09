@@ -2473,10 +2473,15 @@ all nine of its open decisions **before** a line of it existed.
   **The dimension's `valuesOf` and the grouping's `keyOf` read that one memo
   rather than one each**, which is also what stops the filter and the group ever
   disagreeing about what contains what. The alternative — memoising
-  `containmentView` itself, which three callers now want — was refused here and
-  recorded as debt: `containment.ts` states its own non-caching as a property,
-  and a slice that owns neither that file nor that property is the wrong place
-  to make a documented purity claim false.
+  `containmentView` itself, which three callers already wanted — was refused
+  here and recorded as debt: `containment.ts` stated its own non-caching as a
+  property, and a slice that owns neither that file nor that property is the
+  wrong place to make a documented purity claim false. **That file has since
+  made the claim false itself**, after the MVP: the view is memoised on the
+  fold on this same `WeakMap` shape, the six screens that hoisted one by hand
+  no longer do, and `CONTAINER_ANCESTORS` survives beside it — the view
+  answers *who holds this*, and a dimension needs *every ancestor of this*,
+  which is still a walk per Gear.
 - **Ruling D1 replaced a generalisation with a rule: *the right-hand read names
   the unit that splits*.** The spec's draft said `×0 THERE` for a Single gear
   out on a Trip, generalising Counted's arithmetic; D1 refused it — a quantity

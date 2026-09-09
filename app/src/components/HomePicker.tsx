@@ -334,7 +334,7 @@ export function HomePicker({
     label: string
   } | null>(null)
 
-  const view = useMemo(() => containmentView(state), [state])
+  const view = containmentView(state)
   const excluded = useMemo(
     () => excludedSubtree(view, excludeGearId),
     [view, excludeGearId],

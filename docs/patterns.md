@@ -218,9 +218,18 @@ per fold is folded into the same pass — `TRIP_SLICES` reads `overClaims(state)
 once, because reading it per row would double the cost the memo exists to
 remove.
 
-*Departures:* three callers now want a memoised `containmentView` itself, and
-`slice.ts` memoises the ancestor index instead —
-[`technical-debt.md`](technical-debt.md).
+**A selector memoises its own build; a caller does not hoist it.**
+`containmentView` is the third memo of this shape and the one that changed a
+rule: it had eight callers building their own, six of them screens hoisting a
+`useMemo` by hand, and the hoists are gone because the file that owns the
+build now owns the memo. A screen defending against a selector's cost is a
+sign the selector should hold the memo — the hoist is per screen, and one
+screen forgetting it is a silent O(n²).
+
+*Departures:* none. `slice.ts` still memoises the **ancestor index** beside
+it, and that is not a duplicate: the view answers *who holds this* and a
+dimension needs *every ancestor of this*, which is a walk per Gear per row on
+top of the shared build.
 *Argued in:* `slice.ts`; [§12.13](architecture-design.md#1213-consequences-of-s7-the-gear-list),
 [§12.16](architecture-design.md#1216-consequences-of-s9b-whereabouts-reaches-the-depot).
 

@@ -225,13 +225,13 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
   const result = useMemo(() => sliceDepot(state, spec), [state, spec])
   const rows = result.groups[0]?.gear ?? []
 
-  // Built once per fold and threaded to every row (S7 review F3) —
-  // `homePath`'s own docstring: "pass `view` when you already have one;
-  // building it is O(depot) and a list screen wants one view, not one per
-  // row." Left as its own default parameter, every keystroke through
-  // `setSpec` would rebuild it once per row shown, on the one screen whose
-  // whole design argument is a batch loop on a phone.
-  const view = useMemo(() => containmentView(state), [state])
+  // Threaded to every row (S7 review F3) — `homePath`'s own docstring:
+  // "pass `view` when you already have one; building it is O(depot) and a
+  // list screen wants one view, not one per row." The build is memoised on
+  // the fold in `containment.ts` now, so the threading is what still
+  // matters here: left to its own default parameter, `homePath` would look
+  // the view up once per row rather than once per screen.
+  const view = containmentView(state)
 
   /**
    * Gear added by a tap on *this* mount, ahead of the fold.
