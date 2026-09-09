@@ -1221,7 +1221,6 @@ export function Unpack() {
   const tripId = params.id
   const state = useHousehold((depot) => depot.state)
   const sync = useHousehold((depot) => depot.sync)
-  const emit = useHousehold((depot) => depot.emit)
   const emitAll = useHousehold((depot) => depot.emitAll)
   const header = useScreenHeader({
     splitPane: false,
@@ -1724,17 +1723,22 @@ export function Unpack() {
               // The gesture, not re-derived here (`gestures.ts`'s own three
               // rules — the outcome write suppressed only when already
               // `back`, the rehome unconditional, a non-container per-person
-              // Entry fanned out per Piece): the screen only maps its
-              // `OpSpec[]` through `emit`, in the order returned.
-              for (const spec of reHomeOnTheSpot(
-                trip,
-                reHomeEntry,
-                reHomeGearId,
-                residence,
-                state,
-              )) {
-                emit(spec)
-              }
+              // Entry fanned out per Piece): the screen hands its whole
+              // `OpSpec[]` to `emitAll`, in the order returned.
+              //
+              // One durable write, for the reason every gesture takes it: a
+              // per-person container fans out to one `gear.rehomed` plus an
+              // outcome per Piece, and a Device dying part-way leaves some
+              // Pieces marked back and the gear re-homed for none of them.
+              emitAll(
+                reHomeOnTheSpot(
+                  trip,
+                  reHomeEntry,
+                  reHomeGearId,
+                  residence,
+                  state,
+                ),
+              )
               setReHomeEntryId(null)
             }}
             excludeGearId={reHomeGearId}

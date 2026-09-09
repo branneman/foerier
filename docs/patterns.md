@@ -287,8 +287,8 @@ For the reduction/posting pair that is precisely the half-applied state the
 posting register exists to prevent: the retry reads no posting and reduces
 the owned count a second time. `emitAll` authors the batch and appends it
 all-or-nothing (`OpLog.appendAll`), refuses the **whole** gesture if any one
-op is over §1.4's cap, and folds once. The five call sites are the five
-gestures. It changes nothing about sync: the ops are pushed and merged per
+op is over §1.4's cap, and folds once. The six call sites are the six
+places a gesture is spent. It changes nothing about sync: the ops are pushed and merged per
 register exactly as before, and atomicity is about this Device's own log.
 
 *Argued in:* `store.ts`'s `emitAll`; `gestures.ts`'s `closeTrip` docblock;
