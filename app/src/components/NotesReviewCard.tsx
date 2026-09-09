@@ -4,6 +4,7 @@ import { Link } from 'wouter'
 import { useHousehold } from '../household/store'
 import { NoteRow } from './NoteRow'
 import styles from './NotesReviewCard.module.css'
+import { PRINT_HIDDEN } from '../print'
 
 /**
  * **F5's notes review card** — design `README.md` §5l I14, I15, I17, I20, and
@@ -70,6 +71,7 @@ export function NotesReviewCard({ tripId }: { tripId: string }) {
           <Link
             href={`/trips/${tripId}/note`}
             className={styles['compose']}
+            {...PRINT_HIDDEN}
             aria-label={`Post a note for ${trip?.name?.value ?? 'this trip'}`}
           >
             + NOTE

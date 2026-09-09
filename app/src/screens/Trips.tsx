@@ -31,6 +31,7 @@ import {
 } from '../household/trips'
 import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Trips.module.css'
+import { PRINT_HIDDEN } from '../print'
 
 /**
  * The phase the closed ledger row's `REOPEN` moves a Trip to — the one it was
@@ -237,6 +238,7 @@ export function Trips() {
               href="/trips/new"
               className={styles['new']}
               aria-label="New trip"
+              {...PRINT_HIDDEN}
             >
               + New trip
             </Link>
@@ -340,7 +342,12 @@ export function Trips() {
         // of that element's content box instead. The container `.screen`
         // declares stays either way: the 40rem query the cards fold on
         // resolves against it.
-        <Link href="/trips/new" className={styles['fab']} aria-label="New trip">
+        <Link
+          href="/trips/new"
+          className={styles['fab']}
+          aria-label="New trip"
+          {...PRINT_HIDDEN}
+        >
           +
         </Link>
       )}

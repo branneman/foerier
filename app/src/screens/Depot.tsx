@@ -27,6 +27,7 @@ import { useHousehold } from '../household/store'
 import { useSliceSpec } from '../household/useSliceSpec'
 import { DESKTOP, SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './Depot.module.css'
+import { PRINT_HIDDEN } from '../print'
 
 /**
  * The Depot list — the first screen a Quartermaster sees
@@ -326,6 +327,7 @@ export function Depot({ selectedId }: DepotProps = {}) {
                 href="/add"
                 className={styles['addButton']}
                 aria-label="Add gear"
+                {...PRINT_HIDDEN}
               >
                 + Add gear
               </Link>
@@ -411,7 +413,12 @@ export function Depot({ selectedId }: DepotProps = {}) {
         // of that element's content box instead. The container `.screen`
         // declares stays either way: it is what the list's own queries resolve
         // against. `Trips` has the same arrangement for the same reason.
-        <Link href="/add" className={styles['fab']} aria-label="Add gear">
+        <Link
+          href="/add"
+          className={styles['fab']}
+          aria-label="Add gear"
+          {...PRINT_HIDDEN}
+        >
           +
         </Link>
       )}

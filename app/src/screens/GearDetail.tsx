@@ -858,11 +858,13 @@ export function GearDetail() {
           onClose={() => setRetireOpen(false)}
           actions={
             <>
-              <Confirm.Cancel>
-                <button type="button" className={styles['ghost']}>
-                  Cancel
-                </button>
-              </Confirm.Cancel>
+              {/* Action before Cancel, in the card register too (§5n K13):
+                  §5d G settled the order for sheets and the S3-era cards drew
+                  the reverse, so the code followed whichever board it was built
+                  against. **Leading with Cancel was never the caution** —
+                  `Confirm` gives it initial focus wherever it sits (§4.2), so
+                  position and focus are two mechanisms and only one has to carry
+                  it. */}
               <Confirm.Action>
                 <button
                   type="button"
@@ -872,6 +874,11 @@ export function GearDetail() {
                   Retire gear
                 </button>
               </Confirm.Action>
+              <Confirm.Cancel>
+                <button type="button" className={styles['ghost']}>
+                  Cancel
+                </button>
+              </Confirm.Cancel>
             </>
           }
         />

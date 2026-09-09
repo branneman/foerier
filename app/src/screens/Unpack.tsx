@@ -70,6 +70,7 @@ import {
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Unpack.module.css'
+import { PRINT_HIDDEN } from '../print'
 
 /** `unpackTotals`' zero — the fold has nothing to fold before a Trip is
  * resolved, so the pre-guard memo below has an answer to hand back that is
@@ -1577,6 +1578,7 @@ export function Unpack() {
             <button
               type="button"
               className={styles['filter']}
+              {...PRINT_HIDDEN}
               // A distinct test id, not just its accessible name: this
               // screen's own outcome pill also reads `○ OPEN` (F6's own word
               // for the unresolved state), so a name-based query would match

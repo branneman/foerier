@@ -78,6 +78,10 @@ export function StatusPill({
       data-tone={tone}
       data-size={size}
       data-testid="status-pill"
+      /* Also the only statement of its fact, so paper seals it rather than
+         dropping it (§5n K7): the border goes and it reads as text, which is
+         what a closed Trip already draws on screen (§5i G6). */
+      data-print="seal"
       onClick={onClick}
     >
       {glyph} {label}

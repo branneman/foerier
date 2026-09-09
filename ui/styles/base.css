@@ -105,5 +105,30 @@
       text-overflow: clip !important;
       -webkit-line-clamp: none !important;
     }
+
+    /*
+     * **Paper has no acts** (§5n K7). A control on it is ink spent on
+     * something it cannot do, so every one is dropped — the nav above by
+     * name, and the rest by the mark below.
+     *
+     * **Marked rather than matched, and that is not fastidiousness.** In this
+     * app a `button` and an `a` both routinely *wrap the content itself*: a
+     * packing row's body, a gear row, a trip card, a task line. A blanket
+     * `button, a { display: none }` would print a Depot with no gear in it.
+     * So each control K7 enumerates says so where it is drawn, and a control
+     * that is also **the only statement of a fact** — F4's status pill, F5's
+     * outcome pill, a per-person cluster — says that instead and prints in
+     * §3.8's sealed treatment: the border dropped, reading as text, which is
+     * what a closed Trip already draws on screen (§5i G6).
+     */
+    [data-print='hide'] {
+      display: none !important;
+    }
+
+    [data-print='seal'] {
+      border-color: transparent !important;
+      background: none !important;
+      color: #000 !important;
+    }
   }
 }

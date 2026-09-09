@@ -58,6 +58,7 @@ import {
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './Packing.module.css'
+import { PRINT_HIDDEN } from '../print'
 
 /**
  * How the list is partitioned: by the container it rides in, by whose it is,
@@ -1072,6 +1073,7 @@ export function Packing() {
             <button
               type="button"
               className={styles['filter']}
+              {...PRINT_HIDDEN}
               aria-pressed={leftOnly}
               onClick={() => setLeftOnly(!leftOnly)}
             >

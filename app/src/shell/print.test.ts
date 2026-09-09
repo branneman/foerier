@@ -101,6 +101,34 @@ describe('print', () => {
     expect(printBlock('base.css')).not.toMatch(/overflow:\s*visible/)
   })
 
+  /**
+   * **Paper has no acts** (§5n K7). The nav goes by name in `layout.css`; the
+   * rest go by a mark, and the mark is not fastidiousness — in this app a
+   * `button` and an `a` both routinely wrap the content itself (a packing
+   * row's body, a gear row, a trip card), so `button, a { display: none }`
+   * would print a Depot with no gear in it.
+   */
+  it('drops a marked control, and adds nothing of its own', () => {
+    const block = printBlock('base.css')
+
+    expect(block).toMatch(/\[data-print='hide'\]\s*\{[^}]*display:\s*none/)
+    // A print stylesheet may subtract and reflow, never add: no household
+    // name, no date, no page rule, so nothing here draws `content`.
+    expect(block).not.toMatch(/content:\s*'/)
+  })
+
+  it('seals a control that is also the only statement of a fact', () => {
+    // F4's status pill, F5's outcome pill, a per-person cluster. Hiding one
+    // takes the fact with it, so the border drops and it reads as text —
+    // which is what a closed Trip already draws on screen (§5i G6).
+    const block = printBlock('base.css')
+
+    expect(block).toMatch(
+      /\[data-print='seal'\]\s*\{[^}]*border-color:\s*transparent/,
+    )
+    expect(block).toMatch(/\[data-print='seal'\]\s*\{[^}]*background:\s*none/)
+  })
+
   it('expands the two utilities in their own sheet', () => {
     const block = printBlock('utilities.css')
 

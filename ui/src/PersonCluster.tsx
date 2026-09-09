@@ -78,7 +78,15 @@ export function PersonCluster({ people, size, label }: PersonClusterProps) {
   const overflow = ordered.length > 4 ? ordered.length - 3 : 0
 
   return (
-    <span className={styles['cluster']} role="img" aria-label={label}>
+    <span
+      className={styles['cluster']}
+      role="img"
+      aria-label={label}
+      /* The cluster states *who brings one* and is the control that edits it,
+         so paper seals rather than drops it (§5n K7). The button around it at
+         a caller carries the act; this carries the fact. */
+      data-print="seal"
+    >
       {visible.map((person) => (
         // `tone` is spread rather than passed as `tone={person.tone}`:
         // `PersonCircleProps['tone']` has no explicit `| undefined` (unlike

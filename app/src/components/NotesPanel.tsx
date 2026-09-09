@@ -5,6 +5,7 @@ import { Link } from 'wouter'
 import { useHousehold } from '../household/store'
 import { NoteRow } from './NoteRow'
 import styles from './NotesPanel.module.css'
+import { PRINT_HIDDEN } from '../print'
 
 /**
  * **The `NOTES` panel** — design `README.md` §5l I3, I6, I11, I16, I18, and
@@ -56,6 +57,7 @@ export function NotesPanel({ tripId }: { tripId: string }) {
             <Link
               href={`/trips/${tripId}/note`}
               className={styles['compose']}
+              {...PRINT_HIDDEN}
               aria-label={`Post a note for ${trip?.name?.value ?? 'this trip'}`}
             >
               + NOTE
