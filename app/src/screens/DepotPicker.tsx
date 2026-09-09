@@ -9,22 +9,25 @@ import {
   kindOf,
   LOOSE_TEXT,
   ownerInitial,
+  selectedOf,
   sliceDepot,
   systemIdSource,
   tripEntryAdded,
   tripLabel,
   tripStandingOf,
   visibleGear,
+  withValueApplied,
+  withValueRemoved,
   type ContainmentView,
   type HouseholdState,
   type DimensionId,
   type GearState,
   type SliceSpec,
 } from '@foerier/shared'
-import { Chip } from '@foerier/ui'
 import { useMemo, useState } from 'react'
 import { Link } from 'wouter'
 
+import { FilterChips } from '../components/FilterChips'
 import { TagPicker } from '../components/TagPicker'
 import { ValueMenu } from '../components/ValueMenu'
 import { useHousehold } from '../household/store'
@@ -294,40 +297,13 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
     )
   }
 
-  function selectedOf(id: DimensionId): readonly string[] {
-    return spec.filters[id] ?? []
-  }
-
-  function withFilters(id: DimensionId, values: readonly string[]): SliceSpec {
-    const filters = { ...spec.filters }
-    if (values.length === 0) delete filters[id]
-    else filters[id] = values
-    return { ...spec, filters }
-  }
-
-  // `SliceBar`'s own `apply`/`remove`, scoped to this picker's own state
-  // rather than a caller-owned `spec` — narrowing here is this sitting's,
-  // not a preference `useSliceSpec` would persist across visits.
+  // `slice.ts`'s own transitions, applied to this picker's local state
+  // rather than to a caller-owned `spec` — narrowing here is this sitting's,
+  // not a preference `useSliceSpec` would persist across visits. That
+  // difference is the whole of what this bar does differently.
   function apply(id: DimensionId, value: string) {
-    const of = dimension(id)
-    const current = selectedOf(id)
-    const next =
-      of.arity === 'single'
-        ? [value]
-        : current.includes(value)
-          ? current
-          : [...current, value]
-    setSpec(withFilters(id, next))
+    setSpec(withValueApplied(spec, id, value))
     setPicking(null)
-  }
-
-  function remove(id: DimensionId, value: string) {
-    setSpec(
-      withFilters(
-        id,
-        selectedOf(id).filter((held) => held !== value),
-      ),
-    )
   }
 
   function addToTrip(gearId: string) {
@@ -381,32 +357,16 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
         onChange={(event) => setSpec({ ...spec, search: event.target.value })}
       />
 
+      {/* The picker's own wrapper: this one simply wraps, where the Depot's
+          bleeds to the gutter and scrolls. The chips inside it are shared. */}
       <div className={styles['chips']}>
-        {dimensions.flatMap((id) =>
-          selectedOf(id).map((value) => (
-            <Chip
-              key={`${id}:${value}`}
-              label={`${dimension(id).label}: ${dimension(id).format(value, state)}`}
-              selected
-              onClick={() => setPicking(id)}
-              onRemove={() => remove(id, value)}
-            />
-          )),
-        )}
-
-        {dimensions
-          .filter(
-            (id) =>
-              dimension(id).arity === 'multi' || selectedOf(id).length === 0,
-          )
-          .map((id) => (
-            <Chip
-              key={`ghost-${id}`}
-              label={`+ ${dimension(id).label}`}
-              ghost
-              onClick={() => setPicking(id)}
-            />
-          ))}
+        <FilterChips
+          spec={spec}
+          dimensions={dimensions}
+          formatValue={(id, value) => dimension(id).format(value, state)}
+          onPick={setPicking}
+          onRemove={(id, value) => setSpec(withValueRemoved(spec, id, value))}
+        />
       </div>
 
       {totalGear === 0 ? (
@@ -481,9 +441,9 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
         <TagPicker
           mode="slice"
           vocabulary={dimensionValues(state, 'tag')}
-          applied={selectedOf('tag')}
+          applied={selectedOf(spec, 'tag')}
           onApply={(tag) => apply('tag', tag)}
-          onRemove={(tag) => remove('tag', tag)}
+          onRemove={(tag) => setSpec(withValueRemoved(spec, 'tag', tag))}
           onClose={() => setPicking(null)}
         />
       )}
@@ -493,7 +453,7 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
           title={dimension(picking).label}
           values={dimensionValues(state, picking)}
           format={(value) => dimension(picking).format(value, state)}
-          selected={selectedOf(picking)}
+          selected={selectedOf(spec, picking)}
           onPick={(value) => apply(picking, value)}
           onClose={() => setPicking(null)}
         />

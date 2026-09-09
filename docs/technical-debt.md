@@ -314,14 +314,6 @@ One rule, several spellings; or one thing under the wrong name. Nothing
 observable changes when these close, which is why none is urgent and why
 every one of them gets more expensive per slice.
 
-- **`SliceBar`'s filter plumbing is reproduced in `DepotPicker`.** About
-  fifty-five lines — `withFilters`, `apply`, `remove` and both chip-row
-  blocks — near-verbatim. Reusing `SliceBar` itself is genuinely wrong (it also
-  draws the count line, `CLEAR (n)` and the arrange readout, none of which the
-  picker wants), but the *logic* could be extracted. `dimensionsFor` already
-  derives from `DIMENSIONS` with a named exclusion list, so a later slice's
-  dimension reaches both bars — this is duplication, not divergence.
-  [`frontend-design.md`](frontend-design.md) §5, anchor: `withFilters`
 - **`ReopenConfirm` reads the store; `ActivationConfirm`, its twin, takes
   `groups`.** Two facts-only confirms with one anatomy and two data-flow
   shapes; the lift is `groups` as a prop from `PhaseSheet` and `Trips`, which

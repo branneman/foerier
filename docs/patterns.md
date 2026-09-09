@@ -202,6 +202,24 @@ a confirm naming a conflict between two other Trips entirely.
 
 *Argued in:* [§12.13](architecture-design.md#1213-consequences-of-s7-the-gear-list).
 
+### 1.6a A spec transition lives beside the table, not in the bar
+
+`selectedOf`, `withFilters`, `withValueApplied`, `withValueRemoved` and
+`acceptsMore` are `slice.ts`'s, because the rule they encode is the dimension
+table's own: **arity decides add-or-replace**, and whether a ghost chip is
+still offered. Two bars draw a chip row — the Depot's `SliceBar` and
+`DepotPicker`'s narrowed one — and each spelled the rule for itself until
+after the MVP. Neither had drifted; a later dimension is what would have made
+them, since its arity would have had to be read the same way twice.
+
+What is *not* shared is the bar: the picker wants no count line, no
+`CLEAR (n)` and no arrange readout, so `FilterChips` renders the two chip
+loops and **not** their container — the Depot's bleeds to the gutter and
+scrolls sideways, the picker's wraps, and that difference is a layout
+decision belonging to each screen.
+
+*Argued in:* `slice.ts`'s own transitions; `app/src/components/FilterChips.tsx`.
+
 ### 1.7 A cross-aggregate dimension memoises on the fold's identity
 
 `sliceDepot`'s Trip-membership dimension cannot be answered from a Gear's own

@@ -2,15 +2,18 @@ import {
   DIMENSIONS,
   dimension,
   groupLabel,
+  selectedOf,
+  withValueApplied,
+  withValueRemoved,
   type DimensionId,
   type DimensionValue,
   type SliceResult,
   type SliceSpec,
   type SortKey,
 } from '@foerier/shared'
-import { Chip } from '@foerier/ui'
 import { useState } from 'react'
 
+import { FilterChips } from './FilterChips'
 import { SortGroupOptions, SortGroupSheet } from './SortGroupSheet'
 import { TagPicker } from './TagPicker'
 import { ValueMenu } from './ValueMenu'
@@ -85,9 +88,8 @@ function arrangeReadout(spec: SliceSpec): string {
   return spec.group === 'none' ? sort : `${groupLabel(spec.group)} · ${sort}`
 }
 
-function selectedOf(spec: SliceSpec, id: DimensionId): readonly string[] {
-  return spec.filters[id] ?? []
-}
+/** The whole table, in its own order: the Depot's bar offers every dimension. */
+const DIMENSION_IDS: readonly DimensionId[] = DIMENSIONS.map((of) => of.id)
 
 export function SliceBar({
   spec,
@@ -100,64 +102,27 @@ export function SliceBar({
   const [picking, setPicking] = useState<DimensionId | null>(null)
   const [arranging, setArranging] = useState(false)
 
-  function withFilters(id: DimensionId, values: readonly string[]): SliceSpec {
-    const filters = { ...spec.filters }
-    if (values.length === 0) delete filters[id]
-    else filters[id] = values
-    return { ...spec, filters }
-  }
-
+  // The spec transitions are `slice.ts`'s, beside the table that states
+  // arity — `DepotPicker`'s bar reads the same three, so a later dimension's
+  // add-or-replace behaviour cannot be read two ways.
   function apply(id: DimensionId, value: string) {
-    const of = dimension(id)
-    const current = selectedOf(spec, id)
-    // Arity decides add-or-replace, so a later single-valued dimension needs
-    // no branch of its own here.
-    const next =
-      of.arity === 'single'
-        ? [value]
-        : current.includes(value)
-          ? current
-          : [...current, value]
-    onChange(withFilters(id, next))
+    onChange(withValueApplied(spec, id, value))
     setPicking(null)
-  }
-
-  function remove(id: DimensionId, value: string) {
-    onChange(
-      withFilters(
-        id,
-        selectedOf(spec, id).filter((held) => held !== value),
-      ),
-    )
   }
 
   return (
     <div className={styles['bar']}>
+      {/* The bar's own wrapper — it bleeds to the gutter and scrolls
+          sideways below a 40rem container, which `DepotPicker`'s does not,
+          so the container stays here and only the chips are shared. */}
       <div className={styles['chips']}>
-        {DIMENSIONS.flatMap((of) =>
-          selectedOf(spec, of.id).map((value) => (
-            <Chip
-              key={`${of.id}:${value}`}
-              label={`${of.label}: ${formatFor(of.id, value)}`}
-              selected
-              onClick={() => setPicking(of.id)}
-              onRemove={() => remove(of.id, value)}
-            />
-          )),
-        )}
-
-        {DIMENSIONS.filter(
-          // A single-valued dimension has nothing left to add once it holds a
-          // value; a multi-valued one always does.
-          (of) => of.arity === 'multi' || selectedOf(spec, of.id).length === 0,
-        ).map((of) => (
-          <Chip
-            key={`ghost-${of.id}`}
-            label={`+ ${of.label}`}
-            ghost
-            onClick={() => setPicking(of.id)}
-          />
-        ))}
+        <FilterChips
+          spec={spec}
+          dimensions={DIMENSION_IDS}
+          formatValue={formatFor}
+          onPick={setPicking}
+          onRemove={(id, value) => onChange(withValueRemoved(spec, id, value))}
+        />
       </div>
 
       <div className={styles['countRow']}>
@@ -236,7 +201,7 @@ export function SliceBar({
           vocabulary={valuesFor('tag')}
           applied={selectedOf(spec, 'tag')}
           onApply={(tag) => apply('tag', tag)}
-          onRemove={(tag) => remove('tag', tag)}
+          onRemove={(tag) => onChange(withValueRemoved(spec, 'tag', tag))}
           onClose={() => setPicking(null)}
         />
       )}

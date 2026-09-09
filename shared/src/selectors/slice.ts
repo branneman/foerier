@@ -517,6 +517,86 @@ export const EMPTY_SLICE: SliceSpec = {
   group: 'none',
 }
 
+/**
+ * The values a spec has selected for one dimension — an absent list and an
+ * empty one are the same fact, *not narrowed by this*, and only this says so.
+ */
+export function selectedOf(
+  spec: SliceSpec,
+  id: DimensionId,
+): readonly string[] {
+  return spec.filters[id] ?? []
+}
+
+/**
+ * The spec with one dimension's selection replaced. An empty list **deletes
+ * the key** rather than storing `[]`, so two specs narrowing identically are
+ * `toEqual`-identical, and a count of active filters cannot be thrown off by
+ * a dimension that holds nothing.
+ */
+export function withFilters(
+  spec: SliceSpec,
+  id: DimensionId,
+  values: readonly string[],
+): SliceSpec {
+  const filters = { ...spec.filters }
+  if (values.length === 0) delete filters[id]
+  else filters[id] = values
+  return { ...spec, filters }
+}
+
+/**
+ * The spec with `value` selected for `id`.
+ *
+ * **Arity decides add-or-replace, and it is decided here because the table is
+ * what states arity.** A single-valued dimension replaces; a multi-valued one
+ * appends unless it already holds the value. Both bars in the app — the
+ * Depot's `SliceBar` and `DepotPicker`'s own — spelled this rule for
+ * themselves until after the MVP landed, which is two places a later
+ * dimension's arity could be read differently. Neither had drifted; they were
+ * one edit from it.
+ */
+export function withValueApplied(
+  spec: SliceSpec,
+  id: DimensionId,
+  value: string,
+): SliceSpec {
+  const current = selectedOf(spec, id)
+  const next =
+    dimension(id).arity === 'single'
+      ? [value]
+      : current.includes(value)
+        ? current
+        : [...current, value]
+  return withFilters(spec, id, next)
+}
+
+/**
+ * The spec with `value` deselected for `id`; the last one out deletes the key,
+ * through {@link withFilters}.
+ */
+export function withValueRemoved(
+  spec: SliceSpec,
+  id: DimensionId,
+  value: string,
+): SliceSpec {
+  return withFilters(
+    spec,
+    id,
+    selectedOf(spec, id).filter((held) => held !== value),
+  )
+}
+
+/**
+ * Whether a dimension still has something to add — a single-valued one does
+ * not once it holds a value, a multi-valued one always does. It decides
+ * whether the ghost chip (`+ TAG`) is drawn, and reads arity from the table
+ * for {@link withValueApplied}'s reason.
+ */
+export function acceptsMore(spec: SliceSpec, id: DimensionId): boolean {
+  return dimension(id).arity === 'multi' || selectedOf(spec, id).length === 0
+}
+
 export interface SliceGroup {
   /** The dimension value this group holds; `''` when grouping is off. */
   key: string

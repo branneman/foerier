@@ -25,13 +25,18 @@ import type { HouseholdState } from '../state.ts'
 import { normalizeTag, type TagString } from '../tags.ts'
 import { visibleGear } from './depot.ts'
 import {
+  acceptsMore,
   dimension,
   dimensionValues,
   EMPTY_SLICE,
   GROUP_KEYS,
   groupLabel,
   recordedAt,
+  selectedOf,
   sliceDepot,
+  withFilters,
+  withValueApplied,
+  withValueRemoved,
   type SliceSpec,
 } from './slice.ts'
 
@@ -1264,5 +1269,98 @@ describe('dimensionValues', () => {
     expect(dimensionValues(state, 'kind')).toEqual([
       { value: 'sled', count: 1 },
     ])
+  })
+})
+
+/**
+ * **The spec transitions, beside the table that states arity.**
+ *
+ * The Depot's `SliceBar` and `DepotPicker`'s own bar each spelled these for
+ * themselves until after the MVP landed — two readings of one rule, neither
+ * drifted and both one edit from it. What makes them belong here rather than
+ * in either component is that add-or-replace is decided by `arity`, which is
+ * a column of the dimension table: a later dimension's behaviour should reach
+ * both bars by being added to the table, not by being handled twice.
+ */
+describe('the spec transitions', () => {
+  const TAG = 'tag'
+  const KIND = 'kind'
+
+  it('reads an absent and an empty selection as the same fact', () => {
+    expect(selectedOf(EMPTY_SLICE, TAG)).toEqual([])
+    expect(selectedOf(withFilters(EMPTY_SLICE, TAG, []), TAG)).toEqual([])
+  })
+
+  it('deletes the key rather than storing an empty list', () => {
+    const narrowed = withValueApplied(EMPTY_SLICE, TAG, 'winter')
+    const cleared = withValueRemoved(narrowed, TAG, 'winter')
+
+    // Not merely equivalent — `toEqual`-identical to the resting spec, so a
+    // count of active filters cannot be thrown off by a dimension holding
+    // nothing, and two specs narrowing the same way compare equal.
+    expect(cleared).toEqual(EMPTY_SLICE)
+    expect(Object.hasOwn(cleared.filters, TAG)).toBe(false)
+  })
+
+  it('appends for a multi-valued dimension, and never twice', () => {
+    const one = withValueApplied(EMPTY_SLICE, TAG, 'winter')
+    const two = withValueApplied(one, TAG, 'shelter')
+
+    expect(selectedOf(two, TAG)).toEqual(['winter', 'shelter'])
+    // Applying a value already held is not an error and not a duplicate: the
+    // chip is already there, and the picker reports every pick.
+    expect(selectedOf(withValueApplied(two, TAG, 'winter'), TAG)).toEqual([
+      'winter',
+      'shelter',
+    ])
+  })
+
+  it('replaces for a single-valued dimension', () => {
+    const counted = withValueApplied(EMPTY_SLICE, KIND, 'counted')
+    const single = withValueApplied(counted, KIND, 'single')
+
+    expect(dimension(KIND).arity).toBe('single')
+    expect(selectedOf(single, KIND)).toEqual(['single'])
+  })
+
+  it('leaves every other dimension alone', () => {
+    const both = withValueApplied(
+      withValueApplied(EMPTY_SLICE, TAG, 'winter'),
+      KIND,
+      'counted',
+    )
+
+    expect(selectedOf(withValueRemoved(both, TAG, 'winter'), KIND)).toEqual([
+      'counted',
+    ])
+  })
+
+  it('never mutates the spec it was given', () => {
+    const before = withValueApplied(EMPTY_SLICE, TAG, 'winter')
+    const snapshot = structuredClone(before)
+
+    withValueApplied(before, TAG, 'shelter')
+    withValueRemoved(before, TAG, 'winter')
+
+    // A screen holds its spec in state; a transition that mutated it would
+    // leave React with nothing to re-render on.
+    expect(before).toEqual(snapshot)
+  })
+
+  it('offers a ghost chip only while a dimension has something to add', () => {
+    expect(acceptsMore(EMPTY_SLICE, KIND)).toBe(true)
+    expect(acceptsMore(EMPTY_SLICE, TAG)).toBe(true)
+
+    const narrowed = withValueApplied(
+      withValueApplied(EMPTY_SLICE, KIND, 'counted'),
+      TAG,
+      'winter',
+    )
+
+    // Arity, and nothing per-dimension: a single-valued dimension has
+    // nothing left to add once it holds a value; a multi-valued one always
+    // does, because several tag chips AND together.
+    expect(acceptsMore(narrowed, KIND)).toBe(false)
+    expect(acceptsMore(narrowed, TAG)).toBe(true)
   })
 })

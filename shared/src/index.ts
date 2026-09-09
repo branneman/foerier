@@ -171,6 +171,7 @@ export type {
   SortKey,
 } from './selectors/slice.ts'
 export {
+  acceptsMore,
   DIMENSIONS,
   dimension,
   dimensionValues,
@@ -178,8 +179,12 @@ export {
   GROUP_KEYS,
   groupLabel,
   recordedAt,
+  selectedOf,
   sliceDepot,
   UNGROUPED_LABEL,
+  withFilters,
+  withValueApplied,
+  withValueRemoved,
 } from './selectors/slice.ts'
 
 export type {
