@@ -23,6 +23,9 @@ async function main(): Promise<void> {
     // Undefined on every server but the e2e one, and that absence is what
     // keeps `/test/reset` off the surface entirely.
     e2eHouseholdId: config.e2eHouseholdId,
+    // §9.4's own 30/30 unless the environment says otherwise — see
+    // `config.ts` for the one caller that does.
+    rateLimit: config.authRateLimit,
   })
 
   serve({ fetch: app.fetch, port: config.port }, ({ port }) => {

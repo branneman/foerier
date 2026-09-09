@@ -670,6 +670,12 @@ protect.
   256-bit secrets. In-memory is correct while there is one server instance; if
   that ever changes, the bucket moves to Postgres. `/sync/*` gets a separate,
   much higher limit, since a returning offline client legitimately bursts.
+  **The size is deployment configuration and the rule is not**:
+  `AUTH_RATE_LIMIT_CAPACITY` and `AUTH_RATE_LIMIT_PER_MINUTE` default to these
+  numbers and are read once at startup, exactly as `PORT` is. The one caller
+  that sets them is the Tier 5 web server — the key is the `X-Forwarded-For`
+  Caddy sets, so a local run with no proxy arrives as a single caller and a
+  whole suite is not one caller.
 - **Never logged:** tokens, token hashes, Invite secrets, challenges, public
   keys. Auth events *are* logged — outcome, `login_id`, `device_id`, coarse UA,
   timestamp — because that is what makes "last seen" and after-the-fact

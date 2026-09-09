@@ -34,6 +34,48 @@ export interface Config {
    * sets this variable never exposes a reset endpoint in the first place.
    */
   e2eHouseholdId: string | undefined
+  /**
+   * The unauthenticated auth endpoints' per-IP token bucket
+   * ([auth-design §9.4](../../docs/auth-design.md)), from
+   * `AUTH_RATE_LIMIT_CAPACITY` and `AUTH_RATE_LIMIT_PER_MINUTE`.
+   *
+   * **A size, not a rule.** The bucket exists to protect the box, never to
+   * substitute for the 256-bit secrets — there is nothing in one to
+   * brute-force — so what number it holds is deployment configuration in
+   * exactly the way `PORT` is, and the arithmetic that spends it is pinned by
+   * `api/test/server/rateLimit.test.ts` at whatever size it is given.
+   *
+   * The reason it is a variable at all is Tier 5. `clientKey` reads the
+   * `X-Forwarded-For` Caddy sets, and a local e2e run has no Caddy, so every
+   * request in it falls into the one `unknown` bucket the fallback names — the
+   * whole suite arrives as a single caller. Measured on 2026-09-09: eleven
+   * specs spend 35 tokens in about 27 seconds against a budget of roughly 42,
+   * and CI went red when that margin ran out (a `429` on the joiner's
+   * `POST /auth/register/options`, the join screen falling to the
+   * compatibility path with `Something went wrong. Ask for a new link.`, and
+   * two retries spending more of the same bucket). Raising a header from the
+   * browser instead was tried and cannot work: a request header the app does
+   * not send today makes every call preflighted, and CORS `allowHeaders` is
+   * `Authorization, Content-Type`.
+   */
+  authRateLimit: { capacity: number; refillPerMinute: number }
+}
+
+/** `auth-design.md` §9.4's own numbers, and the production default. */
+const AUTH_RATE_LIMIT_DEFAULT = { capacity: 30, refillPerMinute: 30 }
+
+function positiveInt(
+  env: NodeJS.ProcessEnv,
+  name: string,
+  fallback: number,
+): number {
+  const raw = env[name]
+  if (raw === undefined || raw === '') return fallback
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} is not a positive integer: ${raw}`)
+  }
+  return value
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -93,5 +135,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       e2eHouseholdId === undefined || e2eHouseholdId === ''
         ? undefined
         : e2eHouseholdId.toLowerCase(),
+    authRateLimit: {
+      capacity: positiveInt(
+        env,
+        'AUTH_RATE_LIMIT_CAPACITY',
+        AUTH_RATE_LIMIT_DEFAULT.capacity,
+      ),
+      refillPerMinute: positiveInt(
+        env,
+        'AUTH_RATE_LIMIT_PER_MINUTE',
+        AUTH_RATE_LIMIT_DEFAULT.refillPerMinute,
+      ),
+    },
   }
 }

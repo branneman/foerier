@@ -136,6 +136,20 @@ Correct today, and silently wrong the moment a named future slice lands.
 Each entry names its trigger. Paying one after its trigger costs a debugging
 session rather than an edit, because the symptom shows up somewhere else.
 
+- **The auth limiter's per-IP key is whatever the caller says it is.**
+  `clientKey` reads the first field of `X-Forwarded-For`, and Caddy's
+  `reverse_proxy` *appends* to that header rather than replacing it — so a
+  caller who sends one of their own keeps the first slot and can pick a fresh
+  bucket per request, which is the whole of the limit. §9.4 calls this
+  capacity protection rather than a security control and the secrets it sits
+  in front of are 256-bit, so nothing is exposed by it; what is wrong is that
+  the doc claims a per-IP limit the deployment does not deliver. The fix is
+  one line of Caddy config (`trusted_proxies` / strip the inbound header) and
+  it lives in the infrastructure repo, which is why it is recorded here rather
+  than fixed. Trigger: any slice that leans on the limit for anything beyond
+  box capacity. [`auth-design.md`](auth-design.md) §9.4, anchor:
+  `The size is deployment configuration`
+
 - **The trip's containment view restates the home one's traversal, and the
   two must not drift.** `shared/src/selectors/tripContainment.ts` reimplements
   `containment.ts`'s walk and its sorted-id determinism over a different

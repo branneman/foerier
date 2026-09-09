@@ -89,7 +89,28 @@ export default defineConfig({
             // data actually landed in.
             reuseExistingServer: false,
             timeout: 60_000,
-            env: { DATABASE_URL, PORT: String(API_PORT) },
+            env: {
+              DATABASE_URL,
+              PORT: String(API_PORT),
+              // **The whole run is one caller, and the production bucket is
+              // not sized for that.** `clientKey` (`api/src/auth/routes.ts`)
+              // reads the `X-Forwarded-For` Caddy sets; there is no Caddy
+              // here, so every unauthenticated auth call in every spec falls
+              // into the one `unknown` bucket, and eleven specs spend 35 of
+              // §9.4's 30-plus-30-a-minute in under thirty seconds. That
+              // margin ran out on 2026-09-09 and turned CI red on a `429`
+              // the joiner's screen could only report as "Something went
+              // wrong. Ask for a new link.".
+              //
+              // The size is deployment configuration, not the rule: the
+              // middleware still runs on every one of these calls and
+              // `api/test/server/rateLimit.test.ts` still proves it refuses a
+              // burst. What this buys is that a suite growing a twelfth spec
+              // does not fail a run for a reason that has nothing to do with
+              // the twelfth spec.
+              AUTH_RATE_LIMIT_CAPACITY: '1000',
+              AUTH_RATE_LIMIT_PER_MINUTE: '1000',
+            },
           },
           {
             // Built here rather than reusing a stale `dist`, and pointed at the
