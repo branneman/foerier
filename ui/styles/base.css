@@ -74,10 +74,36 @@
     }
   }
 
+  /*
+   * Ink on white, and every truncated line expanded (`frontend-design.md`
+   * §6).
+   *
+   * **The expansion is global and uses `!important`, deliberately**, and it
+   * is the same shape as the reduced-motion block above — a whole-document
+   * override that no single sheet could express. Truncation is spelled in a
+   * dozen CSS modules whose class names are hashed at build time, so nothing
+   * here can name them; the utilities' own two copies unwind themselves in
+   * `utilities.css`, and these three declarations are what reach the rest.
+   * `!important` because the module rules live in a later layer.
+   *
+   * **`.visually-hidden` is excluded, and that exclusion is the whole
+   * safety of this rule.** It hides its content with a 1px box, `overflow:
+   * hidden` and a `clip-path`; expanding it would print every
+   * screen-reader-only string in the document — a page of labels nobody can
+   * see on screen. `overflow` is deliberately *not* in the list either: the
+   * shell's own scroller is unpinned by name in `layout.css`, where the
+   * element is known, rather than by unpinning every clipped box in the app.
+   */
   @media print {
     body {
       background: #fff;
       color: #000;
+    }
+
+    *:not(.visually-hidden) {
+      white-space: normal !important;
+      text-overflow: clip !important;
+      -webkit-line-clamp: none !important;
     }
   }
 }

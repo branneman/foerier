@@ -162,9 +162,36 @@
     }
   }
 
+  /*
+   * **Print: one document, not one screenful** (`frontend-design.md` §6).
+   *
+   * Everything above this is built to pin a viewport — `height: 100svh` on
+   * the shell, an inner scroller on `.shell__main`, a nav column beside it —
+   * and every one of those is wrong on paper, where there is no viewport to
+   * pin and the page is the scroller. Left alone, a two-hundred-item Depot
+   * prints whatever happened to be on screen and clips the rest, which is
+   * the failure this block exists to end.
+   *
+   * `display: block` is what makes the single column §6 asks for: from Split
+   * up the shell is a two-column grid, and the nav being hidden leaves an
+   * empty 216px column rather than a wider one. The nav is hidden first,
+   * because a printed tab bar is an affordance nobody can tap.
+   */
   @media print {
     .shell__nav {
       display: none;
+    }
+
+    .shell {
+      display: block;
+      height: auto;
+    }
+
+    .shell__main {
+      overflow: visible;
+      max-width: none;
+      margin-inline: 0;
+      padding: 0;
     }
   }
 }

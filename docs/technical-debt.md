@@ -61,12 +61,6 @@ entry.
 Something is incorrect right now — what a screen states, what a control
 offers, or what the tiers claim to cover. Nothing here is blocked on anything.
 
-- **Print gets one viewport.** §6 promises nav hidden, single column,
-  ink-on-white and truncation expanded; the first and third are written, and
-  nothing unpins `.shell__main`'s inner scroller or re-enables the ellipsis
-  rules, so a long Depot prints whatever was on screen.
-  [`frontend-design.md`](frontend-design.md) §6, anchor:
-  `prints one viewport`
 - **A Device that dies between the reduction op and its posting, then
   retries, can double-apply the Consumed reduction.** `closeTrip` reads the
   Gear's *current* owned count, which is absolute rather than a delta. S11's

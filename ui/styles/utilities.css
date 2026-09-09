@@ -32,6 +32,29 @@
     }
   }
 
+  /*
+   * **Truncation is a screen affordance** (`frontend-design.md` §6): an
+   * ellipsis says *there is more, and the screen is the wrong place to read
+   * it*, which on paper is simply a sentence with its end cut off. Paper has
+   * the room, so both utilities expand.
+   *
+   * The module-level copies of the same rule are unwound in `base.css`, which
+   * is the only sheet that can reach a hashed class name.
+   */
+  @media print {
+    .truncate {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+    }
+
+    .clamp-2 {
+      display: block;
+      overflow: visible;
+      -webkit-line-clamp: none;
+    }
+  }
+
   .stack {
     display: flex;
     flex-direction: column;
