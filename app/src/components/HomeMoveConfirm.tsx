@@ -23,7 +23,7 @@ import styles from './HomeMoveConfirm.module.css'
  * picker held. It turned out not to need reporting back: a caller has the
  * `Residence` it was handed and the fold, so `homeLabel` derives the same
  * words the picker's own row drew — which is exactly what `Packing.tsx` does
- * for the trip world (`nameOfResidence`). Widening `onSelect` would have
+ * for the trip world (`nameOfResidence`). Widening `onPicked` would have
  * bought nothing and made every caller carry a label it can compute.
  *
  * ## The two variants say different things because the acts differ

@@ -1115,6 +1115,12 @@ describe('moving what a group holds', () => {
     await user.click(within(pickerRow('Crate B')).getByRole('button'))
 
     expect(await seeded.authored()).toEqual([])
+    // **And the sheet still closes** (§5n K29). The picker reports and closes
+    // nothing, so the close is this screen's — on the suppressed row too,
+    // which writes nothing and ends the sitting all the same. A caller that
+    // hung the close off the write would leave the sheet up on exactly this
+    // tap.
+    expect(screen.queryAllByTestId('pack-row')).toEqual([])
   })
 
   it('moves a plain Entry with one op and no confirm', async () => {

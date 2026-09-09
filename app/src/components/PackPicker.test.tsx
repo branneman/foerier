@@ -44,7 +44,7 @@ function renderPicker(
         tripId={TRIP}
         title="Crate B"
         onClose={() => closes.push(1)}
-        onSelect={(residence) => selected.push(residence)}
+        onPicked={(residence) => selected.push(residence)}
         {...props}
       />
     </HouseholdProvider>,
@@ -458,7 +458,13 @@ describe('the Pack picker', () => {
     expect(rowFor('Stuff sack')).not.toHaveTextContent('▸')
   })
 
-  it('selects and closes on a tap', async () => {
+  /**
+   * **Reports and closes nothing** (§5n K29). This sheet used to call
+   * `onClose` itself, which is a decision about the caller's screen taken by
+   * a component that cannot see it. `onPicked` is the whole contract and its
+   * name carries the obligation: the sitting ended, so the caller closes.
+   */
+  it('reports a tap and leaves the sitting to the caller', async () => {
     const { store, duffel } = await aTripWithContainers()
     const user = userEvent.setup()
     const { selected, closes } = renderPicker(store)
@@ -466,7 +472,7 @@ describe('the Pack picker', () => {
     await user.click(within(rowFor('Duffel 90 L')).getByRole('button'))
 
     expect(selected).toEqual([{ in: 'container', entryId: duffel }])
-    expect(closes()).toBe(1)
+    expect(closes()).toBe(0)
   })
 
   /**
@@ -489,7 +495,7 @@ describe('the Pack picker', () => {
     await user.click(within(rowFor('Duffel 90 L')).getByRole('button'))
 
     expect(selected).toEqual([{ in: 'container', entryId: duffel }])
-    expect(closes()).toBe(1)
+    expect(closes()).toBe(0)
   })
 
   it('selects Loose on a tap', async () => {
@@ -500,7 +506,7 @@ describe('the Pack picker', () => {
     await user.click(within(rowFor('Loose')).getByRole('button'))
 
     expect(selected).toEqual([{ in: 'loose' }])
-    expect(closes()).toBe(1)
+    expect(closes()).toBe(0)
   })
 
   it('draws the empty state with a quiet line and no button', async () => {

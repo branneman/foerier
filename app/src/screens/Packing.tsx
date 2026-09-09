@@ -1440,7 +1440,14 @@ export function Packing() {
           title={entryLabel(pickerEntry, state)}
           current={currentResidenceOf(picker)}
           onClose={() => setPicker(null)}
-          onSelect={(residence) => selectResidence(picker, residence)}
+          // `onPicked` says the sitting ended, so the close is owed here —
+          // the sheet takes no decision about this screen (§5n K29). It is
+          // owed on the suppressed row too: a tap on `● NOW` writes nothing
+          // and still ends the sitting.
+          onPicked={(residence) => {
+            setPicker(null)
+            selectResidence(picker, residence)
+          }}
           {...(picker.kind === 'container'
             ? {
                 excludeEntryId: picker.entryId,

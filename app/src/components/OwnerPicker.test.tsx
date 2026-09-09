@@ -22,7 +22,7 @@ function renderPicker(
     <HouseholdProvider value={store}>
       <OwnerPicker
         value={value}
-        onSelect={(owner) => selected.push(owner)}
+        onPicked={(owner) => selected.push(owner)}
         onClose={() => {}}
       />
     </HouseholdProvider>,

@@ -66,7 +66,7 @@ function threeTrips(): readonly OpSpec[] {
 async function renderPicker(
   options: {
     selected?: string | null
-    onSelect?: (id: string | null) => void
+    onPicked?: (id: string | null) => void
     specs?: readonly OpSpec[]
   } = {},
 ) {
@@ -82,7 +82,7 @@ async function renderPicker(
     <HouseholdProvider value={store}>
       <SourcePicker
         selected={options.selected ?? null}
-        onSelect={options.onSelect ?? (() => undefined)}
+        onPicked={options.onPicked ?? (() => undefined)}
         onClose={() => undefined}
       />
     </HouseholdProvider>,
@@ -109,8 +109,8 @@ describe('SourcePicker', () => {
   })
 
   it('offers the clear as its first row, and marks the standing choice', async () => {
-    const onSelect = vi.fn()
-    await renderPicker({ selected: null, onSelect })
+    const onPicked = vi.fn()
+    await renderPicker({ selected: null, onPicked })
 
     const rows = screen.getAllByTestId('source-row')
     expect(rows[0]).toHaveTextContent('Nothing — start empty')
@@ -119,17 +119,17 @@ describe('SourcePicker', () => {
     expect(rows[0]).toHaveTextContent('● NOW')
 
     await userEvent.setup().click(rows[0]!)
-    expect(onSelect).toHaveBeenCalledWith(null)
+    expect(onPicked).toHaveBeenCalledWith(null)
   })
 
   it('reports the chosen Trip by id', async () => {
-    const onSelect = vi.fn()
-    await renderPicker({ onSelect })
+    const onPicked = vi.fn()
+    await renderPicker({ onPicked })
 
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: /Vosges 2025/ }))
-    expect(onSelect).toHaveBeenCalledWith(OLD)
+    expect(onPicked).toHaveBeenCalledWith(OLD)
   })
 
   it('names only what carries over, and never PIECES', async () => {

@@ -311,7 +311,13 @@ export function Trips() {
         )}
 
         {phaseTrip !== undefined && (
-          <PhaseSheet trip={phaseTrip} onClose={() => setPhaseTripId(null)} />
+          <PhaseSheet
+            trip={phaseTrip}
+            onClose={() => setPhaseTripId(null)}
+            // The sheet writes the op and reports; the close is this
+            // screen's, as it is for every other overlay here (§5n K29).
+            onPicked={() => setPhaseTripId(null)}
+          />
         )}
 
         {reopenTarget !== undefined && (

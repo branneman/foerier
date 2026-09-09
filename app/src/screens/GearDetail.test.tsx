@@ -267,7 +267,7 @@ describe('Gear detail', () => {
     await user.click(screen.getByRole('button', { name: /Shed/ }))
 
     // The destination is named from the residence the picker reported —
-    // `homeLabel`, not a label threaded back through `onSelect`.
+    // `homeLabel`, not a label threaded back through `onPicked`.
     expect(
       screen.getByRole('alertdialog', { name: 'Move Crate B to Shed?' }),
     ).toBeInTheDocument()
@@ -1193,7 +1193,7 @@ describe('Gear detail — whereabouts reaches the screen', () => {
  * fact that settles the standing (`patterns.md` §2.3's one stated
  * exception).
  *
- * **Ruling R30 (fix round): `onSelect` emits `gear.rehomed` ALONE.** An
+ * **Ruling R30 (fix round): `onPicked` emits `gear.rehomed` ALONE.** An
  * earlier version of this route ran `reHomeOnTheSpot` (`gestures.ts`), which
  * also rewrites the claiming Entry's own `outcome` register to `back` —
  * wrong, because that register is exactly what `unaccountedOf` reads to
@@ -1358,7 +1358,7 @@ describe('Gear detail — the unaccounted standing and its settle route (S10, F1
   /**
    * The route's whole point: tapping the row marked `● NOW — FOUND HERE`
    * emits `gear.rehomed` **even though** the residence is unchanged, and
-   * that write is what clears the standing. `GearDetail`'s MOVE `onSelect`
+   * that write is what clears the standing. `GearDetail`'s MOVE `onPicked`
    * a few lines above this test carries a `sameResidence` guard for the
    * opposite reason — this caller must not inherit it, or the row would tap
    * and write nothing.

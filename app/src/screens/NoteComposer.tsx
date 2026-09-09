@@ -204,7 +204,7 @@ export function NoteComposer() {
         <AboutPicker
           tripId={tripId}
           value={chosen?.id}
-          onSelect={setEntryId}
+          onPicked={setEntryId}
           onClose={() => setPickerOpen(false)}
         />
       )}

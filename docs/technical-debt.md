@@ -144,12 +144,6 @@ session rather than an edit, because the symptom shows up somewhere else.
   fails only its own suite and nothing compares them. Argued in the module's
   own header, `shared/src/selectors/tripContainment.ts`, anchor:
   `non-drift is the obligation it`
-- **Who closes a picker after a pick is decided per component.** `PackPicker`
-  and `PhaseSheet` close themselves; `HomePicker`, `OwnerPicker`,
-  `ParticipantPicker` and `SortGroupSheet` are closed by the caller. A new
-  caller of the second group that forgets `setOpen(false)` gets a sheet that
-  stays up after a tap. [`patterns.md`](patterns.md) §4.3, anchor:
-  `decided per component`
 
 ### Specified and not built
 

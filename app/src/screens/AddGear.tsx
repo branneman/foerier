@@ -416,7 +416,7 @@ export function AddGear() {
       {ownerPickerOpen && (
         <OwnerPicker
           value={owner}
-          onSelect={(next) => {
+          onPicked={(next) => {
             setOwner(next)
             setOwnerPickerOpen(false)
           }}
@@ -451,7 +451,7 @@ export function AddGear() {
       {pickerOpen && (
         <HomePicker
           onClose={() => setPickerOpen(false)}
-          onSelect={(residence) => {
+          onPicked={(residence) => {
             setHome(residence.in === 'loose' ? undefined : residence)
             setPickerOpen(false)
           }}

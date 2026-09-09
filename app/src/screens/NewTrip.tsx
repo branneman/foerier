@@ -476,7 +476,7 @@ export function NewTrip() {
           // The picker is pure selection and the caller closes it — the Home
           // picker's rule, and why its first row is the clear rather than an
           // `✕` on the field.
-          onSelect={(id) => {
+          onPicked={(id) => {
             setOverride(id)
             setSourceOpen(false)
           }}

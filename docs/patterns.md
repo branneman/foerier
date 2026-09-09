@@ -634,10 +634,28 @@ the other Trip, not an explaining sentence.
 ### 4.3 A picker is pure selection; the caller suppresses and decides
 
 `PackPicker`, `HomePicker`, `OwnerPicker`, `ParticipantPicker`, `TagPicker`,
-`ValueMenu`, `SortGroupSheet` report every pick, the current one included.
-The **caller** compares against the current value (`sameTripResidence` and
-`sameResidence`, both in `shared/` beside the types they compare and
-exported for exactly that) and closes the picker.
+`ValueMenu`, `SortGroupSheet`, `PhaseSheet` report every pick, the current one
+included. The **caller** compares against the current value
+(`sameTripResidence` and `sameResidence`, both in `shared/` beside the types
+they compare and exported for exactly that) and closes the picker.
+
+**A picker closes nothing, and the callback's name says whether a close is
+owed** (§5n K29). A component that closes itself has taken a decision about a
+screen it cannot see — the same class of thing the `HomePicker` lift below
+removed — and "the picker closes itself" was already false for a third of
+them, since a multi-select one has to stay open on a pick. So one rule, made
+legible where a caller reads it:
+
+| Kind | Callback | The caller owes |
+| --- | --- | --- |
+| single-select | `onPicked` — the sitting ended | the close |
+| multi-select | `onToggle`, `onApply`, `onRemove`, `onChange` — a value was written | nothing |
+
+`PhaseSheet` is the odd one and takes both: `onClose` for a dismissal (the
+scrim, Escape) and `onPicked()` with no value, because it writes the op
+itself and only the sitting is handed back. `onPicked` fires on every row a
+tap can take — the `● NOW` row, which writes nothing, and the `closed` row
+that routes to F5 instead of writing.
 `PackPicker`'s own container-move confirm is the caller's
 (`ContainerMoveConfirm`, rendered by `Packing.tsx`): the sheet reports the
 pick and nothing stands between it and the caller's own decision. The `● NOW`
@@ -654,7 +672,7 @@ it so Cancel returns to the list. `moving` still carries what the sheet
 
 **The recorded blocker turned out not to exist**, which is worth keeping: the
 lift was logged as needing the destination label reported back through
-`onSelect`, because the confirm names where the gear is going and only the
+`onPicked`, because the confirm names where the gear is going and only the
 picker held that word. A caller has the `Residence` and the fold, so
 `homeLabel` derives the same words the row drew — `Packing.tsx`'s
 `nameOfResidence` one world over. Widening the callback would have made every
@@ -665,10 +683,9 @@ still raises the confirm, the `● NOW` row included, because suppressing it is
 a rule about the *write* (`sameResidence`, at the caller's `onConfirm`) and
 not about the dialog.
 
-*Departures:* who closes after a pick is decided per component — `PackPicker`
-and `PhaseSheet` close themselves, the rest are closed by the caller.
-**`HomePicker` holds its own MOVE confirm rather than leaving it to the
-caller** — see above.
+*Departures:* none. The two that closed themselves, `PackPicker` and
+`PhaseSheet`, were corrected at §5n K29, and `HomePicker`'s own MOVE confirm
+became the caller's at K8.
 *Argued in:* `PackPicker.tsx`'s header; `HomePicker.tsx`'s header;
 [§12.15](architecture-design.md#1215-consequences-of-s9a-packing-and-the-journey).
 

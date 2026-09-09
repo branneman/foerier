@@ -2700,7 +2700,7 @@ moved while it was being built.
   `gear.rehomed`, whatever the residence — but spec §1.5 calls that the
   rule's *complement*, not its exception, because that write is always paired
   with a genuine outcome change. `GearDetail`'s `RESOLVE` route is the real
-  exception: its `onSelect` emits a bare `gear.rehomed`, deliberately **not**
+  exception: its `onPicked` emits a bare `gear.rehomed`, deliberately **not**
   guarded by `sameResidence` the way its own MOVE handler is, because writing
   the *same* home on a later clock is precisely the fact that ends the
   standing (`outcomeStands`) — the `● NOW — FOUND HERE` row (`nowLabel`) is

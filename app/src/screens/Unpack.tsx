@@ -1765,7 +1765,7 @@ export function Unpack() {
         reHomeGear !== undefined && (
           <HomePicker
             onClose={() => setReHomeEntryId(null)}
-            onSelect={(residence) => {
+            onPicked={(residence) => {
               // A container's re-home confirms first (§5i G15) — this
               // screen's confirm, with the picker still open behind it so
               // Cancel returns to the list. A plain row writes on the pick.

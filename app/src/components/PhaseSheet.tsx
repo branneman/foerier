@@ -39,6 +39,14 @@ import { ReopenConfirm } from './ReopenConfirm'
  * there is exactly one caller shape — a chip on a Trip that already exists —
  * so nothing is served by handing the move back up.
  *
+ * **It closes nothing, though** (§5n K29). Writing the op is this sheet's
+ * business; ending the sitting is the caller's, and it used to take both.
+ * The two callbacks say which is which: {@link PhaseSheetProps.onClose} is a
+ * dismissal — the scrim, Escape — and {@link PhaseSheetProps.onPicked} says a
+ * row was taken and the sitting is over. A caller that does the same thing
+ * for both is welcome to; what it may not do is find out by reading this
+ * file.
+ *
  * Three special cases now, not two.
  *
  * **Entering `closed` is gated on `open = 0`, invariant 18's own gate — the
@@ -78,10 +86,24 @@ import { ReopenConfirm } from './ReopenConfirm'
  */
 export interface PhaseSheetProps {
   trip: TripState
+  /** Dismissed without taking a row — the scrim, Escape, the sheet's own
+   * chrome. */
   onClose: () => void
+  /**
+   * **A row was taken and the sitting is over** — including the `● NOW` row,
+   * which writes nothing and ends the sitting all the same, and including the
+   * `closed`-row tap that routes to F5 instead of writing.
+   *
+   * The op is already emitted by the time this fires; what the caller owes is
+   * the close (§5n K29). Named for the sitting rather than for the write,
+   * because that is the obligation a reader has to be able to see from the
+   * call site: a multi-select sheet beside this one reports through a name
+   * that says a value was written and owes no close at all.
+   */
+  onPicked: () => void
 }
 
-export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
+export function PhaseSheet({ trip, onClose, onPicked }: PhaseSheetProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
   const emitAll = useHousehold((depot) => depot.emitAll)
@@ -130,7 +152,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
 
   function move(phase: PhaseKey) {
     emit(tripPhaseMoved(trip.id, phase))
-    onClose()
+    onPicked()
   }
 
   /**
@@ -143,7 +165,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
    */
   function reopen(phase: PhaseKey) {
     emitAll(reopenTrip(trip, phase, state))
-    onClose()
+    onPicked()
   }
 
   function choose(phase: PhaseKey) {
@@ -153,7 +175,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
     // same class of harm as S4's "a needless write moves `recordedAt`", and
     // worse here because the count is the chip's whole content.
     if (phase === current) {
-      onClose()
+      onPicked()
       return
     }
     // Only `closed` is guarded on the way out. An unrecognised phase is not
@@ -174,7 +196,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
         // gap can actually be closed, and the sheet gets out of the way of
         // it rather than leaving a claim it cannot back up on screen.
         navigate(`/trips/${trip.id}/unpack`)
-        onClose()
+        onPicked()
         return
       }
       // `closeTrip` carries the summed per-Gear reduction, the floor at
@@ -184,7 +206,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
       // corruption F5's own close card exists to prevent, arriving through
       // a second door.
       emitAll(closeTrip(trip, state))
-      onClose()
+      onPicked()
       return
     }
     // Spec §4.5's second guarded moment, widened by amendment ruling J to

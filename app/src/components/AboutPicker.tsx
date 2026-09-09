@@ -29,13 +29,13 @@ import styles from './AboutPicker.module.css'
 export function AboutPicker({
   tripId,
   value,
-  onSelect,
+  onPicked,
   onClose,
 }: {
   tripId: string
   /** The Entry currently chosen, or `undefined` for the Trip. */
   value: string | undefined
-  onSelect: (entryId: string | undefined) => void
+  onPicked: (entryId: string | undefined) => void
   onClose: () => void
 }) {
   const state = useHousehold((depot) => depot.state)
@@ -52,7 +52,7 @@ export function AboutPicker({
             type="button"
             className={styles['row']}
             onClick={() => {
-              onSelect(undefined)
+              onPicked(undefined)
               onClose()
             }}
           >
@@ -73,7 +73,7 @@ export function AboutPicker({
               type="button"
               className={styles['row']}
               onClick={() => {
-                onSelect(entry.id)
+                onPicked(entry.id)
                 onClose()
               }}
             >

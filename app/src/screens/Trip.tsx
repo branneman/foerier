@@ -950,7 +950,13 @@ export function Trip() {
       )}
 
       {phaseOpen && (
-        <PhaseSheet trip={trip} onClose={() => setPhaseOpen(false)} />
+        <PhaseSheet
+          trip={trip}
+          onClose={() => setPhaseOpen(false)}
+          // The sheet writes the op and reports; the close is this screen's
+          // (§5n K29).
+          onPicked={() => setPhaseOpen(false)}
+        />
       )}
 
       {pickerOpen && (

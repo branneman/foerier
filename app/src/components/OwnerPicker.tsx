@@ -40,11 +40,11 @@ import styles from './OwnerPicker.module.css'
 export interface OwnerPickerProps {
   /** The owner the caller currently holds; its row is drawn chosen. */
   value: Owner
-  onSelect: (owner: Owner) => void
+  onPicked: (owner: Owner) => void
   onClose: () => void
 }
 
-export function OwnerPicker({ value, onSelect, onClose }: OwnerPickerProps) {
+export function OwnerPicker({ value, onPicked, onClose }: OwnerPickerProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
 
@@ -63,7 +63,7 @@ export function OwnerPicker({ value, onSelect, onClose }: OwnerPickerProps) {
     const id = systemIdSource.next()
     emit(personRecorded(id, trimmed))
     // Created while picking is selected — the Home picker's rule.
-    onSelect({ type: 'person', personId: id })
+    onPicked({ type: 'person', personId: id })
   }
 
   return (
@@ -75,7 +75,7 @@ export function OwnerPicker({ value, onSelect, onClose }: OwnerPickerProps) {
             className={styles['row']}
             data-testid="owner-row"
             aria-pressed={value.type === 'shared'}
-            onClick={() => onSelect({ type: 'shared' })}
+            onClick={() => onPicked({ type: 'shared' })}
           >
             <span>Shared</span>
             {value.type === 'shared' && (
@@ -93,7 +93,7 @@ export function OwnerPicker({ value, onSelect, onClose }: OwnerPickerProps) {
                 data-testid="owner-row"
                 aria-pressed={chosen}
                 onClick={() =>
-                  onSelect({ type: 'person', personId: person.id })
+                  onPicked({ type: 'person', personId: person.id })
                 }
               >
                 <span>{person.label}</span>

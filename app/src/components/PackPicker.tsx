@@ -77,11 +77,16 @@ import styles from './PackPicker.module.css'
  * authored on one Device at all. `tripContainmentView`'s cycle break is for
  * the cycles two Devices author while apart, which no picker can prevent.
  *
- * ## Selection moves and closes; the confirm is the caller's
+ * ## Selection reports; the close and the confirm are both the caller's
  *
- * A tap calls `onSelect` and then `onClose` — **including a tap on the
- * `● NOW` row**, which the caller is the one that must drop; see
- * {@link PackPickerProps.onSelect}. Whether a confirm is owed is
+ * A tap calls `onPicked` and **nothing else** (§5n K29). This sheet used to
+ * call `onClose` itself, which is a decision about the caller's screen taken
+ * by a component that cannot see it — the same class of thing ruling K8
+ * removed from `HomePicker`'s MOVE confirm. The name is the whole of the
+ * contract: `onPicked` says the sitting ended, so a caller reads that a close
+ * is owed instead of remembering it. Every row reports, **including a tap on
+ * the `● NOW` row**, which the caller is the one that must drop; see
+ * {@link PackPickerProps.onPicked}. Whether a confirm is owed is
  * ruling A2b's question and it is decided by *what is moving* — a container
  * move confirms, a plain Entry or Piece move does not — which is a fact the
  * caller holds and this sheet does not. {@link ContainerMoveConfirm} is
@@ -92,7 +97,8 @@ export interface PackPickerProps {
   tripId: string
   onClose: () => void
   /**
-   * The destination that was tapped, followed immediately by `onClose`.
+   * The destination that was tapped. **The sitting is over and the caller
+   * closes** — this sheet closes nothing (§5n K29).
    *
    * **A selection equal to {@link current} is still reported, and suppressing
    * it is the caller's job.** This sheet is pure selection: it holds no Trip,
@@ -107,7 +113,7 @@ export interface PackPickerProps {
    * honours it there, through `sameResidence`, as `Packing.tsx` does here
    * through `sameTripResidence`.
    */
-  onSelect: (residence: TripResidence) => void
+  onPicked: (residence: TripResidence) => void
   /** The sheet's heading: the name of the thing being placed. */
   title: string
   /**
@@ -254,7 +260,7 @@ function containerRowsUnder(
 export function PackPicker({
   tripId,
   onClose,
-  onSelect,
+  onPicked,
   title,
   excludeEntryId,
   current,
@@ -305,8 +311,7 @@ export function PackPicker({
   }, [state, tripId, excludeEntryId])
 
   function choose(residence: TripResidence) {
-    onSelect(residence)
-    onClose()
+    onPicked(residence)
   }
 
   const nowMark = <span className={styles['now']}>● NOW</span>

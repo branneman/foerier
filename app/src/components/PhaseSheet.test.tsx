@@ -174,7 +174,12 @@ async function phaseMoves(log: OpLog): Promise<readonly unknown[]> {
 // that only mounts a Trip has no business requiring one reporter over the
 // other.
 function renderSheet(seeded: Pick<Seeded, 'store' | 'trip'>) {
+  // Two counters, because §5n K29 makes them two different facts: `onClose`
+  // is a dismissal and `onPicked` says a row was taken and the sitting is
+  // over. The sheet must never call the first for the second — deciding the
+  // caller's screen is closed is not a picker's business.
   let closed = 0
+  let picked = 0
   render(
     <HouseholdProvider value={seeded.store}>
       <PhaseSheet
@@ -182,10 +187,13 @@ function renderSheet(seeded: Pick<Seeded, 'store' | 'trip'>) {
         onClose={() => {
           closed += 1
         }}
+        onPicked={() => {
+          picked += 1
+        }}
       />
     </HouseholdProvider>,
   )
-  return { closes: () => closed }
+  return { closes: () => closed, picks: () => picked }
 }
 
 /** Every op authored since the seed, by type — not filtered to phase moves,
@@ -310,14 +318,15 @@ describe('the SET PHASE sheet', () => {
   it('moves backwards, which is the point of the sheet', async () => {
     const user = userEvent.setup()
     const seeded = await seededTrip('on_trip')
-    const { closes } = renderSheet(seeded)
+    const { closes, picks } = renderSheet(seeded)
 
     // "We had left" until the duffel turns out to be still in the hall.
     await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
     await seeded.store.getState().drained()
 
     expect(await seeded.moves()).toEqual(['pack_out'])
-    expect(closes()).toBe(1)
+    expect(picks()).toBe(1)
+    expect(closes()).toBe(0)
   })
 
   it('closes a Trip without asking anything, at open = 0', async () => {
@@ -338,7 +347,7 @@ describe('the SET PHASE sheet', () => {
   it('writes nothing when the current phase is tapped', async () => {
     const user = userEvent.setup()
     const seeded = await seededTrip('pack_out')
-    const { closes } = renderSheet(seeded)
+    const { closes, picks } = renderSheet(seeded)
 
     await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
     await seeded.store.getState().drained()
@@ -346,7 +355,8 @@ describe('the SET PHASE sheet', () => {
     // `DAY N` is the phase register's own stamp, so a redundant move would
     // silently reset a trip on `DAY 12` to `DAY 1`. The sheet just closes.
     expect(await seeded.moves()).toEqual([])
-    expect(closes()).toBe(1)
+    expect(picks()).toBe(1)
+    expect(closes()).toBe(0)
   })
 
   /**
@@ -406,6 +416,7 @@ describe('the SET PHASE sheet', () => {
     }) {
       const location = memoryLocation({ path: '/trips/start', record: true })
       let closed = 0
+      let picked = 0
       render(
         <Router hook={location.hook}>
           <Switch>
@@ -416,6 +427,9 @@ describe('the SET PHASE sheet', () => {
                   onClose={() => {
                     closed += 1
                   }}
+                  onPicked={() => {
+                    picked += 1
+                  }}
                 />
               </HouseholdProvider>
             </Route>
@@ -425,7 +439,7 @@ describe('the SET PHASE sheet', () => {
           </Switch>
         </Router>,
       )
-      return { location, closes: () => closed }
+      return { location, closes: () => closed, picks: () => picked }
     }
 
     it('draws the right-hand N OPEN › and keeps the row tappable — never a disabled row (D7)', async () => {
@@ -516,7 +530,7 @@ describe('the SET PHASE sheet', () => {
     it('routes to the unpack screen instead of writing, and closes the sheet', async () => {
       const user = userEvent.setup()
       const seeded = await seededOpenTrip()
-      const { closes } = renderSheetWithRouter(seeded)
+      const { closes, picks } = renderSheetWithRouter(seeded)
 
       await user.click(screen.getByRole('button', { name: /CLOSED/ }))
       await seeded.store.getState().drained()
@@ -525,13 +539,14 @@ describe('the SET PHASE sheet', () => {
       // there.
       expect(await seeded.authored()).toEqual([])
       expect(screen.getByText(`Unpack ${seeded.trip().id}`)).toBeVisible()
-      expect(closes()).toBe(1)
+      expect(picks()).toBe(1)
+      expect(closes()).toBe(0)
     })
 
     it('emits the close batch, not a bare phase move, once open = 0', async () => {
       const user = userEvent.setup()
       const seeded = await seededReadyToClose()
-      const { closes } = renderSheetWithRouter(seeded)
+      const { closes, picks } = renderSheetWithRouter(seeded)
 
       // Nothing marks this row `6 OPEN` — the ordinary setter underneath.
       expect(
@@ -558,7 +573,8 @@ describe('the SET PHASE sheet', () => {
           payload: { phase: 'closed' },
         },
       ])
-      expect(closes()).toBe(1)
+      expect(picks()).toBe(1)
+      expect(closes()).toBe(0)
     })
   })
 
@@ -827,7 +843,7 @@ describe('the SET PHASE sheet', () => {
     it('renders no block when it would not', async () => {
       const user = userEvent.setup()
       const seeded = await seededTrip('draft')
-      const { closes } = renderSheet(seeded)
+      const { closes, picks } = renderSheet(seeded)
 
       await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
       await seeded.store.getState().drained()
@@ -838,13 +854,14 @@ describe('the SET PHASE sheet', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull()
       expect(screen.queryByTestId('over-claim-attention')).toBeNull()
       expect(await seeded.moves()).toEqual(['pack_out'])
-      expect(closes()).toBe(1)
+      expect(picks()).toBe(1)
+      expect(closes()).toBe(0)
     })
 
     it('does not gate on a conflict naming two other Trips entirely', async () => {
       const user = userEvent.setup()
       const seeded = await seededUnrelatedClash()
-      const { closes } = renderSheet(seeded)
+      const { closes, picks } = renderSheet(seeded)
 
       await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
       await seeded.store.getState().drained()
@@ -857,7 +874,8 @@ describe('the SET PHASE sheet', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull()
       expect(screen.queryByTestId('over-claim-attention')).toBeNull()
       expect(await seeded.moves()).toEqual(['pack_out'])
-      expect(closes()).toBe(1)
+      expect(picks()).toBe(1)
+      expect(closes()).toBe(0)
     })
 
     it('keeps Start pack-out filled accent, never red', async () => {
@@ -879,7 +897,7 @@ describe('the SET PHASE sheet', () => {
     it('still moves the phase when the primary is pressed', async () => {
       const user = userEvent.setup()
       const seeded = await seededDraftClash()
-      const { closes } = renderSheet(seeded)
+      const { closes, picks } = renderSheet(seeded)
 
       await user.click(screen.getByRole('button', { name: /PACK-OUT/ }))
       await user.click(screen.getByRole('button', { name: 'Start pack-out' }))
@@ -888,7 +906,8 @@ describe('the SET PHASE sheet', () => {
       // Warns and allows: the conflict is still there, and the move happens
       // anyway — nothing here ever blocks it.
       expect(await seeded.moves()).toEqual(['pack_out'])
-      expect(closes()).toBe(1)
+      expect(picks()).toBe(1)
+      expect(closes()).toBe(0)
     })
 
     it('titles a nameless Draft with the word tripNameOrUnnamed reads it as', async () => {

@@ -106,7 +106,7 @@ import styles from './HomePicker.module.css'
  */
 export interface HomePickerProps {
   onClose: () => void
-  onSelect: (residence: Residence) => void
+  onPicked: (residence: Residence) => void
   /**
    * The gear being homed, when it already exists (`MOVE`). Omit for Add
    * Gear — the gear has no id yet, so no cycle can be authored through this
@@ -276,7 +276,7 @@ function looseLine(count: number): string {
 
 export function HomePicker({
   onClose,
-  onSelect,
+  onPicked,
   excludeGearId,
   current,
   moving,
@@ -324,7 +324,7 @@ export function HomePicker({
   function choose(residence: Residence) {
     // Edit suspends selection: rows stop closing the sheet.
     if (editing) return
-    onSelect(residence)
+    onPicked(residence)
   }
 
   function startRename(id: string, currentName: string) {

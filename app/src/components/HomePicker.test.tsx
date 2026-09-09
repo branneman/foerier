@@ -53,7 +53,7 @@ function renderPicker(
     <HouseholdProvider value={store}>
       <HomePicker
         onClose={() => {}}
-        onSelect={(residence) => selected.push(residence)}
+        onPicked={(residence) => selected.push(residence)}
         {...props}
       />
     </HouseholdProvider>,
@@ -646,7 +646,7 @@ describe('the Home picker — MOVE', () => {
             Open the picker
           </button>
           {open && (
-            <HomePicker onClose={() => setOpen(false)} onSelect={() => {}} />
+            <HomePicker onClose={() => setOpen(false)} onPicked={() => {}} />
           )}
         </HouseholdProvider>
       )

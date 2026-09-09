@@ -628,7 +628,7 @@ export function GearDetail() {
           // sheet's own confirm did: the suppression is a rule about the
           // *write*, not about the dialog, and moving it earlier would be a
           // behaviour change this lift has no business making.
-          onSelect={setPendingMove}
+          onPicked={setPendingMove}
           excludeGearId={gearId}
           // Always passed: an absent register **is** loose (`residenceOf`),
           // so the Loose row is `● NOW` for gear recorded with no home rather
@@ -670,7 +670,7 @@ export function GearDetail() {
       )}
 
       {/* F16's settle route (`docs/design/README.md` §06, §5h), R30's own
-          fix round: `onSelect` emits **`gear.rehomed` alone**. The standing
+          fix round: `onPicked` emits **`gear.rehomed` alone**. The standing
           is a selector reading an Entry's `outcome` register
           (`unaccountedOf`, `unpack.ts`) — `lost` writes nothing against the
           depot, and ending the standing by editing the very outcome the
@@ -699,7 +699,7 @@ export function GearDetail() {
           still stating that fact.
 
           Deliberately **not** guarded by `sameResidence` the way MOVE's own
-          `onSelect` above is: a same-value `gear.rehomed` is `patterns.md`
+          `onPicked` above is: a same-value `gear.rehomed` is `patterns.md`
           §2.3's one stated exception, because writing the *same* home on a
           later clock is precisely the fact that ends the standing
           (`outcomeStands`, `unpack.ts`). Inheriting MOVE's guard here would
@@ -707,7 +707,7 @@ export function GearDetail() {
       {resolveOpen && unaccounted !== null && (
         <HomePicker
           onClose={() => setResolveOpen(false)}
-          onSelect={(residence) => {
+          onPicked={(residence) => {
             emit(gearRehomed(gearId, residence))
             setResolveOpen(false)
           }}
@@ -841,7 +841,7 @@ export function GearDetail() {
           {ownerPickerOpen && (
             <OwnerPicker
               value={ownerDraft}
-              onSelect={(next) => {
+              onPicked={(next) => {
                 setOwnerDraft(next)
                 setOwnerPickerOpen(false)
               }}

@@ -52,13 +52,13 @@ import styles from './SourcePicker.module.css'
  */
 export function SourcePicker({
   selected,
-  onSelect,
+  onPicked,
   onClose,
 }: {
   /** The chosen source, or `null` for a blank list. */
   selected: string | null
   /** `null` is the first row — the clear. The caller closes the sheet. */
-  onSelect: (tripId: string | null) => void
+  onPicked: (tripId: string | null) => void
   onClose: () => void
 }) {
   const state = useHousehold((depot) => depot.state)
@@ -73,7 +73,7 @@ export function SourcePicker({
             className={styles['row']}
             data-testid="source-row"
             aria-pressed={selected === null}
-            onClick={() => onSelect(null)}
+            onClick={() => onPicked(null)}
           >
             <span className={styles['body']}>
               <span className={styles['name']} data-testid="source-name">
@@ -92,7 +92,7 @@ export function SourcePicker({
               className={styles['row']}
               data-testid="source-row"
               aria-pressed={selected === trip.id}
-              onClick={() => onSelect(trip.id)}
+              onClick={() => onPicked(trip.id)}
             >
               <span className={styles['body']}>
                 {/* The prose sentinel: a row's name is a name slot, and this
