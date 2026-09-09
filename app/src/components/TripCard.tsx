@@ -9,13 +9,8 @@ import {
 import { PersonCluster } from '@foerier/ui'
 import { Link } from 'wouter'
 
-import { useHousehold } from '../household/store'
-import {
-  tripChip,
-  tripDateRange,
-  tripParticipants,
-  type ProgressLine,
-} from '../household/trips'
+import type { PersonRow } from '../household/people'
+import { tripChip, tripDateRange, type ProgressLine } from '../household/trips'
 import { entryCountLabel } from './GearListSection'
 import styles from './TripCard.module.css'
 
@@ -191,13 +186,22 @@ export interface TripCardProps {
   variant: 'active' | 'planned'
   /**
    * `listTotals(trip, state).entries` — the caller's own read, not this
-   * component's. `Trips.tsx` already reads the store for `tripSections`;
-   * this card reads it too, for `participants` (spec §4.1's own debt,
-   * `technical-debt.md`). Adding a second store read here for the count
-   * would deepen that debt rather than merely carry it, so the number
-   * arrives as a plain prop instead.
+   * component's. `Trips.tsx` already reads the store for `tripSections`, so
+   * the number arrives as a plain prop.
    */
   entryCount: number
+  /**
+   * `tripParticipants(state, trip)` — the circles and the `+N`.
+   *
+   * A prop for `entryCount`'s reason, and it was the card's **last store
+   * read** until after the MVP: §5.2's bar is that a read a parent already
+   * has, or could pass, is lifted, and `Trips.tsx` holds the fold either way.
+   * With it gone this component is props-in, which is one of the four things
+   * §5's hard rule wanted before the card can move to `ui/` — the router
+   * `Link`, the `app/`-local helpers and the `shared/` selectors are the
+   * other three, and they are why it has not moved yet.
+   */
+  participants: readonly PersonRow[]
   /**
    * `Trips.tsx`'s own `useMediaQuery(SPLIT)`, already resolved into a route:
    * `/trips/{id}` below Split, `/trips/{id}/list?from=trips` from Split up.
@@ -259,12 +263,11 @@ export function TripCard({
   trip,
   variant,
   entryCount,
+  participants,
   buildListHref,
   progress,
   onOpenPhase,
 }: TripCardProps) {
-  const state = useHousehold((depot) => depot.state)
-
   const label = tripLabel(trip)
   // The prose half of the glyph/prose split (`docs/design/README.md` §5c):
   // `tripLabel`'s `—` is right where the name stands as a *mark* — this
@@ -276,7 +279,6 @@ export function TripCard({
   // labels used to say `—` in theirs, which made one nameless Trip two
   // different things inside one flow.
   const spokenName = tripNameOrUnnamed(trip)
-  const participants = tripParticipants(state, trip)
   const dates = tripDateRange(trip)
 
   // Composed by `tripChip` rather than here, because the trip screen draws the

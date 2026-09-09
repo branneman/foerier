@@ -18,11 +18,13 @@ import { pieceLabel } from '../components/GearListSection'
 import { PhaseSheet } from '../components/PhaseSheet'
 import { ReopenConfirm } from '../components/ReopenConfirm'
 import { TripCard } from '../components/TripCard'
+import type { PersonRow } from '../household/people'
 import { useHousehold } from '../household/store'
 import {
   lostLabel,
   packingProgress,
   tripHasUnaccounted,
+  tripParticipants,
   tripStartMonth,
   unpackProgress,
   type ProgressLine,
@@ -119,9 +121,11 @@ export function Trips() {
   //
   // `entryCount` rides along the same way: `TripCard` does not call
   // `listTotals` itself (§5's `ui/` rule against a component reading the
-  // store, and the card already owes one such read for `participants` —
-  // `technical-debt.md`), so the screen reads it once per Trip and hands
-  // down the number.
+  // store), so the screen reads it once per Trip and hands down the number.
+  // `participants` joins it here — it was the card's one remaining store
+  // read, and lifting it is what makes the card props-in: §5.2's bar is that
+  // a read a parent already has, or could pass, is lifted, and this screen
+  // holds the fold either way.
   //
   // `buildListHref` too: below Split the trip screen *is* the editor
   // (`/trips/:id`); from Split up the builder is (`/trips/:id/list`, with
@@ -156,6 +160,7 @@ export function Trips() {
     trip: TripState
     variant: 'active' | 'planned'
     entryCount: number
+    participants: readonly PersonRow[]
     buildListHref: string
     progress?: ProgressLine
   }[] = useMemo(
@@ -164,6 +169,7 @@ export function Trips() {
         trip,
         variant: 'active' as const,
         entryCount: 0,
+        participants: tripParticipants(state, trip),
         buildListHref: isSplit
           ? `/trips/${trip.id}/list?from=trips`
           : `/trips/${trip.id}`,
@@ -176,6 +182,7 @@ export function Trips() {
         trip,
         variant: 'planned' as const,
         entryCount: listTotals(trip, state).entries,
+        participants: tripParticipants(state, trip),
         buildListHref: isSplit
           ? `/trips/${trip.id}/list?from=trips`
           : `/trips/${trip.id}`,
@@ -243,7 +250,14 @@ export function Trips() {
             {cards.length > 0 && (
               <ul className={styles['cards']}>
                 {cards.map(
-                  ({ trip, variant, entryCount, buildListHref, progress }) => (
+                  ({
+                    trip,
+                    variant,
+                    entryCount,
+                    participants,
+                    buildListHref,
+                    progress,
+                  }) => (
                     <li
                       key={trip.id}
                       className={styles['cardItem']}
@@ -254,6 +268,7 @@ export function Trips() {
                         trip={trip}
                         variant={variant}
                         entryCount={entryCount}
+                        participants={participants}
                         buildListHref={buildListHref}
                         progress={progress}
                         onOpenPhase={() => setPhaseTripId(trip.id)}

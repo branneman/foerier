@@ -296,12 +296,6 @@ One rule, several spellings; or one thing under the wrong name. Nothing
 observable changes when these close, which is why none is urgent and why
 every one of them gets more expensive per slice.
 
-- **`ReopenConfirm` reads the store; `ActivationConfirm`, its twin, takes
-  `groups`.** Two facts-only confirms with one anatomy and two data-flow
-  shapes; the lift is `groups` as a prop from `PhaseSheet` and `Trips`, which
-  already compute them. `TripCard` has the same shape of debt at one read.
-  [`patterns.md`](patterns.md) §5.2, anchor:
-  `computes its own groups`
 - **The mono-caps label is the most-copied rule in the codebase, and the
   small sizes have no token.** Seventy-six uppercase-label rules across
   twenty-nine modules, nineteen carrying the full three-line recipe verbatim;

@@ -19,6 +19,7 @@ import type { StoreApi } from 'zustand/vanilla'
 import { HouseholdProvider, type HouseholdStoreState } from '../household/store'
 import { packingProgress, type ProgressLine } from '../household/trips'
 import { SEEDED_AT, seededStore } from '../testUtils'
+import { tripParticipants } from '../household/trips'
 import { TripCard } from './TripCard'
 
 /**
@@ -85,6 +86,10 @@ function renderCard(
     buildListHref = `/trips/${trip().id}`,
     progress,
   } = options
+  // The card is props-in now, so the harness resolves the participants the
+  // screen would — through the same one function, rather than by rebuilding
+  // a row shape a drift could make wrong.
+  const participants = tripParticipants(store.getState().state, trip())
   const location = memoryLocation({ path: '/trips', record: true })
   render(
     <Router hook={location.hook}>
@@ -93,6 +98,7 @@ function renderCard(
           trip={trip()}
           variant={variant}
           entryCount={entryCount}
+          participants={participants}
           buildListHref={buildListHref}
           progress={progress}
           onOpenPhase={onOpenPhase}

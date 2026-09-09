@@ -699,10 +699,25 @@ it computes (`OverClaimBand`, `GearListSection`). A read that a parent already
 has, or could pass, is lifted. Two sibling components with one shape share
 one data-flow shape.
 
-*Departures:* `ReopenConfirm` reads the store and computes its own groups
-while `ActivationConfirm`, its twin, takes `groups` as a prop; `TripCard`
-reads `tripParticipants` while `Trips` already hands it `entryCount` and
-`progress` for exactly this reason.
+**The twins that look like a departure and are not.** `ReopenConfirm` reads
+the store and computes its own over-claim groups; `ActivationConfirm`, which
+draws the identical block, takes `groups` as a prop. That was recorded as a
+departure and it fails this rule's own test: `ReopenConfirm` renders a
+whole-fold derivation nothing above it computes — the postings arithmetic,
+`standingLostOf`, the Gear each line names — so its read is load-bearing, and
+the groups come from the same `state` it already holds. Its caller `Trips`
+renders no `ActivationConfirm` and computes no groups, so passing them in
+would push a fold-wide derivation into a screen with no other use for it.
+`ActivationConfirm`'s prop is equally right for the opposite reason: its
+caller `PhaseSheet` computes those groups anyway, to decide whether the
+confirm opens at all. **Two components with one anatomy and two data-flow
+shapes, because their callers differ** — which the rule permits and the
+departure list had mis-read.
+
+*Departures:* none. `TripCard`'s `tripParticipants` read was the last one and
+is lifted — `Trips` computes it beside the `entryCount` and `progress` it
+already passes, which also leaves the card props-in, one of the four things
+§5's hard rule wants before it can move to `ui/`.
 *Argued in:* [`frontend-design.md` §5](frontend-design.md#5-component-architecture--the-ui-package).
 
 ### 5.3 A `ui/` prop names the paint; the caller owns the meaning
