@@ -459,14 +459,17 @@ the builder:**
   `trips-and-phases.md` §10 sets: a dated spec is left as it was written, and
   what changed lives in its own new [§11](docs/specs/2026-08-29-the-gear-list.md#11-what-changed-during-implementation),
   not edited back into the sections it corrects. The one most likely to bite
-  a future reader: `ui/Stepper` ships with **two** callers, gear detail and
-  the gear list, not three — Add gear's Owned-count well must stay
-  representable as *unset* to gate its CTA. **The fold is possible and
-  deferred, not impossible**: `Stepper`'s contract widened to
-  `value: number | null` partway through this same slice, after the
-  not-convert decision was made for a different reason; what Add gear's own
-  field still owns is a label, a fact line and a CTA gate computed from the
-  raw string, not a channel `Stepper` categorically lacks. The rest are
+  a future reader: `ui/Stepper` shipped at S7 with **two** callers, gear
+  detail and the gear list, not three — Add gear's Owned-count well must stay
+  representable as *unset* to gate its CTA, and the fold was deferred rather
+  than impossible. **It has since landed**, after the MVP, ending the one
+  control that answered to two accessible names (`Fewer` / `More` against
+  `Decrease {label}` / `Increase {label}`); the label, the fact line and the
+  CTA gate all survive it, and the gate now reads `null`. What that screen
+  gave up is the per-keystroke commit — a count is stated on blur (ruling K),
+  which holds only because a tap over a `disabled` button still blurs the
+  well. Measured in Chromium and WebKit, and recorded in `KEYBOARD-PASS.md`
+  because no tier can hold it. The rest are
   listed in full in the spec's own §11 and summarised in
   [§12.13](docs/architecture-design.md#1213-consequences-of-s7-the-gear-list).
 

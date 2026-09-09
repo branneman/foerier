@@ -143,6 +143,23 @@ With any sheet or confirm open, hold **Tab** through roughly fifteen stops.
 - **Expect:** focus cycles within the overlay and returns to its first control.
 - **Failure:** focus reaching the page behind — a broken focus trap.
 
+## Measurements this file holds
+
+Facts about real browsers that a tier cannot assert, kept here so the next
+author does not have to re-measure or — worse — assume.
+
+- **A tap over a `disabled` button still blurs the focused input.** Measured
+  in Chromium and WebKit, September 2026, with a focused `<input>` beside a
+  disabled `<button>`: `blur` fires in both. This is what makes Add gear's
+  Owned-count fold safe — `ui/Stepper` commits on blur, and the `Add gear`
+  CTA is `disabled` until the count is committed, so a Quartermaster who
+  types `8` and goes straight for the CTA depends on it. Firefox was not
+  measured (no engine installed at the time); it is a desktop-only target
+  here and has historically matched Chromium. **Re-check by hand when the
+  keyboard pass next runs**: type a count on `/add`, then tap `Add gear`
+  directly, without leaving the field first. The gear must be recorded with
+  that count.
+
 ## A note on scope
 
 Amendment ruling **I** removes the settle routes from the activation and reopen

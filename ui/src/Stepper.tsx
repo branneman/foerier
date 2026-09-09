@@ -10,9 +10,9 @@ import styles from './Stepper.module.css'
 /**
  * The stepper — one control, two sizes (`docs/design/README.md` §5, ruled
  * against `Components` §01 and §06 disagreeing on size): **h48**, the
- * standalone control gear detail's Owned-count draws, and **h32 dense**, the
- * gear list's in-row Bring-count control (S7). Add gear hand-rolls its own
- * well rather than using either size — not because it can't; see below.
+ * standalone control gear detail's and Add gear's Owned-count draw, and
+ * **h32 dense**, the gear list's in-row Bring-count control (S7). Three
+ * callers, since Add gear's own well folded in.
  *
  * **`value` is the one source of truth; nothing here is business state.**
  * `Stepper` never decides what the count *is* — it only ever asks the
@@ -42,18 +42,27 @@ import styles from './Stepper.module.css'
  * no count at all. A caller with no "opens empty" state of its own simply
  * guards with `!== null` before it emits.
  *
- * **This channel is why Add gear's own well is not a third caller, not why
- * it can't be.** A blank well became expressible before the gear list
- * existed: `3c0788b` (this component's own review round) reported it as
- * `onChange(NaN)`, driven by the `type="text"` well and by giving gear
- * detail's Save guard something to check, and `d12e89a` converted that to
- * `onChange(null)` — NaN typechecked but made "blank" a fact every caller
- * had to know to guard against. Add gear's hand-rolled well predates both
- * and was never revisited once the channel existed. Folding it in is
- * possible and simply undone — what it would still need from its own
- * component is a `<label htmlFor>`, the `OPENS EMPTY — GATES THE CTA` fact
- * line, and a CTA gate computed from `Stepper`'s parsed value rather than
- * from the raw string.
+ * **This channel is what made Add gear a third caller.** A blank well became
+ * expressible before the gear list existed: `3c0788b` (this component's own
+ * review round) reported it as `onChange(NaN)`, driven by the `type="text"`
+ * well and by giving gear detail's Save guard something to check, and
+ * `d12e89a` converted that to `onChange(null)` — NaN typechecked but made
+ * "blank" a fact every caller had to know to guard against. Add gear's
+ * hand-rolled well predates both and went unrevisited for four slices after
+ * the channel existed, which is how one control came to answer to two
+ * accessible names: `Fewer` / `More` there, `Decrease {label}` /
+ * `Increase {label}` here. It kept three things of its own on folding in —
+ * the visible label, the `OPENS EMPTY — GATES THE CTA` fact line, and a CTA
+ * gate that reads `null`.
+ *
+ * **What the fold cost that screen, and why it is safe.** Its well used to
+ * commit per keystroke, so typing a digit enabled the CTA immediately; here
+ * the commit is the blur (ruling K), and the CTA is `disabled` until the
+ * count is chosen. A Quartermaster who types `8` and goes straight for
+ * `Add gear` is therefore relying on a tap over a **disabled** button still
+ * blurring the well. Measured before the fold rather than assumed: it does,
+ * in both Chromium and WebKit. `KEYBOARD-PASS.md` carries the measurement,
+ * because no tier in this repo can hold it.
  *
  * `min` defaults to **`0`**, not `1`. A Bring-count of zero is expressible on
  * the wire (`{entry_id, count: int ≥ 0}`) and is not the same as removing the

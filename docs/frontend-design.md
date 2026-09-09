@@ -539,14 +539,23 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   sizes, h48 default and an in-row h32 whose hit area pads to ≥44px beyond the
   painted box (the status-pill minimum, allowed on touch); `min` defaults to
   `0`, since a Bring-count of zero is expressible on the wire and is not the
-  same as removing the Entry it belongs to. Two callers: `GearDetail`'s
+  same as removing the Entry it belongs to. Three callers: `GearDetail`'s
   hand-rolled Owned-count stepper folds in, and the gear list's Bring-count
   control (`EntryRow.tsx`, dense size) is a new caller rather than a folded
   one — S7 is the first slice with a gear list to hand-roll anything into.
-  Add gear's Owned-count well is not a third: `value`/`onChange` widened to
-  `number | null` partway through S7, so the fold is possible now, but Add
-  gear's field still owns a label, a fact line and a CTA gate `Stepper`
-  does not, and nobody has done the work of folding it in.
+  **Add gear is the third, folded in after the MVP landed.** `value`/`onChange`
+  widened to `number | null` partway through S7, which is what made it
+  possible; what kept it undone was that its field also owns a label, a fact
+  line and a CTA gate, and all three survive the fold — the label as a
+  `<span>` (the component names its own well), the fact line beside the
+  control, and the gate reading `null`. What the fold ended is one control
+  answering to **two accessible names**: `Fewer` / `More` there against
+  `Decrease {label}` / `Increase {label}` here. What it cost that screen is
+  the per-keystroke commit — the count is now stated on blur (ruling K), and
+  the CTA it gates is `disabled` until then, which holds only because a tap
+  over a disabled button still blurs the well. Measured in Chromium and
+  WebKit rather than assumed; `KEYBOARD-PASS.md` carries it, since no tier
+  can.
 
   **`SegmentedControl` and `StatusPill` landed together after S9**, each on
   §5's own trigger (`patterns.md` §5.5) rather than on a slice. The segmented

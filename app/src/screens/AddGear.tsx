@@ -10,7 +10,7 @@ import {
   type Residence,
   type TagString,
 } from '@foerier/shared'
-import { SegmentedControl } from '@foerier/ui'
+import { SegmentedControl, Stepper } from '@foerier/ui'
 import { useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 
@@ -153,7 +153,9 @@ export function AddGear() {
   const [container, setContainer] = useState(false)
   const [kind, setKind] = useState<KindValue>('single')
   // Opens **empty**, deliberately: a silent ×1 is a wrong ledger line.
-  const [ownedCount, setOwnedCount] = useState('')
+  // `null` is `ui/Stepper`'s own word for a blank well, and the only reason
+  // this screen could not use that component until now.
+  const [ownedCount, setOwnedCount] = useState<number | null>(null)
   const [home, setHome] = useState<Residence | undefined>(undefined)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [owner, setOwner] = useState<Owner>({ type: 'shared' })
@@ -179,11 +181,11 @@ export function AddGear() {
   const vocabulary = useMemo(() => dimensionValues(state, 'tag'), [state])
 
   const trimmedName = name.trim()
-  const parsedCount = Number.parseInt(ownedCount, 10)
-  const countIsChosen =
-    ownedCount.trim() !== '' &&
-    Number.isSafeInteger(parsedCount) &&
-    parsedCount >= 0
+  // `Stepper` parses, clamps at `min` and refuses an unrepresentable integer
+  // before it ever calls back, so a non-null value here is already a count
+  // this screen can write. The three checks this replaced were that parser,
+  // hand-rolled.
+  const countIsChosen = ownedCount !== null
   // Name always; the count only while Counted, because only then does the
   // ledger line have a number in it to get wrong.
   const canSubmit = trimmedName !== '' && (kind !== 'counted' || countIsChosen)
@@ -205,8 +207,8 @@ export function AddGear() {
         // make `NEWEST FIRST`'s `recordedAt` depend on a field nobody set.
         // The row still *draws* `Shared`, because that is what absence means.
         ...(owner.type === 'shared' ? {} : { owner }),
-        ...(kind === 'counted' && countIsChosen
-          ? { owned_count: parsedCount }
+        ...(kind === 'counted' && ownedCount !== null
+          ? { owned_count: ownedCount }
           : {}),
       }),
     )
@@ -229,14 +231,9 @@ export function AddGear() {
     // person's, and a shelf is usually one sort of thing.
     setName('')
     setKind('single')
-    setOwnedCount('')
+    setOwnedCount(null)
     setContainer(false)
     nameField.current?.focus()
-  }
-
-  function step(by: number) {
-    const from = countIsChosen ? parsedCount : 0
-    setOwnedCount(String(Math.max(0, from + by)))
   }
 
   return (
@@ -311,42 +308,22 @@ export function AddGear() {
       {/* Inserted below Kind, so nothing at or above the thumb moves. */}
       {kind === 'counted' && (
         <div className={styles['field']}>
-          <label className={styles['label']} htmlFor="owned-count">
-            Owned count
-          </label>
-          <div className={styles['stepper']}>
-            <button
-              type="button"
-              className={styles['stepperButton']}
-              aria-label="Fewer"
-              onClick={() => step(-1)}
-            >
-              −
-            </button>
-            <input
-              id="owned-count"
-              // `text` with a numeric keypad, not `number`: a number input
-              // reports an empty string for anything it considers invalid, so
-              // "opens empty" and "holds nonsense" become indistinguishable —
-              // and this well's whole point is that empty is a real state
-              // that gates the CTA.
-              type="text"
-              inputMode="numeric"
-              className={styles['stepperWell']}
-              value={ownedCount}
-              onChange={(event) =>
-                setOwnedCount(event.target.value.replace(/[^0-9]/g, ''))
-              }
-            />
-            <button
-              type="button"
-              className={styles['stepperButton']}
-              aria-label="More"
-              onClick={() => step(1)}
-            >
-              +
-            </button>
-          </div>
+          {/* A `<span>` and not a `<label htmlFor>`: `ui/Stepper` owns its
+              own well and exposes no id, and names it `Owned count` on the
+              input itself — gear detail's own field, verbatim, which is the
+              point of there being one component. */}
+          <span className={styles['label']}>Owned count</span>
+          {/* The third caller of `ui/Stepper`, and the one that was
+              hand-rolled from before the component could say "blank". The
+              two things this screen still owns are below it: the fact line,
+              and the CTA gate that reads `null`. */}
+          <Stepper
+            size="default"
+            value={ownedCount}
+            min={0}
+            onChange={setOwnedCount}
+            label="Owned count"
+          />
           <p className={styles['fact']}>OPENS EMPTY — GATES THE CTA</p>
         </div>
       )}

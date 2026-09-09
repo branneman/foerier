@@ -287,8 +287,44 @@ describe('Add gear — the CTA gate', () => {
     expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Add gear' })).toBeDisabled()
 
+    // **The commit is the blur, not the keystroke** — `ui/Stepper`'s own
+    // rule (amendment ruling K), inherited when this well folded into it.
+    // Typing fills the component's buffer and nothing else, so the gate is
+    // still shut here; leaving the field is what states the number.
     await user.type(screen.getByRole('textbox', { name: 'Owned count' }), '8')
+    expect(screen.getByRole('button', { name: 'Add gear' })).toBeDisabled()
+
+    await user.tab()
     expect(screen.getByRole('button', { name: 'Add gear' })).toBeEnabled()
+  })
+
+  /**
+   * **The one behaviour the fold put at risk.** The CTA is `disabled` until a
+   * count is chosen, and `Stepper` commits on blur — so a Quartermaster who
+   * types `8` and goes straight for `Add gear` is relying on a tap over a
+   * *disabled* button still blurring the well. It does, in both engines this
+   * app ships to (measured in Chromium and WebKit before the fold; the
+   * measurement itself is in `KEYBOARD-PASS.md`, since no tier can hold it).
+   * This asserts the same sequence as far as jsdom can carry it.
+   */
+  it('records a count typed and never blurred by hand', async () => {
+    const store = await seededStore()
+    const user = userEvent.setup()
+    renderAddGear(store)
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Tent peg')
+    await user.click(screen.getByRole('radio', { name: 'Counted' }))
+    await user.type(screen.getByRole('textbox', { name: 'Owned count' }), '8')
+
+    // The tap that both commits the well and submits the form. The first
+    // click blurs and enables; the second is the submit — which is exactly
+    // what a real tap does in one gesture, blur landing on mousedown.
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    await store.getState().drained()
+
+    const { gear } = soleGear(store)
+    expect(gear.ownedCount?.value).toBe(8)
   })
 
   it('keeps the CTA label constant rather than describing the gate', async () => {
@@ -313,27 +349,39 @@ describe('Add gear — the CTA gate', () => {
     expect(screen.queryByRole('textbox', { name: 'Owned count' })).toBeNull()
   })
 
+  /**
+   * The buttons answer to `ui/Stepper`'s names now — `Decrease Owned count` /
+   * `Increase Owned count`, the same two words gear detail and the gear list
+   * already spoke. `Fewer` and `More` were this screen's own and were the
+   * whole of the debt: one control, two accessible names, on two screens of
+   * one app.
+   */
   it('steps the owned count without typing', async () => {
     const store = await seededStore()
     const user = userEvent.setup()
     renderAddGear(store)
 
     await user.click(screen.getByRole('radio', { name: 'Counted' }))
-    await user.click(screen.getByRole('button', { name: 'More' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Increase Owned count' }),
+    )
     expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue(
       '1',
     )
 
-    await user.click(screen.getByRole('button', { name: 'Fewer' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Decrease Owned count' }),
+    )
     // Never below zero, and never back to empty: once stepped, a count has
     // been chosen.
     expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue(
       '0',
     )
-    await user.click(screen.getByRole('button', { name: 'Fewer' }))
-    expect(screen.getByRole('textbox', { name: 'Owned count' })).toHaveValue(
-      '0',
-    )
+    // At `min` the control is disabled rather than inert — `Stepper`'s own
+    // behaviour, and a stronger statement than the old copy's silent floor.
+    expect(
+      screen.getByRole('button', { name: 'Decrease Owned count' }),
+    ).toBeDisabled()
   })
 })
 

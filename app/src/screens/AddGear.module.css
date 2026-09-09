@@ -83,42 +83,6 @@
     padding: 0;
   }
 
-  /* Stepper-flanked mono well (Components, Add-gear atoms). */
-  .stepper {
-    display: flex;
-    align-items: stretch;
-    gap: var(--space-8);
-  }
-
-  .stepperButton {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: max(3rem, 48px);
-    min-height: max(3rem, 48px);
-    border: var(--stroke-rule) solid var(--color-rule-control);
-    border-radius: var(--radius-control);
-    background: none;
-    color: var(--color-ink-primary);
-    font: var(--text-title) var(--font-ui);
-    cursor: pointer;
-  }
-
-  .stepperWell {
-    flex: 1;
-    min-width: 0;
-    min-height: max(3rem, 48px);
-    padding-inline: var(--space-16);
-    border: var(--stroke-rule) solid var(--color-rule-control);
-    border-radius: var(--radius-control);
-    background: var(--color-well);
-    color: var(--color-ink-primary);
-    font-family: var(--font-mono);
-    font-size: 1.0625rem;
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-  }
-
   /* The attribute row: HOME, OWNER and TAGS, drawn identically by the board
      and so by one pair of classes. */
   .attrRow {

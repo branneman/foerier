@@ -68,16 +68,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   owns that file is the one that should make the claim false. Argued in the
   memo's own JSDoc, `shared/src/selectors/slice.ts`, anchor:
   `The rejected alternative was memoising`
-- **One control answers to two accessible names.** Add gear's hand-rolled
-  Owned-count stepper says `Fewer` / `More`; `ui/Stepper` says
-  `Decrease {label}` / `Increase {label}`. A screen-reader user meets two names
-  for one control on two screens of one app — worse than before S7, when both
-  were hand-rolled and incoherent in the same way. It closes when Add gear folds
-  into `Stepper`, which is possible today and merely undone (`Stepper`'s
-  contract takes `number | null`); what Add gear still needs from its own
-  component is a `<label htmlFor>`, its `OPENS EMPTY — GATES THE CTA` fact line,
-  and a CTA gate computed from the parsed value.
-  [`frontend-design.md`](frontend-design.md) §5, anchor: `aria-label="Fewer"`
 - **Print gets one viewport.** §6 promises nav hidden, single column,
   ink-on-white and truncation expanded; the first and third are written, and
   nothing unpins `.shell__main`'s inner scroller or re-enables the ellipsis

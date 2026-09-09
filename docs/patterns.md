@@ -719,8 +719,14 @@ impossible; its checked segment gains the 600 the other copies drew; and the
 nav avatar drops from a 10px initial to the 22 size's own 9px. A fold that
 silently kept every copy's paint would not be a primitive.
 
-*Departures:* `AddGear`'s Owned-count stepper is the recorded not-yet-folded
-caller of `Stepper`.
+**A fold may change behaviour, and that is the caller's to check.** Add gear's
+Owned-count well folded into `Stepper` after the MVP landed, ending one
+control with two accessible names — and inherited the commit-on-blur rule
+(§5.3) in place of its own per-keystroke one. Its CTA is `disabled` on that
+value, so the fold rests on a tap over a disabled button still blurring the
+well: measured in Chromium and WebKit before the fold, and recorded in
+`KEYBOARD-PASS.md` because no tier can hold it. A fold that changes when a
+value is stated wants that question asked of every gate reading it.
 *Argued in:* [`frontend-design.md` §5](frontend-design.md#5-component-architecture--the-ui-package);
 `ui/src/SegmentedControl.tsx` and `ui/src/StatusPill.tsx`'s own headers.
 
