@@ -1438,6 +1438,21 @@ artifacts with no external consumer.
   stories 2 and 3. The backlog's numbers are not a sequence and the document's
   order is the reading order. Deleting a story retires its number rather than
   freeing it.
+- **Read the test output, not the exit code.** A run is green when its own
+  report says so — `Test Files`, `Tests`, **`Errors`**, and, for a browser
+  tier, which specs passed. An exit code is a summary of a summary, and the
+  two failures this rule exists for both hid behind one: an unhandled
+  rejection reported under `Errors` while every test passed, and a Tier 5
+  `429` whose only honest evidence was a trace inside the uploaded report.
+  Grepping for a line you expect to see is the same mistake one step later —
+  read what the run actually printed.
+- **After a push, watch the run.** `gh run watch <id> --exit-status`, and on a
+  failure `gh run view <id> --log-failed` plus `gh run download <id>` for
+  whatever the job uploaded. CI runs three tiers a local `npm test` does not
+  (Tier 2s against Postgres, Tier 5 in a browser, and the contract and prod
+  specs after the deploy), so "the suite passed locally" is not a claim about
+  `main`. A red run left unwatched is worse than a red run: the next commit
+  lands on top of it and the cause moves.
 - **Merge via rebase + fast-forward only. Never create a merge commit.**
   Before integrating a branch: `git rebase main`, then
   `git checkout main && git merge --ff-only <branch>`. History stays linear, so
