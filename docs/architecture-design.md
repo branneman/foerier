@@ -2128,9 +2128,14 @@ aggregate. Three op types, no endpoints, no migration; see its
   `removed` — so it needed the shape a set cannot hold. `writeEntry` follows
   `writeTrip` one level deeper, with the same identity check at each level so
   a lost write returns the original object; the generic `writeEntity`
-  collapsing all five writers into one is **still not taken**, and `writeEntry`
-  being the first two-level instance is the marker for when that argument
-  should reopen.
+  collapsing all five writers into one was **not taken here**, and `writeEntry`
+  being the first two-level instance was the marker for when that argument
+  should reopen. It reopened at S12 and S13 (a sixth and seventh writer in one
+  week) and was settled after the MVP — in a form the refusal did not
+  anticipate: the shared function takes the **map**, not a map key, so there is
+  no computed spread and no cast, each of the seven keeps its own signature and
+  docblock, and what stopped being copied is the **identity guard** rather than
+  the plumbing around it.
 - **`source` is one register holding a discriminated union, and a trip-only
   Entry cannot be renamed.** Renaming would rewrite the whole union, carrying
   `container` along with `name`, and two Devices renaming concurrently would

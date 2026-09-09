@@ -57,6 +57,56 @@ function noteUnfolded(state: HouseholdState, type: string): HouseholdState {
 }
 
 /**
+ * **The generic writer the other seven are now spelled in terms of**, and not
+ * the one `writeEntry`'s docblock argued against for five slices.
+ *
+ * That argument was against a `writeEntity<K extends keyof HouseholdState>`
+ * taking the **map key** — it needs the key *and* the entity type as
+ * parameters, spreads back through a computed key TypeScript widens, and
+ * reads worse at every call site than the six lines it replaces. All of that
+ * still holds. This takes the **map itself** and returns a new one, so there
+ * is no key, no computed spread and no cast: each named writer keeps its own
+ * signature, its own docblock and its own place in the file, and hands this
+ * the one map it owns.
+ *
+ * **What is shared is the identity guard, which is the part that had to
+ * stop being copied.** An update that changes no register must return the
+ * object it was given, so a losing LWW write cannot fabricate a new entity —
+ * and through it a new `HouseholdState`, invalidating `slice.ts`'s and
+ * `containment.ts`'s `WeakMap` memos with an op that changed nothing.
+ * `undefined` here means exactly that: *nothing changed, return what you were
+ * given*, and every caller is one line of exactly that shape.
+ *
+ * `fresh` is the bare entity a first write creates, passed in rather than
+ * built here — `{ id }` is not assignable to a generic `T`, and a cast in the
+ * reducer to save seven identical literals is the wrong trade.
+ *
+ * **`persistCreated` is `writeEntry`'s departure, now named.** An Entry, a
+ * Note and a Piece are each created by an op that may write no register at
+ * all (a malformed `trip.entry_added` still creates a bare, sourceless
+ * Entry), so identity alone cannot tell *existed, untouched* from *just
+ * created, untouched* apart. The four top-level entities and a Task have a
+ * creating op that always writes at least one register, so the plain guard is
+ * exact for them and the flag stays off.
+ */
+function writeEntity<T extends object>(
+  map: Readonly<Record<string, T>> | undefined,
+  id: string,
+  fresh: T,
+  stamp: Stamp,
+  update: (entity: T, stamp: Stamp) => T,
+  persistCreated = false,
+): Record<string, T> | undefined {
+  const existing = map?.[id]
+  const current = existing ?? fresh
+  const updated = update(current, stamp)
+  if (updated === current && (existing !== undefined || !persistCreated)) {
+    return undefined
+  }
+  return { ...map, [id]: updated }
+}
+
+/**
  * Reads or creates the `PlaceState` at `id`, applies `update`, and copies
  * only what changed: the entity, the `places` map, and the top-level state.
  * Returns `state` unchanged — the identical object — when `update` returns
@@ -70,10 +120,8 @@ function writePlace(
   stamp: Stamp,
   update: (place: PlaceState, stamp: Stamp) => PlaceState,
 ): HouseholdState {
-  const current = state.places[id] ?? { id }
-  const updated = update(current, stamp)
-  if (updated === current) return state
-  return { ...state, places: { ...state.places, [id]: updated } }
+  const places = writeEntity(state.places, id, { id }, stamp, update)
+  return places === undefined ? state : { ...state, places }
 }
 
 /**
@@ -86,10 +134,8 @@ function writeGear(
   stamp: Stamp,
   update: (gear: GearState, stamp: Stamp) => GearState,
 ): HouseholdState {
-  const current = state.gear[id] ?? { id }
-  const updated = update(current, stamp)
-  if (updated === current) return state
-  return { ...state, gear: { ...state.gear, [id]: updated } }
+  const gear = writeEntity(state.gear, id, { id }, stamp, update)
+  return gear === undefined ? state : { ...state, gear }
 }
 
 /**
@@ -103,10 +149,8 @@ function writePerson(
   stamp: Stamp,
   update: (person: PersonState, stamp: Stamp) => PersonState,
 ): HouseholdState {
-  const current = state.people[id] ?? { id }
-  const updated = update(current, stamp)
-  if (updated === current) return state
-  return { ...state, people: { ...state.people, [id]: updated } }
+  const people = writeEntity(state.people, id, { id }, stamp, update)
+  return people === undefined ? state : { ...state, people }
 }
 
 /**
@@ -114,11 +158,11 @@ function writePerson(
  * `trips` (S6). Reads or creates the `TripState` at `id`, applies `update`,
  * and copies only what changed.
  *
- * Four copies of a six-line function is the point at which a generic
- * `writeEntity<K>` starts to look right. It is deliberately **not** taken
- * (spec §2): the generic needs the map key *and* the entity type as
- * parameters, which reads worse than the thing it replaces, and each of these
- * four is read far more often than it is written.
+ * Four copies of a six-line function is where the generic argument started
+ * (spec §2). A `writeEntity<K>` taking the **map key** is still refused, for
+ * the reason recorded there and above {@link writeEntity}; what all seven
+ * writers now share is the identity guard, handed the map rather than a key
+ * into it, so each of these keeps the signature its call sites read.
  */
 function writeTrip(
   state: HouseholdState,
@@ -126,10 +170,8 @@ function writeTrip(
   stamp: Stamp,
   update: (trip: TripState, stamp: Stamp) => TripState,
 ): HouseholdState {
-  const current = state.trips[id] ?? { id }
-  const updated = update(current, stamp)
-  if (updated === current) return state
-  return { ...state, trips: { ...state.trips, [id]: updated } }
+  const trips = writeEntity(state.trips, id, { id }, stamp, update)
+  return trips === undefined ? state : { ...state, trips }
 }
 
 /**
@@ -140,20 +182,23 @@ function writeTrip(
  * update that changes no register returns the object it was given, and the
  * `writeTrip` above it then returns the state it was given.
  *
- * The generic `writeEntity` that would collapse all five is still not taken,
- * for the reason recorded above `writeTrip`. This is the fifth instance; a
- * sixth should re-open the argument.
+ * This docblock said for five slices that a sixth instance should re-open the
+ * generic-writer argument. The sixth and seventh landed in one week, in
+ * parallel worktrees, and neither could take it; it is taken now — see
+ * {@link writeEntity}, which is not the key-taking generic this file kept
+ * refusing.
  *
- * One departure from the other four writers: an Entry that did **not**
- * already exist is persisted even when `update` writes no register at all —
- * a malformed `trip.entry_added` still creates a bare, sourceless Entry
- * (`tripEntryAdded`'s doc). `writeTrip`, `writeGear` et al. need no such case
- * because their sole creating op (`trip.created`, `gear.recorded`) always
- * writes at least one register unconditionally; `trip.entry_added` has no
- * such unconditional field, so identity alone cannot tell "existed, untouched"
- * from "just created, untouched" apart. An already-existing Entry that a
- * later malformed op does not change still returns `trip` unaltered, exactly
- * like every other writer here.
+ * One departure from the four top-level writers, and it is the `true` passed
+ * below: an Entry that did **not** already exist is persisted even when
+ * `update` writes no register at all — a malformed `trip.entry_added` still
+ * creates a bare, sourceless Entry (`tripEntryAdded`'s doc). `writeTrip`,
+ * `writeGear` et al. need no such case because their sole creating op
+ * (`trip.created`, `gear.recorded`) always writes at least one register
+ * unconditionally; `trip.entry_added` has no such unconditional field, so
+ * identity alone cannot tell "existed, untouched" from "just created,
+ * untouched" apart. An already-existing Entry that a later malformed op does
+ * not change still returns `trip` unaltered, exactly like every other writer
+ * here.
  */
 function writeEntry(
   state: HouseholdState,
@@ -163,11 +208,15 @@ function writeEntry(
   update: (entry: EntryState, stamp: Stamp) => EntryState,
 ): HouseholdState {
   return writeTrip(state, tripId, stamp, (trip, st) => {
-    const existing = trip.entries?.[entryId]
-    const current = existing ?? { id: entryId }
-    const updated = update(current, st)
-    if (updated === current && existing !== undefined) return trip
-    return { ...trip, entries: { ...trip.entries, [entryId]: updated } }
+    const entries = writeEntity(
+      trip.entries,
+      entryId,
+      { id: entryId },
+      st,
+      update,
+      true,
+    )
+    return entries === undefined ? trip : { ...trip, entries }
   })
 }
 
@@ -199,11 +248,15 @@ function writeNote(
   update: (note: NoteState, stamp: Stamp) => NoteState,
 ): HouseholdState {
   return writeTrip(state, tripId, stamp, (trip, st) => {
-    const existing = trip.notes?.[noteId]
-    const current = existing ?? { id: noteId }
-    const updated = update(current, st)
-    if (updated === current && existing !== undefined) return trip
-    return { ...trip, notes: { ...trip.notes, [noteId]: updated } }
+    const notes = writeEntity(
+      trip.notes,
+      noteId,
+      { id: noteId },
+      st,
+      update,
+      true,
+    )
+    return notes === undefined ? trip : { ...trip, notes }
   })
 }
 
@@ -216,11 +269,15 @@ function writePiece(
   update: (piece: PieceState, stamp: Stamp) => PieceState,
 ): HouseholdState {
   return writeEntry(state, tripId, entryId, stamp, (entry, st) => {
-    const existing = entry.pieces?.[personId]
-    const current = existing ?? { id: personId }
-    const updated = update(current, st)
-    if (updated === current && existing !== undefined) return entry
-    return { ...entry, pieces: { ...entry.pieces, [personId]: updated } }
+    const pieces = writeEntity(
+      entry.pieces,
+      personId,
+      { id: personId },
+      st,
+      update,
+      true,
+    )
+    return pieces === undefined ? entry : { ...entry, pieces }
   })
 }
 
@@ -231,15 +288,13 @@ function writePiece(
  * was given, or `slice.ts`'s `WeakMap` memo is invalidated by an op that
  * changed nothing.
  *
- * **`writeEntry`'s docblock says a sixth should re-open the generic-writer
- * argument, and it fires here — twice at once.** S12's `writeNote` is the
+ * **`writeEntry`'s docblock said a sixth should re-open the generic-writer
+ * argument, and it fired here — twice at once.** S12's `writeNote` was the
  * seventh, landing in a parallel worktree the same week, which is precisely
- * why neither slice may take the refactor: it rewrites five call sites in the
- * one file the whole correctness argument rests on, and hands the other branch
- * the collision architecture §8.6 promised these two would not have. Recorded
- * as re-opened rather than settled, logged in `technical-debt.md`, and named
- * as S14's — its template copy reads every one of these maps, so it is the
- * first slice with a reason to be in all seven writers at once.
+ * why neither slice could take the refactor: it rewrites the bodies of every
+ * writer in the one file the whole correctness argument rests on, and hands
+ * the other branch the collision architecture §8.6 promised these two would
+ * not have. Both landed; the shared guard is {@link writeEntity}.
  *
  * Unlike `writeEntry` this needs **no** "created but untouched" departure.
  * That case exists there because `trip.entry_added` writes no register
@@ -255,10 +310,8 @@ function writeTask(
   update: (task: TaskState, stamp: Stamp) => TaskState,
 ): HouseholdState {
   return writeTrip(state, tripId, stamp, (trip, st) => {
-    const current = trip.tasks?.[taskId] ?? { id: taskId }
-    const updated = update(current, st)
-    if (updated === current) return trip
-    return { ...trip, tasks: { ...trip.tasks, [taskId]: updated } }
+    const tasks = writeEntity(trip.tasks, taskId, { id: taskId }, st, update)
+    return tasks === undefined ? trip : { ...trip, tasks }
   })
 }
 

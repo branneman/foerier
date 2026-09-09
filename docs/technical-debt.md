@@ -380,22 +380,6 @@ every one of them gets more expensive per slice.
   three small `--text-*` pairs would close most of it.
   [`patterns.md`](patterns.md) §6.2, anchor:
   `most-copied rule`
-- **Seven entity writers in `reduce.ts`, and the trigger for the generic one
-  has fired.** `writeEntry`'s docblock has said since S7 that *"a sixth should
-  re-open the argument"* for a generic `writeEntity`; the sixth (`writeTask`,
-  S13) and the seventh (`writeNote`, S12) landed in the same week, in parallel
-  worktrees, and neither could take the refactor without rewriting five call
-  sites the other branch was also editing. Nothing is wrong today — all seven
-  carry the identical identity guard — but the trigger has fired and the
-  argument is re-opened rather than settled. **What blocked it is gone** —
-  both writers have landed, and no branch is holding these call sites open
-  any more — so this waits on nothing but a slice already working in the file.
-  S14 was the obvious one, because its template copy reads every one of these
-  maps and is the first code with a reason to be in all seven at once; it
-  **declined**, to keep the MVP's last slice to its own scope. The fit is
-  recorded because it outlives the decline: whoever takes it wants a reason to
-  be in all seven at once, and that shape is what to look for.
-  `shared/src/reduce.ts`, anchor: `The generic \`writeEntity\``
 - **The `GEAR LIST` band's anatomy is spelled three times.** `Trip.module.css`'s
   `.gearListBand`, `NotesPanel`'s and `TasksPanel`'s — label, count, optional
   trailing link, one rule and one border. The board's own §08 lists *"the band

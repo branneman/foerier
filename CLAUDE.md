@@ -1153,10 +1153,15 @@ hold), `shared/src/selectors/task.ts`, one component (`TasksPanel`) in
   shared band component the shell commit did not land. S14's template copy
   reads every one of these maps and was the first thing with a reason to be in
   all seven writers at once — it declined, to keep the MVP's last slice to its
-  own scope. **The comparator has since been lifted**: `order.ts` carries
+  own scope. **Two of the three have since been taken.** `order.ts` carries
   `byStampThenId` beside `byNameThenId`, and `notesOf` sorts before it builds
-  its views so both callers can share one. The other two are in
-  `technical-debt.md`.
+  its views so both callers can share one; and all seven writers now share one
+  `writeEntity` — **not** the key-taking generic the file refused for five
+  slices, but one taking the **map** and returning a new one, so what is
+  shared is the identity guard and every writer keeps the signature its call
+  sites read. `shared/src/reduce.writers.test.ts` asserts that guard for all
+  seven at once, which is a claim about the set that no per-op suite makes.
+  The `GEAR LIST` band is the one left, in `technical-debt.md`.
 - **The convergence tier's completeness guard is now load-bearing for every
   slice that adds an op.** §12.19 predicted the inheritance and S13 is the
   first to receive it: `convergence.test.ts` asserts its generator emits every
