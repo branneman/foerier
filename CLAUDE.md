@@ -1259,6 +1259,39 @@ records what moved while it was being built**, and
   built something. Retiring such a board owes the boards an edit rather than
   the suite a guard.
 
+**A post-MVP technical-debt pass has since closed twenty of
+`technical-debt.md`'s thirty-seven entries**, in small commits rather than as a
+slice: no op type, no endpoint, no migration, and no new story. What it
+delivered that a reader should know about before touching these areas:
+
+- **`ui/` gained three components** — `ErrorBoundary` (wrapping the app, each
+  routed screen and each trip panel, keyed on the location so a boundary is
+  never a trap), `Band` (the section band, out of its three copies), and
+  `titleTone` on `Sheet` for `SET PHASE`'s mono eyebrow. `app/` gained
+  `FilterChips`, `HomeMoveConfirm` and `SignedInAs`.
+- **`emit` gained a batch.** `emitAll` authors a whole gesture and appends it
+  all-or-nothing over `OpLog.appendAll`, which closes the crash-mid-batch
+  double-reduction S11 could not: what was missing was atomicity, not a fact.
+  **A gesture goes to `emitAll`, never to `emit` in a loop**
+  (`patterns.md` §2.1) — there are six such call sites.
+- **Three consolidations that parallelism had cost** are taken:
+  `byStampThenId` in `order.ts`, one `writeEntity` guard behind all seven
+  entity writers, and the `GEAR LIST` band. `containmentView` is memoised on
+  the fold, and six screens stopped hoisting a `useMemo` for it.
+- **One error body.** Every route now answers `sync-protocol.md` §6.3's
+  envelope, `/auth/*` included (`auth-design.md` §2.2), which deleted
+  `withSyncAuthShape`.
+- **Three entries were wrong about their own remedy**, and the corrections are
+  in the docs that argued them: `person_name` was never needed for the success
+  frame and cannot be had for the confirm frame (§2.1); `ReopenConfirm`'s store
+  read is load-bearing under `patterns.md` §5.2's own bar; and `HomePicker`'s
+  MOVE confirm needed no label threaded back through `onSelect`. **A recorded
+  remedy is a hypothesis, not an instruction.**
+- **What remains is deliberately not code work.** The seventeen open entries
+  are boards, one tenancy decision, two shrinking cross-version residues, and a
+  handful whose fix is code-only but visually risky (the mono-caps type scale,
+  the builder's panes). The design pass is what unblocks most of them.
+
 Four conventions the code now carries that are easy to trip over:
 
 - Relative imports in `api/` and `shared/` need an explicit **`.ts` extension**

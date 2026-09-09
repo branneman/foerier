@@ -72,7 +72,7 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   reconstruction is never consulted for one. Recorded as a shrinking
   cross-version residue rather than outstanding work.
   `shared/src/gestures.ts`'s own docblock on `reopenTrip`, anchor:
-  `right unless that pre-S11 close was itself floored`
+  `itself floored`
 - **A peer on a pre-gate build can reopen a Trip without leaving a posting,
   after which any build's close reduces a second time.** Reopening is a bare
   `trip.phase_moved` out of `closed`, and a build from before S11 emits one
