@@ -7,8 +7,7 @@
   .count {
     flex: none;
     white-space: nowrap;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     color: var(--color-ink-muted);
   }
@@ -86,8 +85,7 @@
     background: none;
     text-align: left;
     border-bottom: var(--stroke-rule) dashed var(--color-rule);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     color: var(--color-ink-muted);
     cursor: pointer;
@@ -123,8 +121,7 @@
   .hint {
     margin: 0;
     padding-block-end: var(--space-4);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     color: var(--color-ink-muted);
   }

@@ -72,15 +72,25 @@
   .filter {
     min-height: 2.25rem;
     padding-inline: var(--space-12);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
   }
 
-  /* 32px — Components §06, gear detail's tag chips. Lowercase, because a tag
-     is lowercase and the `#` is drawn beside it. */
+  /*
+   * 32px — Components §06, gear detail's tag chips. Lowercase, because a tag
+   * is lowercase and the `#` is drawn beside it, so this one takes the step's
+   * size and **not** `.label`'s own uppercase.
+   *
+   * **10.5 → 10 at §5n K28b**, into `--text-label-control` — a label riding a
+   * control, and §5g E5 spent rather than recorded a second time. The drawn
+   * 10.5 is struck on `Components` §06 with a pointer.
+   */
   .tag {
     min-height: 2rem;
     padding-inline: var(--space-12);
-    font-size: 0.65625rem;
+    font: var(--text-label-control) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.1em;
     text-transform: lowercase;
   }
 
@@ -115,7 +125,8 @@
     border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
     background: none;
     color: inherit;
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
     cursor: pointer;
   }
 

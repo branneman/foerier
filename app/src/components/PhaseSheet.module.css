@@ -43,8 +43,7 @@
      saying "this tap goes somewhere else." */
   .openMeta {
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
@@ -53,8 +52,7 @@
   /* The anatomy the owner picker borrowed from this sheet, back home. */
   .now {
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);

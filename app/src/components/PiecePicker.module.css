@@ -11,8 +11,7 @@
      anatomy: a picker with nothing else to state besides the roster gets a
      fact line where that one gets none. */
   .fact {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.06em;
     line-height: 1.7;
     color: var(--color-ink-faint);
@@ -70,8 +69,7 @@
    */
   .marker {
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);

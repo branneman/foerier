@@ -26,8 +26,7 @@
   }
 
   .sessionCount {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-ink-faint);
@@ -48,8 +47,7 @@
     border-radius: var(--radius-control);
     background: var(--color-accent-fill);
     color: var(--color-ink-primary);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-align: left;
     text-transform: uppercase;
@@ -63,8 +61,7 @@
   }
 
   .label {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -142,8 +139,7 @@
    * block's alignment instead; see `.ctaFact`.
    */
   .fact {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.08em;
     line-height: 1.7;
     text-transform: uppercase;

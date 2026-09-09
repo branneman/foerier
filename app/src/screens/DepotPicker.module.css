@@ -22,8 +22,7 @@
 
   /* The pane's own eyebrow, in place of the screen's header + title. */
   .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -169,8 +168,7 @@
   }
 
   .meta {
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font: var(--text-label-control) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-ink-faint);
@@ -202,8 +200,7 @@
     border-radius: var(--radius-control);
     background: none;
     color: var(--color-accent);
-    font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font: var(--text-label-control) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
@@ -225,16 +222,14 @@
      Trip's list, `--color-status-packed`'s first caller. */
   .listed {
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font: var(--text-label-chrome) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-status-packed);
   }
 
   .hint {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-ink-faint);

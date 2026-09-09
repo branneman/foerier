@@ -6,8 +6,7 @@
      takes the attention tone as a whole rather than the glyph alone. */
   .unaccounted {
     margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     line-height: 1.6;
     color: var(--color-status-attention);
@@ -19,8 +18,7 @@
      is what the close did. */
   .reduction {
     margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     line-height: 1.6;
     color: var(--color-ink-muted);

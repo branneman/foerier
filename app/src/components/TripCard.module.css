@@ -149,8 +149,7 @@
     border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--color-brand-amber) 14%, transparent);
     color: var(--color-brand-amber);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     white-space: nowrap;
@@ -187,8 +186,7 @@
   }
 
   .listed {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     color: var(--color-ink-muted);
     white-space: nowrap;
   }
@@ -213,8 +211,7 @@
     display: inline-flex;
     align-items: center;
     min-height: max(3rem, 48px);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
@@ -229,8 +226,7 @@
   }
 
   .dates {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     color: var(--color-ink-muted);
     overflow: hidden;
     text-overflow: ellipsis;

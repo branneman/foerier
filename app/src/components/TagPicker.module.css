@@ -18,8 +18,7 @@
   }
 
   .groupLabel {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -54,8 +53,7 @@
   }
 
   .chipLabel {
-    font-family: var(--font-mono);
-    font-size: 0.65625rem;
+    font: var(--text-label-control) var(--font-mono);
     text-transform: lowercase;
   }
 
@@ -69,7 +67,7 @@
     border: 0;
     background: none;
     color: var(--color-ink-muted);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     cursor: pointer;
   }
 
@@ -93,8 +91,7 @@
   }
 
   .fieldLabel {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -183,16 +180,14 @@
     border-radius: var(--radius-control);
     background: var(--color-accent-fill);
     color: var(--color-ink-primary);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     cursor: pointer;
   }
 
   .fact {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.06em;
     line-height: 1.7;
     color: var(--color-ink-faint);

@@ -8,8 +8,7 @@
     border: var(--stroke-chip) solid var(--color-rule-control);
     border-radius: var(--radius-pill);
     padding: 0.25rem 0.625rem;
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font: var(--text-label-chrome) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.06em;
     color: var(--color-ink-muted);

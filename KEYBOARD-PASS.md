@@ -148,6 +148,21 @@ With any sheet or confirm open, hold **Tab** through roughly fifteen stops.
 Facts about real browsers that a tier cannot assert, kept here so the next
 author does not have to re-measure or — worse — assume.
 
+- **The small type scale sets a line-height where one used to be inherited,
+  and no tier can see it.** §5n K28 gave the mono label four steps
+  (`--text-label` · `-control` · `-chrome` · `-head`), each a size **and** a
+  line-height of size + 3, and ~150 rules that had set `font-size` alone now
+  set both. jsdom computes no layout and `app/vitest.config.ts` processes no
+  CSS modules, so `app/src/screens/typeScale.test.ts` can hold the scale's
+  shape and not one pixel of its paint. **Check by eye, at Compact and at
+  Desktop, wherever a mono label shares a line with something taller** — the
+  four worth opening first, because a changed leading shows there before
+  anywhere else: F4's packing rows (`PER-PERSON · 1/3` beside a 34px
+  cluster), the Depot's column heads, gear detail's meta line
+  (`ITEM · SHARED · ×2`), and the three nav modes' chrome. What a regression
+  looks like: a row grown a pixel or two taller, or a label sitting off the
+  baseline it shared with its neighbour.
+
 - **A tap over a `disabled` button still blurs the focused input.** Measured
   in Chromium and WebKit, September 2026, with a focused `<input>` beside a
   disabled `<button>`: `blur` fires in both. This is what makes Add gear's

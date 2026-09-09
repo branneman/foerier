@@ -138,8 +138,7 @@
   /* The screen's one hint, directly beneath the controls — mono 9, faint;
      instruction, not ledger. `Packing.module.css`'s `.hint` verbatim. */
   .hint {
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font: var(--text-label-chrome) var(--font-mono);
     letter-spacing: var(--tracking-label);
     color: var(--color-ink-faint);
   }
@@ -278,8 +277,7 @@
 
   /* `NO HOME SLOT` · `TAKES NO OUTCOME · CLEARED AT CLOSE`. */
   .groupMeta {
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font: var(--text-label-control) var(--font-mono);
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--color-ink-faint);
@@ -289,8 +287,7 @@
      as a pill is tapped. */
   .groupCount {
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font: var(--text-label-control) var(--font-mono);
     color: var(--color-ink-muted);
     font-variant-numeric: tabular-nums;
   }
@@ -381,8 +378,7 @@
      the page hint's standalone placement. */
   .closeHint {
     margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font: var(--text-label-chrome) var(--font-mono);
     letter-spacing: var(--tracking-label);
     color: var(--color-ink-faint);
   }

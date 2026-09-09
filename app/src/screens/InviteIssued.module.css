@@ -74,8 +74,7 @@
      a screen's CSS module. */
 
   .singleUse {
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font: var(--text-label-control) var(--font-mono);
     letter-spacing: 0.06em;
     color: var(--color-ink-faint);
   }
@@ -107,8 +106,7 @@
     background: none;
     padding: 0;
     color: var(--color-status-attention);
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font: var(--text-label-control) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.06em;
     cursor: pointer;

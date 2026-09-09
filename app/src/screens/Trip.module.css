@@ -64,8 +64,7 @@
     min-height: max(3rem, 48px);
     border: 0;
     background: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
@@ -73,8 +72,7 @@
   }
 
   .dates {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     color: var(--color-ink-muted);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -98,8 +96,7 @@
   }
 
   .groupLabel {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -144,8 +141,7 @@
     border-radius: var(--radius-pill);
     background: none;
     color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     line-height: 1;
     cursor: pointer;
@@ -200,8 +196,7 @@
     border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--color-brand-amber) 14%, transparent);
     color: var(--color-brand-amber);
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     white-space: nowrap;
@@ -236,8 +231,7 @@
   }
 
   .label {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -276,8 +270,7 @@
   /* Beside the field it is about, in the same quiet mono the labels use — the
      sentence is meta and only the glyph is a warning. */
   .storedNote {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.08em;
     line-height: 1.7;
     text-transform: uppercase;
@@ -399,8 +392,7 @@
   }
 
   .gearListCount {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-ink-faint);
@@ -437,8 +429,7 @@
     border: 0;
     padding: 0;
     background: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
@@ -472,8 +463,7 @@
     display: inline-flex;
     align-items: center;
     min-height: max(3rem, 48px);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
@@ -504,8 +494,7 @@
     display: inline-flex;
     align-items: center;
     min-height: max(3rem, 48px);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
@@ -525,8 +514,7 @@
     padding: 0;
     border: 0;
     background: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-status-attention);
@@ -543,8 +531,7 @@
      use — provenance is read once at the top of the screen and never acted
      on, which is what it is sized for. */
   .provenance {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-ink-muted);
@@ -593,8 +580,7 @@
   .packing {
     position: relative;
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
@@ -618,8 +604,7 @@
   .unpack {
     position: relative;
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);
@@ -646,8 +631,7 @@
     border-radius: var(--radius-control);
     background: none;
     color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     cursor: pointer;

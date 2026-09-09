@@ -96,8 +96,7 @@
       color-mix(in srgb, var(--color-brand-amber) 50%, transparent);
     border-radius: var(--radius-badge);
     color: var(--color-brand-amber);
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.06em;
   }
@@ -105,8 +104,7 @@
   /* `→ SHELF L-TOP ▸ CRATE B · ×2` — mono 11, muted, tabular so a quantity
      does not shuffle as it is tapped. */
   .meta {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     color: var(--color-ink-muted);
     font-variant-numeric: tabular-nums;
     text-transform: uppercase;
@@ -133,8 +131,7 @@
      outcome. Not a button (`UnpackRow.tsx`'s docstring). */
   .clears {
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font: var(--text-label-control) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.05em;
     color: var(--color-ink-faint);

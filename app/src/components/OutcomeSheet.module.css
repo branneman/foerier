@@ -5,8 +5,7 @@
      but the return path's own recorded case needs the transform, so it is
      applied to the whole line rather than split across two nodes. */
   .fact {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: 0.05em;
     line-height: 1.5;
     color: var(--color-ink-muted);
@@ -22,8 +21,7 @@
   }
 
   .applyLabel {
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font: var(--text-label-chrome) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.08em;
     color: var(--color-ink-faint);
@@ -45,8 +43,7 @@
     border-radius: var(--radius-pill);
     background: none;
     color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font: var(--text-label-chrome) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.06em;
     cursor: pointer;
@@ -122,8 +119,7 @@
      R24, board §02's own drawn colours, restated from `circleToneForOutcome`
      rather than a second, hand-typed mapping. */
   .rosterStatus {
-    font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font: var(--text-label-control) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.05em;
     color: var(--color-ink-muted);
@@ -149,8 +145,7 @@
      word this app already uses for "open" everywhere else (`○`). */
   .rosterMarker {
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.59375rem;
+    font: var(--text-label-control) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.05em;
     color: var(--color-ink-faint);
@@ -199,8 +194,7 @@
     border-radius: var(--radius-pill);
     background: none;
     color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.05em;
     white-space: nowrap;
@@ -237,23 +231,20 @@
   }
 
   .stepperLabel {
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font: var(--text-label-chrome) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.08em;
     color: var(--color-ink-faint);
   }
 
   .back {
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font: var(--text-label-control) var(--font-mono);
     color: var(--color-status-packed);
   }
 
   .consequence {
     margin-top: var(--space-8);
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.05em;
     line-height: 1.6;
     color: var(--color-ink-faint);
@@ -261,8 +252,7 @@
 
   .footer {
     margin-top: var(--space-16);
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.05em;
     line-height: 1.7;
     color: var(--color-ink-faint);

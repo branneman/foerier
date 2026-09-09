@@ -65,8 +65,7 @@
   }
 
   .groupLabel {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -100,8 +99,7 @@
     border: 0;
     background: none;
     color: var(--color-ink-primary);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     cursor: pointer;

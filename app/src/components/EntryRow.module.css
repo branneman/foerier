@@ -67,8 +67,7 @@
     border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--color-brand-amber) 14%, transparent);
     color: var(--color-brand-amber);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     white-space: nowrap;

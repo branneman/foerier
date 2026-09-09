@@ -28,8 +28,7 @@
 
   .rowLabel {
     display: block;
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -53,8 +52,7 @@
     border: var(--stroke-chip) solid var(--color-rule-control);
     border-radius: var(--radius-pill);
     padding: 0.25rem 0.625rem;
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
+    font: var(--text-label-control) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;

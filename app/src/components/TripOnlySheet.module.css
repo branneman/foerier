@@ -12,8 +12,7 @@
   }
 
   .label {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -44,8 +43,7 @@
    * Flush left under the trait control; centred under the CTA (`.ctaFact`).
    */
   .fact {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.08em;
     line-height: 1.7;
     text-transform: uppercase;

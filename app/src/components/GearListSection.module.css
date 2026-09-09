@@ -20,8 +20,7 @@
   }
 
   .groupLabel {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
@@ -29,8 +28,7 @@
   }
 
   .groupCount {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-ink-faint);

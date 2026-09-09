@@ -55,6 +55,54 @@
     }
   }
 
+  /*
+   * **The mono-caps label, once** (§5n K28) — the codebase's most-copied rule:
+   * seventy-six uppercase-label rules across twenty-nine modules, nineteen
+   * carrying all three declarations verbatim.
+   *
+   * A **class** and not four tokens, because a step token carries size and
+   * line-height and the recipe carries five things — family, size, tracking,
+   * weight, transform — of which four are identical at every size. A token
+   * migration would have left nineteen copies of the other four.
+   *
+   * Global, which is legal exactly here: `utilities` is a declared layer, so
+   * this needs neither `composes` nor `:global`, both of which four module
+   * headers refuse by name. A module keeps its own class for everything that
+   * is not the recipe — colour, layout, the hit extension — and wears this
+   * beside it.
+   *
+   * **Weight and the transform ride the class, not the step.** A step is a
+   * size; a caller wanting 10px mono in sentence case should not have to
+   * unset a transform it never asked for.
+   *
+   * A modifier restates the `font` shorthand because the shorthand resets
+   * `line-height`, and there is no way to set half of it.
+   */
+  .label {
+    font: var(--text-label) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  /* On a control: a pill's word, a chip's tag, a segment. */
+  .label--control {
+    font: var(--text-label-control) var(--font-mono);
+    letter-spacing: 0.1em;
+  }
+
+  /* Chrome and hints — a nav count, a sync line, a row of gestures. */
+  .label--chrome {
+    font: var(--text-label-chrome) var(--font-mono);
+    letter-spacing: 0.12em;
+  }
+
+  /* A column head or an eyebrow: the smallest thing the boards draw. */
+  .label--head {
+    font: var(--text-label-head) var(--font-mono);
+    letter-spacing: 0.14em;
+  }
+
   .stack {
     display: flex;
     flex-direction: column;

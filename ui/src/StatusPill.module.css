@@ -16,8 +16,7 @@
     border-radius: var(--radius-pill);
     background: none;
     color: var(--color-ink-primary);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     white-space: nowrap;
@@ -28,12 +27,22 @@
     box-shadow: var(--focus-ring);
   }
 
-  /* The in-row size: smaller type, and the tighter tracking the row's own
-     density asks for. `action` keeps the base size above and only has to
-     say how it shares its row. */
+  /*
+   * The in-row size: smaller type, and the tracking that step carries.
+   * `action` keeps the base size above and only has to say how it shares its
+   * row.
+   *
+   * **9.5 → 10 at §5n K28b**, into `--text-label-control`, which is exactly
+   * what this is: a label riding a control. §5g E5 says a board's number
+   * loses to a shared token and the difference is recorded at the token *for
+   * a round that can change it everywhere* — K28's round is that one, so the
+   * difference is spent rather than recorded again. The drawn 9.5 is struck
+   * on `Components` §02 with a pointer.
+   */
   .pill[data-size='row'] {
-    font-size: 0.59375rem;
-    letter-spacing: 0.05em;
+    font: var(--text-label-control) var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.1em;
   }
 
   .pill[data-size='action'] {

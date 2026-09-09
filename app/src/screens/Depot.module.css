@@ -127,8 +127,7 @@
   /* The container's own home path — muted, same rule as `GearRow`'s meta
      line, so two same-named stuff sacks stay apart without indentation. */
   .groupMeta {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     color: var(--color-ink-muted);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -136,8 +135,7 @@
   }
 
   .groupCount {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     color: var(--color-ink-faint);
     font-variant-numeric: tabular-nums;
   }
@@ -241,8 +239,7 @@
       gap: var(--space-12);
       padding: var(--space-8) var(--space-12);
       background: var(--color-bg-surface);
-      font-family: var(--font-mono);
-      font-size: 0.53125rem;
+      font: var(--text-label-head) var(--font-mono);
       font-weight: 600;
       letter-spacing: 0.12em;
       text-transform: uppercase;

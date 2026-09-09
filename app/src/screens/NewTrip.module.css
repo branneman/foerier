@@ -23,8 +23,7 @@
   }
 
   .label {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -121,8 +120,7 @@
      Flush left with the label above it, muted, the register every fact line
      on a form uses (`AddGear`'s own `OPENS EMPTY — GATES THE CTA`). */
   .fieldNote {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     line-height: 1.5;
     color: var(--color-ink-muted);
@@ -179,8 +177,7 @@
   }
 
   .fact {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.08em;
     line-height: 1.7;
     text-transform: uppercase;

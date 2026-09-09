@@ -11,8 +11,7 @@
      Trip's own mixed-case name, so the transform is what makes every band
      read the same way. */
   .back {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
@@ -30,8 +29,7 @@
        two children the auto margin changes nothing. */
     margin-left: auto;
     gap: var(--space-8);
-    font-family: var(--font-mono);
-    font-size: 0.5625rem;
+    font: var(--text-label-chrome) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-ink-faint);

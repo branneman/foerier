@@ -6,8 +6,7 @@
     border: 0;
     background: none;
     color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     cursor: pointer;
@@ -17,8 +16,7 @@
   .context,
   .fact,
   .gearNote {
-    font-family: var(--font-mono);
-    font-size: 0.53125rem;
+    font: var(--text-label-head) var(--font-mono);
     letter-spacing: 0.08em;
     line-height: 1.7;
     text-transform: uppercase;
@@ -46,8 +44,7 @@
 
   /* The ancestry the indent cap hid — the GearRow name+meta anatomy. */
   .rowMeta {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-ink-faint);
@@ -57,8 +54,7 @@
      one you are on". */
   .now {
     flex: none;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     font-weight: 600;
     letter-spacing: var(--tracking-label);
     color: var(--color-accent);

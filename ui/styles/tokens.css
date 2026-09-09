@@ -51,7 +51,31 @@
     --text-body: 0.9375rem/1.375rem; /* 15/22 */
     --text-secondary: 0.8125rem/1.125rem; /* 13/18 */
     --text-data: 0.8125rem/1.125rem; /* 13/18 mono */
-    --text-label: 0.6875rem/0.875rem; /* 11/14 mono caps */
+    /*
+     * **The small end of the scale — four steps for four jobs** (§5n K28).
+     *
+     * Six raw sizes shipped below the scale's floor (11 · 10.5 · 10 · 9.5 · 9
+     * · 8.5) across ~170 declarations, because the boards specify mono caps
+     * down to 8.5 and this scale stopped at 11. They are not six decisions:
+     * they are the label itself, a label riding a control, a label in chrome
+     * or a hint, and a column head or eyebrow.
+     *
+     * **Every value is derived from the one drawn pair, not chosen.**
+     * Line-height is **size + 3**, which is what 11/14 states and what a caps
+     * run with no descenders wants. Tracking rises as size falls, one value
+     * per step across the drawn .05–.14em range — and it lives on the
+     * `.label` utility rather than here, because a `font` shorthand cannot
+     * carry letter-spacing and a token that had to be paired with a second
+     * token would be two things to forget instead of one.
+     *
+     * 9.5 and 10.5 are **not** steps: K28b spends §5g E5 to move the status
+     * pill and the tag chip into `--text-label-control`, both being exactly
+     * what that step names.
+     */
+    --text-label: 0.6875rem/0.875rem; /* 11/14 mono caps — drawn */
+    --text-label-control: 0.625rem/0.8125rem; /* 10/13 — on a control */
+    --text-label-chrome: 0.5625rem/0.75rem; /* 9/12 — chrome, hints */
+    --text-label-head: 0.53125rem/0.71875rem; /* 8.5/11.5 — heads, eyebrows */
 
     --tracking-label: 0.08em;
 

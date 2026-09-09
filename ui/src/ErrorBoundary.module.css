@@ -82,8 +82,7 @@
     border-radius: var(--radius-control);
     background: var(--color-well);
     color: var(--color-ink-muted);
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font: var(--text-label) var(--font-mono);
     line-height: 1.5;
     /* Wrapping a stack frame mid-path makes it unreadable; wrapping between
        frames does not, and the newlines the report is built from are already

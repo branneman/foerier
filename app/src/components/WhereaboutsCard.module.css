@@ -32,7 +32,7 @@
      this test suite (jsdom cannot see computed font-size). */
   .label {
     font: var(--text-label) var(--font-mono);
-    font-size: 0.53125rem; /* 8.5px */
+    font: var(--text-label-head) var(--font-mono); /* 8.5px */
     letter-spacing: var(--tracking-label);
     color: var(--color-ink-faint);
   }
