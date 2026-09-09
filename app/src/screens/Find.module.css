@@ -10,6 +10,33 @@
     container-type: inline-size;
   }
 
+  /*
+   * **Find at Desktop is a capped 560 column, no pane** (§5n K22), and the
+   * 560 is deliberately **not a new number**: it is F4's own (ruling A10),
+   * derived from the 393 row's content plus the room a full residence
+   * segment needs — and Find's per-piece rows carry the longest such segment
+   * in the app (`▸ ALPS 2026 · DUFFEL 90 L · CAR`). The same content set, so
+   * the same cap; a second number here would be two answers to one question.
+   *
+   * `.shell__main` caps at 70rem and this screen added nothing of its own, so
+   * its answer cards stretched the whole 1120 — where `Depot` spends that
+   * width on eight columns and `Trips` on 2-up cards, both *drawn* spending
+   * it. Find answers a question, and an answer does not get wider.
+   *
+   * **No pane**: a detail pane would draw gear detail, whose whereabouts card
+   * restates the row just read (§5f D9 — *the row itself is the split*), and
+   * 2-up cards would put answer one beside answer two on a list read
+   * top-down. From Roomy up, exactly as F4: no override below it, so Compact
+   * and Comfortable keep `.shell__main`'s own gutter untouched.
+   */
+  @media (min-width: 40em) {
+    .screen {
+      max-width: 35rem;
+      margin-inline: auto;
+      width: 100%;
+    }
+  }
+
   .title {
     font: var(--text-display) var(--font-display);
     font-weight: 700;

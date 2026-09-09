@@ -56,9 +56,15 @@ export interface InviteIssuedProps {
  * it. A link that bounces through a redirect to a row already in the
  * navigation is exactly what the rule withholds.
  *
- * The `<header>` is gated on `backLink` rather than on `band`, because for
- * a screen that draws no sync line the back link is the only thing the band
- * could hold — and `band` exists so that a wrapper is never rendered empty.
+ * **It draws the sync line at Split, like the other ten** (§5n K23). The only
+ * thing holding that open was the absence of a frame, and the round drew one
+ * at 900. The line's own reason applies here harder than anywhere: this
+ * screen's whole content is a credential the server minted, so a reader who
+ * sees `OFFLINE` before tapping `Copy link` knows whether the link is real.
+ * So the `<header>` gates on `band` as every other pushed screen does, and no
+ * longer on `backLink` alone — that gate was right only while the back link
+ * was the sole thing the band could hold. At Desktop nothing changes: both
+ * halves are still withheld.
  *
  * **Issues exactly one Invite, ever, no matter how many times this
  * component renders.** `POST /auth/invites` hands back the secret exactly
@@ -80,6 +86,7 @@ export function InviteIssued({
 }: InviteIssuedProps) {
   const own = subjectPersonId === personId
   const header = useScreenHeader({ splitPane: false })
+  const sync = useHousehold((depot) => depot.sync)
   const subjectName = useHousehold(
     (depot) => depot.state.people[subjectPersonId]?.name?.value ?? null,
   )
@@ -196,9 +203,11 @@ export function InviteIssued({
 
   return (
     <div className={styles['screen']}>
-      {/* No `sync` handed in: this screen draws no sync line, so the band
-          gates on the back link alone (`frontend-design.md` §3.3). */}
-      <ScreenBand header={header} back={copy.back} />
+      {/* The sync line at Split, like the other ten (§5n K23) — and it
+          matters more here than anywhere: this screen's whole content is a
+          credential the server minted, so `OFFLINE` before a tap on
+          `Copy link` says whether the link is real. */}
+      <ScreenBand header={header} back={copy.back} sync={sync} />
 
       <h1 className={styles['title']}>{copy.title}</h1>
       <p className={styles['lead']}>{copy.lead}</p>

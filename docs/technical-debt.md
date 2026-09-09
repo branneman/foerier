@@ -238,11 +238,6 @@ them looking for work is the thing this section exists to stop.
   declaration, but which one is a design call.
   [`docs/design/README.md`](design/README.md) §6, anchor:
   `no frame draws Find at 1024`
-- **`InviteIssued` draws no sync line at Split**, the one mode where nothing
-  legible states sync status — the rail gives a bare 6px dot with the words on an
-  `aria-label`. Blocked on a board rather than on the rule: no frame draws this
-  screen at Split at all. [`frontend-design.md`](frontend-design.md) §3.3, anchor:
-  `sync half has no drawn answer`
 - **The join confirm's `YOU JOIN AS` and `INVITED BY` need the server to
   know a Person's name, which §2.1 forbids.** Both are drawn before the
   Device has a session or a fold, so only the server could state them — and

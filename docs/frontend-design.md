@@ -381,15 +381,17 @@ width, at Split and at Desktop. That is a permanent property of the two suites,
 not a note about one round.
 
 **The hook's reach is every screen that draws either half of the band —
-eleven, since S9a.** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`,
+twelve, since S10.** `AddGear`, `GearDetail`, `Trip`, `NewTrip`, `Account`,
 `People`, `Devices` and `InviteIssued` ask it, and no screen spells the rule
 itself. S7 added `GearListBuilder` (`/trips/:id/list`) and `DepotPicker`'s
 screen variant (`/trips/:id/add`), both answering `splitPane: false` — the
 builder is two panes of itself, not a detail pane of a list also on screen, so
 it does not take `GearDetail`'s `true`. S9a added `Packing`
-(`/trips/:id/packing`), unguarded at every width. Ten of the eleven draw a
-sync line; `InviteIssued` does not, which is left open below rather than
-settled. `splitPane` is true for `GearDetail` alone. Three of the answers are
+(`/trips/:id/packing`) and S10 `Unpack` (`/trips/:id/unpack`), both unguarded
+at every width. **All twelve draw a sync line**: eleven always did, and §5n
+K23 makes `InviteIssued` the twelfth — the round drew the Split frame whose
+absence was the only thing holding it open.
+`splitPane` is true for `GearDetail` alone. Three of the answers are
 worth stating, because they are about the app as built rather than as drawn:
 
 - **`AddGear` answers `splitPane: false`, against its own board frame.**
@@ -410,14 +412,8 @@ worth stating, because they are about the app as built rather than as drawn:
   `InviteIssued`'s three routes, and `GearDetail` by way of `DepotView` —
   which renders it standalone below Split and at Desktop and as the
   right-hand pane between — are mounted at every width.
-- **`InviteIssued` gates its `<header>` on `backLink` rather than on `band`.**
-  It draws no sync line, so the back link is the only thing the band could
-  hold, and `band` exists precisely so a wrapper is never rendered empty. (For
-  `splitPane: false` the two answers coincide — `syncLine` is `isSplit &&
-  !isDesktop` and `backLink` is `!isDesktop` while the Desktop flag stays at
-  its default, so the first implies the second —
-  but the gate names the half the screen actually draws.) Its label is the one
-  that is not fixed: `‹ ACCOUNT` from Account's own device link,
+- **`InviteIssued`'s label is the one that is not fixed**, now that its band
+  gates on `band` like every other screen's: `‹ ACCOUNT` from Account's own device link,
   `‹ PEOPLE & LOGINS` from a join Invite and from a device link minted for
   someone else. Where it points is the screen's own decision; whether it is
   drawn is this rule's — and at Desktop it is not, where the sidebar carries a
@@ -425,20 +421,25 @@ worth stating, because they are about the app as built rather than as drawn:
   link would have bounced through a redirect to a row already in the
   navigation.
 
-**Open — `InviteIssued`'s sync half has no drawn answer, and this doc does
-not invent one.** At Split the reader gets exactly what the rail gives
-every screen there — a bare 6px dot whose state is carried only in an
-`aria-label` — and nothing on the page states it in words; the sync
-line's own reason, that Split is the mode where nothing legible says it,
-applies to this screen exactly as it applies to the other ten. What
-holds it back is not that reason: no board draws `InviteIssued` at Split
-at all — the one frame it has is the phone 393 door — so there is no
-drawn line to build toward. Mitigating, not resolving: the screen's one
-action is a live `POST /auth/invites`, so a device that cannot sync fails
-by that call failing, visibly, rather than by an invite that silently
-never reaches the household. Left open rather than added — adding the
-line without a board to draw it from is exactly the guess this doc keeps
-refusing to make.
+**Closed — `InviteIssued` draws the line, and what was missing was a frame,
+not a reason** (§5n K23). This section recorded the gap for three slices: at
+Split the reader got exactly what the rail gives every screen there, a bare
+6px dot whose state is carried only in an `aria-label`, and nothing on the
+page said it in words — while the sync line's own reason, that Split is the
+mode where nothing legible states it, applied to this screen as plainly as to
+the other ten. What held it back was that no board drew the screen at Split at
+all; the round drew one, and the answer it gives is the ordinary one. The
+reason is if anything *stronger* here: this screen's whole content is a
+credential the server just minted, so `OFFLINE` beside `Copy link` is the
+reader's one warning that the link they are about to hand over may not exist.
+
+**What that closure removed is an exemption, not just a line.** `ScreenBand`'s
+`sync` prop was optional for exactly one caller, and the component carried a
+second gate — *draw the wrapper if the back link is there, or if the sync half
+is both asked for and suppliable* — so a band could be true for a half its
+caller declined to hand in. With every caller supplying one, `header.band` is
+the whole gate, `sync` is required, and the shape where the hook and the
+caller disagree is unrepresentable rather than handled.
 
 **The gap at Split has since been drawn and closed.** This section once
 recorded an open question — the FAB was gated `!isDesktop` and offset a literal

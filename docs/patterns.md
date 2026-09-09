@@ -417,8 +417,10 @@ hook decides; the component draws — the back link as `‹ DESTINATION`, the sy
 line as the dot plus `syncLabel(sync)`, the dot's tone from `syncTone(sync)`.
 `splitPane` is `true` for `GearDetail` alone; the Desktop flag is `false` only
 where the destination is one specific Trip, which no sidebar row carries
-(`Packing`, `GearListBuilder`'s trip door). A screen with no sync line
-(`InviteIssued`) gates on `backLink`; every other gates on `band`.
+(`Packing`, `GearListBuilder`'s trip door). **Every caller gates on `band`
+and every caller hands in a `sync`** — `InviteIssued` was the one exemption to
+both, and §5n K23 gave it the sync line, so the prop is required and the
+component has one gate instead of two.
 
 Before `ScreenBand` existed the JSX and four CSS rules were pasted per screen,
 and the sync dot's tone — amber when unreachable — was carried by exactly the

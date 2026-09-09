@@ -23,11 +23,11 @@ import type { ScreenHeader } from './useMediaQuery'
  * - The back link, when `header.backLink`, with the `‹ ` prefix spelled here
  *   so no caller spells it differently. The label is upper-cased by the
  *   stylesheet, because three callers hand in a Trip's mixed-case name.
- * - The sync line, when `header.syncLine` **and** a {@link ScreenBandProps.sync}
- *   was handed in. A screen that draws no sync line omits `sync`, and the
- *   wrapper then gates on the back link alone — `InviteIssued`'s case, where
- *   `band` would be true at Split for a half that does not exist and the
- *   `<header>` would render empty, the very thing `band` exists to prevent.
+ * - The sync line, when `header.syncLine`. **Every caller hands in a `sync`**
+ *   (§5n K23): the prop was optional for one screen, `InviteIssued`, which
+ *   drew no sync line for want of a Split frame, and the round drew it one.
+ *   With the exemption gone the hook's answer is the whole gate, so a band
+ *   can no longer be true for a half its caller declines to supply.
  * - Nothing at all — `null`, no wrapper — when neither half is drawn.
  *
  * `GearListBuilder` is the one caller that draws its back link outside this
@@ -40,8 +40,10 @@ export interface ScreenBandProps {
   /** Where `‹ <label>` points, and what it says — `DEPOT`, `TRIPS`,
    * `ACCOUNT`, `PEOPLE & LOGINS`, or a Trip's own label. */
   readonly back: { readonly href: string; readonly label: string }
-  /** The engine's status, or omitted for a screen that draws no sync line. */
-  readonly sync?: SyncStatus
+  /** The engine's status. Required: `header.syncLine` decides whether it is
+   * drawn, and a screen that could not answer this would be a screen the
+   * hook says draws a line and cannot. */
+  readonly sync: SyncStatus
   /** A `data-testid` for the sync line, for the suites that name it
    * (`Packing.test.tsx`'s `packing-sync`, `Unpack.test.tsx`'s
    * `unpack-sync`). */
@@ -54,13 +56,12 @@ export function ScreenBand({
   sync,
   syncTestId,
 }: ScreenBandProps) {
-  const drawSync = header.syncLine && sync !== undefined
-  if (!header.backLink && !drawSync) return null
+  if (!header.band) return null
 
   return (
     <header className={styles['header']}>
       {header.backLink && <BackLink href={back.href} label={back.label} />}
-      {drawSync && (
+      {header.syncLine && (
         <span className={styles['sync']} data-testid={syncTestId}>
           <span
             className={`${styles['syncDot']} ${

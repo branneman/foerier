@@ -771,10 +771,43 @@ describe('the shell and a pushed screen, composed — one sync line, at every wi
     expect(screen.getByRole('main')).toContainElement(syncLines()[0] ?? null)
   })
 
-  /* `InviteIssued` is counted in the back-link block below and not in this
-     one: it has never drawn a sync line, so the sync half of the rule has
-     nothing to say about it and no width of it can double the shell's word.
-     Only the back-link half is its. */
+  /* `InviteIssued` is counted at all three widths since §5n K23 gave it the
+     sync line the other eleven draw. Its three routes carry no width guard
+     (`renderInShell`'s own note above says so), and the own device link is
+     the cheapest of them to stand up. */
+
+  it('holds for the device link on a phone', async () => {
+    const store = await seededStore()
+    renderInShell(store, '/account/device-link')
+    await screen.findByRole('button', { name: 'Copy link' })
+
+    expect(syncLines()).toHaveLength(1)
+    expect(screen.getByRole('main')).not.toContainElement(
+      syncLines()[0] ?? null,
+    )
+  })
+
+  it('holds for the device link at Split, where the rail says nothing', async () => {
+    setViewport(SPLIT)
+    const store = await seededStore()
+    renderInShell(store, '/account/device-link')
+    await screen.findByRole('button', { name: 'Copy link' })
+
+    expect(syncLines()).toHaveLength(1)
+    expect(screen.getByRole('main')).toContainElement(syncLines()[0] ?? null)
+  })
+
+  it('holds for the device link at Desktop, where the sidebar states it', async () => {
+    setViewport(SPLIT, DESKTOP)
+    const store = await seededStore()
+    renderInShell(store, '/account/device-link')
+    await screen.findByRole('button', { name: 'Copy link' })
+
+    expect(syncLines()).toHaveLength(1)
+    expect(screen.getByRole('main')).not.toContainElement(
+      syncLines()[0] ?? null,
+    )
+  })
 })
 
 /**
@@ -1011,7 +1044,8 @@ describe('the back link — withheld only where its destination is already drawn
  * `App.tsx` redirects `/trips/:id/add` at Split and up, so the width at
  * which it would draw the line is one it is never mounted at, and standing
  * it up here would be a fixture describing an app that does not exist.
- * `InviteIssued` draws no sync line at all.
+ * `InviteIssued` joins the block at §5n K23, which is what makes the count
+ * eleven rather than ten.
  */
 describe('the sync dot at Split — amber while the household is unreachable, on every screen', () => {
   type Seed = () => Promise<{
@@ -1077,6 +1111,14 @@ describe('the sync dot at Split — amber while the household is unreachable, on
       'Devices',
       async () => ({ store: await offlineStore(), path: '/account/devices' }),
       'Devices',
+    ],
+    [
+      'the device link',
+      async () => ({
+        store: await offlineStore(),
+        path: '/account/device-link',
+      }),
+      'Sign in on another device',
     ],
   ]
 

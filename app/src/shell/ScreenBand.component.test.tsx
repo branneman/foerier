@@ -87,28 +87,19 @@ describe('ScreenBand', () => {
     expect(screen.getByText('SIGNED OUT')).toBeVisible()
   })
 
-  it('gates on the back link alone when no sync state is handed in', () => {
-    // `InviteIssued` draws no sync line: `band` is true here because
-    // `syncLine` is, but with nothing to draw for that half the wrapper would
-    // be rendered empty, which is exactly what `band` exists to prevent.
-    const { container } = renderBand({
+  it('draws the sync half alone when the hook withholds the back link', () => {
+    // `InviteIssued`'s case at Split since §5n K23: the screen used to be
+    // the one caller that handed in no `sync` at all, and the band gated on
+    // the back link to keep the wrapper from rendering empty. It draws the
+    // line now, so `band` is the whole gate and this is an ordinary shape.
+    renderBand({
       header: { band: true, backLink: false, syncLine: true },
       back: { href: '/account', label: 'ACCOUNT' },
+      sync: 'idle',
     })
 
-    expect(container).toBeEmptyDOMElement()
-  })
-
-  it('draws the back-link half alone when no sync state is handed in', () => {
-    renderBand({
-      header: BOTH,
-      back: { href: '/account/people', label: 'PEOPLE & LOGINS' },
-    })
-
-    expect(
-      screen.getByRole('link', { name: '‹ PEOPLE & LOGINS' }),
-    ).toBeVisible()
-    expect(screen.queryByTestId('screen-band-dot')).toBeNull()
+    expect(screen.getByText('SYNCED')).toBeVisible()
+    expect(screen.queryByRole('link')).toBeNull()
   })
 
   it('puts a caller-named test id on the sync line', () => {

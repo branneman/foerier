@@ -131,15 +131,14 @@ export interface ScreenHeader {
  * `DepotPicker`, `GearListBuilder`, `Packing` and `Unpack`, all twelve of
  * them — because a rule spelled twelve times is eleven chances to spell it
  * differently, and that is exactly how `Account` came to carry `Trip`'s
- * defect from a different slice. Eleven draw a sync line; `InviteIssued`
- * draws only the back link, and gates its band on {@link ScreenHeader.backLink}
- * rather than on
- * {@link ScreenHeader.band}, since for a screen with no sync line the link
- * is the only thing the band could hold. (`DepotPicker`'s own `'pane'`
- * variant asks too but draws neither half itself — its band belongs to
- * `GearListBuilder`, which draws it for both panes together — so it is
- * counted here as a caller, not as a second `InviteIssued`-shaped
- * exception.)
+ * defect from a different slice. **All twelve draw a sync line** since §5n
+ * K23 — `InviteIssued` was the one screen that did not, for want of a Split
+ * frame, and the round drew it one — so {@link ScreenHeader.band} is the
+ * whole gate at every caller and no screen restates it. (`DepotPicker`'s own
+ * `'pane'` variant asks too but draws neither half itself — its band belongs
+ * to `GearListBuilder`, which draws it for both panes together — so it is
+ * counted here as a caller that hands its answer on, not as a screen with a
+ * gate of its own.)
  *
  * ## The sync line: at Split, and only at Split
  *
