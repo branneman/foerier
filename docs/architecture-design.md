@@ -1307,16 +1307,33 @@ byte-exact.
   off the engine's bootstrap progress rather than its status string, composed
   into the join card and rendered full-screen ahead of the shell everywhere
   else.
-- **The first-sync screens still owe `person_name`.** The success frame's
-  `Els · Veldkamp` and the confirm frame's `YOU JOIN AS` / `INVITED BY` are
-  all blocked on one field: `InvitePreview` (`app/src/auth/api.ts:22`) carries
-  `household_name` and no person, so that line is currently half-buildable —
-  which is worse than absent, and neither frame renders it. Widening the auth
-  contract on a slice's last task was rejected deliberately; this records the
-  debt rather than paying it. A second, unrelated field is a candidate for the
-  same trip if one is ever made: `household_seq` on the join response, which
-  would let the confirm frame's `OP 0 OF —` denominator resolve immediately
-  instead of waiting on the first pull — a possibility, not a commitment.
+- **The success frame owed no API field after all; the confirm frame's two
+  lines are blocked on §2.1, not on a contract.** All three of §9's name lines
+  were recorded here as waiting on `InvitePreview` to carry a person, with the
+  widening deferred as too much for a slice's last task. That reading was
+  wrong in both directions, and the correction is the useful part.
+
+  `Els · Veldkamp` on the **success** frame is buildable with no endpoint
+  change and is built (`app/src/components/SignedInAs.tsx`): by the time that
+  frame renders, the Device has signed in and is folding the household's own
+  log — the only place a Person's name exists — and resolving the Invite's
+  `person_id` against that fold is exactly what
+  [auth-design §2.1](auth-design.md#21-the-person-reference-is-opaque-by-design)
+  says the **client** does. It draws nothing until the name is folded, which
+  is §9's own *omitted, never faked*.
+
+  The **confirm** frame's `YOU JOIN AS` and `INVITED BY` are drawn *before*
+  the Device has a session or a fold, so only the server could supply them —
+  and §2.1 is the reason it cannot: there is no `person` table and there never
+  will be, `login.person_id` is a dumb UUID with no foreign key, and the op
+  log the names live in is opaque to the server by design. Rendering those two
+  lines means deciding that the server may hold or derive domain names for
+  unauthenticated callers holding a link, which is a change to the tenancy
+  posture rather than a field on a response. Recorded as a decision, not a
+  chore. `household_seq` on the join response — which would let the confirm
+  frame's `OP 0 OF —` denominator resolve without waiting on the first pull —
+  remains a candidate for a trip that is made for other reasons, and is not
+  blocked on any of this.
 - **Story 27's last acceptance criterion is not delivered.** "If this Device
   cannot hold a Passkey, I can still complete the join" needs
   `POST /auth/device/claim`, which [auth-design §13](auth-design.md) places in

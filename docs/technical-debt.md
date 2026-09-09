@@ -184,13 +184,6 @@ second pane.
   and why its CTA fact line has only one alignment to say.
   [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `two-pane Add gear has never been built`
-- **`InvitePreview` carries no person name**, so the join confirm's `YOU JOIN AS`
-  and `INVITED BY` lines and the success frame's `Els · Veldkamp` are
-  half-buildable and neither frame renders them. Widening the auth contract on a
-  slice's last task was refused deliberately; `household_seq` on the join
-  response is a candidate for the same trip if one is ever made.
-  [`architecture-design.md`](architecture-design.md) §12.2, anchor:
-  `` still owe `person_name` ``
 - **Split's two panes share one scroller — now in two places.** `DepotView`
   draws the Depot list and the gear detail as two panes of one view that
   never unmounts, so `/` and `/gear/:id` are two routes over that one
@@ -249,6 +242,19 @@ them looking for work is the thing this section exists to stop.
   `aria-label`. Blocked on a board rather than on the rule: no frame draws this
   screen at Split at all. [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `sync half has no drawn answer`
+- **The join confirm's `YOU JOIN AS` and `INVITED BY` need the server to
+  know a Person's name, which §2.1 forbids.** Both are drawn before the
+  Device has a session or a fold, so only the server could state them — and
+  there is no `person` table, `login.person_id` is a dumb UUID with no
+  foreign key, and the op log the names live in is opaque to the server by
+  design. Drawing them means deciding the server may hold or derive domain
+  names for an unauthenticated caller holding a link: a change to the tenancy
+  posture, not a field on a response. **The third line the board blocked on
+  the same field is built** — the success frame's `Els · Veldkamp` resolves
+  the Invite's `person_id` against the fold, because that frame draws after
+  the join. `household_seq` on the join response is unrelated and unblocked.
+  [`architecture-design.md`](architecture-design.md) §12.2, anchor:
+  `blocked on §2.1, not on a contract`
 - **The store's `refusal` channel has no reader.** An op that could not be
   written — a 16 KB overflow, an IndexedDB failure — sets `depot.refusal`
   and is logged to the console, and no screen draws it, so the Quartermaster

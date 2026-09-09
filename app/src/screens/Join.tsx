@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import type { InvitePreview } from '../auth/api'
 import { FirstSync } from '../components/FirstSync'
+import { SignedInAs } from '../components/SignedInAs'
 import styles from './Join.module.css'
 
 export type DeadEndReason = 'expired' | 'used' | 'unknown'
@@ -62,6 +63,16 @@ export function Join({
     return (
       <div className={styles['screen']}>
         <h1 className={styles['title']}>Signed in.</h1>
+        {/* `Els · Veldkamp` (§9). Drawn from the fold rather than from the
+            API field the board tagged it with — see `SignedInAs` — and
+            omitted entirely while the name is not known, never faked. A
+            dead-end preview is `null`, and there is no identity to state. */}
+        {preview !== null && (
+          <SignedInAs
+            personId={preview.person_id}
+            householdName={preview.household_name}
+          />
+        )}
         {/* The claim path (device link or S3.5 fallback) never makes a
             credential, so it gets `NoPasskey`'s own settled fact line rather
             than a claim the register path alone can make — the same

@@ -1,8 +1,11 @@
+import { personRecorded } from '@foerier/shared'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { InvitePreview } from '../auth/api'
+import { HouseholdProvider } from '../household/store'
+import { seededStore } from '../testUtils'
 import { Join } from './Join'
 
 // A fresh join Invite: its TTL is 7 days (`auth-design.md` §5), one minute
@@ -241,5 +244,78 @@ describe('the join screen', () => {
         screen.getByText('Passkey saved on this device.'),
       ).toBeInTheDocument()
     })
+  })
+})
+
+/**
+ * **`Els · Veldkamp`** (`docs/design/README.md` §9), and the reason it took
+ * until after the MVP: the board tagged all three of its name lines
+ * `API FIELD`, which is true of the confirm frame's — drawn before this
+ * Device has a session — and not of this one. By the time the success frame
+ * renders, the Device is folding the household's own log, and resolving a
+ * `person_id` against the fold is what [auth-design §2.1] says the client
+ * does.
+ *
+ * The half worth pinning is the **absence**: §9 says the line is omitted,
+ * never faked, and every state below that cannot name the Person draws
+ * nothing rather than a bare `· Veldkamp`.
+ */
+describe('the join success frame’s identity line', () => {
+  const PERSON = '0f0000aa-0000-4000-8000-0000000000aa'
+
+  function successFrame(
+    store: Parameters<typeof HouseholdProvider>[0]['value'],
+  ) {
+    return render(
+      <HouseholdProvider value={store}>
+        <Join {...defaults} preview={aPreview()} signedIn={true} />
+      </HouseholdProvider>,
+    )
+  }
+
+  it('names the Person and the household once the fold knows the name', async () => {
+    const store = await seededStore([personRecorded(PERSON, 'Els')])
+
+    successFrame(store)
+
+    expect(screen.getByText('Els · Veldkamp')).toBeInTheDocument()
+  })
+
+  it('draws nothing while the fold has not reached that Person', async () => {
+    // The first-sync card beside this line *is* the fold in progress, so this
+    // is the ordinary state for the first seconds of the frame — not an edge
+    // case, and the one the board's "omitted, never faked" names.
+    const store = await seededStore([personRecorded('someone-else', 'Mark')])
+
+    successFrame(store)
+
+    expect(screen.queryByText(/Veldkamp$/)).toBeNull()
+    // The frame itself still renders — the identity line is the only thing
+    // withheld.
+    expect(
+      screen.getByRole('heading', { name: 'Signed in.' }),
+    ).toBeInTheDocument()
+  })
+
+  it('draws nothing when the Person is folded with no name', async () => {
+    // `personNameOrUnnamed`'s `—` is right in a column and wrong in a
+    // sentence (`patterns.md` §1.5): `— · Veldkamp` states a Person whose
+    // name nobody knows, and §9 asks for silence instead.
+    const store = await seededStore([personRecorded(PERSON, '')])
+
+    successFrame(store)
+
+    expect(screen.queryByText(/Veldkamp$/)).toBeNull()
+  })
+
+  it('draws nothing in the window before the Device has a depot at all', () => {
+    // Signed in, store not built yet — `FirstSync` beside it tolerates the
+    // same absence, and this must not take the screen down with it.
+    render(<Join {...defaults} preview={aPreview()} signedIn={true} />)
+
+    expect(
+      screen.getByRole('heading', { name: 'Signed in.' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Veldkamp$/)).toBeNull()
   })
 })

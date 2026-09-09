@@ -1,0 +1,13 @@
+@layer components {
+  /*
+   * `Els · Veldkamp`, directly under `Signed in.` — the identity the frame
+   * confirms, in the body face rather than the mono the fact line beneath it
+   * wears: this is a name and a household, not a stated fact about the
+   * device.
+   */
+  .line {
+    font: var(--text-heading) var(--font-ui);
+    font-weight: 600;
+    color: var(--color-ink-primary);
+  }
+}
