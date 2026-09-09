@@ -68,15 +68,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   owns that file is the one that should make the claim false. Argued in the
   memo's own JSDoc, `shared/src/selectors/slice.ts`, anchor:
   `The rejected alternative was memoising`
-- **The resilience layer's `ErrorBoundary` is drawn and not built.** §6 gives
-  a component crash a home in `ui/ErrorBoundary`, wrapping each screen and
-  panel with an in-place ledger-voice fallback; nothing of the kind exists and
-  `main.tsx` mounts `<App/>` bare, so one card's render error is a white page
-  for the whole app. The other two unbuilt homes — the `motion` module and the
-  chunk-load reload handler — are moot until a module declares a transition
-  or a route is code-split, and become due the same day.
-  [`frontend-design.md`](frontend-design.md) §5, anchor:
-  `no error boundary exists in`
 - **Eight touch controls between 32 and 40px carry no hit extension.**
   `TripCard`'s phase chip, `ui/Chip`'s two sizes rendered as buttons, the
   slice bar's readout, `TagPicker`'s remove, `SortGroupSheet`'s rows, the

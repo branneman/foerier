@@ -1,5 +1,7 @@
+import { ErrorBoundary } from '@foerier/ui'
 import { Children, type ReactNode } from 'react'
 
+import { BUILD_SHA } from '../build'
 import styles from './TripPanels.module.css'
 
 /**
@@ -30,6 +32,18 @@ import styles from './TripPanels.module.css'
  * link — but a future one that could must return nothing from *here*, by not
  * being passed, rather than from inside itself.
  *
+ * **Each panel is a boundary, and this is where the app says what an
+ * independent panel is** (`frontend-design.md` §5's *each screen and each
+ * independent panel*). Wrapping happens here rather than at the call site for
+ * the reason the row exists at all: a panel is this component's own unit, so
+ * a crash in `NOTES` leaves `TASKS` and the whole trip screen standing, and
+ * no future panel's author has to remember the boundary. The wrapper takes
+ * the child's column, so the fallback is drawn at the panel's own size.
+ *
+ * The count above is deliberately of the children *passed*, before wrapping:
+ * a boundary around nothing is still an element, and counting after would
+ * make I2's collapse depend on how this file is written.
+ *
  * Layout is the row's own container query rather than the caller's: `Trip`'s
  * `.screen` declares no container, and a component that queries a container
  * its parent may or may not provide is `GearRow`'s standing trap
@@ -37,11 +51,24 @@ import styles from './TripPanels.module.css'
  * row is what responds — an element is never its own container.
  */
 export function TripPanels({ children }: { children?: ReactNode }) {
-  if (Children.toArray(children).length === 0) return null
+  const panels = Children.toArray(children)
+  if (panels.length === 0) return null
 
   return (
     <div className={styles['panels']}>
-      <div className={styles['row']}>{children}</div>
+      <div className={styles['row']}>
+        {panels.map((panel, index) => (
+          <ErrorBoundary
+            // The row is a fixed, ordered pair written by hand at one call
+            // site; an index is the identity it actually has.
+            key={index}
+            buildSha={BUILD_SHA}
+            label="a trip panel"
+          >
+            {panel}
+          </ErrorBoundary>
+        ))}
+      </div>
     </div>
   )
 }

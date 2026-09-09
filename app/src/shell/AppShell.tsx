@@ -1,4 +1,5 @@
 import {
+  ErrorBoundary,
   IconDepot,
   IconFind,
   IconTrips,
@@ -9,6 +10,7 @@ import {
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useRoute } from 'wouter'
 
+import { BUILD_SHA } from '../build'
 import styles from './AppShell.module.css'
 import { DESKTOP, SPLIT, useMediaQuery } from './useMediaQuery'
 
@@ -357,8 +359,25 @@ export function AppShell({
         </header>
       )}
 
+      {/*
+       * The screen boundary — the middle of the three
+       * (`frontend-design.md` §5), inside the scroller so a crashed screen
+       * keeps the nav, the header and the sync line it was reached by. That
+       * is the whole difference from the root boundary above it: a reader
+       * who can still see the tab bar has somewhere to go.
+       *
+       * **Keyed on the location, so a boundary is never a trap.** Nothing
+       * clears a boundary's own state but its retry, and a screen that
+       * crashes deterministically would otherwise hold this box for the
+       * rest of the session — every later navigation rendering the fallback
+       * for a screen the reader has left. The key is not the scroll group:
+       * a crash is not a scroll offset, and the Depot list and a gear
+       * detail are two screens even where they share one scroller.
+       */}
       <main className="shell__main" ref={mainRef}>
-        {children}
+        <ErrorBoundary key={location} buildSha={BUILD_SHA} label="the screen">
+          {children}
+        </ErrorBoundary>
       </main>
 
       <nav

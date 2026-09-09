@@ -3,6 +3,9 @@ export { IconDepot, IconFind, IconTrips } from './Icon'
 export type { IconProps } from './Icon'
 export type { LogoProps, MarkProps } from './Logo'
 
+export { ErrorBoundary } from './ErrorBoundary'
+export type { ErrorBoundaryProps } from './ErrorBoundary'
+
 export { Chip } from './Chip'
 export type { ChipProps } from './Chip'
 

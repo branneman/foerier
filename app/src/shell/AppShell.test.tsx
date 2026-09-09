@@ -1,8 +1,8 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { describe, expect, it } from 'vitest'
-import { Router } from 'wouter'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Router, useLocation } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
 import { setViewport } from '../testSetup'
@@ -447,5 +447,84 @@ describe('the scroll position across a route change', () => {
     })
 
     expect(scroll.get()).toBe(0)
+  })
+})
+
+/**
+ * The screen boundary — the middle of the app's three
+ * (`frontend-design.md` §5). The per-screen suites render their screen with
+ * no shell around it, so this is the only place the composed fact is
+ * visible: a screen crashes, and the nav it was reached by is still there.
+ */
+describe('a crashed screen inside the shell', () => {
+  function Boom(): React.ReactNode {
+    throw new Error('bring_count was null')
+  }
+
+  function renderCrash(path = '/trips') {
+    const location = memoryLocation({ path, record: true })
+    return render(
+      <Router hook={location.hook}>
+        <AppShell syncLine="SYNCED 14:32" syncTone="reachable">
+          <Boom />
+        </AppShell>
+      </Router>,
+    )
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('draws the fallback in the main column and leaves the nav standing', () => {
+    renderCrash()
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    // The whole point of a boundary below the shell rather than above it:
+    // a reader looking at a broken screen still has somewhere to go.
+    expect(
+      screen.getByRole('navigation', { name: 'Sections' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Depot/ })).toBeInTheDocument()
+  })
+
+  it('keeps the fallback inside the scroller, where the screen was', () => {
+    const { container } = renderCrash()
+
+    const main = container.querySelector('.shell__main')
+    expect(main).not.toBeNull()
+    expect(within(main as HTMLElement).getByRole('alert')).toBeInTheDocument()
+  })
+
+  it('clears itself on the next route, so a boundary is never a trap', () => {
+    // The routed screen, as the app renders it: which screen is drawn is a
+    // function of the location, so both change in one commit.
+    function Routed() {
+      const [path] = useLocation()
+      return path === '/trips' ? <Boom /> : <p>find</p>
+    }
+
+    const location = memoryLocation({ path: '/trips', record: true })
+    render(
+      <Router hook={location.hook}>
+        <AppShell>
+          <Routed />
+        </AppShell>
+      </Router>,
+    )
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+
+    act(() => {
+      location.navigate('/find')
+    })
+
+    // Nothing but the key clears a boundary's state: without it the fallback
+    // would hold the main column for the rest of the session.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('find')).toBeInTheDocument()
   })
 })

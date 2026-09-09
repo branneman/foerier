@@ -636,8 +636,19 @@ Cross-cutting pieces, also in `ui/`:
 - **`Icon`** set — inline-SVG React components (the design mandates no rasters;
   the duffel logo and stroke icons live here). **Built.**
 - **`ErrorBoundary`** — wraps each screen and each independent panel.
-  **Unbuilt**: no error boundary exists in `app/` or `ui/`, and `main.tsx`
-  mounts `<App/>` bare, so a render error in one card is a white page.
+  **Built.** Three boundaries, each owned by the element that knows what its
+  unit is: `main.tsx` around `<App/>` (`variant="page"`, the only one with no
+  shell to stand in), `AppShell` around the routed screen and *inside* the
+  scroller, so a crashed screen keeps the nav that reached it, and
+  `TripPanels` around each panel it is passed, so no future panel's author has
+  to remember one. The screen boundary is **keyed on the location**: nothing
+  else clears a boundary's state, and a deterministic crash would otherwise
+  hold the main column for the rest of the session. The fallback is two
+  sentences, a `Try again` and a collapsed report carrying `error.stack`,
+  React's component stack and `BUILD <sha>` — which is what `build.sourcemap`
+  and `esbuild.keepNames` in `app/vite.config.ts` exist for. The copy is
+  code-authored (`docs/design/README.md` §16): no board draws a crashed
+  card.
 - **`motion`** module — the single place gating transitions behind
   `prefers-reduced-motion` **and** `prefers-reduced-data`. **Unbuilt**, and
   currently moot: `base.css` carries the reduced-motion query, no module
@@ -648,7 +659,10 @@ The lazy-**chunk-load-error → SW-update → reload+retry** handler is app-shel
 level (in `app/`, near the router), not `ui/`. **Unbuilt, and moot for the
 same reason**: every screen is imported eagerly, there is no `lazy()` or
 `Suspense` in `app/src`, so there is no chunk to fail. It becomes due the day
-a route is code-split. All three are in [`technical-debt.md`](technical-debt.md).
+a route is code-split. Neither carries an entry in
+[`technical-debt.md`](technical-debt.md) any more: with the boundary built,
+what is left has no trigger yet, and work whose trigger has not fired is a
+deferral rather than a debt. Both become due the day it does.
 
 ## 6. Resilience layer
 
@@ -663,7 +677,7 @@ concern has a concrete home and mechanism.
 | Print | `layout` layer | `@media print`: nav hidden, single column, ink-on-white, truncation expanded. **Built: nav hidden and ink-on-white**; nothing yet unpins the shell's inner scroller or expands the ellipsis rules, so a long list prints one viewport |
 | `line-clamp` unsupported | `clamp-2` utility | `@supports (-webkit-line-clamp: 2)` guard → **fail open** to full content |
 | New-CSS fallbacks | discipline + `@supports` | Safe declaration first, enhancement second; `@supports` for structural upgrades (container queries, `color-mix`, `gap`) |
-| Component crash | `ui/ErrorBoundary` | Wraps each screen + panel; in-place terse fallback (ledger voice), not a full-screen white-out; local reset action. **Unbuilt** (§5) |
+| Component crash | `ui/ErrorBoundary` | Wraps each screen + panel; in-place terse fallback (ledger voice), not a full-screen white-out; local reset action, plus a collapsed report (both stacks + build) the reader can copy. **Built** (§5) |
 | Stale client / missing chunk | `app` shell | Catch `import()` rejection → trigger SW update → **reload once** (`sessionStorage` guard against reload loops) + a quiet "new version" header line. **Unbuilt and moot until a route is code-split** (§5) |
 | Offline | core (op-log / SW) | Already the default; surfaced as one quiet sync-state header line, never a blocking dialog |
 | No JavaScript | `index.html` | Honest one-line `<noscript>` in ledger voice ("foerier needs JavaScript."). **Built.** The lightweight shell skeleton before hydration is not: the body is one empty `#root` |

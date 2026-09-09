@@ -1,0 +1,108 @@
+@layer components {
+  /* The fallback stands where the thing it replaced stood, so it takes the
+     card anatomy a panel already wears and no width of its own: a screen
+     boundary fills the column, a panel boundary fills its column. */
+  .fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-12);
+    padding: var(--space-20);
+    border: var(--stroke-rule) solid var(--color-rule);
+    border-radius: var(--radius-card);
+    background: var(--color-bg-surface);
+  }
+
+  /* The root boundary has no shell around it — `.shell__main`'s gutter and
+     capped measure are what it is standing in for. */
+  .fallback[data-variant='page'] {
+    max-width: 45rem;
+    margin: var(--space-16);
+    margin-inline: auto;
+  }
+
+  .title {
+    margin: 0;
+    font: var(--text-heading) var(--font-display);
+    color: var(--color-ink-primary);
+  }
+
+  .line {
+    margin: 0;
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+
+  /* Drawn at the 48 floor rather than clamped to it (`patterns.md` §6.5):
+     it is a standalone control, not one sharing a row. */
+  .retry {
+    display: inline-flex;
+    align-items: center;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-20);
+    border: var(--stroke-chip) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-primary);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .retry:focus-visible,
+  .copy:focus-visible,
+  .summary:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  .details {
+    align-self: stretch;
+    min-width: 0;
+  }
+
+  /* A mono caps label, drawn as written. It is a control as well as a label,
+     so it carries the 48 floor its own row allows. */
+  .summary {
+    display: flex;
+    align-items: center;
+    min-height: max(3rem, 48px);
+    color: var(--color-ink-faint);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+
+  /* The report is the one place in the app where a long unbroken string is
+     the content, so it scrolls itself rather than widening its column —
+     `overflow-x` on the element that holds the text, never on the screen. */
+  .report {
+    margin: 0 0 var(--space-12);
+    padding: var(--space-12);
+    overflow-x: auto;
+    border-radius: var(--radius-control);
+    background: var(--color-well);
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.5;
+    /* Wrapping a stack frame mid-path makes it unreadable; wrapping between
+       frames does not, and the newlines the report is built from are already
+       where the breaks belong. */
+    white-space: pre;
+    user-select: text;
+  }
+
+  .copy {
+    display: inline-flex;
+    align-items: center;
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: var(--stroke-rule) solid var(--color-rule-control);
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    cursor: pointer;
+  }
+}

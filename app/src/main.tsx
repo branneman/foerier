@@ -1,3 +1,4 @@
+import { ErrorBoundary } from '@foerier/ui'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
@@ -5,6 +6,7 @@ import { registerSW } from 'virtual:pwa-register'
 import '@foerier/ui/styles.css'
 
 import { App } from './App'
+import { BUILD_SHA } from './build'
 
 /**
  * The service worker is registered here, from app code, rather than by
@@ -22,8 +24,23 @@ if (container === null) {
   throw new Error('index.html is missing #root')
 }
 
+/**
+ * Three boundaries, and this is the outermost
+ * ([frontend-design.md](../../docs/frontend-design.md) §5: *each screen and
+ * each independent panel*). The other two are inside `AppShell`, around the
+ * routed screen, and inside `TripPanels`, around each panel.
+ *
+ * This one catches what the other two cannot be under: `App` itself — the
+ * session, the store wiring, the router. Its fallback is the whole page
+ * because at this height there is no shell left to stand in, which is what
+ * `variant="page"` says. It is also the only one a reader can be given with
+ * no navigation available, so the copy's *reload the app* is the real move
+ * here and the retry is the long shot.
+ */
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary buildSha={BUILD_SHA} label="the app" variant="page">
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

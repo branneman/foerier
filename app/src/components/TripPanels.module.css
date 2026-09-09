@@ -55,5 +55,19 @@
       border-radius: var(--radius-card);
       min-width: 0;
     }
+
+    /*
+     * The one child that draws its own card: `ui/ErrorBoundary`'s fallback,
+     * which replaces a crashed panel and arrives already bordered. Two
+     * borders 16px apart is a treatment no board draws. Matched on the
+     * fallback's own `data-error-boundary`, which the component carries for
+     * exactly this — a CSS-module class name is hashed and `ui/`'s is not
+     * ours to name.
+     * `min-width: 0` above still applies.
+     */
+    .row > [data-error-boundary] {
+      padding: 0;
+      border: none;
+    }
   }
 }

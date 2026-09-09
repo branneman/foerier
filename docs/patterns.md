@@ -675,6 +675,27 @@ centres let a tap meant for one Person land on their neighbour.
 
 *Argued in:* [§12.14](architecture-design.md#1214-consequences-of-s8-per-person-pieces).
 
+### 5.4a A crash boundary is placed by whoever owns the unit, never by the unit
+
+`ui/ErrorBoundary` is wired at exactly three sites, and no screen and no panel
+wraps itself: `main.tsx` around `<App/>`, `AppShell` around the routed screen
+and *inside* the scroller (so a crashed screen keeps the nav that reached it),
+and `TripPanels` around each panel it is passed. The rule is the one
+`useScreenHeader` already sets — *a rule spelled per screen is one chance per
+screen to spell it differently* — and it is what makes a new screen or a third
+panel covered on the day it is added, with nothing to remember.
+
+Two properties the placement buys, both of which want a test when a fourth
+site appears: the screen boundary is **keyed on the location**, because
+nothing else clears a boundary's state and a deterministic crash would
+otherwise hold the main column for the rest of the session; and the fallback
+sits **inside** whatever box the crashed thing occupied, which is the whole
+difference between an in-place fallback and a white-out.
+
+*Argued in:* `ui/src/ErrorBoundary.tsx`'s header;
+[`frontend-design.md` §5](frontend-design.md#5-component-architecture--the-ui-package);
+`docs/design/README.md` §16.
+
 ### 5.5 A second caller is the bar for moving into `ui/`
 
 `GearRow` moved on its second caller (`Depot`, `Find`); `ExpiryChip` on its

@@ -71,6 +71,26 @@ export default defineConfig({
     // assets become `data:` URIs that `font-src 'self'` would reject.
     modulePreload: { polyfill: false },
     assetsInlineLimit: 0,
+
+    // **The crash report has to be readable six months later**
+    // (`ui/ErrorBoundary`). A `.map` beside each chunk is what turns the
+    // minified frames a Quartermaster copies off a phone back into files and
+    // line numbers, against the `BUILD <sha>` the report prints beside them.
+    //
+    // Linked rather than `hidden`: this repository is public, so withholding
+    // the comment would buy nothing and cost the browser devtools resolving
+    // them on the spot. The maps are fetched by devtools, never by the page,
+    // so the CSP is untouched — and they are outside `globPatterns`, so
+    // Workbox does not precache them into every installed client.
+    sourcemap: true,
+  },
+
+  esbuild: {
+    // React builds its component stack from function names, and that stack —
+    // not the JS one — is the half that names the screen. Without this the
+    // report a household hands over reads `at t → at n → at o`, legible only
+    // *with* a map; with it the component stack is readable on its own.
+    keepNames: true,
   },
 
   server: {
