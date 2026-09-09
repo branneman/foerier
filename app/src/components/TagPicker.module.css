@@ -34,14 +34,17 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-8);
-    /* 12 between lines, `GearDetail.module.css`'s `.tagChips` reason: the ✕
-       reaches its 44 through 6px each side, and two lines 8 apart would
-       overlap by 4. The drawn 8 stays between chips on one line. */
-    row-gap: var(--space-12);
     list-style: none;
   }
 
-  /* 32px, bordered — Components §06's settled tag chip. */
+  /*
+   * 32px, bordered — Components §06's settled tag chip, and since §5n K4 the
+   * **whole chip is the remove control**: the painted box is the target, 32
+   * tall and past 44 wide at every tag, so there is no `::after` and no
+   * cross-axis gap to buy one with. K3's 12px row-gap goes with it — the
+   * extension it was paying for no longer exists, and the drawn 8 stands on
+   * both axes again.
+   */
   .chip {
     display: inline-flex;
     align-items: center;
@@ -49,7 +52,13 @@
     padding-left: var(--space-12);
     border: var(--stroke-chip) solid var(--color-rule-control);
     border-radius: var(--radius-pill);
+    background: none;
     color: var(--color-ink-primary);
+    cursor: pointer;
+  }
+
+  .chip:focus-visible {
+    box-shadow: var(--focus-ring);
   }
 
   .chipLabel {
@@ -57,31 +66,20 @@
     text-transform: lowercase;
   }
 
+  /*
+   * The mark, not the control (§5n K4) — a readout the chip's own accessible
+   * name already speaks, so it is `aria-hidden` and has no target of its own.
+   * It keeps the 32px square it drew, which is what holds the `✕` off the
+   * word without a gap between two things that are now one.
+   */
   .chipRemove {
-    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-width: 2rem;
     min-height: 2rem;
-    border: 0;
-    background: none;
     color: var(--color-ink-muted);
     font: var(--text-label) var(--font-mono);
-    cursor: pointer;
-  }
-
-  /*
-   * 32 painted + 6 above and below = 44. Sideways it takes 4 each way — half
-   * the 8px gap on the right, the chip's own padding on the left — so the hit
-   * area is **44 × 40, not 44 × 44**. The missing 4 could only come from the
-   * tag's own label, and a tap that appears to land on the word would then
-   * delete it: worse than a target 4px narrow. Recorded rather than taken.
-   */
-  .chipRemove::after {
-    content: '';
-    position: absolute;
-    inset: -0.375rem -0.25rem;
   }
 
   .field {
@@ -206,9 +204,10 @@
 
   /* The ≥52em treatment that used to sit here — centred, unscrimmed, no
      grabber — targeted `.scrim`, `.sheet` and `.grabber`, all of which now
-     belong to `ui/`. It moved with them: `Sheet`'s `desktopCard` prop, which
-     this picker passes. `docs/design/README.md` §4a wants a real *popover*
-     beside the chip that opened it, and the spec's §8 puts that behind a
-     `Popover` primitive this slice does not build — so the card stays the
-     stand-in it already was. */
+     belong to `ui/`. It moved with them, and since §5n K18 it is not a prop
+     this picker passes either: from Split up a card is simply what `Sheet`
+     is. `docs/design/README.md` §4a wants a real *popover* beside the chip
+     that opened it, drawn at K15–K17 and not yet built, so the card stays
+     the stand-in it already was — and when the popover lands this picker
+     changes **component**, not a flag. */
 }

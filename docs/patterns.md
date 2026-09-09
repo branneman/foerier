@@ -663,14 +663,21 @@ than the mandatory-`settle` `OverClaimBand`.
 A sheet whose anatomy is *title, then one fact line* (`PACKING STATUS · 1 OF 3
 PACKED`, `WHO BRINGS ONE · 2 OF 3`, `WHERE IT GOES ON THIS TRIP`) passes that
 element as `description`, so a screen reader hears name plus fact on open
-without the name becoming a superset of the visible title. `desktopCard` is
-the popover approximation from Split up for the sheets a board draws as
-popovers, not every sheet's Desktop form.
+without the name becoming a superset of the visible title.
 
-*Departures:* `desktopCard` is passed by five sheets no board draws as a
-popover (`OwnerPicker`, `ParticipantPicker`, `PhaseSheet`, `SortGroupSheet`,
-`ValueMenu`) while their nearest siblings do not pass it.
-*Argued in:* `Sheet.tsx`'s `description` and `desktopCard` docs.
+**From Split up a sheet is a centred card, and no caller decides that** (§5n
+K18). It was `desktopCard`, an opt-in five sheets passed while their nearest
+siblings did not — so at Desktop the Owner picker was a centred card and the
+Home picker a bottom sheet **on the same edit sheet**. The prop is gone rather
+than defaulted, because the fault was a caller reasoning about it at all:
+**two Desktop forms and no third**, a popover where a board draws one and this
+everywhere else. The seven popover callers will switch *component* when
+`ui/Popover` lands, never a flag. `SortGroupSheet`'s own pass went with the
+prop and was dead either way — that sheet is the phone's collapsed form of the
+Desktop arrange row, so at Desktop it never renders.
+
+*Departures:* none.
+*Argued in:* `Sheet.tsx`'s header and its `description` doc.
 
 ---
 

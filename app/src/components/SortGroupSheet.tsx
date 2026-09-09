@@ -135,7 +135,7 @@ export function SortGroupSheet({
   onClose,
 }: SortGroupSheetProps) {
   return (
-    <Sheet title="Sort and group" onClose={onClose} desktopCard>
+    <Sheet title="Sort and group" onClose={onClose}>
       <SortGroupOptions spec={spec} onChange={onChange} />
     </Sheet>
   )

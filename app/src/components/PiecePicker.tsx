@@ -89,7 +89,6 @@ export function PiecePicker({ trip, entry, onClose }: PiecePickerProps) {
     <Sheet
       title={entryLabel(entry, state)}
       onClose={onClose}
-      desktopCard
       description={
         <p className={styles['fact']}>
           WHO BRINGS ONE · {includedCount} OF {rows.length}

@@ -40,7 +40,7 @@ export function ValueMenu({
   onClose,
 }: ValueMenuProps) {
   return (
-    <Sheet title={title} onClose={onClose} desktopCard>
+    <Sheet title={title} onClose={onClose}>
       {values.length === 0 ? (
         <p className={styles['none']}>Nothing to narrow by yet.</p>
       ) : (

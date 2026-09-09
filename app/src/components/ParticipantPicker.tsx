@@ -101,7 +101,7 @@ export function ParticipantPicker({
   }
 
   return (
-    <Sheet title="Participants" onClose={onClose} desktopCard>
+    <Sheet title="Participants" onClose={onClose}>
       <ul className={styles['rows']}>
         {people.map((person) => {
           const chosen = onTrip.has(person.id)

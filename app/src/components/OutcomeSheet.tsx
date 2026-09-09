@@ -590,7 +590,6 @@ export function OutcomeSheet({
     <Sheet
       title={title}
       onClose={onClose}
-      desktopCard
       description={<p className={styles['fact']}>{fact}</p>}
     >
       {roster && (

@@ -65,7 +65,7 @@ export function SourcePicker({
   const trips = sourceTrips(state)
 
   return (
-    <Sheet title="Start from" onClose={onClose} desktopCard>
+    <Sheet title="Start from" onClose={onClose}>
       <ul className={styles['rows']}>
         <li>
           <button

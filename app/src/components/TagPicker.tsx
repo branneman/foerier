@@ -85,7 +85,7 @@ export function TagPicker({
     !vocabulary.some((entry) => entry.value === candidate)
 
   return (
-    <Sheet title="Tags" onClose={onClose} desktopCard>
+    <Sheet title="Tags" onClose={onClose}>
       {/* The sheet's own rhythm is 12; this picker's blocks were drawn at 16
           and stay there, in a column of their own rather than by bending the
           primitive every other sheet shares. */}
@@ -98,17 +98,35 @@ export function TagPicker({
             ) : (
               <ul className={styles['chips']}>
                 {applied.map((tag) => (
-                  <li key={tag} className={styles['chip']}>
-                    <span className={styles['chipLabel']}>#{tag}</span>
-                    {/* No confirmation, deliberately: one op, instantly
-                        reversible by re-applying. */}
+                  <li key={tag}>
+                    {/*
+                      **The whole chip removes, and the `✕` is its readout**
+                      (§5n K4). The `✕` alone was the control, reaching 44
+                      tall and only 40 wide because the missing width could
+                      only come from the word beside it — a trade the debt
+                      pass recorded and K4 refused, because it accepts that
+                      the mark is the control and the word is scenery. The
+                      app has ruled the other way three times: the whole row
+                      is the target, the row ticks and the square is a
+                      readout (§5l I22), the cluster and its count are one
+                      control (§5d B).
+
+                      So the target is the painted box — 32 tall and past 44
+                      wide at every tag — and the hit extension goes with the
+                      40. No confirmation, deliberately: one op, instantly
+                      reversible by re-applying, which is what makes a bigger
+                      target safe rather than dangerous.
+                    */}
                     <button
                       type="button"
-                      className={styles['chipRemove']}
+                      className={styles['chip']}
                       aria-label={`Remove #${tag}`}
                       onClick={() => onRemove(tag)}
                     >
-                      <span aria-hidden="true">✕</span>
+                      <span className={styles['chipLabel']}>#{tag}</span>
+                      <span className={styles['chipRemove']} aria-hidden="true">
+                        ✕
+                      </span>
                     </button>
                   </li>
                 ))}

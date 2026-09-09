@@ -45,7 +45,7 @@ export function AboutPicker({
   const nowMark = <span className={styles['now']}>● NOW</span>
 
   return (
-    <Sheet title="About" onClose={onClose} desktopCard>
+    <Sheet title="About" onClose={onClose}>
       <ul className={styles['rows']}>
         <li>
           <button

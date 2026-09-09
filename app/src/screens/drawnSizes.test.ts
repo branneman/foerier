@@ -647,26 +647,39 @@ describe("ruling O's drawn sizes", () => {
   })
 
   /**
-   * The tag picker's ✕, and the one case that does **not** reach 44 on both
-   * axes: 44 tall, 40 wide. The missing 4 could only come from the tag's own
-   * label, and a tap that appears to land on the word would then delete it.
-   * The `row-gap` is asserted beside it because the vertical half is only
-   * legitimate while the wrapped lines are 12 apart.
+   * **The tag picker's chip is the target and the `✕` is its readout**
+   * (§5n K4) — a ruling *about* ruling O rather than an instance of it. The
+   * debt pass gave the `✕` an extension reaching 44 × **40**, the missing
+   * width being unavailable without swallowing the word beside it, and K4
+   * refused the trade rather than the four pixels: a painted box 32 tall and
+   * past 44 wide at every tag needs no extension at all.
+   *
+   * So this case pins an **absence**, which is the only thing that catches
+   * the old shape coming back: no `::after`, no `position: relative`, and no
+   * cross-axis gap bought to make room for one.
    */
-  it("clamps the tag picker's ✕ at 44 × 40, over a 12px row gap", () => {
+  it('makes the tag chip the target, so the ✕ needs no extension', () => {
     const css = moduleCss('..', 'components', 'TagPicker.module.css')
+    const chip = ruleBody(css, '.chip')
     const remove = ruleBody(css, '.chipRemove')
 
-    expect(remove).toBeDefined()
-    expect(remove).not.toMatch(FLOOR)
-    expect(remove).toMatch(/min-height:\s*2rem/)
-    expect(remove).toMatch(/position:\s*relative/)
-    expect(ruleBody(css, '.chipRemove::after')).toMatch(
-      /inset:\s*-0\.375rem -0\.25rem/,
-    )
-    expect(ruleBody(css, '.chips')).toMatch(/row-gap:\s*var\(--space-12\)/)
-  })
+    // The chip is the control: 32 painted, and a button rather than a box
+    // with a button inside it.
+    expect(chip).toMatch(/min-height:\s*2rem/)
+    expect(chip).toMatch(/cursor:\s*pointer/)
+    expect(chip).not.toMatch(/position:\s*relative/)
+    expect(ruleBody(css, '.chip::after')).toBeUndefined()
 
+    // The mark keeps its square and loses everything that made it a target.
+    expect(remove).toBeDefined()
+    expect(remove).not.toMatch(/position:\s*relative/)
+    expect(remove).not.toMatch(/cursor:\s*pointer/)
+    expect(ruleBody(css, '.chipRemove::after')).toBeUndefined()
+
+    // K3's row-gap paid for an extension that no longer exists; the drawn 8
+    // stands on both axes again.
+    expect(ruleBody(css, '.chips')).not.toMatch(/row-gap:/)
+  })
   /**
    * `ui/Chip`'s 32px tag size reaches 44 through 6px each side, so the one
    * caller that wraps a row of them owes the room. Pinned here because the

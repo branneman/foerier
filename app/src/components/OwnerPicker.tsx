@@ -67,7 +67,7 @@ export function OwnerPicker({ value, onSelect, onClose }: OwnerPickerProps) {
   }
 
   return (
-    <Sheet title="Owner" onClose={onClose} desktopCard>
+    <Sheet title="Owner" onClose={onClose}>
       <ul className={styles['rows']}>
         <li>
           <button

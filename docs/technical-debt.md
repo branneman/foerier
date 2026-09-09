@@ -283,20 +283,6 @@ them looking for work is the thing this section exists to stop.
   entry below. [`frontend-design.md`](frontend-design.md) §5, anchor:
   `is the one with waiting callers`
 
-- **`desktopCard` is a per-slice choice masquerading as a rule.** Five sheets
-  pass it with no board drawing them as a popover, while their nearest
-  siblings do not, so at Desktop the Owner picker is a centred card and the
-  Home picker a bottom sheet on the same edit sheet. Wants a design ruling,
-  not a code change — and so does the card confirms' Cancel-first versus
-  Action-first order, which the S3-era and S9 boards draw differently.
-  [`patterns.md`](patterns.md) §4.5, anchor: `no board draws as a`
-
-### Consolidation
-
-One rule, several spellings; or one thing under the wrong name. Nothing
-observable changes when these close, which is why none is urgent and why
-every one of them gets more expensive per slice.
-
 - **The mono-caps label is the most-copied rule in the codebase, and the
   small sizes have no token.** Seventy-six uppercase-label rules across
   twenty-nine modules, nineteen carrying the full three-line recipe verbatim;

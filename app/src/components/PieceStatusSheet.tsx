@@ -271,7 +271,6 @@ export function PieceStatusSheet({
     <Sheet
       title={title}
       onClose={onClose}
-      desktopCard
       description={
         <p className={styles['fact']}>
           PACKING STATUS · {packedCount} OF {rows.length} PACKED
