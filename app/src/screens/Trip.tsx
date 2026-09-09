@@ -38,7 +38,7 @@ import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
 import { TasksPanel } from '../components/TasksPanel'
 import { TripOnlySheet } from '../components/TripOnlySheet'
 import { TripPanels } from '../components/TripPanels'
-import { useHousehold } from '../household/store'
+import { useFoldSettled, useHousehold } from '../household/store'
 import {
   parseIsoDate,
   tripChip,
@@ -1066,6 +1066,16 @@ function undrawable(value: string): boolean {
  * their *own* delete they are sent there anyway (J4) — this is the surface
  * for somebody *else's*.
  *
+ * ## The unknown arm waits for the fold; the tombstone does not
+ *
+ * §5n K25. A tombstone is a positive fact and draws the instant it folds.
+ * *It may not have synced here yet* is a claim about the world, and this
+ * Device is not entitled to make it while it still has local work in
+ * flight — `NewTrip` emits and navigates in the same tick, so without the
+ * gate the first thing a Quartermaster sees after creating a Trip is the app
+ * saying that Trip has not reached this device. {@link useFoldSettled} is
+ * the whole of the condition; before it answers, the region draws nothing.
+ *
  * ## Neither state takes amber or `▲`
  *
  * §5b F's rule: a sync race is not an error. Nothing here needs settling and
@@ -1079,6 +1089,7 @@ function undrawable(value: string): boolean {
 function TripNotHere({ standing }: { standing: 'deleted' | 'unknown' }) {
   const header = useScreenHeader({ splitPane: false, back: '/trips' })
   const sync = useHousehold((depot) => depot.sync)
+  const settled = useFoldSettled()
   const deleted = standing === 'deleted'
   return (
     <div className={styles['screen']}>
@@ -1087,19 +1098,23 @@ function TripNotHere({ standing }: { standing: 'deleted' | 'unknown' }) {
         back={{ href: '/trips', label: 'TRIPS' }}
         sync={sync}
       />
-      <section className={styles['gear']}>
-        <p className={styles['gearEmpty']}>
-          {deleted ? 'TRIP DELETED' : 'TRIP NOT ON THIS DEVICE'}
-        </p>
-        <p className={styles['gearSource']}>
-          {deleted
-            ? 'It was deleted on this or another device. The depot is untouched.'
-            : 'It may not have synced here yet. This clears itself.'}
-        </p>
-        <Link href="/trips" className={styles['openTrips']}>
-          Open trips
-        </Link>
-      </section>
+      {/* The band stays either way: it is the screen's chrome, and the route
+          out is owed even in the blank frame. Only the sentence waits. */}
+      {(deleted || settled) && (
+        <section className={styles['gear']}>
+          <p className={styles['gearEmpty']}>
+            {deleted ? 'TRIP DELETED' : 'TRIP NOT ON THIS DEVICE'}
+          </p>
+          <p className={styles['gearSource']}>
+            {deleted
+              ? 'It was deleted on this or another device. The depot is untouched.'
+              : 'It may not have synced here yet. This clears itself.'}
+          </p>
+          <Link href="/trips" className={styles['openTrips']}>
+            Open trips
+          </Link>
+        </section>
+      )}
     </div>
   )
 }

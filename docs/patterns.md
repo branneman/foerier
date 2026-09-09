@@ -457,6 +457,29 @@ nothing to double against.
 *Departures:* none known.
 *Argued in:* `AppShell.tsx`'s "Why the mark is the shell's and not a screen's".
 
+### 3.2b A screen reads an absence only once the fold has settled
+
+A fold that is missing something says one of two things, and only one is about
+the world: *this Device has not caught up*, or *nobody here has this*. Any
+screen whose copy states the second has to ask `useFoldSettled()`
+(`app/src/household/store.ts`) first, and draw **nothing** — not a spinner and
+not a line — until it answers `true`.
+
+The hook is two conditions and both are needed. `status !== 'loading'` covers
+the first fold from the log; `pendingWrites === 0` covers the window `emit`
+opens by being durable-first, where an op has reached IndexedDB and not yet
+reached `state`. `NewTrip` is the canonical case: it emits and navigates in
+one tick, so `/trips/:id` mounts on a fold with no such Trip and, ungated,
+tells the Quartermaster their brand-new Trip may not have synced here.
+
+**A positive fact does not wait.** `TripNotHere`'s tombstone arm draws the
+instant it folds — nothing in flight can turn a tombstone into something
+else — and only its *absence* arm is gated. A screen that draws one line for
+both standings (the five Trip sub-routes' `No such trip.`) gates the whole
+line, having no half to draw early.
+
+*Argued in:* `docs/design/README.md` §5n K25.
+
 ### 3.3 The floating control is the screen's sibling, sticky against the shell
 
 A screen returns a fragment: `<div className={styles.screen}>…</div>` and,

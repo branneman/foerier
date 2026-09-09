@@ -326,6 +326,59 @@ describe('the depot store', () => {
     expect(built[0]!.flushes).toBe(1)
   })
 
+  /**
+   * **The two halves of `useFoldSettled`** (§5n K25). A screen reading an
+   * *absence* has to be able to tell "this Device has not caught up" from
+   * "nobody here has this", and both halves of that live here: `status` for
+   * the first fold, `pendingWrites` for a local write that has reached the
+   * log and not yet reached `state`. Without it `/trips/:id` says a Trip may
+   * not have synced here yet about one this Device authored a millisecond
+   * ago, because `NewTrip` emits and navigates in the same tick.
+   */
+  it('counts a local write from the moment it is asked for until it folds', async () => {
+    const { factory } = fakeEngines()
+    const store = startStore({ log: inMemoryOpLog(), engine: factory })
+
+    // The first fold is the other half: `loading` says the same thing about
+    // a fold that has not run yet.
+    expect(store.getState().status).toBe('loading')
+    expect(store.getState().pendingWrites).toBe(0)
+    await drained(store)
+
+    // Synchronously — the caller has already navigated by the time the queue
+    // turns, so a count that only rose inside the job would be too late.
+    store.getState().emit(placeRecorded(anId(), 'Shed'))
+    expect(store.getState().pendingWrites).toBe(1)
+    store.getState().emit(placeRecorded(anId(), 'Attic'))
+    expect(store.getState().pendingWrites).toBe(2)
+
+    await drained(store)
+    expect(store.getState().pendingWrites).toBe(0)
+  })
+
+  it('counts a batch as one write, and returns to zero when it refuses', async () => {
+    const { factory } = fakeEngines()
+    const store = startStore({ log: inMemoryOpLog(), engine: factory })
+    await drained(store)
+
+    store
+      .getState()
+      .emitAll([placeRecorded(anId(), 'Shed'), placeRecorded(anId(), 'Attic')])
+    // One gesture, one durable write — and one count, since it is one job.
+    expect(store.getState().pendingWrites).toBe(1)
+    await drained(store)
+    expect(store.getState().pendingWrites).toBe(0)
+
+    // A refusal is still a write that finished. Leaving the count raised
+    // would freeze every screen that reads it, permanently, on the one path
+    // where the app most needs to be able to say what happened.
+    store.getState().emit(placeRecorded(anId(), 'x'.repeat(MAX_OP_BYTES)))
+    expect(store.getState().pendingWrites).toBe(1)
+    await drained(store)
+    expect(store.getState().pendingWrites).toBe(0)
+    expect(store.getState().refusal?.reason).toBe('too-large')
+  })
+
   it('emit never awaits the network', async () => {
     let pushes = 0
     // A transport that never answers: if `emit` awaited it, nothing below

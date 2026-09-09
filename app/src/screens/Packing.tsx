@@ -47,7 +47,7 @@ import { JourneyRail } from '../components/JourneyRail'
 import { PackingRow } from '../components/PackingRow'
 import { PackPicker } from '../components/PackPicker'
 import { PieceStatusSheet } from '../components/PieceStatusSheet'
-import { useHousehold } from '../household/store'
+import { useFoldSettled, useHousehold } from '../household/store'
 import { personInitial } from '../household/people'
 import {
   leftLabel,
@@ -760,6 +760,7 @@ export function Packing() {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
   const sync = useHousehold((depot) => depot.sync)
+  const settled = useFoldSettled()
   // The sidebar carries `TRIPS`, never one Trip's name, so this screen's
   // own back link is owed at Desktop too — and the destination is what says
   // so now (§5n K27), not a boolean this screen answers about itself.
@@ -823,7 +824,12 @@ export function Packing() {
   ) {
     return (
       <div className={styles['screen']}>
-        <p className={styles['missing']}>No such trip.</p>
+        {/* Withheld until the fold has settled (§5n K25): one queue turn
+            after a local write, an absence says only that this Device has
+            not caught up. `TripNotHere` draws the two sentences that pull
+            apart; a sub-route has one line for both standings, so the line
+            waits. */}
+        {settled && <p className={styles['missing']}>No such trip.</p>}
       </div>
     )
   }

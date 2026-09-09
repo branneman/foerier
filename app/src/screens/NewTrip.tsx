@@ -239,6 +239,14 @@ export function NewTrip() {
       emit(tripParticipantAdded(id, personId))
     }
 
+    // Navigating in the same tick is deliberate and stays: `emit` is
+    // durable-first, so waiting for the fold would put an IndexedDB
+    // round-trip between the tap and the screen. What used to make it a
+    // defect was the destination — the trip screen flashed
+    // `TRIP NOT ON THIS DEVICE` at a Trip authored a millisecond earlier —
+    // and that is fixed where the false claim was, not here: the screen
+    // withholds an absence until the fold has settled (§5n K25,
+    // `patterns.md` §3.2b).
     navigate(`/trips/${id}`)
   }
 

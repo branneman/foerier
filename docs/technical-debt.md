@@ -101,24 +101,6 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   how often, which moves every other measured rate in that file.
   `shared/src/convergence.test.ts`'s own docblock on `HOME_CYCLE_FLOOR`,
   anchor: `The trip side is deliberately NOT floored`
-- **Creating a Trip flashes `TRIP NOT ON THIS DEVICE` for a frame.**
-  `NewTrip`'s `submit` emits and navigates in the same tick, and `emit` is
-  durable-first — the fold happens on the store's queue — so the trip screen's
-  first render finds no Trip and draws ruling J5's *not folded here* state.
-  It clears itself on the next fold, and the shape predates S14 (the screen
-  has navigated-after-emit since S6); what changed is the **copy**, from a
-  quiet `No such trip.` to a sentence confidently asserting a sync fact one
-  frame after the Quartermaster pressed Create.
-  **Both obvious fixes are wrong here, which is why this is recorded rather
-  than done.** Awaiting `emitDurable` does not help: it resolves immediately
-  after the log append and *before* `foldForward`, deliberately, so the race
-  survives. And `drained()` is not a screen's tool — its own docblock says it
-  is a queue-drain signal for tests and teardown, and it resolves just as
-  readily after an append that failed. A real fix is either a store-level
-  join that means *folded*, or a rule that J5's `unknown` state withholds its
-  sentence until the fold is settled — and the second is ruled copy, so it
-  wants a board. `app/src/screens/NewTrip.tsx`, anchor:
-  `the copy deliberately supplies neither`
 - **The closed ledger's `1 LOST` colour can read muted while a unit is still
   genuinely unaccounted for.** `tripHasUnaccounted`
   (`app/src/household/trips.ts`) asks `unaccountedOf`'s finished map by trip

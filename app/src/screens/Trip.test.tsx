@@ -10,7 +10,7 @@ import {
   tripPhaseMoved,
   type OpSpec,
 } from '@foerier/shared'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -395,6 +395,94 @@ describe('the trip screen — the header the board draws', () => {
     expect(
       screen.getByText('It may not have synced here yet. This clears itself.'),
     ).toBeVisible()
+  })
+
+  /**
+   * **The whole point of §5n K25**, and the sequence is `NewTrip`'s own:
+   * `emit` then `navigate`, in one tick. `emit` is durable-first, so the trip
+   * screen mounts on a fold that does not hold the Trip yet — and without the
+   * gate the first thing the Quartermaster sees after creating a Trip is the
+   * app telling them it may not have synced here.
+   *
+   * Not `renderTrip`, which drains before it renders and so can never
+   * reproduce the window this exists for.
+   */
+  it('says nothing at all while a local write is still in flight', async () => {
+    const store = createHouseholdStore({
+      log: inMemoryOpLog(),
+      engine: noopEngine,
+      author: anAuthor(),
+    })
+    await store.getState().drained()
+
+    // The tick `NewTrip` navigates in: the op is on the queue, not in the
+    // fold.
+    store.getState().emit(tripCreated(ALPS, 'Alps 2026'))
+    expect(store.getState().pendingWrites).toBe(1)
+
+    const location = memoryLocation({ path: `/trips/${ALPS}`, record: true })
+    render(
+      <Router hook={location.hook}>
+        <Switch>
+          <Route path="/trips/:id">
+            <HouseholdProvider value={store}>
+              <Trip />
+            </HouseholdProvider>
+          </Route>
+        </Switch>
+      </Router>,
+    )
+
+    expect(screen.queryByText('TRIP NOT ON THIS DEVICE')).toBeNull()
+    expect(screen.queryByText('TRIP DELETED')).toBeNull()
+    // Not a spinner either: the app has one loading screen by design and a
+    // queue turn does not deserve a second.
+    expect(screen.queryByRole('link', { name: 'Open trips' })).toBeNull()
+    // The band is chrome and stays — the route out is owed in the blank
+    // frame too.
+    expect(screen.getByRole('link', { name: '‹ TRIPS' })).toBeVisible()
+
+    await act(async () => {
+      await store.getState().drained()
+    })
+
+    expect(screen.getByRole('heading', { name: 'Alps 2026' })).toBeVisible()
+  })
+
+  it('draws the tombstone immediately, in-flight write or not', async () => {
+    // The asymmetry K25 rules: a tombstone is a positive fact this Device
+    // holds and nothing pending can turn it into a different one. Only the
+    // *absence* sentence is a claim about the world.
+    const store = createHouseholdStore({
+      log: inMemoryOpLog(),
+      engine: noopEngine,
+      author: anAuthor(),
+    })
+    store.getState().emit(tripCreated(ALPS, 'Alps 2026'))
+    store.getState().emit(tripDeleted(ALPS))
+    await store.getState().drained()
+
+    store.getState().emit(personRecorded('els', 'Els'))
+    expect(store.getState().pendingWrites).toBe(1)
+
+    const location = memoryLocation({ path: `/trips/${ALPS}`, record: true })
+    render(
+      <Router hook={location.hook}>
+        <Switch>
+          <Route path="/trips/:id">
+            <HouseholdProvider value={store}>
+              <Trip />
+            </HouseholdProvider>
+          </Route>
+        </Switch>
+      </Router>,
+    )
+
+    expect(screen.getByText('TRIP DELETED')).toBeVisible()
+
+    await act(async () => {
+      await store.getState().drained()
+    })
   })
 
   it('offers Open trips as a route out of both states', async () => {

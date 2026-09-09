@@ -121,6 +121,23 @@ export interface HouseholdStoreState {
   /** `loading` until the first fold completes; then `bootstrapping` for as
    * long as the engine reports a first sync, else `ready`. */
   status: 'loading' | 'bootstrapping' | 'ready'
+  /**
+   * **Authoring jobs this Device has taken on and not yet folded** — the
+   * count, not a flag, because the queue is shared and jobs overlap.
+   *
+   * `emit` is durable-first: the op reaches IndexedDB before it reaches
+   * `state`, so for one turn of the work queue the fold does not yet contain
+   * what this Device has already been told. Every screen is right to ignore
+   * that except one class — a screen that reads the *absence* of an entity as
+   * a fact about the world. `/trips/:id` is the case: `NewTrip` emits and
+   * navigates in the same tick, so the trip screen mounts on a fold that has
+   * no such Trip and would say *it may not have synced here yet* about a Trip
+   * this Device authored a millisecond ago (§5n K25).
+   *
+   * Read it through {@link useFoldSettled} rather than directly; the two
+   * conditions that make a fold trustworthy belong together.
+   */
+  pendingWrites: number
   sync: SyncStatus
   bootstrap: BootstrapProgress | null
   /** Ops the household will never accept (§6.5). Visible, never silent. */
@@ -234,8 +251,35 @@ export function createHouseholdStore(
   /** The high-water mark of what `state` contains. */
   let lastLsn = 0
   let loaded = false
+  /** See {@link HouseholdStoreState.pendingWrites}. */
+  let pendingWrites = 0
   let snapshotTimer: ReturnType<typeof setTimeout> | null = null
   let engine: SyncEngine
+
+  /**
+   * {@link enqueue} for an **authoring** job, counted so a screen can tell
+   * *this Device has not finished writing* from *the world does not have
+   * this* ({@link HouseholdStoreState.pendingWrites}).
+   *
+   * Deliberately not every queued job. A pull folding a peer's ops also runs
+   * on this queue, and counting it would blank a legitimately-empty screen
+   * every polling interval — the count answers a question about **local
+   * work**, which is the only one a screen reading an absence has to wait
+   * for. The other half of that question, the first fold from the log, is
+   * `status === 'loading'`.
+   */
+  function enqueueWrite(job: () => Promise<void>): void {
+    pendingWrites += 1
+    store.setState({ pendingWrites })
+    enqueue(async () => {
+      try {
+        await job()
+      } finally {
+        pendingWrites -= 1
+        store.setState({ pendingWrites })
+      }
+    })
+  }
 
   function enqueue(job: () => Promise<void>): void {
     // The tail must never reject: one failed job would otherwise skip every
@@ -352,7 +396,7 @@ export function createHouseholdStore(
 
   function emitDurable(spec: OpSpec): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      enqueue(async () => {
+      enqueueWrite(async () => {
         // One `try` around the whole job, so **every** exit settles the
         // promise the caller is holding. A job that threw before reaching an
         // explicit `reject` would otherwise leave that promise pending
@@ -461,7 +505,7 @@ export function createHouseholdStore(
     if (specs.length === 0) return Promise.resolve()
 
     return new Promise<void>((resolve, reject) => {
-      enqueue(async () => {
+      enqueueWrite(async () => {
         // One `try` around the whole job, for `emitDurable`'s reason: every
         // exit has to settle the promise the caller holds.
         let ops: OpEnvelope[] = []
@@ -565,6 +609,7 @@ export function createHouseholdStore(
   const store = createStore<HouseholdStoreState>(() => ({
     state: emptyState(),
     status: 'loading',
+    pendingWrites: 0,
     sync: 'idle',
     bootstrap: null,
     deadLetterCount: 0,
@@ -635,6 +680,37 @@ export const HouseholdProvider = HouseholdContext.Provider
  */
 export function useHouseholdStore(): StoreApi<HouseholdStoreState> | null {
   return useContext(HouseholdContext)
+}
+
+/**
+ * **Can this screen read an absence as a fact about the world?** (§5n K25)
+ *
+ * A fold that is missing something says one of two things, and only one of
+ * them is about the world:
+ *
+ * - *this Device has not caught up* — the first fold from the log is still
+ *   running (`status === 'loading'`), or an op it authored has reached
+ *   IndexedDB and not yet reached `state`
+ *   ({@link HouseholdStoreState.pendingWrites}); or
+ * - *nobody here has this* — everything local has landed, and the absence is
+ *   the honest answer until a peer's ops arrive.
+ *
+ * Every screen that reads `state.trips[id]` and finds nothing has to know
+ * which, because the sentence it draws differs: a tombstone is a positive
+ * fact and draws the instant it folds, while *it may not have synced here
+ * yet* is a claim about the world the app cannot make one queue turn after a
+ * local Create. **Before this answers `true` the region draws nothing** — not
+ * a spinner and not a line. The app has exactly one loading screen by design
+ * (§9's first sync) and a queue turn does not deserve a second.
+ *
+ * The cost is stated so nobody reads the blank as a bug: a genuinely absent
+ * Trip shows an empty region for one queue turn. What it buys is that the app
+ * never states a sync fact it has not established.
+ */
+export function useFoldSettled(): boolean {
+  return useHousehold(
+    (depot) => depot.status !== 'loading' && depot.pendingWrites === 0,
+  )
 }
 
 /**

@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { useParams } from 'wouter'
 
 import { AboutPicker } from '../components/AboutPicker'
-import { useHousehold } from '../household/store'
+import { useFoldSettled, useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import styles from './NoteComposer.module.css'
@@ -83,6 +83,7 @@ export function NoteComposer() {
   // that draws two destinations has two answers (§5n K27); both are
   // unconditional, so the hook order never moves.
   const missingHeader = useScreenHeader({ splitPane: false, back: '/trips' })
+  const settled = useFoldSettled()
 
   const trip = state.trips[tripId]
   const tripLabel = trip?.name?.value ?? ''
@@ -137,7 +138,12 @@ export function NoteComposer() {
           back={{ href: '/trips', label: 'TRIPS' }}
           sync={sync}
         />
-        <p className={styles['missing']}>No such trip.</p>
+        {/* Withheld until the fold has settled (§5n K25): one queue turn
+            after a local write, an absence says only that this Device has
+            not caught up. `TripNotHere` draws the two sentences that pull
+            apart; a sub-route has one line for both standings, so the line
+            waits. */}
+        {settled && <p className={styles['missing']}>No such trip.</p>}
       </div>
     )
   }

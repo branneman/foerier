@@ -25,7 +25,7 @@ import {
 import { overClaimGroups, OverClaimBand } from '../components/OverClaimBand'
 import { RemoveElsewhereConfirm } from '../components/RemoveElsewhereConfirm'
 import { TripOnlySheet } from '../components/TripOnlySheet'
-import { useHousehold } from '../household/store'
+import { useFoldSettled, useHousehold } from '../household/store'
 import { tripParticipants } from '../household/trips'
 import { BackLink, ScreenBand } from '../shell/ScreenBand'
 import { DESKTOP, useMediaQuery, useScreenHeader } from '../shell/useMediaQuery'
@@ -166,6 +166,7 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   // Where the link points, hoisted above the hook because the hook reads it:
   // §5n K27 makes the Desktop answer a property of the destination, and this
   // screen is the one it was ruled for — see the two-doors section above.
+  const settled = useFoldSettled()
   const backHref = fromTrips ? '/trips' : `/trips/${tripId}`
   // `splitPane: false` — two panes of itself, not a detail pane of a list
   // also on screen.
@@ -208,7 +209,12 @@ export function GearListBuilder({ tripId }: GearListBuilderProps) {
   if (trip === undefined || tripStandingOf(state, tripId) !== 'live') {
     return (
       <div className={styles['screen']} data-testid="gear-list-builder">
-        <p className={styles['notFound']}>No such trip.</p>
+        {/* Withheld until the fold has settled (§5n K25): one queue turn
+            after a local write, an absence says only that this Device has
+            not caught up. `TripNotHere` draws the two sentences that pull
+            apart; a sub-route has one line for both standings, so the line
+            waits. */}
+        {settled && <p className={styles['notFound']}>No such trip.</p>}
       </div>
     )
   }

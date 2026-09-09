@@ -30,7 +30,7 @@ import { Link } from 'wouter'
 import { FilterChips } from '../components/FilterChips'
 import { TagPicker } from '../components/TagPicker'
 import { ValueMenu } from '../components/ValueMenu'
-import { useHousehold } from '../household/store'
+import { useFoldSettled, useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
 import { qtyFor } from './Depot'
@@ -212,6 +212,7 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
   const sync = useHousehold((depot) => depot.sync)
+  const settled = useFoldSettled()
   // `splitPane: false` — this is not the detail pane of a list also on
   // screen. Only the `'screen'` variant renders what it answers: the `'pane'`
   // variant's own band (back link + sync) belongs to Task 11's builder page,
@@ -295,7 +296,12 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
         className={variant === 'screen' ? styles['screen'] : styles['pane']}
         data-testid="depot-picker"
       >
-        <p className={styles['notFound']}>No such trip.</p>
+        {/* Withheld until the fold has settled (§5n K25): one queue turn
+            after a local write, an absence says only that this Device has
+            not caught up. `TripNotHere` draws the two sentences that pull
+            apart; a sub-route has one line for both standings, so the line
+            waits. */}
+        {settled && <p className={styles['notFound']}>No such trip.</p>}
       </div>
     )
   }

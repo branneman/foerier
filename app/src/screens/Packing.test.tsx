@@ -19,7 +19,7 @@ import {
   type PhaseValue,
   type StageValue,
 } from '@foerier/shared'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -246,6 +246,53 @@ describe('the packing screen — the shell every mode hangs off', () => {
     expect(screen.getByText('No such trip.')).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Pack-out' })).toBeNull()
     expect(await seeded.authored()).toEqual([])
+  })
+
+  /**
+   * **The line waits for the fold** (§5n K25), and this is the one sub-route
+   * that stands for the other four — `Unpack`, `GearListBuilder`,
+   * `DepotPicker` and `NoteComposer` carry the identical guard and the
+   * identical gate. A sub-route draws one line for both standings, so unlike
+   * the trip screen it cannot draw the tombstone half early; the whole line
+   * waits until this Device has finished writing what it was told to write.
+   *
+   * Not `renderPacking`, which drains before it renders and so can never
+   * reach the window this exists for.
+   */
+  it('says nothing at all while a local write is still in flight', async () => {
+    const store = createHouseholdStore({
+      log: inMemoryOpLog(),
+      engine: noopEngine,
+      author: anAuthor(),
+    })
+    await store.getState().drained()
+
+    store.getState().emit(tripCreated(ALPS, 'Alps 2026'))
+    expect(store.getState().pendingWrites).toBe(1)
+
+    const location = memoryLocation({
+      path: `/trips/${ALPS}/packing`,
+      record: true,
+    })
+    render(
+      <Router hook={location.hook}>
+        <Switch>
+          <Route path="/trips/:id/packing">
+            <HouseholdProvider value={store}>
+              <Packing />
+            </HouseholdProvider>
+          </Route>
+        </Switch>
+      </Router>,
+    )
+
+    expect(screen.queryByText('No such trip.')).toBeNull()
+
+    await act(async () => {
+      await store.getState().drained()
+    })
+
+    expect(screen.getByRole('heading', { name: 'Pack-out' })).toBeVisible()
   })
 
   /**
