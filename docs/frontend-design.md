@@ -604,12 +604,29 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   *sheet below Split, popover anchored to the cluster from Split up* (§5d C,
   §4a), with `S9 Round` adding only *`ui/Popover` is not built, so this lands
   with the primitive*. Side, alignment, offset, width, collision behaviour
-  and whether it carries an arrow are all unstated. Building it is therefore
-  a design sitting rather than an afternoon, and there is a second half to
+  and whether it carries an arrow are all unstated. Building it was therefore
+  a design sitting rather than an afternoon, and there was a second half to
   rule with it: Radix's popover wants its trigger and its content as siblings
   under one root, which cuts against the mounted-is-open convention every
   overlay in the app follows (`patterns.md` §4.1), so the trigger anatomy is
   part of the same question.
+
+  **That sitting happened, and it answered both halves** (§5n K15–K17). The
+  anatomy is drawn from tokens and rules the app already has — `bg/raised`,
+  a 1px `rule` border, **radius 12** (the card step, not the sheet's top-only
+  16 and not a control's 8), elevation by the theme's own rule so dark gets no
+  shadow and light does, **offset 8** so the gap reads *attached to* rather
+  than *sibling of*, and **no arrow**, the app drawing none anywhere. Side is
+  **bottom, always**, because five of the seven triggers are a row's
+  right-edge control a gutter from the pane edge at Split, where a side
+  popover collides on open every time; alignment follows the trigger's own
+  edge; width is `min(20rem, available)`; the content scrolls itself at
+  `max-height: available`. And the trigger question is answered by not having
+  one: **`Popover.Trigger` is not used at all** — the root wraps an *anchor*
+  and the content, `open` is the caller's own state, and `{open && …}`
+  survives, so drafts still reset on mount and each caller's existing button
+  keeps its props, its accessible name and its hit extension. `ui/Popover`
+  takes `anchor` as a `ReactNode`, `GearRow`'s own idiom.
 - **Composites (`ui/`)** — `GearRow`, `TripCard`, `JourneyRail`,
   `WhereaboutsCard`, `LedgerList`. Presentational; take domain data as **props**.
 

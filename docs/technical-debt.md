@@ -151,20 +151,20 @@ A board or a design doc settles it and the code has never caught up.
 Actionable without a new decision; the size runs from a `<link>` tag to a
 second pane.
 
-- **The two-pane Trips is drawn and not built.** `Trips — split 900` puts a trip
-  detail beside the list; `DepotView` and, since S7, the gear-list builder are
-  the app's two-pane views, and Trips is neither of them — it stays a single
-  full-width pane at Split and keeps Desktop's `+ NEW` there instead of
-  the frame's dense filled control. That control's copy and treatment land with
-  the pane. [`design/README.md`](design/README.md) §5, anchor:
-  `two-pane Trips, list left and trip detail right`
 - **The two-pane Add gear is drawn and not built.** `Add gear — split 900` draws
   the form as a pane with the Depot list kept beside it; `<Route path="/add">`
   renders it standalone at every width — unlike S7's gear-list builder, which
   the app did build as a second two-pane view. That is why `AddGear` answers
   `splitPane: false` against its own frame and still draws `‹ DEPOT` at Split,
-  and why its CTA fact line has only one alignment to say.
-  [`frontend-design.md`](frontend-design.md) §3.3, anchor:
+  and why its CTA fact line has only one alignment to say. **§5n K20 blessed
+  the frame** and stated what lands with it so no further design is needed:
+  `splitPane: true`, no `‹ DEPOT` at Split, the 40px inline primary with the
+  fact line beside it in the same row (K9's other half), and the pane's own
+  scroller (K21, the entry below). The asymmetry with the retired two-pane
+  Trips is the ruling's own: **one pane is a reference, the other was a
+  menu** — the left pane here holds the Depot list you are recording *into*,
+  and watching it grow row by row is the feedback the batch loop has no other
+  source for. [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `two-pane Add gear has never been built`
 - **Split's two panes share one scroller — now in two places.** `DepotView`
   draws the Depot list and the gear detail as two panes of one view that
@@ -178,9 +178,60 @@ second pane.
   gap is `GearListBuilder.module.css` carrying no `overflow` of its own, so
   the two panes still share the shell's one scroller instead of scrolling
   independently. Blocks story 38 from doing the honest thing at Split, and
-  doubles what that fix will have to cover.
+  doubles what that fix will have to cover. **§5n K21 drew the answer**: each
+  pane is its own scrollport and the shell's main area does not scroll at
+  all; a pane **resets to its top when its own route changes** and the other
+  pane does not move, so the list pane's offset persists across every detail
+  navigation within the view. The reset's target moves from the shell to the
+  pane, which this entry already anticipated. Two views today, three when
+  K20's lands, and never Trips (K19).
   [`frontend-design.md`](frontend-design.md) §3.1, anchor:
   `Panes with scrollers of their own`
+- **A refused write reaches nobody, and the sync line is where it belongs.**
+  An op that could not be written — a 16 KB overflow, an IndexedDB failure —
+  sets `depot.refusal` and is logged to the console, and no screen draws it,
+  so a Quartermaster loses an act in silence. §5n **K24** drew the channel: a
+  refusal is the sync line's **third state**, `▲ 1 NOT SAVED` in the marker's
+  own slot beside sage `SYNCED` and amber `OFFLINE`, and it is the one sync
+  state that is also a route. **K24b** drew what it opens: a `Sheet` (nothing
+  is being decided) titled `Not saved`, one mono line per refusal naming
+  subject and cause, a batch refusal as **one** line because `emitAll` refuses
+  the whole gesture, no `Try again` — the refused payload is not kept — and
+  the marker clearing on `Close`, acknowledgement being the clearing act.
+  What the code owes beyond the two surfaces: `refusal` is a single slot the
+  next accepted op clears, and K24b needs a list that survives until it is
+  read; a refusal has to carry its subject, which for a batch is the gesture
+  the Quartermaster spent rather than any one op.
+  [`docs/design/README.md`](design/README.md) §5n, anchor:
+  `the sync line's third state`
+- **`ui/`'s `Popover` is unbuilt and has seven waiting callers.** §4a's
+  desktop tag picker, the slice bar's `ValueMenu`, S8's Piece picker, S9a's
+  Piece status sheet, the outcome sheet and its roster variant (S10), and —
+  since S14 — the template source picker are each described in board prose as
+  *sheet below Split, popover from Split up*, and all seven are approximated
+  by `Sheet`'s `desktopCard` meanwhile. The prose used to be the whole of the
+  specification, which is why this sat under *Waiting on a decision*; §5n
+  **K15–K17** drew the rest — surface, border, radius 12, elevation by the
+  theme's own rule, offset 8, no arrow; side bottom always, alignment from the
+  trigger's own edge, width `min(20rem, available)`, collision behaviour, and
+  the content scrolling itself at `max-height: available`. **K17 is the one
+  that makes it buildable against this app's conventions**: `Popover.Trigger`
+  is not used at all, so the root wraps an *anchor* and the content, `open` is
+  the caller's own state, and `{open && …}` still resets a picker's drafts on
+  mount. Each of the seven still has to be restructured to that shape, and
+  K18 rules the set they leave: every sheet that is **not** one of the seven
+  takes `desktopCard` uniformly. [`frontend-design.md`](frontend-design.md)
+  §5, anchor: `is the one with waiting callers`
+- **Four mono labels sit at 8px, below the type ladder's floor.**
+  `Account`'s and `Devices`' and `People`'s badge and `JourneyRail`'s stage
+  chip each spell `font-size: 0.5rem` beside `var(--font-mono)`, and §5n K28's
+  four-step ladder bottoms at `--text-label-head`, 8.5/11.5. They are not a
+  migration this pass missed — `typeScale.test.ts` bans the four *step* sizes
+  as raw rems and 8 is not one of them — they are four rules at a size the
+  scale does not carry. Either they take the head step or the ladder grows a
+  fifth, and K28b's own precedent says a step change is a round's call and not
+  a screen's. [`docs/design/README.md`](design/README.md) §5n, anchor:
+  `the four-step type ladder`
 - **`landing/` is a redirect stub, not a workspace.** It does not build, so it
   cannot import `ui/styles/tokens.css` and its two background colours are copies
   a token change never reaches. The marketing site and the live demo on `ui/`
@@ -209,48 +260,11 @@ Cannot be coded yet: no frame draws it, or the ruling that would settle it
 has not been made. These want a design sitting, not an afternoon — reading
 them looking for work is the thing this section exists to stop.
 
-- **`Find` spends the full 1120 at Desktop, and no frame draws it there.**
-  `.shell__main` caps the column at 70rem and `Find` adds no measure cap of
-  its own, so its answer cards stretch the whole width — where `Depot` spends
-  that width on eight table columns and `Trips` on 2-up cards, both drawn.
-  `Screens B`'s Find frame is 393 only, and §6 already records that the
-  Desktop *withholding* of the header was inherited from `Depot desktop`
-  rather than drawn. Blocked on a board, not on an afternoon: a cap is one
-  declaration, but which one is a design call.
-  [`docs/design/README.md`](design/README.md) §6, anchor:
-  `no frame draws Find at 1024`
-- **The store's `refusal` channel has no reader.** An op that could not be
-  written — a 16 KB overflow, an IndexedDB failure — sets `depot.refusal`
-  and is logged to the console, and no screen draws it, so the Quartermaster
-  learns nothing. Blocked on a board: no frame draws a refused write.
-  [`patterns.md`](patterns.md) §2.5, anchor:
-  `read by no screen`
-- **`ui/`'s `Popover` is unbuilt, has seven waiting callers, and no board
-  draws one.** §4a's desktop tag picker, the slice bar's `ValueMenu`, S8's
-  Piece picker, S9a's Piece status sheet, the outcome sheet and its roster
-  variant (S10), and — since S14 — the template source picker are each
-  described in board prose as *sheet below Split, popover from Split up*, and
-  all seven are approximated by `Sheet`'s `desktopCard` meanwhile. S14's own
-  round declined to draw the seventh rather than take a set of visual
-  decisions against nothing, and said so. **That prose is the whole of the
-  specification.** The bundle contains no popover artboard: nothing states a
-  side, an alignment, an offset, a width, collision behaviour or whether it
-  carries an arrow, and the only popover token in `Foundations` is the
-  `bg/raised` background it shares with a hovered row. Building it therefore
-  means taking seven visual decisions across seven surfaces with nothing to
-  build against, which is why this sits here and not under *Specified and not
-  built*. It also needs each caller restructured so the trigger and the
-  content are siblings under one Radix root, against the app's settled
-  mounted-is-open convention ([`patterns.md`](patterns.md) §4.1) — so a
-  ruling should cover the trigger anatomy too. Wants the same sitting as the
-  entry below. [`frontend-design.md`](frontend-design.md) §5, anchor:
-  `is the one with waiting callers`
+**Empty, as of the post-MVP round** (`docs/design/README.md` §5n). Every
+entry that stood here — Find at Desktop, the refused write, `ui/Popover`, the
+join confirm's two blocked rows, the small end of the type scale — was either
+built, moved to *Specified and not built* with a ruling behind it, or closed
+as a decision. The heading stays because the category is real and the next
+slice will fill it again; an empty section is a statement, and deleting it
+would lose the one it is making.
 
-- **The mono-caps label is the most-copied rule in the codebase, and the
-  small sizes have no token.** Seventy-six uppercase-label rules across
-  twenty-nine modules, nineteen carrying the full three-line recipe verbatim;
-  ~170 `font-size` declarations set a raw `rem` because the boards specify
-  mono at 8.5–10px and the token scale stops at 11. A shared class and two or
-  three small `--text-*` pairs would close most of it.
-  [`patterns.md`](patterns.md) §6.2, anchor:
-  `most-copied rule`

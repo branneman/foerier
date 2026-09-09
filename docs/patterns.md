@@ -389,7 +389,9 @@ A frozen engine is never resumed; re-signing in builds a new one.
 
 *Departures:* the store's `refusal` channel — an op that could not be written
 (overflow, storage failure) — is set and **read by no screen**; the failure
-reaches the console and nobody else. Blocked on a board that draws it.
+reaches the console and nobody else. No longer blocked on a board: §5n K24
+draws it as the sync line's third state and K24b draws the sheet it opens,
+so this closes as work rather than as a decision.
 *Argued in:* `wiring.ts`'s header; [`auth-design.md` §7.2](auth-design.md).
 
 ---
