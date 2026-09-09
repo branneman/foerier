@@ -1,6 +1,7 @@
-import { compareStamps, parseHlc } from '../hlc.ts'
+import { parseHlc, type Stamp } from '../hlc.ts'
 import { stampOf } from '../registers.ts'
 import type { NoteState, TripState } from '../state.ts'
+import { byStampThenId } from './order.ts'
 
 /**
  * **The Trip notes' read side** (S12; `docs/design/README.md` §5l I9–I20,
@@ -71,24 +72,38 @@ export function noteKeptOf(note: NoteState): boolean | undefined {
  * returns the order *this replica* happened to receive ops in — two Devices
  * holding identical state would draw the list differently, which is the
  * failure `order.ts`'s header describes for the depot and the Trips list.
+ * The comparator is that file's {@link byStampThenId}, shared with `tasksOf`:
+ * it was spelled in both files because S12 and S13 were built in parallel
+ * worktrees and `order.ts` is a file only one of them could own.
  */
 export function notesOf(trip: TripState | undefined): readonly NoteView[] {
   const notes = trip?.notes
   if (notes === undefined) return []
 
-  const views: NoteView[] = []
+  // Sorted **before** the views are built, not after: the stamp the order
+  // reads is the posting register's own, and carrying it on the row is what
+  // lets this share `tasksOf`'s comparator instead of looking each Note up
+  // again by id from inside the sort.
+  const rows: {
+    id: string
+    stamp: Stamp
+    text: { value: string; hlc: string }
+    note: NoteState
+  }[] = []
   for (const note of Object.values(notes)) {
     const text = note.text
     if (text === undefined) continue
-    views.push({
-      id: note.id,
-      text: text.value,
-      entryId: note.entryId?.value,
-      postedAtMs: parseHlc(text.hlc)?.ms,
-      kept: noteKeptOf(note),
-    })
+    rows.push({ id: note.id, stamp: stampOf(text), text, note })
   }
-  return views.sort(byPostedThenId(notes))
+  rows.sort(byStampThenId)
+
+  return rows.map(({ id, text, note }) => ({
+    id,
+    text: text.value,
+    entryId: note.entryId?.value,
+    postedAtMs: parseHlc(text.hlc)?.ms,
+    kept: noteKeptOf(note),
+  }))
 }
 
 /**
@@ -117,30 +132,4 @@ export function noteCounts(trip: TripState | undefined): {
     if (noteKeptOf(note) === undefined) toReview += 1
   }
   return { total, toReview }
-}
-
-/**
- * Oldest first by the posting stamp, id last so the order is **total** by
- * construction: `compareStamps` already tiebreaks on `deviceId`, and two ops
- * from one Device can never share an HLC, so the id is unreachable in
- * practice — it is there so the comparator is total by inspection rather
- * than by an argument about the clock.
- *
- * It stays in this file rather than moving to `order.ts`. A second caller is
- * the bar for lifting something shared (`patterns.md` §5.5), and this one has
- * one; `byNameThenId` earned its place there by having two.
- */
-function byPostedThenId(
-  notes: Readonly<Record<string, NoteState>>,
-): (a: NoteView, b: NoteView) => number {
-  return (a, b) => {
-    const at = notes[a.id]?.text
-    const bt = notes[b.id]?.text
-    if (at !== undefined && bt !== undefined) {
-      const byStamp = compareStamps(stampOf(at), stampOf(bt))
-      if (byStamp !== 0) return byStamp
-    }
-    if (a.id === b.id) return 0
-    return a.id < b.id ? -1 : 1
-  }
 }

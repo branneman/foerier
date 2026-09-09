@@ -396,17 +396,6 @@ every one of them gets more expensive per slice.
   recorded because it outlives the decline: whoever takes it wants a reason to
   be in all seven at once, and that shape is what to look for.
   `shared/src/reduce.ts`, anchor: `The generic \`writeEntity\``
-- **The stamp-then-id comparator is spelled twice, in `task.ts` and
-  `note.ts`.** Both order a nested entity map by its creating register's stamp
-  so two replicas draw the same list, and `order.ts` — which exists precisely
-  because *"a second copy of a total-order comparator is exactly how two
-  devices start drawing lists differently again"* — is where it belongs. It is
-  not there because S12 and S13 were built in parallel and `order.ts` is a
-  file only one of them could own. Both have landed, so the collision that
-  kept it out is over: same shape as the entity writers above, unblocked by
-  the same event, and — S14 having declined that one — waiting on the same
-  kind of slice.
-  `shared/src/selectors/task.ts`, anchor: `The comparator is local rather than`
 - **The `GEAR LIST` band's anatomy is spelled three times.** `Trip.module.css`'s
   `.gearListBand`, `NotesPanel`'s and `TasksPanel`'s — label, count, optional
   trailing link, one rule and one border. The board's own §08 lists *"the band

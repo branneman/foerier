@@ -1,6 +1,7 @@
-import { compareStamps } from '../hlc.ts'
+import type { Stamp } from '../hlc.ts'
 import { stampOf } from '../registers.ts'
 import type { TaskState, TripState } from '../state.ts'
+import { byStampThenId } from './order.ts'
 
 /**
  * **The Pre-trip checklist's read side** (S13, story 15) — three answers the
@@ -57,12 +58,11 @@ export function taskTickedOf(task: TaskState): boolean {
  * second half — *ticked rows do not sink* — falls out of the ordering rather
  * than being enforced beside it.
  *
- * The comparator is local rather than in `order.ts`, where a second copy of a
- * total order does not belong. S12's `notesOf` needs the identical one and is
- * being built in a parallel worktree, so lifting it now would put both slices
- * in one file for the sake of a shared four lines — the collision architecture
- * §8.6 promised these two would not have. Logged in `technical-debt.md`: the
- * lift takes both copies, once both have landed.
+ * The comparator is `order.ts`'s {@link byStampThenId}, shared with `notesOf`.
+ * It was spelled here and there both, because S12 and S13 were built in
+ * parallel worktrees and `order.ts` is a file only one of them could own —
+ * the lift took both copies once both had landed, which is what each
+ * docstring said it would.
  *
  * **A Task with no `text` is folded, retained, and drawn nowhere.** A
  * `trip.task_ticked` can arrive ahead of the add that names the Task, and a
@@ -72,20 +72,20 @@ export function taskTickedOf(task: TaskState): boolean {
  * never disagree about what exists.
  */
 export function tasksOf(trip: TripState): readonly TaskView[] {
-  const drawable: { task: TaskState; text: string }[] = []
+  const drawable: {
+    id: string
+    stamp: Stamp
+    task: TaskState
+    text: string
+  }[] = []
   for (const task of Object.values(trip.tasks ?? {})) {
     const text = task.text
     if (text === undefined) continue
-    drawable.push({ task, text: text.value })
+    drawable.push({ id: task.id, stamp: stampOf(text), task, text: text.value })
   }
-  drawable.sort((a, b) => {
-    const order = compareStamps(stampOf(a.task.text!), stampOf(b.task.text!))
-    if (order !== 0) return order
-    if (a.task.id === b.task.id) return 0
-    return a.task.id < b.task.id ? -1 : 1
-  })
-  return drawable.map(({ task, text }) => ({
-    id: task.id,
+  drawable.sort(byStampThenId)
+  return drawable.map(({ id, task, text }) => ({
+    id,
     text,
     ticked: taskTickedOf(task),
   }))
