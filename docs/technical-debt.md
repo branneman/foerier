@@ -136,16 +136,17 @@ Correct today, and silently wrong the moment a named future slice lands.
 Each entry names its trigger. Paying one after its trigger costs a debugging
 session rather than an edit, because the symptom shows up somewhere else.
 
-- **The trip's containment view restates the home one's traversal, and the two
-  must not drift.** `shared/src/selectors/tripContainment.ts` reimplements
-  `containment.ts`'s walk, its sorted-id determinism and
-  [`sync-protocol.md`](sync-protocol.md) §3.6's cycle break over a different
+- **The trip's containment view restates the home one's traversal, and the
+  two must not drift.** `shared/src/selectors/tripContainment.ts` reimplements
+  `containment.ts`'s walk and its sorted-id determinism over a different
   pointer type. The duplication is deliberate — the two worlds resolve against
   different things, and a shared implementation would take a strategy object
-  for every line — but the **cycle break is the half that would be silent if
-  they diverged**, since a replica-dependent break shows up only as two devices
-  drawing different trees. Argued in the module's own header,
-  `shared/src/selectors/tripContainment.ts`, anchor:
+  for every line — and the **cycle break**, the half whose divergence would be
+  silent, is now pinned for both by `shared/src/selectors/cycleBreak.test.ts`.
+  What is still un-guarded is the rest of the traversal: the four loose
+  reasons and the sorted iteration are asserted per file, so a drift in either
+  fails only its own suite and nothing compares them. Argued in the module's
+  own header, `shared/src/selectors/tripContainment.ts`, anchor:
   `non-drift is the obligation it`
 - **`useScreenHeader`'s tenth and eleventh callers disagree about the same
   question.** F4 passes `atDesktopSidebarCarriesDestination: false` and keeps

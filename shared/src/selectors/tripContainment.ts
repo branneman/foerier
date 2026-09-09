@@ -16,8 +16,11 @@ import { entriesOf, entryLabel, isContainerEntry } from './entry.ts'
  * take a strategy object for every line of it.
  *
  * **This duplication is deliberate, and non-drift is the obligation it
- * creates.** The half of that obligation which would fail silently is the
- * cycle break: sync §3.6's rule, verbatim — within a cycle, the edge whose
+ * creates — `cycleBreak.test.ts` is what holds the silent half of it.** That
+ * file states §3.6 once and runs each case through **both** views, so a drift
+ * fails one column and passes the other; measured both ways round before it
+ * was trusted. The half that would otherwise fail silently is the cycle
+ * break: sync §3.6's rule, verbatim — within a cycle, the edge whose
  * `residence` register carries the **lowest `(hlc, device_id)`** is reported
  * loose, with the entry id as a canonical final tiebreak. Every replica holds
  * identical registers, so every replica breaks the same edge; the fold stays
