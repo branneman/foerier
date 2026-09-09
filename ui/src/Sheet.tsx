@@ -34,6 +34,25 @@ export interface SheetProps {
   /** Sits opposite the title. Only `HomePicker`'s EDIT/DONE toggle uses it. */
   titleAction?: ReactNode
   /**
+   * How the title is **painted**, never what it means — `PersonCircle`'s
+   * rule (`patterns.md` §5.3). `display` is the sentence-case heading every
+   * sheet and confirm in the app wears; `eyebrow` is the mono caps label
+   * `Screens B` 02A draws for `SET PHASE`, and `PhaseSheet` is its only
+   * caller.
+   *
+   * **An opt-in prop rather than a restyled primitive**, which is the whole
+   * reason this waited: the board means *that* title. `Edit gear`, `Tags`,
+   * `Home`, `Owner`, `Participants`, `Sort and group` and
+   * `Sign out this device?` are all sentence case and would be wrong in
+   * mono, so the tone has to be the caller's to pass.
+   *
+   * It changes paint and nothing else. The title is still `Dialog.Title`,
+   * still the accessible name, and still the words the caller gave — an
+   * eyebrow is not a `text-transform`, and a caller that wants caps types
+   * them (`SET PHASE`), exactly as every other label in the app does.
+   */
+  titleTone?: 'display' | 'eyebrow'
+  /**
    * The sheet's single describing paragraph, wired to `Dialog.Description`
    * so a screen reader reads it right after the title on open — name plus
    * description, the platform-idiomatic way to announce "what this is and
@@ -74,6 +93,7 @@ function SheetRoot({
   title,
   onClose,
   titleAction,
+  titleTone = 'display',
   description,
   desktopCard = false,
   children,
@@ -138,10 +158,14 @@ function SheetRoot({
         >
           <span className={styles['grabber']} aria-hidden="true" />
           {titleAction === undefined ? (
-            <Dialog.Title className={styles['title']}>{title}</Dialog.Title>
+            <Dialog.Title className={styles['title']} data-tone={titleTone}>
+              {title}
+            </Dialog.Title>
           ) : (
             <div className={styles['titleRow']}>
-              <Dialog.Title className={styles['title']}>{title}</Dialog.Title>
+              <Dialog.Title className={styles['title']} data-tone={titleTone}>
+                {title}
+              </Dialog.Title>
               {titleAction}
             </div>
           )}

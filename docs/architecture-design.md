@@ -1984,8 +1984,8 @@ Six op types, no endpoints, no migration; see its
   never in place of it. The card is also the only surface that draws it: a
   next-step line is a list-scanning affordance, and the trip screen already
   states the phase in its chip and the task in its empty region.
-- **`SET PHASE` is drawn as a mono eyebrow and ships in the display face, and
-  that is a stated debt rather than a gap.** `Screens B` 02A sets the sheet's
+- **`SET PHASE` is drawn as a mono eyebrow and shipped in the display face,
+  which was a stated debt and is now closed by `titleTone`.** `Screens B` 02A sets the sheet's
   title in Spline Sans Mono at 8.5px with the eyebrow's letterspacing;
   `Sheet.module.css`'s one `.title` rule sets `var(--font-display)` and both
   `Sheet` and `Confirm` render their titles through it, and `PhaseSheet` is the
@@ -1993,10 +1993,12 @@ Six op types, no endpoints, no migration; see its
   the primitive was refused: the board means *this* title, and every other
   sheet and confirm in the app — `Edit gear`, `Tags`,
   `Home`, `Owner`, `Participants`, `Sort and group`, `Sign out this device?` —
-  is sentence-case display and would be wrong in mono. The fix is an opt-in
-  `titleTone` on `Sheet` that `PhaseSheet` alone passes, and it belongs to
-  whichever slice next opens `ui/`'s overlay primitives rather than to a
-  one-caller detour through the shared package.
+  is sentence-case display and would be wrong in mono. The fix was an opt-in
+  `titleTone` on `Sheet` that `PhaseSheet` alone passes, taken after the MVP:
+  it names the **paint** and not the meaning (`patterns.md` §5.3), carries no
+  `text-transform` — a caller wanting caps types them, so the accessible name
+  and the drawn words stay one string — and is spelled as a `data-*` tone
+  because it is an enumeration.
 - **`DepotState` was the fold of everything, not just the depot, and the name
   stayed at S6 for a reason that has since expired — it is now
   `HouseholdState`.** The rename reached `DepotStoreState`, `DepotProvider`,

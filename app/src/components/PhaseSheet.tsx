@@ -219,7 +219,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
     // the chip that opened this one is the Trip's own — on the Trip's own
     // screen, under the Trip's own name — so naming the Trip here would
     // repeat the line the reader is already looking at.
-    <Sheet title="SET PHASE" onClose={onClose} desktopCard>
+    <Sheet title="SET PHASE" titleTone="eyebrow" onClose={onClose} desktopCard>
       {!known && (
         // §3.4: the value is drawn **exactly as it arrived**, because
         // inventing a casing for it would be coercion by another name

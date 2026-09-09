@@ -176,3 +176,63 @@ describe('Sheet', () => {
     expect(description.tagName).toBe('P')
   })
 })
+
+/**
+ * **`titleTone` paints; it never renames** (`patterns.md` §5.3). The eyebrow
+ * exists for one caller — `PhaseSheet`'s `SET PHASE`, which `Screens B` 02A
+ * draws in mono at 8.5px — and the primitive was deliberately *not* restyled
+ * for it: every other sheet and confirm in the app is sentence-case display
+ * and would be wrong in mono.
+ */
+describe('the title tone', () => {
+  it('draws the display face unless a caller asks otherwise', () => {
+    render(
+      <Sheet title="Edit gear" onClose={() => {}}>
+        <p>body</p>
+      </Sheet>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Edit gear' })).toHaveAttribute(
+      'data-tone',
+      'display',
+    )
+  })
+
+  it('marks the eyebrow without touching the accessible name', () => {
+    render(
+      <Sheet title="SET PHASE" titleTone="eyebrow" onClose={() => {}}>
+        <p>body</p>
+      </Sheet>,
+    )
+
+    // The dialog's name is still the visible title — an eyebrow is paint, and
+    // the caps are the caller's own string rather than a `text-transform`,
+    // so what is heard and what is drawn stay the same words.
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('SET PHASE')
+    expect(screen.getByRole('heading', { name: 'SET PHASE' })).toHaveAttribute(
+      'data-tone',
+      'eyebrow',
+    )
+  })
+
+  it('keeps the tone when a title action sits beside it', () => {
+    // The two title branches are separate JSX — `HomePicker`'s EDIT/DONE
+    // toggle takes the second — so a prop added to one and not the other is
+    // the ordinary way this breaks.
+    render(
+      <Sheet
+        title="SET PHASE"
+        titleTone="eyebrow"
+        titleAction={<button type="button">EDIT</button>}
+        onClose={() => {}}
+      >
+        <p>body</p>
+      </Sheet>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'SET PHASE' })).toHaveAttribute(
+      'data-tone',
+      'eyebrow',
+    )
+  })
+})

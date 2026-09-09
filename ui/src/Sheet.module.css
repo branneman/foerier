@@ -112,6 +112,23 @@
     color: var(--color-ink-primary);
   }
 
+  /*
+   * The mono eyebrow `Screens B` 02A draws for `SET PHASE`: Spline Sans Mono
+   * at 8.5px with the eyebrow's own letterspacing, in the faint ink every
+   * other label in the app wears at that size (`SortGroupSheet`'s
+   * `.groupLabel`, `TagPicker`'s section labels). A `data-*` attribute
+   * because the tone is an enumeration, not a boolean (`patterns.md` §6.7).
+   *
+   * `text-transform` is deliberately absent: a caller that wants caps types
+   * them, so the accessible name and the drawn words stay the same string.
+   */
+  .title[data-tone='eyebrow'] {
+    font: 0.53125rem/1.25 var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--color-ink-faint);
+  }
+
   /* Only `HomePicker` uses it: the quiet EDIT/DONE toggle beside the title. */
   .titleRow {
     display: flex;
