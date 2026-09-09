@@ -1,14 +1,72 @@
 import react from '@vitejs/plugin-react'
 import { FontaineTransform } from 'fontaine'
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 const fontsDir = fileURLToPath(new URL('../ui/fonts', import.meta.url))
 
+/**
+ * `<link rel="preload">` for the primary UI font — `frontend-design.md` §7,
+ * written there since before the first slice and never built.
+ *
+ * **It has to be a plugin rather than a line in `index.html`**, because the
+ * file it names does not have a stable name: the font is hashed by Vite, and
+ * it lives in `ui/fonts/` rather than in this workspace, so there is no path
+ * `index.html` could carry that survives a build. The emitted bundle is where
+ * the real name is, and `transformIndexHtml`'s `post` pass is where that is
+ * legible.
+ *
+ * **Spline Sans only.** §7's rule is the *primary* face: preloading all three
+ * would put the display and mono files ahead of the CSS on the same
+ * connection, which is the cost this exists to avoid paying for anything but
+ * body text.
+ *
+ * `crossorigin` is not optional and not about CORS policy here — a font is
+ * fetched in anonymous mode, so a preload without it is a **second**,
+ * separate fetch rather than a warm cache hit. Same-origin included.
+ *
+ * Build only: in dev the font is served unhashed off the filesystem and there
+ * is no bundle to read a name from, which is also the one environment where
+ * a first paint's font latency is nobody's problem.
+ */
+function preloadPrimaryFont(): Plugin {
+  return {
+    name: 'foerier:preload-primary-font',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const emitted = Object.keys(ctx.bundle ?? {}).find((name) =>
+          /spline-sans-latin[.-][^/]*\.woff2$/.test(name),
+        )
+        if (emitted === undefined) return html
+
+        return {
+          html,
+          tags: [
+            {
+              tag: 'link',
+              attrs: {
+                rel: 'preload',
+                as: 'font',
+                type: 'font/woff2',
+                href: `/${emitted}`,
+                crossorigin: '',
+              },
+              injectTo: 'head',
+            },
+          ],
+        }
+      },
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     react(),
+
+    preloadPrimaryFont(),
 
     // Generates the metric-matched fallback `@font-face` rules from the real
     // font files, so the `font-display: swap` handover does not reflow the

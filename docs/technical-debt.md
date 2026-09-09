@@ -226,10 +226,6 @@ second pane.
   response is a candidate for the same trip if one is ever made.
   [`architecture-design.md`](architecture-design.md) §12.2, anchor:
   `` still owe `person_name` ``
-- **The primary font is not preloaded.** §7 says `<link rel="preload">` the
-  Spline Sans woff2; `app/index.html` carries no such link.
-  [`frontend-design.md`](frontend-design.md) §7, anchor:
-  `carries no preload link`
 - **Split's two panes share one scroller — now in two places.** `DepotView`
   draws the Depot list and the gear detail as two panes of one view that
   never unmounts, so `/` and `/gear/:id` are two routes over that one

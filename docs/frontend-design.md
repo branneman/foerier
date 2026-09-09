@@ -705,8 +705,14 @@ seam), so there is nothing to fall back *from*.
   covers each family's whole weight range (600–700 / 400–600) and typically beats
   three static cuts. **3 files, not 8.**
 - **Hashed by Vite, Workbox-precached** → available offline (a CDN never would
-  be). `<link rel="preload">` the primary UI font (Spline Sans) only — **not
-  yet written**; `app/index.html` carries no preload link.
+  be). `<link rel="preload">` the primary UI font (Spline Sans) only —
+  **built**, as a `transformIndexHtml` plugin in `app/vite.config.ts` rather
+  than a line in `index.html`: the file is hashed and lives in `ui/fonts/`, so
+  there is no path the HTML could carry that survives a build, and the emitted
+  bundle is where the real name is. It carries `crossorigin`, which is not
+  about CORS policy — a font is fetched anonymously, so a preload without it is
+  a second fetch rather than a warm cache hit. Build only; in dev the font is
+  unhashed and served off the filesystem.
 - **Metric-matched fallbacks auto-generated** with the **Fontaine** Vite plugin,
   deriving the `size-adjust`-tuned fallback `@font-face` from the real fonts
   rather than hand-tuning. Stacks read
