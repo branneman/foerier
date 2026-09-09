@@ -314,6 +314,7 @@ export function OutcomeSheet({
 }: OutcomeSheetProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
+  const emitAll = useHousehold((depot) => depot.emitAll)
 
   const outcome = outcomeOf(entry)
   const container = isContainerEntry(entry, state)
@@ -447,14 +448,7 @@ export function OutcomeSheet({
 
   function confirmRestoration(): void {
     if (offer === null) return
-    for (const spec of restoreConsumption(
-      trip,
-      offer.gearId,
-      offer.owed,
-      state,
-    )) {
-      emit(spec)
-    }
+    emitAll(restoreConsumption(trip, offer.gearId, offer.owed, state))
     setOffer(null)
   }
 

@@ -2720,11 +2720,16 @@ moved while it was being built.
   register (§12.19) a re-close computes `owed − posted` and writes nothing,
   so there is no Trip left for a gate to withhold. `closeTrip` is no longer
   the function that "cannot tell such a Trip from one never closed" — the
-  register is exactly that fact, on the Trip itself. What remains untouched
-  is the crash-mid-batch path above, which needs atomicity rather than a
-  fact, and one shrinking cross-version residue: a peer on a **pre-gate**
-  build can still emit a bare `trip.phase_moved` out of `closed` with no
-  posting behind it (`technical-debt.md`).
+  register is exactly that fact, on the Trip itself. What remained untouched
+  was the crash-mid-batch path above, which needed **atomicity rather than a
+  fact** — and that is why it could not be closed at the gesture: the ops
+  `closeTrip` returns were already right. It is closed after the MVP at the
+  store, by `emitAll` over `OpLog.appendAll`: a gesture is authored whole and
+  appended all-or-nothing, so there is no longer a moment where the reduction
+  is durable and its posting is not. What is left is one shrinking
+  cross-version residue: a peer on a **pre-gate** build can still emit a bare
+  `trip.phase_moved` out of `closed` with no posting behind it
+  (`technical-debt.md`).
 
 ### 12.18 Consequences of the S10 round-2 closeout
 

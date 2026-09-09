@@ -77,6 +77,53 @@ describe.each(implementations)('opLog (%s)', (_label, createLog) => {
     expect(third.lsn).toBe(3)
   })
 
+  /**
+   * **`appendAll` is why `shared/src/gestures.ts`'s pairs are safe.**
+   * `closeTrip` writes a Consumed reduction and then the posting that records
+   * it; appended one at a time, a Device dying between them leaves a lowered
+   * owned-count with nothing saying it was lowered, and the retry lowers it
+   * again. The whole value of the batch is the failure case, so that is what
+   * these assert — the happy path is one line of it.
+   */
+  it('appends a batch in order, sharing one write', async () => {
+    const [first, second, third] = await log.appendAll([anOp(), anOp(), anOp()])
+
+    expect([first?.lsn, second?.lsn, third?.lsn]).toEqual([1, 2, 3])
+    expect((await log.since(0)).map((record) => record.lsn)).toEqual([1, 2, 3])
+  })
+
+  it('writes nothing at all when one op in the batch is rejected', async () => {
+    const duplicate = anOp()
+    await log.append(duplicate)
+
+    // The duplicate sits **last**, so a loop of `append` would have made the
+    // first two durable before failing — which is exactly the half-applied
+    // gesture this exists to prevent.
+    await expect(log.appendAll([anOp(), anOp(), duplicate])).rejects.toThrow()
+
+    // Only the op appended before the batch survives.
+    const records = await log.since(0)
+    expect(records.map((record) => record.op.id)).toEqual([duplicate.id])
+  })
+
+  it('leaves the outbox holding nothing from a rejected batch', async () => {
+    const duplicate = anOp()
+    await log.append(duplicate)
+    await expect(log.appendAll([anOp(), duplicate])).rejects.toThrow()
+
+    // The other half of "nothing was written": a rolled-back op must not be
+    // queued for the household either.
+    const outbox = await log.outbox(10)
+    expect(outbox.map((entry) => entry.op.id)).toEqual([duplicate.id])
+  })
+
+  it('accepts an empty batch as a no-op', async () => {
+    // `closeTrip` returns `[]` for a Trip that is already closed, and a
+    // caller should not have to check before writing.
+    expect(await log.appendAll([])).toEqual([])
+    expect(await log.since(0)).toEqual([])
+  })
+
   it('appends a locally-authored op with a null seq', async () => {
     const logged = await log.append(anOp())
 

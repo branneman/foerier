@@ -278,7 +278,21 @@ per-op handshake — has exactly one caller, the join flow's pending first
 Person. Entity ids for creations are minted at the call site with
 `systemIdSource.next()`.
 
-*Argued in:* `store.ts`; [`sync-protocol.md` §5](sync-protocol.md).
+**A gesture is handed to `emitAll`, not to `emit` in a loop.** Everything
+`shared/src/gestures.ts` returns is a *set* whose members are not
+independent — `closeTrip`'s Consumed reduction and the posting that records
+it, `startTripFrom`'s whole copied gear list — and a loop makes each op
+durable on its own, so a Device dying part-way leaves the prefix written.
+For the reduction/posting pair that is precisely the half-applied state the
+posting register exists to prevent: the retry reads no posting and reduces
+the owned count a second time. `emitAll` authors the batch and appends it
+all-or-nothing (`OpLog.appendAll`), refuses the **whole** gesture if any one
+op is over §1.4's cap, and folds once. The five call sites are the five
+gestures. It changes nothing about sync: the ops are pushed and merged per
+register exactly as before, and atomicity is about this Device's own log.
+
+*Argued in:* `store.ts`'s `emitAll`; `gestures.ts`'s `closeTrip` docblock;
+[`sync-protocol.md` §5](sync-protocol.md).
 
 ### 2.2 Durable-first; the read may be optimistic, the write is not
 

@@ -178,6 +178,15 @@ function unreadableAfter(inner: OpLog, nth: number): OpLog {
   }
 }
 
+/** An {@link OpLog} whose batch append always refuses. */
+function batchRefusingLog(inner: OpLog): OpLog {
+  return {
+    ...inner,
+    appendAll: () =>
+      Promise.reject(new Error('opLog: the batch could not be written')),
+  }
+}
+
 /** An {@link OpLog} whose `append` only completes when the test says so. */
 function gatedLog(inner: OpLog): OpLog & { release(): void } {
   const waiting: (() => void)[] = []
@@ -342,6 +351,89 @@ describe('the depot store', () => {
     // …and the outbox was still nudged, it was just never waited on.
     await tick()
     expect(pushes).toBe(1)
+  })
+
+  /**
+   * **A gesture is one durable write** (`emitAll`).
+   *
+   * `shared/src/gestures.ts`'s pairs are not independent ops that happen to
+   * be emitted together: `closeTrip` writes a Consumed reduction and then the
+   * posting that records it, and a Device dying between them leaves a lowered
+   * owned-count with nothing saying it was lowered — so the retry lowers it a
+   * second time. That was `technical-debt.md`'s crash-mid-batch entry, and
+   * these are the two halves of its close.
+   */
+  it('appends a whole gesture as one write, in order', async () => {
+    const log = inMemoryOpLog()
+    const { factory } = fakeEngines()
+    const store = startStore({ log, engine: factory })
+    await drained(store)
+
+    const first = anId()
+    const second = anId()
+    store
+      .getState()
+      .emitAll([placeRecorded(first, 'Attic'), placeRecorded(second, 'Shed')])
+    await drained(store)
+
+    const records = await log.all()
+    expect(records.map((record) => record.lsn)).toEqual([1, 2])
+    // Authored in the order given, on ascending stamps — a peer folds by
+    // those, however the two arrive.
+    expect(records[0]!.op.hlc < records[1]!.op.hlc).toBe(true)
+    expect(Object.keys(store.getState().state.places)).toHaveLength(2)
+  })
+
+  it('writes no part of a gesture whose batch is refused', async () => {
+    const log = batchRefusingLog(inMemoryOpLog())
+    const { factory } = fakeEngines()
+    const store = startStore({ log, engine: factory })
+    await drained(store)
+
+    store
+      .getState()
+      .emitAll([placeRecorded(anId(), 'Attic'), placeRecorded(anId(), 'Shed')])
+    await drained(store)
+
+    expect(await log.all()).toEqual([])
+    expect(Object.keys(store.getState().state.places)).toHaveLength(0)
+    // A refusal is a fact a screen shows, not an error thrown at a render —
+    // `emitAll` swallows the rejection exactly as `emit` does.
+    expect(store.getState().refusal?.reason).toBe('not-saved')
+  })
+
+  it('refuses the whole gesture when one op is over the byte cap', async () => {
+    const log = inMemoryOpLog()
+    const { factory } = fakeEngines()
+    const store = startStore({ log, engine: factory })
+    await drained(store)
+
+    // The oversized op sits **second**: authoring one at a time would have
+    // made the first durable and then refused, which is a half-applied
+    // gesture reached by a different road than a crash.
+    store
+      .getState()
+      .emitAll([
+        placeRecorded(anId(), 'Attic'),
+        placeRecorded(anId(), 'x'.repeat(MAX_OP_BYTES)),
+      ])
+    await drained(store)
+
+    expect(await log.all()).toEqual([])
+    expect(store.getState().refusal?.reason).toBe('too-large')
+  })
+
+  it('treats an empty gesture as a no-op', async () => {
+    const log = inMemoryOpLog()
+    const { factory } = fakeEngines()
+    const store = startStore({ log, engine: factory })
+    await drained(store)
+
+    // `closeTrip` returns `[]` for a Trip already closed; a caller should not
+    // have to check, and nothing should reach the log.
+    await store.getState().emitAllDurable([])
+    expect(await log.all()).toEqual([])
+    expect(store.getState().refusal).toBeNull()
   })
 
   it('emit serialises concurrent calls so hlcs stay strictly increasing', async () => {

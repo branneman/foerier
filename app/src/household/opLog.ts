@@ -66,6 +66,21 @@ export type MetaKey = 'cursor' | 'hlc' | 'snapshot' | 'deviceId'
 
 export interface OpLog {
   append(op: OpEnvelope): Promise<LoggedOp>
+  /**
+   * Appends several ops **all or nothing**, in the order given.
+   *
+   * `append` in a loop is not this: a Device that dies part-way leaves the
+   * prefix durable, which for a gesture whose ops are a *pair* — a reduction
+   * and the posting that records it (`shared/src/gestures.ts`) — is exactly
+   * the half-applied state the pair exists to prevent. Both implementations
+   * either land every op or none, and a duplicate `op.id` anywhere in the
+   * batch rejects the whole of it.
+   *
+   * It is **not** a sync concern: the ops are pushed individually and merge
+   * per register as they always did. Atomicity here is about the *local log*
+   * surviving a crash between two writes.
+   */
+  appendAll(ops: readonly OpEnvelope[]): Promise<LoggedOp[]>
   ingest(ops: readonly StoredOp[]): Promise<void>
   since(lsn: number): Promise<LoggedOp[]>
   all(): Promise<LoggedOp[]>
@@ -141,6 +156,32 @@ export function inMemoryOpLog(): OpLog {
       }
       records.push(stored)
       return Promise.resolve(structuredClone(stored))
+    },
+
+    appendAll(ops) {
+      // Every id checked **before** anything is pushed, which is what makes
+      // the fake fail where the real store fails: IndexedDB aborts the whole
+      // transaction on a `ConstraintError`, so a duplicate in the middle of a
+      // batch must leave the log untouched here too.
+      for (const op of ops) {
+        if (findByOpId(op.id)) {
+          return Promise.reject(
+            new Error(`opLog: an op with id ${op.id} is already in the log`),
+          )
+        }
+      }
+
+      const appended = ops.map((op) => {
+        const stored: LoggedOp = {
+          lsn: nextLsn++,
+          op: structuredClone(op),
+          seq: null,
+          deadLettered: false,
+        }
+        records.push(stored)
+        return structuredClone(stored)
+      })
+      return Promise.resolve(appended)
     },
 
     ingest(ops) {
@@ -260,6 +301,31 @@ export function indexedDbOpLog(): OpLog {
         // `lsn` onto `record` as a side effect of `add()`, and the freshly
         // resolved key must win over that, not the other way round.
         return { ...record, lsn }
+      })
+    },
+
+    appendAll(ops) {
+      return withDb(async (db) => {
+        // One transaction for the batch: IndexedDB aborts it whole on any
+        // failed `add`, so a duplicate `op.id` half-way through rolls back
+        // the ops before it rather than leaving a prefix durable.
+        const tx = db.transaction(OP_STORE, 'readwrite')
+        const appended: LoggedOp[] = []
+
+        for (const op of ops) {
+          const record = {
+            op: structuredClone(op),
+            seq: null,
+            deadLettered: false,
+          }
+          const lsn = (await tx.store.add(record)) as number
+          // `lsn` last, for `append`'s reason: the key generator may inject
+          // its own onto `record`, and the resolved key must win.
+          appended.push({ ...record, lsn })
+        }
+
+        await tx.done
+        return appended
       })
     },
 

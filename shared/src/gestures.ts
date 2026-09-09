@@ -302,26 +302,30 @@ export function reHomeOnTheSpot(
  * with whatever prefix of the reductions already applied rather than a
  * closed Trip whose Depot never moved.
  *
- * **This does not close the crash-mid-batch debt, and does not pretend
- * to — that needs atomicity, which this slice does not add.** The early
+ * **The crash-mid-batch path is closed too, and not from here.** The early
  * return above closes the no-crash double-tap and the already-synced
  * two-replica path (a stale peer's still-live close card, or a second
  * Device that already folded this Trip's `closed` phase before it next
- * reads state) — and, as of S11, the close-reopen-close path too, since a
- * reopen through this build always leaves a posting behind (see
- * {@link reopenTrip}). What it does **not** close is a Device dying *between
- * the reduction and its own posting*, inside a single close's batch: the
- * reduction op lands durably, the posting does not, and `postedOf` on retry
- * still reads the pre-close value, so the retry recomputes `delta` as if
- * nothing had happened and reduces the Gear a second time. That is a
- * narrower window than the one this register closes — one op wide, not a
- * whole phase move away — but it is not zero, and fixing it needs the
- * reduction and its posting to land as one atomic write. That is a
- * store-level change (`emit` appends ops one at a time, `store.ts`) with no
- * relation to reopening, and is out of scope here. Tracked in
- * `docs/technical-debt.md`'s existing entry, which this slice's own docs
- * task owes a rewrite: what is missing is atomicity now, not a fact — the
- * fact is exactly what `postings` records.
+ * reads state) — and, as of S11, the close-reopen-close path, since a reopen
+ * through this build always leaves a posting behind (see
+ * {@link reopenTrip}). What none of that reached was a Device dying *between
+ * the reduction and its own posting*: the reduction op landed durably, the
+ * posting did not, `postedOf` on retry still read the pre-close value, and
+ * the retry recomputed `delta` as if nothing had happened and reduced the
+ * Gear a second time.
+ *
+ * That was never fixable here, because the ops this function returns are
+ * correct — what was missing was **atomicity**, and the store appended them
+ * one at a time. It is closed after the MVP by `emitAll`
+ * (`app/src/household/store.ts`), which authors a whole gesture and appends
+ * it all-or-nothing, over `OpLog.appendAll`. So the ordering note above is
+ * now a statement about how a *partial* batch would have failed, kept
+ * because the order is still deliberate on the wire: the two ops reach peers
+ * separately and merge per register as they always did. Atomicity is about
+ * this Device's own log surviving a crash between two writes.
+ *
+ * **The consequence for any future gesture: a pair that must not half-apply
+ * is a pair for `emitAll`, not for two `emit` calls.**
  *
  * **The second path that used to sit beside it — close, reopen, close — is
  * closed at both ends, and neither end alone is enough.** This function

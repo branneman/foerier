@@ -90,7 +90,7 @@ const REOPEN_TO: PhaseKey = 'unpack'
  */
 export function Trips() {
   const state = useHousehold((depot) => depot.state)
-  const emit = useHousehold((depot) => depot.emit)
+  const emitAll = useHousehold((depot) => depot.emitAll)
   const isSplit = useMediaQuery(SPLIT)
 
   // Memoed on the fold, as `Depot` memoes `depotCounts`: the partition and its
@@ -307,9 +307,7 @@ export function Trips() {
               // now (spec §5.1); this back-fills a posting for any Gear
               // this Trip's own close reduced before this register existed
               // (spec §5.2), then moves the phase.
-              for (const spec of reopenTrip(reopenTarget, REOPEN_TO, state)) {
-                emit(spec)
-              }
+              emitAll(reopenTrip(reopenTarget, REOPEN_TO, state))
               setReopenTripId(null)
             }}
           />

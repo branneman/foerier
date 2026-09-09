@@ -1222,6 +1222,7 @@ export function Unpack() {
   const state = useHousehold((depot) => depot.state)
   const sync = useHousehold((depot) => depot.sync)
   const emit = useHousehold((depot) => depot.emit)
+  const emitAll = useHousehold((depot) => depot.emitAll)
   const header = useScreenHeader({
     splitPane: false,
     // See the docstring: the sidebar carries `TRIPS`, never one Trip's name,
@@ -1678,7 +1679,11 @@ export function Unpack() {
                   className={styles['closeButton']}
                   disabled={totals.open > 0}
                   onClick={() => {
-                    for (const spec of closeTrip(trip, state)) emit(spec)
+                    // One durable write for the whole gesture: the
+                    // Consumed reduction and the posting that records it are
+                    // a pair, and a Device dying between them leaves a
+                    // lowered owned-count nothing says was lowered.
+                    emitAll(closeTrip(trip, state))
                   }}
                 >
                   {totals.open > 0

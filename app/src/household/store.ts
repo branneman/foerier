@@ -142,6 +142,26 @@ export interface HouseholdStoreState {
    */
   emitDurable(spec: OpSpec): Promise<void>
   /**
+   * **One gesture, one durable write.** Authors every spec and appends the
+   * lot all-or-nothing, so a Device dying part-way through cannot leave a
+   * gesture half-applied.
+   *
+   * It exists for the pairs in `shared/src/gestures.ts`, where the halves are
+   * not independent: `closeTrip` writes a Consumed reduction and *then* the
+   * posting that records it, and a crash between the two leaves a lowered
+   * owned-count with nothing saying it was lowered — so the retry lowers it
+   * again. `emit` in a loop is what made that window possible, and this is
+   * what closes it.
+   *
+   * Ordering is preserved, and it still matters: the ops are authored in the
+   * order given, on ascending HLCs, and a peer folds them by those stamps
+   * however they arrive. Atomicity is about the **local log**; nothing here
+   * changes how the batch syncs, which is still op by op.
+   */
+  emitAll(specs: readonly OpSpec[]): void
+  /** {@link emitAll} with {@link emitDurable}'s handshake, for the batch. */
+  emitAllDurable(specs: readonly OpSpec[]): Promise<void>
+  /**
    * Resolves once every piece of work queued **so far** has finished, however
    * it finished. A queue-drain signal for tests and teardown — **not** a
    * durability signal: it resolves just as readily after an append that
@@ -420,6 +440,90 @@ export function createHouseholdStore(
     void emitDurable(spec).catch(() => undefined)
   }
 
+  /**
+   * {@link emitDurable}'s shape for a batch, and the differences are the
+   * point.
+   *
+   * **Every op is authored and measured before any is appended**, so a spec
+   * over §1.4's cap refuses the *gesture* rather than truncating it — a
+   * `closeTrip` that wrote its reduction and refused the posting would be the
+   * exact corruption the pair exists to prevent, arrived at by a different
+   * road.
+   *
+   * The append is one all-or-nothing write ({@link OpLog.appendAll}); the
+   * fold and the nudge happen **once** afterwards rather than per op, which
+   * is also why a batch reaches the UI as one state change instead of N.
+   *
+   * An empty batch is a legitimate no-op: `closeTrip` returns `[]` for a Trip
+   * that is already closed, and a caller should not have to check.
+   */
+  function emitAllDurable(specs: readonly OpSpec[]): Promise<void> {
+    if (specs.length === 0) return Promise.resolve()
+
+    return new Promise<void>((resolve, reject) => {
+      enqueue(async () => {
+        // One `try` around the whole job, for `emitDurable`'s reason: every
+        // exit has to settle the promise the caller holds.
+        let ops: OpEnvelope[] = []
+        let appended = false
+        try {
+          ops = specs.map((spec) => authorOp(deps.author, spec))
+
+          for (const op of ops) {
+            const bytes = opByteLength(op)
+            if (bytes > MAX_OP_BYTES) {
+              refuse({
+                reason: 'too-large',
+                type: op.type,
+                bytes,
+                limit: MAX_OP_BYTES,
+              })
+              reject(
+                new Error(
+                  `depot: refused to author ${op.type}: ${bytes} bytes is over the ${MAX_OP_BYTES}-byte cap`,
+                ),
+              )
+              return
+            }
+          }
+
+          await deps.log.appendAll(ops)
+          appended = true
+          // Durable — all of it, or none of it. Keep this adjacent to the
+          // line above, exactly as `emitDurable` does.
+          resolve()
+
+          await foldForward()
+          if (store.getState().refusal !== null) {
+            store.setState({ refusal: null })
+          }
+          nudge()
+        } catch (error) {
+          const failure =
+            error instanceof Error ? error : new Error(String(error))
+
+          if (appended) throw failure
+
+          console.error('depot: a batch could not be appended', failure)
+          refuse({
+            reason: 'not-saved',
+            // The batch is one write and fails as one; naming its first op is
+            // what a screen can say something true about.
+            type: ops[0]?.type ?? specs[0]?.type ?? 'unknown',
+            bytes: 0,
+            limit: MAX_OP_BYTES,
+            detail: failure.message,
+          })
+          reject(failure)
+        }
+      })
+    })
+  }
+
+  function emitAll(specs: readonly OpSpec[]): void {
+    void emitAllDurable(specs).catch(() => undefined)
+  }
+
   // -------------------------------------------------------------------------
   // The engine
   // -------------------------------------------------------------------------
@@ -467,6 +571,8 @@ export function createHouseholdStore(
     refusal: null,
     emit,
     emitDurable,
+    emitAll,
+    emitAllDurable,
     drained: () => queue.then(() => undefined),
     async unsyncedCount(): Promise<number> {
       // No limit: this is a count, not a batch, and a device with more queued

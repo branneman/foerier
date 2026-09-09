@@ -84,6 +84,7 @@ export interface PhaseSheetProps {
 export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
+  const emitAll = useHousehold((depot) => depot.emitAll)
   const [, navigate] = useLocation()
 
   // The phase a reopen is waiting on, and `null` when nothing is. Mount is
@@ -141,7 +142,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
    * none of them owes the Depot anything.
    */
   function reopen(phase: PhaseKey) {
-    for (const spec of reopenTrip(trip, phase, state)) emit(spec)
+    emitAll(reopenTrip(trip, phase, state))
     onClose()
   }
 
@@ -182,7 +183,7 @@ export function PhaseSheet({ trip, onClose }: PhaseSheetProps) {
       // to close: a bare `tripPhaseMoved` past this gate is exactly the
       // corruption F5's own close card exists to prevent, arriving through
       // a second door.
-      for (const spec of closeTrip(trip, state)) emit(spec)
+      emitAll(closeTrip(trip, state))
       onClose()
       return
     }

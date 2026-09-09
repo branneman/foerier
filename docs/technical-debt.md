@@ -61,23 +61,6 @@ entry.
 Something is incorrect right now — what a screen states, what a control
 offers, or what the tiers claim to cover. Nothing here is blocked on anything.
 
-- **A Device that dies between the reduction op and its posting, then
-  retries, can double-apply the Consumed reduction.** `closeTrip` reads the
-  Gear's *current* owned count, which is absolute rather than a delta. S11's
-  posting register (`trip.consumption_posted`) is what a retry consults, and
-  it closes every path where both ops landed — but `emit` appends one op at a
-  time (`store.ts`), so the gesture is not atomic, and a Device dying after
-  `gear.owned_count_set` is durable and before `trip.consumption_posted` is
-  leaves a reduced count with nothing recording that it was reduced. The
-  retry finds the same positive `owed − posted` and applies it again. **What
-  is missing is now atomicity, not a fact** — the register the earlier
-  version of this entry waited on exists, and no further op type or selector
-  would help. Closing it is a store-level change: `emit` gaining a batch that
-  is durable all-or-nothing. The op order is deliberately the safe half of the
-  pair — reduction first — because the reverse would make every later close
-  read the posting as satisfied and skip a reduction that never landed, a
-  silent under-count. `shared/src/gestures.ts`'s own docblock on `closeTrip`,
-  anchor: `does not close the crash-mid-batch debt`
 - **A pre-S11 close that the Depot could only partly satisfy is back-filled at
   the full amount it owed.** `reopenTrip`'s back-fill reconstructs a missing
   posting from `consumedReductions`, which is what that close *declared*; a

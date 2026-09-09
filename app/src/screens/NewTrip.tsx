@@ -97,6 +97,7 @@ import styles from './NewTrip.module.css'
 export function NewTrip() {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
+  const emitAll = useHousehold((depot) => depot.emitAll)
   const sync = useHousehold((depot) => depot.sync)
   const [, navigate] = useLocation()
 
@@ -215,15 +216,9 @@ export function NewTrip() {
     // the copy deliberately supplies neither (they start fresh), and a
     // Quartermaster may well pick both on the same sitting.
     if (sourceTrip !== undefined) {
-      for (const spec of startTripFrom(
-        id,
-        trimmedName,
-        sourceTrip,
-        state,
-        systemIdSource,
-      )) {
-        emit(spec)
-      }
+      // The copy is one write: a Trip created with half its gear list is
+      // a Trip nobody asked for, and the retry would create a second one.
+      emitAll(startTripFrom(id, trimmedName, sourceTrip, state, systemIdSource))
     } else {
       emit(tripCreated(id, trimmedName))
     }

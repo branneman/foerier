@@ -113,6 +113,7 @@ function fakeSchedule(): { schedule: Schedule; scheduled: ScheduledRetry[] } {
 function recordingLog(inner: OpLog, events: string[]): OpLog {
   return {
     append: (op) => inner.append(op),
+    appendAll: (ops) => inner.appendAll(ops),
     ingest: async (ops) => {
       await inner.ingest(ops)
       events.push(`ingest:${ops.length}`)
