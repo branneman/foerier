@@ -312,20 +312,33 @@ export function indexedDbOpLog(): OpLog {
         const tx = db.transaction(OP_STORE, 'readwrite')
         const appended: LoggedOp[] = []
 
-        for (const op of ops) {
-          const record = {
-            op: structuredClone(op),
-            seq: null,
-            deadLettered: false,
+        try {
+          for (const op of ops) {
+            const record = {
+              op: structuredClone(op),
+              seq: null,
+              deadLettered: false,
+            }
+            const lsn = (await tx.store.add(record)) as number
+            // `lsn` last, for `append`'s reason: the key generator may inject
+            // its own onto `record`, and the resolved key must win.
+            appended.push({ ...record, lsn })
           }
-          const lsn = (await tx.store.add(record)) as number
-          // `lsn` last, for `append`'s reason: the key generator may inject
-          // its own onto `record`, and the resolved key must win.
-          appended.push({ ...record, lsn })
-        }
 
-        await tx.done
-        return appended
+          await tx.done
+          return appended
+        } catch (error) {
+          // **A failed `add` rejects twice, and the second one has no
+          // owner.** The `add` itself rejects — that is the error worth
+          // reporting, and the one the caller is waiting on — and the abort
+          // it triggers rejects `tx.done` separately with an `AbortError`.
+          // The loop has already left by then, so nothing awaits `tx.done`
+          // and Node reports an unhandled rejection: green tests, red run.
+          // Claiming it here is the whole fix; the rollback it announces is
+          // the behaviour this batch exists for.
+          tx.done.catch(() => undefined)
+          throw error
+        }
       })
     },
 
