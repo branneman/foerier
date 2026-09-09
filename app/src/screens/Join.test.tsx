@@ -46,6 +46,26 @@ describe('the join screen', () => {
     ).toBeInTheDocument()
   })
 
+  /**
+   * **§5n K30 finished this frame rather than unblocking it.** The board's
+   * `YOU JOIN AS · Els` and `INVITED BY · Mark` want a Person's name on a
+   * screen that renders before the Device has a session or a fold, which
+   * auth-design §2.1 forbids the server from holding at all — so the rows are
+   * withdrawn, permanently. A **sentence** cannot withdraw the same way, so
+   * the recipient line drops the name instead of the line.
+   */
+  it('offers the recipient-free fallback in place of the board’s Not Els?', () => {
+    render(<Join {...defaults} preview={aPreview()} />)
+
+    expect(
+      screen.getByText('Not you? Ask a household member for a new link.'),
+    ).toBeInTheDocument()
+    // The withdrawal, asserted so a later round cannot quietly draw one of
+    // them empty: neither row is here, and neither is a name of a Person.
+    expect(screen.queryByText(/YOU JOIN AS/i)).toBeNull()
+    expect(screen.queryByText(/INVITED BY/i)).toBeNull()
+  })
+
   it('says plainly that opening the link consumed nothing', () => {
     // The rule that makes link previews harmless, stated where the user is
     // deciding (auth-design.md §3.3).
@@ -96,6 +116,16 @@ describe('the join screen', () => {
       expect(
         screen.getByText('Household and depot start empty.'),
       ).toBeInTheDocument()
+    })
+
+    it('draws no recipient fallback on a link that starts a household', () => {
+      // Nobody to be wrong about, and no household member to ask — the line
+      // would name two things that do not exist yet.
+      render(<Join {...defaults} preview={firstLogin} />)
+
+      expect(
+        screen.queryByText('Not you? Ask a household member for a new link.'),
+      ).toBeNull()
     })
 
     it('will not continue without a name', async () => {

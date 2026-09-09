@@ -1330,7 +1330,14 @@ byte-exact.
   lines means deciding that the server may hold or derive domain names for
   unauthenticated callers holding a link, which is a change to the tenancy
   posture rather than a field on a response. Recorded as a decision, not a
-  chore. `household_seq` on the join response — which would let the confirm
+  chore. **§5n K30 took it**: the two rows are withdrawn permanently rather
+  than left waiting, and the frame is finished as what it can honestly be —
+  a one-row `Household · Veldkamp` card, which the server does know. The
+  useful half of that ruling is the asymmetry it names: **a sentence cannot
+  withdraw the way a row can**, so `Join as Els` became `Join Veldkamp` and
+  `Not Els? Ask Mark for a new link.` became `Not you? Ask a household member
+  for a new link.` — the same fallback, addressed to nobody in particular.
+  `household_seq` on the join response — which would let the confirm
   frame's `OP 0 OF —` denominator resolve without waiting on the first pull —
   remains a candidate for a trip that is made for other reasons, and is not
   blocked on any of this.

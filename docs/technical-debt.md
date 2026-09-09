@@ -219,19 +219,6 @@ them looking for work is the thing this section exists to stop.
   declaration, but which one is a design call.
   [`docs/design/README.md`](design/README.md) §6, anchor:
   `no frame draws Find at 1024`
-- **The join confirm's `YOU JOIN AS` and `INVITED BY` need the server to
-  know a Person's name, which §2.1 forbids.** Both are drawn before the
-  Device has a session or a fold, so only the server could state them — and
-  there is no `person` table, `login.person_id` is a dumb UUID with no
-  foreign key, and the op log the names live in is opaque to the server by
-  design. Drawing them means deciding the server may hold or derive domain
-  names for an unauthenticated caller holding a link: a change to the tenancy
-  posture, not a field on a response. **The third line the board blocked on
-  the same field is built** — the success frame's `Els · Veldkamp` resolves
-  the Invite's `person_id` against the fold, because that frame draws after
-  the join. `household_seq` on the join response is unrelated and unblocked.
-  [`architecture-design.md`](architecture-design.md) §12.2, anchor:
-  `blocked on §2.1, not on a contract`
 - **The store's `refusal` channel has no reader.** An op that could not be
   written — a 16 KB overflow, an IndexedDB failure — sets `depot.refusal`
   and is logged to the console, and no screen draws it, so the Quartermaster

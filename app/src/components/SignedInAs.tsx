@@ -11,8 +11,9 @@ import styles from './SignedInAs.module.css'
  * **The board tagged it `API FIELD` and it needed no API field.** All three of
  * §9's name lines were recorded as blocked on the join endpoints returning a
  * person name; that is true of the *confirm* frame's `YOU JOIN AS` and
- * `INVITED BY`, which are drawn before this Device has a session, and it is
- * not true here. By the time this frame renders, the Device has signed in and
+ * `INVITED BY`, which are drawn before this Device has a session — and §5n
+ * K30 has since **withdrawn** those two rather than unblocking them, the tag
+ * having been the wrong description of the blocker. It was never true here. By the time this frame renders, the Device has signed in and
  * is folding the household's own log — where the name lives. The Person is
  * `person_id` on the Invite, and resolving a `person_id` against the fold is
  * exactly what [auth-design §2.1](../../../docs/auth-design.md) says the

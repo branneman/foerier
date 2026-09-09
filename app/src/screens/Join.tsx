@@ -44,6 +44,28 @@ export interface JoinProps {
  * and mail scanners fetch links to build previews, and a GET-consumes design
  * would let a preview burn a single-use Invite before its recipient ever
  * tapped it (`auth-design.md` §3.3).
+ *
+ * ## The confirm frame states what the server can state, permanently
+ *
+ * §5n K30 reversed a *blocked* frame into a finished one. The board drew
+ * `YOU JOIN AS · Els` and `INVITED BY · Mark` above a `Join as Els` CTA, and
+ * all three want a Person's **name** on a screen that renders before the
+ * Device has a session or a fold — so only the server could supply it, and
+ * [auth-design §2.1](../../../docs/auth-design.md) is the reason it cannot:
+ * there is no `person` table, `login.person_id` is a dumb UUID with no
+ * foreign key, and the op log the names live in is opaque to the server by
+ * design. That is a tenancy decision, not a missing field, and it is taken:
+ * **the two rows are withdrawn** rather than drawn empty.
+ *
+ * **A sentence cannot withdraw, though, which is what makes the CTA and the
+ * fallback different from the rows.** `Join as Els` becomes `Join Veldkamp` —
+ * the household is the thing being joined and the server does know its
+ * name — and `Not Els? Ask Mark for a new link.` becomes the recipient-free
+ * `Not you? Ask a household member for a new link.`, which is the explainer
+ * sheet's own register, so no new voice enters the app. The line is drawn
+ * only where there is a recipient to be wrong about: a link that starts a
+ * *new* household is addressed to nobody, and there are no household members
+ * to ask.
  */
 export function Join({
   preview,
@@ -201,6 +223,14 @@ export function Join({
       >
         {namesThemselves ? 'Continue' : `Join ${preview.household_name}`}
       </button>
+
+      {/* §5n K30. Not drawn on the bootstrap link: it names nobody, and the
+          household it starts has no members yet to ask. */}
+      {!namesThemselves && (
+        <p className={styles['quiet']}>
+          Not you? Ask a household member for a new link.
+        </p>
+      )}
 
       {/* The S3.5 door (`docs/design/README.md` §10). The sign-in screen uses
           these exact words for its explainer sheet; here a secret is in hand,
