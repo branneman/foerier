@@ -206,13 +206,6 @@ second pane.
   line beneath it sit mid-screen on exactly the device the thumb zone exists for.
   [`design/README.md`](design/README.md) §5, anchor:
   `` `AddGear` still has (3) ``
-- **`ui/Sheet` renders every title in the display face**, and `Screens B` 02A
-  draws `SET PHASE` as a mono eyebrow. Restyling the primitive is wrong — every
-  other sheet and confirm in the app is sentence case and belongs in display — so
-  the fix is an opt-in prop that one caller passes, parked for whichever slice
-  next opens `ui/`'s overlay primitives.
-  [`architecture-design.md`](architecture-design.md) §12.11, anchor:
-  `` `titleTone` on `Sheet` that `PhaseSheet` alone passes ``
 - **`InvitePreview` carries no person name**, so the join confirm's `YOU JOIN AS`
   and `INVITED BY` lines and the success frame's `Els · Veldkamp` are
   half-buildable and neither frame renders them. Widening the auth contract on a
