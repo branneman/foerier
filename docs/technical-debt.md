@@ -303,18 +303,6 @@ every one of them gets more expensive per slice.
   already compute them. `TripCard` has the same shape of debt at one read.
   [`patterns.md`](patterns.md) §5.2, anchor:
   `computes its own groups`
-- **`HomePicker` holds its own MOVE confirm; every other picker leaves the
-  decision to its caller.** `patterns.md` §4.3's rule — a picker is pure
-  selection, and the caller decides whether a confirm stands between the pick
-  and the write — holds for `PackPicker`'s `ContainerMoveConfirm` but not for
-  `HomePicker`: its `Confirm` is drawn inside the sheet itself, switched on by
-  the caller-supplied `moving.confirm` flag rather than by the caller's own
-  JSX. Lifting it out is more than a cut-and-paste: the confirm's title names
-  the destination the picker just resolved
-  (`` `Move ${moving.name} to ${pending.label}?` ``), a fact only the picker
-  holds today, so a caller-owned confirm needs that label reported back
-  through `onSelect` or a second callback before the sheet can lose its own
-  copy. `HomePicker.tsx`, anchor: `MOVE's confirmation. Not on the board`
 - **The mono-caps label is the most-copied rule in the codebase, and the
   small sizes have no token.** Seventy-six uppercase-label rules across
   twenty-nine modules, nineteen carrying the full three-line recipe verbatim;

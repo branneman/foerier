@@ -22,6 +22,7 @@ import {
   personLabel,
   residenceOf,
   sameResidence,
+  type Residence,
   tagsOf,
   type GearState,
   type HouseholdState,
@@ -46,6 +47,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'wouter'
 
+import { HomeMoveConfirm } from '../components/HomeMoveConfirm'
 import { HomePicker } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
@@ -53,7 +55,7 @@ import {
   WhereaboutsCard,
   type WhereaboutsCardUnaccounted,
 } from '../components/WhereaboutsCard'
-import { KIND_OPTIONS } from '../household/gear'
+import { homeLabel, KIND_OPTIONS } from '../household/gear'
 import { personInitial, sortedPeople } from '../household/people'
 import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
@@ -277,6 +279,13 @@ export function GearDetail() {
   const header = useScreenHeader({ splitPane: true })
 
   const [moveOpen, setMoveOpen] = useState(false)
+  /**
+   * The home MOVE has picked, waiting on its confirm — this screen's, not the
+   * picker's (`patterns.md` §4.3). The sheet stays open behind it, so Cancel
+   * returns to the list the pick was made from, which is what the confirm
+   * drawn *inside* the sheet used to give for free.
+   */
+  const [pendingMove, setPendingMove] = useState<Residence | null>(null)
   const [resolveOpen, setResolveOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -610,31 +619,52 @@ export function GearDetail() {
       {moveOpen && (
         <HomePicker
           onClose={() => setMoveOpen(false)}
-          onSelect={(residence) => {
-            // The picker reports the `● NOW` row like any other, and
-            // suppressing it is this caller's job (`HomePicker`'s `onSelect`
-            // contract, `Packing.tsx`'s `sameTripResidence` shape). A
-            // `gear.rehomed` naming the home the gear already has is a
-            // needless write, and a needless write is never free: it moves
-            // the stamp LWW compares and can silently beat a genuine move
-            // queued on a Device that was offline.
-            if (!sameResidence(residenceOf(gear), residence)) {
-              emit(gearRehomed(gearId, residence))
-            }
-            setMoveOpen(false)
-          }}
+          // MOVE confirms — story 36 (Undo) being Later is what makes it
+          // necessary — and the confirm is **this screen's** rather than the
+          // sheet's (`patterns.md` §4.3). The picker stays open behind it, so
+          // Cancel returns to the list the pick was made from.
+          //
+          // Every pick raises it, the `● NOW` row included, which is what the
+          // sheet's own confirm did: the suppression is a rule about the
+          // *write*, not about the dialog, and moving it earlier would be a
+          // behaviour change this lift has no business making.
+          onSelect={setPendingMove}
           excludeGearId={gearId}
           // Always passed: an absent register **is** loose (`residenceOf`),
           // so the Loose row is `● NOW` for gear recorded with no home rather
           // than nothing being marked at all.
           current={residenceOf(gear)}
-          // MOVE, so the picker draws the context line and confirms before it
-          // moves anything (see `HomePicker`'s header for why story 36 makes
-          // that necessary).
+          // MOVE, so the picker draws the context line and the ride-along.
           moving={{
             name,
             // §5i G2: what moves, at any depth — never the lid-open count.
             ridesAlong: homeRidesAlongCount(gearId, state, view),
+          }}
+        />
+      )}
+
+      {pendingMove !== null && (
+        <HomeMoveConfirm
+          variant="move"
+          movingName={name}
+          // Derived from the residence rather than reported back by the
+          // picker: `homeLabel` draws the same words the row did, which is
+          // what let the sheet lose its own copy of this confirm.
+          destinationName={homeLabel(state.places, state.gear, pendingMove)}
+          ridesAlong={homeRidesAlongCount(gearId, state, view)}
+          onCancel={() => setPendingMove(null)}
+          onConfirm={() => {
+            // Suppressing the `● NOW` pick is this caller's job (`HomePicker`
+            // reports every row; `Packing.tsx`'s `sameTripResidence` shape).
+            // A `gear.rehomed` naming the home the gear already has is a
+            // needless write, and a needless write is never free: it moves
+            // the stamp LWW compares and can silently beat a genuine move
+            // queued on a Device that was offline.
+            if (!sameResidence(residenceOf(gear), pendingMove)) {
+              emit(gearRehomed(gearId, pendingMove))
+            }
+            setPendingMove(null)
+            setMoveOpen(false)
           }}
         />
       )}
@@ -688,18 +718,19 @@ export function GearDetail() {
           // R32: only a container needs MOVE's own exclusion, footer and
           // ride-along disclosure — an ordinary gear has no subtree to
           // state, and `Unpack.tsx`'s own re-home row takes the identical
-          // shape for the identical reason. `confirm: false` (Task 14's own
-          // `moving.confirm`) keeps this undialogued while still disclosing
-          // the ride-along: re-homing a lost container would otherwise
-          // silently relocate everything inside it, with nothing on screen
-          // saying so.
+          // shape for the identical reason. **This route stays
+          // undialogued**, which F16(3) draws: it renders no
+          // `HomeMoveConfirm`, where MOVE above does. It used to say so
+          // through a `confirm: false` flag on the sheet; now the absence of
+          // a confirm at the call site *is* the statement, and the
+          // ride-along line still discloses that re-homing a lost container
+          // relocates everything inside it.
           {...(gear.container?.value === true
             ? {
                 moving: {
                   name,
                   // §5i G2: what moves, at any depth.
                   ridesAlong: homeRidesAlongCount(gearId, state, view),
-                  confirm: false,
                 },
               }
             : {})}

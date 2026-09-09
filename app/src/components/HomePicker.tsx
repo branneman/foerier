@@ -56,22 +56,24 @@ import styles from './HomePicker.module.css'
  * confirms**. Picking a home for gear that does not exist yet (Add Gear) does
  * not, because there is no prior state to lose.
  *
- * **`moving.confirm` names which confirm the caller's act owes**, and §5i
- * G15 finishes §1's rule for the two S10 routes. F8 stays blessed for a
- * **plain** row — it jumps to its new room and a second re-home is the
- * reversal — and F5 passes no `moving` at all there, so nothing is raised.
- * A **container** row passes `confirm: 're-home'`: the row jumps, but every
- * home path beneath it is rewritten too, and those rows are elsewhere on
- * the screen and may be filtered out. `false` remains for a caller that
- * wants `moving`'s exclusion, `● NOW` mark and ride-along line with no
- * dialog — gear detail's `RESOLVE`, whose settle route F16(3) draws
- * undialogued.
+ * **The confirm itself is the caller's** — `HomeMoveConfirm`, rendered
+ * beside this sheet by whichever screen opened it. It was drawn *inside*
+ * here until after the MVP, switched on by a `moving.confirm` flag, which
+ * made this the one picker in the app holding a business rule
+ * (`patterns.md` §4.3); `PackPicker` had always done it the other way. What
+ * `moving` still carries is what this sheet **draws**: the exclusion, the
+ * `● NOW` mark and the ride-along line.
  *
- * `confirm` lives **inside** `moving` rather than beside it (`patterns.md`
- * §4.4's grouped-optional precedent, `SettleRoutes`) precisely so `confirm`
- * without `moving` is unrepresentable — a caller cannot silently opt out of
- * a confirm it never asked to have. `GearDetail`'s own MOVE never sets it,
- * so it defaults to `'move'` and stays confirmed exactly as before.
+ * The lift needed nothing reported back, though it was recorded as needing
+ * it: the confirm names the destination, and a caller has the `Residence`
+ * this reports plus the fold, so `homeLabel` derives the same words the row
+ * drew — `Packing.tsx`'s `nameOfResidence` one world over.
+ *
+ * §1's rule for who confirms is unchanged and now lives entirely at the
+ * callers: gear detail's MOVE confirms (no jump to see), F5's **container**
+ * re-home confirms (§5i G15 — the row jumps, but every home path beneath it
+ * is rewritten, and those rows may be filtered out under `○ OPEN`), and F5's
+ * **plain** row does not (F8: one op, and the row visibly jumps).
  *
  * ## `context`
  *
@@ -91,15 +93,14 @@ import styles from './HomePicker.module.css'
  * settle route (F16(3)), which draws `● NOW — FOUND HERE` because picking
  * the current home there is the settling fact, not a restatement of one.
  * This is a label change only: the row's own tap behaviour is already
- * whatever `moving`'s presence (or its own `confirm`) decides, unaffected by
- * this prop.
+ * whatever the caller does with the pick, unaffected by this prop.
  *
  * ## Mounted is open
  *
  * There is no `open` prop, and losing it was a fix rather than a tidy. This
  * picker used to be mounted permanently by gear detail and early-return
  * `null`, so every piece of state below — EDIT mode, the rename and new-place
- * drafts, the pending remove and the pending move — **survived a close** and
+ * drafts and the pending remove — **survived a close** and
  * came back on the next open. Tap EDIT, close, reopen, and selection was
  * still suspended with nothing on screen saying why. Mount is the reset.
  */
@@ -115,9 +116,9 @@ export interface HomePickerProps {
   /** The gear's home right now, marked `● NOW`. */
   current?: Residence
   /**
-   * MOVE's own facts, grouped rather than sibling props — `patterns.md`
-   * §4.4's precedent (`SettleRoutes`): grouping makes `confirm` without
-   * `moving` unrepresentable, which a lone boolean would not.
+   * MOVE's own facts — what this sheet draws about the thing being moved:
+   * the exclusion, the `● NOW` mark and the ride-along line. Whether the
+   * pick then raises a confirm is the caller's (`HomeMoveConfirm`).
    */
   moving?: {
     name: string
@@ -135,24 +136,6 @@ export interface HomePickerProps {
      * sharing one phrase and one number.
      */
     ridesAlong: number
-    /**
-     * **Which confirm this caller's act owes**, §1's one rule: *the confirm
-     * is owed where the act cannot be seen on the screen that made it.*
-     *
-     * - `'move'` (the default) — gear detail's MOVE, which shows no jump.
-     * - `'re-home'` — F5's **container** row (§5i G15). The row itself
-     *   jumps, but a container's re-home also rewrites every home path
-     *   beneath it, and those rows are elsewhere on F5 and may be filtered
-     *   out under `○ OPEN`. F4's container move confirms for exactly this.
-     * - `false` — F5's **plain** row (F8, blessed at G15): one op, and the
-     *   row visibly jumps to its new room.
-     *
-     * The picker owns both copy blocks rather than taking them as props,
-     * because each needs the destination and the ride-along count, which
-     * are this component's to know — the caller names its act and nothing
-     * more, exactly as {@link HomePickerProps.context} works.
-     */
-    confirm?: 'move' | 're-home' | false
   }
   /**
    * The line above the list, in §5i G5's own grammar: **act · what moves ·
@@ -309,11 +292,6 @@ export function HomePicker({
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [removingId, setRemovingId] = useState<string | null>(null)
-  const [pending, setPending] = useState<{
-    residence: Residence
-    label: string
-  } | null>(null)
-
   const view = containmentView(state)
   const excluded = useMemo(
     () => excludedSubtree(view, excludeGearId),
@@ -337,25 +315,16 @@ export function HomePicker({
           .filter((gear) => gear?.retired?.value !== true).length
 
   /**
-   * Which confirm the pending pick raises — `moving.confirm`'s own value,
-   * read once so the gate below and the dialog's own copy can never
-   * disagree about which act is being confirmed.
-   */
-  const reHomeConfirm = moving?.confirm === 're-home'
-
-  /**
-   * Selection — reports every pick, the current one included
+   * Selection — reports **every** pick, the current one included
    * (`patterns.md` §4.3: a picker holds no business rule, and the `● NOW`
-   * mark is a mark, not a gate), gated only on the caller's own confirm.
+   * mark is a mark, not a gate). Whether a confirm stands between this and
+   * the write is the caller's, which is the whole of what the MOVE confirm's
+   * lift changed here.
    */
-  function choose(residence: Residence, label: string) {
+  function choose(residence: Residence) {
     // Edit suspends selection: rows stop closing the sheet.
     if (editing) return
-    if (moving === undefined || moving.confirm === false) {
-      onSelect(residence)
-      return
-    }
-    setPending({ residence, label })
+    onSelect(residence)
   }
 
   function startRename(id: string, currentName: string) {
@@ -389,7 +358,7 @@ export function HomePicker({
     // Created while picking = selected immediately. A new shelf enters
     // mid-sitting, and making the Quartermaster find it and tap again is the
     // round-1 behaviour this replaces.
-    choose({ in: 'place', id }, trimmed)
+    choose({ in: 'place', id })
   }
 
   function confirmRemove() {
@@ -460,7 +429,7 @@ export function HomePicker({
           <button
             type="button"
             className={`${styles['looseRow']} ${editing ? styles['dim'] : ''}`}
-            onClick={() => choose({ in: 'loose' }, 'Loose')}
+            onClick={() => choose({ in: 'loose' })}
           >
             <span className={styles['rowMain']}>
               <span className={styles['rowName']}>Loose</span>
@@ -515,7 +484,7 @@ export function HomePicker({
                   <button
                     type="button"
                     className={styles['placeSelect']}
-                    onClick={() => choose({ in: 'place', id: place.id }, name)}
+                    onClick={() => choose({ in: 'place', id: place.id })}
                   >
                     <span className={styles['rowName']}>
                       {/* The glyph is the *world*, drawn — a screen reader
@@ -564,9 +533,7 @@ export function HomePicker({
                         className={`${styles['containerSelect']} ${
                           editing ? styles['dim'] : ''
                         }`}
-                        onClick={() =>
-                          choose({ in: 'gear', id: row.id }, row.name)
-                        }
+                        onClick={() => choose({ in: 'gear', id: row.id })}
                       >
                         <span className={styles['rowMain']}>
                           <span className={styles['rowName']}>{row.name}</span>
@@ -663,62 +630,6 @@ export function HomePicker({
                   onClick={confirmRemove}
                 >
                   Remove place
-                </button>
-              </Confirm.Action>
-            </>
-          }
-        />
-      )}
-
-      {/* The move confirmations — MOVE's, not on any board (see this
-            module's header for why story 36 makes it necessary), and the
-            re-home's, which §5i G15 draws. The primary stays accent in
-            both: nothing is being destroyed. */}
-      {pending !== null && moving !== undefined && (
-        <Confirm
-          title={
-            reHomeConfirm
-              ? `Re-home ${moving.name} to ${pending.label}?`
-              : `Move ${moving.name} to ${pending.label}?`
-          }
-          description={
-            reHomeConfirm ? (
-              <>
-                <span className={styles['confirmBody']}>
-                  {moving.name} and everything inside it move at home. It is
-                  marked back; its contents keep their own outcomes.
-                </span>
-                {/* Both writes as numbers — what moves, and the outcome the
-                    pick implies (F8). `ContainerMoveConfirm`'s own shape one
-                    screen over, whose mono line states the trip-world pair. */}
-                <span className={styles['confirmFact']}>
-                  {moving.ridesAlong} RIDE ALONG · OUTCOME → BACK
-                </span>
-              </>
-            ) : moving.ridesAlong === 1 ? (
-              '1 piece of gear inside it moves too.'
-            ) : (
-              `${moving.ridesAlong} pieces of gear inside it move too.`
-            )
-          }
-          onClose={() => setPending(null)}
-          actions={
-            <>
-              <Confirm.Cancel>
-                <button type="button" className={styles['ghost']}>
-                  Cancel
-                </button>
-              </Confirm.Cancel>
-              <Confirm.Action>
-                <button
-                  type="button"
-                  className={styles['confirmMove']}
-                  onClick={() => {
-                    onSelect(pending.residence)
-                    setPending(null)
-                  }}
-                >
-                  {reHomeConfirm ? 'Re-home' : 'Move gear'}
                 </button>
               </Confirm.Action>
             </>

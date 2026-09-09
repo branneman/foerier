@@ -617,15 +617,26 @@ pick and nothing stands between it and the caller's own decision. The `● NOW`
 mark is otherwise every picker's only knowledge of the current value, and it
 is a mark, not a gate.
 
-**`HomePicker` is the one picker that does not hold to "no business rule."**
-Its own MOVE confirm is drawn **inside** the sheet, gated by the
-caller-supplied `moving.confirm` flag (default `true`) rather than by the
-caller's own JSX — `GearDetail`'s move confirm is this internal one, not a
-sibling component the screen renders itself. Lifting it out to the callers is
-recorded as debt (`technical-debt.md`), and is more than it looks: the
-confirm's title names the destination the picker just resolved
-(`` `Move ${moving.name} to ${pending.label}?` ``), a fact only the picker
-holds today.
+**`HomePicker` was the one picker that did not hold to "no business rule",
+and it does now.** Its MOVE confirm was drawn **inside** the sheet, switched
+on by a caller-supplied `moving.confirm` flag rather than by the caller's own
+JSX; it is `HomeMoveConfirm`, rendered beside the sheet by `GearDetail` (MOVE)
+and `Unpack` (a container's re-home, §5i G15), with the sheet left open behind
+it so Cancel returns to the list. `moving` still carries what the sheet
+*draws* — the exclusion, the `● NOW` mark, the ride-along line.
+
+**The recorded blocker turned out not to exist**, which is worth keeping: the
+lift was logged as needing the destination label reported back through
+`onSelect`, because the confirm names where the gear is going and only the
+picker held that word. A caller has the `Residence` and the fold, so
+`homeLabel` derives the same words the row drew — `Packing.tsx`'s
+`nameOfResidence` one world over. Widening the callback would have made every
+caller carry a label it can compute.
+
+A lift like this is **behaviour-neutral or it is a second change**: every pick
+still raises the confirm, the `● NOW` row included, because suppressing it is
+a rule about the *write* (`sameResidence`, at the caller's `onConfirm`) and
+not about the dialog.
 
 *Departures:* who closes after a pick is decided per component — `PackPicker`
 and `PhaseSheet` close themselves, the rest are closed by the caller.

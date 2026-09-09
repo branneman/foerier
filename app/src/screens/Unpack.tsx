@@ -17,6 +17,7 @@ import {
   reHomeOnTheSpot,
   rehomedSinceOutcome,
   residenceOf,
+  type Residence,
   returnPathOf,
   tripContainmentView,
   tripLabel,
@@ -44,6 +45,7 @@ import {
 import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'wouter'
 
+import { HomeMoveConfirm } from '../components/HomeMoveConfirm'
 import { HomePicker } from '../components/HomePicker'
 import { NotesReviewCard } from '../components/NotesReviewCard'
 import { overClaimGroups, OverClaimGroups } from '../components/OverClaimBand'
@@ -56,6 +58,7 @@ import bandStyles from '../components/OverClaimBand.module.css'
 import { circleToneForOutcome, OutcomeSheet } from '../components/OutcomeSheet'
 import { UnpackRow } from '../components/UnpackRow'
 import { personInitial } from '../household/people'
+import { homeLabel } from '../household/gear'
 import { useHousehold } from '../household/store'
 import {
   openLabel,
@@ -1250,6 +1253,14 @@ export function Unpack() {
   // unresolved included Piece back, not only the one the tap named).
   const [reHomeEntryId, setReHomeEntryId] = useState<string | null>(null)
 
+  /**
+   * The home a container's re-home has picked, waiting on its confirm (§5i
+   * G15) — this screen's confirm, not the picker's (`patterns.md` §4.3).
+   * The sheet stays open behind it, so Cancel returns to the list the pick
+   * was made from.
+   */
+  const [pendingReHome, setPendingReHome] = useState<Residence | null>(null)
+
   const trip = tripId === undefined ? undefined : state.trips[tripId]
 
   /**
@@ -1438,6 +1449,31 @@ export function Unpack() {
       : homeRidesAlongCount(reHomeGearId, state, view)
   const reHomeIsContainer =
     reHomeEntry !== undefined && isContainerEntry(reHomeEntry, state)
+
+  /**
+   * The re-home write — the gesture, not re-derived here (`gestures.ts`'s
+   * own three rules: the outcome write suppressed only when already `back`,
+   * the rehome unconditional, a non-container per-person Entry fanned out
+   * per Piece). One durable write, for the reason every gesture takes one: a
+   * per-person container fans out to a `gear.rehomed` plus an outcome per
+   * Piece, and a Device dying part-way leaves some Pieces marked back and
+   * the gear re-homed for none of them.
+   *
+   * Both paths end here — a plain row writes on the pick, a container's on
+   * its confirm — so the two cannot come apart.
+   */
+  function reHome(residence: Residence): void {
+    if (
+      trip === undefined ||
+      reHomeEntry === undefined ||
+      reHomeGearId === undefined
+    ) {
+      return
+    }
+    emitAll(reHomeOnTheSpot(trip, reHomeEntry, reHomeGearId, residence, state))
+    setPendingReHome(null)
+    setReHomeEntryId(null)
+  }
 
   return (
     <div className={styles['screen']}>
@@ -1720,50 +1756,52 @@ export function Unpack() {
           <HomePicker
             onClose={() => setReHomeEntryId(null)}
             onSelect={(residence) => {
-              // The gesture, not re-derived here (`gestures.ts`'s own three
-              // rules — the outcome write suppressed only when already
-              // `back`, the rehome unconditional, a non-container per-person
-              // Entry fanned out per Piece): the screen hands its whole
-              // `OpSpec[]` to `emitAll`, in the order returned.
-              //
-              // One durable write, for the reason every gesture takes it: a
-              // per-person container fans out to one `gear.rehomed` plus an
-              // outcome per Piece, and a Device dying part-way leaves some
-              // Pieces marked back and the gear re-homed for none of them.
-              emitAll(
-                reHomeOnTheSpot(
-                  trip,
-                  reHomeEntry,
-                  reHomeGearId,
-                  residence,
-                  state,
-                ),
-              )
-              setReHomeEntryId(null)
+              // A container's re-home confirms first (§5i G15) — this
+              // screen's confirm, with the picker still open behind it so
+              // Cancel returns to the list. A plain row writes on the pick.
+              if (reHomeIsContainer) {
+                setPendingReHome(residence)
+                return
+              }
+              reHome(residence)
             }}
             excludeGearId={reHomeGearId}
             current={residenceOf(reHomeGear)}
             context={reHomeContext(entryLabel(reHomeEntry, state))}
             // Only a container needs MOVE's own exclusion, footer and
-            // ride-along line (spec §4.6) — and a container is also the one
-            // shape here that **confirms**: §5i G15 finishes §1's rule (the
+            // ride-along line (spec §4.6). A container is also the one shape
+            // here that **confirms** — §5i G15 finishes §1's rule (the
             // confirm is owed where the act cannot be seen on the screen
-            // that made it) for this route. The row itself jumps, which is
-            // why a **plain** row still raises nothing — it passes no
-            // `moving` at all — but a container's re-home rewrites every
-            // home path beneath it, and those rows are elsewhere on F5 and
-            // may be filtered out under `○ OPEN`.
+            // that made it) for this route — but that confirm is this
+            // screen's now (`HomeMoveConfirm`, below), not something the
+            // sheet is asked to raise. The row itself jumps, which is why a
+            // **plain** row raises nothing; a container's re-home rewrites
+            // every home path beneath it, and those rows are elsewhere on F5
+            // and may be filtered out under `○ OPEN`.
             {...(reHomeIsContainer
               ? {
                   moving: {
                     name: entryLabel(reHomeEntry, state),
                     ridesAlong: reHomeRidesAlong,
-                    confirm: 're-home' as const,
                   },
                 }
               : {})}
           />
         )}
+
+      {reHomeEntry !== undefined && pendingReHome !== null && (
+        <HomeMoveConfirm
+          variant="re-home"
+          movingName={entryLabel(reHomeEntry, state)}
+          // Derived from the residence rather than reported back by the
+          // picker — `homeLabel` draws the same words the row did, which is
+          // what let the sheet lose its own copy of this confirm.
+          destinationName={homeLabel(state.places, state.gear, pendingReHome)}
+          ridesAlong={reHomeRidesAlong}
+          onCancel={() => setPendingReHome(null)}
+          onConfirm={() => reHome(pendingReHome)}
+        />
+      )}
     </div>
   )
 }

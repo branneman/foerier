@@ -1,0 +1,42 @@
+@layer components {
+  /* The re-home confirm's two lines (§5i G15) — `ContainerMoveConfirm`'s own
+     anatomy one world over, the body in UI text and the count in mono
+     beneath it. */
+  .body {
+    display: block;
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+  }
+
+  .fact {
+    display: block;
+    margin-top: var(--space-8);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-muted);
+  }
+
+  /* Nothing is destroyed by a move, so the primary stays accent. */
+  .primary {
+    min-height: max(2.75rem, 44px);
+    padding-inline: var(--space-16);
+    border: 0;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-bg-base);
+    font: var(--text-body) var(--font-ui);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .ghost {
+    min-height: max(3rem, 48px);
+    padding-inline: var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}

@@ -1,4 +1,4 @@
-import type { KindValue } from '@foerier/shared'
+import type { KindValue, Residence } from '@foerier/shared'
 import type { SegmentedOption } from '@foerier/ui'
 
 /**
@@ -43,3 +43,33 @@ export const TRAIT_OPTIONS: readonly SegmentedOption<TraitValue>[] = [
   { value: 'item', label: 'Item' },
   { value: 'container', label: 'Container' },
 ]
+
+/**
+ * A home residence's display label — the words a picker row draws, and the
+ * words a confirm names the destination by.
+ *
+ * **Hoisted out of `AddGear` when the Home picker's MOVE confirm moved to its
+ * callers.** The confirm names where the gear is going
+ * (`Move Crate B to Attic?`), and the caller has only the {@link Residence}
+ * the picker handed it — so either the picker reports its own row label back
+ * through a widened `onSelect`, or the label is derived from the residence,
+ * which is what `Packing.tsx` already does one world over (`nameOfResidence`,
+ * beside its own caller-owned confirm). Deriving keeps the picker a pure
+ * selection component, which is the rule the lift was for.
+ *
+ * An undefined or `loose` residence reads `Loose`: an absent register **is**
+ * loose (invariant 1, `residenceOf`), and the picker's own Loose row carries
+ * that word.
+ *
+ * A holder with no name yields `''` rather than a placeholder — the caller
+ * knows what it is drawing and picks its own, exactly as `PathSegment` does.
+ */
+export function homeLabel(
+  places: Readonly<Record<string, { name?: { value: string | null } }>>,
+  gear: Readonly<Record<string, { name?: { value: string | null } }>>,
+  home: Residence | undefined,
+): string {
+  if (home === undefined || home.in === 'loose') return 'Loose'
+  const entity = home.in === 'place' ? places[home.id] : gear[home.id]
+  return entity?.name?.value ?? ''
+}

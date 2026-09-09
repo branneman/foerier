@@ -588,13 +588,19 @@ describe('the Home picker — MOVE', () => {
   })
 
   /**
-   * **The departure from the board, and why.** Screens A §07 ends MOVE with
-   * "selection moves and closes; UNDO per the global rule". There is no
-   * global Undo rule in force — story 36 is Later and opens with a design
-   * phase — and a mis-tapped destination in a nested picker is otherwise
-   * unrecoverable without re-navigating. So MOVE confirms.
+   * **The departure from the board, and where it now lives.** Screens A §07
+   * ends MOVE with "selection moves and closes; UNDO per the global rule".
+   * There is no global Undo rule in force — story 36 is Later and opens with
+   * a design phase — and a mis-tapped destination in a nested picker is
+   * otherwise unrecoverable without re-navigating. So MOVE confirms, and
+   * after the MVP the confirm became the **caller's**: `GearDetail`'s suite
+   * holds `Move Crate B to Shed?`, its Cancel and its `Move gear`, because
+   * that screen is what renders `HomeMoveConfirm` beside this sheet.
+   *
+   * What this file still owns is the picker's own half of the contract, and
+   * it is one sentence: every pick is reported, and nothing is raised.
    */
-  it('confirms before moving, because Undo is not built', async () => {
+  it('reports a pick with no dialog of its own, whatever is being moved', async () => {
     const { store, crateId, shedId } = await aCrateInAnAttic()
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
@@ -603,33 +609,15 @@ describe('the Home picker — MOVE', () => {
     })
 
     await user.click(screen.getByRole('button', { name: /Shed/ }))
-    expect(selected).toEqual([])
-    expect(
-      screen.getByRole('alertdialog', { name: 'Move Crate B to Shed?' }),
-    ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Move gear' }))
     expect(selected).toEqual([{ in: 'place', id: shedId }])
-  })
-
-  it('moves nothing when the confirmation is dismissed', async () => {
-    const { store, crateId } = await aCrateInAnAttic()
-    const user = userEvent.setup()
-    const { selected } = renderPicker(store, {
-      excludeGearId: crateId,
-      moving: { name: 'Crate B', ridesAlong: 1 },
-    })
-
-    await user.click(screen.getByRole('button', { name: /Shed/ }))
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
-
-    expect(selected).toEqual([])
     expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
-  // Picking a home for gear that does not exist yet (Add Gear) confirms
-  // nothing — there is no prior state to lose.
-  it('does not confirm when nothing is being moved', async () => {
+  // Picking a home for gear that does not exist yet (Add Gear) is the same
+  // sentence with no `moving` at all — there is nothing to exclude and no
+  // ride-along to state, and still no dialog.
+  it('reports a pick when nothing is being moved', async () => {
     const { store } = await aCrateInAnAttic()
     const user = userEvent.setup()
     const { selected } = renderPicker(store)
@@ -704,7 +692,7 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
     const { store, crateId } = await aCrateInAnAttic()
     renderPicker(store, {
       excludeGearId: crateId,
-      moving: { name: 'Crate B', ridesAlong: 1, confirm: false },
+      moving: { name: 'Crate B', ridesAlong: 1 },
       context: {
         act: 'RE-HOMING Crate B',
         consequence: 'PICKING A HOME MARKS IT BACK',
@@ -735,25 +723,15 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
     )
   })
 
-  it('skips the MOVE confirm when moving.confirm is false — selection reports and closes immediately', async () => {
-    const { store, crateId, shedId } = await aCrateInAnAttic()
-    const user = userEvent.setup()
-    const { selected } = renderPicker(store, {
-      excludeGearId: crateId,
-      moving: { name: 'Crate B', ridesAlong: 1, confirm: false },
-      context: {
-        act: 'RE-HOMING Crate B',
-        consequence: 'PICKING A HOME MARKS IT BACK',
-      },
-    })
-
-    await user.click(screen.getByRole('button', { name: /Shed/ }))
-
-    expect(selected).toEqual([{ in: 'place', id: shedId }])
-    expect(screen.queryByRole('alertdialog')).toBeNull()
-  })
-
-  it('still confirms when moving.confirm is not set — GearDetail’s own MOVE, untouched', async () => {
+  /**
+   * **The picker raises no confirm, whatever it is moving** — the rule it
+   * broke until after the MVP (`patterns.md` §4.3: a picker is pure
+   * selection). `moving` still shapes what this sheet *draws* — the
+   * exclusion, the `● NOW` mark, the ride-along line — and the decision
+   * belongs to the caller, which renders `HomeMoveConfirm` beside the sheet.
+   * `GearDetail`'s and `Unpack`'s own suites hold that half.
+   */
+  it('reports the pick and raises no dialog, even while moving a container', async () => {
     const { store, crateId, shedId } = await aCrateInAnAttic()
     const user = userEvent.setup()
     const { selected } = renderPicker(store, {
@@ -763,11 +741,8 @@ describe('the Home picker — context and moving.confirm (S10, Task 14)', () => 
 
     await user.click(screen.getByRole('button', { name: /Shed/ }))
 
-    expect(selected).toEqual([])
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Move gear' }))
     expect(selected).toEqual([{ in: 'place', id: shedId }])
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
   /**

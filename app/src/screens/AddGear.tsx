@@ -18,6 +18,7 @@ import { HomePicker } from '../components/HomePicker'
 import { OwnerPicker } from '../components/OwnerPicker'
 import { TagPicker } from '../components/TagPicker'
 import { KIND_OPTIONS, TRAIT_OPTIONS } from '../household/gear'
+import { homeLabel } from '../household/gear'
 import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
 import { useScreenHeader } from '../shell/useMediaQuery'
@@ -123,18 +124,6 @@ import styles from './AddGear.module.css'
  * entity path, and a tag op landing before its `gear.recorded` folds into a
  * Gear that then gets its name.
  */
-
-/** The current Home selection's display label. Undefined reads as `Loose` —
- * the gear has not been given a residence, so it folds loose (invariant 1). */
-function homeLabel(
-  places: Record<string, { name?: { value: string | null } }>,
-  gear: Record<string, { name?: { value: string | null } }>,
-  home: Residence | undefined,
-): string {
-  if (home === undefined || home.in === 'loose') return 'Loose'
-  const entity = home.in === 'place' ? places[home.id] : gear[home.id]
-  return entity?.name?.value ?? ''
-}
 
 /** What the last record was, for the confirmation line under the title. */
 interface Recorded {

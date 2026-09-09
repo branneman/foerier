@@ -234,6 +234,96 @@ describe('Gear detail', () => {
   })
 
   /**
+   * **MOVE's confirm is this screen's**, and these two moved here from
+   * `HomePicker.test.tsx` when it stopped being the sheet's (`patterns.md`
+   * §4.3: a picker is pure selection). The rule they pin is unchanged:
+   * Screens A §07 ends MOVE with "selection moves and closes; UNDO per the
+   * global rule", there is no global Undo rule in force — story 36 is Later
+   * — and a mis-tapped destination in a nested picker is otherwise
+   * unrecoverable without re-navigating. So MOVE confirms.
+   */
+  it('confirms a MOVE before writing, because Undo is not built', async () => {
+    const atticId = anId()
+    const shedId = anId()
+    const gearId = anId()
+    const log = inMemoryOpLog()
+    const store = await seededStore(
+      [
+        placeRecorded(atticId, 'Attic'),
+        placeRecorded(shedId, 'Shed'),
+        gearRecorded(gearId, {
+          name: 'Crate B',
+          container: true,
+          kind: 'single',
+          residence: { in: 'place', id: atticId },
+        }),
+      ],
+      log,
+    )
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'MOVE' }))
+    await user.click(screen.getByRole('button', { name: /Shed/ }))
+
+    // The destination is named from the residence the picker reported —
+    // `homeLabel`, not a label threaded back through `onSelect`.
+    expect(
+      screen.getByRole('alertdialog', { name: 'Move Crate B to Shed?' }),
+    ).toBeInTheDocument()
+    expect(
+      (await log.all()).filter((record) => record.op.type === 'gear.rehomed'),
+    ).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Move gear' }))
+    await store.getState().drained()
+
+    const moves = (await log.all()).filter(
+      (record) => record.op.type === 'gear.rehomed',
+    )
+    expect(moves).toHaveLength(1)
+    expect(moves[0]?.op.payload).toMatchObject({
+      residence: { in: 'place', id: shedId },
+    })
+  })
+
+  it('writes nothing when the MOVE confirm is dismissed, and keeps the picker open', async () => {
+    const atticId = anId()
+    const shedId = anId()
+    const gearId = anId()
+    const log = inMemoryOpLog()
+    const store = await seededStore(
+      [
+        placeRecorded(atticId, 'Attic'),
+        placeRecorded(shedId, 'Shed'),
+        gearRecorded(gearId, {
+          name: 'Crate B',
+          container: true,
+          kind: 'single',
+          residence: { in: 'place', id: atticId },
+        }),
+      ],
+      log,
+    )
+    const user = userEvent.setup()
+    renderGearDetail(store, gearId)
+
+    await user.click(screen.getByRole('button', { name: 'MOVE' }))
+    await user.click(screen.getByRole('button', { name: /Shed/ }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await store.getState().drained()
+
+    expect(
+      (await log.all()).filter((record) => record.op.type === 'gear.rehomed'),
+    ).toEqual([])
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    // The sheet is still open behind the dismissed confirm — Cancel returns
+    // to the list the pick was made from, which is what the confirm drawn
+    // *inside* the sheet used to give for free.
+    expect(screen.getByRole('button', { name: /Shed/ })).toBeInTheDocument()
+  })
+
+  /**
    * A needless write is never free: a `gear.rehomed` naming the home the gear
    * already has still moves the LWW stamp, and can silently beat a genuine
    * move queued on a Device that was offline. `HomePicker` reports the `● NOW`
