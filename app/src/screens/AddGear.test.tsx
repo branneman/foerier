@@ -781,3 +781,39 @@ describe('Add gear — the tags row', () => {
     ])
   })
 })
+
+describe('Add gear — the CTA in the thumb zone', () => {
+  /**
+   * `docs/design/README.md` §5 drift (3), the half that was deferred. `New
+   * trip` took these two declarations in the round that found the drift;
+   * this screen kept its CTA mid-screen — three fields do not fill a phone —
+   * on exactly the device the thumb zone exists for, and the fact line
+   * centred under it there.
+   *
+   * The deferral was about **whose round owned the screen**, never about the
+   * size of the change: `.screen` was already a flex column, so it wanted
+   * `NewTrip`'s two declarations and nothing else.
+   *
+   * jsdom computes no cascade, so the rules are asserted where they are
+   * written (`NewTrip.test.tsx`'s shape, one screen over).
+   */
+  function css(): string {
+    return readFileSync(
+      join(dirname(expect.getState().testPath ?? ''), 'AddGear.module.css'),
+      'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '')
+  }
+
+  it('parks the primary at the foot, with a height for it to push against', () => {
+    expect(css()).toMatch(/\.primary\s*\{[^}]*margin-top:\s*auto/)
+    // `margin-top: auto` absorbs free space only where there is some: without
+    // the screen claiming the column's height, the CTA follows the last field
+    // and the pinning silently does nothing.
+    expect(css()).toMatch(/\.screen\s*\{[^}]*min-height:\s*100%/)
+  })
+
+  it('keeps the line under a full-width block, which is what centring rests on', () => {
+    expect(css()).toMatch(/\.primary\s*\{[^}]*width:\s*100%/)
+    expect(css()).toMatch(/\.ctaFact\s*\{[^}]*text-align:\s*center/)
+  })
+})

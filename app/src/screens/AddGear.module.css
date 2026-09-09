@@ -3,6 +3,13 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
+    /* So `.primary`'s `margin-top: auto` has a height to push against —
+       `NewTrip.module.css`'s two declarations, verbatim, which is what
+       `docs/design/README.md` §5 drift (3) says this screen still owed. The
+       screen is a stretched grid item of the shell, so the percentage
+       resolves; where it does not, the CTA simply follows the last field and
+       the screen still reads. */
+    min-height: 100%;
   }
 
   .titleRow {
@@ -157,7 +164,12 @@
     text-align: center;
   }
 
+  /* Parked at the screen's foot, in the thumb zone the board draws it in.
+     Three fields do not fill a phone, so without this the primary — and the
+     fact line that follows it down — sat mid-screen on exactly the device the
+     thumb zone exists for. */
   .primary {
+    margin-top: auto;
     width: 100%;
     min-height: max(3rem, 48px);
     border: 0;

@@ -201,11 +201,6 @@ second pane.
   and why its CTA fact line has only one alignment to say.
   [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `two-pane Add gear has never been built`
-- **`AddGear`'s CTA is not pinned to the thumb zone**, where `NewTrip`'s and
-  `Trip`'s are. Three fields do not fill a phone, so the primary and the fact
-  line beneath it sit mid-screen on exactly the device the thumb zone exists for.
-  [`design/README.md`](design/README.md) §5, anchor:
-  `` `AddGear` still has (3) ``
 - **`InvitePreview` carries no person name**, so the join confirm's `YOU JOIN AS`
   and `INVITED BY` lines and the success frame's `Els · Veldkamp` are
   half-buildable and neither frame renders them. Widening the auth contract on a
