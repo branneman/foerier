@@ -21,6 +21,7 @@ import {
 import { indexedDbSessionStore, type SessionStore } from './auth/sessionStore'
 import { useSession } from './auth/useSession'
 import { FirstSync } from './components/FirstSync'
+import { RefusalSheet } from './components/RefusalSheet'
 import { HouseholdProvider, type HouseholdStoreState } from './household/store'
 import { syncLine, syncTone } from './household/syncLabel'
 import {
@@ -100,6 +101,10 @@ function SignedInShell({
 }) {
   const sync = useStore(store, (depot) => depot.sync)
   const bootstrap = useStore(store, (depot) => depot.bootstrap)
+  // The count, not the list: this component re-renders on the shell's own
+  // marker changing and on nothing else, and the sheet reads the list itself.
+  const refused = useStore(store, (depot) => depot.refusals.length)
+  const [refusalsOpen, setRefusalsOpen] = useState(false)
   const counts = useDestinationCounts(store)
   const accountInitial = useAccountInitial(store, personId)
 
@@ -122,12 +127,22 @@ function SignedInShell({
 
   return (
     <AppShell
-      syncLine={syncLine(sync)}
-      syncTone={syncTone(sync)}
+      syncLine={syncLine(sync, refused)}
+      syncTone={syncTone(sync, refused)}
       counts={counts}
       accountInitial={accountInitial}
+      onOpenRefusals={() => setRefusalsOpen(true)}
     >
-      <HouseholdProvider value={store}>{children}</HouseholdProvider>
+      <HouseholdProvider value={store}>
+        {children}
+        {/* **The shell's, not a screen's** (§5n K24). The marker is chrome and
+            so is what it opens; a screen owning this sheet would put a copy of
+            it behind every route and lose the standing fact on navigation.
+            Mounted is open, so `Close` — which acknowledges — resets it. */}
+        {refusalsOpen && (
+          <RefusalSheet onClose={() => setRefusalsOpen(false)} />
+        )}
+      </HouseholdProvider>
     </AppShell>
   )
 }

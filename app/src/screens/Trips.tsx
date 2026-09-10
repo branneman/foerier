@@ -330,7 +330,10 @@ export function Trips() {
               // now (spec §5.1); this back-fills a posting for any Gear
               // this Trip's own close reduced before this register existed
               // (spec §5.2), then moves the phase.
-              emitAll(reopenTrip(reopenTarget, REOPEN_TO, state))
+              emitAll(
+                reopenTrip(reopenTarget, REOPEN_TO, state),
+                `REOPEN · ${tripLabel(reopenTarget)}`,
+              )
               setReopenTripId(null)
             }}
           />

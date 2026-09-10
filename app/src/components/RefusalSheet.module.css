@@ -1,0 +1,52 @@
+/* The scrim, the sheet, the grabber and the title are `ui/`'s `Sheet`. What
+   is left is this sheet's fact line, its two prose registers, the mono list
+   and its close. */
+@layer components {
+  /* The mono fact line every sheet's `description` slot wears. */
+  .fact {
+    font: var(--text-label) var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    color: var(--color-ink-muted);
+  }
+
+  /* H9's first register: the **answer**, in ink. */
+  .answer {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-primary);
+  }
+
+  /* H9's second: the explainer, muted. */
+  .note {
+    font: var(--text-body) var(--font-ui);
+    color: var(--color-ink-muted);
+  }
+
+  .lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-block: var(--space-8);
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Mono, and wrapping rather than truncated — the subject is already capped
+     where it is captured (`refusal.ts`), which is the only place that can cap
+     it honestly: for a `too-large` refusal the name *is* the oversized thing,
+     and a CSS truncation would leave the store holding all of it. */
+  .line {
+    font: var(--text-label-control) var(--font-mono);
+    letter-spacing: 0.1em;
+    color: var(--color-ink-primary);
+    overflow-wrap: anywhere;
+  }
+
+  .close {
+    min-height: max(3rem, 48px);
+    border: 0;
+    background: none;
+    color: var(--color-ink-muted);
+    font: var(--text-body) var(--font-ui);
+    cursor: pointer;
+  }
+}

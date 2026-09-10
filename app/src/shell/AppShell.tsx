@@ -225,37 +225,81 @@ function AccountLink({
   )
 }
 
+/**
+ * The shell's own sync marker, in its three nav treatments and — since §5n
+ * K24 — its three **states**.
+ *
+ * `attention` is the third, and it is the only one that is also a **route**:
+ * offline has nothing to read, a refusal has a list of what was lost. So the
+ * whole line becomes a button exactly then, and stays inert text otherwise
+ * rather than being a permanently-clickable control that usually opens
+ * nothing.
+ *
+ * The ▲ takes the dot's own slot rather than sitting beside it, which is what
+ * keeps K10's foot — one 22px marker column, one text edge at 40 — aligned
+ * across all three states.
+ */
 function SyncMarker({
   line,
   tone,
   mode,
+  onOpenRefusals,
 }: {
   line: string
-  tone: 'reachable' | 'unreachable'
+  tone: 'reachable' | 'unreachable' | 'attention'
   mode: NavMode
+  onOpenRefusals?: (() => void) | undefined
 }) {
-  const dot = (
-    <span
-      className={`${styles['syncDot']} ${
-        tone === 'unreachable' ? styles['syncDotUnreachable'] : ''
-      }`}
-      data-testid="sync-dot"
-      // In the rail the dot stands alone, so it is the thing that has to
-      // carry the state; everywhere else the text beside it does, and a
-      // second copy would only say it twice.
-      {...(mode === 'rail'
-        ? { role: 'img' as const, 'aria-label': line }
-        : { 'aria-hidden': true })}
-    />
-  )
+  const marker =
+    tone === 'attention' ? (
+      <span
+        className={styles['syncMark']}
+        data-testid="sync-dot"
+        {...(mode === 'rail'
+          ? { role: 'img' as const, 'aria-label': line }
+          : { 'aria-hidden': true })}
+      >
+        ▲
+      </span>
+    ) : (
+      <span
+        className={`${styles['syncDot']} ${
+          tone === 'unreachable' ? styles['syncDotUnreachable'] : ''
+        }`}
+        data-testid="sync-dot"
+        // In the rail the dot stands alone, so it is the thing that has to
+        // carry the state; everywhere else the text beside it does, and a
+        // second copy would only say it twice.
+        {...(mode === 'rail'
+          ? { role: 'img' as const, 'aria-label': line }
+          : { 'aria-hidden': true })}
+      />
+    )
 
-  if (mode === 'rail') return <span className={styles['railSync']}>{dot}</span>
+  // The ▲ is drawn in the line's own text at rail width too: the rail has no
+  // room for words, and the mark alone plus its `aria-label` is what the dot
+  // already does there.
+  const body =
+    mode === 'rail' ? (
+      <span className={styles['railSync']}>{marker}</span>
+    ) : (
+      <span className={styles['syncLine']}>
+        {marker}
+        {line}
+      </span>
+    )
+
+  if (tone !== 'attention' || onOpenRefusals === undefined) return body
 
   return (
-    <span className={styles['syncLine']}>
-      {dot}
-      {line}
-    </span>
+    <button
+      type="button"
+      className={styles['syncRoute']}
+      onClick={onOpenRefusals}
+      aria-label={`${line} — what was not saved`}
+    >
+      {body}
+    </button>
   )
 }
 
@@ -268,7 +312,13 @@ export interface AppShellProps {
   syncLine?: string
   /** Sage while the household is reachable, amber while it is not. The dot
    * is the only colour this line carries. */
-  syncTone?: 'reachable' | 'unreachable'
+  syncTone?: 'reachable' | 'unreachable' | 'attention'
+  /**
+   * Opens the refusal sheet. Handed in rather than held here because the
+   * sheet reads the store and this shell reads none — the same seam
+   * `syncLine` already crosses.
+   */
+  onOpenRefusals?: (() => void) | undefined
   /**
    * What each destination counts, keyed by href — drawn in the sidebar only.
    * A count is the **size of the list the destination opens**, which is why
@@ -292,6 +342,7 @@ export function AppShell({
   syncTone = 'unreachable',
   counts = {},
   accountInitial = null,
+  onOpenRefusals,
 }: AppShellProps) {
   const isSplit = useMediaQuery(SPLIT)
   const isDesktop = useMediaQuery(DESKTOP)
@@ -353,7 +404,12 @@ export function AppShell({
               the mark. */}
           <Mark size={28} title="foerier" />
           <span className={styles['headerChrome']}>
-            <SyncMarker line={syncLine} tone={syncTone} mode={mode} />
+            <SyncMarker
+              line={syncLine}
+              tone={syncTone}
+              mode={mode}
+              onOpenRefusals={onOpenRefusals}
+            />
             <AccountLink mode={mode} initial={accountInitial} />
           </span>
         </header>
@@ -412,7 +468,12 @@ export function AppShell({
         {mode !== 'tabs' && (
           <span className={styles['navFoot']}>
             <AccountLink mode={mode} initial={accountInitial} />
-            <SyncMarker line={syncLine} tone={syncTone} mode={mode} />
+            <SyncMarker
+              line={syncLine}
+              tone={syncTone}
+              mode={mode}
+              onOpenRefusals={onOpenRefusals}
+            />
           </span>
         )}
       </nav>

@@ -329,6 +329,20 @@ withheld at a single width**, because the two answer different questions.
   agree: `Screens A` §05's `Depot split` carries `● SYNCED` in the detail pane's
   own band with a bare dot in the rail beside it, and §06's
   `Add gear — split 900` is the same pane and the same dot.
+
+  **The line has three states, not two** (§5n K24): sage `SYNCED`, amber
+  `OFFLINE`, and attention `▲ N NOT SAVED` for a write this Device could not
+  save. The third **outranks** the other two — being offline is normal and
+  reversible and the app says so on purpose, while a lost write is neither —
+  and it is the only one that is also a **route**, because unlike offline
+  there is something to read. The ▲ takes the dot's own slot rather than
+  sitting beside it, which is what keeps §5n K10's foot (one 22px marker
+  column, one text edge at 40) aligned across all three. The count is drawn at
+  N=1 too, and it counts **refusals, not ops**: a gesture refused whole is one
+  thing the Quartermaster did. `ScreenBand` reads that count from the store
+  rather than taking it as a prop — it is a fact about the Device, not about
+  any screen, and threading it through twelve callers is the paste that
+  component exists to end.
 - **The back link is drawn unless its destination is already on the page**,
   which is not a width alone. At Desktop the labeled sidebar *is* that
   destination — `Trip screen — S6 desktop` draws `TRIPS` and the sync line in

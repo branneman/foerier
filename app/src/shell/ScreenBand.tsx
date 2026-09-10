@@ -1,5 +1,6 @@
 import { Link } from 'wouter'
 
+import { useHousehold } from '../household/store'
 import type { SyncStatus } from '../household/syncEngine'
 import { syncLabel, syncTone } from '../household/syncLabel'
 import styles from './ScreenBand.module.css'
@@ -33,6 +34,15 @@ import type { ScreenHeader } from './useMediaQuery'
  * `GearListBuilder` is the one caller that draws its back link outside this
  * band, in its own Desktop header row; {@link BackLink} is exported for it so
  * the prefix and the style stay one spelling.
+ *
+ * **The refusal count is read here, not handed in** (§5n K24). At Split the
+ * rail draws a bare marker and this band carries the words, so the band is
+ * where `▲ N NOT SAVED` has to appear — and a count of refused writes is
+ * *shell* state, true of the Device rather than of any screen. Threading it
+ * through all twelve callers would be the same paste this component exists to
+ * end, and the twelfth caller to forget it would silently draw `SYNCED` over
+ * a lost write. The status stays a prop because it is what the caller already
+ * holds; this is the one thing a caller could not sensibly be asked for.
  */
 export interface ScreenBandProps {
   /** {@link useScreenHeader}'s answer. */
@@ -56,6 +66,7 @@ export function ScreenBand({
   sync,
   syncTestId,
 }: ScreenBandProps) {
+  const refused = useHousehold((depot) => depot.refusals.length)
   if (!header.band) return null
 
   return (
@@ -63,16 +74,28 @@ export function ScreenBand({
       {header.backLink && <BackLink href={back.href} label={back.label} />}
       {header.syncLine && (
         <span className={styles['sync']} data-testid={syncTestId}>
-          <span
-            className={`${styles['syncDot']} ${
-              syncTone(sync) === 'unreachable'
-                ? styles['syncDotUnreachable']
-                : ''
-            }`}
-            data-testid="screen-band-dot"
-            aria-hidden="true"
-          />
-          {syncLabel(sync)}
+          {syncTone(sync, refused) === 'attention' ? (
+            /* The ▲ takes the dot's slot rather than sitting beside it, so
+               the line's text edge does not move when the state changes. */
+            <span
+              className={styles['syncMark']}
+              data-testid="screen-band-dot"
+              aria-hidden="true"
+            >
+              ▲
+            </span>
+          ) : (
+            <span
+              className={`${styles['syncDot']} ${
+                syncTone(sync, refused) === 'unreachable'
+                  ? styles['syncDotUnreachable']
+                  : ''
+              }`}
+              data-testid="screen-band-dot"
+              aria-hidden="true"
+            />
+          )}
+          {syncLabel(sync, refused)}
         </span>
       )}
     </header>

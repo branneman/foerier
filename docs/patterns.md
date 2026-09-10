@@ -387,11 +387,11 @@ count. `clearLocalData()` has exactly one caller, the Devices screen's
 sign-out confirm, and it is the only auth action allowed to clear the op log.
 A frozen engine is never resumed; re-signing in builds a new one.
 
-*Departures:* the store's `refusal` channel — an op that could not be written
-(overflow, storage failure) — is set and **read by no screen**; the failure
-reaches the console and nobody else. No longer blocked on a board: §5n K24
-draws it as the sync line's third state and K24b draws the sheet it opens,
-so this closes as work rather than as a decision.
+*Departures:* none. The store's `refusal` channel — an op that could not be
+written (overflow, storage failure) — was set and read by no screen for four
+slices; §5n K24 makes it the sync line's **third state** and K24b the sheet
+that state opens, and `refusals` is a list that stands until a reader
+acknowledges it rather than a slot the next accepted write empties.
 *Argued in:* `wiring.ts`'s header; [`auth-design.md` §7.2](auth-design.md).
 
 ---

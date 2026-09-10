@@ -50,4 +50,13 @@
   .syncDotUnreachable {
     background: var(--color-brand-amber);
   }
+
+  /* §5n K24's third state, in the dot's own slot — see `AppShell.module.css`
+     for the same rule in the shell's foot. */
+  .syncMark {
+    width: 0.375rem;
+    flex: none;
+    color: var(--color-brand-amber);
+    line-height: 1;
+  }
 }

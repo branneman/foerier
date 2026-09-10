@@ -125,7 +125,17 @@ import styles from './AddGear.module.css'
  * Gear that then gets its name.
  */
 
-/** What the last record was, for the confirmation line under the title. */
+/**
+ * What the last record was, for the confirmation line under the title.
+ *
+ * **The op is not awaited, so the confirmation line is the screen's whole
+ * receipt and it can be wrong.** `emit` is fire-and-forget by design — the
+ * batch loop's per-tap feel is what §3b argued a screen over a sheet for — so
+ * a write the store refuses still leaves `RECORDED · <name>` standing here,
+ * now beside the shell's own `▲ 1 NOT SAVED` (§5n K24). Two surfaces, one
+ * act, opposite claims; recorded in `technical-debt.md` because both fixes
+ * cost something a board would have to rule on.
+ */
 interface Recorded {
   id: string
   name: string

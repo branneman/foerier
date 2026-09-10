@@ -363,7 +363,10 @@ describe('the depot store', () => {
 
     store
       .getState()
-      .emitAll([placeRecorded(anId(), 'Shed'), placeRecorded(anId(), 'Attic')])
+      .emitAll(
+        [placeRecorded(anId(), 'Shed'), placeRecorded(anId(), 'Attic')],
+        'TWO PLACES',
+      )
     // One gesture, one durable write — and one count, since it is one job.
     expect(store.getState().pendingWrites).toBe(1)
     await drained(store)
@@ -376,7 +379,7 @@ describe('the depot store', () => {
     expect(store.getState().pendingWrites).toBe(1)
     await drained(store)
     expect(store.getState().pendingWrites).toBe(0)
-    expect(store.getState().refusal?.reason).toBe('too-large')
+    expect(store.getState().refusals.at(-1)?.reason).toBe('too-large')
   })
 
   it('emit never awaits the network', async () => {
@@ -426,7 +429,10 @@ describe('the depot store', () => {
     const second = anId()
     store
       .getState()
-      .emitAll([placeRecorded(first, 'Attic'), placeRecorded(second, 'Shed')])
+      .emitAll(
+        [placeRecorded(first, 'Attic'), placeRecorded(second, 'Shed')],
+        'TWO PLACES',
+      )
     await drained(store)
 
     const records = await log.all()
@@ -445,14 +451,17 @@ describe('the depot store', () => {
 
     store
       .getState()
-      .emitAll([placeRecorded(anId(), 'Attic'), placeRecorded(anId(), 'Shed')])
+      .emitAll(
+        [placeRecorded(anId(), 'Attic'), placeRecorded(anId(), 'Shed')],
+        'TWO PLACES',
+      )
     await drained(store)
 
     expect(await log.all()).toEqual([])
     expect(Object.keys(store.getState().state.places)).toHaveLength(0)
     // A refusal is a fact a screen shows, not an error thrown at a render —
     // `emitAll` swallows the rejection exactly as `emit` does.
-    expect(store.getState().refusal?.reason).toBe('not-saved')
+    expect(store.getState().refusals.at(-1)?.reason).toBe('not-saved')
   })
 
   it('refuses the whole gesture when one op is over the byte cap', async () => {
@@ -466,14 +475,17 @@ describe('the depot store', () => {
     // gesture reached by a different road than a crash.
     store
       .getState()
-      .emitAll([
-        placeRecorded(anId(), 'Attic'),
-        placeRecorded(anId(), 'x'.repeat(MAX_OP_BYTES)),
-      ])
+      .emitAll(
+        [
+          placeRecorded(anId(), 'Attic'),
+          placeRecorded(anId(), 'x'.repeat(MAX_OP_BYTES)),
+        ],
+        'TWO PLACES',
+      )
     await drained(store)
 
     expect(await log.all()).toEqual([])
-    expect(store.getState().refusal?.reason).toBe('too-large')
+    expect(store.getState().refusals.at(-1)?.reason).toBe('too-large')
   })
 
   it('treats an empty gesture as a no-op', async () => {
@@ -484,9 +496,9 @@ describe('the depot store', () => {
 
     // `closeTrip` returns `[]` for a Trip already closed; a caller should not
     // have to check, and nothing should reach the log.
-    await store.getState().emitAllDurable([])
+    await store.getState().emitAllDurable([], 'NOTHING')
     expect(await log.all()).toEqual([])
-    expect(store.getState().refusal).toBeNull()
+    expect(store.getState().refusals).toEqual([])
   })
 
   it('emit serialises concurrent calls so hlcs stay strictly increasing', async () => {
@@ -658,19 +670,31 @@ describe('the depot store', () => {
     store.getState().emit(gearRenamed(gearId, 'x'.repeat(MAX_OP_BYTES)))
     await drained(store)
 
-    const refusal = store.getState().refusal
+    const refusal = store.getState().refusals.at(-1)
     expect(refusal?.reason).toBe('too-large')
-    expect(refusal?.type).toBe('gear.renamed')
-    expect(refusal?.bytes).toBeGreaterThan(MAX_OP_BYTES)
+    expect(refusal?.ops).toBe(1)
+    // The name the Quartermaster typed, not the op type: for a refused write
+    // the payload is the only place that word exists (§5n K24b) — **capped**,
+    // because the commonest way to author an oversized op is an oversized
+    // name, so a refusal's subject is routinely the thing that was too big.
+    expect(refusal?.subject).toHaveLength(60)
+    expect(refusal?.subject.endsWith('…')).toBe(true)
     // Refused, not accepted-then-lost: nothing was appended, nothing folded.
     expect(await log.all()).toHaveLength(0)
     expect(Object.hasOwn(store.getState().state.gear, gearId)).toBe(false)
 
-    // …and the next ordinary op clears the refusal.
+    // **And the next ordinary op does not clear it** (§5n K24). This is the
+    // behaviour that changed: one slot the next accepted write emptied meant
+    // a Quartermaster who refused a write and carried on working had the
+    // evidence deleted by their own next tap. Acknowledgement is the clearing
+    // act, and nothing else is.
     store.getState().emit(gearRenamed(gearId, 'Tent'))
     await drained(store)
-    expect(store.getState().refusal).toBeNull()
+    expect(store.getState().refusals).toHaveLength(1)
     expect(await log.all()).toHaveLength(1)
+
+    store.getState().acknowledgeRefusals()
+    expect(store.getState().refusals).toEqual([])
   })
 
   it('emitDurable resolves once the op is durable even if the fold fails', async () => {
@@ -715,9 +739,11 @@ describe('the depot store', () => {
     ).rejects.toThrow('ids: no identifier available')
 
     expect(await log.all()).toHaveLength(0)
-    // The op never existed, so the refusal falls back to the spec's type.
-    expect(store.getState().refusal?.reason).toBe('not-saved')
-    expect(store.getState().refusal?.type).toBe('place.recorded')
+    // Recorded even though the **id source** is what failed: the refusal's
+    // own id is a counter, so the handler for this failure cannot fail the
+    // same way and lose the fact it exists to record.
+    expect(store.getState().refusals.at(-1)?.reason).toBe('not-saved')
+    expect(store.getState().refusals.at(-1)?.subject).toBe('Shed')
   }, 1_000) // rather than stall. // A regression here is a hang, not a wrong value, so the suite must fail
 
   it('builds a fresh engine rather than resuming a frozen one', async () => {

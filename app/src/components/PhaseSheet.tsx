@@ -1,12 +1,13 @@
 import {
   closeTrip,
+  isActivePhase,
   isKnownPhase,
   overClaimsIfActive,
   phaseLabel,
-  isActivePhase,
   phaseOf,
   PHASES,
   reopenTrip,
+  tripLabel,
   tripPhaseMoved,
   unpackTotals,
   type PhaseKey,
@@ -164,7 +165,7 @@ export function PhaseSheet({ trip, onClose, onPicked }: PhaseSheetProps) {
    * none of them owes the Depot anything.
    */
   function reopen(phase: PhaseKey) {
-    emitAll(reopenTrip(trip, phase, state))
+    emitAll(reopenTrip(trip, phase, state), `REOPEN · ${tripLabel(trip)}`)
     onPicked()
   }
 
@@ -205,7 +206,7 @@ export function PhaseSheet({ trip, onClose, onPicked }: PhaseSheetProps) {
       // to close: a bare `tripPhaseMoved` past this gate is exactly the
       // corruption F5's own close card exists to prevent, arriving through
       // a second door.
-      emitAll(closeTrip(trip, state))
+      emitAll(closeTrip(trip, state), `CLOSE TRIP · ${tripLabel(trip)}`)
       onPicked()
       return
     }

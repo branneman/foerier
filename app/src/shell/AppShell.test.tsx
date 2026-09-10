@@ -1,4 +1,5 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -200,6 +201,65 @@ describe('AppShell — the sidebar at Desktop', () => {
  * pinned by `screenBand.test.tsx` rendering `InviteIssued` at Desktop and
  * finding no `‹ PEOPLE & LOGINS`.
  */
+/**
+ * **A refused write is the sync marker's third state, and the only one that
+ * is also a route** (§5n K24). Offline has nothing to read; a refusal has a
+ * list of what was lost, so the line becomes a control exactly then — and
+ * stays inert text otherwise rather than being a permanently-clickable thing
+ * that usually opens nothing.
+ *
+ * The ▲ is earned rather than borrowed: it is the app's mark for an act that
+ * discards unsynced work, which until this ruling only signing this device
+ * out could do.
+ */
+describe('the sync marker’s third state', () => {
+  it('is inert text while there is nothing to read', () => {
+    setViewport(SPLIT, DESKTOP)
+    const nav = renderShell('/', {
+      syncLine: 'OFFLINE',
+      syncTone: 'unreachable',
+    })
+
+    expect(within(nav).getByText('OFFLINE')).toBeVisible()
+    expect(within(nav).queryByRole('button', { name: /not saved/i })).toBeNull()
+  })
+
+  it('becomes a route when a write was refused', async () => {
+    const user = userEvent.setup()
+    setViewport(SPLIT, DESKTOP)
+    let opened = 0
+    const nav = renderShell('/', {
+      syncLine: '1 NOT SAVED',
+      syncTone: 'attention',
+      onOpenRefusals: () => {
+        opened += 1
+      },
+    })
+
+    await user.click(
+      within(nav).getByRole('button', {
+        name: '1 NOT SAVED — what was not saved',
+      }),
+    )
+
+    expect(opened).toBe(1)
+  })
+
+  it('puts the ▲ in the dot’s own slot, so the foot stays aligned', () => {
+    // K10's foot is a 22px marker column and one text edge at 40. A ▲ drawn
+    // *beside* the dot would move that edge whenever the state changed.
+    setViewport(SPLIT, DESKTOP)
+    const nav = renderShell('/', {
+      syncLine: '1 NOT SAVED',
+      syncTone: 'attention',
+    })
+
+    const marker = within(nav).getByTestId('sync-dot')
+    expect(marker).toHaveTextContent('▲')
+    expect(within(nav).getAllByTestId('sync-dot')).toHaveLength(1)
+  })
+})
+
 describe('the sidebar’s rows and the back link’s question', () => {
   it('treats every drawn destination as carried', () => {
     for (const destination of DESTINATIONS) {

@@ -13,6 +13,7 @@ import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { BUILD_SHA } from '../build'
+import { refusalSubject, type Refusal, type RefusalReason } from './refusal'
 import type { OpLog } from './opLog'
 import {
   opByteLength,
@@ -88,22 +89,6 @@ import {
  * restarting the corpse.
  */
 
-/** The op the UI meant to author, and why it is not in the log. */
-export interface OpRefusal {
-  /**
-   * `too-large` — §1.4's 16 KB per-op cap, refused before authoring.
-   * `not-saved` — the local log rejected the write (a full quota, a blocked
-   * upgrade, IndexedDB unavailable). Nothing was appended either way.
-   */
-  reason: 'too-large' | 'not-saved'
-  /** The op type, for the message the screen shows. */
-  type: string
-  bytes: number
-  limit: number
-  /** What the log said, when it is the log that said no. */
-  detail?: string
-}
-
 /**
  * The materialised fold, and the two facts that decide whether it may be
  * used: the build that produced it and the `lsn` it covers up to.
@@ -143,19 +128,35 @@ export interface HouseholdStoreState {
   /** Ops the household will never accept (§6.5). Visible, never silent. */
   deadLetterCount: number
   /**
-   * Set when {@link HouseholdStoreState.emit} refused to author, cleared by the
-   * next op it accepts. A refusal is not an error to throw at a render — it
-   * is a fact a screen shows.
+   * **Every write this Device could not save, oldest first, until a reader
+   * acknowledges them** (§5n K24).
+   *
+   * A refusal is not an error to throw at a render — it is a fact a surface
+   * states, and the sync line is the surface: `▲ N NOT SAVED` beside sage
+   * `SYNCED` and amber `OFFLINE`, opening the sheet that says what was lost.
+   *
+   * **A list, and it does not clear itself.** This was one slot that the next
+   * accepted op emptied, which is exactly wrong for a fact nobody has read:
+   * a Quartermaster who refuses one write and goes on working would have had
+   * the evidence deleted by their next tap. Acknowledgement is the clearing
+   * act ({@link acknowledgeRefusals}); a marker that cleared itself would be
+   * a fact nobody read.
    */
-  refusal: OpRefusal | null
+  refusals: readonly Refusal[]
+  /**
+   * Drops every refusal — what the sheet's `Close` calls. There is no
+   * `Try again` to pair it with: the refused payload is not kept, so a retry
+   * would be a door to a room that no longer exists (§5n K24b).
+   */
+  acknowledgeRefusals(): void
   /** The one authoring path. Never awaited, never throws. */
   emit(spec: OpSpec): void
   /**
    * The same authoring path, with a per-op durability handshake: resolves
    * once **this** op is in the local log, and rejects when it never got
    * there. The caller that clears the joiner's name waits on exactly this
-   * (`auth/pendingFirstPerson.ts`); a screen calls {@link emit} and reads
-   * {@link refusal}.
+   * (`auth/pendingFirstPerson.ts`); a screen calls {@link emit} and the shell
+   * states what {@link refusals} holds.
    */
   emitDurable(spec: OpSpec): Promise<void>
   /**
@@ -174,10 +175,16 @@ export interface HouseholdStoreState {
    * order given, on ascending HLCs, and a peer folds them by those stamps
    * however they arrive. Atomicity is about the **local log**; nothing here
    * changes how the batch syncs, which is still op by op.
+   *
+   * **`gesture` is what a refusal is named after**, and it is required for
+   * that reason: the batch fails as one, so the sheet draws one line — the
+   * act the Quartermaster spent, `CLOSE TRIP · ALPS 2026`, never fourteen op
+   * types (§5n K24b). A new caller has to say what its gesture is called
+   * because there is nothing in a list of specs that could answer for it.
    */
-  emitAll(specs: readonly OpSpec[]): void
+  emitAll(specs: readonly OpSpec[], gesture: string): void
   /** {@link emitAll} with {@link emitDurable}'s handshake, for the batch. */
-  emitAllDurable(specs: readonly OpSpec[]): Promise<void>
+  emitAllDurable(specs: readonly OpSpec[], gesture: string): Promise<void>
   /**
    * Resolves once every piece of work queued **so far** has finished, however
    * it finished. A queue-drain signal for tests and teardown — **not** a
@@ -253,6 +260,8 @@ export function createHouseholdStore(
   let loaded = false
   /** See {@link HouseholdStoreState.pendingWrites}. */
   let pendingWrites = 0
+  /** Only ever incremented, for the React key in {@link refuse}. */
+  let refusalsSeen = 0
   let snapshotTimer: ReturnType<typeof setTimeout> | null = null
   let engine: SyncEngine
 
@@ -390,8 +399,35 @@ export function createHouseholdStore(
     })
   }
 
-  function refuse(refusal: OpRefusal): void {
-    store.setState({ refusal })
+  /**
+   * Appends a refusal and leaves every earlier one standing (§5n K24). The
+   * subject is resolved **now**, against the fold this refusal happened
+   * against — see {@link refusalSubject} for why it cannot wait for a render.
+   */
+  function refuse(entry: {
+    reason: RefusalReason
+    subject: string
+    ops: number
+  }): void {
+    store.setState({
+      refusals: [
+        ...store.getState().refusals,
+        {
+          // A counter, **not** `deps.author.ids` — one of the two ways a
+          // write is refused is the id source itself throwing, and minting
+          // the refusal's own id from it would throw inside the handler for
+          // that failure and lose the very fact it exists to record. This id
+          // is a React key and nothing else; it is never authored, compared
+          // or synced.
+          id: `refusal-${(refusalsSeen += 1)}`,
+          // `Date.now()` directly: this stamp is for the sheet's `· 14:32`
+          // and never compared with an HLC, so it wants the wall clock the
+          // reader's own `format.ts` renders in and not the author's.
+          at: Date.now(),
+          ...entry,
+        },
+      ],
+    })
   }
 
   function emitDurable(spec: OpSpec): Promise<void> {
@@ -419,9 +455,8 @@ export function createHouseholdStore(
             // telling the quartermaster now and losing their work quietly.
             refuse({
               reason: 'too-large',
-              type: op.type,
-              bytes,
-              limit: MAX_OP_BYTES,
+              subject: refusalSubject(spec, store.getState().state),
+              ops: 1,
             })
             reject(
               new Error(
@@ -438,9 +473,6 @@ export function createHouseholdStore(
           resolve()
 
           await foldForward()
-          if (store.getState().refusal !== null) {
-            store.setState({ refusal: null })
-          }
           // Fire-and-forget, deliberately: awaiting the network here would
           // put it on the path a caller waits for, which is the whole thing
           // §8.5 and architecture §3 forbid.
@@ -467,10 +499,8 @@ export function createHouseholdStore(
           console.error('depot: an op could not be appended', failure)
           refuse({
             reason: 'not-saved',
-            type: op?.type ?? spec.type,
-            bytes,
-            limit: MAX_OP_BYTES,
-            detail: failure.message,
+            subject: refusalSubject(spec, store.getState().state),
+            ops: 1,
           })
           reject(failure)
         }
@@ -501,7 +531,10 @@ export function createHouseholdStore(
    * An empty batch is a legitimate no-op: `closeTrip` returns `[]` for a Trip
    * that is already closed, and a caller should not have to check.
    */
-  function emitAllDurable(specs: readonly OpSpec[]): Promise<void> {
+  function emitAllDurable(
+    specs: readonly OpSpec[],
+    gesture: string,
+  ): Promise<void> {
     if (specs.length === 0) return Promise.resolve()
 
     return new Promise<void>((resolve, reject) => {
@@ -518,9 +551,8 @@ export function createHouseholdStore(
             if (bytes > MAX_OP_BYTES) {
               refuse({
                 reason: 'too-large',
-                type: op.type,
-                bytes,
-                limit: MAX_OP_BYTES,
+                subject: gesture,
+                ops: specs.length,
               })
               reject(
                 new Error(
@@ -538,9 +570,6 @@ export function createHouseholdStore(
           resolve()
 
           await foldForward()
-          if (store.getState().refusal !== null) {
-            store.setState({ refusal: null })
-          }
           nudge()
         } catch (error) {
           const failure =
@@ -550,13 +579,12 @@ export function createHouseholdStore(
 
           console.error('depot: a batch could not be appended', failure)
           refuse({
+            // The batch is one write and fails as one, so it is **one** line
+            // naming the gesture the Quartermaster spent — never one per op
+            // (§5n K24b).
             reason: 'not-saved',
-            // The batch is one write and fails as one; naming its first op is
-            // what a screen can say something true about.
-            type: ops[0]?.type ?? specs[0]?.type ?? 'unknown',
-            bytes: 0,
-            limit: MAX_OP_BYTES,
-            detail: failure.message,
+            subject: gesture,
+            ops: specs.length,
           })
           reject(failure)
         }
@@ -564,8 +592,8 @@ export function createHouseholdStore(
     })
   }
 
-  function emitAll(specs: readonly OpSpec[]): void {
-    void emitAllDurable(specs).catch(() => undefined)
+  function emitAll(specs: readonly OpSpec[], gesture: string): void {
+    void emitAllDurable(specs, gesture).catch(() => undefined)
   }
 
   // -------------------------------------------------------------------------
@@ -613,7 +641,13 @@ export function createHouseholdStore(
     sync: 'idle',
     bootstrap: null,
     deadLetterCount: 0,
-    refusal: null,
+    refusals: [],
+    acknowledgeRefusals() {
+      // Unconditional: `Close` is the acknowledgement whether or not anything
+      // arrived while the sheet was open, and a guard here would leave a
+      // refusal standing behind a sheet the reader has just dismissed.
+      store.setState({ refusals: [] })
+    },
     emit,
     emitDurable,
     emitAll,

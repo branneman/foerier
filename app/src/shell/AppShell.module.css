@@ -285,6 +285,37 @@
     background: var(--color-brand-amber);
   }
 
+  /* **The ▲ takes the dot's slot, not a place beside it** (§5n K24), so the
+     sidebar foot's 22px marker column and its one text edge at 40 hold for
+     all three states. Drawn as text rather than painted, because it *is* the
+     app's attention mark — the same glyph the over-claim band and the
+     whereabouts column carry — and a second rendering of it would be a second
+     thing to keep in step. */
+  .syncMark {
+    width: 0.375rem;
+    flex: none;
+    color: var(--color-brand-amber);
+    line-height: 1;
+  }
+
+  /* The one sync state that is also a route. Nothing is drawn for it: the
+     line inside keeps its own paint, and the button contributes the target
+     and the accessible name. `text-align: left` because a button centres by
+     default and the foot's text edge must not move when the state changes. */
+  .syncRoute {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .syncRoute:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
   .emptyState {
     display: flex;
     flex-direction: column;

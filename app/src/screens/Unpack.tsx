@@ -1479,7 +1479,10 @@ export function Unpack() {
     ) {
       return
     }
-    emitAll(reHomeOnTheSpot(trip, reHomeEntry, reHomeGearId, residence, state))
+    emitAll(
+      reHomeOnTheSpot(trip, reHomeEntry, reHomeGearId, residence, state),
+      `RE-HOME · ${entryLabel(reHomeEntry, state)}`,
+    )
     setPendingReHome(null)
     setReHomeEntryId(null)
   }
@@ -1728,7 +1731,10 @@ export function Unpack() {
                     // Consumed reduction and the posting that records it are
                     // a pair, and a Device dying between them leaves a
                     // lowered owned-count nothing says was lowered.
-                    emitAll(closeTrip(trip, state))
+                    emitAll(
+                      closeTrip(trip, state),
+                      `CLOSE TRIP · ${tripLabel(trip)}`,
+                    )
                   }}
                 >
                   {totals.open > 0

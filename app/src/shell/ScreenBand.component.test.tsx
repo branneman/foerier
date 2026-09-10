@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
+import { inMemoryOpLog } from '../household/opLog'
+import { createHouseholdStore, HouseholdProvider } from '../household/store'
+import { anAuthor, noopEngine } from '../testUtils'
 import { ScreenBand } from './ScreenBand'
 import styles from './ScreenBand.module.css'
 
@@ -14,11 +17,38 @@ import styles from './ScreenBand.module.css'
  * with what it is given.
  */
 
-function renderBand(props: Parameters<typeof ScreenBand>[0]) {
+/**
+ * A real store, because the band reads its own refusal count (§5n K24) — a
+ * fact about the Device rather than about any screen, so it is the one thing
+ * this component does not take as a prop. Empty unless a case says otherwise,
+ * which is every case but the last two.
+ */
+function renderBand(
+  props: Parameters<typeof ScreenBand>[0],
+  refusals: readonly { subject: string; ops: number }[] = [],
+) {
+  const store = createHouseholdStore({
+    log: inMemoryOpLog(),
+    engine: noopEngine,
+    author: anAuthor(),
+  })
+  if (refusals.length > 0) {
+    store.setState({
+      refusals: refusals.map((refusal, index) => ({
+        id: `refusal-${index}`,
+        at: Date.now(),
+        reason: 'not-saved' as const,
+        ...refusal,
+      })),
+    })
+  }
+
   const location = memoryLocation({ path: '/somewhere', record: true })
   return render(
     <Router hook={location.hook}>
-      <ScreenBand {...props} />
+      <HouseholdProvider value={store}>
+        <ScreenBand {...props} />
+      </HouseholdProvider>
     </Router>,
   )
 }
@@ -100,6 +130,46 @@ describe('ScreenBand', () => {
 
     expect(screen.getByText('SYNCED')).toBeVisible()
     expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  /**
+   * **The third state, and it outranks the other two** (§5n K24). At Split the
+   * rail draws a bare marker, so this band is where a refused write is stated
+   * in words — and a Device that is both offline and holding a lost write has
+   * exactly one thing worth the reader's attention. The ▲ takes the dot's own
+   * slot so the line's text edge does not move between states.
+   */
+  it('states a refused write over the engine’s own status', () => {
+    renderBand(
+      {
+        header: { band: true, backLink: false, syncLine: true },
+        back: { href: '/', label: 'DEPOT' },
+        sync: 'offline',
+      },
+      [{ subject: 'Gas canister 450', ops: 1 }],
+    )
+
+    expect(screen.getByText('1 NOT SAVED')).toBeVisible()
+    expect(screen.queryByText('OFFLINE')).toBeNull()
+    expect(screen.getByTestId('screen-band-dot')).toHaveTextContent('▲')
+  })
+
+  it('counts refusals, not the ops that went down with them', () => {
+    // A gesture refused whole is one thing the Quartermaster did. Two
+    // refusals, sixteen ops, and the line says two.
+    renderBand(
+      {
+        header: BOTH,
+        back: { href: '/', label: 'DEPOT' },
+        sync: 'idle',
+      },
+      [
+        { subject: 'CLOSE TRIP · Alps 2026', ops: 14 },
+        { subject: 'Gas canister 450', ops: 2 },
+      ],
+    )
+
+    expect(screen.getByText('2 NOT SAVED')).toBeVisible()
   })
 
   it('puts a caller-named test id on the sync line', () => {

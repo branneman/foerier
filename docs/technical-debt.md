@@ -112,6 +112,20 @@ offers, or what the tiers claim to cover. Nothing here is blocked on anything.
   falsely attention. `app/src/household/trips.ts`'s own docblock on
   `tripHasUnaccounted`, anchor: `A known imprecision, inherited from`
 
+- **Add gear says `RECORDED` for a write that was refused.** `submit` calls
+  `emit`, which is fire-and-forget by design, and sets its confirmation line
+  in the same tick — so an op the store refuses leaves the screen stating
+  `RECORDED · <name> → LOOSE` and `1 RECORDED` beside the shell's own
+  `▲ 1 NOT SAVED`. Two surfaces, one act, opposite claims. It predates §5n
+  K24 and was simply invisible before it: the refusal reached nobody, so the
+  false confirmation was the only thing on screen. **Not fixed here because
+  the honest fix is a design call**: awaiting `emitDurable` before confirming
+  is correct and costs the batch loop an IndexedDB round trip per record,
+  which is exactly the per-tap feel §3b argued for a screen over a sheet to
+  get. The alternative — a confirmation that withdraws when the refusal
+  lands — is a surface no board draws. `app/src/screens/AddGear.tsx`, anchor:
+  `act, opposite claims`
+
 ### Traps
 
 Correct today, and silently wrong the moment a named future slice lands.
@@ -187,23 +201,6 @@ second pane.
   K20's lands, and never Trips (K19).
   [`frontend-design.md`](frontend-design.md) §3.1, anchor:
   `Panes with scrollers of their own`
-- **A refused write reaches nobody, and the sync line is where it belongs.**
-  An op that could not be written — a 16 KB overflow, an IndexedDB failure —
-  sets `depot.refusal` and is logged to the console, and no screen draws it,
-  so a Quartermaster loses an act in silence. §5n **K24** drew the channel: a
-  refusal is the sync line's **third state**, `▲ 1 NOT SAVED` in the marker's
-  own slot beside sage `SYNCED` and amber `OFFLINE`, and it is the one sync
-  state that is also a route. **K24b** drew what it opens: a `Sheet` (nothing
-  is being decided) titled `Not saved`, one mono line per refusal naming
-  subject and cause, a batch refusal as **one** line because `emitAll` refuses
-  the whole gesture, no `Try again` — the refused payload is not kept — and
-  the marker clearing on `Close`, acknowledgement being the clearing act.
-  What the code owes beyond the two surfaces: `refusal` is a single slot the
-  next accepted op clears, and K24b needs a list that survives until it is
-  read; a refusal has to carry its subject, which for a batch is the gesture
-  the Quartermaster spent rather than any one op.
-  [`docs/design/README.md`](design/README.md) §5n, anchor:
-  `the sync line's third state`
 - **`ui/`'s `Popover` is unbuilt and has seven waiting callers.** §4a's
   desktop tag picker, the slice bar's `ValueMenu`, S8's Piece picker, S9a's
   Piece status sheet, the outcome sheet and its roster variant (S10), and —

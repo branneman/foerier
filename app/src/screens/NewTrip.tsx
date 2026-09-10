@@ -218,7 +218,10 @@ export function NewTrip() {
     if (sourceTrip !== undefined) {
       // The copy is one write: a Trip created with half its gear list is
       // a Trip nobody asked for, and the retry would create a second one.
-      emitAll(startTripFrom(id, trimmedName, sourceTrip, state, systemIdSource))
+      emitAll(
+        startTripFrom(id, trimmedName, sourceTrip, state, systemIdSource),
+        `NEW TRIP · ${trimmedName}`,
+      )
     } else {
       emit(tripCreated(id, trimmedName))
     }

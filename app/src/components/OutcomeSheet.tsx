@@ -9,9 +9,9 @@ import {
   outcomeGlyph,
   outcomeLabel,
   outcomeOf,
-  ownedCountOf,
   OUTCOMES,
   owedOf,
+  ownedCountOf,
   pieceOutcomeOf,
   piecesOf,
   postedOf,
@@ -19,9 +19,10 @@ import {
   restoreConsumption,
   returnPathOf,
   tripConsumedCountSet,
+  tripLabel,
   tripOutcomeSet,
-  unpackItems,
   UNNAMED_PERSON_GLYPH,
+  unpackItems,
   type ContainmentView,
   type EntryState,
   type HouseholdState,
@@ -448,7 +449,10 @@ export function OutcomeSheet({
 
   function confirmRestoration(): void {
     if (offer === null) return
-    emitAll(restoreConsumption(trip, offer.gearId, offer.owed, state))
+    emitAll(
+      restoreConsumption(trip, offer.gearId, offer.owed, state),
+      `RESTORE · ${tripLabel(trip)}`,
+    )
     setOffer(null)
   }
 
