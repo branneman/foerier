@@ -118,14 +118,22 @@ function unpackRow(page: Page, name: string) {
 
 /**
  * Resolves one Entry `BACK` through its pill's outcome sheet (F6, spec
- * §4.4) — the sheet stays open after a tap, so this closes it explicitly
- * rather than leaving it standing over the next row's own tap.
+ * §4.4) — it stays open after a tap, so this dismisses it explicitly rather
+ * than leaving it standing over the next row's own tap.
+ *
+ * **Escape, not a `Close` button**, because this project runs at Desktop and
+ * §5n K17 made the outcome surface a **popover** there. A popover has no
+ * close control on purpose: it dismisses on Escape and on a pointer-down
+ * outside, and a button labelled `Close` inside one would be a second way to
+ * do what clicking anywhere already does. Escape closes both forms, so this
+ * line is the one that does not care which width the run is at.
  */
 async function resolveBack(page: Page, name: string) {
   await unpackRow(page, name).getByTestId('status-pill').click()
   const sheet = page.getByRole('dialog', { name })
   await sheet.getByRole('button', { name: /BACK/ }).click()
-  await sheet.getByRole('button', { name: 'Close' }).click()
+  await page.keyboard.press('Escape')
+  await expect(sheet).toHaveCount(0)
 }
 
 test('the golden path: offline gear, find, a trip, packing and the close @production', async ({

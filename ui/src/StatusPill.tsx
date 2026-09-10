@@ -1,4 +1,5 @@
 import styles from './StatusPill.module.css'
+import type { Ref } from 'react'
 
 /**
  * The status pill — `frontend-design.md` §5's primitive of that name, built
@@ -62,18 +63,27 @@ export interface StatusPillProps {
    */
   size?: 'row' | 'action'
   onClick: () => void
+  /**
+   * **Forwarded to this component's own outermost element**, so a caller can
+   * anchor a popover to it (§5n K17). Radix measures its anchor through a
+   * ref, and a component that drops one fails silently — Floating UI never
+   * runs and the popover paints off-screen with no error anywhere, which is
+   * what `Chip` did until a browser was pointed at it.
+   */
+  ref?: Ref<HTMLElement>
 }
-
 export function StatusPill({
   glyph,
   label,
   tone = 'plain',
   size = 'row',
   onClick,
+  ref,
 }: StatusPillProps) {
   return (
     <button
       type="button"
+      ref={ref as Ref<HTMLButtonElement>}
       className={styles['pill']}
       data-tone={tone}
       data-size={size}

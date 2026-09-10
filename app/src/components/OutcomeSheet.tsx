@@ -30,11 +30,12 @@ import {
   type TripState,
   type UnpackItem,
 } from '@foerier/shared'
-import { PersonCircle, Sheet, Stepper } from '@foerier/ui'
-import { useMemo, useState } from 'react'
+import { PersonCircle, Popover, Sheet, Stepper } from '@foerier/ui'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import { useHousehold } from '../household/store'
 import { tripParticipants } from '../household/trips'
+import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './OutcomeSheet.module.css'
 import { RestoreConsumptionConfirm } from './RestoreConsumptionConfirm'
 
@@ -185,6 +186,9 @@ export interface OutcomeSheetProps {
    * the cluster's own tap, which opens with `EVERYONE` selected.
    */
   personId?: string
+  /** The row's own pill or cluster, rendered by this component — a popover
+   * positions against an element inside its own Radix root (§5n K17). */
+  anchor: ReactNode
 }
 
 /**
@@ -312,7 +316,9 @@ export function OutcomeSheet({
   onClose,
   roster = false,
   personId,
+  anchor,
 }: OutcomeSheetProps) {
+  const isSplit = useMediaQuery(SPLIT)
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
   const emitAll = useHousehold((depot) => depot.emitAll)
@@ -590,12 +596,26 @@ export function OutcomeSheet({
     consumedCount !== null &&
     bringCount !== null
 
-  return (
-    <Sheet
-      title={title}
-      onClose={onClose}
-      description={<p className={styles['fact']}>{fact}</p>}
-    >
+  /**
+   * **The ghost `Close` belongs to the sheet, not to the body** (§5n K17).
+   *
+   * `Sheet.Close` is a Radix `Dialog.Close` and throws outside a `Dialog` —
+   * which is what happens the moment a body written for a sheet is reused in
+   * a popover. A popover needs no such control anyway: it dismisses on Escape
+   * and on a pointer-down outside, which is the form's own convention, and a
+   * button labelled `Close` inside one would be a second way to do what
+   * clicking anywhere already does.
+   */
+  const close = (
+    <Sheet.Close>
+      <button type="button" className={styles['close']}>
+        Close
+      </button>
+    </Sheet.Close>
+  )
+
+  const body = (
+    <>
       {roster && (
         <div className={styles['applyRow']}>
           <span className={styles['applyLabel']}>APPLY TO</span>
@@ -719,12 +739,6 @@ export function OutcomeSheet({
 
       <p className={styles['footer']}>{roster ? ROSTER_FOOTER : FOOTER}</p>
 
-      <Sheet.Close>
-        <button type="button" className={styles['close']}>
-          Close
-        </button>
-      </Sheet.Close>
-
       {offer !== null && (
         <RestoreConsumptionConfirm
           trip={trip}
@@ -734,6 +748,37 @@ export function OutcomeSheet({
           onConfirm={confirmRestoration}
         />
       )}
-    </Sheet>
+    </>
+  )
+
+  /**
+   * **Sheet below Split, popover from Split up** (§5n K17). `end`, because
+   * the trigger is a row's right-edge pill or cluster (§5n K16). The fact
+   * line leads the body in the popover: there is no description slot and no
+   * title, the row it hangs from being still on screen.
+   */
+  return isSplit ? (
+    <Popover
+      anchor={anchor}
+      label={title}
+      align="end"
+      padding="rows"
+      onClose={onClose}
+    >
+      <p className={styles['fact']}>{fact}</p>
+      {body}
+    </Popover>
+  ) : (
+    <>
+      {anchor}
+      <Sheet
+        title={title}
+        onClose={onClose}
+        description={<p className={styles['fact']}>{fact}</p>}
+      >
+        {body}
+        {close}
+      </Sheet>
+    </>
   )
 }

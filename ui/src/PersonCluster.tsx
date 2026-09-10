@@ -1,5 +1,6 @@
 import { PersonCircle, type PersonCircleProps } from './PersonCircle'
 import styles from './PersonCluster.module.css'
+import type { Ref } from 'react'
 
 /**
  * One entry in a cluster. Deliberately not a `Person` — `ui/` never imports
@@ -67,9 +68,21 @@ export interface PersonClusterProps {
   size: PersonCircleProps['size']
   /** The cluster's accessible name, rendered as this element's `aria-label`. */
   label: string
+  /**
+   * **Forwarded to this component's own outermost element**, so a caller can
+   * anchor a popover to it (§5n K17). Radix measures its anchor through a
+   * ref, and a component that drops one fails silently — Floating UI never
+   * runs and the popover paints off-screen with no error anywhere, which is
+   * what `Chip` did until a browser was pointed at it.
+   */
+  ref?: Ref<HTMLElement>
 }
-
-export function PersonCluster({ people, size, label }: PersonClusterProps) {
+export function PersonCluster({
+  people,
+  size,
+  label,
+  ref,
+}: PersonClusterProps) {
   const dashed = people.filter((person) => person.tone === 'dashed')
   const rest = people.filter((person) => person.tone !== 'dashed')
   const ordered = [...dashed, ...rest]
@@ -80,6 +93,7 @@ export function PersonCluster({ people, size, label }: PersonClusterProps) {
   return (
     <span
       className={styles['cluster']}
+      ref={ref as Ref<HTMLSpanElement>}
       role="img"
       aria-label={label}
       /* The cluster states *who brings one* and is the control that edits it,

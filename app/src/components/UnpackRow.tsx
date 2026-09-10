@@ -134,6 +134,16 @@ export interface UnpackRowProps {
   /** The pill's target — opens the outcome sheet (Task 12) — and the
    * cluster's, for the identical Entry (Task 13). */
   onOutcome: () => void
+  /**
+   * **The outcome sheet, drawn in this row's own control** (§5n K17), for the
+   * one row whose sheet is open — `PackingRow`'s `pieceOverlay`, one screen
+   * over and for the identical reason: a popover positions against an
+   * element inside its own Radix root.
+   *
+   * It wraps whichever control this row draws, the pill or the cluster, since
+   * both open the same sheet.
+   */
+  outcomeOverlay?: (anchor: ReactNode) => ReactNode
   /** The row body's target — opens the Home picker (Task 14). Unread in
    *  {@link UnpackRowProps.record} mode, where the body is a link. */
   onReHome: () => void
@@ -220,7 +230,13 @@ export function UnpackRow({
   rehomed = false,
   canReHome = true,
   record,
+  outcomeOverlay,
 }: UnpackRowProps) {
+  /** The sheet renders this row's control while it is open — see
+   * `outcomeOverlay`. */
+  const wrap = (control: ReactNode): ReactNode =>
+    outcomeOverlay?.(control) ?? control
+
   const bodyContent = (
     <>
       <span className={styles['nameLine']}>
@@ -306,32 +322,36 @@ export function UnpackRow({
             : `${cluster.resolved}/${cluster.total}`}
         </span>
       ) : cluster !== undefined ? (
-        <button
-          type="button"
-          className={styles['cluster']}
-          aria-label={`Outcome — ${name}, ${cluster.resolved} of ${cluster.total} resolved`}
-          data-testid="unpack-row-cluster"
-          onClick={onOutcome}
-        >
-          {/* `aria-hidden` + the button's own label above: this control
+        wrap(
+          <button
+            type="button"
+            className={styles['cluster']}
+            aria-label={`Outcome — ${name}, ${cluster.resolved} of ${cluster.total} resolved`}
+            data-testid="unpack-row-cluster"
+            onClick={onOutcome}
+          >
+            {/* `aria-hidden` + the button's own label above: this control
               already carries the whole fact as its accessible name, so
               `PersonCluster`'s own `role="img"` would announce the roster a
               second time (`PackingRow`'s identical pattern). */}
-          <span aria-hidden="true" className={styles['clusterWrap']}>
-            <PersonCluster
-              people={cluster.people}
-              size={34}
-              label={`Outcome — ${name}, ${cluster.resolved} of ${cluster.total} resolved`}
-            />
-          </span>
-        </button>
+            <span aria-hidden="true" className={styles['clusterWrap']}>
+              <PersonCluster
+                people={cluster.people}
+                size={34}
+                label={`Outcome — ${name}, ${cluster.resolved} of ${cluster.total} resolved`}
+              />
+            </span>
+          </button>,
+        )
       ) : (
-        <StatusPill
-          glyph={outcomeGlyph(outcome)}
-          label={outcomeLabel(outcome)}
-          tone={toneForOutcome(outcome, rehomed)}
-          onClick={onOutcome}
-        />
+        wrap(
+          <StatusPill
+            glyph={outcomeGlyph(outcome)}
+            label={outcomeLabel(outcome)}
+            tone={toneForOutcome(outcome, rehomed)}
+            onClick={onOutcome}
+          />,
+        )
       )}
     </div>
   )

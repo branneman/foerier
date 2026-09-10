@@ -9,7 +9,7 @@ import {
   type EntryState,
   type TripState,
 } from '@foerier/shared'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { useHousehold } from '../household/store'
 import { tripPieces } from '../household/trips'
@@ -141,7 +141,6 @@ export function GearListSection({
   // the row, because the picker itself (ruling C) needs the Entry and the
   // Trip, and `EntryRow` stays presentational (this file's own docstring).
   const [openPieceEntryId, setOpenPieceEntryId] = useState<string | null>(null)
-  const openPieceEntry = entries.find((entry) => entry.id === openPieceEntryId)
 
   const groups = GROUPS.map((group) => {
     const groupEntries = entries.filter(
@@ -212,6 +211,22 @@ export function GearListSection({
                       }
                       onRemove={() => onRemove(entry.id)}
                       onOpenPiecePicker={() => setOpenPieceEntryId(entry.id)}
+                      // The picker is drawn in this row's own cluster
+                      // control (§5n K17): a popover positions against an
+                      // element inside its own Radix root, so it cannot
+                      // render as a sibling of the whole list.
+                      {...(entry.id === openPieceEntryId
+                        ? {
+                            pieceOverlay: (anchor: ReactNode) => (
+                              <PiecePicker
+                                trip={trip}
+                                entry={entry}
+                                anchor={anchor}
+                                onClose={() => setOpenPieceEntryId(null)}
+                              />
+                            ),
+                          }
+                        : {})}
                     />
                   </li>
                 )
@@ -220,13 +235,6 @@ export function GearListSection({
           </div>
         )
       })}
-      {openPieceEntry && (
-        <PiecePicker
-          trip={trip}
-          entry={openPieceEntry}
-          onClose={() => setOpenPieceEntryId(null)}
-        />
-      )}
     </div>
   )
 }

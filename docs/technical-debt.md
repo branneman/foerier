@@ -201,17 +201,6 @@ second pane.
   K20's lands, and never Trips (K19).
   [`frontend-design.md`](frontend-design.md) §3.1, anchor:
   `Panes with scrollers of their own`
-- **Three of `ui/Popover`'s seven callers still approximate it with a
-  sheet.** The primitive exists (§5n K15–K17) and four have switched — the tag
-  picker, `ValueMenu`, the template source picker, and both slice bars' copies
-  of the first two. The three left are the packing and unpack family: the
-  Piece picker, the Piece status sheet, and the outcome sheet with its roster
-  variant. Each needs the same two things the four needed — the row that owns
-  the trigger gaining an overlay slot, so the trigger and the content sit
-  under one Radix root, and the `ui/` component the trigger is built from
-  (`PersonCluster`, `StatusPill`) forwarding its ref, without which Floating
-  UI never runs and the popover paints off-screen with no error anywhere.
-  `ui/src/Popover.tsx`, anchor: `the seven placements`
 - **Four mono labels sit at 8px, below the type ladder's floor.**
   `Account`'s and `Devices`' and `People`'s badge and `JourneyRail`'s stage
   chip each spell `font-size: 0.5rem` beside `var(--font-mono)`, and §5n K28's

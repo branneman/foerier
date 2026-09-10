@@ -15,11 +15,12 @@ import {
   type TripResidence,
   type TripState,
 } from '@foerier/shared'
-import { PersonCircle, Sheet, StatusPill } from '@foerier/ui'
-import { useMemo } from 'react'
+import { PersonCircle, Popover, Sheet, StatusPill } from '@foerier/ui'
+import { useMemo, type ReactNode } from 'react'
 
 import { useHousehold } from '../household/store'
 import { tripParticipants } from '../household/trips'
+import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './PieceStatusSheet.module.css'
 
 /**
@@ -115,6 +116,9 @@ export interface PieceStatusSheetProps {
   entryId: string
   onClose: () => void
   onOpenPieceMove: (personId: string) => void
+  /** The row's own cluster control, rendered by this component — a popover
+   * positions against an element inside its own Radix root (§5n K17). */
+  anchor: ReactNode
 }
 
 interface StatusRow {
@@ -204,7 +208,9 @@ export function PieceStatusSheet({
   entryId,
   onClose,
   onOpenPieceMove,
+  anchor,
 }: PieceStatusSheetProps) {
+  const isSplit = useMediaQuery(SPLIT)
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
 
@@ -267,16 +273,26 @@ export function PieceStatusSheet({
     }
   }
 
-  return (
-    <Sheet
-      title={title}
-      onClose={onClose}
-      description={
-        <p className={styles['fact']}>
-          PACKING STATUS · {packedCount} OF {rows.length} PACKED
-        </p>
-      }
-    >
+  /**
+   * **The ghost `Close` belongs to the sheet, not to the body** (§5n K17).
+   *
+   * `Sheet.Close` is a Radix `Dialog.Close` and throws outside a `Dialog` —
+   * which is what happens the moment a body written for a sheet is reused in
+   * a popover. A popover needs no such control anyway: it dismisses on Escape
+   * and on a pointer-down outside, which is the form's own convention, and a
+   * button labelled `Close` inside one would be a second way to do what
+   * clicking anywhere already does.
+   */
+  const close = (
+    <Sheet.Close>
+      <button type="button" className={styles['close']}>
+        Close
+      </button>
+    </Sheet.Close>
+  )
+
+  const body = (
+    <>
       <ul className={styles['rows']}>
         {rows.map((row) => (
           <li
@@ -343,12 +359,44 @@ export function PieceStatusSheet({
       <p className={styles['hint']}>
         TAP A ROW = NEXT STATE FOR THAT PERSON · ONE OP PER TAP
       </p>
+    </>
+  )
 
-      <Sheet.Close>
-        <button type="button" className={styles['close']}>
-          Close
-        </button>
-      </Sheet.Close>
-    </Sheet>
+  /**
+   * **Sheet below Split, popover from Split up** (§5n K17). `end`, because
+   * the trigger is a packing row's right-edge cluster (§5n K16). The fact
+   * line is the sheet's `description`; a popover has no description slot and
+   * no title, so it leads the body instead — the row it hangs from is still
+   * on screen and already names the Entry.
+   */
+  return isSplit ? (
+    <Popover
+      anchor={anchor}
+      label={title}
+      align="end"
+      padding="rows"
+      onClose={onClose}
+    >
+      <p className={styles['fact']}>
+        PACKING STATUS · {packedCount} OF {rows.length} PACKED
+      </p>
+      {body}
+    </Popover>
+  ) : (
+    <>
+      {anchor}
+      <Sheet
+        title={title}
+        onClose={onClose}
+        description={
+          <p className={styles['fact']}>
+            PACKING STATUS · {packedCount} OF {rows.length} PACKED
+          </p>
+        }
+      >
+        {body}
+        {close}
+      </Sheet>
+    </>
   )
 }

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { createRef } from 'react'
 import { describe, expect, it } from 'vitest'
 
 import { PersonCluster } from './PersonCluster'
@@ -11,6 +12,30 @@ const six = ['A', 'B', 'C', 'D', 'E', 'F'].map((l) => ({ key: l, label: l }))
  * hides the exception.
  */
 describe('PersonCluster', () => {
+  /**
+   * **This is a popover anchor, so it has to be measurable** (§5n K17).
+   *
+   * `ui/Popover` positions against an element inside its own Radix root, and
+   * Radix measures it through a ref. React 19 hands `ref` to a function
+   * component as an ordinary prop, but it only reaches the DOM if the
+   * component passes it on — and a component that drops it fails **silently**:
+   * Floating UI never runs, no position variable is set, and the popover
+   * paints off-screen with no error anywhere. `Chip` shipped that way until a
+   * browser was pointed at it; these two are its siblings.
+   */
+  it('forwards its ref to a real element', () => {
+    const ref = createRef<HTMLElement>()
+    render(
+      <PersonCluster
+        people={[{ key: 'e', label: 'E' }]}
+        size={24}
+        label="Who brings one"
+        ref={ref}
+      />,
+    )
+
+    expect(ref.current).toBeInstanceOf(HTMLElement)
+  })
   it('draws four or fewer whole', () => {
     render(
       <PersonCluster people={six.slice(0, 4)} size={22} label="Participants" />,

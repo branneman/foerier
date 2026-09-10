@@ -28,6 +28,8 @@ import {
   useHousehold,
   type HouseholdStoreState,
 } from '../household/store'
+import { SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { anAuthor, noopEngine } from '../testUtils'
 import { OutcomeSheet } from './OutcomeSheet'
 
@@ -38,7 +40,12 @@ import { OutcomeSheet } from './OutcomeSheet'
  * `PieceStatusSheet.test.tsx`'s own harness, transplanted: a real store and
  * the real reducer, seeded by emitting real ops, an `authored()` handle that
  * subtracts the seed. `Harness` — not a bare `render(<OutcomeSheet
- * trip={...} entry={...} />)` — is what makes a second tap's assertions mean
+ * trip={...} entry={...}       anchor={
+        <button type="button" aria-label="outcome">
+          pill
+        </button>
+      }
+/>)` — is what makes a second tap's assertions mean
  * anything: `trip`/`entry` are props here exactly as they are on
  * `Unpack.tsx`'s real call site, so something has to re-read the store and
  * hand down fresh ones after an op lands, the way the real caller does.
@@ -200,6 +207,11 @@ function Harness({
       view={containmentView(state)}
       onClose={onClose}
       roster={roster}
+      anchor={
+        <button type="button" aria-label="outcome">
+          pill
+        </button>
+      }
       {...(personId === undefined ? {} : { personId })}
     />
   )
@@ -229,6 +241,30 @@ function chipNamed(name: string): HTMLElement {
 }
 
 describe('the outcome sheet', () => {
+  /**
+   * **The popover form is rendered, not merely typed** (§5n K17).
+   *
+   * Every other case in this file runs at the default phone width and sees
+   * the sheet. That is how a real crash got to a browser: the body a sheet
+   * and a popover share carried a `Sheet.Close`, which is a Radix
+   * `Dialog.Close` and **throws** outside a `Dialog` — so the popover form
+   * took down the whole screen and the app's crash fallback caught it, while
+   * every unit test here stayed green.
+   *
+   * One case per converted surface is the cheapest guard there is: render the
+   * other form once, and a body that cannot survive it fails here instead of
+   * in Chromium.
+   */
+  it('renders as a popover from Split up, without crashing', async () => {
+    setViewport(SPLIT)
+    const seed = await seeded()
+    renderSheet(seed, E_GAS)
+
+    expect(screen.getByRole('dialog')).toBeVisible()
+    // No `Close`: a popover dismisses on Escape and on an outside
+    // pointer-down, which is the form's own convention.
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
   it('names the sheet by the gear and describes it with the outcome fact', async () => {
     const seed = await seeded()
     renderSheet(seed, E_GAS)

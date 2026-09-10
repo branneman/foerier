@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import { render, screen } from '@testing-library/react'
+import { createRef } from 'react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -29,6 +30,30 @@ function ruleBody(selector: string): string | undefined {
 }
 
 describe('StatusPill', () => {
+  /**
+   * **This is a popover anchor, so it has to be measurable** (§5n K17).
+   *
+   * `ui/Popover` positions against an element inside its own Radix root, and
+   * Radix measures it through a ref. React 19 hands `ref` to a function
+   * component as an ordinary prop, but it only reaches the DOM if the
+   * component passes it on — and a component that drops it fails **silently**:
+   * Floating UI never runs, no position variable is set, and the popover
+   * paints off-screen with no error anywhere. `Chip` shipped that way until a
+   * browser was pointed at it; these two are its siblings.
+   */
+  it('forwards its ref to a real element', () => {
+    const ref = createRef<HTMLElement>()
+    render(
+      <StatusPill
+        glyph="○"
+        label="NOT PACKED"
+        onClick={() => undefined}
+        ref={ref}
+      />,
+    )
+
+    expect(ref.current).toBeInstanceOf(HTMLElement)
+  })
   it('reads glyph then word, as one accessible name', () => {
     render(<StatusPill glyph="◐" label="STAGED" onClick={vi.fn()} />)
 

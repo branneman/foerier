@@ -1061,9 +1061,15 @@ function GroupSection({
   closed,
   onOutcome,
   onReHome,
+  outcomeOverlay,
 }: {
   group: UnpackGroup
   openOnly: boolean
+  /** {@link Unpack}'s `outcomeOverlayFor`, threaded so a group's rows can
+   * draw the sheet in their own control (§5n K17). */
+  outcomeOverlay: (rowKey: string) => {
+    outcomeOverlay?: (anchor: ReactNode) => ReactNode
+  }
   /** §5i G6 — a closed Trip draws every row as a record. */
   closed: boolean
   /** The real Entry id, never a PERSON-mode Piece row's composite key —
@@ -1143,6 +1149,7 @@ function GroupSection({
               meta={row.meta}
               outcome={row.outcome}
               onOutcome={() => onOutcome(row.entryId)}
+              {...outcomeOverlay(row.entryId)}
               onReHome={() => onReHome(row.entryId)}
               {...recordProp(closed, row)}
               // `exactOptionalPropertyTypes`: an *omitted* prop and one
@@ -1219,6 +1226,8 @@ function reHomeContext(name: string): { act: string; consequence: string } {
 interface OutcomeTarget {
   readonly entryId: string
   readonly personId?: string
+  /** The row that opened it — see {@link Unpack}'s `outcomeOverlayFor`. */
+  readonly row: string
 }
 
 export function Unpack() {
@@ -1297,10 +1306,48 @@ export function Unpack() {
     if (trip?.entries?.[entryId] === undefined) return
     setOutcomeTarget(
       separator === -1
-        ? { entryId }
-        : { entryId, personId: rowKey.slice(separator + 1) },
+        ? { entryId, row: rowKey }
+        : { entryId, personId: rowKey.slice(separator + 1), row: rowKey },
     )
   }
+
+  /**
+   * **The outcome sheet is drawn in its own row's control** (§5n K17): a
+   * popover positions against an element inside its own Radix root, so it
+   * cannot render as a sibling of the whole screen.
+   *
+   * Keyed on the **row**, not the Entry: an Entry can be drawn by more than
+   * one row here (a PERSON-mode Piece row and its Entry's own), and matching
+   * on the id alone would mount the sheet once per matching row.
+   * `openOutcome`'s own `rowKey` is already exactly that identity, so this
+   * reuses it rather than inventing a second.
+   */
+  const outcomeOverlayFor = (
+    rowKey: string,
+  ): { outcomeOverlay?: (anchor: ReactNode) => ReactNode } =>
+    outcomeTarget?.row === rowKey &&
+    outcomeEntry !== undefined &&
+    trip !== undefined
+      ? {
+          outcomeOverlay: (anchor: ReactNode) => (
+            <OutcomeSheet
+              trip={trip}
+              entry={outcomeEntry}
+              view={view}
+              anchor={anchor}
+              onClose={() => setOutcomeTarget(null)}
+              roster={outcomeIsRoster}
+              // R23: the Piece whose own pill opened this sheet, when one
+              // did — `exactOptionalPropertyTypes`'s omit-vs-`undefined`
+              // rule, spread rather than passed as
+              // `personId={outcomeTarget?.personId}`.
+              {...(outcomeTarget.personId === undefined
+                ? {}
+                : { personId: outcomeTarget.personId })}
+            />
+          ),
+        }
+      : {}
 
   /**
    * Task 14's own closer — {@link openOutcome}'s identical key-splitting,
@@ -1630,6 +1677,7 @@ export function Unpack() {
                     meta={row.meta}
                     outcome={row.outcome}
                     onOutcome={() => openOutcome(row.entryId)}
+                    {...outcomeOverlayFor(row.entryId)}
                     onReHome={() => openReHome(row.entryId)}
                     {...recordProp(closed, row)}
                     {...(row.cluster === undefined
@@ -1652,6 +1700,7 @@ export function Unpack() {
                     closed={closed}
                     onOutcome={openOutcome}
                     onReHome={openReHome}
+                    outcomeOverlay={outcomeOverlayFor}
                   />
                 ),
               )}
@@ -1748,22 +1797,6 @@ export function Unpack() {
             )}
           </section>
         </>
-      )}
-
-      {outcomeEntry !== undefined && (
-        <OutcomeSheet
-          trip={trip}
-          entry={outcomeEntry}
-          view={view}
-          onClose={() => setOutcomeTarget(null)}
-          roster={outcomeIsRoster}
-          // R23: the Piece whose own pill opened this sheet, when one did —
-          // `exactOptionalPropertyTypes`'s omit-vs-`undefined` rule, spread
-          // rather than passed as `personId={outcomeTarget?.personId}`.
-          {...(outcomeTarget?.personId === undefined
-            ? {}
-            : { personId: outcomeTarget.personId })}
-        />
       )}
 
       {reHomeEntry !== undefined &&

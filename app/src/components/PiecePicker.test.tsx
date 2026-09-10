@@ -21,6 +21,8 @@ import {
   HouseholdProvider,
   type HouseholdStoreState,
 } from '../household/store'
+import { SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { anAuthor, noopEngine } from '../testUtils'
 import { PiecePicker } from './PiecePicker'
 
@@ -105,12 +107,37 @@ async function allPieceOps(
 function renderPicker(seed: Seeded) {
   render(
     <HouseholdProvider value={seed.store}>
-      <PiecePicker trip={seed.trip()} entry={seed.entry()} onClose={() => {}} />
+      <PiecePicker
+        trip={seed.trip()}
+        entry={seed.entry()}
+        onClose={() => {}}
+        anchor={
+          <button type="button" aria-label="Who brings one">
+            cluster
+          </button>
+        }
+      />
     </HouseholdProvider>,
   )
 }
 
 describe('the piece picker', () => {
+  /**
+   * **The popover form is rendered, not merely typed** (§5n K17) — see
+   * `OutcomeSheet.test.tsx`'s own note for what this catches: a body written
+   * for a sheet carrying a `Sheet.Close`, which is a Radix `Dialog.Close`
+   * and throws outside a `Dialog`, so the popover form takes the screen down
+   * while every phone-width case here stays green.
+   */
+  it('renders as a popover from Split up, without crashing', async () => {
+    setViewport(SPLIT)
+    renderPicker(await seeded())
+
+    expect(screen.getByRole('dialog')).toBeVisible()
+    // No `Close`: a popover dismisses on Escape and on an outside
+    // pointer-down, which is the form's own convention.
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
   it('states rather than asks', async () => {
     // Kim's Piece is out ahead of render, so the count reads 2 of 3 and the
     // title is the gear's own name — never the straw-man question the S8

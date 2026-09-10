@@ -39,7 +39,7 @@ import {
   SegmentedControl,
   type SegmentedOption,
 } from '@foerier/ui'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'wouter'
 
 import { ContainerMoveConfirm } from '../components/ContainerMoveConfirm'
@@ -798,7 +798,22 @@ export function Packing() {
   // can be open together — the sheet's trailing `MOVE` opens the picker for
   // one Piece over it, and closing the picker returns to the sheet.
   const [picker, setPicker] = useState<PickerTarget | null>(null)
-  const [sheetEntryId, setSheetEntryId] = useState<string | null>(null)
+  /**
+   * The Entry whose Piece status sheet is open, **and the row it was opened
+   * from** (§5n K17).
+   *
+   * The id alone was enough while the sheet rendered as a sibling of the
+   * whole screen. It is not enough now that the sheet is drawn *in* its
+   * row's cluster control, because CONTAINER mode draws one row per group
+   * for a per-person Entry (ruling C1) — so an id match alone mounts the
+   * sheet once per matching row, which is exactly the "one sheet per Entry,
+   * never one per row" C3 rules against. `row` is whatever the call site
+   * uses to tell its rows apart; the sheet still keys on `entryId`, so it is
+   * one sheet either way.
+   */
+  const [sheet, setSheet] = useState<{ entryId: string; row: string } | null>(
+    null,
+  )
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
 
   const trip = tripId === undefined ? undefined : state.trips[tripId]
@@ -925,6 +940,39 @@ export function Packing() {
     emit(tripEntryMoved(tripId, target.entryId, residence))
   }
 
+  /**
+   * **The Piece status sheet is drawn in its own row's cluster control**
+   * (§5n K17): a popover positions against an element inside its own Radix
+   * root, so it cannot render as a sibling of the whole screen. One factory
+   * for all three places a row is drawn — CONTAINER's groups, PERSON's, and
+   * ALL's — because it is the same sheet keyed on the same Entry either way
+   * (ruling C3: one sheet per Entry, never one per row).
+   */
+  /** CONTAINER mode draws one row per group for a per-person Entry, so a
+   * row there is the group **and** the Entry. */
+  const groupRowKey = (group: { key: string }, entryId: string): string =>
+    `${group.key}:${entryId}`
+
+  const pieceOverlayFor = (
+    entryId: string,
+    row: string,
+  ): { pieceOverlay?: (anchor: ReactNode) => ReactNode } =>
+    sheet !== null && sheet.entryId === entryId && sheet.row === row
+      ? {
+          pieceOverlay: (anchor: ReactNode) => (
+            <PieceStatusSheet
+              tripId={tripId}
+              entryId={entryId}
+              anchor={anchor}
+              onClose={() => setSheet(null)}
+              onOpenPieceMove={(personId) =>
+                setPicker({ kind: 'piece', entryId, personId })
+              }
+            />
+          ),
+        }
+      : {}
+
   const pickerEntry =
     picker === null ? undefined : trip.entries?.[picker.entryId]
 
@@ -964,35 +1012,37 @@ export function Packing() {
 
   /** One row per item, for PERSON mode. A `piece` item draws that Piece
    * alone; anything else draws its whole Entry. */
-  const rowFor = (item: PackingItem) => (
-    <li
-      key={
-        item.kind === 'piece'
-          ? `${item.entryId}:${item.personId}`
-          : item.entryId
-      }
-    >
-      <PackingRow
-        tripId={tripId}
-        entryId={item.entryId}
-        tripItems={view.items}
-        showResidence
-        onOpenPicker={() =>
-          setPicker(
-            item.kind === 'piece'
-              ? {
-                  kind: 'piece',
-                  entryId: item.entryId,
-                  personId: item.personId,
-                }
-              : { kind: 'entry', entryId: item.entryId },
-          )
-        }
-        onOpenPieceSheet={() => setSheetEntryId(item.entryId)}
-        {...(item.kind === 'piece' ? { personId: item.personId } : {})}
-      />
-    </li>
-  )
+  const rowFor = (item: PackingItem) => {
+    // The row's own identity, which is also its React key — see `sheet`.
+    const rowKey =
+      item.kind === 'piece' ? `${item.entryId}:${item.personId}` : item.entryId
+    return (
+      <li key={rowKey}>
+        <PackingRow
+          tripId={tripId}
+          entryId={item.entryId}
+          tripItems={view.items}
+          showResidence
+          onOpenPicker={() =>
+            setPicker(
+              item.kind === 'piece'
+                ? {
+                    kind: 'piece',
+                    entryId: item.entryId,
+                    personId: item.personId,
+                  }
+                : { kind: 'entry', entryId: item.entryId },
+            )
+          }
+          onOpenPieceSheet={() =>
+            setSheet({ entryId: item.entryId, row: rowKey })
+          }
+          {...pieceOverlayFor(item.entryId, rowKey)}
+          {...(item.kind === 'piece' ? { personId: item.personId } : {})}
+        />
+      </li>
+    )
+  }
 
   return (
     <div className={styles['screen']}>
@@ -1272,8 +1322,15 @@ export function Packing() {
                             // row, so the split is seen whole and mended at
                             // `MOVE`. The scoping stops at the row.
                             onOpenPieceSheet={() =>
-                              setSheetEntryId(row.entryId)
+                              setSheet({
+                                entryId: row.entryId,
+                                row: groupRowKey(group, row.entryId),
+                              })
                             }
+                            {...pieceOverlayFor(
+                              row.entryId,
+                              groupRowKey(group, row.entryId),
+                            )}
                           />
                         </li>
                       ))}
@@ -1410,24 +1467,16 @@ export function Packing() {
                     tripItems={view.items}
                     showResidence
                     onOpenPicker={() => setPicker({ kind: 'entry', entryId })}
-                    onOpenPieceSheet={() => setSheetEntryId(entryId)}
+                    onOpenPieceSheet={() =>
+                      setSheet({ entryId, row: `all:${entryId}` })
+                    }
+                    {...pieceOverlayFor(entryId, `all:${entryId}`)}
                   />
                 </li>
               ))}
             </ul>
           )}
         </>
-      )}
-
-      {sheetEntryId !== null && (
-        <PieceStatusSheet
-          tripId={tripId}
-          entryId={sheetEntryId}
-          onClose={() => setSheetEntryId(null)}
-          onOpenPieceMove={(personId) =>
-            setPicker({ kind: 'piece', entryId: sheetEntryId, personId })
-          }
-        />
       )}
 
       {/* The Entry lookup is the mount condition rather than a fallback

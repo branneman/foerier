@@ -21,6 +21,7 @@ import {
   type TripResidence,
 } from '@foerier/shared'
 import { PersonCluster, StatusPill } from '@foerier/ui'
+import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 
 import { personInitial } from '../household/people'
@@ -229,6 +230,13 @@ export interface PackingRowProps {
   onOpenPicker: () => void
   /** The per-person cluster's control, and a per-person row's own body. */
   onOpenPieceSheet: () => void
+  /**
+   * **The Piece status sheet, drawn in this row's own cluster control**
+   * (§5n K17), for the one row whose sheet is open — `EntryRow`'s
+   * `pieceOverlay`, one screen over and for the identical reason: a popover
+   * positions against an element inside its own Radix root.
+   */
+  readonly pieceOverlay?: (anchor: ReactNode) => ReactNode
 }
 
 /** One circle's worth of a per-person row: who, how far along, and where —
@@ -254,6 +262,7 @@ export function PackingRow({
   tripItems,
   onOpenPicker,
   onOpenPieceSheet,
+  pieceOverlay,
 }: PackingRowProps) {
   const state = useHousehold((depot) => depot.state)
   const emit = useHousehold((depot) => depot.emit)
@@ -535,47 +544,51 @@ export function PackingRow({
 
       {/* Ruling E9's other half: zero circles are not a control, so the
           per-person arm draws nothing at all rather than an empty cluster. */}
-      {inert ? null : isPerPerson ? (
-        <button
-          type="button"
-          className={styles['cluster']}
-          aria-label={clusterName}
-          data-testid="packing-row-cluster"
-          onClick={onOpenPieceSheet}
-        >
-          {/* `aria-hidden` + `display: contents`: this button already carries
+      {inert
+        ? null
+        : isPerPerson
+          ? // The sheet renders this control while it is open — see
+            // `pieceOverlay`.
+            (pieceOverlay ?? ((node: ReactNode) => node))(
+              <button
+                type="button"
+                className={styles['cluster']}
+                aria-label={clusterName}
+                data-testid="packing-row-cluster"
+                onClick={onOpenPieceSheet}
+              >
+                {/* `aria-hidden` + `display: contents`: this button already carries
               the whole fact as its own label, so `PersonCluster`'s
               `role="img"` would announce the roster a second time
               (`EntryRow`'s pattern, commit `83e2d6f`). */}
-          <span aria-hidden="true" className={styles['clusterWrap']}>
-            {/* `scoped`, not `pieces`: the cluster paints the Pieces in this
+                <span aria-hidden="true" className={styles['clusterWrap']}>
+                  {/* `scoped`, not `pieces`: the cluster paints the Pieces in this
                 group and no others (ruling C1), and every one it paints
                 takes a status tone. **No entry is ever `dashed`** — that is
                 the builder's *excluded*, and a Piece elsewhere is not
                 excluded; it is the meta line's `N ELSEWHERE`. */}
-            <PersonCluster
-              people={scoped.map((piece) => ({
-                key: piece.personId,
-                label: personInitial(piece.label),
-                tone: toneForStatus(piece.status),
-              }))}
-              size={34}
-              label={clusterName}
-            />
-          </span>
-        </button>
-      ) : (
-        // `null` is a container (ruling A5), and the narrowing the type
-        // demands is the same one the ruling states — see the docstring.
-        status !== null && (
-          <StatusPill
-            glyph={statusGlyph(status)}
-            label={statusLabel(status)}
-            tone={pillToneForStatus(status)}
-            onClick={() => advance(status)}
-          />
-        )
-      )}
+                  <PersonCluster
+                    people={scoped.map((piece) => ({
+                      key: piece.personId,
+                      label: personInitial(piece.label),
+                      tone: toneForStatus(piece.status),
+                    }))}
+                    size={34}
+                    label={clusterName}
+                  />
+                </span>
+              </button>,
+            )
+          : // `null` is a container (ruling A5), and the narrowing the type
+            // demands is the same one the ruling states — see the docstring.
+            status !== null && (
+              <StatusPill
+                glyph={statusGlyph(status)}
+                label={statusLabel(status)}
+                tone={pillToneForStatus(status)}
+                onClick={() => advance(status)}
+              />
+            )}
     </div>
   )
 }

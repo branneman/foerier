@@ -90,6 +90,24 @@ export function TagPicker({
     !appliedSet.has(candidate) &&
     !vocabulary.some((entry) => entry.value === candidate)
 
+  /**
+   * **The ghost `Close` belongs to the sheet, not to the body** (§5n K17).
+   *
+   * `Sheet.Close` is a Radix `Dialog.Close` and throws outside a `Dialog` —
+   * which is what happens the moment a body written for a sheet is reused in
+   * a popover. A popover needs no such control anyway: it dismisses on Escape
+   * and on a pointer-down outside, which is the form's own convention, and a
+   * button labelled `Close` inside one would be a second way to do what
+   * clicking anywhere already does.
+   */
+  const close = (
+    <Sheet.Close>
+      <button type="button" className={styles['close']}>
+        Close
+      </button>
+    </Sheet.Close>
+  )
+
   const body = (
     <>
       {/* The sheet's own rhythm is 12; this picker's blocks were drawn at 16
@@ -212,12 +230,6 @@ export function TagPicker({
             'LOWERCASE · SPACES BECOME - · # IS DRAWN, NOT STORED · NO RENAME EXISTS — REMOVE + APPLY FIXES A SPELLING'
           }
         </p>
-
-        <Sheet.Close>
-          <button type="button" className={styles['close']}>
-            Close
-          </button>
-        </Sheet.Close>
       </div>
     </>
   )
@@ -244,6 +256,7 @@ export function TagPicker({
       {anchor}
       <Sheet title="Tags" onClose={onClose}>
         {body}
+        {close}
       </Sheet>
     </>
   )

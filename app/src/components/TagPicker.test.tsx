@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
+import { SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { TagPicker } from './TagPicker'
 
 /**
@@ -46,6 +48,22 @@ function renderPicker(
 }
 
 describe('TagPicker — the gear-detail sheet', () => {
+  /**
+   * **The popover form is rendered, not merely typed** (§5n K17) — see
+   * `OutcomeSheet.test.tsx`'s own note for what this catches: a body written
+   * for a sheet carrying a `Sheet.Close`, which is a Radix `Dialog.Close`
+   * and throws outside a `Dialog`, so the popover form takes the screen down
+   * while every phone-width case here stays green.
+   */
+  it('renders as a popover from Split up, without crashing', () => {
+    setViewport(SPLIT)
+    renderPicker()
+
+    expect(screen.getByRole('dialog')).toBeVisible()
+    // No `Close`: a popover dismisses on Escape and on an outside
+    // pointer-down, which is the form's own convention.
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
   it('lists what is on this gear, each with a remove', () => {
     renderPicker()
     expect(screen.getByTestId('on-this-gear')).toHaveTextContent('#winter')

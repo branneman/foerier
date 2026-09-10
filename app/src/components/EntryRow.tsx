@@ -1,4 +1,6 @@
 import { type KindValue } from '@foerier/shared'
+import type { ReactNode } from 'react'
+
 import { PersonCluster, Stepper } from '@foerier/ui'
 
 import { personInitial } from '../household/people'
@@ -147,6 +149,17 @@ export interface EntryRowProps {
    * it from).
    */
   readonly onOpenPiecePicker: () => void
+  /**
+   * **The Piece picker, drawn in this row's own cluster control** (§5n K17),
+   * for the one row whose picker is open.
+   *
+   * From Split up the picker is a popover, and a popover positions against an
+   * element inside its own Radix root — so the cluster button cannot stay here
+   * while the picker renders as a sibling of the whole list. The list hands in
+   * a function; this row calls it with its own control and draws what comes
+   * back. Absent on every other row, and on every row when nothing is open.
+   */
+  readonly pieceOverlay?: (anchor: ReactNode) => ReactNode
 }
 
 export function EntryRow({
@@ -159,6 +172,7 @@ export function EntryRow({
   onBringCountChange,
   onRemove,
   onOpenPiecePicker,
+  pieceOverlay,
 }: EntryRowProps) {
   const isTripOnly = kind === 'trip_only'
 
@@ -177,6 +191,7 @@ export function EntryRow({
     label,
     handleStepperChange,
     onOpenPiecePicker,
+    pieceOverlay,
   )
 
   const rowClassName = editable
@@ -236,6 +251,7 @@ function trailing(
   label: string,
   handleStepperChange: (next: number | null) => void,
   onOpenPiecePicker: () => void,
+  pieceOverlay: ((anchor: ReactNode) => ReactNode) | undefined,
 ) {
   // Ruling A carves `per_person` out ahead of the `editable` split below:
   // it is the one Kind that draws the identical anatomy in both modes, so
@@ -247,6 +263,7 @@ function trailing(
       label,
       editable,
       onOpenPiecePicker,
+      pieceOverlay,
     )
   }
 
@@ -306,6 +323,7 @@ function perPersonTrailing(
   label: string,
   editable: boolean,
   onOpenPiecePicker: () => void,
+  pieceOverlay: ((anchor: ReactNode) => ReactNode) | undefined,
 ) {
   if (pieces.length === 0) {
     // Ruling C's empty case: a domain fact, not an empty state — Pieces
@@ -362,7 +380,7 @@ function perPersonTrailing(
     )
   }
 
-  return (
+  const control = (
     <button
       type="button"
       className={styles['pieceControl']}
@@ -381,4 +399,7 @@ function perPersonTrailing(
       <span data-testid="entry-row-count">×{includedCount}</span>
     </button>
   )
+
+  // The picker renders the control while it is open — see `pieceOverlay`.
+  return pieceOverlay?.(control) ?? control
 }
