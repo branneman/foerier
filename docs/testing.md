@@ -533,6 +533,23 @@ a captured one:
 | `shared/fixtures/s7-entries.ops.json` | `trip.entry_added`, `trip.entry_removed`, `trip.entry_bring_count_set` | S7 |
 | `shared/fixtures/s8-pieces.ops.json` | `trip.piece_removed`, `trip.piece_restored` | S8 |
 | `shared/fixtures/s9a-packing.ops.json` | the five packing ops — `trip.entry_status_set`, `trip.piece_status_set`, `trip.entry_moved`, `trip.piece_moved`, `trip.container_stage_set` | S9a |
+| `shared/fixtures/s10-unpack.ops.json` | `trip.outcome_set`, `trip.consumed_count_set` | S10 |
+| `shared/fixtures/s11-reopen.ops.json` | `trip.consumption_posted` | S11 |
+| `shared/fixtures/s12-notes.ops.json` | `trip.note_posted`, `trip.note_kept` | S12 |
+| `shared/fixtures/s13-tasks.ops.json` | `trip.task_added`, `trip.task_ticked` | S13 |
+| `shared/fixtures/s14-templates.ops.json` | `trip.deleted`, and `trip.created` carrying `from_trip_id` | S14 |
+
+**The table is no longer the guard, and it never was one.** A per-slice suite
+proves its own fixture folds; **none of them can notice a slice that captured
+nothing**, which is exactly how S4's two op types went a slice unpinned under a
+spec sentence saying the rule applied. `shared/src/fixtures.coverage.test.ts`
+closes that: it reads `reduce.ts`'s dispatch table — the definition of what
+this build folds, deliberately unexported — and asserts that every type in it
+appears in some committed fixture, and that no fixture carries a type no
+handler answers to. Thirty-nine folded, thirty-nine pinned as of S14; the
+reason to write it down at the MVP's end is that the next op type is the first
+one outside the catalogue, and it will arrive on a branch where every
+per-slice suite is green.
 
 Most of what each carries is genuinely captured from the app that introduced
 the ops. A handful are **forward-compatibility probes** instead, standing in for

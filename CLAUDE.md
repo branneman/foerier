@@ -320,11 +320,16 @@ superseded, and `docs/design/README.md` §5 is the shipped authority.
   `app/src/shell/screenBand.test.tsx` renders a screen *inside* `AppShell` and
   counts: the per-screen suites render without the shell, so their absence
   assertions prove one side of a two-sided fact. **The hook's reach is every
-  screen that draws either half of the band — eleven since S9a:** `AddGear`,
+  screen that draws either half of the band — twelve since S10:** `AddGear`,
   `GearDetail`, `Trip`, `NewTrip`, `Account`, `People`, `Devices`,
-  `InviteIssued`, `DepotPicker`, `GearListBuilder` and `Packing`.
-  `InviteIssued` draws a back link and no sync line, so it gates its band on
-  `backLink`. The hook decides and `ScreenBand` (`app/src/shell/`) draws —
+  `InviteIssued`, `DepotPicker`, `GearListBuilder`, `Packing` and `Unpack`.
+  **All twelve draw a sync line** since §5n K23 gave `InviteIssued` the one it
+  had gone without for want of a Split frame; the band gates on `band` at
+  every caller now, and `ScreenBand`'s `sync` is required rather than
+  optional. Since §5n K27 the hook takes the back link's own `href` and
+  answers for itself whether a sidebar row already carries it, so no screen
+  states a Desktop answer about itself. The hook decides and `ScreenBand`
+  (`app/src/shell/`) draws —
   the band was pasted per screen until the pattern audit found the sync
   dot's tone missing from eight of the ten copies. `splitPane` is true
   for `GearDetail` alone; `AddGear` answers `false` against its own board
@@ -1288,9 +1293,72 @@ delivered that a reader should know about before touching these areas:
   MOVE confirm needed no label threaded back through `onSelect`. **A recorded
   remedy is a hypothesis, not an instruction.**
 - **What remains is deliberately not code work.** The seventeen open entries
-  are boards, one tenancy decision, two shrinking cross-version residues, and a
-  handful whose fix is code-only but visually risky (the mono-caps type scale,
-  the builder's panes). The design pass is what unblocks most of them.
+  were boards, one tenancy decision, two shrinking cross-version residues, and
+  a handful whose fix is code-only but visually risky (the mono-caps type
+  scale, the builder's panes). The design pass is what unblocked most of them —
+  see the round below.
+
+**That design pass has since happened, and it is the shipped authority for
+everything the debt pass decided without a board.** `docs/design/README.md`
+**§5n** carries **K1–K30** (`Post-MVP Round - Debt, Regressions and Open
+Questions.dc.html`): nine rulings on the UX that pass decided with nothing to
+draw against, five a frontend-design regression audit and its sweep, and
+sixteen settling the open questions the remaining debt waited on. **No op
+type, no endpoint, nothing escalated to the domain.** Twenty-three owed the
+code a change and **sixteen have landed**; `technical-debt.md`'s *Waiting on a
+decision* section is now **empty**, which is the round's real output — every
+entry that stood there was built, closed as a decision, or moved to
+*Specified and not built* with a ruling behind it.
+
+**Three rulings are outstanding, all large, and each is named in the debt
+index with what the round settled and what the code still owes:** `ui/Popover`
+and its seven callers (K15–K17), the two-pane Add gear with panes that scroll
+and reset themselves (K20, K21), and the refused write as the sync line's
+third state plus its `Not saved` sheet (K24, K24b). The last is the only
+remaining path on which a Quartermaster's act is lost in silence.
+
+**Five things from the round are worth knowing before touching these
+surfaces:**
+
+- **The cascade shipped inverted for three months, and five unrelated-looking
+  UI bugs were one bug.** CSS layers take their order from **first mention**,
+  so the order the browser applies is a property of the emitted bundle, not of
+  `ui/styles/index.css` — and `main.tsx` imported a `ui` component above the
+  stylesheet, so `@layer components` was created before `reset` existed. Every
+  other layer was appended after it. `reset`'s `button { color: inherit }`
+  then beat every component: the sign-in CTA drew at 1.74:1 and the journey
+  rail's current chip white on white, both FABs lost `position: fixed`, and
+  the Depot's title row and the sidebar's foot lost their layout. The
+  statement travels with `ui/src/index.ts` now. Two habits come out of it —
+  **the emitted bundle is the authority on layer order**, and **assert
+  contrast, not difference**: the first guard written for this asserted the
+  two colours differ and passed against the bug, because inherited ink on an
+  accent fill is a different colour and merely an illegible one.
+- **A screen may not read an absence as a fact about the world until the fold
+  has settled** (K25, `patterns.md` §3.2b). `useFoldSettled()` is two
+  conditions — the first fold from the log, and `pendingWrites === 0` — and
+  the second exists because `emit` is durable-first: `NewTrip` emits and
+  navigates in one tick, so `/trips/:id` used to tell a Quartermaster their
+  brand-new Trip might not have synced here. A **positive** fact does not
+  wait: the tombstone arm draws the instant it folds.
+- **The back link asks the destination, not the screen** (K27).
+  `useScreenHeader` takes the `href` and answers `sidebarCarries` for itself,
+  because a screen with two doors cannot answer a per-screen boolean once.
+  Five screens keep their Desktop link — their destination is one specific
+  Trip, which no sidebar row carries — and none of them says anything about
+  itself to get it.
+- **A picker reports and closes nothing, and the callback's name says whether
+  a close is owed** (K29, `patterns.md` §4.3): `onPicked` for single-select
+  (the sitting ended, the caller closes), `onToggle`/`onApply`/`onChange` for
+  multi-select (a value was written, nothing owed). A component that closes
+  itself has taken a decision about a screen it cannot see.
+- **A blocked frame can be finished instead of unblocked** (K30). The join
+  confirm's `YOU JOIN AS` and `INVITED BY` want a Person's name on a screen
+  that renders before the Device has a session, which §2.1 forbids the server
+  from holding at all — so the two rows are **withdrawn**, permanently. The
+  asymmetry is the lesson: **a row with nothing to say is simply absent, and a
+  sentence has to be re-addressed**, so `Join as Els` became `Join Veldkamp`
+  and `Not Els? Ask Mark…` became `Not you? Ask a household member…`.
 
 Four conventions the code now carries that are easy to trip over:
 
