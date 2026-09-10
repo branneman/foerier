@@ -635,8 +635,17 @@ Three tiers, with one hard rule: **`ui/` never imports the store.**
   the circle is its own subject — Account's `you` block — and absorbed the two
   hand-rolled avatars with it.
 
+  **`Popover` has since landed** (§5n K15–K17), the second of these
+  primitives to exist: `ui/Popover.tsx`, Radix Popover wrapped once, with the
+  anatomy and placement K15/K16 drew and K17's no-trigger form. Its seven
+  callers switch to it one at a time; each is still the `Sheet` it always was
+  below Split, which is a media query deciding what *exists* (§3.2) and
+  therefore the caller's own fork. The paragraphs below are kept as the record
+  of why it waited — the specification really was one repeated sentence until
+  the round drew the rest.
+
   The rest of
-  this list is unbuilt, and `Popover` is the one with waiting callers —
+  this list is unbuilt, and `Popover` was the one with waiting callers —
   **seven of them** that a board *names* as a popover: §4a's desktop tag
   picker and the slice bar's `ValueMenu` are approximated by `Sheet`'s
   `desktopCard` until it lands, and so are S8's Piece picker and S9a's Piece

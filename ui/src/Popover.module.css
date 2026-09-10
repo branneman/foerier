@@ -1,0 +1,73 @@
+@layer components {
+  /*
+   * **The anatomy, every value derived from a token or a rule the app already
+   * has** (§5n K15) — the board prose specified none of it.
+   *
+   * `bg/raised` is the one popover token `Foundations` holds, and it is the
+   * right one: a popover is the raised tier. The rule border is the same 1px
+   * every card carries.
+   */
+  .content {
+    box-sizing: border-box;
+    background: var(--color-bg-raised);
+    border: var(--stroke-rule) solid var(--color-rule);
+
+    /* **Radius 12 — the card step.** Not 16, which is the sheet's *top*
+       corners and a sheet-only shape; not 8, which is what a control wears.
+       A popover is a small card that happens to be anchored. */
+    border-radius: var(--radius-card);
+
+    /* **Width `min(20rem, available)`, floored at the trigger's own width.**
+       20rem is the phone sheet's content measure, which is what all seven of
+       these were authored at; `--radix-popover-content-available-width` is
+       Radix's collision-aware value, so the cap is a rule rather than a
+       number about one pane. The floor stops a popover being narrower than
+       the control it hangs from, which reads as a misalignment rather than
+       as a measure. */
+    width: max(
+      min(20rem, var(--radix-popover-content-available-width)),
+      var(--radix-popover-trigger-width)
+    );
+
+    /* **The content scrolls itself**, the sheets' own `svh` discipline one
+       axis over: a short viewport moves the scrollbar inside the popover
+       rather than clipping the list. */
+    max-height: var(--radix-popover-content-available-height);
+    overflow-y: auto;
+
+    /* No arrow. The app draws none anywhere, an arrow is a second shape to
+       paint at two themes, and the 8px offset plus the alignment already say
+       what it would. */
+  }
+
+  /* The sheet's own two shapes. `rows` bleeds to the edge for a list whose
+     rows carry their own padding; `prose` insets. */
+  .content[data-padding='rows'] {
+    padding-block: var(--space-8);
+  }
+
+  .content[data-padding='prose'] {
+    padding: var(--space-16);
+  }
+
+  /*
+   * **Elevation by the theme's own rule, which is why this is not one
+   * declaration.** Dark elevates by *lighter surface* — `bg/raised` is
+   * already a step up from `bg/surface`, and a shadow on near-black reads as
+   * a smudge rather than as height. Light elevates by rule plus a faint
+   * shadow, because a white card on an off-white ground has no lightness step
+   * left to spend.
+   *
+   * The two guards mirror `tokens.css`: the media query for the default
+   * `system` setting, the attribute for an explicit choice.
+   */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) .content {
+      box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+    }
+  }
+
+  :root[data-theme='light'] .content {
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  }
+}

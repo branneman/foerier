@@ -52,6 +52,9 @@ export type { ChipProps } from './Chip'
 export { ExpiryChip } from './ExpiryChip'
 export type { ExpiryChipProps } from './ExpiryChip'
 
+export { Popover } from './Popover'
+export type { PopoverProps } from './Popover'
+
 export { Sheet } from './Sheet'
 export type { SheetProps } from './Sheet'
 
