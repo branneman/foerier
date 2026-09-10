@@ -10,3 +10,8 @@
 npm run typecheck
 npm run lint
 npm run format:check
+
+# A design board that loses a retirement or a round pointer is losing a
+# decision, and it has happened three times — twice caught by hand and once
+# by a diff read line by line. `scripts/check-design-boards.mjs` says why.
+node scripts/check-design-boards.mjs

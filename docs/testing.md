@@ -51,6 +51,25 @@ the cheapest tier, and a different class of issue than behaviour covers.
   and then every tier below this one passes judgement on the wrong source
   tree without erroring. Detection, not prevention: npm workspaces cannot link
   into a worktree without an install there.
+- **`npm run check:boards` — the only Tier 0 check that guards a document
+  rather than code.** `docs/design/*.dc.html` comes out of Claude Design, and
+  the five *living* boards are re-exported wholesale while the marks each
+  round produces have been applied to them **by hand in this repo** — twelve
+  lines here, five there. A re-export from a canvas that never received those
+  marks silently deletes them, which has now happened three times: twice
+  caught by hand (the git log's *"restore what its rewrite dropped"* and
+  *"put back what it dropped"*) and once by reading a 600 KB diff line by
+  line. The check compares board **text**, tags stripped, folder-wide against
+  `HEAD`, and fails on any lost string carrying a retirement, a supersession,
+  a round pointer or a redraw note. Ordinary prose churn is reported and
+  allowed — a round genuinely rewrites copy, and a check that fought that
+  would be switched off within a week. A *deliberate* retirement fails it too,
+  on purpose: the deletion then has to be a sentence somebody wrote rather
+  than a diff nobody read. **It is the one Tier 0 check with no CI twin**, and
+  cannot have one: it compares the working tree against `HEAD`, which in CI are
+  the same thing. The pre-commit hook is the whole of its reach, and that
+  hook's own comment says so rather than letting its *same commands as CI*
+  claim quietly stop being true.
 - `tsc --noEmit` across every workspace (`app` · `api` · `shared` · `ui`).
   `landing` is not scaffolded yet (architecture §12.1) and carries no
   workspace to check.

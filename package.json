@@ -30,7 +30,8 @@
     "admin:bootstrap": "npm run admin:bootstrap --workspace api --",
     "admin:invite": "npm run admin:invite --workspace api --",
     "admin:list": "npm run admin:list --workspace api --",
-    "prepare": "husky"
+    "prepare": "husky",
+    "check:boards": "node scripts/check-design-boards.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
