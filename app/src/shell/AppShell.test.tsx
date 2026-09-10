@@ -488,7 +488,17 @@ describe('the scroll position across a route change', () => {
     expect(scroll.get()).toBe(420)
   })
 
-  it('holds the offset across the two routes of one Split view', () => {
+  /**
+   * **This box resets on every route change, and it could not always say
+   * that.** It used to key on a *scroll group* — `/` and `/gear/:id` treated
+   * as one — because at Split `DepotView` drew both as panes of one view over
+   * this single offset, so resetting on the route took the list to the top on
+   * every row tap. §5n K21 gave each pane its own scrollport, so a pane view
+   * does not scroll this box at all and the exception has nothing left to
+   * describe. The claim it used to make lives in `DepotView.test.tsx` now,
+   * where the panes are.
+   */
+  it('resets on every route change, pane view or not', () => {
     setViewport(SPLIT)
     const location = memoryLocation({ path: '/', record: true })
     render(
@@ -499,17 +509,12 @@ describe('the scroll position across a route change', () => {
       </Router>,
     )
 
-    // At Split `DepotView` draws the Depot list and the gear detail as two
-    // panes of one view that never unmounts, so these two routes share this
-    // one scroll offset. Resetting on the route would take the list to the top
-    // on every row tap — the reader loses their place in the list precisely by
-    // using it.
     const scroll = watchMainScroll()
     act(() => {
       location.navigate('/gear/abc')
     })
 
-    expect(scroll.get()).toBe(420)
+    expect(scroll.get()).toBe(0)
   })
 
   it('still resets when a Split reader leaves the Depot entirely', () => {

@@ -9,7 +9,18 @@
     display: grid;
     grid-template-columns: minmax(19.25rem, 40%) 1fr;
     gap: var(--space-24);
-    align-items: start;
+    align-items: stretch;
+
+    /* **The view fills the scrollport and the panes scroll inside it**
+       (§5n K21) — `DepotView.module.css`'s own rule and its reasoning: a flex
+       item's automatic minimum size is its content, so `min-height: 0` is
+       what lets a scrolling descendant exist at all, and `stretch` is what
+       gives a pane something to scroll. Both panes already sit behind one
+       route here, so neither resets on the other's account; what this buys is
+       the shared scroller going away, which is what the debt entry called
+       out. */
+    flex: 1;
+    min-height: 0;
   }
 
   @media (min-width: 64em) {
@@ -28,6 +39,9 @@
   .builder {
     min-width: 0;
     container-type: inline-size;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   .builder {

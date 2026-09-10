@@ -1,5 +1,5 @@
 import { gearRecorded } from '@foerier/shared'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { Route, Router, Switch } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -34,6 +34,7 @@ function renderView(store: StoreApi<HouseholdStoreState>, path: string) {
       </HouseholdProvider>
     </Router>,
   )
+  return location
 }
 
 async function aDepot() {
@@ -124,5 +125,66 @@ describe('DepotView at Desktop', () => {
       screen.getByRole('heading', { name: 'Sleeping bag' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Depot' })).toBeNull()
+  })
+})
+
+/**
+ * **Each pane is its own scrollport, and it resets on its own route**
+ * (§5n K21).
+ *
+ * This is the claim `AppShell.test.tsx` used to carry as an exception. The
+ * shell's main area was one scroller, so `/` and `/gear/:id` were two routes
+ * over one offset and the reset had to key on a *scroll group* to stop every
+ * row tap taking the list to the top. The panes hold their own offsets now,
+ * so the shell resets on the path like anything else and the real behaviour
+ * is stated here, where the panes are.
+ *
+ * jsdom computes no layout, so what is asserted is the **reset**, which is
+ * the part that is code: `scrollTop` is an ordinary property here and
+ * `usePaneScroll` is what does or does not zero it. That the panes overflow
+ * at all is CSS, and lives in the stylesheet.
+ */
+describe('the two panes’ scroll offsets', () => {
+  /**
+   * **The list pane's own reset never fires**, which is the half of K21's
+   * *the list pane's offset persists* that this component controls.
+   *
+   * The other half is not code that lives here: `AppShell` keys the screen's
+   * `ErrorBoundary` on the location, so every navigation remounts this view
+   * and a remounted pane starts at the top whatever this hook does. Moving
+   * that boundary into the panes is what would finish it — recorded in
+   * `technical-debt.md` rather than done, because where a crash is contained
+   * is a decision `AppShell` argues out loud.
+   */
+  it('never resets the list pane when a row is opened', async () => {
+    setViewport(SPLIT)
+    const { store, bagId } = await aDepot()
+    const location = renderView(store, '/')
+
+    const list = screen.getByTestId('depot-list-pane')
+    list.scrollTop = 420
+
+    act(() => {
+      location.navigate(`/gear/${bagId}`)
+    })
+
+    // The list pane's route *is* the view — it does not change when a row is
+    // opened, so `usePaneScroll` has nothing to reset.
+    expect(list.scrollTop).toBe(420)
+  })
+
+  it('takes the detail pane to the top of the gear just opened', async () => {
+    setViewport(SPLIT)
+    const { store, bagId } = await aDepot()
+    const location = renderView(store, '/')
+
+    const detail = screen.getByTestId('depot-detail-pane')
+    detail.scrollTop = 300
+
+    act(() => {
+      location.navigate(`/gear/${bagId}`)
+    })
+
+    expect(detail.scrollTop).toBe(0)
   })
 })

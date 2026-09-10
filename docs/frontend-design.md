@@ -235,9 +235,22 @@ are worth knowing before touching the shell:
   that never unmounts, so `/` and `/gear/:id` are two routes over a single
   scroll offset and a per-path reset would take the list to the top on every
   row tap. They collapse to one key there and to the path everywhere else.
-  Panes with scrollers of their own would be the more design-true answer — and
-  would move this reset's target with them — which is left to the task that
-  builds them.
+  **That workaround is gone** (§5n K21): where panes exist, each pane is its
+  own scrollport and `.shell__main` does not scroll at all, so the shell's
+  reset keys on the path like anything else and each pane resets on **its
+  own** route through `usePaneScroll`. Tapping a Depot row takes the detail
+  pane to the top; the list pane's own key never changes, so it has nothing to
+  reset. Measured in a browser at 900: the list pane's `scrollHeight` exceeds
+  its `clientHeight` while the main area's do not differ.
+
+  **One half of the ruling is still owed, and it is not a scrolling problem.**
+  *The list pane's offset persists across every detail navigation* needs the
+  view not to unmount, and two things unmount it: `Switch` renders `/` and
+  `/gear/:id` as two different `Route` children, and `AppShell` keys the
+  screen's `ErrorBoundary` on the location. The first is a one-line `RegExp`
+  path; the second is a decision this doc's own §5 argues, and its answer —
+  a boundary per pane, which is already `TripPanels`' shape one level down —
+  changes where a crash is contained. Recorded in `technical-debt.md`.
 - **The scrollbar belongs to the content column, not the window.**
   `.shell__main` is what carries the `max-width` cap and the centring at Roomy
   and Desktop, so where a platform draws a classic scrollbar it lands on the

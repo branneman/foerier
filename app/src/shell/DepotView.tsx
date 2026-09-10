@@ -3,6 +3,7 @@ import { useRoute } from 'wouter'
 import { Depot } from '../screens/Depot'
 import { GearDetail } from '../screens/GearDetail'
 import styles from './DepotView.module.css'
+import { usePaneScroll } from './usePaneScroll'
 import { DESKTOP, SPLIT, useMediaQuery } from './useMediaQuery'
 
 /**
@@ -49,18 +50,41 @@ export function DepotView() {
     return onGear ? <GearDetail /> : <Depot />
   }
 
+  return <DepotPanes {...(onGear ? { gearId: params.id } : {})} />
+}
+
+/**
+ * **Two panes, two scrollports, two routes** (§5n K21).
+ *
+ * Split out of {@link DepotView} because the hooks below must not run at the
+ * widths where this view renders one screen — and because the split is what
+ * gives each pane a stable identity to hang its own reset on.
+ *
+ * The list pane's key never changes while this view is mounted: its route
+ * *is* the view, and a reader part-way down two hundred rows keeps their
+ * place across every row they open. The detail pane's key is the gear, so
+ * opening a row lands at the top of that gear rather than part-way down it.
+ */
+function DepotPanes({ gearId }: { gearId?: string }) {
+  const list = usePaneScroll<HTMLDivElement>('depot')
+  const detail = usePaneScroll<HTMLDivElement>(gearId ?? 'idle')
+
   return (
     <div className={styles['split']}>
-      <div className={styles['list']}>
-        <Depot {...(onGear ? { selectedId: params.id } : {})} />
+      <div className={styles['list']} ref={list} data-testid="depot-list-pane">
+        <Depot {...(gearId === undefined ? {} : { selectedId: gearId })} />
       </div>
-      <div className={styles['detail']}>
-        {onGear ? (
-          <GearDetail />
-        ) : (
+      <div
+        className={styles['detail']}
+        ref={detail}
+        data-testid="depot-detail-pane"
+      >
+        {gearId === undefined ? (
           // Not an error and not a prompt: the list is the screen, and the
           // pane is simply waiting. One quiet mono line, in the ledger voice.
           <p className={styles['idle']}>SELECT A ROW.</p>
+        ) : (
+          <GearDetail />
         )}
       </div>
     </div>

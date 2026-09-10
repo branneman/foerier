@@ -8,7 +8,25 @@
     display: grid;
     grid-template-columns: 19.25rem 1fr;
     gap: var(--space-24);
-    align-items: start;
+    align-items: stretch;
+
+    /*
+     * **The view fills the scrollport and the panes scroll inside it**
+     * (§5n K21). `.shell__main` is a flex column, so `flex: 1` claims the
+     * row's height and `min-height: 0` is what lets a scrolling descendant
+     * exist at all — a flex item's automatic minimum size is its content, so
+     * without it the grid grows to fit and `.shell__main` scrolls again,
+     * which is the single shared scroller this ruling exists to end.
+     *
+     * The 1120 cap, the centring and the gutter stay on `.shell__main`
+     * rather than moving here, so the scrollbar lands on each pane's own
+     * right edge inside the capped column.
+     *
+     * `stretch`, not `start`: a pane that only grew to its content would
+     * have nothing to scroll.
+     */
+    flex: 1;
+    min-height: 0;
   }
 
   /*
@@ -21,6 +39,14 @@
   .detail {
     min-width: 0;
     container-type: inline-size;
+
+    /* Each pane its own scrollport. `min-height: 0` for the grid item's own
+       automatic minimum size, the same reason as above one axis over. */
+    min-height: 0;
+    overflow-y: auto;
+    /* The cap and the centring are the column's; this reserves only what a
+       classic scrollbar takes on this pane's own edge. */
+    scrollbar-gutter: stable;
   }
 
   .detail {

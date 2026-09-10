@@ -370,26 +370,21 @@ export function AppShell({
   // screen, for `useScreenHeader`'s reason (`frontend-design.md` §3.3) — a
   // rule spelled per screen is one chance per screen to spell it differently.
   //
-  // **Keyed on a scroll group, not on the path**, because the two are not the
-  // same thing at Split: `DepotView` renders the Depot list and the gear
-  // detail as two panes of one view that never unmounts, so `/` and
-  // `/gear/:id` are two routes over a single scroll offset and resetting on
-  // the route would take the list to the top on every row tap. Below Split
-  // and at Desktop that view renders one screen or the other, so there the
-  // path is the group. (Panes with scrollers of their own would be the more
-  // design-true answer and would move this reset's target with them; that is
-  // left to the task that builds them.)
-  const scrollGroup =
-    isSplit && !isDesktop && (location === '/' || location.startsWith('/gear/'))
-      ? 'depot-split'
-      : location
-
+  // **Keyed on the path**, which it could not be until panes scrolled
+  // themselves. This used to key on a *scroll group*, because at Split
+  // `DepotView` drew the Depot list and the gear detail as two panes of one
+  // view over a single offset, and resetting on the route took the list to
+  // the top on every row tap. §5n K21 moved the scrollport into each pane
+  // (`usePaneScroll`), so a pane view no longer scrolls this box at all and
+  // the workaround has nothing left to work around — the group and the path
+  // are the same thing again.
+  //
   // Layout, not passive: an effect lets the browser paint once at the carried
   // offset — clamped by the new screen's height — before the reset lands.
   useLayoutEffect(() => {
     const main = mainRef.current
     if (main !== null) main.scrollTop = 0
-  }, [scrollGroup])
+  }, [location])
 
   return (
     <div className="shell">

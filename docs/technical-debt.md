@@ -180,27 +180,28 @@ second pane.
   and watching it grow row by row is the feedback the batch loop has no other
   source for. [`frontend-design.md`](frontend-design.md) §3.3, anchor:
   `two-pane Add gear has never been built`
-- **Split's two panes share one scroller — now in two places.** `DepotView`
-  draws the Depot list and the gear detail as two panes of one view that
-  never unmounts, so `/` and `/gear/:id` are two routes over that one
-  scroller and `AppShell.tsx` keys its route-change reset on a scroll group
-  rather than the path there — a workaround standing in for panes that
-  scroll themselves, which would also move each reset's own target. S7's
-  gear-list builder repeats the two-panes-one-scroller shape for its picker
-  and list panes, but both already sit behind the same route
-  (`/trips/:id/list`), so its own reset already keys on the path; the actual
-  gap is `GearListBuilder.module.css` carrying no `overflow` of its own, so
-  the two panes still share the shell's one scroller instead of scrolling
-  independently. Blocks story 38 from doing the honest thing at Split, and
-  doubles what that fix will have to cover. **§5n K21 drew the answer**: each
-  pane is its own scrollport and the shell's main area does not scroll at
-  all; a pane **resets to its top when its own route changes** and the other
-  pane does not move, so the list pane's offset persists across every detail
-  navigation within the view. The reset's target moves from the shell to the
-  pane, which this entry already anticipated. Two views today, three when
-  K20's lands, and never Trips (K19).
-  [`frontend-design.md`](frontend-design.md) §3.1, anchor:
-  `Panes with scrollers of their own`
+- **A pane's scroll offset cannot survive a route change, because the screen
+  boundary is keyed on the location.** §5n K21's *each pane scrolls itself*
+  and *a pane resets on its own route* both landed (`usePaneScroll`,
+  `DepotView.module.css`, `GearListBuilder.module.css`, measured in a browser:
+  the panes overflow and `.shell__main` does not). What did not is **the list
+  pane's offset persisting across every detail navigation**: `AppShell` gives
+  the screen's `ErrorBoundary` `key={location}`, so every navigation remounts
+  the whole view and a remounted pane starts at the top whatever the hook
+  does.
+  **The fix is to move the boundary into the panes**, which is already the
+  app's shape one level down — `TripPanels` wraps each panel in its own
+  boundary keyed on its own index. The reason it is recorded rather than done
+  is that `AppShell`'s comment argues the current key explicitly and rejects a
+  coarser one (*a crash is not a scroll offset, and the Depot list and a gear
+  detail are two screens even where they share one scroller*) — an argument
+  made before panes had boundaries of their own, and one whose answer changes
+  where a crash is contained. It also needs `/` and `/gear/:id` to be **one**
+  route, since `Switch` unmounts across two; a `RegExp` path does that and
+  costs `useParams` its named params, so `GearDetail` would take its id as a
+  prop. Blocks story 38 from doing the honest thing at Split.
+  `app/src/shell/usePaneScroll.ts`, anchor: `while the other does not`
+
 - **Four mono labels sit at 8px, below the type ladder's floor.**
   `Account`'s and `Devices`' and `People`'s badge and `JourneyRail`'s stage
   chip each spell `font-size: 0.5rem` beside `var(--font-mono)`, and §5n K28's
