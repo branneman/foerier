@@ -1320,12 +1320,15 @@ remaining path on which a Quartermaster's act is lost in silence.
 **Five things from the round are worth knowing before touching these
 surfaces:**
 
-- **The cascade shipped inverted for three months, and five unrelated-looking
-  UI bugs were one bug.** CSS layers take their order from **first mention**,
+- **The cascade shipped inverted for a day, and five unrelated-looking UI
+  bugs were one bug.** CSS layers take their order from **first mention**,
   so the order the browser applies is a property of the emitted bundle, not of
   `ui/styles/index.css` — and `main.tsx` imported a `ui` component above the
   stylesheet, so `@layer components` was created before `reset` existed. Every
-  other layer was appended after it. `reset`'s `button { color: inherit }`
+  other layer was appended after it. **The commit that broke it is the one
+  that added the crash fallback** (`12c327d`): before it `main.tsx` imported
+  no `ui` component at all, so the stylesheet was genuinely first, and the
+  very first barrel import inverted the cascade for the whole app. `reset`'s `button { color: inherit }`
   then beat every component: the sign-in CTA drew at 1.74:1 and the journey
   rail's current chip white on white, both FABs lost `position: fixed`, and
   the Depot's title row and the sidebar's foot lost their layout. The

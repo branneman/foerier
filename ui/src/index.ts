@@ -13,9 +13,16 @@
  * created before `reset` existed, and the declared order then appended every
  * other layer **after** it. The result was the cascade exactly inverted —
  * `reset`, `base`, `layout` and `utilities` all beating every component in
- * this package. `frontend-design.md` §4.1's promise, *a utility can never
- * lose a specificity fight to a component*, was false in the built bundle for
- * three months. What it looked like: `reset`'s `button { color: inherit }`
+ * this package, and `frontend-design.md` §4.1's promise — *a utility can
+ * never lose a specificity fight to a component* — false in the built bundle.
+ *
+ * **It was one import and one day.** `12c327d` added the crash fallback and
+ * with it the first `ui` component `main.tsx` had ever imported; until then
+ * the stylesheet genuinely was first and nothing was wrong. That is the whole
+ * argument for putting the statement here: the trap is not a mistake anyone
+ * made, it is that a perfectly ordinary import re-orders the cascade of the
+ * entire app from a file that mentions no CSS. What it looked like: `reset`'s
+ * `button { color: inherit }`
  * winning, so the journey rail's current chip painted its background and not
  * its text (white on white) and the sign-in CTA drew dark on dark; the FABs
  * losing `position: fixed` and standing in the content flow; Depot's title

@@ -488,16 +488,23 @@ fight to a component; Radix's minimal styles slot predictably; tokens are always
 resolvable. The graceful-degradation CSS only stays reliable if the cascade is
 boringly predictable.
 
-**That order is a property of the emitted bundle, not of this stylesheet, and
-the difference cost three months.** CSS layers take their order from **first
-mention**, so whichever `@layer` the bundler emits first decides it — and every
-`*.module.css` opens `@layer components { … }`. `app/src/main.tsx` imported a
-component from `@foerier/ui` *above* its own `import '@foerier/ui/styles.css'`,
-so module evaluation reached a dozen component modules before the statement
-above: `components` was created first, and the declared order then appended
-every other layer **after** it. The sentence before this one was false in the
-built bundle — `reset`, `base`, `layout` and `utilities` all beat every
-component in `ui/`.
+**That order is a property of the emitted bundle, not of this stylesheet.**
+CSS layers take their order from **first mention**, so whichever `@layer` the
+bundler emits first decides it — and every `*.module.css` opens
+`@layer components { … }`. `app/src/main.tsx` imported a component from
+`@foerier/ui` *above* its own `import '@foerier/ui/styles.css'`, so module
+evaluation reached a dozen component modules before the statement above:
+`components` was created first, and the declared order then appended every
+other layer **after** it. The sentence before this one was false in the built
+bundle — `reset`, `base`, `layout` and `utilities` all beat every component in
+`ui/`.
+
+**One import, and one day between breaking it and finding it.** The commit
+that inverted the cascade is the one that added the crash fallback: it gave
+`main.tsx` the first `ui` component it had ever imported, and until then the
+stylesheet genuinely was first. Nobody did anything unusual — which is the
+argument for making the order structural rather than a convention about import
+order in one file.
 
 What it looked like, all from one cause: `reset`'s `button { color: inherit }`
 winning, so the journey rail's current chip painted its fill and inherited its

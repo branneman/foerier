@@ -14,12 +14,17 @@ import { describe, expect, it } from 'vitest'
  * `@layer` the bundler emits first — and every `*.module.css` in this package
  * opens `@layer components { … }`.
  *
- * It shipped inverted for three months. `app/src/main.tsx` imported
+ * It shipped inverted, for exactly one day. `app/src/main.tsx` imported
  * `ErrorBoundary` from this barrel *above* its own
  * `import '@foerier/ui/styles.css'`, so module evaluation reached a dozen
  * component modules first: `components` was created before `reset` existed and
  * the declared order appended every other layer **after** it. `reset`, `base`,
- * `layout` and `utilities` then beat every component here. What it looked
+ * `layout` and `utilities` then beat every component here.
+ *
+ * **The commit that did it added the crash fallback** (`12c327d`) — and with
+ * it the first `ui` component `main.tsx` had ever imported. That is the point
+ * of guarding it here rather than there: an ordinary import, in a file that
+ * mentions no CSS, re-ordered the cascade of the whole app. What it looked
  * like: `reset`'s `button { color: inherit }` winning, so the journey rail's
  * current chip painted its background and inherited its text colour (white on
  * white) and the sign-in CTA drew dark on dark; both FABs losing

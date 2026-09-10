@@ -41,6 +41,10 @@ test('a signed-out visitor lands on the sign-in shell @production', async ({
  * every other layer appended **after** it, so `reset`, `base`, `layout` and
  * `utilities` all beat every component in the package.
  *
+ * It was one import and one day: `12c327d` gave `main.tsx` the first `ui`
+ * component it had ever imported, and until then the stylesheet genuinely was
+ * first.
+ *
  * `reset`'s `button { color: inherit }` is the loudest symptom, and the CTA
  * here is where it is cheapest to catch: the button painted its background
  * from `components` and took its text colour from `reset`.
