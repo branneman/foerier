@@ -165,21 +165,6 @@ A board or a design doc settles it and the code has never caught up.
 Actionable without a new decision; the size runs from a `<link>` tag to a
 second pane.
 
-- **The two-pane Add gear is drawn and not built.** `Add gear — split 900` draws
-  the form as a pane with the Depot list kept beside it; `<Route path="/add">`
-  renders it standalone at every width — unlike S7's gear-list builder, which
-  the app did build as a second two-pane view. That is why `AddGear` answers
-  `splitPane: false` against its own frame and still draws `‹ DEPOT` at Split,
-  and why its CTA fact line has only one alignment to say. **§5n K20 blessed
-  the frame** and stated what lands with it so no further design is needed:
-  `splitPane: true`, no `‹ DEPOT` at Split, the 40px inline primary with the
-  fact line beside it in the same row (K9's other half), and the pane's own
-  scroller (K21, the entry below). The asymmetry with the retired two-pane
-  Trips is the ruling's own: **one pane is a reference, the other was a
-  menu** — the left pane here holds the Depot list you are recording *into*,
-  and watching it grow row by row is the feedback the batch loop has no other
-  source for. [`frontend-design.md`](frontend-design.md) §3.3, anchor:
-  `two-pane Add gear has never been built`
 - **A pane's scroll offset cannot survive a route change, because the screen
   boundary is keyed on the location.** §5n K21's *each pane scrolls itself*
   and *a pane resets on its own route* both landed (`usePaneScroll`,

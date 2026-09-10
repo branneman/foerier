@@ -582,12 +582,20 @@ describe('Add gear — the band above the title', () => {
     expect(screen.queryByText('SYNCED')).toBeNull()
   })
 
-  it('draws both at Split, where the rail has neither a label nor a word', async () => {
+  /**
+   * **The sync line alone at Split since §5n K20.** This screen is a detail
+   * pane there now — the Depot is the pane beside it — so the back link is
+   * withheld for `GearDetail`'s own reason: its destination is on the page.
+   * The sync line stays, because Split is the one mode where nothing legible
+   * states sync status and that is true of a pane as much as of a screen.
+   */
+  it('draws the sync line alone at Split, the Depot being the pane beside it', async () => {
     setViewport(SPLIT)
     renderAddGear(await seededStore())
 
-    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: '‹ DEPOT' })).toBeNull()
     expect(screen.getByText('SYNCED')).toBeVisible()
+    expect(screen.getByTestId('add-list-pane')).toBeVisible()
   })
 
   it('draws neither at Desktop, where the sidebar is the navigation', async () => {

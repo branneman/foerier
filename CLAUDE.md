@@ -332,9 +332,11 @@ superseded, and `docs/design/README.md` §5 is the shipped authority.
   (`app/src/shell/`) draws —
   the band was pasted per screen until the pattern audit found the sync
   dot's tone missing from eight of the ten copies. `splitPane` is true
-  for `GearDetail` alone; `AddGear` answers `false` against its own board
-  frame, because `Add gear — split 900` draws a pane the app has never built
-  and `<Route path="/add">` renders it standalone at every width.
+  for `GearDetail` and, since §5n K20 built the pane the board had always
+  drawn, for `AddGear` — which answered `false` against its own board frame
+  for three slices, because `Add gear — split 900` drew a pane the app had
+  never built. **An answer about the app as built changes when the app
+  does.**
 
 **S5, auth 2, has landed** (story 28) — the second Quartermaster is now
 arranged from inside the app rather than by whoever runs the server. No

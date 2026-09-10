@@ -21,7 +21,14 @@ import { KIND_OPTIONS, TRAIT_OPTIONS } from '../household/gear'
 import { homeLabel } from '../household/gear'
 import { useHousehold } from '../household/store'
 import { ScreenBand } from '../shell/ScreenBand'
-import { useScreenHeader } from '../shell/useMediaQuery'
+import {
+  SPLIT,
+  DESKTOP,
+  useMediaQuery,
+  useScreenHeader,
+} from '../shell/useMediaQuery'
+import { usePaneScroll } from '../shell/usePaneScroll'
+import { Depot } from './Depot'
 import styles from './AddGear.module.css'
 
 /**
@@ -170,7 +177,19 @@ export function AddGear() {
   // `splitPane: false` — see the class docstring: `/add` is its own screen at
   // every width, so at Split the back link is the only route back to the
   // Depot.
-  const header = useScreenHeader({ splitPane: false, back: '/' })
+  const isSplit = useMediaQuery(SPLIT)
+  const isDesktop = useMediaQuery(DESKTOP)
+  /** The one width the board draws two panes at (§5n K20). */
+  const twoPane = isSplit && !isDesktop
+  // **`splitPane: true` now**, and this is the line K20 changed. It answered
+  // `false` for three slices *against its own board frame*, because
+  // `Add gear — split 900` drew a pane the app had never built and `/add`
+  // rendered standalone at every width — so `‹ DEPOT` pointed at something
+  // genuinely not on the page. The pane is built, the Depot is beside the
+  // form, and the link is withheld exactly as `GearDetail`'s is.
+  const header = useScreenHeader({ splitPane: twoPane, back: '/' })
+  const list = usePaneScroll<HTMLDivElement>('depot')
+  const form = usePaneScroll<HTMLDivElement>('add')
 
   const nameField = useRef<HTMLInputElement>(null)
 
@@ -277,8 +296,8 @@ export function AddGear() {
     />
   )
 
-  return (
-    <div className={styles['screen']}>
+  const screen = (
+    <div className={styles['screen']} data-two-pane={twoPane ? '' : undefined}>
       {/* The same band gear detail carries, under the same rule
           (`frontend-design.md` §3.3). Below Desktop the only other way back
           from a form is the tab bar or the rail, neither of which names the
@@ -432,25 +451,32 @@ export function AddGear() {
         </p>
       </fieldset>
 
-      <button
-        type="button"
-        className={styles['primary']}
-        disabled={!canSubmit}
-        onClick={submit}
-      >
-        Add gear
-      </button>
+      {/* One row from Split up, where the pane draws a 40px inline primary
+          with the fact line beside it; a plain block at every other width,
+          where the primary is full-width and the line centres beneath it
+          (§5n K20, K9's other half). The wrapper is unconditional so the two
+          treatments are one DOM — §3.2's rule, one level down. */}
+      <div className={styles['ctaRow']}>
+        <button
+          type="button"
+          className={styles['primary']}
+          disabled={!canSubmit}
+          onClick={submit}
+        >
+          Add gear
+        </button>
 
-      {/* No failure state: every op is local and durable-first, appended to
+        {/* No failure state: every op is local and durable-first, appended to
           the same log in the same submit — as true of the N+1 ops a tagged
           record writes as it was of one.
 
           Centred, because it follows its CTA block, and that block is the
           full-width primary above it (boards' README §5). The two field-level
           fact lines above stay flush left: the board moves only this one. */}
-      <p className={`${styles['fact']} ${styles['ctaFact']}`}>
-        RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND
-      </p>
+        <p className={`${styles['fact']} ${styles['ctaFact']}`}>
+          RECORDED ON THIS DEVICE · SYNCS IN THE BACKGROUND
+        </p>
+      </div>
 
       {ownerPickerOpen && (
         <OwnerPicker
@@ -472,6 +498,39 @@ export function AddGear() {
           }}
         />
       )}
+    </div>
+  )
+
+  if (!twoPane) return screen
+
+  /**
+   * **The two-pane form** (§5n K20), and the asymmetry with the retired
+   * two-pane Trips (K19) is the ruling: **one pane is a reference, the other
+   * was a menu.** The left pane holds the Depot you are recording *into*, and
+   * watching it grow row by row is the feedback the batch loop has no other
+   * source for — §3b's own argument for a screen rather than a sheet already
+   * leaned on it. A Trips list held something with no reason to be re-read.
+   *
+   * The pane renders the whole `Depot` screen, which is what `DepotView`'s
+   * own list pane does: the same list, at the same width, with the same
+   * controls, rather than a second stripped rendering of it to keep in step.
+   */
+  return (
+    <div className={styles['split']}>
+      <div
+        className={styles['listPane']}
+        ref={list}
+        data-testid="add-list-pane"
+      >
+        <Depot />
+      </div>
+      <div
+        className={styles['formPane']}
+        ref={form}
+        data-testid="add-form-pane"
+      >
+        {screen}
+      </div>
     </div>
   )
 }

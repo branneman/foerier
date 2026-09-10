@@ -194,4 +194,73 @@
       width: 100%;
     }
   }
+
+  /*
+   * **The two-pane form at Split** (§5n K20) — `DepotView.module.css`'s own
+   * geometry and its own reasoning, because it is the same pair of panes with
+   * the Depot on the same side.
+   */
+  .split {
+    display: grid;
+    grid-template-columns: 19.25rem 1fr;
+    gap: var(--space-24);
+    align-items: stretch;
+    /* The view fills the scrollport and the panes scroll inside it (§5n
+       K21) — see `DepotView.module.css` for why both declarations are
+       needed. */
+    flex: 1;
+    min-height: 0;
+  }
+
+  .listPane,
+  .formPane {
+    min-width: 0;
+    container-type: inline-size;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .formPane {
+    border-left: var(--stroke-rule) solid var(--color-rule);
+    padding-left: var(--space-24);
+  }
+
+  /*
+   * **The inline primary, and the fact line beside it in the same row**
+   * (§5n K20, which is K9's other half). At every other width the CTA is a
+   * full-width 48 with the line centred beneath it; in the pane the board
+   * draws a 40px button with the line alongside, because a pane is narrow and
+   * a full-width primary in one reads as a banner rather than as an act.
+   *
+   * `.ctaFact`'s centring is unset rather than overridden per width elsewhere:
+   * the line takes its alignment from the CTA's own layout, so where the
+   * layout changes the alignment follows it and nowhere else states a rule.
+   */
+  .screen[data-two-pane] .primary {
+    width: auto;
+    min-height: 2.5rem;
+    align-self: center;
+    padding-inline: var(--space-16);
+    /* The row is `flex`, so without these the button is a shrinkable item and
+       `Add gear` wraps to two lines inside a 40px control the moment the fact
+       line beside it wants the space. Measured at 900: it did. */
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .screen[data-two-pane] .ctaRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    margin-top: auto;
+  }
+
+  .screen[data-two-pane] .ctaRow .primary {
+    margin-top: 0;
+  }
+
+  .screen[data-two-pane] .ctaFact {
+    text-align: left;
+  }
 }

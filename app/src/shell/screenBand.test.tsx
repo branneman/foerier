@@ -859,16 +859,22 @@ describe('the back link — withheld only where its destination is already drawn
     expect(screen.queryByRole('link', { name: '‹ TRIPS' })).toBeNull()
   })
 
-  it('draws it on Add gear at Split, which the app renders standalone', async () => {
+  it('withholds it from Add gear at Split, where the Depot is the pane beside it', async () => {
     setViewport(SPLIT)
     const store = await seededStore()
     renderInShell(store, '/add')
 
-    // The board draws `Add gear — split 900` as a pane with the Depot list
-    // beside it, and that two-pane Add gear has never been built: `App.tsx`
-    // routes `/add` to a screen of its own at every width, so `‹ DEPOT`
-    // points at something not on the page.
-    expect(screen.getByRole('link', { name: '‹ DEPOT' })).toBeVisible()
+    // **This assertion is the other way round since §5n K20.** The board has
+    // always drawn `Add gear — split 900` as a pane with the Depot list
+    // beside it; the app had never built that pane, so `‹ DEPOT` pointed at
+    // something genuinely not on the page and the screen answered
+    // `splitPane: false` *against its own frame*. The pane is built, so the
+    // rule answers the question it was written for: the destination is on the
+    // page, and the link is withheld exactly as `GearDetail`'s is.
+    expect(screen.queryByRole('link', { name: '‹ DEPOT' })).toBeNull()
+    // The positive control — the Depot really is beside the form, rather than
+    // the link merely having gone missing.
+    expect(screen.getByTestId('add-list-pane')).toBeVisible()
   })
 
   it('withholds it from Add gear at Desktop, where the sidebar names the Depot', async () => {

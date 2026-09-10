@@ -428,11 +428,15 @@ absence was the only thing holding it open.
 `splitPane` is true for `GearDetail` alone. Three of the answers are
 worth stating, because they are about the app as built rather than as drawn:
 
-- **`AddGear` answers `splitPane: false`, against its own board frame.**
-  `Add gear — split 900` draws it as a pane with the Depot list beside it, and
-  that two-pane Add gear has never been built: `<Route path="/add">` renders it
-  standalone at every width. So at Split `‹ DEPOT` still points at something
-  not on the page, and the link is drawn.
+- **`AddGear` answers `splitPane: true` since §5n K20**, and the history is
+  the useful part: it answered `false` for three slices *against its own board
+  frame*. `Add gear — split 900` had always drawn it as a pane with the Depot
+  list beside it, and that pane had never been built — so `‹ DEPOT` pointed at
+  something genuinely not on the page and the honest answer was the one that
+  contradicted the drawing. The pane is built, so the rule answers the
+  question it was written for and the link is withheld exactly as
+  `GearDetail`'s is. **An answer about the app as built changes when the app
+  does**, which is the whole reason these three are listed here.
 - **`People` and `Devices` `Redirect to="/account"` at Desktop**, so their
   Desktop band is never reached and the composed suite counts them at the two
   widths `App.tsx` actually mounts them at. `People` has a second render, the
