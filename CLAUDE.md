@@ -1312,12 +1312,17 @@ decision* section is now **empty**, which is the round's real output — every
 entry that stood there was built, closed as a decision, or moved to
 *Specified and not built* with a ruling behind it.
 
-**Three rulings are outstanding, all large, and each is named in the debt
-index with what the round settled and what the code still owes:** `ui/Popover`
-and its seven callers (K15–K17), the two-pane Add gear with panes that scroll
-and reset themselves (K20, K21), and the refused write as the sync line's
-third state plus its `Not saved` sheet (K24, K24b). The last is the only
-remaining path on which a Quartermaster's act is lost in silence.
+**Every ruling the round said the code owed has landed.** The last three were
+`ui/Popover` and its seven callers (K15–K17), the two-pane Add gear with panes
+that scroll and reset themselves (K20, K21), and the refused write as the sync
+line's third state plus its `Not saved` sheet (K24, K24b) — which closed the
+one remaining path on which a Quartermaster's act was lost in silence. Two
+halves are recorded as debt rather than built: K21's *the list pane's offset
+persists*, which needs the screen's error boundary to move into the panes and
+so changes where a crash is contained, and four mono labels at 8px, which sit
+below K28's ladder and want either the head step or a fifth. **What remains
+outside the code is the boards' own five annotation marks**, which §5n names
+and which now describe rulings that have all shipped.
 
 **Five things from the round are worth knowing before touching these
 surfaces:**
