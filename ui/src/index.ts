@@ -1,3 +1,33 @@
+/**
+ * **The stylesheet is imported first, and that is load-bearing.**
+ *
+ * `styles/index.css` opens with `@layer reset, tokens, base, layout,
+ * components, utilities, overrides;` — the statement that gives the cascade
+ * its order. CSS layers take their order from **first mention**, so whichever
+ * stylesheet the bundler emits first decides it, and every `*.module.css` in
+ * this package opens `@layer components { … }`.
+ *
+ * It shipped the other way round. `app/src/main.tsx` imported `ErrorBoundary`
+ * from this barrel *above* its own `import '@foerier/ui/styles.css'`, so
+ * module evaluation reached a dozen component modules first: `components` was
+ * created before `reset` existed, and the declared order then appended every
+ * other layer **after** it. The result was the cascade exactly inverted —
+ * `reset`, `base`, `layout` and `utilities` all beating every component in
+ * this package. `frontend-design.md` §4.1's promise, *a utility can never
+ * lose a specificity fight to a component*, was false in the built bundle for
+ * three months. What it looked like: `reset`'s `button { color: inherit }`
+ * winning, so the journey rail's current chip painted its background and not
+ * its text (white on white) and the sign-in CTA drew dark on dark; the FABs
+ * losing `position: fixed` and standing in the content flow; Depot's title
+ * row losing its layout.
+ *
+ * Importing it here makes the order a property of the package rather than of
+ * one consumer's import order — any path that reaches a component reaches the
+ * layer statement first. `app/src/main.tsx` keeps its own import, which is now
+ * a no-op restating the same intent; `ui/src/index.test.ts` is the guard.
+ */
+import '../styles/index.css'
+
 export { Logo, Mark } from './Logo'
 export { IconDepot, IconFind, IconTrips } from './Icon'
 export type { IconProps } from './Icon'

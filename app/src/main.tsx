@@ -3,6 +3,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 
+// Kept, and no longer load-bearing. The layer order used to depend on this
+// line sitting above every component import — it did not, and the cascade
+// shipped inverted for three months (`frontend-design.md` §4.1). The
+// statement travels with `@foerier/ui`'s own barrel now, so this restates the
+// intent rather than establishing it.
 import '@foerier/ui/styles.css'
 
 import { App } from './App'

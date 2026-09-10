@@ -29,6 +29,76 @@ test('a signed-out visitor lands on the sign-in shell @production', async ({
   )
 })
 
+/**
+ * **The cascade's layer order, proved where it is actually decided.**
+ *
+ * CSS layers take their order from **first mention**, so the order the browser
+ * applies is a property of the *emitted bundle*, not of
+ * `ui/styles/index.css`. It shipped inverted: `app/src/main.tsx` imported a
+ * component from `@foerier/ui` above the stylesheet, so a dozen
+ * `@layer components { … }` blocks were evaluated before the
+ * `@layer reset, tokens, …;` statement — `components` was created first and
+ * every other layer appended **after** it, so `reset`, `base`, `layout` and
+ * `utilities` all beat every component in the package.
+ *
+ * `reset`'s `button { color: inherit }` is the loudest symptom, and the CTA
+ * here is where it is cheapest to catch: the button painted its background
+ * from `components` and took its text colour from `reset`.
+ *
+ * **Contrast, not inequality.** The first draft of this asserted that the two
+ * colours differ, and it passed against the bug — inherited ink on the accent
+ * fill is a *different* colour, just an illegible one. Measured on this
+ * button, 2026-09-10: **7.26:1** with the layers in order, **1.74:1** with
+ * them inverted. The threshold is WCAG AA's 4.5:1 for body text rather than a
+ * number split between those two, so the assertion states a property of the
+ * product and happens to catch the cascade, rather than the reverse.
+ *
+ * No tier below this one can see any of it: Vitest processes no CSS modules
+ * and jsdom computes no styles. `ui/src/layerOrder.test.tsx` guards the
+ * *mechanism*; this guards the *outcome*, which is what survives someone
+ * finding a different mechanism.
+ */
+test('a control paints its label legibly against its own fill @production', async ({
+  page,
+}) => {
+  await page.goto('/signin')
+
+  const cta = page.getByRole('button', { name: 'Sign in' })
+  await expect(cta).toBeVisible()
+
+  const paint = await cta.evaluate((node) => {
+    const style = getComputedStyle(node)
+
+    // WCAG 2 relative luminance. Written out rather than pulled in: it is
+    // eight lines, it runs inside the page, and a dependency here would be a
+    // dependency of the whole e2e tier.
+    const luminance = (colour: string): number => {
+      const [r, g, b] = colour
+        .match(/\d+(\.\d+)?/g)!
+        .slice(0, 3)
+        .map(Number) as [number, number, number]
+      const channel = (value: number): number => {
+        const v = value / 255
+        return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+      }
+      return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+    }
+
+    const ink = luminance(style.color)
+    const fill = luminance(style.backgroundColor)
+    return {
+      colour: style.color,
+      background: style.backgroundColor,
+      ratio: (Math.max(ink, fill) + 0.05) / (Math.min(ink, fill) + 0.05),
+    }
+  })
+
+  // A transparent fill would make the ratio meaningless rather than failing:
+  // the label would be measured against nothing and pass on a technicality.
+  expect(paint.background).not.toBe('rgba(0, 0, 0, 0)')
+  expect(paint.ratio).toBeGreaterThanOrEqual(4.5)
+})
+
 test('the shell still loads with the network cut @production', async ({
   page,
   context,

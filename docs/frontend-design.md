@@ -474,6 +474,35 @@ fight to a component; Radix's minimal styles slot predictably; tokens are always
 resolvable. The graceful-degradation CSS only stays reliable if the cascade is
 boringly predictable.
 
+**That order is a property of the emitted bundle, not of this stylesheet, and
+the difference cost three months.** CSS layers take their order from **first
+mention**, so whichever `@layer` the bundler emits first decides it — and every
+`*.module.css` opens `@layer components { … }`. `app/src/main.tsx` imported a
+component from `@foerier/ui` *above* its own `import '@foerier/ui/styles.css'`,
+so module evaluation reached a dozen component modules before the statement
+above: `components` was created first, and the declared order then appended
+every other layer **after** it. The sentence before this one was false in the
+built bundle — `reset`, `base`, `layout` and `utilities` all beat every
+component in `ui/`.
+
+What it looked like, all from one cause: `reset`'s `button { color: inherit }`
+winning, so the journey rail's current chip painted its fill and inherited its
+text colour (white on white) and the sign-in CTA drew dark on dark at 1.7:1;
+both FABs losing `position: fixed` and standing in the content flow; the
+Depot's title row and the Desktop sidebar's foot losing their layout.
+
+**The statement travels with the package now** — `ui/src/index.ts` imports the
+stylesheet ahead of every component it re-exports, so any path that reaches a
+component reaches the order first, and no consumer's import order can invert
+it. Two guards, because the mechanism and the outcome are different claims:
+`ui/src/layerOrder.test.tsx` pins the import and that every module in the
+package claims a layer at all; `test/e2e/shell.spec.ts` measures the CTA's
+label against its own fill in a real browser, which is the only tier that can
+see a computed style. **Assert contrast, not difference** — the first draft of
+that check asserted the two colours differ and passed against the bug, because
+inherited ink on an accent fill is a different colour and merely an illegible
+one.
+
 - **reset** — minimal modern reset (box-sizing, zeroed margins,
   `img { max-width: 100% }`, form-control inheritance). Not a heavy normalize.
 - **tokens** — `:root` primitives + semantic layer; `prefers-color-scheme`
