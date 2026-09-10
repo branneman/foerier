@@ -15,6 +15,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { inMemoryOpLog } from '../household/opLog'
 import { createHouseholdStore, HouseholdProvider } from '../household/store'
+import { SPLIT } from '../shell/useMediaQuery'
+import { setViewport } from '../testSetup'
 import { anAuthor, noopEngine } from '../testUtils'
 import { SourcePicker } from './SourcePicker'
 
@@ -84,6 +86,11 @@ async function renderPicker(
         selected={options.selected ?? null}
         onPicked={options.onPicked ?? (() => undefined)}
         onClose={() => undefined}
+        anchor={
+          <button type="button" aria-label="Start from: None">
+            None
+          </button>
+        }
       />
     </HouseholdProvider>,
   )
@@ -94,6 +101,55 @@ function names(): readonly (string | null)[] {
 }
 
 describe('SourcePicker', () => {
+  /**
+   * **One overlay, two forms** (§5n K17): a sheet below Split, a popover from
+   * Split up. A media query decides which of the two *exists* (§3.2), so the
+   * rows are the same rows either way and only the vessel changes — and the
+   * caller's own trigger is rendered by this component in both, because a
+   * popover positions against an element inside its own Radix root.
+   *
+   * `setViewport` is the app's own test-side media-query control; the default
+   * these cases inherit is a phone, which is why every other case in this
+   * file reads a sheet without asking for one.
+   */
+  it('is a sheet below Split, drawing the anchor in its usual place', async () => {
+    await renderPicker()
+
+    expect(screen.getByRole('dialog', { name: 'Start from' })).toBeVisible()
+    // The title is drawn, which a popover does not do.
+    expect(screen.getByRole('heading', { name: 'Start from' })).toBeVisible()
+    // The anchor is rendered — but **not** by `getByRole`, which reads the
+    // accessibility tree: a modal Radix dialog `aria-hidden`s everything
+    // outside its portal, so the button behind the sheet is correctly inert.
+    // That is the sheet form working, not the anchor missing.
+    expect(
+      document.querySelector('[aria-label="Start from: None"]'),
+    ).not.toBeNull()
+  })
+
+  it('is a popover from Split up, named without drawing a title', async () => {
+    setViewport(SPLIT)
+    await renderPicker()
+
+    // Still a dialog to assistive technology, and still named — but by
+    // `aria-label`, because the trigger and its surroundings are on screen
+    // and a title would repeat them.
+    expect(screen.getByRole('dialog', { name: 'Start from' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Start from' })).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Start from: None' }),
+    ).toBeVisible()
+  })
+
+  it('leaves the anchor an ordinary button in both forms', async () => {
+    setViewport(SPLIT)
+    await renderPicker()
+
+    const anchor = screen.getByRole('button', { name: 'Start from: None' })
+    expect(anchor).not.toHaveAttribute('aria-expanded')
+    expect(anchor).not.toHaveAttribute('aria-controls')
+  })
+
   it('lists every visible Trip, newest created first, under the clear row', async () => {
     await renderPicker()
 

@@ -7,9 +7,11 @@ import {
   type HouseholdState,
   type TripState,
 } from '@foerier/shared'
-import { Sheet } from '@foerier/ui'
+import { Popover, Sheet } from '@foerier/ui'
+import type { ReactNode } from 'react'
 
 import { useHousehold } from '../household/store'
+import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import { tripStartMonth } from '../household/trips'
 import styles from './SourcePicker.module.css'
 
@@ -49,69 +51,115 @@ import styles from './SourcePicker.module.css'
  * Ruling J8, on S7's `TRIP`-dimension precedent and because copying only
  * *reads* the source. There is no world chip and no phase chip on a row: the
  * phase does not bear on whether a list is worth copying.
+ *
+ * ## One overlay, two forms — sheet below Split, popover above (§5n K17)
+ *
+ * The board describes this picker, and six others, as *sheet below Split,
+ * popover from Split up*. A media query decides which of the two **exists**
+ * (§3.2), so the fork is here rather than in CSS — one DOM, not two with one
+ * hidden.
+ *
+ * **The trigger is rendered by this component**, which is the shape K17's
+ * no-trigger popover requires: Radix positions against an element inside its
+ * own root, so the caller hands its button in as {@link anchor} and writes
+ * `{open ? <SourcePicker anchor={trigger} …/> : trigger}` where that button
+ * goes. The button keeps its own props, its accessible name and its hit area
+ * — nothing is cloned onto it, and it goes on toggling the caller's state.
+ * Below Split the anchor is drawn plainly and the sheet is portalled, exactly
+ * as before.
  */
 export function SourcePicker({
   selected,
   onPicked,
   onClose,
+  anchor,
 }: {
   /** The chosen source, or `null` for a blank list. */
   selected: string | null
   /** `null` is the first row — the clear. The caller closes the sheet. */
   onPicked: (tripId: string | null) => void
   onClose: () => void
+  /**
+   * The caller's own trigger, rendered **by this component** — see the
+   * header's *one overlay, two forms* note. It is drawn either way: Radix
+   * positions the popover against it above Split, and below Split it is
+   * simply the button in its usual place with a sheet portalled elsewhere.
+   */
+  anchor: ReactNode
 }) {
   const state = useHousehold((depot) => depot.state)
   const trips = sourceTrips(state)
+  const isSplit = useMediaQuery(SPLIT)
 
-  return (
-    <Sheet title="Start from" onClose={onClose}>
-      <ul className={styles['rows']}>
-        <li>
+  const rows = (
+    <ul className={styles['rows']}>
+      <li>
+        <button
+          type="button"
+          className={styles['row']}
+          data-testid="source-row"
+          aria-pressed={selected === null}
+          onClick={() => onPicked(null)}
+        >
+          <span className={styles['body']}>
+            <span className={styles['name']} data-testid="source-name">
+              Nothing — start empty
+            </span>
+            <span className={styles['meta']}>A BLANK GEAR LIST</span>
+          </span>
+          {selected === null && <span className={styles['now']}>● NOW</span>}
+        </button>
+      </li>
+
+      {trips.map((trip) => (
+        <li key={trip.id}>
           <button
             type="button"
             className={styles['row']}
             data-testid="source-row"
-            aria-pressed={selected === null}
-            onClick={() => onPicked(null)}
+            aria-pressed={selected === trip.id}
+            onClick={() => onPicked(trip.id)}
           >
             <span className={styles['body']}>
+              {/* The prose sentinel: a row's name is a name slot, and this
+                    sheet's own title is a sentence about it. */}
               <span className={styles['name']} data-testid="source-name">
-                Nothing — start empty
+                {tripNameOrUnnamed(trip)}
               </span>
-              <span className={styles['meta']}>A BLANK GEAR LIST</span>
+              <span className={styles['meta']} data-testid="source-meta">
+                {sourceMeta(trip, state)}
+              </span>
             </span>
-            {selected === null && <span className={styles['now']}>● NOW</span>}
+            {selected === trip.id && (
+              <span className={styles['now']}>● NOW</span>
+            )}
           </button>
         </li>
+      ))}
+    </ul>
+  )
 
-        {trips.map((trip) => (
-          <li key={trip.id}>
-            <button
-              type="button"
-              className={styles['row']}
-              data-testid="source-row"
-              aria-pressed={selected === trip.id}
-              onClick={() => onPicked(trip.id)}
-            >
-              <span className={styles['body']}>
-                {/* The prose sentinel: a row's name is a name slot, and this
-                    sheet's own title is a sentence about it. */}
-                <span className={styles['name']} data-testid="source-name">
-                  {tripNameOrUnnamed(trip)}
-                </span>
-                <span className={styles['meta']} data-testid="source-meta">
-                  {sourceMeta(trip, state)}
-                </span>
-              </span>
-              {selected === trip.id && (
-                <span className={styles['now']}>● NOW</span>
-              )}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </Sheet>
+  return isSplit ? (
+    <Popover
+      anchor={anchor}
+      // The sheet's title is the popover's accessible name: a popover draws
+      // no title of its own — the trigger and its surroundings are still on
+      // screen, and repeating them is what the form exists to avoid.
+      label="Start from"
+      // A left-aligned picked-value row in a form, so `start` (§5n K16).
+      align="start"
+      padding="rows"
+      onClose={onClose}
+    >
+      {rows}
+    </Popover>
+  ) : (
+    <>
+      {anchor}
+      <Sheet title="Start from" onClose={onClose}>
+        {rows}
+      </Sheet>
+    </>
   )
 }
 

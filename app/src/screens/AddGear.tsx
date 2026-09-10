@@ -235,6 +235,48 @@ export function AddGear() {
     nameField.current?.focus()
   }
 
+  const tagsTrigger = (
+    <button
+      type="button"
+      className={styles['attrRow']}
+      aria-label="Tags"
+      onClick={() => setTagsOpen(true)}
+    >
+      <span className={styles['label']}>Tags</span>
+      <span className={styles['attrValue']}>
+        <span className={styles['attrText']}>
+          {tags.length === 0 ? 'None' : tags.map((tag) => `#${tag}`).join(' ')}
+        </span>{' '}
+        <span aria-hidden="true">›</span>
+      </span>
+    </button>
+  )
+
+  const tagPicker = (
+    <TagPicker
+      mode="gear"
+      anchor={tagsTrigger}
+      vocabulary={vocabulary}
+      applied={tags}
+      onApply={(tag) => {
+        // Already normalised by the picker — `normalizeTag` here is what
+        // turns that string back into the `TagString` the draft holds,
+        // and it is the one place that conversion happens.
+        const value = normalizeTag(tag)
+        if (value === null) return
+        setTags((current) =>
+          current.includes(value) ? current : [...current, value],
+        )
+      }}
+      onRemove={(tag) => {
+        const value = normalizeTag(tag)
+        if (value === null) return
+        setTags((current) => current.filter((held) => held !== value))
+      }}
+      onClose={() => setTagsOpen(false)}
+    />
+  )
+
   return (
     <div className={styles['screen']}>
       {/* The same band gear detail carries, under the same rule
@@ -368,22 +410,9 @@ export function AddGear() {
           inline are gear detail's shape, where tags are the settled subject;
           here the row shape is established twice over by the two rows above,
           and a third shape in the same block would be the drift. */}
-      <button
-        type="button"
-        className={styles['attrRow']}
-        aria-label="Tags"
-        onClick={() => setTagsOpen(true)}
-      >
-        <span className={styles['label']}>Tags</span>
-        <span className={styles['attrValue']}>
-          <span className={styles['attrText']}>
-            {tags.length === 0
-              ? 'None'
-              : tags.map((tag) => `#${tag}`).join(' ')}
-          </span>{' '}
-          <span aria-hidden="true">›</span>
-        </span>
-      </button>
+      {/* The picker renders this button while it is open, because a popover
+          positions against an element inside its own Radix root (§5n K17). */}
+      {tagsOpen ? tagPicker : tagsTrigger}
 
       <fieldset className={styles['segmentedField']}>
         <legend className={styles['label']}>Recorded as</legend>
@@ -431,30 +460,6 @@ export function AddGear() {
             setOwnerPickerOpen(false)
           }}
           onClose={() => setOwnerPickerOpen(false)}
-        />
-      )}
-
-      {tagsOpen && (
-        <TagPicker
-          mode="gear"
-          vocabulary={vocabulary}
-          applied={tags}
-          onApply={(tag) => {
-            // Already normalised by the picker — `normalizeTag` here is what
-            // turns that string back into the `TagString` the draft holds,
-            // and it is the one place that conversion happens.
-            const value = normalizeTag(tag)
-            if (value === null) return
-            setTags((current) =>
-              current.includes(value) ? current : [...current, value],
-            )
-          }}
-          onRemove={(tag) => {
-            const value = normalizeTag(tag)
-            if (value === null) return
-            setTags((current) => current.filter((held) => held !== value))
-          }}
-          onClose={() => setTagsOpen(false)}
         />
       )}
 

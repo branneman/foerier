@@ -53,6 +53,10 @@ import styles from './Popover.module.css'
  * `start` for a left-aligned one in a form or a bar (a ghost chip, a
  * picked-value row).
  *
+ * **The seven placements**, and their alignment: tag picker `start`,
+ * `ValueMenu` `start`, Piece picker `end`, Piece status sheet `end`, outcome
+ * sheet `end`, outcome roster `end`, template source picker `start`.
+ *
  * **Width is `min(20rem, available)`, floored at the trigger's own width.**
  * 20rem is the phone sheet's content measure, which is what these seven were
  * authored at; `available` is Radix's collision-aware value, so the cap is a

@@ -3,9 +3,10 @@ import {
   normalizeTagInput,
   type DimensionValue,
 } from '@foerier/shared'
-import { Sheet } from '@foerier/ui'
-import { useState } from 'react'
+import { Popover, Sheet } from '@foerier/ui'
+import { useState, type ReactNode } from 'react'
 
+import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './TagPicker.module.css'
 
 /**
@@ -49,6 +50,9 @@ export interface TagPickerProps {
   onApply: (tag: string) => void
   onRemove: (tag: string) => void
   onClose: () => void
+  /** The chip or control this picker hangs from, rendered by this component
+   * — a popover positions against an element inside its own Radix root. */
+  anchor: ReactNode
 }
 
 /** One picker is open at a time — it is modal — so a fixed id is safe and
@@ -62,7 +66,9 @@ export function TagPicker({
   onApply,
   onRemove,
   onClose,
+  anchor,
 }: TagPickerProps) {
+  const isSplit = useMediaQuery(SPLIT)
   // The field holds the **normalised** value, not the raw keystrokes. That is
   // what makes the create row an honest preview of the op: there is no second
   // cleanup step between what is shown and what is stored, and a typed `#` is
@@ -84,8 +90,8 @@ export function TagPicker({
     !appliedSet.has(candidate) &&
     !vocabulary.some((entry) => entry.value === candidate)
 
-  return (
-    <Sheet title="Tags" onClose={onClose}>
+  const body = (
+    <>
       {/* The sheet's own rhythm is 12; this picker's blocks were drawn at 16
           and stay there, in a column of their own rather than by bending the
           primitive every other sheet shares. */}
@@ -213,6 +219,32 @@ export function TagPicker({
           </button>
         </Sheet.Close>
       </div>
-    </Sheet>
+    </>
+  )
+
+  /**
+   * **Sheet below Split, popover from Split up** (§5n K17), `start` because
+   * the trigger is a left-aligned chip in a bar or a row of chips on gear
+   * detail (§5n K16). `prose`, not `rows`: this picker's blocks were drawn at
+   * 16 and carry their own column, so the popover insets exactly as the sheet
+   * does.
+   */
+  return isSplit ? (
+    <Popover
+      anchor={anchor}
+      label="Tags"
+      align="start"
+      padding="prose"
+      onClose={onClose}
+    >
+      {body}
+    </Popover>
+  ) : (
+    <>
+      {anchor}
+      <Sheet title="Tags" onClose={onClose}>
+        {body}
+      </Sheet>
+    </>
   )
 }

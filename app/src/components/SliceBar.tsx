@@ -122,6 +122,36 @@ export function SliceBar({
           formatValue={formatFor}
           onPick={setPicking}
           onRemove={(id, value) => onChange(withValueRemoved(spec, id, value))}
+          // **The picker is drawn in its own chip's place** (§5n K17): a
+          // popover positions against an element inside its own Radix root,
+          // so the chip goes in as the anchor rather than staying here while
+          // the picker renders at the foot of the bar. Below Split the same
+          // call draws the chip plainly and portals a sheet, which is what it
+          // always did.
+          overlayFor={(id, anchor) => {
+            if (id !== picking) return undefined
+            return id === 'tag' ? (
+              <TagPicker
+                mode="slice"
+                anchor={anchor}
+                vocabulary={valuesFor('tag')}
+                applied={selectedOf(spec, 'tag')}
+                onApply={(tag) => apply('tag', tag)}
+                onRemove={(tag) => onChange(withValueRemoved(spec, 'tag', tag))}
+                onClose={() => setPicking(null)}
+              />
+            ) : (
+              <ValueMenu
+                anchor={anchor}
+                title={dimension(id).label}
+                values={valuesFor(id)}
+                format={(value) => formatFor(id, value)}
+                selected={selectedOf(spec, id)}
+                onPick={(value) => apply(id, value)}
+                onClose={() => setPicking(null)}
+              />
+            )
+          }}
         />
       </div>
 
@@ -192,28 +222,6 @@ export function SliceBar({
             setArranging(false)
           }}
           onClose={() => setArranging(false)}
-        />
-      )}
-
-      {picking === 'tag' && (
-        <TagPicker
-          mode="slice"
-          vocabulary={valuesFor('tag')}
-          applied={selectedOf(spec, 'tag')}
-          onApply={(tag) => apply('tag', tag)}
-          onRemove={(tag) => onChange(withValueRemoved(spec, 'tag', tag))}
-          onClose={() => setPicking(null)}
-        />
-      )}
-
-      {picking !== null && picking !== 'tag' && (
-        <ValueMenu
-          title={dimension(picking).label}
-          values={valuesFor(picking)}
-          format={(value) => formatFor(picking, value)}
-          selected={selectedOf(spec, picking)}
-          onPick={(value) => apply(picking, value)}
-          onClose={() => setPicking(null)}
         />
       )}
     </div>

@@ -1,3 +1,5 @@
+import type { Ref } from 'react'
+
 import styles from './Chip.module.css'
 
 /**
@@ -38,6 +40,20 @@ export interface ChipProps {
    * lives in the picker, not on a read screen (Components §06).
    */
   onRemove?: () => void
+  /**
+   * **Forwarded to the chip's own outermost element**, so a caller can
+   * measure or anchor to it.
+   *
+   * `ui/Popover` positions against an element inside its own Radix root
+   * (§5n K17), and Radix measures that element through a ref. React 19 passes
+   * `ref` to a function component as an ordinary prop, but only reaches the
+   * DOM if the component hands it on — a component that quietly drops it
+   * measures as nothing, which is not an error: Floating UI simply never
+   * runs, and the popover paints off-screen with none of its position
+   * variables set. That is what shipped for an hour and what a browser
+   * caught.
+   */
+  ref?: Ref<HTMLElement>
 }
 
 export function Chip({
@@ -47,6 +63,7 @@ export function Chip({
   ghost = false,
   onClick,
   onRemove,
+  ref,
 }: ChipProps) {
   const className = [
     styles['chip'],
@@ -64,14 +81,23 @@ export function Chip({
   // state it does not have.
   const pressed = ghost ? {} : { 'aria-pressed': selected }
 
+  // The ref goes to whichever element is outermost: the chip alone when there
+  // is no ✕, and the group that holds both when there is — a popover anchored
+  // to the chip and not to the group would hang from the wrong edge of a
+  // control the reader sees as one thing.
+  const innerRef = onRemove === undefined ? ref : undefined
+
   const inner =
     onClick === undefined ? (
-      <span className={className}>{body}</span>
+      <span className={className} ref={innerRef as Ref<HTMLSpanElement>}>
+        {body}
+      </span>
     ) : (
       <button
         type="button"
         className={className}
         onClick={onClick}
+        ref={innerRef as Ref<HTMLButtonElement>}
         {...pressed}
       >
         {body}
@@ -81,7 +107,7 @@ export function Chip({
   if (onRemove === undefined) return inner
 
   return (
-    <span className={styles['group']}>
+    <span className={styles['group']} ref={ref as Ref<HTMLSpanElement>}>
       {inner}
       <button
         type="button"

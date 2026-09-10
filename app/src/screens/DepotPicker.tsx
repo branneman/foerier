@@ -375,6 +375,32 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
           formatValue={(id, value) => dimension(id).format(value, state)}
           onPick={setPicking}
           onRemove={(id, value) => setSpec(withValueRemoved(spec, id, value))}
+          // The picker is drawn in its own chip's place — `SliceBar`'s own
+          // note has the reasoning (§5n K17).
+          overlayFor={(id, anchor) => {
+            if (id !== picking) return undefined
+            return id === 'tag' ? (
+              <TagPicker
+                mode="slice"
+                anchor={anchor}
+                vocabulary={dimensionValues(state, 'tag')}
+                applied={selectedOf(spec, 'tag')}
+                onApply={(tag) => apply('tag', tag)}
+                onRemove={(tag) => setSpec(withValueRemoved(spec, 'tag', tag))}
+                onClose={() => setPicking(null)}
+              />
+            ) : (
+              <ValueMenu
+                anchor={anchor}
+                title={dimension(id).label}
+                values={dimensionValues(state, id)}
+                format={(value) => dimension(id).format(value, state)}
+                selected={selectedOf(spec, id)}
+                onPick={(value) => apply(id, value)}
+                onClose={() => setPicking(null)}
+              />
+            )
+          }}
         />
       </div>
 
@@ -445,28 +471,6 @@ export function DepotPicker({ tripId, variant }: DepotPickerProps) {
       <p className={styles['hint']}>
         ADDING LISTS IT — GEAR DOES NOT MOVE UNTIL PACK-OUT
       </p>
-
-      {picking === 'tag' && (
-        <TagPicker
-          mode="slice"
-          vocabulary={dimensionValues(state, 'tag')}
-          applied={selectedOf(spec, 'tag')}
-          onApply={(tag) => apply('tag', tag)}
-          onRemove={(tag) => setSpec(withValueRemoved(spec, 'tag', tag))}
-          onClose={() => setPicking(null)}
-        />
-      )}
-
-      {picking !== null && picking !== 'tag' && (
-        <ValueMenu
-          title={dimension(picking).label}
-          values={dimensionValues(state, picking)}
-          format={(value) => dimension(picking).format(value, state)}
-          selected={selectedOf(spec, picking)}
-          onPick={(value) => apply(picking, value)}
-          onClose={() => setPicking(null)}
-        />
-      )}
     </div>
   )
 }

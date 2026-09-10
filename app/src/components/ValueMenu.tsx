@@ -1,10 +1,12 @@
 import type { DimensionValue } from '@foerier/shared'
-import { Sheet } from '@foerier/ui'
+import { Popover, Sheet } from '@foerier/ui'
+import type { ReactNode } from 'react'
 
 // Shared with `SortGroupSheet` on purpose, and more honestly so now that the
 // scrim, sheet, grabber and title have moved to `ui/`: what is left in that
 // module is exactly the row vocabulary the two have always drawn the same
 // way — the 40+ row, its `● NOW`/count trailing slot, and the empty line.
+import { SPLIT, useMediaQuery } from '../shell/useMediaQuery'
 import styles from './SortGroupSheet.module.css'
 
 /**
@@ -29,6 +31,9 @@ export interface ValueMenuProps {
   selected: readonly string[]
   onPick: (value: string) => void
   onClose: () => void
+  /** The chip this menu hangs from, rendered by this component — see the
+   * return below. */
+  anchor: ReactNode
 }
 
 export function ValueMenu({
@@ -38,9 +43,12 @@ export function ValueMenu({
   selected,
   onPick,
   onClose,
+  anchor,
 }: ValueMenuProps) {
-  return (
-    <Sheet title={title} onClose={onClose}>
+  const isSplit = useMediaQuery(SPLIT)
+
+  const body = (
+    <>
       {values.length === 0 ? (
         <p className={styles['none']}>Nothing to narrow by yet.</p>
       ) : (
@@ -60,6 +68,35 @@ export function ValueMenu({
           ))}
         </ul>
       )}
-    </Sheet>
+    </>
+  )
+
+  /**
+   * **Sheet below Split, popover from Split up** (§5n K17). A media query
+   * decides which of the two exists (§3.2); the rows are the same rows.
+   *
+   * `start`, because the trigger is a chip in a bar — a left-aligned control,
+   * not a row's right edge (§5n K16). The anchor is rendered here in both
+   * forms: a popover positions against an element inside its own Radix root,
+   * and below Split the chip is simply drawn in its usual place with the
+   * sheet portalled elsewhere.
+   */
+  return isSplit ? (
+    <Popover
+      anchor={anchor}
+      label={title}
+      align="start"
+      padding="rows"
+      onClose={onClose}
+    >
+      {body}
+    </Popover>
+  ) : (
+    <>
+      {anchor}
+      <Sheet title={title} onClose={onClose}>
+        {body}
+      </Sheet>
+    </>
   )
 }

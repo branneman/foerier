@@ -201,24 +201,17 @@ second pane.
   K20's lands, and never Trips (K19).
   [`frontend-design.md`](frontend-design.md) §3.1, anchor:
   `Panes with scrollers of their own`
-- **`ui/`'s `Popover` is unbuilt and has seven waiting callers.** §4a's
-  desktop tag picker, the slice bar's `ValueMenu`, S8's Piece picker, S9a's
-  Piece status sheet, the outcome sheet and its roster variant (S10), and —
-  since S14 — the template source picker are each described in board prose as
-  *sheet below Split, popover from Split up*, and all seven are approximated
-  by `Sheet`'s `desktopCard` meanwhile. The prose used to be the whole of the
-  specification, which is why this sat under *Waiting on a decision*; §5n
-  **K15–K17** drew the rest — surface, border, radius 12, elevation by the
-  theme's own rule, offset 8, no arrow; side bottom always, alignment from the
-  trigger's own edge, width `min(20rem, available)`, collision behaviour, and
-  the content scrolling itself at `max-height: available`. **K17 is the one
-  that makes it buildable against this app's conventions**: `Popover.Trigger`
-  is not used at all, so the root wraps an *anchor* and the content, `open` is
-  the caller's own state, and `{open && …}` still resets a picker's drafts on
-  mount. Each of the seven still has to be restructured to that shape, and
-  K18 rules the set they leave: every sheet that is **not** one of the seven
-  takes `desktopCard` uniformly. [`frontend-design.md`](frontend-design.md)
-  §5, anchor: `is the one with waiting callers`
+- **Three of `ui/Popover`'s seven callers still approximate it with a
+  sheet.** The primitive exists (§5n K15–K17) and four have switched — the tag
+  picker, `ValueMenu`, the template source picker, and both slice bars' copies
+  of the first two. The three left are the packing and unpack family: the
+  Piece picker, the Piece status sheet, and the outcome sheet with its roster
+  variant. Each needs the same two things the four needed — the row that owns
+  the trigger gaining an overlay slot, so the trigger and the content sit
+  under one Radix root, and the `ui/` component the trigger is built from
+  (`PersonCluster`, `StatusPill`) forwarding its ref, without which Floating
+  UI never runs and the popover paints off-screen with no error anywhere.
+  `ui/src/Popover.tsx`, anchor: `the seven placements`
 - **Four mono labels sit at 8px, below the type ladder's floor.**
   `Account`'s and `Devices`' and `People`'s badge and `JourneyRail`'s stage
   chip each spell `font-size: 0.5rem` beside `var(--font-mono)`, and §5n K28's

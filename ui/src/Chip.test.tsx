@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import { render, screen } from '@testing-library/react'
+import { createRef } from 'react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -14,6 +15,44 @@ import { Chip } from './Chip'
  */
 
 describe('Chip', () => {
+  /**
+   * **A chip is a popover anchor, so it has to be measurable** (§5n K17).
+   *
+   * `ui/Popover` positions against an element inside its own Radix root, and
+   * Radix measures that element through a ref. React 19 hands `ref` to a
+   * function component as an ordinary prop — but it only reaches the DOM if
+   * the component passes it on, and a component that drops it fails
+   * **silently**: Floating UI never runs, none of the position variables are
+   * set, and the popover paints off-screen at `y: -132` with no error
+   * anywhere. That is what shipped until a browser was pointed at it.
+   *
+   * The ref goes to the **outermost** element, which is the group when there
+   * is a ✕: a popover anchored to the chip alone would hang from the wrong
+   * edge of a control the reader sees as one thing.
+   */
+  it('forwards its ref to a real element, with and without the ✕', () => {
+    const plain = createRef<HTMLElement>()
+    const { unmount } = render(
+      <Chip label="KIND: Single" onClick={() => undefined} ref={plain} />,
+    )
+    expect(plain.current).toBeInstanceOf(HTMLElement)
+    expect(plain.current?.tagName).toBe('BUTTON')
+    unmount()
+
+    const grouped = createRef<HTMLElement>()
+    render(
+      <Chip
+        label="KIND: Single"
+        onClick={() => undefined}
+        onRemove={() => undefined}
+        ref={grouped}
+      />,
+    )
+    // The group, not the chip inside it.
+    expect(grouped.current).toBeInstanceOf(HTMLElement)
+    expect(grouped.current?.querySelectorAll('button')).toHaveLength(2)
+  })
+
   it('draws its label', () => {
     render(<Chip label="TAG: #WINTER" />)
     expect(screen.getByText('TAG: #WINTER')).toBeInTheDocument()

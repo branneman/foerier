@@ -34,6 +34,11 @@ function renderPicker(
       onApply={onApply}
       onRemove={onRemove}
       onClose={onClose}
+      anchor={
+        <button type="button" aria-label="+ tag">
+          + tag
+        </button>
+      }
       {...overrides}
     />,
   )

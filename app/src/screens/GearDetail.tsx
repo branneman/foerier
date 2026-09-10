@@ -447,6 +447,31 @@ export function GearDetail() {
       answer.slice.kind === 'trip' || answer.unaccountedTripName !== null,
   )
 
+  const tagsTrigger = (
+    <Chip label="+ tag" size="tag" ghost onClick={() => setTagsOpen(true)} />
+  )
+
+  const tagPicker = (
+    <TagPicker
+      mode="gear"
+      anchor={tagsTrigger}
+      vocabulary={vocabulary}
+      applied={tagsOf(gear)}
+      onApply={(tag) => {
+        // Already normalised by the picker — `normalizeTag` here is what
+        // turns that string back into the `TagString` the builder demands,
+        // and it is the one place that conversion happens.
+        const value = normalizeTag(tag)
+        if (value !== null) emit(gearTagApplied(gearId, value))
+      }}
+      onRemove={(tag) => {
+        const value = normalizeTag(tag)
+        if (value !== null) emit(gearTagRemoved(gearId, value))
+      }}
+      onClose={() => setTagsOpen(false)}
+    />
+  )
+
   return (
     <div className={styles['screen']}>
       {/* From Split up the Depot is already on the page — the list pane at
@@ -489,14 +514,10 @@ export function GearDetail() {
         {tagsOf(gear).map((tag) => (
           <Chip key={tag} label={`#${tag}`} size="tag" />
         ))}
-        {!retired && (
-          <Chip
-            label="+ tag"
-            size="tag"
-            ghost
-            onClick={() => setTagsOpen(true)}
-          />
-        )}
+        {!retired &&
+          // The picker renders this chip while it is open: a popover
+          // positions against an element inside its own Radix root (§5n K17).
+          (tagsOpen ? tagPicker : tagsTrigger)}
       </div>
 
       <WhereaboutsCard
@@ -734,26 +755,6 @@ export function GearDetail() {
                 },
               }
             : {})}
-        />
-      )}
-
-      {tagsOpen && (
-        <TagPicker
-          mode="gear"
-          vocabulary={vocabulary}
-          applied={tagsOf(gear)}
-          onApply={(tag) => {
-            // Already normalised by the picker — `normalizeTag` here is what
-            // turns that string back into the `TagString` the builder
-            // demands, and it is the one place that conversion happens.
-            const value = normalizeTag(tag)
-            if (value !== null) emit(gearTagApplied(gearId, value))
-          }}
-          onRemove={(tag) => {
-            const value = normalizeTag(tag)
-            if (value !== null) emit(gearTagRemoved(gearId, value))
-          }}
-          onClose={() => setTagsOpen(false)}
         />
       )}
 

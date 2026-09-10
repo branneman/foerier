@@ -6,6 +6,7 @@ import {
   type SliceSpec,
 } from '@foerier/shared'
 import { Chip } from '@foerier/ui'
+import { Fragment, type ReactNode } from 'react'
 
 /**
  * The filter chip row — one selected chip per narrowed value, then a dashed
@@ -44,6 +45,22 @@ export interface FilterChipsProps {
   readonly onPick: (id: DimensionId) => void
   /** A selected chip's `✕`. */
   readonly onRemove: (id: DimensionId, value: string) => void
+  /**
+   * **The overlay for the dimension currently open, rendered in its chip's
+   * place** (§5n K17).
+   *
+   * From Split up a value picker is a popover, and a popover positions
+   * against an element inside its own Radix root — so the chip cannot stay
+   * here while the picker is rendered by the bar above. The caller hands in a
+   * function instead: for the one open dimension this component calls it with
+   * that chip's own element and draws what comes back, and for every other
+   * chip it draws the chip.
+   *
+   * A function rather than a node, because *which* chip is the anchor is
+   * decided here — the caller knows what is open, this component knows where
+   * each chip is. Absent for a caller with no picker at all.
+   */
+  readonly overlayFor?: (id: DimensionId, anchor: ReactNode) => ReactNode
 }
 
 export function FilterChips({
@@ -52,18 +69,27 @@ export function FilterChips({
   formatValue,
   onPick,
   onRemove,
+  overlayFor,
 }: FilterChipsProps) {
+  /** A chip, or the overlay anchored to it when that dimension is open. */
+  const withOverlay = (id: DimensionId, chip: ReactNode): ReactNode =>
+    overlayFor?.(id, chip) ?? chip
+
   return (
     <>
       {dimensions.flatMap((id) =>
         selectedOf(spec, id).map((value) => (
-          <Chip
-            key={`${id}:${value}`}
-            label={`${dimension(id).label}: ${formatValue(id, value)}`}
-            selected
-            onClick={() => onPick(id)}
-            onRemove={() => onRemove(id, value)}
-          />
+          <Fragment key={`${id}:${value}`}>
+            {withOverlay(
+              id,
+              <Chip
+                label={`${dimension(id).label}: ${formatValue(id, value)}`}
+                selected
+                onClick={() => onPick(id)}
+                onRemove={() => onRemove(id, value)}
+              />,
+            )}
+          </Fragment>
         )),
       )}
 
@@ -74,12 +100,27 @@ export function FilterChips({
       {dimensions
         .filter((id) => acceptsMore(spec, id))
         .map((id) => (
-          <Chip
-            key={`ghost-${id}`}
-            label={`+ ${dimension(id).label}`}
-            ghost
-            onClick={() => onPick(id)}
-          />
+          <Fragment key={`ghost-${id}`}>
+            {/* The ghost is the anchor only when the dimension holds no
+                selected chip: with one, the selected chip above is where the
+                reader's eye and the picker both belong. */}
+            {selectedOf(spec, id).length === 0 ? (
+              withOverlay(
+                id,
+                <Chip
+                  label={`+ ${dimension(id).label}`}
+                  ghost
+                  onClick={() => onPick(id)}
+                />,
+              )
+            ) : (
+              <Chip
+                label={`+ ${dimension(id).label}`}
+                ghost
+                onClick={() => onPick(id)}
+              />
+            )}
+          </Fragment>
         ))}
     </>
   )

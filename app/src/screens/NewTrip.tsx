@@ -202,6 +202,30 @@ export function NewTrip() {
       ? 'None'
       : chosen.map((person) => person.label).join(', ')
 
+  /** Hoisted so the picker can render it as its anchor — see the call
+   * site. */
+  const startFromTrigger = (
+    <button
+      type="button"
+      className={styles['pickRow']}
+      aria-label={`Start from: ${
+        sourceTrip === undefined ? 'None' : tripNameOrUnnamed(sourceTrip)
+      }`}
+      onClick={() => setSourceOpen(true)}
+    >
+      <span
+        className={
+          sourceTrip === undefined ? styles['pickNone'] : styles['pickChosen']
+        }
+      >
+        {sourceTrip === undefined ? 'None' : tripNameOrUnnamed(sourceTrip)}
+      </span>
+      <span className={styles['chevron']} aria-hidden="true">
+        ›
+      </span>
+    </button>
+  )
+
   function submit() {
     if (!canSubmit) return
 
@@ -284,29 +308,28 @@ export function NewTrip() {
           <span className={styles['label']} aria-hidden="true">
             Start from
           </span>
-          <button
-            type="button"
-            className={styles['pickRow']}
-            aria-label={`Start from: ${
-              sourceTrip === undefined ? 'None' : tripNameOrUnnamed(sourceTrip)
-            }`}
-            onClick={() => setSourceOpen(true)}
-          >
-            <span
-              className={
-                sourceTrip === undefined
-                  ? styles['pickNone']
-                  : styles['pickChosen']
-              }
-            >
-              {sourceTrip === undefined
-                ? 'None'
-                : tripNameOrUnnamed(sourceTrip)}
-            </span>
-            <span className={styles['chevron']} aria-hidden="true">
-              ›
-            </span>
-          </button>
+          {/* **The picker renders the trigger while it is open** (§5n K17):
+              a popover positions against an element inside its own Radix
+              root, so the button goes in as the anchor rather than being
+              drawn beside it. Closed, it is just the button. Either way the
+              button keeps its own props, its accessible name and its hit
+              area — nothing is cloned onto it. */}
+          {sourceOpen ? (
+            <SourcePicker
+              anchor={startFromTrigger}
+              selected={sourceTrip?.id ?? null}
+              // The picker is pure selection and the caller closes it — the
+              // Home picker's rule, and why its first row is the clear
+              // rather than an `✕` on the field.
+              onPicked={(id) => {
+                setOverride(id)
+                setSourceOpen(false)
+              }}
+              onClose={() => setSourceOpen(false)}
+            />
+          ) : (
+            startFromTrigger
+          )}
 
           {/* One line unchosen, two chosen — and the second is where
               `PARTICIPANTS` is disclosed **before the Trip exists** (J10,
@@ -472,20 +495,6 @@ export function NewTrip() {
       <p className={`${styles['fact']} ${styles['ctaFact']}`}>
         NAME IS THE ONLY REQUIRED INPUT
       </p>
-
-      {sourceOpen && (
-        <SourcePicker
-          selected={sourceTrip?.id ?? null}
-          // The picker is pure selection and the caller closes it — the Home
-          // picker's rule, and why its first row is the clear rather than an
-          // `✕` on the field.
-          onPicked={(id) => {
-            setOverride(id)
-            setSourceOpen(false)
-          }}
-          onClose={() => setSourceOpen(false)}
-        />
-      )}
 
       {pickerOpen && (
         <ParticipantPicker
