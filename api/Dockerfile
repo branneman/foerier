@@ -1,7 +1,7 @@
 # The api image. Built from the repository root:
 #   docker build -f api/Dockerfile --build-arg GIT_SHA=$(git rev-parse HEAD) .
 
-FROM node:24-alpine AS build
+FROM node:24.22.1-alpine AS build
 WORKDIR /build
 
 # Manifests first, so a change to source does not invalidate the install layer.
@@ -19,7 +19,7 @@ COPY shared/ shared/
 COPY api/ api/
 RUN npm run build --workspace api
 
-FROM node:24-alpine
+FROM node:24.22.1-alpine
 # The commit this image was built from, served by GET /api/v1/version. CI polls
 # that endpoint until it reports this value, which is how a deploy is known to
 # have landed (docs/testing.md, Tier 4).

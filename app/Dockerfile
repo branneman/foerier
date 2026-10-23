@@ -2,7 +2,7 @@
 # security headers. Built from the repository root:
 #   docker build -f app/Dockerfile --build-arg GIT_SHA=$(git rev-parse HEAD) .
 
-FROM node:24-alpine AS build
+FROM node:24.22.1-alpine AS build
 WORKDIR /build
 
 COPY package.json package-lock.json ./
